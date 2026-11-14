@@ -1,13 +1,15 @@
-# The Classics
+# Arcade browser games
 
-Added 2026-11-13 for Ric: “simple ones, solitare, tictactoe, chess, wordle,
-soduku, minesweeper, tetris, checkers, snake” and “the ones that can have a
-high score should ask for initials and have a scoreboard.” Nine games in one
-collection, linked from Gaming, the front door and the terminal.
+Nine separate pages, each directly linked from `gaming.html`, the front door and
+the terminal. No collection name or intermediate launcher. The runtime stays here
+so fixes to shared rules and score submission apply to every game without copies.
 
-Open `index.html` directly, or serve the repo. There is no build or runtime
-dependency. Each game has a shareable fragment (`index.html#chess`, for example).
-The collection has its own green-felt table style; it does not change other rooms.
+Originally added 2026-11-13 for Ric’s request for Solitaire, Tic-tac-toe, Chess,
+Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake with initials/scoreboards.
+His follow-up the same day settled individual pages and distinct styles.
+
+Open `projects/<game>/index.html` directly or serve the repo. No build or runtime
+dependency; shared code stays entirely inside these Gaming projects.
 
 | Game | Rules / modes | Scoreboard |
 |---|---|---|
@@ -38,7 +40,7 @@ lowest time/guess count first; ties keep the earliest submission first.
 Shared storage is the existing Worker's `GET`/`POST /arcade/scores`. Local preview
 uses only its own origin, never the live scoreboards. Production uses the existing
 `training-log` Worker. `file://`, outages and unavailable storage fall back to a
-board labeled **This browser only**, using `classics:scores:<board>` in localStorage.
+board labeled **This browser only**, using `classics:scores:<board>` (the original storage key, retained so scores survive the move) in localStorage.
 A local save is not silently sent later. If browser storage is disabled, a failed
 save is reported and may be retried. Remembered initials use `classics:initials`.
 
@@ -46,14 +48,18 @@ The boards are a friendly honor system: scores are reported by the browser,
 validated for type/range on the server, **not replay-verified**. Never describe
 them as cheat-proof. Nothing requires a login. Board keys and rules are fixed;
 the server bounds storage to 100 scores per board and removes daily records over
-a year old. Read `worker/README.md`, “Classics scoreboards”, before editing the API.
-The Worker must be deployed as well as pushing the static site for shared boards
-to work; no new Cloudflare database or secret is required.
+a year old. Read `worker/README.md`, “Arcade scoreboards”, before editing the API.
+The existing scoreboard service is already deployed. The page split retains its
+route and board keys and needs no Worker redeploy, new database, secret or migration.
 
 ## Files and checks
 
 - `engine.js`: dependency-free UMD rules, used by both the browser and Node tests.
-- `app.js`, `style.css`, `index.html`: collection, controls, drawing, timers and scores.
+- `app.js`, `style.css`: shared controls, layout primitives, drawing, timers and scores.
+- `../<game>/index.html`: each game’s complete page shell and its own inline theme CSS.
+- `preview.js`: small front-door views using the actual rule engines; no game page or dictionary is loaded there.
+- `index.html`: redirect to the Arcade, not a second launcher.
+- `../classics/index.html`: compatibility door for old collection and fragment links.
 - `words.js`: committed offline dictionary; **generated**, not hand-edited.
 - `build-words.py`: run manually with Python's standard library and network access.
 - `test/engine.test.cjs`: real rule boundaries and chess perft counts, every legal
@@ -65,14 +71,43 @@ to work; no new Cloudflare database or secret is required.
 
 ```sh
 node worker/dev.mjs 8914
-node --test projects/classics/test/engine.test.cjs worker/arcade.test.mjs
+node --test projects/arcade/test/engine.test.cjs projects/arcade/test/pages.test.cjs worker/arcade.test.mjs
 node .github/checks.mjs
 ```
 
-`assets/games/classics.jpg` is real Solitaire gameplay captured after drawing a
-card and moving an Ace to its foundation; `assets/frontdoor/thumbs/classics.jpg`
-is its small phone thumbnail. The front door's `ART.classics` uses this project's
-actual Klondike deal/draw engine on desktop rather than a fabricated board.
+Every game has `assets/games/<game>.jpg`, captured from its real page after
+trusted clicks/keys, and `assets/frontdoor/thumbs/<game>.jpg`. Capture actual gameplay,
+not the Start overlay or a style menu. The front door draws from the real rule engines
+through `ArcadePreview.draw`; it does not iframe the pages or load the word dictionary.
+
+## Visual styles
+
+Ric’s follow-up on 2026-11-13: “a bunch of different styles” and “I don’t like it
+being the classics put each having its own page on the arcade.” The games each open
+directly, with their own identity. The Style selector has three choices on each:
+
+| Game | Styles |
+|---|---|
+| Solitaire | Card table, Midnight velvet, Ocean deck |
+| Tic-tac-toe | Notebook, Blackboard, Pop art |
+| Chess | Walnut club, Marble hall, Midnight match |
+| Wordle | Daily paper, After dark, Peach edition |
+| Sudoku | Sunday print, Sepia journal, Night desk |
+| Minesweeper | Desktop 95, Terminal, Ice field |
+| Tetris | Neon arcade, Pocket console, Monochrome |
+| Checkers | Diner table, Tournament, Lakeside |
+| Snake | Pocket LCD, Night drive, Candy pixels |
+
+`data-game` selects the engine; `data-skin` and each page’s own inline CSS select
+the appearance. `classics:style:<game>` stores the preference alongside the retained
+legacy storage keys. `applyStyle()` changes CSS and canvas colors only. **Do not call
+`start()` or `route()` from a style change**: that would throw away a game. The two
+canvas games reread their palette and redraw the same state, including while paused.
+Only Wordle loads `words.js`. The old `#chess`/`#snake` links redirect by an allowlist;
+never turn their hash into an unchecked external redirect.
+
+`test/pages.test.cjs` verifies direct Arcade entries, unique page routes and themes,
+local script/style references, preserved storage/API keys and legacy redirects.
 
 ## Word list credit
 
@@ -83,4 +118,4 @@ Accepted guesses are the 15,921 five-letter ASCII words from
 familiar words in `build-words.py`, **not the official Wordle answer list**.
 Keep their order stable: the date hash selects an index, so reordering or changing
 the array length changes daily puzzles. The game never downloads a dictionary or
-uses an external game service. Rebuild with `python projects/classics/build-words.py`.
+uses an external game service. Rebuild with `python projects/arcade/build-words.py`.

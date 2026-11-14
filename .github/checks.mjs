@@ -54,8 +54,8 @@ const SUITES = [
   /* The finder's filters against the Worker's /tmdb/discover whitelist. */
   ['the entertainment finder', ['projects/entertainment/test/finder.mjs']],
   ['the worker (training-log)', ['worker/test.mjs']],
-  ['the classics game rules', ['projects/classics/test/engine.test.cjs']],
-  ['the classics shared scoreboards', ['worker/arcade.test.mjs']],
+  ['the arcade game rules', ['projects/arcade/test/engine.test.cjs', 'projects/arcade/test/pages.test.cjs']],
+  ['the arcade shared scoreboards', ['worker/arcade.test.mjs']],
   ['the media location scrub', ['.github/test/scrub-media.mjs']],
   ['nothing tracked is ignored', ['.github/test/tracked-ignored.mjs']],
   ['the visitor counter', ['worker/visitors.test.mjs']],

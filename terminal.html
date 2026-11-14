@@ -601,11 +601,6 @@ type Sydney's cat's name for a surprise!</div>
     // ─── command line ────────────────────────────────────
 
     const PROJECTS = [
-      {
-        command: "classics", aliases: ["classic-games"], room: "gaming",
-        title: "The Classics", description: "nine familiar games, with initials and shared scoreboards",
-        href: "projects/classics/index.html",
-      },
       ...[
         ["solitaire", ["patience", "solitare"], "Solitaire", "draw-one Klondike, fastest completed games"],
         ["tictactoe", ["tic-tac-toe", "noughts"], "Tic-tac-toe", "three in a row against a friend or the computer"],
@@ -617,7 +612,7 @@ type Sydney's cat's name for a surprise!</div>
         ["checkers", ["draughts"], "Checkers", "American checkers with forced jumps and kings"],
         ["snake", [], "Snake", "eat, grow and leave your initials on the board"],
       ].map(([command, aliases, title, description]) => ({
-        command, aliases, title, description, room: "gaming", href: "projects/classics/index.html#" + command,
+        command, aliases, title, description, room: "gaming", href: "projects/" + command + "/index.html",
       })),
       {
         command: "state", aliases: ["state-of-mind", "bipolar"], room: "psyche",

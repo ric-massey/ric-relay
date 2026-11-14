@@ -25,9 +25,9 @@ window.RELAY_LATEST = [
     date: "2026-11-13",
     kind: "new games",
     room: "gaming",
-    title: "The Classics",
-    description: "Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake — nine familiar games, with touch controls, computer opponents and shared scoreboards for your initials.",
-    href: "projects/classics/index.html",
+    title: "Nine games in the Arcade",
+    description: "Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake each have their own page, with three saved visual styles and shared scoreboards for your initials.",
+    href: "gaming.html",
   },
   {
     date: "2026-11-02",

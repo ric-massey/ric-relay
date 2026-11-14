@@ -217,5 +217,5 @@
     drop(s,random=Math.random){while(Tetris.move(s,0,1))s.score+=2;Tetris.lock(s,random);}
   };
   const api={copy,shuffle,Tic,Chess,Checkers,Sudoku,Mines,Word,Solitaire,Snake,Tetris};
-  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Classics=api;
+  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ArcadeGames=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

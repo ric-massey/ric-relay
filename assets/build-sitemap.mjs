@@ -28,6 +28,7 @@ const OUT = join(ROOT, 'sitemap.xml');
 const SITE = 'https://' + readFileSync(join(ROOT, 'CNAME'), 'utf8').trim();
 
 const EXCLUDE = [
+  [/^projects\/(classics|arcade)\/index\.html$/, "old collection URL and shared-code door — redirects to the Arcade"],
   [/^(docs|\.github)\//, 'notes and tests about the site, not the site'],
   [/\/tests?\/|fixtures/, 'test pages'],
   [/^(admin|visitors|account|atlas)\//, "Ric's tools, behind their own sign-in"],

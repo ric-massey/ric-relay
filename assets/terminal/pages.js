@@ -54,7 +54,7 @@ window.TERMINAL_PAGES = [
   "title": "Arcade",
   "keys": "playable games",
   "body": "A browser arcade: Solitaire, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers, Snake and Tic-tac-toe with scoreboards, plus four original games. Click a cover to play.",
-  "text": "Kondrite · Always time for one more · Three more, in beta · A rocket at lightspeed · All momentum, all feel · Interstate 40, exit to exit · Nothing to install, nothing to sign into",
+  "text": "Pick a game · Solitaire · Tic-tac-toe · Chess · Wordle · Sudoku · Minesweeper · Tetris · Checkers · Snake · Kondrite · Three more, in beta · A rocket at lightspeed · All momentum, all feel",
   "room": "gaming"
  },
  {
@@ -98,11 +98,19 @@ window.TERMINAL_PAGES = [
   "room": "psyche"
  },
  {
-  "href": "projects/classics/index.html",
-  "title": "Classics",
+  "href": "projects/checkers/index.html",
+  "title": "Checkers",
   "keys": "RIC//NET",
-  "body": "Nine familiar games, ready to play: Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake. Leave your initials on the scoreboards.",
-  "text": "The classics. · Scoreboard · At the table · A seat at the table.",
+  "body": "Play Checkers in the Arcade. American checkers · 8 × 8. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Checkers · Scoreboard · At the board · How to play",
+  "room": "gaming"
+ },
+ {
+  "href": "projects/chess/index.html",
+  "title": "Chess",
+  "keys": "RIC//NET",
+  "body": "Play Chess in the Arcade. A game of quiet decisions. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Chess · Scoreboard · At the board · How to play",
   "room": "gaming"
  },
  {
@@ -186,6 +194,14 @@ window.TERMINAL_PAGES = [
   "room": "gaming"
  },
  {
+  "href": "projects/minesweeper/index.html",
+  "title": "Minesweeper",
+  "keys": "RIC//NET",
+  "body": "Play Minesweeper in the Arcade. A field of calculated risks. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Minesweeper · Scoreboard · Field manual · How to play",
+  "room": "gaming"
+ },
+ {
   "href": "projects/offramp/index.html",
   "title": "Interstate 40",
   "keys": "",
@@ -208,6 +224,22 @@ window.TERMINAL_PAGES = [
   "body": "Watch the Siege of Mandalore interwoven with Revenge of the Sith as one continuous story.",
   "text": "",
   "room": "workbench"
+ },
+ {
+  "href": "projects/snake/index.html",
+  "title": "Snake",
+  "keys": "RIC//NET",
+  "body": "Play Snake in the Arcade. Eat. Grow. Mind the walls.. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Snake · Scoreboard · Controls · How to play",
+  "room": "gaming"
+ },
+ {
+  "href": "projects/solitaire/index.html",
+  "title": "Solitaire",
+  "keys": "RIC//NET",
+  "body": "Play Solitaire in the Arcade. Klondike · draw one. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Solitaire · Scoreboard · At the card table · How to play",
+  "room": "gaming"
  },
  {
   "href": "projects/spacetime/01-light-cones.html",
@@ -274,6 +306,30 @@ window.TERMINAL_PAGES = [
   "room": "psyche"
  },
  {
+  "href": "projects/sudoku/index.html",
+  "title": "Sudoku",
+  "keys": "RIC//NET",
+  "body": "Play Sudoku in the Arcade. One solution. No rush.. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Sudoku · Scoreboard · Puzzle notes · How to play",
+  "room": "gaming"
+ },
+ {
+  "href": "projects/tetris/index.html",
+  "title": "Tetris",
+  "keys": "RIC//NET",
+  "body": "Play Tetris in the Arcade. One more line. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Tetris · Scoreboard · Controls · How to play",
+  "room": "gaming"
+ },
+ {
+  "href": "projects/tictactoe/index.html",
+  "title": "Tic-tac-toe",
+  "keys": "RIC//NET",
+  "body": "Play Tic-tac-toe in the Arcade. Three in a row. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Tic-tac-toe · Scoreboard · Rules · How to play",
+  "room": "gaming"
+ },
+ {
   "href": "projects/training/calendar.html",
   "title": "Calendar",
   "keys": "Training",
@@ -304,6 +360,14 @@ window.TERMINAL_PAGES = [
   "body": "Zoom, pan and open a hexagon of this universe: kind, valence, bonds, temperature, and the bonded group it belongs to. Reads the Lab",
   "text": "A hexagon of this universe · Journal · World — · Hexagon · Group · Run · B to each neighbour",
   "room": null
+ },
+ {
+  "href": "projects/wordle/index.html",
+  "title": "Wordle",
+  "keys": "RIC//NET",
+  "body": "Play Wordle in the Arcade. Five letters. Six chances.. Three styles to choose from, with touch and keyboard controls.",
+  "text": "Wordle · Scoreboard · Six chances · How to play",
+  "room": "gaming"
  },
  {
   "href": "projects/world-builder/index.html",

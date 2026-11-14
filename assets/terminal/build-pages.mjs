@@ -17,6 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = join(ROOT, 'assets', 'terminal', 'pages.js');
 
 const EXCLUDE = [
+  [/^projects\/(classics|arcade)\/index\.html$/, "old collection URL and shared-code door — redirects to the Arcade"],
   [/^(docs|\.github)\//, 'notes and tests about the site, not the site'],
   [/\/tests?\/|fixtures/, 'test pages'],
   [/^(admin|visitors|account|atlas)\//, "Ric's tools, behind their own sign-in"],
@@ -39,7 +40,7 @@ const ROOM_OF = [
   // is written here, so tagging these 'mind' made both `in:mind` and
   // `in:psyche` match nothing at all.
   ['projects/psyche/', 'psyche'], ['projects/state-of-mind-line/', 'psyche'], ['projects/autism-reflection.html', 'psyche'], ['psyche.html', 'psyche'],
-  ['projects/classics/', 'gaming'], ['projects/kondrite/', 'gaming'], ['projects/farlight/', 'gaming'], ['projects/offramp/', 'gaming'], ['projects/starfield/', 'gaming'], ['gaming.html', 'gaming'],
+  ['projects/solitaire/', 'gaming'], ['projects/tictactoe/', 'gaming'], ['projects/chess/', 'gaming'], ['projects/wordle/', 'gaming'], ['projects/sudoku/', 'gaming'], ['projects/minesweeper/', 'gaming'], ['projects/tetris/', 'gaming'], ['projects/checkers/', 'gaming'], ['projects/snake/', 'gaming'], ['projects/kondrite/', 'gaming'], ['projects/farlight/', 'gaming'], ['projects/offramp/', 'gaming'], ['projects/starfield/', 'gaming'], ['gaming.html', 'gaming'],
   ['projects/siege-conductor/', 'workbench'], ['workbench.html', 'workbench'],
   ['entertainment', 'entertainment'], ['weather', 'weather'],
   ['captures.html', 'captures'], ['orrin.html', 'orrin'], ['cs.html', 'cs'], ['val.html', 'val'],

@@ -1,4 +1,4 @@
-/* The Classics' public, casual scoreboards. Browser-reported scores, not
+/* The Arcade games' public, casual scoreboards. Browser-reported scores, not
    verified competitive records. No account, analytics id, IP or location is
    published. Separate D1 tables: this handler never reads visitor records. */
 const FIXED = new Set(['solitaire','snake','tetris','wordle-practice',...['easy','medium','hard'].flatMap(d=>['sudoku-'+d,'mines-'+d])]);

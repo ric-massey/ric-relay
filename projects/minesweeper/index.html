@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#117d79">
+  <title>Minesweeper — RIC//NET</title>
+  <meta name="description" content="Play Minesweeper in the Arcade. A field of calculated risks. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:site_name" content="RIC//NET">
+  <meta property="og:title" content="Minesweeper — RIC//NET">
+  <meta property="og:description" content="Play Minesweeper in the Arcade. A field of calculated risks. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ricmassey.com/projects/minesweeper/">
+  <meta property="og:image" content="https://ricmassey.com/assets/games/minesweeper.jpg">
+  <meta property="og:image:alt" content="Minesweeper in play in the Arcade.">
+  <link rel="canonical" href="https://ricmassey.com/projects/minesweeper/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="../arcade/style.css">
+  <script src="../../assets/visit.js" defer></script>
+  <style>
+
+/* This page owns its theme; layout and rules stay inside the Arcade games. */
+body{background-color:var(--paper);color:var(--ink)}
+.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
+.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
+button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
+.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
+dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
+.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
+@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+
+body{--paper:#117d79;--ink:#171c20;--muted:#485254;--green:#253d89;--panel:#c2c5c7;--edge:#6d7477;--display-font:'Courier New',monospace;--radius:0px;--mine-covered:#c3c7c9;--mine-open:#e0e2dc;--mine-ink:#173674;--heading:#fff;color-scheme:light}
+body[data-skin="1"]{--paper:#081c14;--ink:#c9edbd;--muted:#a7c69b;--green:#315e39;--panel:#173222;--edge:#537b55;--mine-covered:#264c32;--mine-open:#10291b;--mine-ink:#d3eac5;--heading:#c9edbd;color-scheme:dark}
+body[data-skin="2"]{--paper:#dceaf2;--ink:#253d51;--muted:#43586b;--green:#346480;--panel:#cbdde8;--edge:#8da6bb;--mine-covered:#a9c8df;--mine-open:#f0f6f8;--mine-ink:#204466;--heading:#253d51;--radius:6px}
+.topbar{background:var(--panel);border-bottom:2px solid var(--edge)}.game-heading>div:first-child{color:var(--heading)}.game-heading p,.game-heading .text-button{color:inherit}.game-heading h1{font-family:var(--display-font);font-size:40px;font-weight:700}.table-wrap{border:3px outset #e0e3e3!important}.table-head{background:var(--green)!important;color:white!important;border:2px inset var(--edge);font-family:var(--display-font)}.sidebar{background:var(--panel);padding:18px}.mines .square{border:3px outset #edf0e8;background:var(--mine-covered);color:var(--mine-ink);border-radius:var(--radius)}.mines .revealed{background:var(--mine-open);border:1px solid var(--edge)}.mines .bomb{background:#e7a29c;color:#15222a}.mines .flag{color:#a72637}.mines .v2,.mines .v3,.mines .v4{color:var(--mine-ink)}.mines{gap:0;border:3px inset #cfd4ce}.page-mark{font-family:var(--display-font)}
+
+@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+
+.game-actions{background:var(--panel);padding:10px;border:2px outset var(--edge)}.game-actions .theme-picker{color:var(--ink)}button,select{background:var(--panel);color:var(--ink)}button.solid{background:var(--green);color:#fff}.sidebar .rules{border-top-color:var(--edge)}
+
+body[data-skin="1"] .mines .flag{color:#f4cf82}
+  </style>
+</head>
+<body data-game="minesweeper" data-skin="0">
+  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">⚑</span>Minesweeper</a><button id="soundless" class="quiet" type="button">How to play</button></header>
+  <main>
+    <section id="playroom" aria-labelledby="game-title">
+      <div class="game-heading"><div><a id="all-games" class="text-button" href="../../gaming.html">← All games</a><h1 id="game-title">Minesweeper</h1><p id="game-subtitle">A field of calculated risks</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Desktop 95</option><option value="1">Terminal</option><option value="2">Ice field</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
+      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
+      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>Field manual</h2><p id="rules"></p></section></aside></div>
+    </section>
+    <noscript><p>Minesweeper needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
+  </main>
+  <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <script src="../arcade/engine.js"></script>
+  <script src="../arcade/app.js"></script>
+  <script src="../relay-return.js" data-home="../../index.html"></script>
+</body>
+</html>

@@ -6,7 +6,7 @@ is historical — every room that writes anything writes here:
 
 | Route | Room | What it holds |
 |---|---|---|
-| `/arcade/scores` | Gaming → Classics | public initials and scoreboards for the nine-game collection; separate D1 tables, highest points or lowest time/guesses; `arcade.mjs` |
+| `/arcade/scores` | Gaming → browser games | public initials and scoreboards for the nine individual browser games; separate D1 tables, highest points or lowest time/guesses; `arcade.mjs` |
 | `/log` | Training | ticks and notes against the plan |
 | `/strava` | Training | runs pushed by Strava's webhook |
 | `/board` | Training / Climbing | board-night dates from `projects/climbing/board-tick.mjs` |
@@ -45,7 +45,7 @@ Secrets, the Strava wiring and the security rules are in
 of `worker.mjs` and `wrangler.jsonc`. **If you add a route, add it to the regex
 in `dev.mjs` too**, or local testing quietly falls through to production.
 
-## Classics scoreboards
+## Arcade scoreboards
 
 Added 2026-11-13 for Ric's request for simple games with initials and scoreboards.
 `arcade.mjs` handles `GET /arcade/scores?board=<key>` and `POST /arcade/scores`

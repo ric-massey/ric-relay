@@ -30,8 +30,16 @@
 - [Climbing](https://ricmassey.com/climbing.html): routes and climbing days
 - [Training](https://ricmassey.com/training.html): runs and the training plan
 - [Exploration](https://ricmassey.com/exploration.html): space, physics, science explainers
-- [Gaming](https://ricmassey.com/gaming.html): four original games and the nine-game Classics collection, playable in the browser
-- [The Classics](https://ricmassey.com/projects/classics/): Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake; initials and shared scoreboards
+- [Gaming](https://ricmassey.com/gaming.html): thirteen individual browser games, playable in the browser
+- [Solitaire](https://ricmassey.com/projects/solitaire/): Draw one. Find your rhythm.
+- [Tic-tac-toe](https://ricmassey.com/projects/tictactoe/): Three in a row, friend or computer.
+- [Chess](https://ricmassey.com/projects/chess/): A quiet match, alone or together.
+- [Wordle](https://ricmassey.com/projects/wordle/): A daily word and unlimited practice.
+- [Sudoku](https://ricmassey.com/projects/sudoku/): One solution. Three difficulties.
+- [Minesweeper](https://ricmassey.com/projects/minesweeper/): Clear the field. Beat your best time.
+- [Tetris](https://ricmassey.com/projects/tetris/): Seven shapes. One more line.
+- [Checkers](https://ricmassey.com/projects/checkers/): Forced jumps and hard choices.
+- [Snake](https://ricmassey.com/projects/snake/): Eat. Grow. Chase the high score.
 - [Workbench](https://ricmassey.com/workbench.html): side projects
 - [Captures](https://ricmassey.com/captures.html): photographs
 - [Entertainment](https://ricmassey.com/entertainment.html): films and shows, and what is queued up
