@@ -830,7 +830,8 @@
            never differently, and the page keeps answering. What it actually
            managed is measured and said (2026-11-14, Ric: "a year every
            minute should be the fastest"; this computer decides how near). */
-        const want = real * rate; let done = 0;
+        // Max has no ceiling: a faster computer fits more into the same 40 ms.
+        const want = rate >= 1000 ? Infinity : real * rate; let done = 0;
         while (done < want && performance.now() - t0 < 40) { const take = Math.min(2, want - done); world.advance(take); done += take; }
         reached = reached ? reached * 0.92 + (done / Math.max(real, 1e-3)) * 0.08 : done / Math.max(real, 1e-3);
       }

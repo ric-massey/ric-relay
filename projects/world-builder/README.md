@@ -828,7 +828,7 @@ asked for the graphs and the grain trade the year needed. All of it is on the ru
 Ric: *"16x is pretty slow ... a year every minute should be the fastest probably"*. The clock now
 goes to 50×, 100×, 250× and **Max**. Above 16× the page runs as much simulation as fits in 40 ms a
 frame and drops the rest — the world goes slower than asked, never differently — and says what it
-reached: *"Running at 900× — a year every 8 minutes"*.
+reached: *"Running at 900× — a year every 8 minutes"*. **Max has no ceiling** (Ric: *"someone with a better computer can run faster"*): it asks for as much as fits in each 40 ms, so a faster machine simply goes faster. Ric chose to keep the engine exact at about a year every 8 minutes rather than coarsen it for speed.
 
 A year a minute is about 7,300×, and the engine does not reach it. Everybody acts 250 times a game
 hour, so walking, crowding and who meets whom are exact; measured without drawing, 200 people ran
