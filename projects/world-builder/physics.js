@@ -135,7 +135,7 @@
       { key: "ions", when: s => s.bonding !== "none" && s.charge > 0, label: "Whole charges can jump", type: "toggle", def: false,
         help: "Two free hexagons touching can pass a whole charge from one to the other, the way sodium hands one to chlorine. It costs less the more differently the two pull, and the pull between the two new charges pays the rest, so only very unlike kinds do it. An ion holds no bonds; it is held by charge alone. Every jump can go back the other way." },
       { key: "shapeBy", when: s => s.bonding !== "none" && s.angles > 0, label: "Shape set by the kind", type: "toggle", def: false,
-        help: "Each kind's bonds spread out as evenly as six directions allow, counting the room its spare charge takes up too (the rule chemists call VSEPR): kind 2 is straight, kind 3 a Y, kind 4 a cross, kind 6 straight because its two spare pairs push its bonds apart. Off, a bond can use any free slot." },
+        help: "Each kind's bonds spread out as evenly as six directions allow, counting the room its spare charge takes up too (the rule chemists call VSEPR): kind 2 is straight, kind 3 a Y, kind 4 a cross, kind 6 straight because its two spare pairs push its bonds apart. With “Double and triple bonds” the shape follows what it holds: kind 4 with a double bond goes to a flat Y, with two or a triple it goes straight. Off, a bond can use any free slot." },
       { key: "swap", when: s => s.bonding !== "none" && s.settle, label: "Pieces can be handed over", type: "toggle", def: false,
         help: "A hexagon touching one end of a bond can take that end over in one step, the old partner let go as the new one joins, instead of the bond having to come apart first. It is the way most real reactions go, and it is cheaper than breaking and remaking. It can always run back." },
       { key: "order", when: s => s.bonding !== "none" && s.settle, label: "Double and triple bonds", type: "toggle", def: false,
@@ -388,8 +388,23 @@
      cross {0,1,3,4}. With two spare pairs in a cross, the pairs push each
      other to opposite sides and the bonds go straight: in a flat world
      kind 6 is straight, where the real one, water, is bent only because the
-     real world has a third direction to bend into. */
-  const SHAPE = [63, 9, 21, 27, 27, 9, 63];
+     real world has a third direction to bend into.
+
+     With "Double and triple bonds" too, the shape follows what a hexagon is
+     holding, the way a carbon atom's does: the second and third parts of a
+     double or triple bond (its pi bonds) take no direction of their own, so
+     each one takes a direction away. Kind 4 with four single bonds is the
+     cross; with one double, a flat Y; with two doubles or a triple, straight
+     — which is methane, ethylene and acetylene's carbon, flattened. Kind 5
+     with a double bond is bent. (LONE is spare pairs, by row position.) */
+  const LONE = [0, 0, 0, 0, 1, 2, 3];
+  function shapeMask(c, pi) {
+    const v = 4 - Math.abs(c - 3), L = LONE[c], D = v + L - pi;
+    if (v - pi <= 1) return 63;                // one direction left: anywhere
+    if (D === 4 && L === 2) return 9;          // two spare pairs opposite, so the bonds are too
+    return D === 2 ? 9 : D === 3 ? 21 : D === 4 ? 27 : 63;
+  }
+  const SHAPE = [0, 1, 2, 3, 4, 5, 6].map(c => shapeMask(c, 0));
   const rotMask = (mk, t) => ((mk << t) | (mk >> (SLOTS_ALL - t))) & 63;
   const SLOTS_ALL = 6;
   /* With "Double and triple bonds": worth and length against a single bond,
@@ -737,9 +752,13 @@
     }
     /* Would a bond in this slot, with the ones it already holds, still sit
        on its kind's pattern turned some way? See SHAPE. */
-    function fitsShape(i, slot) {
-      const pat = SHAPE[(baseKind(i) - 1) % 7];
-      let mask = 1 << slot;
+    function fitsShape(i, slot) { return shapeHolds(i, 1 << slot, piOf(i)); }
+    /* The pi bonds a hexagon holds: what its bonds use beyond one each. */
+    const piOf = i => (S.order ? used[i] - nb[i] : 0);
+    /* Do the slots it uses, and `extra`, sit on its pattern for `pi`? */
+    function shapeHolds(i, extra, pi) {
+      const pat = shapeMask((baseKind(i) - 1) % 7, pi);
+      let mask = extra;
       for (let t = 0; t < SLOTS; t++) if (adj[i * SLOTS + t] >= 0) mask |= 1 << t;
       for (let t = 0; t < SLOTS; t++) if ((rotMask(pat, t) & mask) === mask) return true;
       return false;
@@ -1123,6 +1142,12 @@
       if (o2 < 1 || o2 > 3) return;
       const a = bd.a, b = bd.b;
       if (o2 > o && (used[a] >= capOf(a) || used[b] >= capOf(b))) return;
+      /* With shape set by the kind, the bonds both ends already hold have to
+         sit on the shape the new order gives them. They sat on the old one,
+         so the step back is always allowed, and the two stay balanced. The
+         bonds do not move to make room: a carbon held as a cross cannot go
+         straight without first letting go of what is in the way. */
+      if (S.shapeBy && spun() && (!shapeHolds(a, 0, piOf(a) + o2 - o) || !shapeHolds(b, 0, piOf(b) + o2 - o))) return;
       const B2 = bd.B / ORDER_WORTH[o] * ORDER_WORTH[o2];
       const rest2 = bd.rest / ORDER_LENGTH[o] * ORDER_LENGTH[o2];
       const drop = (B2 - bd.B) - (strain({ a: a, b: b, rest: rest2, sa: bd.sa, sb: bd.sb }) - strain(bd));

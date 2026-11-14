@@ -459,6 +459,35 @@ hexagon took minutes to wander back to the drop, the gas was still filling, and 
 out twice the right size. A smaller box, run longer, and a fit that weights each temperature by how
 much gas it saw, gave the line above.
 
+### Form
+
+Ric, 2026-11-14, five things for *"a convincing approximation"*: preferred bond angles that
+depend on surroundings, flexible shapes, occupied space, charge distribution, and saturation —
+*"when you're done analyze if this is worth it"*. Four of the five were already here; one needed a
+rule. Each is now measured, in `test/chemistry.test.mjs`.
+
+- **Preferred angles that follow the surroundings — new.** With shape set by the kind *and* double
+  bonds on, a hexagon's shape follows what it holds: the second and third parts of a double or triple
+  bond take no direction of their own, so each takes a direction away. Kind 4 with four singles is
+  the cross; with one double, a flat Y; with two doubles or a triple, straight — methane's,
+  ethylene's and acetylene's carbon, flattened. A bond may change order only if the bonds both ends
+  already hold sit on both the old shape and the new, so the step and its reverse stay balanced, and
+  a carbon held as a cross cannot go straight without first letting go of what is in the way.
+  Measured: of kind 4s holding two bonds, every one with a double sat as a 120° Y and every one with a
+  triple or two doubles sat straight.
+- **Flexible shapes — already here.** Distance and angle springs ("Bonds hold an angle" is the
+  stiffness), and since *Motion and heat* they wiggle at the world's own temperature.
+- **Occupied space — already here, emergent.** A pinned hexagon with one open site, a gas that
+  can bond to it, and non-bonding neighbours pinned round it: joinings in 45 seconds fell **173, 57,
+  32, 16, 0** as the open sides went 6, 3, 2, 1, 0. Nothing in the code says "hindered"; the
+  neighbours are simply in the way.
+- **Charge distribution orients — already here, emergent.** Lopsided 1–7 pairs touching each
+  other met positive end to negative end **95%** of the time with charge on, against **48%** (chance)
+  with it off.
+- **Saturation with exposed sites — already here.** Kinds 1 and 4 mixed, settling for a minute: 58
+  molecules closed (the 1·1 pair, and 1·1·1·1·4, flattened methane) and 76 keeping open sites on
+  the outside (1·4 with three, 1·1·4 with two, and so on).
+
 ### Hands
 
 Ric, same day: *"i need a way to place them like place hexigons or give them stuff and modify

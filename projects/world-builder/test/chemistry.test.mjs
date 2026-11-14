@@ -414,3 +414,99 @@ test("Arrhenius: how fast bonds form falls off as exp(-barrier/T)", () => {
   const slope = Math.log(hot.k / cold.k) / (1 / hot.T - 1 / cold.T);
   assert.ok(Math.abs(slope / -4 - 1) < 0.2, `slope ${slope} where the barrier is 4 (T ${cold.T}, ${hot.T})`);
 });
+
+/* ── Form (2026-11-14, Ric: preferred angles, flexible shapes, occupied
+   space, charge distribution, saturation). Of the five, only the first
+   needed a new rule — shape that follows bond order. The rest were already
+   there and are measured here so they stay there. */
+
+test("shape follows bond order: a double bond flattens, a triple straightens", () => {
+  const w = Physics.create({ layout: "empty", size: 40, kinds: 7, edge: "wrap", sized: false, bonding: "any",
+    bondStrength: 3, bondChance: 0.4, maxBonds: 4, bondsPer: "kind", settle: true, order: true, shapeBy: true,
+    angles: 0.8, startTemp: 0.5, shake: 0.5, conduct: 0.5, radiate: 0, breaking: false, seed: 7 });
+  let s = 777;
+  const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let q = 0; q < 400; q++) w.place(rand() * 40, rand() * 40, q % 4 === 0 ? 1 : 4, 0, 0, 1);
+  run(w, 20);
+  const rot = (mk, t) => ((mk << t) | (mk >> (6 - t))) & 63;
+  /* The pattern for kind 4 holding `pi` extra: cross, Y, straight. */
+  const PATTERN = [27, 21, 9];
+  let seen = [0, 0, 0];
+  for (let i = 0; i < w.n; i++) {
+    if (!w.alive[i] || w.kind[i] !== 4 || w.nb[i] < 2) continue;
+    const pi = w.describe(i).bonds.reduce((t, b) => t + b.order, 0) - w.nb[i];
+    let mask = 0;
+    for (let t = 0; t < 6; t++) if (w.slots[i * 6 + t] >= 0) mask |= 1 << t;
+    let fits = false;
+    for (let t = 0; t < 6; t++) if ((rot(PATTERN[pi], t) & mask) === mask) fits = true;
+    assert.ok(fits, `a kind 4 with ${pi} extra and ${w.nb[i]} bonds sits off its shape (slots ${mask.toString(2)})`);
+    seen[pi]++;
+  }
+  assert.ok(seen[1] + seen[2] > 5, `too few double or triple bonds to tell: ${seen}`);
+});
+
+test("occupied space: a site with its sides covered is reached less, and a buried one never", () => {
+  const joinings = covered => {
+    const w = Physics.create({ layout: "empty", size: 16, kinds: 7, edge: "wrap", sized: false, bonding: "other",
+      bondsPer: "kind", bondStrength: 0.5, bondChance: 1, maxBonds: 1, settle: true, startTemp: 1.5, shake: 0.5,
+      conduct: 0.5, radiate: 0, breaking: false, seed: 1 });
+    w.edit(w.place(8, 8, 7, 0, 0, 1), { pinned: true });
+    /* Blockers of the same kind as the gas, so they never bond to it, and
+       just too far from the site to bond to it either. */
+    for (let d = 0; d < covered; d++) {
+      const a = d * Math.PI / 3;
+      w.edit(w.place(8 + 1.2 * Math.cos(a), 8 + 1.2 * Math.sin(a), 1, 0, 0, 1), { pinned: true });
+    }
+    let s = 100;
+    const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let placed = 0; placed < 60;) {
+      const px = rand() * 16, py = rand() * 16;
+      if (Math.hypot(px - 8, py - 8) < 2.5) continue;
+      w.place(px, py, 1, 0, 0, 1); placed++;
+    }
+    run(w, 3);
+    const made = w.stats().bondsMade;
+    run(w, 15);
+    return w.stats().bondsMade - made;
+  };
+  const open = joinings(0), half = joinings(4), buried = joinings(6);
+  assert.ok(open > 2.5 * half, `all sides open ${open}, two open ${half}`);
+  assert.equal(buried, 0);
+});
+
+test("charge distribution orients molecules: positive end meets negative end", () => {
+  const share = charge => {
+    const w = Physics.create({ layout: "empty", size: 40, kinds: 7, edge: "wrap", sized: false, bonding: "any",
+      bondsPer: "kind", maxBonds: 4, bondChance: 1, bondStrength: 6, startTemp: 0, shake: 0.3, conduct: 0.3,
+      radiate: 0.8, gravity: 0, bounce: 0.8, breaking: false, charge: 0 });
+    const mols = [];
+    for (let a = 0; a < 10; a++) for (let b = 0; b < 10; b++) {
+      const pos = [[2 + a * 4, 2 + b * 4], [2.98 + a * 4, 2 + b * 4]];
+      mols.push({ pos, ids: pos.map(([px, py], k) => w.place(px, py, k ? 7 : 1, 0, 0, 1)) });
+    }
+    for (let f = 0; f < 600; f++) {
+      w.step(1 / 240);
+      if (w.stats().bonds < 100) for (const M of mols) M.ids.forEach((id, k) => {
+        w.x[id] = M.pos[k][0]; w.y[id] = M.pos[k][1]; w.vx[id] = 0; w.vy[id] = 0;
+      });
+    }
+    const mol = new Int32Array(w.n);
+    mols.forEach((M, k) => M.ids.forEach(id => { mol[id] = k; }));
+    w.set("radiate", 0); w.set("charge", charge);
+    for (let i = 0; i < w.n; i++) w.edit(i, { temperature: 0.3 });
+    run(w, 10);
+    let opposite = 0, alike = 0;
+    for (let s = 0; s < 10; s++) {
+      run(w, 1);
+      for (let i = 0; i < w.n; i++) for (let j = i + 1; j < w.n; j++) {
+        if (mol[i] === mol[j]) continue;
+        let dx = w.x[j] - w.x[i], dy = w.y[j] - w.y[i];
+        dx -= 40 * Math.round(dx / 40); dy -= 40 * Math.round(dy / 40);
+        if (dx * dx + dy * dy < 1.44) (w.kind[i] !== w.kind[j] ? opposite++ : alike++);
+      }
+    }
+    return opposite / Math.max(1, opposite + alike);
+  };
+  const off = share(0), on = share(3);
+  assert.ok(on > 0.8 && off < 0.7, `positive meeting negative: ${on} with charge, ${off} without`);
+});

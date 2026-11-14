@@ -523,6 +523,10 @@ nobody had linked was a page nobody could find.
   the middle, drift was 100x worse). van 't Hoff should read B - T/2, not B; the old 102% of B
   was two errors cancelling. `matter-probe.mjs` holds Arrhenius (96-99%) and boiling against
   Clausius-Clapeyron (97%). Re-run both probes after touching motion or heat.
+  **Form** (same day): shape now follows bond order (shapeMask(c, pi): pi bonds take a direction
+  away; order changes only if both ends' bonds fit the old AND new shape, which keeps balance).
+  Occupied space, orientation by charge and saturation needed no new rule and are measured in
+  chemistry.test.mjs; do not add a "steric" rule — collisions already are one.
   **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
