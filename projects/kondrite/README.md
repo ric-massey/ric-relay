@@ -746,11 +746,15 @@ frightening trip, a hauler bringing a courier home hardly notices. It is yours
 again when it is in your own dock, and nowhere else.
 
 And it is a real object out there, not a decoration: rounds stop on it whoever
-fired them, it is pushed out of rock and worlds and walls like any other ship,
-and what it catches on takes speed off your own drive. Three hits or three hard
-scrapes and the line parts, leaving the hull where it hung — as does dying
-on the way home, which is how two wrecks end up on the floor with one arrow
-between them.
+fired them, nothing flies through it, it is pushed out of rock and worlds and
+walls like any other ship, and what it catches on takes speed off your own
+drive. Three hits or three hard scrapes and the line parts, leaving the hull
+where it hung — as does dying on the way home, which is how two wrecks end
+up on the floor with one arrow between them.
+
+And you can let go of it: `T` on a keyboard, a LET GO button under a thumb,
+asked twice before anything happens. A hull you cannot drop would decide the
+rest of the trip — nothing to run with, and dying as the only way out.
 
 **And how far you can go is drawn on the chart.** One dashed ring round home:
 out and back on one tank, in the hull you are flying. The arrow stays inside

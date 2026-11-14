@@ -264,8 +264,14 @@ const bearingTo = (me, t) =>
 
 function objective() {
   if (surv.tow) {
+    /* And how to get out from under it, on the line that is already on the
+       screen. A pilot who does not know they can drop it is a pilot flying a
+       hull they think they are stuck with. */
     return { text: "TOW THE " + surv.tow.name + " HOME",
-             sub: "it is not yours again until it is in your own dock",
+             sub: "it is not yours again until it is in your own dock " +
+                  '\u2014' + " " +
+                  (thumbInput() ? "LET GO drops the line"
+                                : "[T] lets go of the line"),
              brief: "tow it home", colour: CASH };
   }
   const wreck = lostHull();

@@ -40,6 +40,12 @@ const PAD_DEFAULTS = {
     // Above the fire button and inboard of it: a thumb that is already there
     // can reach it, and nothing else wants that spot.
     rev:   { x: 0.70, y: 0.80 },
+    /* Middle of the pad, between the two thumbs and under neither of them:
+       it is the one control you do not want to find by accident. Level with
+       the gun rather than below it, because nothing on this pad goes lower
+       than 0.80 — the bottom edge of a phone belongs to the operating
+       system's own swipe. */
+    cut:   { x: 0.50, y: 0.80 },
     /* The four device buttons, in a block above the gun. Four of them is the
        most a ship can ever have and most ships have one, so they are stacked
        in slot order from the one nearest the thumb — and every one of them can
@@ -71,13 +77,14 @@ const rightEl  = document.getElementById("padRight");
 const gasEl    = document.getElementById("padGas");
 const accelEl  = document.getElementById("padAccel");
 const revEl    = document.getElementById("padRev");
+const cutEl    = document.getElementById("padCut");
 const fireEl   = document.getElementById("padFire");
 const pauseEl  = document.getElementById("padPause");
 const devEls   = [0, 1, 2, 3].map(i => document.getElementById("padDev" + i));
 
 const PAD_PARTS = [["stick", stickEl], ["left", leftEl], ["right", rightEl],
                    ["accel", accelEl], ["gas", gasEl], ["rev", revEl],
-                   ["fire", fireEl],
+                   ["cut", cutEl], ["fire", fireEl],
                    ...devEls.map((el, i) => ["dev" + i, el]),
                    ["pause", pauseEl]];
 
@@ -137,6 +144,15 @@ const revAvailable = () =>
   !!(mode && mode.survey && typeof modFitted === "function" &&
      modFitted("reverser"));
 
+/* And whether there is anything to let go of. The same shape as the reverse
+   button and for the same reason — a button that does nothing is worse
+   than no button — except that this one is on the laying-out screen
+   whatever you are flying: there is never a hull on the line while you are
+   arranging the pad, and a control you cannot place is a control that ends up
+   under your thumb in the one fight where it matters. */
+const cutAvailable = () => !!(mode && mode.survey && surv && surv.tow);
+const cutShown = () => arranging || cutAvailable();
+
 /* What is in each of the four slots, as the pad sees it: a button per fitted
    device, named after what is in the slot, dark while it is cooling.
 
@@ -181,6 +197,9 @@ function padApply() {
      part mid-press would otherwise leave the ship reversing on a control that
      is no longer on the screen. */
   if (revEl.hidden) { touch.rev = false; revEl.classList.remove("down"); }
+  // And the one button that comes with the hull on the line.
+  cutEl.hidden = !cutShown();
+  if (cutEl.hidden) cutEl.classList.remove("down");
   for (const [key, el] of PAD_PARTS) {
     if (!el.hidden) padCfg.pos[key] = padClamp(el, padCfg.pos[key].x, padCfg.pos[key].y);
     el.style.left = (padCfg.pos[key].x * 100) + "%";

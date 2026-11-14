@@ -433,8 +433,10 @@ communicated clearer." That one is not built.
   and every shop stocks one. The cost is a slot for the trip.
 
   `test/survey.js` §8d (an empty SKIFF cannot take it off the floor) and
-  §8e (the rig, the hauler, the weight, the tab, the dock, and a NEEDLE
-  that cannot).
+  §8e (the rig, the hauler, the weight, the tab, the dock, a NEEDLE that
+  cannot, three rounds, a world it cannot be dragged into, a ship that cannot
+  fly through it, your own round that stops on it, and letting go — by key
+  and by the real pad button, both asked twice).
 
   **And it is a real object**, which for the first hour of its life it was
   not. Ric read my own note back at me: *"the towed hull has no hitbox, so
@@ -445,11 +447,27 @@ communicated clearer." That one is not built.
     · `towRadius` is the same disc the wreck had while it lay on the floor,
       so what you could reach is exactly what can be hit.
     · Any round that reaches it stops on it, whoever fired it, for the same
-      reason a stray round in a war can hit you.
+      reason a stray round in a war can hit you. It is `solidHit` that knows
+      this — the one function both bullet systems ask — and that
+      matters: the first cut put the check in everybody *else's* loop, so the
+      one gun in the sector the hull did not stop was your own, and a wall
+      that stops all fire but yours is the bug `solidHit` exists to fix,
+      pointed the other way. Your own fire strains the line too. Firing into
+      the thing you came all this way to fetch is a mistake you are allowed
+      to make.
+    · **And nothing flies through it.** Ric, the same day, on that first
+      cut: *"enemy ships still fly through the hull on the line."* They did
+      — rounds stopped on it and ships did not, which is the worse of the
+      two, because a ship that passes through it is a ship you cannot put it
+      between yourself and, and being cover both ways is half the reason to
+      make it solid at all. It is in `solidBounce` now, which is the
+      collision every ship in the sector except yours goes through, with one
+      opt-out: the two ends of your own line, so you do not bounce off what
+      you are dragging and it cannot collide with itself.
     · It is pushed out of rock, worlds, dead hulls, the Leviathan, the Vault
-      and the Warrens — `solidBounce`, the same test every other ship in
-      the sector obeys — and what it catches on takes speed off *your*
-      drive, because the line is short and stiff.
+      and the Warrens — `solidBounce` again, from the tow's own side —
+      and what it catches on takes speed off *your* drive, because the line is
+      short and stiff.
     · The line takes three hits or three hard scrapes (`TOW_LINE`; a scrape
       counts no oftener than once every 0.6s) and then parts, dropping the
       hull where it hung. The first strain is said out loud, because a line
@@ -457,15 +475,61 @@ communicated clearer." That one is not built.
     · Not while docked or landed. The hull hangs over whatever you have
       parked on top of, and losing a ship to sitting still would be absurd.
 
-  `towGoesSlack` is the one door all three ways out of a tow go through —
-  shot off, scraped off, or the ship on the other end dying — because a
-  hull that only comes off the line properly in one of them is a hull the
-  other two delete.
+  **And you can let go of it.** Ric, the same day: *"there should be a button
+  on mobile and there should be a button on mnk to let go of it."* He is right,
+  and not only for comfort: before this, the tow was the one thing in the mode
+  you could be *stuck* with. It decided the rest of the trip — you could
+  not run from anything, and dying was the only other way off the line, which
+  hands the hull over for good anyway. Being able to drop it is what makes the
+  weight a cost rather than a sentence.
 
-  *Not done:* no insurance, and still no way to abandon a wreck so the arrow
-  lets go of it. A scavenger reaching one first takes it for good. And enemy
-  *ships* still fly through the hull on the line; only their rounds stop on
-  it.
+    · `T` on a keyboard, and a **LET GO** button on the pad, which is on
+      the screen while there is a hull on the line and nowhere else — the
+      same rule the reverse button follows, because a button that does nothing
+      is worse than no button. It is on the laying-out screen whatever you are
+      flying, or it would be the one control you could never place: there is
+      never a hull on the line while you are arranging your thumbs.
+    · **Asked twice.** One press arms the question and says what it costs;
+      the next one cuts. A single press would be the cheapest way in the game
+      to throw away the most expensive thing in it, on a key next to the one
+      that opens the chart — and a thumb lands on a phone's screen by
+      accident. The question times out after five seconds, so a line armed in
+      a fight is not still armed ten minutes later.
+    · Both ends go through `towLetGo`, so the key and the thumb cannot drift
+      apart, and the objective line says which one you have: *"[T] lets go of
+      the line"* on a keyboard, *"LET GO drops the line"* under a thumb.
+
+  `towGoesSlack` is the one door all four ways out of a tow go through —
+  let go, shot off, scraped off, or the ship on the other end dying —
+  because a hull that only comes off the line properly in one of them is a
+  hull the other three delete.
+
+  **And then it was flown in a browser**, which found two things thirteen
+  green suites had not, both of them about pixels:
+
+    · **The hull was drawn through the ship towing it.** The line was 3.4
+      ship radii long and a SKIFF is twelve units across, so it hung at 41
+      units — while a dead hull is drawn at 66. There was no rope visible
+      at all. It is `towLine` now: your hull, plus its hull, plus slack
+      scaled off your own, so a freighter tows on a longer line than a skiff.
+      The suite was complicit — it asked only that the tow be *somewhere*,
+      and now asks that the two hulls clear each other, off `shipR` and a
+      new `towR` rather than off numbers written into a test.
+    · **The LET GO button was the wrong colour.** `#padCut` lost to
+      `#pad .ctl` on specificity, so the one control meant to look
+      dangerous came out in the same amber as the gun. It is
+      `#pad .ctl.cut` now, the way the device buttons already did it.
+      Measured in the page rather than guessed at: computed border
+      `rgb(255, 143, 119)`, 69px, and no overlap with the stick, the gun
+      or the pause on a 1280x800 desktop or a 812x375 phone in landscape.
+      It also moved up to y 0.80 — nothing on this pad goes lower, because
+      the bottom edge of a phone belongs to the operating system's own
+      swipe.
+
+  *Not done:* no insurance, and still no way to abandon a wreck on the floor
+  so the arrow lets go of it. A scavenger reaching one first takes it for
+  good. And nobody has actually *played* a tow home — the tow was set up
+  from the console to look at, which proves the drawing and not the feel.
 
 ---
 

@@ -236,6 +236,22 @@ for (const el of devEls) {
   el.addEventListener("pointercancel", off);
 }
 
+/* Letting go of a tow. A press rather than a hold, like the device buttons,
+   and it answers on `pointerdown` for the same reason they do. The two-press
+   question lives in `towLetGo`, so the thumb and the key cannot drift apart. */
+cutEl.addEventListener("pointerdown", e => {
+  if (arranging) return;
+  if (typeof towLetGo === "function" && towLetGo()) {
+    cutEl.classList.add("down");
+    setTimeout(() => cutEl.classList.remove("down"), 140);
+  }
+  grab(cutEl, e.pointerId);
+  e.preventDefault();
+});
+const cutOff = () => cutEl.classList.remove("down");
+cutEl.addEventListener("pointerup", cutOff);
+cutEl.addEventListener("pointercancel", cutOff);
+
 pauseEl.addEventListener("click", e => {
   if (arranging) return;
   pauseHere();

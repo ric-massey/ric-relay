@@ -132,14 +132,22 @@ function label3(str, x, y, colour, size) {
    it wide and the weight is on the screen as well as in the drive. Snapped
    back if the gap ever opens past the line's length, which is what a warp, a
    wormhole and a respawn all look like from in here. */
-const TOW_LEN = 3.4;          // multiples of your own radius
+/* How far behind you it hangs. Both hulls and then some sky, rather than a
+   multiple of yours alone: flown in a browser, the first cut put the hull
+   *inside* the ship towing it. A SKIFF is twelve units across, a dead hull is
+   drawn at sixty-six, and 3.4 ship radii is forty-one — so the thing on
+   the line overlapped the thing pulling it and there was no rope visible at
+   all. The slack is still scaled off your own hull, so a freighter tows on a
+   longer line than a skiff does. */
+const TOW_LEN = 2.2;          // multiples of your own radius, as slack
+const towLine = () => shipRadius() + towRadius() + shipRadius() * TOW_LEN;
 /* How big the thing on the line is, for a round aimed at it and for a rock it
    is dragged into. The same number the pickup used when it was lying on the
    floor, so what you could reach is what can now be hit — a function and
    not a constant, because `PART_RING` is declared in a later chapter. */
 const towRadius = () => (40 + PART_RING) * 0.95;
 
-/* ── the line parts ─────────────────────────────────────
+/* ── the line parts ───────────────────────────────────────────────────────
    One place, because it happens three ways now — shot off, scraped off, or
    the ship on the other end of it dying — and a hull that only comes off
    the line properly in one of them is a hull the other two delete. `why` is
@@ -198,10 +206,50 @@ function towStrain(n, why) {
   }
 }
 
+/* ── letting go ───────────────────────────────────────────────────────────
+   Ric, 2026-11-13: *"there should be a button on mobile and there should be a
+   button on mnk to let go of it."* He is right, and not only for comfort: a
+   tow you cannot drop decides the rest of the trip. You cannot run from
+   anything, you cannot turn, and if a fight finds you on the way home your
+   only way out of it is to die — which hands the hull over for good anyway.
+   Dropping it is the choice that makes the weight a real cost rather than a
+   sentence.
+
+   **Asked twice.** One press arms the question and says what it costs; the
+   next one cuts the line. A single press would be the cheapest way in the
+   game to throw away the most expensive thing in it, on a key next to the one
+   that opens the chart. The question times out, so a line armed in a fight is
+   not still armed ten minutes later.
+
+   Both ends of the input go through here — the key and the pad button —
+   so there is one rule about what letting go means and not two. */
+const TOW_ASK = 5;
+function towLetGo() {
+  if (!surv || !surv.tow) return false;
+  const t = surv.tow;
+  if (!(t.ask > 0)) {
+    t.ask = TOW_ASK;
+    gameSound("tink", t.x, t.y);
+    if (surveyHUD) {
+      surveyHUD.notify("LET GO OF THE " + t.name + "?",
+                       "press again and the line goes " + '\u2014' +
+                       " it stays " +
+                       "where it falls, and anything out here can reach it " +
+                       "first", "#ffcf5a", TOW_ASK);
+    }
+    return true;
+  }
+  towGoesSlack("you let go of the line");
+  return true;
+}
+
 function towTick(dt) {
   const t = surv.tow, me = ships[0];
   if (!t || !me) return;
-  const len = shipRadius() * TOW_LEN;
+  // How long the question above has left. Not saved: an armed line is a thing
+  // you are doing right now, not a state the book should remember.
+  t.ask = Math.max(0, (t.ask || 0) - dt);
+  const len = towLine();
   if (!Number.isFinite(t.x) || !Number.isFinite(t.y)) {
     t.x = me.x - Math.cos(me.a) * len;
     t.y = me.y - Math.sin(me.a) * len;
@@ -218,7 +266,7 @@ function towTick(dt) {
     t.y = me.y + (t.y - me.y) * f;
   }
 
-  /* ── and it is solid ─────────────────────────────────
+  /* ── and it is solid ────────────────────────────────────────────────────
      Ric, 2026-11-13, on the first cut of the tow: it "passes through rocks."
      It does not any more. A hull on a line is wider than the ship pulling it
      and it does not steer, so what you clip with it is the price of the
@@ -243,7 +291,7 @@ function towTick(dt) {
     snag = true;
   }
   t0.x = t.x; t0.y = t.y;
-  if (solidBounce(t0, r)) { t.x = t0.x; t.y = t0.y; snag = true; }
+  if (solidBounce(t0, r, true)) { t.x = t0.x; t.y = t0.y; snag = true; }
   t.hurt = Math.max(0, (t.hurt || 0) - dt);
   if (snag && !surv.docked && !surv.landed) {
     me.vx *= 0.78; me.vy *= 0.78;

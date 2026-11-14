@@ -35,6 +35,10 @@ if (debugOn) {
                    // The hull you are actually flying, not the stock constant:
                    // collision, pickup and drawing all read this one.
                    shipR: mode.survey ? shipRadius() : SHIP_R * U,
+                   // And how wide the hull on the line is, for the same
+                   // reason: what is drawn, what is hit and what the line
+                   // has to clear are one number. See `towRadius`.
+                   towR: mode.survey ? towRadius() : 0,
                    pickups, comms, shake,
                    cameraMode: camRotates() ? "rotating" : "fixed",
                    cameraOn: cameraRotates,

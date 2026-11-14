@@ -443,6 +443,17 @@ function solidHit(x, y) {
     const h = surv.hulks[i];
     if (dist2(x, y, h.x, h.y) < h.r * h.r) return { x, y, hulk: h, at: i };
   }
+  /* And the dead hull you are dragging, which is a hulk in every way except
+     that it is yours and it is moving. It lived in the `surv.shots` loop and
+     nowhere else, so the one gun in the sector it did not stop was your own
+     — a wall that stops everybody's fire but yours is the same bug this
+     function was written to fix, pointed the other way. Flagged rather than
+     silent, because stopping the round is only half of it: the line has to
+     feel it. See `towStrain`. */
+  if (surv.tow && Number.isFinite(surv.tow.x)) {
+    const tr = towRadius();
+    if (dist2(x, y, surv.tow.x, surv.tow.y) < tr * tr) return { x, y, tow: true };
+  }
   const lev = surv.leviathan;
   if (lev && dist2(x, y, lev.x, lev.y) < (lev.len * 0.75) ** 2) {
     for (const g of lev.segs) if (dist2(x, y, g.x, g.y) < g.r * g.r) return { x, y };
@@ -484,7 +495,11 @@ function bounceOff(o, keep) {
   o.bnx = o.bny = undefined;
 }
 
-function solidBounce(o, r) {
+/* `line` says this object is one of the two ends of your own tow line: the
+   ship doing the towing, or the hull being towed. Neither bounces off the
+   other — you do not collide with what you are dragging, and a hull cannot
+   collide with itself — and everybody else in the sector does. */
+function solidBounce(o, r, line) {
   if (!surv) return false;
   let hit = false;
   const clear = (cx, cy, cr) => {
@@ -514,6 +529,15 @@ function solidBounce(o, r) {
      here and were not: a freighter, a pirate and a sentry all flew straight
      through a cache (a hulk, in the code) while you bounced off it. */
   for (const h of surv.hulks) clear(h.x, h.y, h.r);
+  /* And the hull on your line. Ric, 2026-11-13, after the first pass at making
+     it solid: *"enemy ships still fly through the hull on the line."* They did
+     — rounds stopped on it and ships did not, which is the worse of the two to
+     get wrong, because a ship that flies through it is a ship you cannot put
+     it between yourself and. The whole reason to make the tow a real object
+     was that it should be cover and an obstacle, both ways. */
+  if (!line && surv.tow && Number.isFinite(surv.tow.x)) {
+    clear(surv.tow.x, surv.tow.y, towRadius());
+  }
   /* The Leviathan is a hundred and seventy discs now rather than twenty-six,
      and every ship in the sector was being tested against all of them every
      frame. One bounding check first: if you are not within a hull length of it,

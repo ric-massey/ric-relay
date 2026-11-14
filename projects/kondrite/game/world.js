@@ -1106,6 +1106,9 @@ function menuKey(code) {
       if (code === "KeyB") {
         state = "craft"; surveyHUD && surveyHUD.craftOpened(); return;
       }
+      /* Letting go of the hull on the line. `T` for tow, and it asks twice
+         before anything happens — see `towLetGo`. */
+      if (code === "KeyT" && surv && surv.tow) { towLetGo(); return; }
       // The light drive, if you have one. `R` for run: nothing else uses it,
       // and the three page keys are already spoken for.
       if (code === "KeyR" && surv && surv.hasLight) {

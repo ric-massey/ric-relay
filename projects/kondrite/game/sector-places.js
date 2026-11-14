@@ -379,7 +379,7 @@ function emergencyJump(me) {
     streamChunks(true);
     streamRocks();
   }
-  solidBounce(me, shipRadius());
+  solidBounce(me, shipRadius(), true);
   // Blind on arrival. The scanner is the mode's one verb and taking it away
   // for a minute is what makes the landing somewhere rather than nowhere.
   surv.scan.charge = 0;
@@ -707,27 +707,19 @@ function surveyShots(dt) {
       into = solidHit(b.x - b.vx * dt * (1 - f), b.y - b.vy * dt * (1 - f));
     }
     if (into) {
-      burst(into.x, into.y, b.colour || WRECK, 3, 90 * U);
+      burst(into.x, into.y, b.colour || WRECK, into.tow ? 4 : 3, 90 * U);
       gameSound("tink", into.x, into.y);
       surv.shots.splice(i, 1);
+      /* ── and the hull you are dragging is in the way ────────────────────
+         Ric, 2026-11-13, on the tow as first built: nothing could shoot it off
+         the line. A tow you can only lose by dying yourself is not a risk, and
+         a ship hanging a couple of hundred units behind yours is the easiest
+         thing in the sector to hit. It is a real object in the same world now,
+         so it is `solidHit` that knows about it rather than this loop — and
+         a round that reaches it stops on it whoever fired it, for the same
+         reason a stray round can hit you. Three of them part the line. */
+      if (into.tow) towStrain(b.dmg || 1, "they shot it off the line");
       continue;
-    }
-
-    /* ── and the hull you are dragging is in the way ──────────────
-       Ric, 2026-11-13, on the tow as first built: nothing could shoot it off
-       the line. A tow you can only lose by dying yourself is not a risk, and
-       a ship hanging a couple of hundred units behind yours is the easiest
-       thing in the sector to hit. Rounds stop on it whoever fired them, for
-       the same reason a stray round can hit you: it is a real object in the
-       same world. Three of them part the line — see `towStrain`. */
-    if (surv.tow && Number.isFinite(surv.tow.x)) {
-      const tr = towRadius();
-      if (dist2(b.x, b.y, surv.tow.x, surv.tow.y) < tr * tr) {
-        surv.shots.splice(i, 1);
-        burst(b.x, b.y, b.colour || WRECK, 4, 110 * U);
-        towStrain(b.dmg || 1, "they shot it off the line");
-        continue;
-      }
     }
 
     /* A patrol's rounds go the other way. They are in the same list because

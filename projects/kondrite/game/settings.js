@@ -861,6 +861,9 @@ function padStage() {
      pulling call `padApply` themselves; this is the backstop for every other
      way the answer can change — a hull swap, a resumed sector, a reset. */
   if (revEl.hidden === revAvailable()) padApply();
+  // The same backstop for LET GO: a hull comes onto the line, or leaves it,
+  // and the pad has to be looking at the same answer the game is.
+  if (cutEl.hidden === cutShown()) padApply();
   // And the device buttons, which change on their own every frame.
   padDevices();
 }

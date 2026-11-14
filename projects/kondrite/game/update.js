@@ -339,6 +339,9 @@ function update(dt) {
         gameSound("tink", struck.x, struck.y);
         // A dead hull is a target as well as cover. See `solidHit`.
         if (struck.hulk && b.owner === ships[0].id) hitHulk(struck.hulk, struck.at, b);
+        /* Including the dead hull on your own line. Firing into the thing you
+           came all this way to fetch is a mistake you are allowed to make. */
+        if (struck.tow) towStrain(b.dmg || 1, "your own fire went into it");
         if (b.boom) { b.x = struck.x; b.y = struck.y; explode(b); }
         bullets.splice(i, 1);
         continue;

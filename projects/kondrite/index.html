@@ -418,6 +418,18 @@
     height: calc(5.8rem * var(--u));
     font-size: calc(0.75rem * var(--u));
   }
+  /* The one button on the pad that throws something away, so it is not
+     dressed like the ones that fly the ship: the colour a wreck is drawn in,
+     and smaller than the gun. It is only on the screen while there is a hull
+     on the line. */
+  #pad .ctl.cut {
+    width: calc(4.3rem * var(--u));
+    height: calc(4.3rem * var(--u));
+    font-size: calc(0.56rem * var(--u));
+    border-color: #ff8f77;
+    color: #ffc9bd;
+  }
+  #pad .ctl.cut .g { font-size: calc(1.05rem * var(--u)); opacity: 0.8; }
   /* A device button carries its own cooldown: the sweep is the button's
      background, so "not yet" is the thing you are pressing rather than a number
      somewhere else on the screen. `--cd` is how much of the wait is left. */
@@ -869,6 +881,13 @@
        that could buy the part and not use it was the whole complaint. -->
   <button id="padRev" class="ctl" type="button" data-hold="rev" data-tag="REVERSE"
           hidden><span class="g">▼</span>reverse</button>
+  <!-- Letting go of a towed hull. Like the reverse button it is not a control
+       the ship comes with: it is there while something is on the line and
+       nowhere else. It asks twice — one tap puts the question up, the next
+       one cuts the line — because a thumb lands on a phone's screen by
+       accident and a hull is forty flights of work. -->
+  <button id="padCut" class="ctl cut" type="button" data-tag="LET GO"
+          hidden><span class="g">✕</span>let go</button>
   <button id="padFire" class="ctl" type="button" data-hold="f" data-tag="FIRE">
     <span class="g">◉</span>fire</button>
   <!-- One per slot, and each one appears only when that slot is holding a

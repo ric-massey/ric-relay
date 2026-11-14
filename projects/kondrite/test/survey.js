@@ -1214,7 +1214,7 @@ const storeOf = (cf, key) => {
               "an empty SKIFF cannot take it off the floor");
 }
 
-// ── 8e. and a hull comes home on a line ────────────────────────
+// ── 8e. and a hull comes home on a line ──────────────────────────────────
 /* Ric, 2026-11-13: "for hull loss you would have to be able to tow it, which
    means u need the part for it attatched to your ship or the ships that can
    tow others." Two ways to be able to, then: the TOW RIG in one of your four
@@ -1226,7 +1226,7 @@ const storeOf = (cf, key) => {
    that it ends. */
 {
   const towRun = (seed, how) => {
-    const { cf } = boot("?debug=1&seed=" + seed);
+    const { cf, fire } = boot("?debug=1&seed=" + seed);
     cf.start("survey", 1);
     const surv = cf.survey();
     const me = cf.live().ships[0];
@@ -1253,7 +1253,7 @@ const storeOf = (cf, key) => {
     surv.docked = null;
     me.x = wreck.x; me.y = wreck.y; me.vx = me.vy = 0;
     step(6);
-    return { cf, surv, me, home, wreck, loose, step };
+    return { cf, surv, me, home, wreck, loose, step, fire };
   };
 
   // ── the part ────────────────────────────────────────────────────────────
@@ -1279,9 +1279,17 @@ const storeOf = (cf, key) => {
 
     // It hangs behind you rather than inside you.
     r.step(40);
+    /* Behind you, and *clear* of you: both hulls and a rope's worth of sky.
+       It used to be checked as "somewhere other than nowhere", which a tow
+       drawn straight through the ship towing it passes — and that is
+       exactly what the first cut did, since a SKIFF is twelve units across
+       and a dead hull is drawn at sixty-six. */
     const gap = Math.hypot(surv.tow.x - me.x, surv.tow.y - me.y);
-    check(Number.isFinite(gap) && gap > 1,
-          "the hull on the line is nowhere in particular: " + gap);
+    const clear = cf.live().shipR + cf.live().towR;
+    check(Number.isFinite(gap) && gap > clear,
+          "the hull on the line is drawn through the ship towing it: " +
+          Math.round(gap) + " units apart, and the two hulls need " +
+          Math.round(clear));
 
     // It survives the tab, which is the whole reason it is in the book.
     cf.leave();
@@ -1346,7 +1354,7 @@ const storeOf = (cf, key) => {
     check(surv.dropped.some(d => d.hull), "it left the floor anyway");
   }
 
-  /* ── it is a real object: it can be shot off the line ────────────
+  /* ── it is a real object: it can be shot off the line ───────────────────
      Ric, 2026-11-13, on the first cut of the tow: nothing could shoot it off
      and it passed through rock. A tow you can only lose by dying yourself is
      a formality with a slower drive. */
@@ -1401,7 +1409,135 @@ const storeOf = (cf, key) => {
     }
   }
 
-  /* ── and dying with one on the line ────────────────────────
+  /* ── and a ship cannot fly through it either ────────────────────────────
+     Ric, 2026-11-13, on the first pass at making it solid: *"enemy ships still
+     fly through the hull on the line."* They did — rounds stopped on it and
+     ships did not, which is the worse of the two to get wrong, because a ship
+     that flies through it is a ship you cannot put it between yourself and.
+
+     `solidBounce` is the collision every ship in the sector except yours goes
+     through, and `solidHit` is what stops a round; both are asked here, which
+     is the whole claim. */
+  {
+    const r = towRun(8813, "rig");
+    const { cf, surv, me } = r;
+    const live = cf.live();
+    live.rocks.length = 0;
+    r.step(10);
+    check(!!surv.tow, "nothing on the line to fly into");
+    if (surv.tow) {
+      const t = surv.tow;
+      // A patrol arriving exactly where the hull is hanging.
+      const o = { x: t.x + 4, y: t.y, a: 0, vx: 0, vy: 0 };
+      check(cf.solidBounce(o, 22), "a ship flew through the hull on the line");
+      const out = Math.hypot(o.x - t.x, o.y - t.y);
+      check(out >= 22,
+            "the hull on the line left a ship sitting inside it: " +
+            Math.round(out) + " from the middle of it");
+      check(cf.solidHit(t.x, t.y),
+            "a round passes through the hull on the line");
+      /* Your own fire included — it was the one gun in the sector the hull
+         did not stop, because the check lived in everybody else's bullet
+         loop and not in `solidHit`. Firing into the thing you came all this
+         way to fetch is a mistake you are allowed to make. */
+      const was = surv.tow.strain || 0;
+      live.bullets.push({ x: t.x, y: t.y, vx: 1, vy: 0, life: 3, dmg: 1,
+                          colour: "#ffffff", owner: me.id });
+      const n0 = live.bullets.length;
+      r.step(1);
+      check(live.bullets.length < n0, "your own round flew through your own tow");
+      check(!surv.tow || (surv.tow.strain || 0) > was,
+            "your own round into the hull cost the line nothing");
+    }
+  }
+
+  /* ── and you can let go of it ───────────────────────────────────────────
+     Ric, 2026-11-13: *"there should be a button on mobile and there should be
+     a button on mnk to let go of it."* A tow you cannot drop decides the rest
+     of the trip — you cannot run, and dying is the one other way off the
+     line, which hands the hull over for good.
+
+     Twice, though. One press is a question, because a single press would be
+     the cheapest way in the game to throw away the most expensive thing in
+     it, on a key next to the one that opens the chart. */
+  {
+    const r = towRun(8814, "rig");
+    const { cf, surv, me, fire } = r;
+    cf.live().rocks.length = 0;
+    r.step(4);
+    check(cf.screenNow() === "playing", "not flying, so no keypress would land");
+    check(!!surv.tow, "nothing on the line to let go of");
+    fire("keydown", "KeyT");
+    check(!!surv.tow, "one press threw the hull away without asking");
+    fire("keydown", "KeyT");
+    check(!surv.tow, "two presses and the hull is still on the line");
+    const down = surv.dropped.filter(d => d.hull);
+    check(down.length === 1 && down[0].key === "lance",
+          "the hull you let go of is not lying on the floor");
+    check(me.towLoad === 0,
+          "the drive is still dragging a hull it let go of");
+    // And it does nothing at all with an empty line.
+    fire("keydown", "KeyT");
+    fire("keydown", "KeyT");
+    check(surv.dropped.filter(d => d.hull).length === 1,
+          "the let-go key did something with nothing on the line");
+  }
+
+  /* The question times out. A line armed in a fight must not still be armed
+     ten minutes later, when the press means something else. */
+  {
+    const r = towRun(8815, "rig");
+    const { cf, surv, fire } = r;
+    cf.live().rocks.length = 0;
+    r.step(4);
+    fire("keydown", "KeyT");
+    r.step(6 * 60);
+    fire("keydown", "KeyT");
+    check(!!surv.tow,
+          "a question asked and left alone for six seconds still cut the line");
+  }
+
+  /* ── the same thing under a thumb ───────────────────────────────────────
+     A phone cannot press T. The pad grows a button while there is a hull on
+     the line and loses it with the hull, the way it already does for the
+     reverse part — and the button goes through the same two-press question,
+     because one rule about letting go is one rule. */
+  {
+    /* The real listeners on the real button, and only the ones *this* boot
+       put there: the stub's elements outlive a boot, so every earlier sandbox
+       in this process is still listening on this button and would answer for
+       its own dead sector. There are two of them — the press, and the drag
+       that only does anything on the laying-out screen — so both are
+       called, which is what the browser would do. */
+    const button = documentStub.getElementById("padCut");
+    const before = (button.on.pointerdown || []).length;
+    const r = towRun(8816, "rig");
+    const { cf, surv } = r;
+    const mine = (button.on.pointerdown || []).slice(before);
+    cf.live().rocks.length = 0;
+    r.step(4);
+    check(cf.live().padShown.indexOf("cut") >= 0,
+          "there is a hull on the line and no button to let go of it: " +
+          cf.live().padShown.join(", "));
+    check(mine.length > 0, "the LET GO button on the pad has nothing wired to it");
+    if (mine.length) {
+      const press = () => {
+        for (const fn of mine) {
+          fn({ preventDefault: noop, pointerId: 7, pointerType: "touch",
+               clientX: 500, clientY: 600 });
+        }
+      };
+      press();
+      check(!!surv.tow, "one tap threw the hull away without asking");
+      press();
+      check(!surv.tow, "two taps and the hull is still on the line");
+      r.step(2);
+      check(cf.live().padShown.indexOf("cut") < 0,
+            "the LET GO button outlived the hull on the line");
+    }
+  }
+
+  /* ── and dying with one on the line ─────────────────────────────────────
      The state this system has to be able to be in: a hauler, towing the hull
      it went out to fetch, killed on the way home. Two wrecks on the floor,
      both of them real places, and one arrow that has to choose. */
@@ -1444,8 +1580,9 @@ const storeOf = (cf, key) => {
               "comes onto a line behind you, slower and worse to turn \u00b7 " +
               "it survives the tab \u00b7 your own dock is where it " +
               "becomes yours again \u00b7 three rounds or three scrapes part " +
-              "the line \u00b7 and dying on the way home leaves two wrecks " +
-              "and one arrow");
+              "the line \u00b7 nothing flies through it and no gun misses " +
+              "it \u00b7 a key or a thumb lets go of it, asked twice \u00b7 and " +
+              "dying on the way home leaves two wrecks and one arrow");
 }
 
 // ── 9. every trick is a part, and the ship itself has none ────────────────
