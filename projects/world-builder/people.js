@@ -72,6 +72,20 @@
         say: scale(["every year the same", "a little different", "good years and bad", "droughts and killing frosts"]),
         help: "Each year draws its own spring, warmth and harvest — early or late, warm or cold, plenty or want. Drawn from the seed, so the same seed gives the same years." },
     ]},
+    { title: "How it starts", items: [
+      { key: "stored", label: "Food put by", type: "range", min: 0, max: 1, step: 0.05, def: 0,
+        say: v => { const d = putByDays(v); return d < 1 ? "nothing — they live day to day" : d < 21 ? "about " + Math.round(d) + " days" : d < 60 ? "about " + Math.round(d / 7) + " weeks" : d < 330 ? "about " + Math.round(d / 30) + " months" : "a full year's worth"; },
+        help: "What every household has in the house on the first day, and the village store with it." },
+      { key: "standing", label: "Crops in the fields", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["bare — just sown", "thin", "half grown", "a good stand", "ready to reap"]),
+        help: "What is growing in the fields on the first day." },
+      { key: "ages", label: "How old they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["mostly children", "a young people", "all ages", "an ageing people", "mostly old"]),
+        help: "A young world has many mouths and few hands for years; an old one works now and dies off." },
+      { key: "settled", label: "How settled they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["strangers just arrived", "a few couples", "couples, but few friends yet", "neighbours who know each other", "old families — everybody knows everybody"]),
+        help: "How many start in couples, and how many friends — and so who they will ask for food or follow — they already have." },
+    ]},
     { title: "The people", items: [
       { key: "people", label: "How many people", type: "range", min: 20, max: 2000, step: 10, def: 400, curve: 2,
         say: v => v.toLocaleString("en-US"), help: "How many are alive when it starts." },
@@ -242,6 +256,9 @@
     return clampHours(2 * Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI / 15);
   }
   const clampHours = h => Math.max(4, Math.min(20, h));
+  /* Days of food a household starts with, for the "Food put by" setting:
+     squared, so the low end of the slider is days and the high end months. */
+  const putByDays = v => 365 * v * v;
   function daySpan(latitude) {
     const a = Math.round(daylightAt(172, latitude)), b = Math.round(daylightAt(355, latitude));
     return a === b ? "twelve-hour days all year" : a + " hours of light in June, " + b + " in December";
@@ -413,7 +430,7 @@
         const i = y * cols + x;
         fert[i] = clamp(0.55 + (n - 0.5) * 2.4 * S.uneven, 0.04, 1);
         ore[i] = clamp((o1(x, y) * 0.7 + o2(x, y) * 0.3 - 0.45) * 3, 0, 1);
-        stock[i] = fert[i] * TILE_CAP * 0.8;
+        stock[i] = fert[i] * TILE_CAP * 1.6 * S.standing;   // "Crops in the fields"; 0.5 is what it always was
       }
     })();
 
@@ -559,7 +576,9 @@
       }
       for (let i = 0; i < S.people; i++) {
         const v = villages[i % villages.length];
-        const p = newPerson(v, R() * S.life * 0.75, null, null);
+        /* "How old they are": skews the ages, all of them under three-quarters
+           of a life as before; 0.5 is the even spread it always was. */
+        const p = newPerson(v, Math.pow(R(), Math.pow(4, 0.5 - S.ages) * (S.ages < 0.5 ? 1.6 : 1)) * S.life * 0.75, null, null);
         /* Unequal starts are a long tail: most near nothing, a few a lot. The
            total is the same either way, so the setting moves coins, not mints them. */
         const tail = Math.pow(R(), 1 + S.unequal * 8) * (1 + S.unequal * 8);
@@ -569,9 +588,11 @@
       for (const v of villages) {
         v.food = 0; let n = 0;
         for (const p of people) if (p.home === v.id) n++;
-        v.food = n * 0.8; v.goods = n * 0.1; v.till = shared ? 0 : n * 2 + 5;
+        v.food = n * (0.8 + putByDays(S.stored) * 0.25); v.goods = n * 0.1; v.till = shared ? 0 : n * 2 + 5;
       }
       for (const f of factions) f.treasury = shared ? 0 : 10;
+      /* "Food put by": days of each person's own need, in the house. */
+      if (S.stored > 0) for (const p of people) p.food += putByDays(S.stored) * baseNeed(p);
       count.minted = money();
       territory();
       census();
@@ -582,7 +603,7 @@
       for (const v of villages) {
         const single = people.filter(p => p.home === v.id && adult(p) && p.age < p.dieAt * 0.7);
         const couples = [];
-        for (let i = 0; i + 1 < single.length; i += 2) if (R() < 0.5) {
+        for (let i = 0; i + 1 < single.length; i += 2) if (R() < S.settled) {   // "How settled they are"; 0.5 as it always was
           single[i].partner = single[i + 1].id; single[i + 1].partner = single[i].id;
           couples.push([single[i], single[i + 1]]);
         }
@@ -594,6 +615,16 @@
           const old = couples.filter(k => k[0].age > c.age + S.grown && k[1].age > c.age + S.grown);
           if (old.length) { const k = pick(old); c.mum = k[0].id; c.dad = k[1].id; k[0].kids++; k[1].kids++; }
           else if (grown.length) { const g = pick(grown); c.mum = g.id; g.kids++; }
+        }
+        /* Past the middle of "How settled they are", people already have
+           friends among their neighbours — up to six each. */
+        const known = Math.round(Math.max(0, S.settled - 0.5) * 12);
+        if (known > 0) {
+          const here = people.filter(p => p.home === v.id && p.age > 4);
+          for (const p of here) for (let k = 0; k < known && here.length > 1; k++) {
+            const q = pick(here);
+            if (q !== p) befriend(p, q, 0.25 + R() * 0.35);
+          }
         }
       }
       sample();

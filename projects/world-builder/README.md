@@ -471,6 +471,18 @@ simulation, not medical nutrition or a validated agricultural model.
     hours); a sleep in daylight is a whole one. While it was always seven hours, somebody who
     woke before a spring dawn at 45° went back to bed until one in the afternoon, and adults
     spent 54% of their hours asleep.
+- **How it starts** (2026-11-14). Ric: *"when I change the settings it feels like the people do
+  the same thing every time"*. Measured, he was right about the first day: every world began
+  with everybody fed, the same food in every house and nothing short, so a setting showed only
+  once it bit — on day one most settings moved a day less than changing the seed did (3.5–8%),
+  by day thirty a third to nearly half. The starting state is now four settings on the setup
+  page, each at a default that makes exactly the world it always did: **food put by** (nothing,
+  up to a year — squared, so the low end is days), **crops in the fields**, **how old they are**
+  (mostly children to mostly old) and **how settled they are** (how many start in couples and,
+  past the middle, how many friends each already has). Over the first two days, against a
+  reseed's 3.5%: three months put by moves 47% of an adult's hours (they rest, talk and fit
+  tools rather than work), a field ready to reap 15%, mostly children 12%. How settled they are
+  shows later, through who they ask and who they follow, not on day one.
 - **Sickness is a village fever, not smallpox** (2026-11-14). It lasts seven days and kills about
   3% of fed, rested adults who catch it (`SICK_HAZARD`) — three times that for a child under five,
   for somebody near the end of their life and for anybody hungry, which is how a bad harvest and
@@ -593,8 +605,9 @@ node projects/world-builder/test/world-builder.test.mjs --generations
 That is an explicitly expensive experiment, not a CI check that was run for this change. A week
 of stability is not evidence of century-scale balance; earlier century measurements are superseded.
 
-37 settings in nine groups: the land, the year (distance from the equator, how cold winter gets,
-when the world starts, year to year), the people, lives (lifespan, childhood, children, hunger,
+41 settings in ten groups: the land, the year (distance from the equator, how cold winter gets,
+when the world starts, year to year), how it starts (food put by, crops in the fields, how old
+they are, how settled they are), the people, lives (lifespan, childhood, children, hunger,
 sickness), money (coins or a shared store, inequality, prices, tax, inheritance), minds (talk,
 stubbornness, how divided, memory, changing sides), power (who leads, terms, loyalty, breaking
 away), war, and time.
