@@ -77,3 +77,27 @@ test('all front-door game previews use the real engines without loading game pag
   const ctx=new Proxy({}, {get:(target,key)=>target[key]||(()=>{}),set:(target,key,value)=>(target[key]=value,true)});
   for(const id of ids){const state={r:()=>.42};context.window.ArcadePreview.draw(id,ctx,440,380,0,state);context.window.ArcadePreview.draw(id,ctx,440,380,5,state);assert(state.game,`${id} draws a real game state`);}
 });
+
+/* Ric, 2026-11-14: "I want those games but I want it in arcade. Next to the
+   games that I have made." His own games lead the page — KONDRITE's hero
+   first, then the three in beta — and the nine sit after them in the page's
+   own design, not as a plainer catalogue on top. */
+test('the nine sit after Ric’s own games, in the Arcade’s own design',()=>{
+  const arcade=read('gaming.html');
+  const at=s=>{const i=arcade.indexOf(s);assert(i>0,`${s} is on the Arcade`);return i;};
+  const hero=at('<section class="hero">'), offramp=at('href="projects/offramp/index.html"'), shelf=at('<section class="rows classics"');
+  assert(hero<offramp&&offramp<shelf,'KONDRITE, then the betas, then the nine');
+  assert(/<h1 class="up">Kondrite<\/h1>/.test(arcade),'KONDRITE is still the page’s headline');
+  const cards=arcade.slice(shelf).match(/<a class="cab up" href="projects\/(\w+)\/index.html">/g)||[];
+  assert.equal(cards.length,9);
+  for(const id of ids)assert(arcade.slice(shelf).includes(`href="projects/${id}/index.html"`),`${id} is on the shelf`);
+  assert(!arcade.includes('class="game-grid"'),'the old grid on top of the page is gone');
+});
+
+/* Typing a game's name at the terminal opens it — one word or two. */
+test('every game opens by name from the terminal',()=>{
+  const term=read('terminal.html');
+  for(const id of ids)assert(new RegExp(`\\["${id}", \\[`).test(term),`${id} is in PROJECTS`);
+  assert(term.includes('projectLookup.get(normalizeTarget(normalizedRaw))'),'a two-word name like "tic tac toe" is tried whole');
+  assert(/arcade: "gaming"/.test(term),'"arcade" opens the Arcade');
+});

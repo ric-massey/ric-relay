@@ -13,3 +13,9 @@
 /* Action-game overlays follow the selected cabinet rather than hiding it under green felt. */
 .start-overlay,.paused-cover{background:var(--canvas-bg,#102c24);color:var(--ink);font-family:var(--display-font,Georgia,serif)}
 .start-overlay button{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* "← Ric's Terminal" (relay-return.js) is fixed to the bottom-left corner on every
+   project page. On a phone that corner is where these games keep their controls —
+   Snake's arrows, Tetris's buttons, Wordle's keyboard — so here it sits at the end
+   of the page instead of over the board. Still one tap away, never on top. */
+@media (max-width:760px){body .relay-return{position:relative;left:auto;bottom:auto;margin:8px 16px calc(16px + env(safe-area-inset-bottom));display:inline-flex}}

@@ -53,8 +53,8 @@ window.TERMINAL_PAGES = [
   "href": "gaming.html",
   "title": "Arcade",
   "keys": "playable games",
-  "body": "A browser arcade: Solitaire, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers, Snake and Tic-tac-toe with scoreboards, plus four original games. Click a cover to play.",
-  "text": "Pick a game · Solitaire · Tic-tac-toe · Chess · Wordle · Sudoku · Minesweeper · Tetris · Checkers · Snake · Kondrite · Three more, in beta · A rocket at lightspeed · All momentum, all feel",
+  "body": "A small arcade of playable games — vector combat, a relativistic rocket, a momentum prototype and Interstate 40 as an arcade cabinet — and nine classics with scoreboards: Solitaire, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers, Snake and Tic-tac-toe.",
+  "text": "Kondrite · Three more of mine, in beta · A rocket at lightspeed · All momentum, all feel · Interstate 40, exit to exit · Nine you already know how to play · Solitaire · Tic-tac-toe · Chess · Wordle · Sudoku · Minesweeper · Tetris · Checkers",
   "room": "gaming"
  },
  {

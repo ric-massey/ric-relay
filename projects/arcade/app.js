@@ -37,7 +37,7 @@
   $('close-result').onclick=()=>$('result-dialog').close();
   $('soundless').onclick=()=>$('help-dialog').showModal();$('close-help').onclick=()=>$('help-dialog').close();
   $('refresh-scores').onclick=refreshScores;
-  $('all-games').onclick=()=>{location.href='../../gaming.html';};
+  /* The top bar's "← The Arcade" is the one way back; a second "← All games" link under it came out 2026-11-14. */
   $('new-game').onclick=()=>start();$('mode').onchange=()=>{mode=$('mode').value;start();};
   function cleanup(){revision++;stopClock();cancelAnimationFrame(frame);running=false;paused=false;cpuBusy=false;pending=null;if($('result-dialog').open)$('result-dialog').close();}
   function modes(options){$('mode-wrap').hidden=!options.length;$('mode').replaceChildren();for(const [value,text]of options){const o=document.createElement('option');o.value=value;o.textContent=text;$('mode').append(o);}mode=options[0]?.[0]||'';}

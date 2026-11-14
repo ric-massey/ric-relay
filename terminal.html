@@ -573,7 +573,7 @@ type Sydney's cat's name for a surprise!</div>
     const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
     // What someone types when they aren't thinking in room names: the page is
     // called /training, but the thing they came for is the run.
-    const PAGE_ALIASES = { mind: "psyche", run: "training", cs2: "cs", "counter-strike": "cs", valorant: "val", wx: "weather", forecast: "weather", radar: "weather", rain: "weather" };
+    const PAGE_ALIASES = { mind: "psyche", run: "training", cs2: "cs", "counter-strike": "cs", valorant: "val", wx: "weather", forecast: "weather", radar: "weather", rain: "weather", arcade: "gaming", games: "gaming", classics: "gaming" };
 
     // render the front-door directory from the same list
     (() => {
@@ -602,14 +602,17 @@ type Sydney's cat's name for a surprise!</div>
 
     const PROJECTS = [
       ...[
-        ["solitaire", ["patience", "solitare"], "Solitaire", "draw-one Klondike, fastest completed games"],
-        ["tictactoe", ["tic-tac-toe", "noughts"], "Tic-tac-toe", "three in a row against a friend or the computer"],
+        /* The nine classics in the Arcade. Typing a game's name opens it (Ric,
+           2026-11-14); a name of two words works too, because the whole line is
+           tried as well as its first word (`tic tac toe`, `mine sweeper`). */
+        ["solitaire", ["patience", "solitare", "klondike", "cards"], "Solitaire", "draw-one Klondike, fastest completed games"],
+        ["tictactoe", ["tic-tac-toe", "noughts", "noughts-and-crosses", "xo", "ttt"], "Tic-tac-toe", "three in a row against a friend or the computer"],
         ["chess", [], "Chess", "all legal moves, against a friend or a casual computer"],
-        ["wordle", [], "Wordle", "a daily five-letter word and unlimited practice"],
-        ["sudoku", ["soduku"], "Sudoku", "unique puzzles in three difficulties"],
-        ["minesweeper", ["mines"], "Minesweeper", "three fields, a safe opening and fastest-time boards"],
-        ["tetris", [], "Tetris", "falling blocks and a shared high-score board"],
-        ["checkers", ["draughts"], "Checkers", "American checkers with forced jumps and kings"],
+        ["wordle", ["worlde", "word"], "Wordle", "a daily five-letter word and unlimited practice"],
+        ["sudoku", ["soduku", "sodoku"], "Sudoku", "unique puzzles in three difficulties"],
+        ["minesweeper", ["mines", "mine-sweeper", "minesweper"], "Minesweeper", "three fields, a safe opening and fastest-time boards"],
+        ["tetris", ["tetirs", "blocks"], "Tetris", "falling blocks and a shared high-score board"],
+        ["checkers", ["draughts", "checker"], "Checkers", "American checkers with forced jumps and kings"],
         ["snake", [], "Snake", "eat, grow and leave your initials on the board"],
       ].map(([command, aliases, title, description]) => ({
         command, aliases, title, description, room: "gaming", href: "projects/" + command + "/index.html",
@@ -1273,7 +1276,7 @@ type Sydney's cat's name for a surprise!</div>
       const pageArg = own(PAGE_ALIASES, arg) || arg;
       const pageVerb = own(PAGE_ALIASES, verb) || verb;
       const project = projectLookup.get(normalizeTarget(arg));
-      const directProject = projectLookup.get(normalizeTarget(verb));
+      const directProject = projectLookup.get(normalizeTarget(verb)) || projectLookup.get(normalizeTarget(normalizedRaw));
 
       // `front door` and `home` open the front door, index.html — home since 2026-10-17.
       // Spaces, dashes or none all work.

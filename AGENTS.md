@@ -605,6 +605,21 @@ nobody had linked was a page nobody could find.
   Front-door previews use the same rule engine through `projects/arcade/preview.js`.
   The quick checks include `projects/arcade/test/engine.test.cjs`,
   `projects/arcade/test/pages.test.cjs` and `worker/arcade.test.mjs`.
+  **On the Arcade they come after Ric's own games** (2026-11-14, Ric: "I want those
+  games but I want it in arcade. Next to the games that I have made."). They had
+  gone in as a plain grid above everything, which pushed KONDRITE's hero down the
+  page and made the storefront look like two sites. The order is KONDRITE's hero
+  (still the page's `<h1>`), the three betas, then the nine as a shelf in
+  `gaming.html`'s own language — eyebrow, rule, lead, numbered cards (04–12, after
+  the betas' 01–03) — with no collection name. `pages.test.cjs` holds that order.
+  **Typing a game's name in the terminal opens it**, one word or two: `run()` tries
+  the whole line as a project name as well as its first word, so `tic tac toe`
+  and `mine sweeper` work, and `arcade`, `games` and `classics` (the old link's
+  name) are `PAGE_ALIASES` for the gaming room. On a phone the
+  "← Ric's Terminal" control sits at the end of a game page instead of floating
+  over the bottom-left corner, which is where Snake's arrows, Tetris's buttons and
+  Wordle's keyboard are (`projects/arcade/style.css`). No typed egg on these pages:
+  Wordle is typing, and the action games are driven by letters.
 - **Climbing Media is NOT a thin room** — checked 2026-11-12 against the Worker's
   `/media`: 8 items over 8 days, 5 send clips and 3 photographs, with route names. It
   stays listed. `val` (0 matches) and `workbench` (1 card and an "Empty slot") are the

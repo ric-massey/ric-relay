@@ -31,6 +31,23 @@ run; unfinished games are not saved. The daily word is the exception: guesses
 and whether its initials were submitted are saved in `localStorage` by UTC date.
 New Game cannot reset that result; Practice is always available.
 
+## Where they sit
+
+Ric, 2026-11-14: "I want those games but I want it in arcade. Next to the games that
+I have made." On `gaming.html` the nine come **after** Ric's own games — KONDRITE's
+hero, then the three betas — as a shelf in that page's own design (its eyebrow, rule,
+lead and numbered cards, 04–12), not a separate catalogue above everything.
+`test/pages.test.cjs` holds the order.
+
+From the terminal, typing a game's name opens it — `chess`, `tic tac toe`,
+`mine sweeper`, `noughts and crosses`, `worlde`. `arcade`, `games` and `classics`
+open the Arcade. The names are the `PROJECTS` rows at the top of `terminal.html`.
+
+On a phone the site's "← Ric's Terminal" control is moved from the bottom-left corner
+to the end of each game page (`style.css`), because that corner is where the controls
+are. There is no typed easter egg on these pages on purpose: Wordle is typing, and the
+action games are driven by letters.
+
 ## Scores
 
 Wins in timed puzzles and Wordle, and positive completed Snake/Tetris runs, ask
