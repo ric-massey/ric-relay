@@ -13,14 +13,16 @@ import { createRequire } from "node:module";
 const Physics = createRequire(import.meta.url)("../physics.js");
 
 const energy = s => s.motion + s.heat + s.radiated + s.dragged + s.breakWork
-  + s.springEnergy + s.twistEnergy + s.chargeEnergy - s.bondEnergy - s.heated;
+  + s.springEnergy + s.twistEnergy + s.chargeEnergy + s.stickEnergy + s.storedEnergy + s.ionEnergy
+  - s.bondEnergy - s.heated - s.fed;
 const run = (w, seconds) => { for (let f = 0; f < seconds * 60; f++) w.step(1 / 60); };
 
-test("all four off is the world it was", () => {
+test("everything here off is the world it was", () => {
   const set = { layout: "cloud", count: 300, size: 40, kinds: 5, bonding: "sum", maxBonds: 3,
     shift: 1, startTemp: 2, startSpeed: 2, shake: 0.4, conduct: 0.4 };
   const plain = Physics.create(set);
-  const off = Physics.create({ ...set, settle: false, barrier: 0, bondsPer: "same", charge: 0 });
+  const off = Physics.create({ ...set, settle: false, barrier: 0, bondsPer: "same", charge: 0,
+    ions: false, shapeBy: false, swap: false, order: false, fuel: 0, stick: 0 });
   run(plain, 8); run(off, 8);
   for (let i = 0; i < plain.n; i++) {
     assert.equal(off.x[i], plain.x[i]);
@@ -231,4 +233,119 @@ test("charge: the same pieces wired differently stick differently", () => {
   const lopsided = contacts(true, 3), alike = contacts(false, 3), alikeOff = contacts(false, 0);
   assert.ok(lopsided > 2 * alike, `lopsided pairs ${lopsided} touching each, alike pairs ${alike}`);
   assert.equal(alike, alikeOff, "pairs with no charge should not notice the setting at all");
+});
+
+/* ── The five after charge: shape, sticking, energy-rich pieces, ions,
+   handing over, and double bonds (2026-11-14, Ric: "do all 5"). The slow
+   measurements — hand-overs leave the balance where it was, energy-rich
+   pieces with a barrier hold a world above it — are in chemistry-probe.mjs. */
+
+/* All of them at once in a world held still: every step pays exactly. */
+test("every new step keeps the books exactly", () => {
+  const w = heldGrid({ settle: true, swap: true, order: true, ions: true, fuel: 2, fuelRate: 0.3, barrier: 1,
+    angles: 0.5, shapeBy: true, stick: 1 }, 1.04);
+  for (let i = 0; i < w.n; i++) w.edit(i, { facing: (i * 7 % 6) * 0.17 });
+  const before = energy(w.stats());
+  run(w, 4);
+  const after = w.stats();
+  assert.ok(after.swapped > 100 && after.reordered > 100 && after.ionised > 20 && after.fed > 10,
+    `swapped ${after.swapped}, reordered ${after.reordered}, ionised ${after.ionised}, fed ${after.fed}`);
+  assert.ok(after.stickEnergy < 0 && after.ionEnergy !== 0, "sticking and ions should both hold energy");
+  assert.ok(Math.abs(energy(after) - before) < 1e-9 * Math.abs(before), `energy ${before} → ${energy(after)}`);
+});
+
+test("shape set by the kind: every hexagon's bonds sit on its kind's pattern", () => {
+  const SHAPE = [63, 9, 21, 27, 27, 9, 63], rot = (mk, t) => ((mk << t) | (mk >> (6 - t))) & 63;
+  const offPattern = shapeBy => {
+    const w = Physics.create({ layout: "cloud", count: 600, size: 40, kinds: 7, bonding: "any", bondsPer: "kind",
+      maxBonds: 4, bondChance: 0.4, bondStrength: 4, startTemp: 0.8, startSpeed: 1, shake: 0.4, conduct: 0.4,
+      radiate: 0, breaking: false, seed: 3, angles: 0.8, settle: true, shapeBy });
+    run(w, 12);
+    let bad = 0;
+    for (let i = 0; i < w.n; i++) if (w.alive[i]) {
+      let mask = 0;
+      for (let t = 0; t < 6; t++) if (w.slots[i * 6 + t] >= 0) mask |= 1 << t;
+      let fits = false;
+      for (let t = 0; t < 6; t++) if ((rot(SHAPE[(w.kind[i] - 1) % 7], t) & mask) === mask) fits = true;
+      if (!fits) bad++;
+    }
+    return bad;
+  };
+  assert.equal(offPattern(true), 0);
+  assert.ok(offPattern(false) > 0, "without it, some bonds should sit off the pattern, or this proves nothing");
+});
+
+test("everything sticks a little: uncharged hexagons clump", () => {
+  const touching = stick => {
+    const w = Physics.create({ layout: "cloud", count: 500, size: 40, kinds: 1, bonding: "none", startTemp: 0,
+      startSpeed: 1, bounce: 0.6, shake: 0.4, conduct: 0.4, radiate: 0, stick, seed: 4 });
+    for (let i = 0; i < w.n; i++) w.edit(i, { temperature: 0.3 });
+    run(w, 12);
+    let k = 0;
+    for (let i = 0; i < w.n; i++) for (let j = i + 1; j < w.n; j++) {
+      let dx = w.x[j] - w.x[i], dy = w.y[j] - w.y[i];
+      dx -= 40 * Math.round(dx / 40); dy -= 40 * Math.round(dy / 40);
+      if (dx * dx + dy * dy < 1.44) k++;
+    }
+    return 2 * k / w.n;
+  };
+  const none = touching(0), some = touching(0.5);
+  assert.ok(some > 2 * none, `stick 0.5: ${some} touching each, none: ${none}`);
+});
+
+test("ions: the most unlike pair trades whole charges, an alike pair never does", () => {
+  const ions = kinds => {
+    const w = Physics.create({ layout: "empty", size: 40, kinds: 7, edge: "wrap", sized: false, bonding: "same",
+      bondStrength: 0.2, bondChance: 0.3, maxBonds: 1, bondsPer: "kind", settle: true, charge: 3, ions: true,
+      startTemp: 0.6, shake: 0.4, conduct: 0.4, radiate: 0, breaking: false, seed: 2 });
+    let s = 12345;
+    const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let q = 0; q < 400; q++) w.place(rand() * 40, rand() * 40, kinds[q % 2], 0, 0, 1);
+    run(w, 12);
+    let net = 0;
+    for (let i = 0; i < w.n; i++) net += w.describe(i).ion;
+    assert.equal(net, 0, "charge is neither made nor lost");
+    for (let i = 0; i < w.n; i++) if (w.describe(i).ion !== 0) assert.equal(w.nb[i], 0, "an ion holds no bonds");
+    return w.stats().ions;
+  };
+  const unlike = ions([1, 7]), alike = ions([4, 4]);
+  assert.ok(unlike > 150, `kinds 1 and 7: ${unlike} of 400 are ions`);
+  assert.equal(alike, 0);
+});
+
+test("double and triple bonds are shorter, worth more, and count against both ends", () => {
+  const w = Physics.create({ layout: "empty", size: 40, kinds: 7, edge: "wrap", sized: false, bonding: "any",
+    bondStrength: 3, bondChance: 0.4, maxBonds: 4, bondsPer: "kind", settle: true, order: true, startTemp: 0.5,
+    shake: 0.5, conduct: 0.5, radiate: 0, gravity: 0, breaking: false, seed: 7 });
+  let s = 777;
+  const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let q = 0; q < 400; q++) w.place(rand() * 40, rand() * 40, 4, 0, 0, 1);
+  run(w, 15);
+  const st = w.stats();
+  assert.ok(st.doubles > 10 && st.triples > 10, `doubles ${st.doubles}, triples ${st.triples}`);
+  const single = Physics.polar(4, 4) * 3;
+  const LEN = [0, 1, 0.87, 0.78], WORTH = [0, 1, 1.75, 2.4];
+  const used = new Map();
+  for (const bd of w.bonds.values()) {
+    const o = bd.o || 1;
+    assert.ok(Math.abs(bd.rest / (w.r[bd.a] + w.r[bd.b]) - LEN[o]) < 1e-9, "length");
+    assert.ok(Math.abs(bd.B / single - WORTH[o]) < 1e-9, "worth");
+    used.set(bd.a, (used.get(bd.a) || 0) + o); used.set(bd.b, (used.get(bd.b) || 0) + o);
+  }
+  for (const [i, u] of used) assert.ok(u <= 4, `hexagon ${i} uses ${u} of 4`);
+});
+
+test("energy-rich pieces get over a barrier nothing else can", () => {
+  const pairs = fuel => {
+    const w = Physics.create({ layout: "empty", size: 60, kinds: 2, edge: "wrap", sized: false, bonding: "other",
+      bondStrength: 4, bondChance: 0.4, maxBonds: 1, settle: true, barrier: 6, startTemp: 2, shake: 0.5,
+      conduct: 0.5, radiate: 0.02, gravity: 0, breaking: false, seed: 7, fuel, fuelRate: 0.01 });
+    let s = 99991;
+    const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let q = 0; q < 600; q++) w.place(rand() * 60, rand() * 60, q < 300 ? 1 : 2, 0, 0, 1);
+    run(w, 25);
+    return w.stats().bonds;
+  };
+  const without = pairs(0), withFuel = pairs(6);
+  assert.ok(withFuel > 5 * Math.max(without, 1), `with ${withFuel} pairs, without ${without}`);
 });

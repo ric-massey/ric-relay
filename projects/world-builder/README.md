@@ -30,8 +30,8 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/breakup.test.mjs` | Quick physics checks: fracture/shedding, mass, momentum, energy, large bodies, bonds, capacity and repeatable links. Runs in the quick lane of `.github/checks.mjs`. |
 | `test/shape.test.mjs` | Quick checks on facings, slots, the angle spring's books, alignment, the sequence a chain reads as, and that a world with both new settings off is the world it always was. Quick lane. |
 | `replication-probe.mjs` | Not a check — a measurement, run by hand. Seeds copies of a sequence, runs the identical world without them as a control, and counts only the copies made of fresh hexagons. |
-| `test/chemistry.test.mjs` | Quick checks on valence and pull, that settling pays for every bond exactly, that heat thins bonds out, that a barrier is lower for pieces held lined up, and that charge lands where the pulls say, keeps the books, and makes lopsided pairs stick. Quick lane. |
-| `chemistry-probe.mjs` | Not a check — a measurement, run by hand (a few minutes). Van 't Hoff, mass action and the barrier, each against the number it should give. |
+| `test/chemistry.test.mjs` | Quick checks on valence and pull, that settling pays for every bond exactly, that heat thins bonds out, that a barrier is lower for pieces held lined up, that charge lands where the pulls say, keeps the books, and makes lopsided pairs stick, and that shape, sticking, ions, double bonds and energy-rich pieces each do what they say and pay exactly. Quick lane. |
+| `chemistry-probe.mjs` | Not a check — a measurement, run by hand (a few minutes). Van 't Hoff, mass action, the barrier, hand-overs and energy-rich pieces, each against the number it should give. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
@@ -304,6 +304,56 @@ a test can keep.
   (so detailed balance still holds) and out of its own ends when not. It uses the kinds' pull
   whether or not "Bonds per kind" is on.
 
+Five more the same day (Ric: *"do all 5"*), each off by default and byte-identical off — checked
+against the previous commit's engine across every preset and three hand-built worlds, one of them
+charged:
+
+- **Shape set by the kind** (`shapeBy`, needs bonds that hold an angle). A kind's bonds spread as
+  evenly as six slots allow, counting the room its spare electron pairs take up too — VSEPR
+  (Gillespie and Nyholm, 1957), worked out from the same row position as valence, never looked
+  up. Two places straight, three a Y, four the cross {0,1,3,4}. A kind with two spare pairs in a
+  cross has them pushed to opposite sides, so its two bonds go straight: **kind 6 is straight in a
+  flat world**, where real water is bent only because the real world has a third direction to bend
+  into. Said plainly because it is the opposite of what one might expect.
+- **Everything sticks a little** (`stick`). A short smooth pull between any two hexagons near
+  touching, charged or not — London's dispersion force, reaching about half a hexagon past
+  touching. Flat inside touching, so pushing two apart to touching costs nothing and a bond at
+  rest feels none of it. The same for every kind; the real force grows with size, which is left out.
+- **Whole charges can jump** (`ions`, needs charge). Two free hexagons nearly touching can pass a
+  whole charge. Holding one costs a kind a fixed energy set by its pull — losing one dearer the
+  harder it pulls, gaining one cheaper — so passing one costs nothing for the most unlike pair in a
+  row and a lot for two alike, and the pull of the two new charges pays the rest. These are
+  energies of a state, so every jump balances its reverse. Where it breaks even, a gap of about two
+  thirds of a row, sits where real chemistry draws its line between ionic and covalent. An ion holds
+  no bonds.
+- **Pieces can be handed over** (`swap`, needs settling). A hexagon nearly touching one end of a
+  bond takes that end in one step while the old partner lets go — the way most real reactions go,
+  through one transition state instead of a full break and remake. Weighed as both together at the
+  pool's temperature halfway between before and after, with the barrier the average of the two
+  bonds'.
+- **Double and triple bonds** (`order`, needs settling). A bond whose ends both have room can step
+  up to double and triple and back: worth 1.75 and 2.4 times a single and 0.87 and 0.78 as long,
+  from the textbook carbon-carbon figures (348, 614, 839 kJ/mol; 154, 134, 120 pm). Each step
+  counts against both ends' bonds per kind; only a single bond comes apart.
+- **Energy-rich pieces** (`fuel`, `fuelRate`). Free hexagons are charged up from outside now and
+  then and spend it on their next bond: more given off and less barrier to climb, and nothing
+  balancing it — that is the point. A sealed world always comes to rest, and at rest nothing can
+  keep copying itself; this is the food. **It only does anything with a barrier.** Measured without
+  one, charged-up pieces were a few dozen among bonds made and broken thousands of times a second,
+  and the energy only warmed the world (K stayed where heat put it). With a barrier of 6, nothing
+  else bonds at all (8 pairs of 300), and pieces charged with 6 at 0.01 a second, heat leaking at
+  0.02, held about **170 pairs, 2.7 times what a world at rest holds at that temperature**, for as
+  long as they were fed — more when fed faster. That is how real driven chemistry works: a barrier
+  keeps what was made from coming undone, and only fed pieces get over it.
+
+**Measured, 2026-11-14.** Every new step keeps the books exactly: a held world with all of them on,
+making and breaking tens of thousands of bonds and hundreds to thousands of hand-overs, re-orderings and jumped
+charges, came out within 2 parts in 10¹⁵. Hand-overs moved where A + B ⇌ AB settles by about 4%
+across three seeds (K adjusted −0.38 against −0.34); a single run scatters by about ±0.15, and the probe on the day read −0.38 off and −0.18 on, so read it over several seeds. That is inside what the mass-action line
+already shows. Kinds 1 and 7 ended 81% ions, kinds 2 and 6 63%, kinds 4 and 4 none. With
+sticking at 0.5, uncharged hexagons touched 2.2 neighbours each against 0.83 with none. With shape
+on no bond sat off its kind's pattern; with it off, some did.
+
 **Measured, 2026-11-14** (`chemistry-probe.mjs`, run by hand; two kinds that pair and nothing else,
 A + B ⇌ AB, in a sealed world). Each line is against a number worked out first:
 
@@ -349,7 +399,9 @@ Soc. 54 (1932) 3570 — the square-of-the-gap rule. Metropolis, Rosenbluth, Rose
 Teller, J. Chem. Phys. 21 (1953) 1087 — the acceptance rule. Eyring, J. Chem. Phys. 3 (1935) 107 —
 a barrier climbed both ways. van 't Hoff (1884) and Guldberg and Waage (1864) — the two lines the
 probe checks against. Page and Jencks, PNAS 68 (1971) 1678 — holding pieces lined up as most of
-catalysis. Allen and Tildesley, *Computer Simulation of Liquids* (Oxford, 1987), for the
+catalysis. Gillespie and Nyholm, *Inorganic stereochemistry*, Q. Rev. Chem. Soc. 11 (1957) 339 —
+bonds and spare pairs spreading out. London, *Trans. Faraday Soc.* 33 (1937) 8 — the pull between
+uncharged things. Allen and Tildesley, *Computer Simulation of Liquids* (Oxford, 1987), for the
 shifted-force cut-off and for leaving bonded pairs out. Dittrich, Ziegler and Banzhaf, *Artificial Chemistries — A Review*, Artificial Life 7
 (2001) 225, and Fontana and Buss (1994) are the standard places to see where this sits among
 artificial chemistries; nothing here was taken from them, and they were not read in full for it.

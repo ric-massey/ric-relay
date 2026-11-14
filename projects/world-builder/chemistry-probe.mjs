@@ -18,6 +18,15 @@
       should not move (a barrier is climbed both ways, so it cancels); how
       long it takes to get there should.
 
+   4. HANDING OVER. The same world with "Pieces can be handed over" on. A
+      hand-over makes one bond and breaks one, so where the world settles
+      should not move; it only adds a road between the same places.
+
+   5. ENERGY-RICH PIECES. A barrier high enough that nothing bonds, heat
+      leaking away, and pieces charged up from outside. A world at rest
+      holds K = exp(B/T) times a constant; a driven one should hold more
+      than that at its own temperature, for as long as it is fed.
+
    Before this setting existed the world's own answer to (1) was a slope of
    1.8 where the bond energy was 4, because a pair alone paid for its own
    bonds. Run:
@@ -104,6 +113,17 @@ for (const barrier of [0, 3]) {
     if (f % 30 === 0 && w.stats().bonds >= end.pairs / 2) half = f / 60;
   }
   console.log(`   barrier ${barrier}   settles at ${end.pairs.toFixed(0)} pairs, K adjusted ${adj(end).toFixed(2)}   half-way after ${half === null ? "over 200" : half.toFixed(1)} s`);
+}
+console.log("\n4. Handing over should leave the balance where it was");
+for (const swap of [false, true]) {
+  const r = settle(world(300, 300, { startTemp: 2, swap }), 120, 40);
+  console.log(`   hand-overs ${swap ? "on " : "off"}   pairs ${r.pairs.toFixed(0)}   temperature ${r.T.toFixed(3)}   K adjusted ${adj(r).toFixed(2)}`);
+}
+
+console.log("\n5. Energy-rich pieces hold a world above its balance (barrier 6, heat leaking)");
+for (const fuel of [0, 6]) {
+  const r = settle(world(300, 300, { startTemp: 2, barrier: 6, fuel, fuelRate: 0.01, radiate: 0.02 }), 60, 40);
+  console.log(`   charged up with ${fuel}   pairs ${r.pairs.toFixed(0)}   temperature ${r.T.toFixed(3)}   K adjusted ${adj(r).toFixed(2)}   (a world at rest: ${adj(even).toFixed(2)})`);
 }
 console.log("\nThese are measurements of this build at these settings, not guarantees. The worlds are");
 console.log("small and finite, so expect a few percent either way; a slope far from the bond energy,");

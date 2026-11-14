@@ -507,6 +507,13 @@ nobody had linked was a page nobody could find.
   when settling, so detailed balance holds). Measured honestly: wiring matters (lopsided 1-7
   pairs stick 3x more than 1-1 + 7-7), bend alone barely does (straight and bent 1-6-1 equal).
   Do not tune constants until bend matters; that would be scripting the answer.
+  Five more (Ric: "do all 5"), same rules: `shapeBy` (VSEPR on six slots — kind 6 comes out
+  straight in 2D, on purpose), `stick` (dispersion, flat inside touching so it never touches
+  bond books), `ions` (whole charges as energies of a state, so jumps balance), `swap` and
+  `order` (settling only; judged at the halfway temperature so each balances its reverse) and
+  `fuel` (deliberately unbalanced — the drive). Fuel does nothing without a barrier: measured,
+  the energy only warms the world. Do not "fix" that by making fuel stronger; the barrier is
+  the physics. Every new step is in the all-on books test to 1e-9.
   **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).

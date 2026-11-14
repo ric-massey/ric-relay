@@ -1164,6 +1164,9 @@
         "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + d.canHold + "</dd>" +
         (d.pull != null ? "<dt>Pull</dt><dd>" + num(d.pull, 2) + "</dd>" : "") +
         (d.charge != null ? "<dt>Charge</dt><dd>" + (d.charge > 0.005 ? "+" : "") + num(d.charge, 2) + "</dd>" : "") +
+        (d.ion ? "<dt>Ion</dt><dd>" + (d.ion > 0 ? "+1" : "−1") + ", held by charge alone</dd>" : "") +
+        (d.stored ? "<dt>Charged up</dt><dd>" + num(d.stored, 1) + " energy, spent on its next bond</dd>" : "") +
+        (d.bonds.some(b => b.order > 1) ? "<dt>Bond orders</dt><dd>" + d.bonds.map(b => ["", "single", "double", "triple"][b.order]).join(", ") + "</dd>" : "") +
         ((S.shift > 0 || S.look > 0) && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
         (d.turning ? "<dt>Facing</dt><dd>" + num(((d.facing * 180 / Math.PI) % 360 + 360) % 360, 0) + "\u00b0, turning " + num(d.spin, 2) + " a second</dd>" : "") +
         (d.pinned ? "<dt>Pinned</dt><dd>held still</dd>" : "") + "</dl>" +

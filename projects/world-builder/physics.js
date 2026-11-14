@@ -74,6 +74,9 @@
       { key: "reach", when: s => s.gravity > 0, label: "How far it reaches", type: "select", def: "far",
         options: [["far", "Far — fades slowly with distance"], ["near", "Near — fades quickly"]],
         help: "Far falls off as 1/distance, which is what gravity does in a flat world. Near falls off as 1/distance²." },
+      { key: "stick", label: "Everything sticks a little", type: "range", min: 0, max: 10, step: 0.05, def: 0, curve: 2,
+        say: off(v => v + " energy to pull apart"),
+        help: "A weak pull between any two hexagons close to touching, charged or not, the way even uncharged molecules cling (London's dispersion force). It reaches about half a hexagon past touching. Without it, nothing without a charge ever clumps." },
       { key: "fall", label: "Down", type: "range", min: 0, max: 30, step: 0.5, def: 0,
         say: off(v => v + " toward the bottom"), help: "A steady pull toward the bottom of the world, like standing on a planet. Give it walls." },
     ]},
@@ -128,7 +131,20 @@
         help: "Heat that has to be found before a bond can form or break, and is given straight back. It does not change which bonds win in the end, only how long it takes — so a bond can be worth making and still almost never happen. With bonds that hold an angle, two hexagons held already lined up have less of it to climb, which is how one thing can speed up the making of another." },
       { key: "charge", when: s => s.bonding !== "none", label: "Charge from bonds", type: "range", min: 0, max: 20, step: 0.1, def: 0, curve: 2,
         say: off(v => v + " energy at touching"),
-        help: "Each kind pulls on what it shares with a bond by its number, kind 7 hardest. When two kinds that pull differently bond, the harder puller ends up a little negative and the other a little positive, and a thing's charges always add up to nothing. Charged hexagons that are not bonded to each other pull opposites together and push likes apart, out to about three hexagons. So what a thing does to its neighbours depends on how it is arranged: the same pieces in a straight line can cancel each other out, bent they leave one side positive and the other negative, and that side sticks. Off, nothing carries a charge. This number is how hard the most unlike pair pulls when they touch." },
+        help: "Each kind pulls on what it shares with a bond by its number, kind 7 hardest. When two kinds that pull differently bond, the harder puller ends up a little negative and the other a little positive, and a thing's charges always add up to nothing. Charged hexagons that are not bonded to each other pull opposites together and push likes apart, out to about three hexagons. So what a thing does to its neighbours depends on what it is made of and what is bonded to what: two lopsided pairs stick, the same pieces paired like with like do not. Off, nothing carries a charge. This number is how hard the most unlike pair pulls when they touch." },
+      { key: "ions", when: s => s.bonding !== "none" && s.charge > 0, label: "Whole charges can jump", type: "toggle", def: false,
+        help: "Two free hexagons touching can pass a whole charge from one to the other, the way sodium hands one to chlorine. It costs less the more differently the two pull, and the pull between the two new charges pays the rest, so only very unlike kinds do it. An ion holds no bonds; it is held by charge alone. Every jump can go back the other way." },
+      { key: "shapeBy", when: s => s.bonding !== "none" && s.angles > 0, label: "Shape set by the kind", type: "toggle", def: false,
+        help: "Each kind's bonds spread out as evenly as six directions allow, counting the room its spare charge takes up too (the rule chemists call VSEPR): kind 2 is straight, kind 3 a Y, kind 4 a cross, kind 6 straight because its two spare pairs push its bonds apart. Off, a bond can use any free slot." },
+      { key: "swap", when: s => s.bonding !== "none" && s.settle, label: "Pieces can be handed over", type: "toggle", def: false,
+        help: "A hexagon touching one end of a bond can take that end over in one step, the old partner let go as the new one joins, instead of the bond having to come apart first. It is the way most real reactions go, and it is cheaper than breaking and remaking. It can always run back." },
+      { key: "order", when: s => s.bonding !== "none" && s.settle, label: "Double and triple bonds", type: "toggle", def: false,
+        help: "A bond between two hexagons with room to spare can become double, then triple: shorter, and worth 1.75 and 2.4 times a single bond, the way a carbon-carbon bond is. Each extra counts against both ends' bonds per kind, and it can step back down." },
+      { key: "fuel", when: s => s.bonding !== "none", label: "Energy-rich pieces", type: "range", min: 0, max: 20, step: 0.5, def: 0, curve: 2,
+        say: off(v => v + " energy each"),
+        help: "Free hexagons are charged up from outside, now and then, with this much energy, and spend it the first time they bond: it makes that bond easier to make and harder to undo. That is what keeps a world from settling and stopping, the way food and sunlight do: without it a sealed world always comes to rest. It needs “How hard a bond is to start” to do much: with no barrier, bonds come and go so fast that a few charged-up pieces change nothing and their energy only warms the world; with one, only charged-up pieces get over it, and what they make stays made. Give it “Heat leaks away” too, or it heats up. Off, nothing arrives." },
+      { key: "fuelRate", when: s => s.bonding !== "none" && s.fuel > 0, label: "How often they are charged", type: "range", min: 0.001, max: 1, step: 0.001, def: 0.01, curve: 2,
+        say: v => v + " a second", help: "For each free hexagon not already charged up, the chance a second that it is." },
     ]},
     { title: "Heat", items: [
       { key: "startTemp", label: "Starting temperature", type: "range", min: 0, max: 40, step: 0.5, def: 0.5,
@@ -166,6 +182,7 @@
     size: [4, 1000], count: [0, 20000], kinds: [1, 64], seed: [0, 4294967295],
     bigMass: [0.000001, 1e12], bounce: [0, 1], bondChance: [0, 1],
     maxBonds: [0, 255], shake: [0, 1], conduct: [0, 1], angles: [0, 1], align: [0.01, 30], look: [0, 64], barrier: [0, 1e6], charge: [0, 1e6],
+    stick: [0, 1e6], fuel: [0, 1e6], fuelRate: [0, 100],
     limit: [0, 1e12], rate: [0.001, 100], toughness: [0.000001, 1e12], fragmentMass: [0.000001, 1e12]
   };
   const WHOLE = new Set(["count", "kinds", "seed", "maxBonds", "shift", "look"]);
@@ -349,6 +366,39 @@
     const D = Math.sqrt(d * d + CHARGE_SOFT * CHARGE_SOFT);
     return (-1 / (D * D) + 1 / (CHARGE_DC * CHARGE_DC)) * (d / D) / CHARGE_ONE;
   }
+  /* With "Whole charges can jump": what holding a whole charge costs a kind.
+     Losing one costs more the harder it pulls, gaining one less: E+ is
+     C(1/2 + pull/G), E- is C(1/2 - pull/G), with G the widest gap in a row.
+     So passing one from kind d to kind a costs C(1 - (pull a - pull d)/G):
+     nothing for the most unlike pair in a row, C for two alike. These are
+     energies of a state, so every jump and its reverse balance. C is
+     ION_COST times "Charge from bonds", and the pull of the two new charges
+     at touching is 1 times it: so the most unlike pairs ionise, a gap of
+     about two thirds of a row breaks even, and alike pairs never do.
+     That is the line real chemistry draws between ionic and covalent at an
+     electronegativity gap of roughly 1.7 to 2. */
+  const ION_COST = 2.5;
+  const ION_RATE = 4;        // tries a second for a touching pair
+  /* With "Shape set by the kind": where its bonds may sit, as six bits for
+     six slots, any turn of the pattern allowed. Worked out from the same
+     row position as valence. A kind's electrons are its place in the row;
+     those not in bonds sit in pairs that take up room as a bond does
+     (VSEPR, Gillespie and Nyholm, 1957), and the bonds and pairs together
+     spread as evenly as six slots allow: two straight, three a Y, four the
+     cross {0,1,3,4}. With two spare pairs in a cross, the pairs push each
+     other to opposite sides and the bonds go straight: in a flat world
+     kind 6 is straight, where the real one, water, is bent only because the
+     real world has a third direction to bend into. */
+  const SHAPE = [63, 9, 21, 27, 27, 9, 63];
+  const rotMask = (mk, t) => ((mk << t) | (mk >> (SLOTS_ALL - t))) & 63;
+  const SLOTS_ALL = 6;
+  /* With "Double and triple bonds": worth and length against a single bond,
+     from average carbon-carbon bond enthalpies (348, 614, 839 kJ/mol) and
+     lengths (154, 134, 120 pm), the textbook figures. */
+  const ORDER_WORTH = [0, 1, 1.75, 2.4];
+  const ORDER_LENGTH = [0, 1, 0.87, 0.78];
+  /* With "Everything sticks a little": the reach past touching. */
+  const STICK_R = 0.6;
   /* create() has its own `pull`, gravity's; this is the kind's. */
   const kindPull = pull;
   const TAU = Math.PI * 2;
@@ -390,9 +440,17 @@
        running world finds the charges already right. */
     const q = new Float64Array(cap);
     const charged = () => S.charge > 0 && S.bonding !== "none";
+    /* A whole charge held (-1, 0, +1), with "Whole charges can jump"; it is
+       part of q too. The energy a free hexagon has been charged up with,
+       with "Energy-rich pieces". How many of its bonds a hexagon is using,
+       a double counting two; without "Double and triple bonds" it is nb. */
+    const z = new Int8Array(cap);
+    const act = new Float64Array(cap);
+    const used = new Uint8Array(cap);
     let n = 0;                    // slots used; dead ones stay where they are
     const tally = { time: 0, radiated: 0, dragged: 0, heated: 0, fused: 0, left: 0, bondsMade: 0, bondsBroken: 0,
-                    placed: 0, removed: 0, reacted: 0, fractured: 0, shed: 0, breakWork: 0 };
+                    placed: 0, removed: 0, reacted: 0, fractured: 0, shed: 0, breakWork: 0,
+                    fed: 0, ionised: 0, swapped: 0, reordered: 0 };
     let fragmentLimit = false;
 
     const radiusOf = mass => (S.sized ? 0.5 * Math.sqrt(mass) : 0.5);
@@ -402,7 +460,7 @@
       if (n < cap) i = n++;
       else { for (let q = 0; q < cap; q++) if (!alive[q]) { i = q; break; } }     // full: take a dead one's place
       if (i < 0) return -1;
-      nb[i] = 0; pinned[i] = 0; shedding[i] = 0; broken[i] = 0; q[i] = 0;
+      nb[i] = 0; pinned[i] = 0; shedding[i] = 0; broken[i] = 0; q[i] = 0; z[i] = 0; act[i] = 0; used[i] = 0;
       for (let s = 0; s < SLOTS; s++) adj[i * SLOTS + s] = -1;
       spin[i] = 0; face[i] = S.angles > 0 ? R() * TAU : 0;
       impact[i] = 0; impactX[i] = 0; impactY[i] = 0;
@@ -627,6 +685,7 @@
       if (!viaPool && charged()) payCharge(bd.a, bd.b, chargeDelta(bd.a, bd.b, bd.g, -1));
       bonds.delete(k); nb[bd.a]--; nb[bd.b]--; tally.bondsBroken++;
       q[bd.a] -= bd.g; q[bd.b] += bd.g;
+      used[bd.a] -= bd.o || 1; used[bd.b] -= bd.o || 1;
       if (bd.sa >= 0) adj[bd.a * SLOTS + bd.sa] = -1;
       if (bd.sb >= 0) adj[bd.b * SLOTS + bd.sb] = -1;
     }
@@ -673,8 +732,19 @@
         if (e < off) { off = e; best = s; }
       }
       if (best < 0 || adj[base + best] >= 0) return -1;
+      if (S.shapeBy && !fitsShape(i, best)) return -1;
       return off <= S.align * Math.PI / 180 ? best : -1;
     }
+    /* Would a bond in this slot, with the ones it already holds, still sit
+       on its kind's pattern turned some way? See SHAPE. */
+    function fitsShape(i, slot) {
+      const pat = SHAPE[(baseKind(i) - 1) % 7];
+      let mask = 1 << slot;
+      for (let t = 0; t < SLOTS; t++) if (adj[i * SLOTS + t] >= 0) mask |= 1 << t;
+      for (let t = 0; t < SLOTS; t++) if ((rotMask(pat, t) & mask) === mask) return true;
+      return false;
+    }
+    const units = i => (S.order ? used[i] : nb[i]);
     /* The kind of the neighbour a hexagon already holds: the first slot with
        one in it, skipping whoever is asking. Kind 1 means "nobody", because
        kind 1 moves nothing on. */
@@ -705,6 +775,7 @@
     /* How many bonds this hexagon can hold: the world's cap, and under "set
        by the kind" its own valence too. */
     function capOf(i) {
+      if (S.ions && z[i] !== 0) return 0;          // an ion is held by charge, not bonds
       return S.bondsPer === "kind" ? Math.min(S.maxBonds, valence(baseKind(i))) : S.maxBonds;
     }
     /* What a bond between these two is worth. `less` as in siteOf. */
@@ -795,21 +866,23 @@
        (moving `g` onto a) were made (s = 1) or broken (s = -1), asked before
        it happens. Only a's and b's charges change, and whether a and b count
        as a pair; everyone else stays as they were. */
-    function chargeDelta(a, b, g, s) {
-      const da = s * g, db = -s * g;
+    function chargeDelta(a, b, g, s) { return chargeShift(a, b, s * g, -s * g, s > 0, s < 0); }
+    /* The same for any change: a's charge by da, b's by db, and whether a
+       and b count as a pair before and after. */
+    function chargeShift(a, b, da, db, before, after) {
       let Va = 0, Vb = 0;
-      eachNear(x[a], y[a], o => {
+      if (da !== 0) eachNear(x[a], y[a], o => {
         if (o === a || o === b || q[o] === 0 || bonds.has(key(a, o))) return;
         const d = Math.hypot(sep(x[o] - x[a], W), sep(y[o] - y[a], H));
         if (d < CHARGE_R) Va += q[o] * chargePsi(d);
       });
-      eachNear(x[b], y[b], o => {
+      if (db !== 0) eachNear(x[b], y[b], o => {
         if (o === a || o === b || q[o] === 0 || bonds.has(key(b, o))) return;
         const d = Math.hypot(sep(x[o] - x[b], W), sep(y[o] - y[b], H));
         if (d < CHARGE_R) Vb += q[o] * chargePsi(d);
       });
       const psi = chargePsi(Math.hypot(sep(x[b] - x[a], W), sep(y[b] - y[a], H)));
-      const pair = s > 0 ? -q[a] * q[b] * psi : (q[a] + da) * (q[b] + db) * psi;
+      const pair = (after ? (q[a] + da) * (q[b] + db) * psi : 0) - (before ? q[a] * q[b] * psi : 0);
       return S.charge * (da * Va + db * Vb + pair);
     }
     /* A bond made or broken outside settling pays for the charge it moves
@@ -831,22 +904,30 @@
     const chargedIds = new Int32Array(cap), cNext = new Int32Array(cap);
     let cHeads = new Int32Array(1);
     function eachCharged(fn) {
-      let c = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (let i = 0; i < n; i++) if (alive[i] && q[i] !== 0) {
-        chargedIds[c++] = i;
-        if (x[i] < x0) x0 = x[i]; if (x[i] > x1) x1 = x[i];
-        if (y[i] < y0) y0 = y[i]; if (y[i] > y1) y1 = y[i];
-      }
-      if (c < 2) return;
-      const meet = (i, o) => {
+      let c = 0;
+      for (let i = 0; i < n; i++) if (alive[i] && q[i] !== 0) chargedIds[c++] = i;
+      pairsWithin(chargedIds, c, CHARGE_R, (i, o) => {
         const dx = sep(x[o] - x[i], W), dy = sep(y[o] - y[i], H);
         const d = Math.hypot(dx, dy);
         if (d >= CHARGE_R || bonds.has(key(i, o))) return;
         fn(i, o, dx, dy, d);
-      };
+      });
+    }
+    /* Every pair among ids[0..c) that could be within `cell` of each other,
+       once, on a grid of their own built from where they are now. The caller
+       measures the real distance. */
+    function pairsWithin(ids, c, cell, meet) {
+      if (c < 2) return;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let p = 0; p < c; p++) {
+        const i = ids[p];
+        if (x[i] < x0) x0 = x[i]; if (x[i] > x1) x1 = x[i];
+        if (y[i] < y0) y0 = y[i]; if (y[i] > y1) y1 = y[i];
+      }
+      const chargedIds = ids;
       let gw, gh, cw, ch;
-      if (wrap) { x0 = 0; y0 = 0; gw = Math.floor(W / CHARGE_R); gh = Math.floor(H / CHARGE_R); cw = W / gw; ch = H / gh; }
-      else { cw = ch = CHARGE_R; gw = Math.floor((x1 - x0) / cw) + 1; gh = Math.floor((y1 - y0) / ch) + 1; }
+      if (wrap) { x0 = 0; y0 = 0; gw = Math.floor(W / cell); gh = Math.floor(H / cell); cw = W / gw; ch = H / gh; }
+      else { cw = ch = cell; gw = Math.floor((x1 - x0) / cw) + 1; gh = Math.floor((y1 - y0) / ch) + 1; }
       /* Too few cells to tell neighbours from strangers (a tiny looped world,
          or charges spread over an enormous open one): every pair. */
       if ((wrap && (gw < 3 || gh < 3)) || gw * gh > 4 * cap + 64) {
@@ -860,12 +941,12 @@
       cHeads.fill(-1, 0, gw * gh);
       for (let p = 0; p < c; p++) {
         const i = chargedIds[p];
-        const ci = Math.min(gw - 1, Math.floor((x[i] - x0) / cw)), cj = Math.min(gh - 1, Math.floor((y[i] - y0) / ch));
+        const ci = Math.min(gw - 1, Math.max(0, Math.floor((x[i] - x0) / cw))), cj = Math.min(gh - 1, Math.max(0, Math.floor((y[i] - y0) / ch)));
         cNext[i] = cHeads[cj * gw + ci]; cHeads[cj * gw + ci] = i;
       }
       for (let p = 0; p < c; p++) {
         const i = chargedIds[p];
-        const ci = Math.min(gw - 1, Math.floor((x[i] - x0) / cw)), cj = Math.min(gh - 1, Math.floor((y[i] - y0) / ch));
+        const ci = Math.min(gw - 1, Math.max(0, Math.floor((x[i] - x0) / cw))), cj = Math.min(gh - 1, Math.max(0, Math.floor((y[i] - y0) / ch)));
         for (let oj = -1; oj <= 1; oj++) for (let oi = -1; oi <= 1; oi++) {
           let gi = ci + oi, gj = cj + oj;
           if (wrap) { gi = (gi + gw) % gw; gj = (gj + gh) % gh; }
@@ -888,6 +969,172 @@
       return S.charge * u;
     }
 
+    /* -- sticking (with "Everything sticks a little") ---------------------
+       U = -stick * w(d) for any two hexagons, bonded or not: w is 1 at
+       touching and closer, (1 - t^2)^2 across the next STICK_R past it
+       (t from 0 to 1), and 0 beyond, so the force is smooth and is nothing
+       at both ends. Flat inside touching means pushing two apart to exactly
+       touching costs nothing, and a bond at its rest length feels none of it,
+       so making or breaking a bond never changes it. London's dispersion
+       force, short-ranged and the same for every kind; real ones grow with
+       size, and that is left out. */
+    const stickIds = new Int32Array(cap);
+    function eachSticky(fn) {
+      let c = 0, rmax = 0;
+      const big = [];
+      for (let i = 0; i < n; i++) if (alive[i]) {
+        if (r[i] > 1.5) big.push(i); else { stickIds[c++] = i; if (r[i] > rmax) rmax = r[i]; }
+      }
+      const meet = (i, o) => {
+        const dx = sep(x[o] - x[i], W), dy = sep(y[o] - y[i], H);
+        const d = Math.hypot(dx, dy), c0 = r[i] + r[o];
+        if (d < c0 + STICK_R) fn(i, o, dx, dy, d, c0);
+      };
+      pairsWithin(stickIds, c, 2 * rmax + STICK_R, meet);
+      for (const b of big) for (let o = 0; o < n; o++) {
+        if (!alive[o] || o === b || (r[o] > 1.5 && o < b)) continue;
+        meet(b, o);
+      }
+    }
+    function stickForces() {
+      eachSticky((i, o, dx, dy, d, c0) => {
+        if (d <= c0) return;
+        const t = (d - c0) / STICK_R;
+        const f = S.stick * 4 * t * (1 - t * t) / STICK_R / d;      // dU/dd along the line, pulling together
+        if (!pinned[i]) { ax[i] += f * dx / m[i]; ay[i] += f * dy / m[i]; }
+        if (!pinned[o]) { ax[o] -= f * dx / m[o]; ay[o] -= f * dy / m[o]; }
+      });
+    }
+    function stickEnergy() {
+      let u = 0;
+      eachSticky((i, o, dx, dy, d, c0) => {
+        if (d <= c0) { u += 1; return; }
+        const t = (d - c0) / STICK_R, w = 1 - t * t;
+        u += w * w;
+      });
+      return -S.stick * u;
+    }
+
+    /* A pool of just two, for steps taken without settling. */
+    function pairPool(i, j) {
+      poolN = 2; poolIds[0] = i; poolIds[1] = j;
+      poolHeat = heat[i] + heat[j]; poolMass = m[i] + m[j];
+    }
+    /* Accept a step that gives `drop` to the pool, judged at the pool's
+       temperature halfway between before and after: the same number from
+       either side, so a step and its reverse balance (detailed balance). */
+    function acceptMid(drop, Ea) {
+      if (poolMass <= 0 || poolHeat < Math.max(0, -drop)) return false;
+      const T = (poolHeat + drop / 2) / poolMass;
+      if (!(T > 0)) return false;
+      const climb = Ea + Math.max(0, -drop);
+      return climb === 0 || R() < Math.exp(-climb / T);
+    }
+    function poolPay(drop) { if (drop >= 0) poolGive(drop); else poolTake(-drop); }
+
+    /* -- ions (with "Whole charges can jump") -----------------------------
+       See ION_COST. Two free hexagons nearly touching; one, at random, offers
+       the other a whole charge. */
+    function ionEnergyOf(zz, k) {
+      if (!zz) return 0;
+      const p = kindPull(k) / PULL_GAP;
+      return ION_COST * S.charge * (zz > 0 ? 0.5 + p : 0.5 - p);
+    }
+    function tryIon(i, j, dt) {
+      if (R() >= ION_RATE * dt) return;
+      const flip = R() < 0.5, d = flip ? j : i, a = flip ? i : j;
+      if (z[d] >= 1 || z[a] <= -1) return;
+      const kd = baseKind(d), ka = baseKind(a);
+      const cost = ionEnergyOf(z[d] + 1, kd) - ionEnergyOf(z[d], kd) + ionEnergyOf(z[a] - 1, ka) - ionEnergyOf(z[a], ka)
+        + chargeShift(d, a, 1, -1, true, true);
+      if (S.settle) gatherPool(x[i] + sep(x[j] - x[i], W) / 2, y[i] + sep(y[j] - y[i], H) / 2); else pairPool(i, j);
+      if (!acceptMid(-cost, 0)) return;
+      poolPay(-cost);
+      z[d]++; z[a]--; q[d] += 1; q[a] -= 1;
+      tally.ionised++;
+    }
+
+    /* -- energy-rich pieces (with "Energy-rich pieces") -------------------
+       Free hexagons are charged up from outside; the books call it `fed`. */
+    function recharge(dt) {
+      const odds = S.fuelRate * dt;
+      for (let i = 0; i < n; i++) {
+        if (!alive[i] || nb[i] > 0 || act[i] > 0) continue;
+        if (R() < odds) { act[i] = S.fuel; tally.fed += S.fuel; }
+      }
+    }
+
+    /* -- handing over (with "Pieces can be handed over") ------------------
+       A nearly touching B, B bonded to C: A takes B and C is let go, in one
+       step. Weighed as the break and the make together, judged halfway, with
+       the barrier the average of the two bonds' — cheaper than breaking
+       first, which has to find the whole bond. Proposed from the pair A-B,
+       C chosen at random from B's partners; the reverse is proposed from C-B
+       the same way, so C has to be nearly touching B for the step to count. */
+    function trySwap(i, j, dt) {
+      if (R() >= S.bondChance * Math.min(1, dt * 30)) return false;
+      const flip = R() < 0.5, A = flip ? j : i, B = flip ? i : j;
+      if (nb[B] === 0 || units(A) >= capOf(A)) return false;
+      let count = 0;
+      for (let t = 0; t < SLOTS; t++) if (adj[B * SLOTS + t] >= 0) count++;
+      if (count !== nb[B]) return false;
+      let pick = Math.floor(R() * count), C = -1;
+      for (let t = 0; t < SLOTS && C < 0; t++) { const o = adj[B * SLOTS + t]; if (o >= 0 && pick-- === 0) C = o; }
+      if (C < 0 || C === A) return false;
+      const kBC = key(B, C), old = bonds.get(kBC);
+      if (!old || (old.o || 1) !== 1) return false;
+      if (Math.hypot(sep(x[C] - x[B], W), sep(y[C] - y[B], H)) > (r[B] + r[C]) * 1.1) return false;
+      const dUb = charged() ? chargeDelta(old.a, old.b, old.g, -1) : 0;
+      const dropBC = old.B - strain(old) + dUb;
+      const EaBC = barrierAt(old.a, old.sa, old.b, old.sb,
+        Math.atan2(sep(y[old.b] - y[old.a], H), sep(x[old.b] - x[old.a], W)));
+      detach(old);
+      const dx = sep(x[B] - x[A], W), dy = sep(y[B] - y[A], H), dd = Math.hypot(dx, dy) || 1e-9;
+      const ux = dx / dd, uy = dy / dd;
+      const sA = slotFor(A, ux, uy), sB = slotFor(B, -ux, -uy);
+      const Bab = spun() && (sA < 0 || sB < 0) ? 0 : worth(A, B, 0);
+      if (Bab > 0) {
+        const lo = Math.min(A, B), hi = Math.max(A, B), reachAB = r[A] + r[B];
+        const would = { a: lo, b: hi, rest: reachAB, sa: lo === A ? sA : sB, sb: lo === A ? sB : sA };
+        const dUf = charged() ? chargeDelta(lo, hi, chargeGap(lo, hi), 1) : 0;
+        const dropAB = Bab - strain(would) - dUf + act[A] + act[B];
+        const Ea = (barrierAt(A, sA, B, sB, Math.atan2(uy, ux)) + EaBC) / 2;
+        gatherPool(x[B], y[B]);
+        /* The pool itself gains all of it but the springs' share of B-C,
+           which unbond() hands to B and C directly. */
+        const toPool = dropAB - old.B - dUb;
+        if (poolHeat >= Math.max(0, -toPool) && acceptMid(dropAB - dropBC, Ea)) {
+          reattach(old);
+          poolPay(toPool);
+          unbond(kBC, old, true);
+          link(A, B, sA, sB, Bab, reachAB, true);
+          tally.swapped++;
+          return true;
+        }
+      }
+      reattach(old);
+      return false;
+    }
+
+    /* -- bond order (with "Double and triple bonds") ----------------------
+       A bond steps up or down one, if both ends have the room. */
+    function tryOrder(bd) {
+      const o = bd.o || 1, o2 = R() < 0.5 ? o + 1 : o - 1;
+      if (o2 < 1 || o2 > 3) return;
+      const a = bd.a, b = bd.b;
+      if (o2 > o && (used[a] >= capOf(a) || used[b] >= capOf(b))) return;
+      const B2 = bd.B / ORDER_WORTH[o] * ORDER_WORTH[o2];
+      const rest2 = bd.rest / ORDER_LENGTH[o] * ORDER_LENGTH[o2];
+      const drop = (B2 - bd.B) - (strain({ a: a, b: b, rest: rest2, sa: bd.sa, sb: bd.sb }) - strain(bd));
+      const dx = sep(x[b] - x[a], W), dy = sep(y[b] - y[a], H);
+      gatherPool(x[a] + dx / 2, y[a] + dy / 2);
+      if (!acceptMid(drop, barrierAt(a, bd.sa, b, bd.sb, Math.atan2(dy, dx)))) return;
+      poolPay(drop);
+      bd.B = B2; bd.rest = rest2; bd.o = o2;
+      used[a] += o2 - o; used[b] += o2 - o;
+      tally.reordered++;
+    }
+
     /* Make the bond: the record, the slots, the counts. Shared by both ways
        of forming one; the caller has decided it happens and pays for it. */
     function link(i, j, si, sj, B, rest, viaPool) {
@@ -895,12 +1142,34 @@
       const bd = { a: lo, b: up, B: B, rest: rest, sa: lo === i ? si : sj, sb: lo === i ? sj : si,
                    g: chargeGap(lo, up) };
       if (!viaPool && charged()) payCharge(lo, up, chargeDelta(lo, up, bd.g, 1));
+      if (S.order) bd.o = 1;
       bonds.set(key(i, j), bd);
       q[lo] += bd.g; q[up] -= bd.g;
       if (si >= 0) adj[i * SLOTS + si] = j;
       if (sj >= 0) adj[j * SLOTS + sj] = i;
-      nb[i]++; nb[j]++; tally.bondsMade++;
+      nb[i]++; nb[j]++; used[i]++; used[j]++; tally.bondsMade++;
+      /* A charged-up end spends what it carried. Settling has already put it
+         in the pool; otherwise it lands in the two ends as heat. */
+      if (act[lo] > 0 || act[up] > 0) {
+        if (!viaPool) { heat[lo] += act[lo]; heat[up] += act[up]; }
+        act[lo] = 0; act[up] = 0;
+      }
       return bd;
+    }
+    /* Take a bond away and put it back exactly, for weighing a hand-over. */
+    function detach(bd) {
+      bonds.delete(key(bd.a, bd.b)); nb[bd.a]--; nb[bd.b]--;
+      used[bd.a] -= bd.o || 1; used[bd.b] -= bd.o || 1;
+      q[bd.a] -= bd.g; q[bd.b] += bd.g;
+      if (bd.sa >= 0) adj[bd.a * SLOTS + bd.sa] = -1;
+      if (bd.sb >= 0) adj[bd.b * SLOTS + bd.sb] = -1;
+    }
+    function reattach(bd) {
+      bonds.set(key(bd.a, bd.b), bd); nb[bd.a]++; nb[bd.b]++;
+      used[bd.a] += bd.o || 1; used[bd.b] += bd.o || 1;
+      q[bd.a] += bd.g; q[bd.b] -= bd.g;
+      if (bd.sa >= 0) adj[bd.a * SLOTS + bd.sa] = bd.b;
+      if (bd.sb >= 0) adj[bd.b * SLOTS + bd.sb] = bd.a;
     }
 
     /* ── settling (with "Bonds settle with temperature") ───────────────────
@@ -936,9 +1205,12 @@
        contact), whatever their speed: that is a place to be, which balances,
        where an impact is an event, which does not. */
     function trySettle(i, j, ux, uy, reachIJ, dt) {
-      if (nb[i] >= capOf(i) || nb[j] >= capOf(j)) return false;
+      if (units(i) >= capOf(i) || units(j) >= capOf(j)) return false;
       const nu = S.bondChance * Math.min(1, dt * 30);
       if (R() >= nu) return false;
+      /* With bond order on, half of a bond's tries go to its order, so half
+         of the tries at making one are let go too, to keep the two even. */
+      if (S.order && R() < 0.5) return false;
       const B = worth(i, j, 0);
       if (!(B > 0)) return false;
       const si = slotFor(i, ux, uy), sj = slotFor(j, -ux, -uy);
@@ -951,10 +1223,14 @@
       const lo = Math.min(i, j), up = Math.max(i, j);
       const would = { a: lo, b: up, rest: reachIJ, sa: lo === i ? si : sj, sb: lo === i ? sj : si };
       const dU = charged() ? chargeDelta(lo, up, chargeGap(lo, up), 1) : 0;
-      const drop = B - strain(would) - dU;
+      /* A charged-up end spends what it carries: more given off, and less of
+         the barrier left to find. Not balanced by anything: that is the
+         point of it. */
+      const lift = act[i] + act[j];
+      const drop = B - strain(would) - dU + lift;
       gatherPool(x[i] + sep(x[j] - x[i], W) / 2, y[i] + sep(y[j] - y[i], H) / 2);
       const T = poolMass > 0 ? poolHeat / poolMass : 0;
-      const climb = Ea + Math.max(0, -drop);
+      const climb = Math.max(0, Ea - lift) + Math.max(0, -drop);
       const ok = climb === 0 || (T > 0 && poolHeat >= Math.max(0, -drop) && R() < Math.exp(-climb / T));
       if (!ok) return false;
       link(i, j, si, sj, B, reachIJ, true);
@@ -966,6 +1242,11 @@
       const nu = S.bondChance * Math.min(1, dt * 30);
       for (const [k, bd] of bonds) {
         if (R() >= nu) continue;
+        /* Making is tried by half the pairs when hand-overs are on, so
+           breaking is tried by half the bonds; and with bond order on, half
+           of a bond's tries go to its order, and only a single comes apart. */
+        if (S.swap && R() < 0.5) continue;
+        if (S.order) { if (R() < 0.5) { tryOrder(bd); continue; } if ((bd.o || 1) > 1) continue; }
         const a = bd.a, b = bd.b;
         const dx = sep(x[b] - x[a], W), dy = sep(y[b] - y[a], H);
         /* Breaking moves the charge back, exactly the reverse of what making
@@ -1070,7 +1351,7 @@
       for (const [k, bd] of bonds) {
         if (R() > odds) continue;
         const a = bd.a, b = bd.b;
-        const want = worth(a, b, 1);
+        const want = worth(a, b, 1) * ORDER_WORTH[bd.o || 1];
         if (want === bd.B) continue;
         const have = heat[a] + heat[b];
         if (want > bd.B) {
@@ -1221,7 +1502,7 @@
       const lost = 0.5 * (m[a] * m[b] / M) * (rvx * rvx + rvy * rvy);
       x[a] += dx * m[b] / M; y[a] += dy * m[b] / M;
       vx[a] = (m[a] * vx[a] + m[b] * vx[b]) / M; vy[a] = (m[a] * vy[a] + m[b] * vy[b]) / M;
-      heat[a] += heat[b] + lost;
+      heat[a] += heat[b] + lost + act[a] + act[b]; act[a] = 0; act[b] = 0;
       m[a] = M; kind[a] = Math.max(1, Math.round(M)); r[a] = radiusOf(M);
       for (const [k, bd] of bonds) if (bd.a === b || bd.b === b || bd.a === a || bd.b === a) {
         heat[a] += 0; unbond(k, bd); tally.bondsBroken--;       // dissolved into the new body, not broken
@@ -1249,7 +1530,11 @@
       }
       /* Settling bonds are tried by pairs that are nearly touching, before
          and instead of anything an impact would do. */
-      if (S.settle && S.bonding !== "none" && !bonds.has(key(i, j)) && trySettle(i, j, ux, uy, reach, dt)) return;
+      if (S.settle && S.bonding !== "none" && !bonds.has(key(i, j))) {
+        if (S.swap && R() < 0.5) { if (trySwap(i, j, dt)) return; }
+        else if (trySettle(i, j, ux, uy, reach, dt)) return;
+      }
+      if (S.ions && charged() && nb[i] === 0 && nb[j] === 0) tryIon(i, j, dt);
       if (d > reach) return;
       const bonded = bonds.has(key(i, j));
       const vn = (vx[j] - vx[i]) * ux + (vy[j] - vy[i]) * uy;
@@ -1284,7 +1569,7 @@
         if (chipI) { impact[i] += lost * hi; impactX[i] -= ux * lost * hi; impactY[i] -= uy * lost * hi; }
         if (chipJ) { impact[j] += lost * hj; impactX[j] += ux * lost * hj; impactY[j] += uy * lost * hj; }
       }
-      if (!S.settle && !chipI && !chipJ && S.bonding !== "none" && nb[i] < capOf(i) && nb[j] < capOf(j) && Math.abs(vn) < S.bondSpeed) {
+      if (!S.settle && !chipI && !chipJ && S.bonding !== "none" && units(i) < capOf(i) && units(j) < capOf(j) && Math.abs(vn) < S.bondSpeed) {
         const a = affinity(S.bonding, kind[i], kind[j], S.kinds, siteOf(i, j, 0), siteOf(j, i, 0));
         if (a > 0 && R() < S.bondChance * Math.min(1, dt * 30)) {
           /* Which slot each end would use. With angles off this is only a
@@ -1294,7 +1579,7 @@
           const si = slotFor(i, ux, uy), sj = slotFor(j, -ux, -uy);
           /* A barrier has to be climbed with the heat the two of them have. */
           const T = bondTemp(i, j);
-          const stuck = S.barrier > 0 && !(T > 0 && R() < Math.exp(-barrierAt(i, si, j, sj, Math.atan2(uy, ux)) / T));
+          const stuck = S.barrier > 0 && !(T > 0 && R() < Math.exp(-Math.max(0, barrierAt(i, si, j, sj, Math.atan2(uy, ux)) - act[i] - act[j]) / T));
           if (!stuck && (!spun() || (si >= 0 && sj >= 0))) {
             const B = worth(i, j, 0);
             link(i, j, si, sj, B, reach);
@@ -1371,7 +1656,8 @@
     function substep(dt) {
       ax.set(gax); ay.set(gay);
       bondForces(dt);
-      if (charged() && bonds.size) chargeForces();
+      if (charged() && (bonds.size || S.ions)) chargeForces();
+      if (S.stick > 0) stickForces();
       const lim = S.limit, keep = S.drag > 0 ? Math.exp(-S.drag * dt) : 1, turning = spun();
       for (let i = 0; i < n; i++) {
         if (!alive[i]) continue;
@@ -1393,6 +1679,7 @@
       impact.fill(0); impactX.fill(0); impactY.fill(0);
       eachPair((i, j) => touch(i, j, dt));
       heatStep(dt);
+      if (S.fuel > 0 && S.bonding !== "none") recharge(dt);
       breakBodies(dt);
       react(dt);
       if (S.settle && S.bonding !== "none") settleBonds(dt); else shakeBonds(dt);
@@ -1445,6 +1732,14 @@
         pull += stretch; bend += strain(bd) - stretch;
         const a = find(bd.a), b = find(bd.b); if (a !== b) parent[a] = b;
       }
+      /* What the newer settings hold: charged-up energy, whole charges and
+         the energy of holding them, and bonds of each order. */
+      let stored = 0, ionE = 0, ionCount = 0, doubles = 0, triples = 0;
+      for (let i = 0; i < n; i++) if (alive[i]) {
+        stored += act[i];
+        if (z[i] !== 0) { ionCount++; ionE += ionEnergyOf(z[i], baseKind(i)); }
+      }
+      if (S.order) for (const bd of bonds.values()) { if (bd.o === 2) doubles++; else if (bd.o === 3) triples++; }
       const sizes = new Map();
       for (const bd of bonds.values()) { const f = find(bd.a); sizes.set(f, 0); }
       let clustered = 0;
@@ -1453,7 +1748,11 @@
       return {
         time: tally.time, count: count, started: started, mass: mass, startMass: startMass,
         motion: ke, heat: ht, bondEnergy: be, springEnergy: pull, twistEnergy: bend,
-        chargeEnergy: charged() && bonds.size ? chargeEnergy() : 0,
+        chargeEnergy: charged() && (bonds.size || S.ions) ? chargeEnergy() : 0,
+        stickEnergy: S.stick > 0 ? stickEnergy() : 0,
+        storedEnergy: stored, fed: tally.fed, ionEnergy: ionE,
+        ionised: tally.ionised, swapped: tally.swapped, reordered: tally.reordered,
+        ions: ionCount, doubles: doubles, triples: triples,
         temperature: mass > 0 ? ht / mass : 0,
         momentumX: px, momentumY: py, bonds: bonds.size, clusters: sizes.size, biggest: biggest,
         clustered: clustered, heaviest: heaviest,
@@ -1609,7 +1908,7 @@
     function describe(i) {
       if (i < 0 || !alive[i]) return null;
       const with_ = [];
-      for (const bd of bonds.values()) if (bd.a === i || bd.b === i) with_.push({ other: bd.a === i ? bd.b : bd.a, strength: bd.B });
+      for (const bd of bonds.values()) if (bd.a === i || bd.b === i) with_.push({ other: bd.a === i ? bd.b : bd.a, strength: bd.B, order: bd.o || 1 });
       return { id: i, kind: kind[i], mass: m[i], temperature: heat[i] / m[i], heat: heat[i],
                speed: Math.hypot(vx[i], vy[i]), bonds: with_, pinned: !!pinned[i],
                facing: face[i], spin: spin[i], turning: spun(),
@@ -1617,6 +1916,7 @@
                   pull (null when every kind is the same). */
                canHold: capOf(i), pull: S.bondsPer === "kind" || charged() ? kindPull(baseKind(i)) : null,
                charge: charged() ? q[i] : null,
+               ion: S.ions ? z[i] : null, stored: S.fuel > 0 ? act[i] : null,
                /* The kind it bonds as right now, moved on by the bonds it
                   holds and by the kind of the one it is holding. */
                actsAs: ((kind[i] - 1 + siteOf(i, -1, 0)) % S.kinds) + 1 };
