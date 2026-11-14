@@ -764,7 +764,7 @@ node projects/world-builder/test/world-builder.test.mjs --generations
 That is an explicitly expensive experiment, not a CI check that was run for this change. A week
 of stability is not evidence of century-scale balance; earlier century measurements are superseded.
 
-41 settings in ten groups: the land, the year (distance from the equator, how cold winter gets,
+42 settings in ten groups: the land, the year (distance from the equator, how cold winter gets,
 when the world starts, year to year), how it starts (food put by, crops in the fields, how old
 they are, how settled they are), the people, lives (lifespan, childhood, children, hunger,
 sickness), money (coins or a shared store, inequality, prices, tax, inheritance), minds (talk,
@@ -851,6 +851,57 @@ asked for the graphs and the grain trade the year needed. All of it is on the ru
   there (the crowd routing above) — except when it has stood within 2.5 tiles of its end for most
   of an hour after rerouting, when it counts as arrived. Forty carriers aimed at one village's
   middle otherwise never arrived at all.
+
+### Settings that mean what they say (2026-11-14)
+
+Ric, going through the setup page: *"a full village … there should be an option to say as much as
+can sustain it"*, *"kids shouldn't have a bunch of money cuz they can't spend it"*, stubbornness
+*"should be passed on genes … set the range but not everyone being the same"*, *"what if a system
+of who has the most money gets overthrown by a civil war?"*, and *"soldiers in peacetime … should
+be decided by leaders"*. Each is now what the engine does (`test/settings-sense.test.mjs`):
+
+- **A full village** goes to *as many as its land can feed*: the limit is what the fields within
+  eight tiles grow on an average day, a ration a head (`crowdOf`, `landFeeds`), worked out daily
+  with the territory, so lost land or thin soil makes a village full sooner. The number stays as
+  an option, and is still the default.
+- **Coins to start, on average**: held by the grown-ups, the same total as before; children have
+  none of their own. A child's inheritance is held in `trust` and is theirs when they are grown,
+  and still counts in the money that is checked for being conserved.
+- **Natures are personal and inherited.** Stubbornness was one number for the whole world; now each
+  person has their own (`stub`), and a conversation moves each by their own openness. Children take
+  after their parents. **How much they differ** sets how far one founder's nature — stubbornness,
+  boldness, warmth, greed — is from the next and how far a child strays; at its middle the founders
+  are spread exactly as before. The inspector shows Stubborn and Greedy bars.
+- **Who leads, at first.** Each faction has its own way (`f.rule`), shown on its card. A chief or a
+  rule of the rich falls in a civil war (`revolution`) when at least 45% of its grown-ups have
+  turned on it and they outnumber the soldiers still loyal two to one: both sides lose people, and
+  the winners choose a vote if they lean to sharing, else a chief. Nothing is on a timer; a regime
+  its people bear is never touched, and one fallen cannot fall again for three years. Measured: a
+  hated rule of the rich (inequality 0.95, loyalty none, tax 50%) fell in both factions inside 120
+  days; a borne one (no inequality, full loyalty, no tax) stood.
+- **Soldiers at the start**, then the leader's call: in peace each leader moves a little a day
+  toward half the biggest neighbouring army's share plus a base, a little more for old wrongs and
+  a bold leader, less when the treasury cannot pay — and recruits toward it in peace too. Matching
+  a neighbour in full was an arms race to the cap; half settles near eight in a hundred.
+- **No longer live:** stubbornness, how much they differ, peacetime soldiers and tax are people's
+  natures and leaders' decisions now, so the running World tab no longer offers them. Tax had been
+  live and did nothing: moving it shifted only a floor leaders seldom reached, and no faction's
+  actual tax changed. It is **Tax at the start**; to set a tax mid-run, rule the faction.
+
+Then a pass over every other setting for the same kind of thing:
+
+- **Starving took ten days.** Somebody with nothing at all to eat lost all their health in ten
+  days at "Going hungry" 1 — four times faster than a fed adult with water lasts. It is about six
+  weeks now (`STARVE`), and the setting says it in days ("about 42 days with no food at all";
+  14 to 208 across its range). Every famine figure before this date was measured at the old rate. Measured after, the same year-long runs of a 300-person valley starved 0, 1, 0 and 0 (mild winter seeds 11 and 108, hard winter 11 and 108), where they had starved 0, 32, 5 and 27: the "famine valley" of seed 108 was mostly people dying before asking a neighbour, buying grain or moving could reach them.
+- **"A vote every" hid itself** unless votes were the starting rule, although a revolution can
+  bring votes in and they use it. It always shows.
+- **"The world starts in"** said "Autumn — the harvest is in the fields" and "Winter — with
+  nothing put by", which contradicted Crops in the fields and Food put by when those were set
+  otherwise. Plain season names now; what is in the fields and the houses is set under How it
+  starts.
+- **Settings with no explanation** — who starts rich, inheritance, loyalty, how quick to fight, how
+  deadly, villages each — now say what they do.
 
 ### How fast a world can run (2026-11-14)
 

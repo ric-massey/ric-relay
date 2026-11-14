@@ -568,6 +568,12 @@ nobody had linked was a page nobody could find.
   byte for byte the same (`test/rule.test.mjs`). Ric's next list — military reach, production
   chains, what people know, relationships, households and politics — is at the end of
   `projects/world-builder/PEOPLE-VISION.md`, in the agreed order.
+  **A setting must mean what its label says** (Ric's pass over the setup page, 2026-11-14): a
+  number that is really a person's nature is per person and inherited (stubbornness, with "How
+  much they differ"); a number that is really a leader's decision is only the starting value
+  (soldiers, tax), and is not offered as live; a village can be "as many as its land can feed";
+  children hold no coins; a regime of chiefs or the rich can fall to its own people. Before adding
+  a setting, ask which of those it is. `test/settings-sense.test.mjs` holds them.
   Conversation records surround
   the entire interaction, since several branches change state after speaking; do not infer an
   outcome from a dialogue type or move those effects into the renderer. The quick checks are in

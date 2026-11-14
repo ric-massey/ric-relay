@@ -1472,7 +1472,7 @@
           const foes = w.factions.filter(o => o.alive && o !== f && f.rel[o.id].war).map(o => esc(o.name));
           return "<button class='fac' data-go='" + (big ? "at:" + big.x + ":" + big.y : "") + "'><span class='nm'>" + fname(f.id) + "</span>" +
             "<span class='ln'>" + f.pop + " people · " + vs.length + (vs.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
-            "<span class='ln'>Led by " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
+            "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (w.settings.money === "coins" ? " · tax " + Math.round(f.tax * 100) + "%" : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + "</button>" + rulePane(f);
         }).join("") +
@@ -1532,7 +1532,7 @@
         "<p>" + fname(p.f) + (p.from !== p.f ? " <span class='small'>— born under " + esc(w.factions[p.from].name) + "</span>" : "") + "</p>" +
         "<p class='small'>" + (w.leans(p) === "share" ? "Believes what is grown should be shared out." : w.leans(p) === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
         (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
-        "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + "</div>" +
+        "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + bar("Stubborn", p.stub ?? 0.5) + bar("Greedy", p.greed) + "</div>" +
         "<p class='small'>One ration supplies an adult for one day. Children’s needs rise as they grow.</p>" +
         "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 2) + " rations</dd><dt>Daily need</dt><dd>" + num(w.dailyNeed(p), 2) + " rations</dd><dt>Carried food covers</dt><dd>" + num(p.food / w.dailyNeed(p), 1) + " days</dd>" + (w.settings.money === "coins" ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
         "<dt>Loose goods</dt><dd>" + num(p.goods, 2) + "</dd><dt>Children</dt><dd>" + p.kids + "</dd></dl>" + equipmentPane(p) +

@@ -129,6 +129,8 @@ const SUITES = [
   ['world-builder rule and grain', ['projects/world-builder/test/rule.test.mjs']],
   // War has to be fed: rations, resupply at home, slow raising, the wounded go home.
   ['world-builder war', ['projects/world-builder/test/war.test.mjs']],
+  // Settings mean what they say: coins, inherited natures, land-fed villages, leaders' armies, revolutions.
+  ['world-builder settings sense', ['projects/world-builder/test/settings-sense.test.mjs']],
   /* Physics settings/conservation and seven actual days per People preset.
      The shared daily clock superseded the compressed headless century in
      2026-11-12. Generation-scale experiments remain explicit --generations

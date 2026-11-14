@@ -67,7 +67,8 @@
         say: scale(["no winter — things grow all year", "mild winters", "a real winter", "hard winters"]),
         help: "Crops grow in the warm months and stop in the cold. In a hard winter people eat more, nothing grows for months, and what was not brought in by autumn freezes in the fields." },
       { key: "start", label: "The world starts in", type: "select", def: "spring",
-        options: [["spring", "Spring"], ["summer", "Summer"], ["autumn", "Autumn — the harvest is in the fields"], ["winter", "Winter — with nothing put by"]] },
+        options: [["spring", "Spring"], ["summer", "Summer"], ["autumn", "Autumn"], ["winter", "Winter"]],
+        help: "What is in the fields and the houses on that day is set under How it starts." },
       { key: "weather", label: "Year to year", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["every year the same", "a little different", "good years and bad", "droughts and killing frosts"]),
         help: "Each year draws its own spring, warmth and harvest — early or late, warm or cold, plenty or want. Drawn from the seed, so the same seed gives the same years." },
@@ -92,9 +93,10 @@
       { key: "factions", label: "How many factions", type: "range", min: 1, max: 8, step: 1, def: 4,
         say: v => (v === 1 ? "one people" : v + " factions"), help: "They may not stay this many." },
       { key: "villages", label: "Villages each", type: "range", min: 1, max: 4, step: 1, def: 2,
-        say: v => (v === 1 ? "one village" : v + " villages") },
-      { key: "crowd", label: "A full village", type: "range", min: 20, max: 200, step: 5, def: 70,
-        say: v => v + " people", help: "Past this, some of them leave to found a new one — if there is land left." },
+        say: v => (v === 1 ? "one village" : v + " villages"), help: "How many villages each faction starts with. More are founded when one fills." },
+      { key: "crowd", label: "A full village", type: "range", min: 20, max: 205, step: 5, def: 70,
+        say: v => (v >= 205 ? "as many as its land can feed" : v + " people"),
+        help: "Past this, some leave — for a village with room or food, or to found a new one if there is land left. At the far end there is no number: a village is full when its own fields cannot feed it." },
     ]},
     { title: "Lives", items: [
       { key: "life", label: "How long they live", type: "range", min: 20, max: 120, step: 1, def: 60,
@@ -105,8 +107,8 @@
         say: scale(["none — this is the last generation", "few", "enough to replace themselves", "many", "as many as they can feed"]),
         help: "How readily a fed, paired couple has a child." },
       { key: "hunger", label: "Going hungry", type: "range", min: 0.2, max: 3, step: 0.1, def: 1,
-        say: v => (v < 0.7 ? "they last a long time" : v < 1.6 ? "weeks to live" : "days to live"),
-        help: "How quickly somebody with no food dies." },
+        say: v => "about " + Math.round(1 / (STARVE * v) / 24) + " days with no food at all",
+        help: "How long somebody with nothing to eat lasts. About six weeks is what a fed adult with water survives; a fortnight is a hard, cold, sick world." },
       { key: "plague", label: "Sickness", type: "select", def: "rare",
         options: [["none", "None"], ["rare", "Now and then"], ["common", "Often"]],
         help: "A sickness starts in one person and passes to whoever they talk to." },
@@ -115,24 +117,32 @@
       { key: "money", label: "How they trade", type: "select", def: "coins",
         options: [["coins", "Coins and markets"], ["shared", "No money — a shared store"]],
         help: "With a shared store everybody puts in what they grow and takes what they need." },
-      { key: "coins", when: s => s.money === "coins", label: "Coins each to start", type: "range", min: 0, max: 40, step: 1, def: 8,
-        say: v => v + " coins" },
+      { key: "coins", when: s => s.money === "coins", label: "Coins to start, on average", type: "range", min: 0, max: 40, step: 1, def: 8,
+        say: v => v + " coins a head",
+        help: "Held by the grown-ups — children have none of their own, and what one inherits is kept for them until they are grown. How evenly it is spread is the next setting." },
       { key: "unequal", when: s => s.money === "coins", label: "Who starts rich", type: "range", min: 0, max: 1, step: 0.05, def: 0.3,
-        say: scale(["everybody the same", "some a little more", "a few rich families", "one in ten owns most of it"]) },
+        say: scale(["everybody the same", "some a little more", "a few rich families", "one in ten owns most of it"]),
+        help: "How the starting coins are spread: evenly, or most of them in a few hands." },
       { key: "prices", when: s => s.money === "coins", label: "Prices", type: "select", def: "float",
         options: [["float", "Rise when things run short"], ["fixed", "Fixed by law"]],
         help: "A fixed price cannot tell a farmer the village is hungry." },
-      { key: "tax", when: s => s.money === "coins", label: "Tax", type: "range", min: 0, max: 0.6, step: 0.02, def: 0.12,
-        say: v => (v === 0 ? "none" : pct(v) + " of every sale"), help: "What a faction takes to pay its soldiers. Leaders move it once the world is running." },
+      { key: "tax", when: s => s.money === "coins", label: "Tax at the start", type: "range", min: 0, max: 0.6, step: 0.02, def: 0.12,
+        say: v => (v === 0 ? "none" : pct(v) + " of every sale"),
+        help: "What each faction takes to pay its soldiers to begin with. After that it is each leader's call — or yours, if you rule a faction." },
       { key: "inherit", when: s => s.money === "coins", label: "When somebody dies", type: "select", def: "kids",
-        options: [["kids", "Their children get their coins"], ["faction", "Their faction takes them"], ["village", "Shared round the village"]] },
+        options: [["kids", "Their children get their coins"], ["faction", "Their faction takes them"], ["village", "Shared round the village"]],
+        help: "Who gets a person's coins. A child's share is kept for them until they are grown." },
     ]},
     { title: "Minds", items: [
       { key: "talk", label: "How much they talk", type: "range", min: 0, max: 1, step: 0.05, def: 0.6,
         say: scale(["never", "rarely", "now and then", "often", "to everybody they pass"]),
         help: "News, opinions, friendships and sickness all travel by talking." },
       { key: "stubborn", label: "How stubborn they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
-        say: scale(["they believe the last person they spoke to", "open", "set in their ways", "nobody changes anybody's mind"]) },
+        say: scale(["they believe the last person they spoke to", "open", "set in their ways", "nobody changes anybody's mind"]),
+        help: "On average. Each person is their own, and children take after their parents." },
+      { key: "differ", label: "How much they differ", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["all alike", "a little", "as people do", "a people of extremes"]),
+        help: "How far one person's nature — stubbornness, boldness, warmth, greed — is from the next, and how far a child strays from its parents." },
       { key: "divided", label: "How far apart they start", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["everybody agrees", "some difference", "divided", "two camps"]),
         help: "The one thing they argue about: should what is grown be shared out, or does each keep their own?" },
@@ -143,12 +153,14 @@
         help: "How readily an unhappy person joins the faction of somebody who is doing better." },
     ]},
     { title: "Power", items: [
-      { key: "rule", label: "Who leads", type: "select", def: "elected",
-        options: [["elected", "Whoever they vote for"], ["chief", "A chief for life, then their child"], ["rich", "Whoever is richest"]] },
-      { key: "term", when: s => s.rule === "elected", label: "A vote every", type: "range", min: 1, max: 20, step: 1, def: 6,
-        say: v => v + (v === 1 ? " year" : " years"), help: "Only where leaders are voted for." },
+      { key: "rule", label: "Who leads, at first", type: "select", def: "elected",
+        options: [["elected", "Whoever they vote for"], ["chief", "A chief for life, then their child"], ["rich", "Whoever is richest"]],
+        help: "Each faction starts this way. A people who have turned on a chief or on the rich, and who outnumber the soldiers still loyal, can overthrow them and choose their own way." },
+      { key: "term", label: "A vote every", type: "range", min: 1, max: 20, step: 1, def: 6,
+        say: v => v + (v === 1 ? " year" : " years"), help: "Wherever leaders are voted for — from the start, or after a revolution brings in votes." },
       { key: "loyalty", label: "How loyal they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
-        say: scale(["they owe nobody anything", "grudging", "ordinary", "devoted", "whatever is done to them"]) },
+        say: scale(["they owe nobody anything", "grudging", "ordinary", "devoted", "whatever is done to them"]),
+        help: "How far people stand by their faction: how loyal they start, and how far hard times, taxes and a leader they disagree with wear it down." },
       { key: "rebel", label: "Breaking away", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["never", "only in despair", "when a village has had enough", "at the first grievance"]),
         help: "How unhappy a village has to be before it declares itself its own faction." },
@@ -156,11 +168,13 @@
     { title: "War", items: [
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
-        say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]) },
-      { key: "soldiers", label: "Soldiers in peacetime", type: "range", min: 0, max: 0.4, step: 0.01, def: 0.08,
-        say: v => (v === 0 ? "none" : "1 in " + Math.round(1 / v)), help: "They do not farm, and somebody has to pay them." },
+        say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
+        help: "How readily leaders go to war over old wrongs, land or hunger. A bold leader is quicker to it whatever this says." },
+      { key: "soldiers", label: "Soldiers at the start", type: "range", min: 0, max: 0.4, step: 0.01, def: 0.08,
+        say: v => (v === 0 ? "none" : "1 in " + Math.round(1 / v)),
+        help: "After that each leader keeps as many as their neighbours' armies, their old wars and their treasury call for. Soldiers do not farm, and somebody has to pay them." },
       { key: "deadly", when: s => s.war, label: "How deadly a fight is", type: "range", min: 0.1, max: 3, step: 0.1, def: 1,
-        say: v => (v < 0.6 ? "mostly bruises" : v < 1.6 ? "people die" : "few walk away") },
+        say: v => (v < 0.6 ? "mostly bruises" : v < 1.6 ? "people die" : "few walk away"), help: "How often a blow in a fight kills." },
     ]},
     { title: "Time", items: [
       { key: "rate", label: "Clock", type: "range", min: 0.25, max: 1000, step: 0.25, def: 1, curve: 4,
@@ -173,8 +187,11 @@
      ones the engine reads as it goes: a setting that only shapes the first
      day — the map, how many people, the seed, how it starts — would change
      nothing if moved later, which is the one thing a control must not do. */
-  const LIVE = new Set(["rich", "latitude", "winter", "weather", "crowd", "births", "hunger", "plague", "prices", "tax",
-                        "talk", "stubborn", "memory", "switch", "rebel", "war", "aggression", "soldiers", "deadly"]);
+  /* Not "stubborn", "differ", "soldiers" or "rule" any more: since
+     2026-11-14 those are people's own natures and leaders' own decisions,
+     set at the start and passed on or changed from there. */
+  const LIVE = new Set(["rich", "latitude", "winter", "weather", "crowd", "births", "hunger", "plague", "prices",
+                        "talk", "memory", "switch", "rebel", "war", "aggression", "deadly"]);
   for (const g of SCHEMA) for (const it of g.items) if (LIVE.has(it.key)) it.live = true;
   const DEFAULTS = {};
   for (const g of SCHEMA) for (const it of g.items) DEFAULTS[it.key] = it.def;
@@ -307,6 +324,11 @@
      Taking a village needs four unbroken days, so what an army carries decides
      what it can take. */
   const CAMPAIGN_DAYS = 10;
+  /* Health lost an hour with nothing at all to eat, at "Going hungry" 1:
+     about six weeks to death, what a fed adult with water survives. It was
+     0.004 — ten days — until 2026-11-14, four times too fast, which made every
+     famine in this world quicker and deadlier than famines are. */
+  const STARVE = 0.001;
   const WAGE = 1;                   // coins per day; default fixed-price daily food costs 1
 
   /* How long a thing takes, in hours. Measured 2026-11-13: before this table
@@ -460,7 +482,7 @@
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
-                  leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers,
+                  leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9,
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6 };
       factions.push(f);
@@ -507,7 +529,7 @@
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
                   tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30), food: 0.8 + R() * 0.6, coins: 0, goods: 0, gear: {},
-                  hp: 1, bold: R(), warm: R(), greed: R(), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
+                  hp: 1, bold: nature(R()), warm: nature(R()), greed: nature(R()), stub: clamp(S.stubborn + (R() - 0.5) * S.differ, 0, 1), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, friends: new Map(), partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
                   unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id,
@@ -523,9 +545,13 @@
         // Starting supplies belong to world setup, not to each new birth.
         // A newborn is fed from the same household/store as other children.
         p.food = 0;
-        p.bold = clamp((mum.bold + dad.bold) / 2 + (R() - 0.5) * 0.3, 0, 1);
-        p.warm = clamp((mum.warm + dad.warm) / 2 + (R() - 0.5) * 0.3, 0, 1);
-        p.greed = clamp((mum.greed + dad.greed) / 2 + (R() - 0.5) * 0.3, 0, 1);
+        /* Children take after their parents, and stray from them as far as
+           "How much they differ" allows (at its middle, as they always did). */
+        const stray = 0.6 * S.differ;
+        p.bold = clamp((mum.bold + dad.bold) / 2 + (R() - 0.5) * stray, 0, 1);
+        p.warm = clamp((mum.warm + dad.warm) / 2 + (R() - 0.5) * stray, 0, 1);
+        p.greed = clamp((mum.greed + dad.greed) / 2 + (R() - 0.5) * stray, 0, 1);
+        p.stub = clamp(((mum.stub ?? S.stubborn) + (dad.stub ?? S.stubborn)) / 2 + (R() - 0.5) * stray, 0, 1);
         p.views = clamp((mum.views + dad.views) / 2 + (R() - 0.5) * 0.4, -1, 1);
       } else {
         /* Divided worlds start as two camps, pulled toward wherever their own
@@ -537,6 +563,9 @@
       return p;
     }
 
+    /* A founder's nature: spread about the middle by "How much they differ"
+       — at its middle, exactly the even spread it always was. */
+    function nature(u) { return clamp(0.5 + (u - 0.5) * 2 * S.differ, 0, 1); }
     const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const adult = p => p.age >= S.grown;
     const atWar = (a, b) => a !== b && factions[a].rel[b] && factions[a].rel[b].war;
@@ -605,7 +634,7 @@
         /* Unequal starts are a long tail: most near nothing, a few a lot. The
            total is the same either way, so the setting moves coins, not mints them. */
         const tail = Math.pow(R(), 1 + S.unequal * 8) * (1 + S.unequal * 8);
-        p.coins = shared ? 0 : S.coins * ((1 - S.unequal) + S.unequal * tail * 1.6);
+        p.coins = shared || !adult(p) ? 0 : S.coins * ((1 - S.unequal) + S.unequal * tail * 1.6);
         if (adult(p)) p.job = "farmer";
       }
       for (const v of villages) {
@@ -614,6 +643,13 @@
         v.food = n * (0.8 + putByDays(S.stored) * 0.25); v.goods = n * 0.1; v.till = shared ? 0 : n * 2 + 5;
       }
       for (const f of factions) f.treasury = shared ? 0 : 10;
+      /* The children's share of "Coins to start, on average" is their
+         parents': the same total, held by the grown-ups. */
+      if (!shared) {
+        let held = 0; for (const p of people) held += p.coins;
+        const want = S.coins * people.length;
+        if (held > 0) for (const p of people) p.coins *= want / held;
+      }
       /* "Food put by": days of each person's own need, in the house. */
       if (S.stored > 0) for (const p of people) p.food += putByDays(S.stored) * baseNeed(p);
       count.minted = money();
@@ -655,13 +691,31 @@
 
     function money() {
       let c = 0;
-      for (const p of people) c += p.coins;
+      for (const p of people) c += p.coins + (p.trust || 0);
       for (const v of villages) c += v.till;
       for (const f of factions) c += f.treasury;
       return c;
     }
 
     /* ── land and head counts ──────────────────────────────────────────── */
+    /* How many a village can hold. A number, or — at the far end of "A full
+       village" — as many as the fields within a day's work of it grow in a
+       year's average day, a ration a head. Worked out each day with its
+       territory, so a village that loses land, or a drought, makes it full. */
+    function crowdOf(v) { return S.crowd >= 205 ? Math.max(8, v.feeds || 0) : S.crowd; }
+    function landFeeds() {
+      for (const v of villages) {
+        if (!v.alive) { v.feeds = 0; continue; }
+        let food = 0;
+        const r = 8, cx = Math.floor(v.x), cy = Math.floor(v.y);
+        for (let y = Math.max(0, cy - r); y <= Math.min(rows - 1, cy + r); y++)
+          for (let x = Math.max(0, cx - r); x <= Math.min(cols - 1, cx + r); x++) {
+            const i = y * cols + x;
+            if ((owner[i] === v.id || owner[i] === -1) && Math.hypot(x + 0.5 - v.x, y + 0.5 - v.y) <= r) food += fert[i] * REGROW * DAY_HOURS * S.rich;
+          }
+        v.feeds = food;
+      }
+    }
     function territory() {
       for (const v of villages) v.radius = v.alive ? 2.6 + Math.sqrt(Math.max(1, v.pop)) * 0.55 : 0;
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
@@ -673,6 +727,7 @@
         }
         owner[y * cols + x] = best;
       }
+      landFeeds();
     }
     function census() {
       for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; }
@@ -1109,7 +1164,7 @@
            village on poor land starved to the last household in March while
            the next valley held ten months of grain a head, and nobody went. */
         const perHead = o => (o.food + (o.held || 0)) / (o.pop + 1);
-        const room = o => clamp(1 - o.pop / S.crowd, -1, 1);
+        const room = o => clamp(1 - o.pop / crowdOf(o), -1, 1);
         const mate = byId.get(p.partner);
         let ties = 0.25 + (mate && mate.home === p.home && mate.hp > 0 ? 0.55 : 0) + p.kids * 0.12;
         for (const [id, s] of p.friends) if (s > 0.2) { const q = byId.get(id); if (q && q.home === p.home) ties += 0.05; }
@@ -1568,7 +1623,8 @@
           heirs = people.filter(q => q.hp !== -99 && (q.mum === p.id || q.dad === p.id));
           if (!heirs.length && p.partner && byId.get(p.partner)) heirs = [byId.get(p.partner)];
         } else if (S.inherit === "village") heirs = people.filter(q => q.hp !== -99 && q.home === p.home && q !== p);
-        if (heirs.length) for (const h of heirs) h.coins += p.coins / heirs.length;
+        /* A child's inheritance is kept for them until they are grown. */
+        if (heirs.length) for (const h of heirs) { if (adult(h)) h.coins += p.coins / heirs.length; else h.trust = (h.trust || 0) + p.coins / heirs.length; }
         else f.treasury += p.coins;
         p.coins = 0;
       }
@@ -1591,9 +1647,9 @@
       const pool = people.filter(q => q.hp !== -99 && q.f === f.id && adult(q));
       if (!pool.length) { f.leader = 0; return; }
       let next = null;
-      if (S.rule === "chief" && old) next = pool.filter(q => q.mum === old.id || q.dad === old.id).sort((a, b) => b.age - a.age)[0];
-      if (!next && S.rule === "rich") next = pool.slice().sort((a, b) => b.coins - a.coins || b.friends.size - a.friends.size)[0];
-      if (!next && S.rule === "elected" && why !== "first") { vote(f, why === "old" || why === "sick" || why === "starved" || why === "battle"); return; }
+      if (f.rule === "chief" && old) next = pool.filter(q => q.mum === old.id || q.dad === old.id).sort((a, b) => b.age - a.age)[0];
+      if (!next && f.rule === "rich") next = pool.slice().sort((a, b) => b.coins - a.coins || b.friends.size - a.friends.size)[0];
+      if (!next && f.rule === "elected" && why !== "first") { vote(f, why === "old" || why === "sick" || why === "starved" || why === "battle"); return; }
       if (!next) next = pool.slice().sort((a, b) => (b.bold + b.friends.size * 0.1) - (a.bold + a.friends.size * 0.1))[0];
       f.leader = next.id; f.views = next.views;
       if (why !== "first") note("leader", next.name + " now leads " + f.name + (old ? ", after " + old.name + (why === "old" ? " died of old age" : why === "battle" ? " was killed" : why === "sick" ? " died of the sickness" : why === "starved" ? " starved" : "") : "") + ".", 3, villages[next.home].x, villages[next.home].y, f.id);
@@ -1702,7 +1758,8 @@
       const fa = factions[a.f], fb = factions[b.f];
       const fr = a.friends.get(b.id) || 0;
       const like = 1 - Math.abs(a.views - b.views);          // 1 agree … −1 opposite
-      const open = 1 - S.stubborn;
+      /* How open each of them is: their own nature, not the world's. */
+      const open = 1 - ((a.stub ?? S.stubborn) + (b.stub ?? S.stubborn)) / 2, openA = 1 - (a.stub ?? S.stubborn), openB = 1 - (b.stub ?? S.stubborn);
       /* Sickness goes where talk goes. */
       if (a.sick > 0 && !b.immune && b.sick === 0 && R() < CATCH) { b.sick = ILLNESS_HOURS; count.infected++; }
       if (b.sick > 0 && !a.immune && a.sick === 0 && R() < CATCH) { a.sick = ILLNESS_HOURS; count.infected++; }
@@ -1797,14 +1854,14 @@
                    : "There's sense on both sides.";
         if (like > 0.2 || fr > 0.3) {
           const mid = (a.views + b.views) / 2;
-          a.views += (mid - a.views) * open * 0.3; b.views += (mid - b.views) * open * 0.3;
+          a.views += (mid - a.views) * openA * 0.3; b.views += (mid - b.views) * openB * 0.3;
           befriend(a, b, 0.12);
           if (!same) { fa.rel[b.f].op = clamp(fa.rel[b.f].op + 0.006, -1, 1); fb.rel[a.f].op = clamp(fb.rel[a.f].op + 0.006, -1, 1); }
           said(speaker, other, "agree", line, pick(["You're right.", "I've come round to that.", "My mother said the same."]));
         } else {
           /* Too far apart: each digs in, and they like each other less. */
-          a.views = clamp(a.views + Math.sign(a.views - b.views) * open * 0.04, -1, 1);
-          b.views = clamp(b.views + Math.sign(b.views - a.views) * open * 0.04, -1, 1);
+          a.views = clamp(a.views + Math.sign(a.views - b.views) * openA * 0.04, -1, 1);
+          b.views = clamp(b.views + Math.sign(b.views - a.views) * openB * 0.04, -1, 1);
           befriend(a, b, -0.2 - (war ? 0.2 : 0));
           if (!same) { fa.rel[b.f].op = clamp(fa.rel[b.f].op - 0.008, -1, 1); fb.rel[a.f].op = clamp(fb.rel[a.f].op - 0.008, -1, 1); }
           said(speaker, other, "argue", line, war ? "Tell that to the ones your soldiers killed." : pick(["That's a fool's talk.", "Easy to say with a full belly.", "You'd ruin us."]));
@@ -1893,7 +1950,7 @@
           const v = villages[p.home];
           if ((shared || !adult(p)) && v.food > 0.3 && v.f === p.f) { v.food -= 0.3; p.food += 0.3; fed = true; }
         }
-        if (!fed) { p.hungry++; p.hp -= 0.004 * S.hunger; }
+        if (!fed) { p.hungry++; p.hp -= STARVE * S.hunger; }
       } else {
         if (p.hungry > 0) p.hungry = Math.max(0, p.hungry - 4);
         if (p.hp < 1) p.hp = Math.min(1, p.hp + 0.004);
@@ -1906,7 +1963,7 @@
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
       if (p.age >= p.dieAt) { die(p, "old"); return; }
-      if (p.job === "child" && adult(p)) p.job = chooseJob(p);
+      if (p.job === "child" && adult(p)) { p.job = chooseJob(p); if (p.trust) { p.coins += p.trust; p.trust = 0; } }
 
     }
 
@@ -2191,7 +2248,7 @@
       const mate = byId.get(p.partner);
       if (mate && p.id < mate.id && mate.home === p.home && S.births > 0 && people.length < 3000 &&
           p.age < p.dieAt * 0.7 && mate.age < mate.dieAt * 0.7 && p.food > 0.5 && mate.food > 0.5 && p.hungry === 0) {
-        const room = clamp(1.6 - v.pop / (S.crowd * 1.6), 0.15, 1) * (v.hungry > v.pop * 0.15 ? 0.3 : 1);
+        const room = clamp(1.6 - v.pop / (crowdOf(v) * 1.6), 0.15, 1) * (v.hungry > v.pop * 0.15 ? 0.3 : 1);
         /* This is a rate per calendar year, scaled to the six-hour reflection
            cadence. Changing update frequency must not multiply fertility.
            Short-lived settings still compress their reproductive span. */
@@ -2255,7 +2312,7 @@
       } else v.siege = Math.max(0, v.siege - 1);
 
       /* Too full: some of them go and start somewhere new, if there is land. */
-      if (v.pop > S.crowd && R() < 0.25) found(v);
+      if (v.pop > crowdOf(v) && R() < 0.25) found(v);
       /* Had enough: see `secede`. */
       if (S.rebel > 0 && v.adults >= 10 && v.loyal < 0.15 + S.rebel * 0.4 && (v.broke || 0) < t - YEAR * 4) secede(v);
     }
@@ -2305,7 +2362,7 @@
            turned out, not a breakaway. */
         v.broke = t;
         const old = byId.get(f.leader);
-        if (S.rule === "elected") vote(f, false);
+        if (f.rule === "elected") vote(f, false);
         else {
           const next = here.filter(p => p !== old).sort((a, b) => (b.bold + b.friends.size * 0.1) - (a.bold + a.friends.size * 0.1))[0];
           if (!next) return;
@@ -2322,7 +2379,7 @@
       const names = new Set(factions.map(o => o.name));
       let name; do { name = R() < 0.5 ? "Free " + v.name : pick(F_FIRST) + " " + pick(F_LAST); } while (names.has(name) && names.size < 150);
       const nf = newFaction(name, head.views);
-      nf.treasury = 0; nf.tax = Math.min(f.tax, S.tax); nf.leader = head.id;
+      nf.treasury = 0; nf.tax = Math.min(f.tax, S.tax); nf.leader = head.id; nf.rule = f.rule === "elected" ? "elected" : "chief";
       v.f = nf.id; v.broke = t; v.siege = 0;
       const refuge = villages.filter(o => o.alive && o.f === f.id).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
       let stayed = 0, leftN = 0;
@@ -2390,24 +2447,80 @@
       }
       return { d: d, pair: pair };
     }
+    /* Overthrowing a regime. A faction ruled by a chief or by the rich, whose
+       grown-ups have mostly turned on it, falls when those who have turned
+       outnumber the soldiers still loyal to it by two to one — a civil war,
+       fought between them, and a new way of choosing leaders after it. It
+       runs only on people's own loyalty and the soldiers' own; nothing here is
+       on a timer, and a regime people still put up with is never touched.
+       (Ric, 2026-11-14: "what if a system of who has the most money gets
+       overthrown by a civil war?") */
+    function revolution(f) {
+      if (f.yours || f.rule === "elected" || t - f.revolt < YEAR * 3) return false;
+      const grown = people.filter(p => p.f === f.id && adult(p) && p.hp > 0);
+      if (grown.length < 12) return false;
+      const angry = grown.filter(p => p.loyal < 0.3 && p.job !== "soldier");
+      const guard = grown.filter(p => p.job === "soldier" && p.loyal >= 0.35);
+      if (angry.length < grown.length * 0.45 || angry.length < guard.length * 2) return false;
+      f.revolt = t;
+      /* The fighting: as many fall on each side as the smaller side can make fall. */
+      const fall = Math.min(guard.length, Math.ceil(angry.length * 0.15));
+      const order = (a, b) => a.id - b.id;
+      guard.sort(order).slice(0, fall).forEach(p => die(p, "battle"));
+      angry.sort(order).slice(0, Math.ceil(fall * 0.7)).forEach(p => die(p, "battle"));
+      const alive = angry.filter(p => p.hp !== -99);
+      const head = alive.sort((a, b) => (b.bold + b.friends.size * 0.1) - (a.bold + a.friends.size * 0.1))[0];
+      if (!head) return false;
+      const was = f.rule, wasLead = byId.get(f.leader);
+      /* What they replace it with is their own leaning: a people who believe
+         in sharing vote; one that does not follows the one who led them. */
+      const lean = alive.reduce((s, p) => s + p.views, 0) / alive.length;
+      f.rule = lean > -0.15 ? "elected" : "chief";
+      f.leader = head.id; f.views = head.views; f.voteAt = t + S.term * YEAR;
+      for (const p of people) if (p.f === f.id) p.loyal = clamp(p.loyal + (p.loyal < 0.3 ? 0.35 : -0.1), 0, 1);
+      const v = villages[head.home];
+      count.revolutions = (count.revolutions || 0) + 1;
+      note("revolution", "A civil war in " + f.name + ": the " + (was === "rich" ? "rule of the rich" : "chief") +
+           (wasLead ? ", " + wasLead.name + "," : "") + " has been overthrown. " + head.name + " leads now, and " +
+           (f.rule === "elected" ? "they will choose their leaders by vote." : "rules as chief."), 4.5, v.x, v.y, f.id);
+      return true;
+    }
     function decide(f) {
       const lead = byId.get(f.leader);
       if (!lead || lead.hp === -99 || lead.f !== f.id) { succeed(f, "left"); return; }
-      if (S.rule === "elected" && t >= f.voteAt) vote(f, false);
-      if (S.rule === "rich") {
+      if (f.rule === "elected" && t >= f.voteAt) vote(f, false);
+      if (revolution(f)) return;
+      if (f.rule === "rich") {
         const top = people.filter(q => q.f === f.id && adult(q)).sort((a, b) => b.coins - a.coins)[0];
         if (top && top !== lead && top.coins > lead.coins * 1.5 + 5) { f.leader = top.id; f.views = top.views; note("leader", top.name + ", now the richest in " + f.name + ", has taken it over from " + lead.name + ".", 2.5, villages[top.home].x, villages[top.home].y, f.id); }
       }
       const hungry = f.pop ? f.hungry / f.pop : 0;
       let wars = 0;
       for (const o of factions) if (o.alive && o !== f && f.rel[o.id].war) wars++;
-      f.army = f.yours ? f.yours.army : clamp(S.soldiers * (wars ? 2.6 : 1) + (wars ? 0.08 : 0), 0, 0.6);
+      /* In peace a leader keeps the army their own judgement asks for: as many
+         as the biggest neighbouring army, a little more for old wrongs, a
+         bolder leader more, and fewer when the treasury cannot pay them.
+         It moves a little each day, never all at once. In war, it grows
+         from there. */
+      if (!f.yours && !wars) {
+        let threat = 0;
+        for (const o of factions) if (o.alive && o !== f && border(f, o).d < 30) {
+          threat = Math.max(threat, o.adults ? o.soldiers / o.adults : 0) + Math.min(0.06, f.rel[o.id].grief * 0.03);
+        }
+        const wages = f.soldiers * WAGE * 7;
+        // Half the biggest neighbour's share, plus a base: answering a real threat
+        // without the race to everybody under arms that matching it in full became.
+        let want = clamp(0.03 + threat * 0.5 + lead.bold * 0.03, 0, 0.3);
+        if (!shared && f.treasury < wages) want *= 0.8;
+        f.peace = f.peace + clamp(want - f.peace, -0.004, 0.004);
+      }
+      f.army = f.yours ? f.yours.army : clamp((f.peace ?? S.soldiers) * (wars ? 2.6 : 1) + (wars ? 0.08 : 0), 0, 0.6);
       /* Stand soldiers down when there are more than are wanted, call some up
          when there are too few. */
       if (f.soldiers > f.army * f.adults * 1.25 + 1) {
         let extra = Math.floor(f.soldiers - f.army * f.adults);
         for (const p of people) { if (extra <= 0) break; if (p.f === f.id && p.job === "soldier") { p.job = "farmer"; p.task = "idle"; extra--; } }
-      } else if ((wars || f.yours) && f.soldiers < f.army * f.adults) {
+      } else if (f.soldiers < f.army * f.adults) {   // in peace too: the leader decided how many
         /* An army is raised a few at a time — two in a hundred adults a week —
            not conjured whole the day a war starts; and rebuilt as slowly
            after it is broken. */
