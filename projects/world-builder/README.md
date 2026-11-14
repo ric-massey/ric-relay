@@ -30,7 +30,7 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/breakup.test.mjs` | Quick physics checks: fracture/shedding, mass, momentum, energy, large bodies, bonds, capacity and repeatable links. Runs in the quick lane of `.github/checks.mjs`. |
 | `test/shape.test.mjs` | Quick checks on facings, slots, the angle spring's books, alignment, the sequence a chain reads as, and that a world with both new settings off is the world it always was. Quick lane. |
 | `replication-probe.mjs` | Not a check — a measurement, run by hand. Seeds copies of a sequence, runs the identical world without them as a control, and counts only the copies made of fresh hexagons. |
-| `test/chemistry.test.mjs` | Quick checks on valence and pull, that settling pays for every bond exactly, that heat thins bonds out, and that a barrier is lower for pieces held lined up. Quick lane. |
+| `test/chemistry.test.mjs` | Quick checks on valence and pull, that settling pays for every bond exactly, that heat thins bonds out, that a barrier is lower for pieces held lined up, and that charge lands where the pulls say, keeps the books, and makes lopsided pairs stick. Quick lane. |
 | `chemistry-probe.mjs` | Not a check — a measurement, run by hand (a few minutes). Van 't Hoff, mass action and the barrier, each against the number it should give. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
@@ -290,6 +290,19 @@ a test can keep.
   pool's with that bond not there. Attempts are made by pairs *nearly* touching, at any speed,
   because a place to be balances and an impact does not, so "Too fast to bond" is greyed out while this
   is on, and "How readily they bond" becomes how often a nearly-touching pair tries.
+- **Charge from bonds** (`charge`, 0 = none; added the same day, Ric: *"a structure's arrangement
+  changing how it attracts, positions, and interacts with other structures"*). A bond between two
+  kinds that pull differently moves charge onto the harder puller, by the gap in their pulls: the
+  textbook picture of partial charge from electronegativity. A thing's charges always add to
+  nothing, a hexagon alone carries none, and kind 6 holding two kind 1s comes out −10/7 in the
+  middle and +5/7 at each end, the shape of water. Charged hexagons not bonded to each other pull
+  opposites together and push likes apart, Coulomb's 1/r cut off smoothly at three hexagons (the
+  shifted-force cut-off simulations of liquids use, so the books still close), softened so two
+  pressed together cannot pull without end. The number is the pull of the most unlike pair at
+  touching. Bonded pairs are left out, as molecular simulations leave them out. Every bond made or
+  broken pays for what its moved charge does to everyone near it, out of the pool when settling
+  (so detailed balance still holds) and out of its own ends when not. It uses the kinds' pull
+  whether or not "Bonds per kind" is on.
 
 **Measured, 2026-11-14** (`chemistry-probe.mjs`, run by hand; two kinds that pair and nothing else,
 A + B ⇌ AB, in a sealed world). Each line is against a number worked out first:
@@ -318,12 +331,26 @@ bonds forming the old way; settling makes many more bonds, so the same leak show
 contradicts the "about a part in ten thousand" figure above for busy worlds — that was measured on
 a quiet one — and fixing it means changing the integrator, which would change every bonded world.
 
+**Charge, measured 2026-11-14.** The same four pieces wired two ways, 100 pairs at temperature
+0.3: kind 1 with kind 7 twice (lopsided) against 1 with 1 and 7 with 7 (alike, no charge). At
+charge 3 the lopsided pairs averaged **0.43 neighbours touching** against **0.13** for the alike
+ones, and the alike ones did not notice the setting at all. That is HF boiling at 20 °C next to
+H₂ at −253 and F₂ at −188: same atoms, different wiring. **What it does not do:** a straight
+1–6–1 and a bent one (120°) came out equally sticky (1.85 against 1.88), and stayed equal with
+the reach stretched to 6 and 10 hexagons. Flat hexagons leave the middle of a straight molecule
+exposed at its sides, so its negative middle catches a neighbour's positive end as well as a bent
+one's open side does. Real straight molecules hide their middles better. So here, **what is bonded
+to what** changes how a thing attracts; **its bend alone** barely does. Saying so rather than
+tuning until it did. Charge costs about twice the time of a world without it, with its own coarse
+grid of only the charged.
+
 What was read, and what was used. Pauling, *The Nature of the Chemical Bond. IV*, J. Am. Chem.
 Soc. 54 (1932) 3570 — the square-of-the-gap rule. Metropolis, Rosenbluth, Rosenbluth, Teller and
 Teller, J. Chem. Phys. 21 (1953) 1087 — the acceptance rule. Eyring, J. Chem. Phys. 3 (1935) 107 —
 a barrier climbed both ways. van 't Hoff (1884) and Guldberg and Waage (1864) — the two lines the
 probe checks against. Page and Jencks, PNAS 68 (1971) 1678 — holding pieces lined up as most of
-catalysis. Dittrich, Ziegler and Banzhaf, *Artificial Chemistries — A Review*, Artificial Life 7
+catalysis. Allen and Tildesley, *Computer Simulation of Liquids* (Oxford, 1987), for the
+shifted-force cut-off and for leaving bonded pairs out. Dittrich, Ziegler and Banzhaf, *Artificial Chemistries — A Review*, Artificial Life 7
 (2001) 225, and Fontana and Buss (1994) are the standard places to see where this sits among
 artificial chemistries; nothing here was taken from them, and they were not read in full for it.
 Hutton's Squirm3 (credited below) is the other road: it gives each atom states and a reaction

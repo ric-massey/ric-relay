@@ -501,7 +501,13 @@ nobody had linked was a page nobody could find.
   not the pair (the pair alone gave 1.8 where the answer was 4). Re-run the probe after
   touching any of it. A moving bonded world drifts upward in energy through the integrator
   and the collision push-apart; that predates all of this and is written up in the README,
-  not hidden. **It is not on the front door or in `latest.js` yet** — it has
+  not hidden. A fourth, `charge` (Ric: "a structure's arrangement changing how it
+  attracts"): bonds move charge to the harder puller, unbonded charges feel a smoothly cut-off
+  Coulomb pull out to three hexagons, and every bond event pays for the charge it moves (pool
+  when settling, so detailed balance holds). Measured honestly: wiring matters (lopsided 1-7
+  pairs stick 3x more than 1-1 + 7-7), bend alone barely does (straight and bent 1-6-1 equal).
+  Do not tune constants until bend matters; that would be scripting the answer.
+  **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
