@@ -65,7 +65,7 @@
         say: v => (v === 0 ? "none" : v === 1 ? "just enough to orbit" : v < 1 ? pct(v) + " of orbit speed" : pct(v) + " — too fast to hold"),
         help: "For the disc and the ring. 100% is the speed at which gravity alone holds a circle." },
       { key: "startSpeed", label: "Starting speed", type: "range", min: 0, max: 12, step: 0.25, def: 1,
-        say: off(v => v + " hexagons a second"), help: "Random motion every hexagon starts with." },
+        say: off(v => v + (v === 1 ? " hexagon a second" : " hexagons a second")), help: "Random motion every hexagon starts with." },
     ]},
     { title: "Gravity", items: [
       { key: "gravity", label: "Pull between hexagons", type: "range", min: 0, max: 60, step: 0.1, def: 0, curve: 2.5,

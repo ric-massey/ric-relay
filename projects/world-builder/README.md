@@ -336,6 +336,25 @@ player equipment choices and the larger production system remain future work.
   presets or Reset replaces them. The particle inspector holds its fields while focused so
   the live redraw cannot eat an edit. Body kinds use float storage because a sun/fused body's
   kind follows its mass and must not overflow at 2³¹.
+- **The settings screen is panels, not one long list** (2026-11-13). The starting points wrap
+  into a grid instead of the row that scrolled sideways — a card off the end of a strip nobody
+  thinks to drag may as well not be there — and each group is a panel, laid out in columns where
+  there is room, so thirty-six settings are about two screens rather than six. A row is its label
+  and its value on one line, the slider under that and the help under that; a value that only
+  repeats the number in the box beside it is left out. A shut group carries a turned-down corner,
+  which it had nothing of on a phone, where the first two open and the rest do not. Two starting
+  points to a row there, with their notes held to two lines.
+- **The running world's bar wraps rather than scrolling sideways**, and two things moved off it to
+  keep it to one row: the tools are a rail on the stage, beside what they act on and above the
+  kind and mass they place, and the clock sits in the corner of the world. Below 1,150px the
+  title goes first — the world under it says what it is — and the group captions follow at
+  1,100px. On a phone the bar and the rail both go down a size, because every row either takes
+  comes straight off the world.
+- **A world opened from a link fits itself once the stage has a size.** `fit()` scaled the camera
+  to a canvas the browser had not laid out yet, which left the scale at zero and drew nothing at
+  all — and every link "Copy link" makes opens that way, so a shared world was a black rectangle
+  until you found "Whole world". It now reports failure on a stage with no size, retries on the
+  next frame, and re-fits when the stage changes size unless the view has been taken hold of.
 - **Three screens in one file.** The address carries the sandbox and only the settings that differ
   from the defaults (`#people?people=900&rich=0.5`), so a link stays short and still opens after a
   setting is added. `&run` goes straight to the world; "Copy link" makes one.
@@ -359,7 +378,8 @@ player equipment choices and the larger production system remain future work.
 - **People are human figures, with smaller children and a white ring on leaders.** Roles are
   written beside them at close zoom, rather than encoded as triangles or dots. Tapping a person
   zooms in and follows them; the Person tab states their current activity. A map key explains this
-  on the running screen.
+  on the running screen; it folds back to its one-line clock when it is in the way, and the `?`
+  opens it again.
 - **Harvesting takes five seconds at 1×**, on the field where food is actually collected; a crop
   outline and stalks mark it. Walking to a field, bringing food home, making goods, trading and
   guarding have separate activity labels.
@@ -390,7 +410,10 @@ player equipment choices and the larger production system remain future work.
 - **Speech is drawn as words only when zoomed in**; farther out a small mark shows somebody is
   talking. The Talk tab has the last forty exchanges either way.
 - "← Settings" is the way out of a running world; the site's "← Ric's Terminal" control is on the
-  other two screens and hidden while a world runs, because it would sit on the map.
+  other two screens and hidden while a world runs, because it would sit on the map. On the
+  settings screen it sits in the bar along the bottom, in a slot kept clear for it — floating
+  above the bar it covered whichever panel of settings happened to be there. On a phone there is
+  no room beside the buttons, so that bar grows a second storey and the control sits in it.
 - Typed egg: `genesis` (in `relay-return.js` and `EASTER_EGGS.md`). Space pauses a world, so the
   word has no space in it.
 

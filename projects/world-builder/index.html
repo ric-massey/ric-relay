@@ -55,80 +55,155 @@
   @media (max-width: 720px) { .doors { grid-template-columns: 1fr; } }
 
   /* ── the second screen: the settings ── */
-  #setup { max-width: 860px; margin: 0 auto; padding: 1rem 16px 7rem; }
-  #setup .top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin: .4rem 0 1rem; }
+  #setup { max-width: 1060px; margin: 0 auto; padding: .6rem 16px 7.5rem; }
+  #setup .top { margin: .2rem 0 1.4rem; }
   #setup .top h1 { font-size: clamp(1.7rem, 5vw, 2.4rem); }
-  #setup .top p { color: var(--dim); margin: 0; flex-basis: 100%; }
+  #setup .top p { color: var(--dim); margin: .45rem 0 0; max-width: 68ch; }
   .linkish { background: none; border: 0; padding: .6rem 0; color: var(--acc); min-height: 44px; }
-  .presets { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; margin: 0 -16px 1rem; padding-inline: 16px; scrollbar-width: thin; }
-  .preset { flex: 0 0 auto; width: 190px; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: .6rem .7rem; }
+  .shelf { display: block; font: 600 .78rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 0 0 .55rem; }
+
+  /* The starting points wrap instead of scrolling sideways: five of them, all
+     in sight, and no scrollbar across the page. */
+  .presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 8px; margin: 0 0 1.7rem; }
+  .preset { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: .6rem .75rem .7rem; }
+  .preset:hover { border-color: var(--dim); }
   .preset b { display: block; font-family: var(--serif); font-size: 1.02rem; }
   .preset span { display: block; color: var(--dim); font-size: .82rem; line-height: 1.35; margin-top: .15rem; }
-  .preset[aria-pressed="true"] { border-color: var(--acc); }
-  details.group { border-top: 1px solid var(--line); }
-  details.group:last-of-type { border-bottom: 1px solid var(--line); }
-  details.group > summary { list-style: none; cursor: pointer; padding: .85rem 0; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; min-height: 44px; }
+  .preset[aria-pressed="true"] { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--panel)); }
+  .preset[aria-pressed="true"] b { color: var(--acc); }
+  /* Two to a row on a phone, and a note no more than two lines deep: eleven
+     starting points stacked full width was most of a screen before the first
+     setting. */
+  @media (max-width: 620px) {
+    .presets { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .preset span { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  }
+
+  /* Each group is a panel, and the panels sit side by side wherever there is
+     room — thirty-six settings in one column was six screens of scrolling. */
+  /* Columns, not a grid: a grid lines the panels up in rows, so a short group
+     beside a tall one leaves a hole the height of the difference. */
+  #form { columns: 360px 2; column-gap: 12px; }
+  details.group { display: inline-block; width: 100%; margin: 0 0 12px; break-inside: avoid; -webkit-column-break-inside: avoid;
+                  background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+  details.group > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+                            align-items: center; gap: .2rem .8rem; padding: .6rem .9rem; min-height: 44px; }
   details.group > summary::-webkit-details-marker { display: none; }
-  details.group > summary h2 { font-size: 1.25rem; }
-  details.group > summary .sum { color: var(--dim); font-size: .85rem; text-align: right; }
+  details.group > summary h2 { font-size: 1.18rem; }
+  details.group > summary:hover h2 { color: var(--acc); }
+  details.group > summary .sum { color: var(--dim); font-size: .82rem; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   details.group[open] > summary .sum { visibility: hidden; }
-  .row { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1.5fr); gap: .2rem 1.2rem; align-items: center; padding: .55rem 0; }
-  .row label, .row .lab { font-weight: 600; }
-  .row .help { grid-column: 1 / -1; color: var(--dim); font-size: .85rem; margin: 0; }
-  .row .ctl { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
-  .row .val { color: var(--acc); font-size: .9rem; min-height: 1.3em; }
+  /* A corner turned down, so a shut group plainly opens. */
+  details.group > summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--dim); border-bottom: 2px solid var(--dim);
+                                   transform: translateY(-2px) rotate(45deg); }
+  details.group[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  details.group > summary:hover::after { border-color: var(--acc); }
+  @media (prefers-reduced-motion: no-preference) { details.group > summary::after { transition: transform .15s ease; } }
+
+  .row { padding: .5rem .9rem .62rem; border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+  .rhead { display: flex; align-items: baseline; gap: .7rem; }
+  .rhead .lab { font-weight: 600; font-size: .94rem; flex: 1 1 auto; min-width: 0; }
+  .rhead .valbox { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; flex: 0 1 auto; text-align: right; }
+  .row .val { color: var(--acc); font-size: .84rem; }
+  .row .help { color: var(--dim); font-size: .8rem; line-height: 1.4; margin: .2rem 0 0; }
   .row.off { opacity: .42; }
   .row.off .help { display: none; }
-  input[type=range] { width: 100%; height: 32px; accent-color: var(--acc); background: none; margin: 0; }
-  input[type=number] { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; min-width: 0; width: 100%; font-size: 16px; }
+  input[type=range] { display: block; width: 100%; height: 26px; accent-color: var(--acc); background: none; margin: .15rem 0 0; }
+  input[type=number] { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .3rem .45rem; min-height: 34px;
+                       width: 5.4em; min-width: 0; font-size: 16px; text-align: right; }
   input[type=number]:focus { outline: 2px solid var(--acc); outline-offset: 2px; }
-  .numeric { display: flex; align-items: center; gap: .7rem; }
-  .numeric input[type=number] { flex: 0 1 190px; }
-  .numeric .val { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .body-values { display: grid; gap: .5rem; margin: .8rem 0; }
   .body-values label { display: grid; grid-template-columns: 1fr minmax(0, 1.4fr); align-items: center; gap: .5rem; }
+  /* The side panel edits a body: those boxes fill their column, unlike the
+     narrow ones beside a slider on the settings screen. */
+  .body-values input[type=number] { width: 100%; min-height: 40px; }
   select { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; width: 100%; }
-  .tog { display: flex; align-items: center; gap: .6rem; min-height: 44px; }
-  .tog input { width: 22px; height: 22px; accent-color: var(--acc); }
-  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
-  .launch { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 92%, transparent); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 8px; justify-content: flex-end; align-items: center; z-index: 5; }
+  .row select { margin-top: .3rem; }
+  .tog { display: flex; align-items: center; gap: .5rem; min-height: 34px; cursor: pointer; }
+  .tog input { width: 20px; height: 20px; accent-color: var(--acc); }
+
+  .launch { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px);
+            border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 8px;
+            justify-content: flex-end; align-items: center; z-index: 5; }
   .launch .changed { color: var(--dim); font-size: .85rem; margin-right: auto; padding-left: 0; }
   .launch .btn { white-space: nowrap; }
-  /* The way back to the terminal sits above the bar here, not under it. */
-  body.setting .relay-return { bottom: calc(76px + env(safe-area-inset-bottom)); }
-  @media (max-width: 720px) { .launch .changed { display: none; } .launch .btn { padding-inline: .7rem; } }
+  /* The way back to the terminal drops into the bar here, in a slot kept clear
+     for it — floating above the bar it sat on top of a panel of settings. */
+  body.setting .relay-return { bottom: calc(14px + env(safe-area-inset-bottom)); }
+  body.setting .launch { padding-left: 190px; }
+  /* On a phone there is no room beside the buttons, so the bar grows a second
+     storey and the control sits in it — anywhere else it covers a panel. */
+  @media (max-width: 720px) {
+    .launch .changed { display: none; }
+    .launch .btn { padding-inline: .7rem; }
+    body.setting .relay-return { bottom: calc(12px + env(safe-area-inset-bottom)); }
+    body.setting .launch { padding-left: 16px; padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+    #setup { padding-bottom: 10.5rem; }
+  }
 
   /* ── the third screen: the world ── */
   body.running { overflow: hidden; }
   body.running .relay-return { display: none; }       /* "← Settings" is the way out here; the return control is on the other two screens */
-  #run { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: auto minmax(0, 1fr); }
-  #bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; white-space: nowrap; }
-  #bar .btn { min-height: 40px; padding: .35rem .7rem; flex: 0 0 auto; }
-  #bar .title { font-family: var(--serif); font-size: 1.05rem; margin: 0 .5rem 0 .3rem; flex: 0 0 auto; }
-  #bar .clock { color: var(--dim); font: 13px var(--mono); margin-left: auto; flex: 0 0 auto; padding-left: .6rem; }
+  #run { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; grid-template-rows: auto minmax(0, 1fr); }
+  /* The bar wraps rather than scrolling sideways: a control hidden off the end
+     of a strip nobody thinks to drag may as well not be there. The hands (the
+     tools) live on the stage instead, next to what they act on, and the clock
+     sits in the corner of the world. */
+  #bar { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 5px 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  #bar .btn { min-height: 38px; padding: .3rem .65rem; flex: 0 0 auto; white-space: nowrap; }
+  #bar .title { font-family: var(--serif); font-size: 1.05rem; margin: 0 .35rem 0 .3rem; flex: 0 0 auto; }
+  #bar .cap { color: var(--dim); font: 12px var(--sans); letter-spacing: .07em; text-transform: uppercase; margin: 0 .05rem 0 .45rem; flex: 0 0 auto; }
   #bar .seg { display: inline-flex; flex: 0 0 auto; }
-  #bar .seg .btn { border-radius: 0; margin-left: -1px; min-width: 40px; padding: .35rem .5rem; }
+  #bar .seg .btn { border-radius: 0; margin-left: -1px; min-width: 38px; padding: .3rem .45rem; }
   #bar .seg .btn:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
   #bar .seg .btn:last-child { border-radius: 0 3px 3px 0; }
   #bar .seg .btn[aria-pressed="true"] { position: relative; z-index: 1; }
+  /* The title is the first thing to go: the world under it says what it is. */
+  @media (max-width: 1150px) { #bar .title { display: none; } }
+  @media (max-width: 1100px) { #bar .cap { display: none; } }
   #stage { position: relative; min-width: 0; min-height: 0; background: #070a0b; }
   #view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   #view.drag { cursor: grabbing; }
-  #hint { position: absolute; left: 10px; bottom: 10px; color: var(--dim); font-size: 12px; background: rgba(7,10,11,.7); padding: 3px 7px; border-radius: 3px; pointer-events: none; }
-  #palette { position: absolute; left: 10px; bottom: 38px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: calc(100% - 20px);
-             background: rgba(12,17,19,.92); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
-  #palette .sw-btn { width: 40px; height: 40px; border: 2px solid transparent; border-radius: 3px; color: #101517; font: 700 14px var(--mono); }
+  #hint { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); color: var(--dim); font-size: 12px; background: rgba(7,10,11,.72); padding: 3px 7px; border-radius: 3px; pointer-events: none; }
+  #clock { position: absolute; right: 10px; bottom: 10px; color: var(--dim); font: 12px var(--mono); background: rgba(7,10,11,.72); padding: 3px 7px; border-radius: 3px; pointer-events: none; }
+  /* The hands: which tool a tap uses, and what Place and Throw put down. */
+  #rail { position: absolute; left: 10px; top: 10px; z-index: 3; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: calc(100% - 20px); }
+  #tools { display: flex; flex-direction: column; gap: 2px; background: rgba(12,17,19,.92); border: 1px solid var(--line); border-radius: 4px; padding: 4px; }
+  #tools .btn { min-height: 34px; width: 100%; padding: .25rem .65rem; text-align: left; background: none; border: 1px solid transparent; border-radius: 2px; font-size: .9rem; }
+  #tools .btn:hover { background: var(--raise); border-color: var(--line); }
+  #tools .btn[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 600; }
+  #palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 100%;
+             background: rgba(12,17,19,.92); border: 1px solid var(--line); border-radius: 4px; padding: 6px; }
+  #palette .sw-btn { width: 38px; height: 38px; border: 2px solid transparent; border-radius: 3px; color: #101517; font: 700 14px var(--mono); }
   #palette .sw-btn[aria-pressed="true"] { border-color: #fff; }
-  #palette label { display: flex; align-items: center; gap: .4rem; min-width: 0; }
-  #palette input { width: 170px; max-width: 100%; }
+  #palette label { display: flex; align-items: center; gap: .4rem; min-width: 0; font-size: .9rem; }
+  #palette input { width: 120px; max-width: 100%; }
   #palette .lab { color: var(--dim); font-size: 12px; }
+  @media (max-width: 860px) {
+    #rail { left: 6px; right: 6px; top: 6px; max-width: none; }
+    #tools { flex-direction: row; flex-wrap: wrap; }
+    #tools .btn { width: auto; text-align: center; }
+  }
+  /* On a phone every row the bar or the rail takes comes straight off the
+     world, so both go down a size and the tools fit on one line. */
+  @media (max-width: 620px) {
+    #bar { gap: 4px; padding: 5px 6px; }
+    #bar .btn { min-height: 34px; padding: .22rem .45rem; font-size: .88rem; }
+    #bar .seg .btn { min-width: 32px; padding: .22rem .3rem; }
+    #tools .btn { min-height: 32px; padding: .2rem .4rem; font-size: .82rem; }
+    #palette .sw-btn { width: 32px; height: 32px; }
+  }
   .edits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .7rem; }
   .edits .btn { min-height: 40px; padding: .35rem .65rem; font-size: .9rem; }
   .thing { display: flex; align-items: center; gap: 3px; padding: .25rem 0; font-size: .88rem; }
   .thing b { display: inline-block; width: 11px; height: 11px; }
   .thing span { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: .82rem; }
-  #people-key { position: absolute; left: 10px; top: 10px; max-width: min(340px, calc(100% - 20px)); padding: 8px 10px; background: rgba(7,10,11,.92); color: #e3e9e6; font-size: 12px; pointer-events: none; border: 1px solid #53645b; border-radius: 4px; }
-  #people-key strong { display: block; margin-bottom: 3px; }
+  #people-key { position: absolute; left: 10px; top: 10px; max-width: min(340px, calc(100% - 20px)); padding: 8px 10px; background: rgba(7,10,11,.92); color: #e3e9e6; font-size: 12px; border: 1px solid #53645b; border-radius: 4px; }
+  #people-key strong { display: block; margin-bottom: 3px; padding-right: 1.6rem; }
+  #people-key .shut { position: absolute; right: 2px; top: 2px; width: 30px; height: 30px; background: none; border: 0; color: var(--dim); font-size: 16px; line-height: 1; border-radius: 3px; }
+  #people-key .shut:hover { color: var(--ink); background: var(--raise); }
+  #people-key.packed .body { display: none; }
+  #people-key.packed { padding: 4px 34px 4px 8px; }
   #slow { position: absolute; right: 10px; top: 10px; color: var(--warn); font-size: 12px; background: rgba(7,10,11,.8); padding: 3px 7px; border-radius: 3px; }
   #side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
   #tabs { display: flex; border-bottom: 1px solid var(--line); }
@@ -179,7 +254,7 @@
   .bars i b { display: block; height: 100%; background: var(--acc); }
   #chart { display: block; width: 100%; height: 84px; margin: .2rem 0 .6rem; border: 1px solid var(--line); background: var(--bg); }
   @media (max-width: 860px) {
-    #run { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 42dvh); }
+    #run { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 38dvh); }
     #side { border-left: 0; border-top: 1px solid var(--line); }
   }
 </style>
@@ -220,7 +295,9 @@
     <h1 id="setup-title"></h1>
     <p id="setup-note"></p>
   </div>
-  <div class="presets" id="presets" role="group" aria-label="Starting points"></div>
+  <h2 class="shelf" id="presets-head">Starting points</h2>
+  <div class="presets" id="presets" role="group" aria-labelledby="presets-head"></div>
+  <h2 class="shelf">Every setting</h2>
   <form id="form" autocomplete="off"></form>
   <div class="launch">
     <span class="changed" id="changed"></span>
@@ -236,19 +313,23 @@
     <button class="btn" id="to-setup">← Settings</button>
     <span class="title" id="run-title"></span>
     <button class="btn" id="pause" aria-pressed="false">Pause</button>
-    <span class="seg" id="tools" role="group" aria-label="What a tap does"></span>
+    <span class="cap" aria-hidden="true">Speed</span>
     <span class="seg" id="speeds" role="group" aria-label="Speed"></span>
+    <span class="cap" aria-hidden="true">Colour</span>
     <span class="seg" id="views" role="group" aria-label="Colour by"></span>
     <button class="btn" id="fit">Whole world</button>
     <button class="btn" id="again">Start again</button>
     <button class="btn" id="share">Copy link</button>
-    <span class="clock" id="clock"></span>
   </div>
   <div id="stage">
     <canvas id="view"></canvas>
-    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong>At 1×, one day = 20 minutes.<br>Colour follows the selected view (faction by default). Small figures are children; a white ring marks a leader. A gold line joins people talking. Zoom in to see carried tools, packs, weapons and shields.<br>Tap a person to zoom in and follow their work.</div>
+    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong><button type="button" class="shut" id="key-shut" aria-expanded="true" aria-controls="people-key-body" aria-label="Hide the key">×</button><span class="body" id="people-key-body">At 1×, one day = 20 minutes.<br>Colour follows the selected view (faction by default). Small figures are children; a white ring marks a leader. A gold line joins people talking. Zoom in to see carried tools, packs, weapons and shields.<br>Tap a person to zoom in and follow their work.</span></div>
+    <div id="rail" hidden>
+      <div id="tools" role="group" aria-label="What a tap does"></div>
+      <div id="palette" hidden></div>
+    </div>
     <span id="hint">Drag to move · scroll or pinch to zoom · tap anything to look at it</span>
-    <div id="palette" hidden></div>
+    <span class="clock" id="clock"></span>
     <span id="slow" hidden>Running behind — fewer things or a slower clock will catch it up</span>
   </div>
   <aside id="side">
@@ -354,8 +435,9 @@
         let ctl, numeric = null;
         if (it.type === "range") {
           const typed = mode === "physics";
-          row.innerHTML = "<label for='" + id + "'>" + esc(it.label) + "</label><div class='ctl'><input type='range' id='" + id + (typed ? "-slider" : "") + "' aria-label='" + esc(it.label) + "' min='0' max='1000' step='1'>" +
-            (typed ? "<div class='numeric'><input type='number' required id='" + id + "' min='" + it.inputMin + "' max='" + it.inputMax + "' step='" + (it.integer ? "1" : "any") + "'><span class='val' id='" + id + "-words'></span></div>" : "<span class='val'></span>") + "</div>";
+          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + "</label><span class='valbox'>" +
+            (typed ? "<input type='number' required id='" + id + "' min='" + it.inputMin + "' max='" + it.inputMax + "' step='" + (it.integer ? "1" : "any") + "'><span class='val' id='" + id + "-words'></span>" : "<span class='val'></span>") +
+            "</span></div><input type='range' id='" + id + (typed ? "-slider" : "") + "' aria-label='" + esc(it.label) + "' min='0' max='1000' step='1'>";
           ctl = row.querySelector("input[type=range]");
           numeric = row.querySelector("input[type=number]");
           ctl.addEventListener("input", () => { values[it.key] = posToValue(it, +ctl.value); if (numeric) numeric.value = values[it.key]; preset = null; refresh(); });
@@ -367,12 +449,12 @@
             });
           }
         } else if (it.type === "select") {
-          row.innerHTML = "<label for='" + id + "'>" + esc(it.label) + "</label><div class='ctl'><select id='" + id + "'>" +
-            it.options.map(o => "<option value='" + esc(o[0]) + "'>" + esc(o[1]) + "</option>").join("") + "</select></div>";
+          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + "</label></div><select id='" + id + "'>" +
+            it.options.map(o => "<option value='" + esc(o[0]) + "'>" + esc(o[1]) + "</option>").join("") + "</select>";
           ctl = row.querySelector("select");
           ctl.addEventListener("change", () => { values[it.key] = ctl.value; preset = null; refresh(); });
         } else {
-          row.innerHTML = "<span class='lab'>" + esc(it.label) + "</span><div class='ctl'><label class='tog'><input type='checkbox' id='" + id + "'><span class='val'></span></label></div>";
+          row.innerHTML = "<div class='rhead'><span class='lab'>" + esc(it.label) + "</span><span class='valbox'><label class='tog'><input type='checkbox' id='" + id + "'><span class='val'></span></label></span></div>";
           ctl = row.querySelector("input");
           ctl.addEventListener("change", () => { values[it.key] = ctl.checked; preset = null; refresh(); });
         }
@@ -403,7 +485,7 @@
     const sums = new Map();
     for (const k in controls) {
       const c = controls[k], v = values[k];
-      if (c.val) c.val.textContent = words(c.it, v);
+      if (c.val) { const w = words(c.it, v); c.val.textContent = (c.numeric && w === String(v)) ? "" : w; }
       if (c.it.type === "range") c.ctl.setAttribute("aria-valuetext", words(c.it, v));
       const on = !c.it.when || c.it.when(values);
       c.row.classList.toggle("off", !on);
@@ -473,10 +555,16 @@
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     return d;
   }
+  /* Returns false when the stage has not been laid out yet. A world opened
+     straight from a link ("&run") used to fit itself to a canvas the browser
+     had not sized, which left the scale at zero and the world invisible until
+     you found "Whole world" — and every link "Copy link" makes is that kind. */
   function fit() {
     const r = canvas.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
     const W = mode === "physics" ? world.width : world.cols, H = mode === "physics" ? world.height : world.rows;
     cam.s = Math.min(r.width / W, r.height / H) * 0.94; cam.x = W / 2; cam.y = H / 2; cam.held = false; follow = false;
+    return true;
   }
 
   function startRun() {
@@ -493,7 +581,8 @@
     $("people-key").hidden = mode !== "people";
     buildBar(); buildTools(); buildTabs();
     show("run");
-    sizeCanvas(); fit();
+    sizeCanvas();
+    if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
     last = performance.now();
     raf = requestAnimationFrame(frame);
   }
@@ -524,7 +613,7 @@
   function buildTools() {
     const el = $("tools"), pal = $("palette");
     el.textContent = ""; pal.textContent = ""; pal.hidden = true;
-    el.hidden = mode !== "physics";
+    $("rail").hidden = mode !== "physics";
     $("hint").textContent = TOOLS[0][2]; $("hint").hidden = false;
     if (mode !== "physics") return;
     for (const t of TOOLS) {
@@ -602,7 +691,21 @@
 
   $("to-setup").addEventListener("click", () => { show("setup"); refresh(); });
   $("again").addEventListener("click", startRun);
+  /* The key is a note, not furniture: it folds back to the clock line. */
+  $("key-shut").addEventListener("click", () => {
+    const k = $("people-key"), packed = k.classList.toggle("packed");
+    $("key-shut").setAttribute("aria-expanded", String(!packed));
+    $("key-shut").setAttribute("aria-label", packed ? "Show the key" : "Hide the key");
+    $("key-shut").textContent = packed ? "?" : "×";
+  });
   $("fit").addEventListener("click", fit);
+  if (window.ResizeObserver) {
+    let first = true;
+    new ResizeObserver(() => {
+      if (first) { first = false; return; }          // the observer fires once on its own
+      if (world && !screens.run.hidden && !cam.held && !follow) fit();
+    }).observe($("stage"));
+  }
   $("pause").addEventListener("click", () => {
     paused = !paused;
     $("pause").textContent = paused ? "Resume" : "Pause"; $("pause").setAttribute("aria-pressed", String(paused));

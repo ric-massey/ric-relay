@@ -374,7 +374,7 @@ window.TERMINAL_PAGES = [
   "title": "World Builder",
   "keys": "set the rules, run a world",
   "body": "Choose a physics sandbox or a people sandbox, set how the world works — gravity, chemistry, money, how long lives are — and run it.",
-  "text": "World Builder · Physics sandbox · People sandbox",
+  "text": "World Builder · Physics sandbox · People sandbox · Starting points · Every setting",
   "room": null
  },
  {
