@@ -1454,7 +1454,7 @@
           const big = vs.slice().sort((a, b) => b.pop - a.pop)[0];
           const foes = w.factions.filter(o => o.alive && o !== f && f.rel[o.id].war).map(o => esc(o.name));
           return "<button class='fac' data-go='" + (big ? "at:" + big.x + ":" + big.y : "") + "'><span class='nm'>" + fname(f.id) + "</span>" +
-            "<span class='ln'>" + f.pop + " people · " + vs.length + (vs.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms</span>" +
+            "<span class='ln'>" + f.pop + " people · " + vs.length + (vs.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>Led by " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (w.settings.money === "coins" ? " · tax " + Math.round(f.tax * 100) + "%" : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + "</button>" + rulePane(f);

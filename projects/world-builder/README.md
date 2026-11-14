@@ -772,6 +772,34 @@ asked for the graphs and the grain trade the year needed. All of it is on the ru
   of an hour after rerouting, when it counts as arrived. Forty carriers aimed at one village's
   middle otherwise never arrived at all.
 
+### War has to be fed (2026-11-14)
+
+Ric: military reach should depend on *"food carried and access to resupply, distance from
+friendly settlements, equipment replacement, agricultural labor lost to recruitment, recovery
+after losses"*. Before this an army was raised whole the day a war began, marched on nothing and
+could sit under a village's walls through a hard winter. At this map's scale a walk between
+villages takes hours, so reach here is **how long an army can stay in the field**, not how far it
+can walk — and a village falls only to four unbroken days of besiegers with no defenders.
+
+- **Rations.** Before marching a soldier draws `CAMPAIGN_DAYS` (ten) of rations at a village of
+  their own, paid by the treasury: from the store, then from houses with more than their winter,
+  at each house's price (`provision`). Coins are conserved; no house is stripped below its winter.
+  Under three days in the pack, they do not march.
+- **Resupply only at home.** In the field they eat what they carry; under a day left, they walk to
+  the nearest village of their own (`nearestOwn`), and the siege loses them.
+- **Equipment.** A soldier refits before marching (`outfit`, which costs goods), and without a
+  working weapon does not march.
+- **Labour.** Every soldier is a field hand lost; the Factions tab says so beside the count.
+- **Recovery.** The badly wounded (health under 0.45) go home to heal rather than fight, and an
+  army is raised — or rebuilt — at about two in a hundred adults a week, not all at once.
+
+Measured on wars forced on day one between two factions (`declare`), 240 people, forty days,
+three seeds: in spring, battle deaths 22–26 and 0–1 villages taken (before: 26–32, 0–2); in a hard
+winter, battle deaths 6–10 and no village taken (before: 26–53 dead and villages taken as readily
+as in spring). The winter worlds starved heavily either way — a hard winter started with nothing
+put by starves 52–199 of 240 with no war at all, old code and new alike; in the old code war only
+looked kinder because battle left fewer mouths. `test/war.test.mjs` checks the pieces.
+
 ### Equipment: a first connected set
 
 Added 2026-11-12 as the next readability milestone in the People vision. Items are in each

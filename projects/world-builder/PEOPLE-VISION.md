@@ -545,7 +545,9 @@ runs before it is called done.
 
 1. **Military reach.** Make it depend on food carried and access to resupply, distance from
    friendly settlements, equipment replacement, the farm labour lost to recruitment, and
-   recovery after losses. Today troops move, fight and take undefended villages with no supply.
+   recovery after losses. **First version built 2026-11-14** (README, "War has to be fed"):
+   rations, resupply only at home, refitting, slow raising, the wounded go home. Still open:
+   foraging and plunder in enemy country, and supply lines that can be cut.
 2. **Production and accounting.** Actual inputs: materials become goods, goods become equipment.
    Demand tied to household needs and equipment replacement. Occupations that change on whether
    the work actually supports the household. A clear ledger of production, consumption, stocks

@@ -299,6 +299,13 @@
              ripe: 1 + 3 * winter * Math.min(1, Math.max(0, (Math.cos(2 * Math.PI * (doy - y.shift - WARM_PEAK - RIPE_AFTER) / 365) - 0.75) / 0.25)),
              yearNote: y };
   }
+  /* War has to be fed (Ric, 2026-11-14: "military reach depend on food carried
+     and access to resupply"). A soldier draws this many days of rations before
+     marching, eats them in the field, and can only draw more at a village of
+     their own; under a day left and they walk home for it, leaving the siege.
+     Taking a village needs four unbroken days, so what an army carries decides
+     what it can take. */
+  const CAMPAIGN_DAYS = 10;
   const WAGE = 1;                   // coins per day; default fixed-price daily food costs 1
 
   /* How long a thing takes, in hours. Measured 2026-11-13: before this table
@@ -1450,8 +1457,53 @@
         }
       return best;
     }
+    /* The nearest village of a person's own faction — where a soldier in the
+       field can draw rations. */
+    function nearestOwn(p) {
+      let best = null, bd = Infinity;
+      for (const v of villages) if (v.alive && v.f === p.f) { const d = dist(p, v); if (d < bd) { bd = d; best = v; } }
+      return best;
+    }
+    /* Rations for a campaign, paid for by the faction: from the village store
+       first, then from houses with more than their own winter, at each
+       house's price — the same rule as anybody buying grain. The treasury
+       pays; no coin is made or lost, and no house is stripped below its
+       winter. A faction with no money or a village with no food sends its
+       soldiers out short, or not at all. */
+    function provision(p, v) {
+      const want = CAMPAIGN_DAYS * dailyNeed(p) - p.food;
+      if (want <= 0.2) return;
+      const f = factions[p.f];
+      let got = 0;
+      if (shared) {
+        const take = Math.min(want, v.food * 0.5); v.food -= take; p.food += take; return;
+      }
+      const fromStore = Math.min(want, v.food, f.treasury / Math.max(0.3, v.priceFood));
+      if (fromStore > 0.01) { const cost = fromStore * v.priceFood; f.treasury -= cost; v.till += cost; v.food -= fromStore; p.food += fromStore; got += fromStore; }
+      if (got < want - 0.2 && f.treasury > 0.5) {
+        for (const q of people) {
+          if (got >= want - 0.2 || f.treasury < 0.3) break;
+          if (q.home !== v.id || !adult(q) || q.hp <= 0 || q === p || q.food <= reserve(q) + 0.5) continue;
+          const price = clamp(1.5 * reserve(q) / Math.max(q.food, 0.1), 0.4, 8);
+          const amount = Math.min(want - got, q.food - reserve(q), f.treasury / price);
+          if (amount <= 0.01) continue;
+          f.treasury -= amount * price; q.coins += amount * price; q.food -= amount; p.food += amount; got += amount;
+        }
+      }
+      count.rations = (count.rations || 0) + got;
+    }
     function soldier(p) {
       const f = factions[p.f], home = villages[p.home];
+      const atHome = dist(p, home) < 2.5;
+      /* The wounded go home to heal; a fight is for the whole. */
+      if (p.hp < 0.45 && !atHome) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; }
+      if (p.hp < 0.45) { go(p, p.hx + (R() - 0.5) * 0.5, p.hy + (R() - 0.5) * 0.5, "rest"); p.wait = spell("rest"); return; }
+      /* In the field on what they carry: under a day's rations, back to the
+         nearest village of their own to draw more. */
+      if (!atHome && p.food < dailyNeed(p) && (p.task === "march" || p.task === "fight")) {
+        const depot = nearestOwn(p) || home;
+        go(p, depot.x + (R() - 0.5), depot.y + (R() - 0.5), "patrol"); p.wait = 0; p.supplyRun = true; return;
+      }
       const foe = foeNear(p, 3);
       if (foe) {
         if (dist(p, foe) < 0.8) {
@@ -1468,7 +1520,19 @@
       for (const o of factions) if (o.alive && atWar(f.id, o.id)) { enemy = o.id; break; }
       if (enemy >= 0 && p.id % 3 !== 0) {
         const goal = villages[f.target[enemy]];
-        if (goal && goal.alive && goal.f === enemy) { go(p, goal.x + (R() - 0.5) * 2, goal.y + (R() - 0.5) * 2, "march"); p.wait = 0; return; }
+        if (goal && goal.alive && goal.f === enemy) {
+          /* Before marching: rations drawn at a village of their own, and a
+             weapon that works. Nobody marches on an empty pack or a broken
+             blade; somebody who cannot be fed or armed stays to guard. */
+          const depot = villages[p.at] && villages[p.at].alive && villages[p.at].f === p.f && dist(p, villages[p.at]) < 2.5 ? villages[p.at] : (atHome ? home : null);
+          if (depot) { provision(p, depot); outfit(p, depot); }
+          const need = dailyNeed(p);
+          if (p.food >= need * 3 && (equipped(p, "weapon") || !S.war)) {
+            p.supplyRun = false;
+            go(p, goal.x + (R() - 0.5) * 2, goal.y + (R() - 0.5) * 2, "march"); p.wait = 0; return;
+          }
+          if (!depot) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; }
+        }
       }
       if (p.food < 0.5 && dist(p, home) > 1.5) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; }
       if (dist(p, home) < 1.5) shop(p, home);
@@ -2322,7 +2386,10 @@
         let extra = Math.floor(f.soldiers - f.army * f.adults);
         for (const p of people) { if (extra <= 0) break; if (p.f === f.id && p.job === "soldier") { p.job = "farmer"; p.task = "idle"; extra--; } }
       } else if ((wars || f.yours) && f.soldiers < f.army * f.adults) {
-        let need = Math.ceil(f.army * f.adults - f.soldiers);
+        /* An army is raised a few at a time — two in a hundred adults a week —
+           not conjured whole the day a war starts; and rebuilt as slowly
+           after it is broken. */
+        let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 / 7)));
         for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === "farmer" && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       /* Money: enough to pay the soldiers, no more than the people will bear.
