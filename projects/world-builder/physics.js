@@ -152,7 +152,7 @@
       { key: "meltTemp", when: s => s.breaking, label: "Hot enough to shed pieces", type: "range", min: 1, max: 100, step: 1, def: 20,
         say: v => v + " temperature", help: "Above this temperature, a body gradually sheds material. Far above it, larger pieces can break away. Size alone never breaks it." },
       { key: "shake", label: "Heat shakes things", type: "range", min: 0, max: 1, step: 0.05, def: 0.3,
-        say: off(pct), help: "How quickly a hot hexagon turns its heat into random motion. Off, it gets no random shove." },
+        say: off(pct), help: "How quickly a hexagon's motion and its heat come to the same temperature: a hot one is shoved about, a fast one in cold surroundings is slowed and warms. Off, heat and motion never trade except in collisions." },
       { key: "conduct", label: "Heat spreads by touch", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: off(pct), help: "How quickly heat moves between hexagons that touch or are bonded." },
       { key: "radiate", label: "Heat leaks away", type: "range", min: 0, max: 0.5, step: 0.005, def: 0.01, curve: 2,
@@ -1267,57 +1267,190 @@
         unbond(k, bd, true);
       }
     }
-    function bondForces(dt) {
+    /* ── motion ─────────────────────────────────────────────────────────────
+       Velocity Verlet (Verlet 1967; Swope et al. 1982), the stepping rule
+       molecular simulation uses: half a kick from the forces, a full step of
+       motion, the forces worked out again where things now are, the other
+       half kick. Before 2026-11-14 it was a kick then a step (semi-implicit
+       Euler), and a bonded world gained energy a little at a time: measured
+       on 400 hexagons, 0.5 to 2.8 units in five seconds in the moving part
+       alone. Only the forces that hold energy (bond springs, angle springs,
+       charge, sticking, gravity) are in the kicks; the dampers that turn
+       ringing into heat are applied afterwards, each handing over exactly the
+       motion it takes away. */
+    const tq = new Float64Array(cap);       // turning force from the angle springs
+    /* A bond stretched past breaking point lets go, and has to find its
+       worth: out of the pair's heat, or, if they are too cold, the books say
+       where it came from. */
+    function snapBonds() {
       for (const [k, bd] of bonds) {
+        const a = bd.a, b = bd.b;
+        const d = Math.hypot(sep(x[b] - x[a], W), sep(y[b] - y[a], H)) || 1e-9;
+        if (d <= bd.rest * BOND_SNAP) continue;
+        const take = Math.min(bd.B, heat[a] + heat[b]);
+        const share = heat[a] + heat[b] > 0 ? take / (heat[a] + heat[b]) : 0;
+        heat[a] -= heat[a] * share; heat[b] -= heat[b] * share;
+        tally.heated += bd.B - take;
+        unbond(k, bd);
+      }
+    }
+    function bondForces() {
+      const turning = spun();
+      for (const bd of bonds.values()) {
         const a = bd.a, b = bd.b;
         const dx = sep(x[b] - x[a], W), dy = sep(y[b] - y[a], H);
         const d = Math.hypot(dx, dy) || 1e-9;
-        if (d > bd.rest * BOND_SNAP) {
-          const take = Math.min(bd.B, heat[a] + heat[b]);
-          const share = heat[a] + heat[b] > 0 ? take / (heat[a] + heat[b]) : 0;
-          heat[a] -= heat[a] * share; heat[b] -= heat[b] * share;
-          tally.heated += bd.B - take;
-          unbond(k, bd);
-          continue;
-        }
         const ux = dx / d, uy = dy / d;
         const mu = m[a] * m[b] / (m[a] + m[b]);
-        const vn = (vx[b] - vx[a]) * ux + (vy[b] - vy[a]) * uy;
-        const spring = BOND_K * mu * (d - bd.rest);
-        /* What the damper takes out of the ringing goes into the pair as heat. */
-        const damp = BOND_DAMP * mu * vn;
-        const lost = damp * vn * dt;
-        heat[a] += lost / 2; heat[b] += lost / 2;
-        const f = spring + damp;
+        const f = BOND_K * mu * (d - bd.rest);
         ax[a] += f * ux / m[a]; ay[a] += f * uy / m[a];
         ax[b] -= f * ux / m[b]; ay[b] -= f * uy / m[b];
-        if (spun() && bd.sa >= 0 && bd.sb >= 0) {
+        if (turning && bd.sa >= 0 && bd.sb >= 0) {
           const along = Math.atan2(dy, dx);
           /* Each end's spring turns that end and leans on the line between
              the two middles, which is what it is measured against. The lean
              is equal and opposite, so the pair keeps its momentum. */
-          const lean = (twist(a, bd.sa, along, dt) + twist(b, bd.sb, along + Math.PI, dt)) / d;
+          const lean = (turnForce(a, bd.sa, along) + turnForce(b, bd.sb, along + Math.PI)) / d;
           const px = -uy, py = ux;
           ax[a] += lean * px / m[a]; ay[a] += lean * py / m[a];
           ax[b] -= lean * px / m[b]; ay[b] -= lean * py / m[b];
         }
       }
     }
-    /* Turn one end so its slot points along the bond, damp the swinging, and
-       hand back the torque so the caller can lean on the line the angle is
-       measured against. The spring is held in the books as twistEnergy; what
-       the damper takes out becomes heat, exactly as the distance spring's
-       damper does. A pinned hexagon is held: it neither turns nor is turned,
-       and its end of the spring does nothing. */
-    function twist(i, slot, want, dt) {
+    /* The angle spring at one end: how hard it turns that end towards its
+       partner, added to tq and handed back for the lean. A pinned hexagon is
+       held: it neither turns nor is turned, and its end does nothing. */
+    function turnForce(i, slot, want) {
       if (pinned[i]) return 0;
-      const err = wrapAngle(want - slotDir(i, slot));
-      spin[i] += ANG_K * S.angles * err * dt;
-      const keep = Math.max(0, 1 - ANG_DAMP * S.angles * dt);
-      const was = spin[i];
-      spin[i] = was * keep;
-      heat[i] += 0.5 * inertia(i) * (was * was - spin[i] * spin[i]);
-      return inertia(i) * ANG_K * S.angles * err;
+      const t = inertia(i) * ANG_K * S.angles * wrapAngle(want - slotDir(i, slot));
+      tq[i] += t;
+      return t;
+    }
+    function computeForces() {
+      ax.set(gax); ay.set(gay);
+      if (spun()) tq.fill(0, 0, n);
+      bondForces();
+      if (charged() && (bonds.size || S.ions)) chargeForces();
+      if (S.stick > 0) stickForces();
+    }
+    function kick(h) {
+      const turning = spun();
+      for (let i = 0; i < n; i++) {
+        if (!alive[i]) continue;
+        if (pinned[i]) { vx[i] = 0; vy[i] = 0; continue; }
+        vx[i] += ax[i] * h; vy[i] += (ay[i] + S.fall) * h;
+        if (turning) spin[i] += tq[i] / inertia(i) * h;
+      }
+    }
+    /* The dampers. Along each bond the two ends' closing speed is pulled
+       towards nothing as exp(-BOND_DAMP t) and given a random kick sized by
+       the pair's temperature, and the same for the turning of each end: a
+       damper and its matching noise, the fluctuation-dissipation pair
+       (dissipative particle dynamics, Espanol and Warren 1995). The change in
+       motion is paid from, or given to, the pair's heat exactly. Without the
+       noise, a damper only ever took motion away, a bond's own wiggling ran
+       colder than the world round it, and a bonded pair looked more
+       comfortable than it is: van 't Hoff came out 113-117% of the bond
+       energy, by about the same amount whatever the bond (measured
+       2026-11-14). With "Heat shakes things" off there is no noise here
+       either, as there is none anywhere. */
+    function dampBonds(dt) {
+      const keepN = Math.exp(-BOND_DAMP * dt);
+      const keepA = Math.max(0, 1 - ANG_DAMP * S.angles * dt), turning = spun();
+      for (const bd of bonds.values()) {
+        const a = bd.a, b = bd.b;
+        const ia = pinned[a] ? 0 : 1 / m[a], ib = pinned[b] ? 0 : 1 / m[b], isum = ia + ib;
+        if (isum > 0) {
+          const dx = sep(x[b] - x[a], W), dy = sep(y[b] - y[a], H);
+          const d = Math.hypot(dx, dy) || 1e-9, ux = dx / d, uy = dy / d;
+          const vn = (vx[b] - vx[a]) * ux + (vy[b] - vy[a]) * uy;
+          /* The pair's own temperature, and its closing speed's spread there:
+             1/isum is the pair's reduced mass. */
+          const T = S.shake > 0 ? Math.max(0, heat[a] + heat[b]) / (m[a] + m[b]) : 0;
+          const vn2 = keepN * vn + (T > 0 ? Math.sqrt((1 - keepN * keepN) * T * isum) * gauss() : 0);
+          const J = (vn2 - vn) / isum;
+          const ova = vx[a], ova2 = vy[a], ovb = vx[b], ovb2 = vy[b];
+          const before = m[a] * (vx[a] * vx[a] + vy[a] * vy[a]) + m[b] * (vx[b] * vx[b] + vy[b] * vy[b]);
+          vx[a] -= J * ux * ia; vy[a] -= J * uy * ia;
+          vx[b] += J * ux * ib; vy[b] += J * uy * ib;
+          const after = m[a] * (vx[a] * vx[a] + vy[a] * vy[a]) + m[b] * (vx[b] * vx[b] + vy[b] * vy[b]);
+          const lost = 0.5 * (before - after);
+          if (heat[a] + heat[b] + lost < 0) { vx[a] = ova; vy[a] = ova2; vx[b] = ovb; vy[b] = ovb2; }   // too cold to pay for the kick
+          else {
+            /* Shared as before when it is heat given; taken by heat held when
+               it is heat spent, so nobody goes below nothing. */
+            if (lost >= 0) { heat[a] += lost / 2; heat[b] += lost / 2; }
+            else { const share = -lost / (heat[a] + heat[b]); heat[a] -= heat[a] * share; heat[b] -= heat[b] * share; }
+          }
+        }
+        if (turning && bd.sa >= 0 && bd.sb >= 0) {
+          for (const i of [a, b]) {
+            if (pinned[i]) continue;
+            const I = inertia(i), Ti = S.shake > 0 ? Math.max(0, heat[i]) / m[i] : 0;
+            const was = spin[i];
+            const now = keepA * was + (Ti > 0 ? Math.sqrt((1 - keepA * keepA) * Ti / I) * gauss() : 0);
+            const lost = 0.5 * I * (was * was - now * now);
+            if (heat[i] + lost >= 0) { spin[i] = now; heat[i] += lost; }
+          }
+        }
+      }
+    }
+    /* What everything attached to i and j holds where they are now: the
+       springs of their bonds, and with charge or sticking on, their pull on
+       everyone near. Read before and after a collision pushes the two apart,
+       so the push pays for what it changes. */
+    function heldAround(i, j) {
+      let u = 0;
+      for (const h of [i, j]) {
+        if (nb[h] === 0) continue;
+        /* i and j are not bonded to each other (a bonded pair is never
+           pushed), so every bond here is counted once. */
+        let listed = 0;
+        for (let t = 0; t < SLOTS; t++) {
+          const o = adj[h * SLOTS + t];
+          if (o < 0) continue;
+          listed++;
+          const bd = bonds.get(key(h, o));
+          if (bd) u += strain(bd);
+        }
+        if (listed < nb[h]) {
+          /* More bonds than slots: read the rest from the list. */
+          for (const bd of bonds.values()) if (bd.a === h || bd.b === h) {
+            const o = bd.a === h ? bd.b : bd.a;
+            let inSlot = false;
+            for (let t = 0; t < SLOTS; t++) if (adj[h * SLOTS + t] === o) inSlot = true;
+            if (!inSlot) u += strain(bd);
+          }
+        }
+      }
+      if (charged() && (q[i] !== 0 || q[j] !== 0)) {
+        for (const h of [i, j]) if (q[h] !== 0) eachNear(x[h], y[h], o => {
+          if (o === h || q[o] === 0 || bonds.has(key(h, o))) return;
+          if (h === j && o === i) return;                    // the pair once
+          const d = Math.hypot(sep(x[o] - x[h], W), sep(y[o] - y[h], H));
+          if (d < CHARGE_R) u += S.charge * q[h] * q[o] * chargePsi(d);
+        });
+      }
+      if (S.stick > 0) {
+        for (const h of [i, j]) eachNear(x[h], y[h], o => {
+          if (o === h || (h === j && o === i)) return;
+          const d = Math.hypot(sep(x[o] - x[h], W), sep(y[o] - y[h], H)), c0 = r[h] + r[o];
+          if (d <= c0) { u -= S.stick; return; }
+          if (d >= c0 + STICK_R) return;
+          const t = (d - c0) / STICK_R, w = 1 - t * t;
+          u -= S.stick * w * w;
+        });
+      }
+      return u;
+    }
+    /* Heat for a change the pair caused: given, or taken from what they hold,
+       and the books told of any shortfall. */
+    function payPair(a, b, dU) {
+      if (dU === 0) return;
+      if (dU < 0) { const wa = m[a] / (m[a] + m[b]); heat[a] -= dU * wa; heat[b] -= dU * (1 - wa); return; }
+      const have = heat[a] + heat[b], take = Math.min(dU, have);
+      if (have > 0) { const share = take / have; heat[a] -= heat[a] * share; heat[b] -= heat[b] * share; }
+      tally.heated += dU - take;
     }
     function shakeBonds(dt) {
       if (!bonds.size) return;
@@ -1554,9 +1687,15 @@
          moving most, and bounced if they were closing. */
       const over = (reach - d) * 0.5;
       const wi = ii / isum, wj = ij / isum;
+      /* The push moves two things that may be holding springs and charges
+         with everyone else; what that changes is paid for out of their heat,
+         or the push would make energy. Nothing attached, nothing to read. */
+      const attached = nb[i] > 0 || nb[j] > 0 || S.stick > 0 || (charged() && (q[i] !== 0 || q[j] !== 0));
+      const held0 = attached ? heldAround(i, j) : 0;
       /* Heat from the meeting is shared by mass, or evenly when one is pinned. */
       x[i] -= ux * over * 2 * wi; y[i] -= uy * over * 2 * wi;
       x[j] += ux * over * 2 * wj; y[j] += uy * over * 2 * wj;
+      if (attached) payPair(i, j, heldAround(i, j) - held0);
       if (vn < 0) {
         // A fracturing impact diverts at least half its normal collision energy
         // into heat. Even a perfectly elastic material must pay for its fragments.
@@ -1589,6 +1728,12 @@
       }
     }
 
+    /* A normal random number (Box and Muller, 1958). */
+    function gauss() {
+      let u = R();
+      while (u <= 1e-300) u = R();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283185307179586 * R());
+    }
     function heatStep(dt) {
       const cxm = W / 2, cym = H / 2, hot = S.heater, hr = W * 0.1;
       for (let i = 0; i < n; i++) {
@@ -1604,25 +1749,36 @@
           const out = heat[i] * Math.min(1, S.radiate * dt);
           heat[i] -= out; tally.radiated += out;
         }
-        /* Heat becomes a shove in a random direction, and is charged for
-           exactly the motion the shove made — so energy is neither made nor
-           lost here, only moved. */
-        if (S.shake > 0 && heat[i] > 1e-9 && !pinned[i]) {
-          const dE = heat[i] * Math.min(0.5, S.shake * 2 * dt);
-          const a = R() * 6.283185307, dv = Math.sqrt(2 * dE / m[i]);
-          const kx = Math.cos(a) * dv, ky = Math.sin(a) * dv;
-          const cost = m[i] * (vx[i] * kx + vy[i] * ky) + dE;
-          if (cost <= heat[i]) { vx[i] += kx; vy[i] += ky; heat[i] -= cost; }
-        }
-        /* The same shove, about the middle instead of across the world. A
-           free hexagon has to be able to turn, or it could never bring a slot
-           round to meet anything. Charged for exactly the spin it makes. */
-        if (S.shake > 0 && spun() && heat[i] > 1e-9 && !pinned[i]) {
-          const I = inertia(i);
-          const dE = heat[i] * Math.min(0.5, S.shake * dt);
-          const dw = (R() < 0.5 ? -1 : 1) * Math.sqrt(2 * dE / I);
-          const cost = I * spin[i] * dw + dE;
-          if (cost <= heat[i]) { spin[i] += dw; heat[i] -= cost; }
+        /* Heat and motion trade both ways until they are at one temperature
+           — the Langevin equation, the way a molecule in a liquid is kicked
+           about and held back by everything round it (Langevin 1908; the
+           exact one-step form is the "O" step of Leimkuhler and Matthews,
+           2013). Each velocity is pulled part way to nothing and given a
+           random kick sized by the hexagon's own temperature, heat/mass:
+           left alone, its motion settles at that temperature, a hot one
+           speeds up and a fast one in a cold place slows and warms it. The
+           change in motion is paid from, or given to, its heat exactly; if
+           there is not enough heat to pay, nothing happens that step.
+
+           Before 2026-11-14 heat only ever became motion here, and motion
+           came back only through collisions, so a world had two temperatures
+           that did not agree — measured, heat 0.24 against motion from 0.18
+           to 0.59 in the same sticky world — and the odds bonds were made by
+           (heat) were not the odds things boiled by (motion). */
+        if (S.shake > 0 && !pinned[i]) {
+          const T = Math.max(0, heat[i]) / m[i];
+          const c = Math.exp(-S.shake * 2 * dt), sd = Math.sqrt((1 - c * c) * T / m[i]);
+          const nx = c * vx[i] + sd * gauss(), ny = c * vy[i] + sd * gauss();
+          const cost = 0.5 * m[i] * (nx * nx + ny * ny - vx[i] * vx[i] - vy[i] * vy[i]);
+          if (cost <= heat[i]) { vx[i] = nx; vy[i] = ny; heat[i] -= cost; }
+          /* The same about the middle. A free hexagon has to be able to turn,
+             or it could never bring a slot round to meet anything. */
+          if (spun()) {
+            const I = inertia(i), sw = Math.sqrt((1 - c * c) * T / I);
+            const nw = c * spin[i] + sw * gauss();
+            const turnCost = 0.5 * I * (nw * nw - spin[i] * spin[i]);
+            if (turnCost <= heat[i]) { spin[i] = nw; heat[i] -= turnCost; }
+          }
         }
       }
     }
@@ -1654,26 +1810,21 @@
        and working it out is most of what a big world costs. */
     const gax = new Float64Array(cap), gay = new Float64Array(cap);
     function substep(dt) {
-      ax.set(gax); ay.set(gay);
-      bondForces(dt);
-      if (charged() && (bonds.size || S.ions)) chargeForces();
-      if (S.stick > 0) stickForces();
-      const lim = S.limit, keep = S.drag > 0 ? Math.exp(-S.drag * dt) : 1, turning = spun();
+      /* The whole Verlet step first, so that everything after it (collisions,
+         bonds made and broken, heat) sees positions and velocities that
+         belong to the same moment. The forces are worked out afresh each
+         time, because those events move things and change the bonds. */
+      computeForces();
+      kick(dt / 2);
+      const turning = spun();
       for (let i = 0; i < n; i++) {
-        if (!alive[i]) continue;
-        if (pinned[i]) { vx[i] = 0; vy[i] = 0; continue; }
-        vx[i] += ax[i] * dt; vy[i] += (ay[i] + S.fall) * dt;
-        if (keep < 1) {
-          const before = vx[i] * vx[i] + vy[i] * vy[i];
-          vx[i] *= keep; vy[i] *= keep;
-          tally.dragged += 0.5 * m[i] * before * (1 - keep * keep);
-        }
-        const sp = Math.hypot(vx[i], vy[i]);
-        if (sp > lim) { vx[i] *= lim / sp; vy[i] *= lim / sp; }
+        if (!alive[i] || pinned[i]) continue;
         x[i] += vx[i] * dt; y[i] += vy[i] * dt;
         if (turning) face[i] += spin[i] * dt;
       }
       edges();
+      computeForces();
+      kick(dt / 2);
       buildHash();
       if (S.settle && S.bonding !== "none") sizePool();
       impact.fill(0); impactX.fill(0); impactY.fill(0);
@@ -1683,6 +1834,20 @@
       breakBodies(dt);
       react(dt);
       if (S.settle && S.bonding !== "none") settleBonds(dt); else shakeBonds(dt);
+      snapBonds();
+      dampBonds(dt);
+      /* Thick space and the speed limit come last, on the finished velocity. */
+      const lim = S.limit, keep = S.drag > 0 ? Math.exp(-S.drag * dt) : 1;
+      for (let i = 0; i < n; i++) {
+        if (!alive[i] || pinned[i]) continue;
+        if (keep < 1) {
+          const before = vx[i] * vx[i] + vy[i] * vy[i];
+          vx[i] *= keep; vy[i] *= keep;
+          tally.dragged += 0.5 * m[i] * before * (1 - keep * keep);
+        }
+        const sp = Math.hypot(vx[i], vy[i]);
+        if (sp > lim) { vx[i] *= lim / sp; vy[i] *= lim / sp; }
+      }
       tally.time += dt;
     }
 

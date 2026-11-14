@@ -32,6 +32,7 @@ what has shipped from future direction, including the shared daily clock and rem
 | `replication-probe.mjs` | Not a check — a measurement, run by hand. Seeds copies of a sequence, runs the identical world without them as a control, and counts only the copies made of fresh hexagons. |
 | `test/chemistry.test.mjs` | Quick checks on valence and pull, that settling pays for every bond exactly, that heat thins bonds out, that a barrier is lower for pieces held lined up, that charge lands where the pulls say, keeps the books, and makes lopsided pairs stick, and that shape, sticking, ions, double bonds and energy-rich pieces each do what they say and pay exactly. Quick lane. |
 | `chemistry-probe.mjs` | Not a check — a measurement, run by hand (a few minutes). Van 't Hoff, mass action, the barrier, hand-overs and energy-rich pieces, each against the number it should give. |
+| `matter-probe.mjs` | Not a check — a measurement, run by hand (several minutes). Arrhenius (how fast bonds form against the barrier) and boiling against Clausius–Clapeyron. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
@@ -223,10 +224,10 @@ ones, and they are measured, not assumed). The straightening spring leans on the
 two middles as hard as it turns the hexagon, equal and opposite, so **momentum is kept exactly**
 (1e-16 over 100 seconds) and the spring is a real potential rather than a free source of spin —
 without that lean a bonded world ran **560% hot**, which is how the bug was found. **Energy in a
-bonded world closes to about a part in ten thousand, not to the last digit**: both springs are
-integrated a step at a time, and the error is bounded, not a leak (0.024% after 100 seconds and
-the same 0.024% after 600). The angular damper takes spin out against nothing, so **angular
-momentum is not conserved** — the energy is, it becomes heat. Heat's turning shove is exact.
+bonded world closes to about a part in ten thousand, not to the last digit** — measured on a quiet
+world; busy ones did worse until 2026-11-14, see *Motion and heat* below. The angular damper takes
+spin out against nothing, so **angular momentum is not conserved** — the energy is, it becomes
+heat. Heat's turning shove is exact.
 
 **Is it possible, then, and has it happened?** Possible: a chain whose ends are held by a template
 can make bonds that would essentially never form free, and `look` means the copy's sites depend on
@@ -359,7 +360,7 @@ A + B ⇌ AB, in a sealed world). Each line is against a number worked out first
 
 | | the world before | settling on |
 |---|---|---|
-| **van 't Hoff**: slope of ln K against 1/T, should equal the bond energy (4) | 1.8 at first measure, 2.3 in the probe | **4.08** (102%), straight to r² 0.998; at bond energy 6, **6.11** |
+| **van 't Hoff**: slope of ln K against 1/T, should equal the bond energy (4) | 1.8 at first measure, 2.3 in the probe | **4.08** (102%), straight to r² 0.998; at bond energy 6, **6.11** — *right for the wrong reasons; see Motion and heat* |
 | **Mass action**: K for a 3:1 mix against 1:1, should be equal | −17% | **−10%** (−5% at bond energy 6), and more A pulled B from 55% to 89% paired, as Le Chatelier says |
 | **Barrier**: should change how fast, not where | barrier 3 cut K by a factor of 23 | K moved 6%; half-way took **16 s instead of 0.5 s** |
 
@@ -372,14 +373,8 @@ the balance by a quarter.
 **What it conserves.** Every make and break pays exactly: forming gives its worth less what the
 springs now hold to the pool, breaking takes its worth back and hands the springs' energy over as
 heat, and the test holds a world of held hexagons that made and broke hundreds of bonds to a part
-in a billion. **What it does not, and this is older than any of it:** a *moving* bonded world
-gains energy slowly through the integrator and the collision push-apart (which moves positions
-without charging the springs that are attached). Measured 2026-11-14 on 800 hexagons, five
-seconds, nothing settling: 1.8 units gained in the motion step and 0.4 in the push-apart with
-bonds forming the old way; settling makes many more bonds, so the same leak shows more (8.3 and
-2.5), though per bond-second it is lower. The settling steps themselves add exactly nothing. This
-contradicts the "about a part in ten thousand" figure above for busy worlds — that was measured on
-a quiet one — and fixing it means changing the integrator, which would change every bonded world.
+in a billion. A *moving* bonded world used to gain energy slowly through the stepping rule and the
+collision push-apart; that was fixed the same day — see *Motion and heat*.
 
 **Charge, measured 2026-11-14.** The same four pieces wired two ways, 100 pairs at temperature
 0.3: kind 1 with kind 7 twice (lopsided) against 1 with 1 and 7 with 7 (alike, no charge). At
@@ -407,6 +402,62 @@ shifted-force cut-off and for leaving bonded pairs out. Dittrich, Ziegler and Ba
 artificial chemistries; nothing here was taken from them, and they were not read in full for it.
 Hutton's Squirm3 (credited below) is the other road: it gives each atom states and a reaction
 table, which this project refuses.
+
+### Motion and heat
+
+Ric, 2026-11-14: *"how close can we get this to real chemistry?"* — and then, to fixing the
+foundation first and proving two more laws: *"do it"*. Four changes under everything, which
+**change every world a little** (nothing here is off by default; it is how the world moves):
+
+- **Velocity Verlet** (Verlet 1967; Swope et al. 1982), the stepping rule molecular simulation
+  uses, in place of a kick-then-step. Only forces that hold energy go in the kicks; the step runs
+  whole before collisions, bonds and heat see the world, so they see positions and velocities from
+  the same moment, and the forces are worked out afresh each step.
+- **Exact dampers.** A bond's damper used to pay heat on the speed it had before the step; now it
+  counts the motion it actually took.
+- **Collisions pay for their push.** Pushing two overlapping hexagons apart moves things that hold
+  springs, charges and sticking with everyone near; what that changes is now paid from their heat.
+  The push-apart's leak measures exactly zero.
+- **One temperature.** "Heat shakes things" used to turn heat into motion and never back except
+  by collision, so a world had two temperatures that disagreed — measured, heat 0.24 against motion
+  anywhere from 0.18 to 0.59 in one sticky world — and bonds (judged by heat) and boiling (decided
+  by motion) ran on different thermometers. Now each hexagon's motion is pulled towards its own
+  heat's temperature and kicked in proportion, the Langevin equation (Langevin 1908; the exact
+  step of Leimkuhler and Matthews 2013), and each bond's damper gets the matching kick
+  (fluctuation-dissipation, as in dissipative particle dynamics: Español and Warren 1995). Every
+  trade is paid from heat exactly. With perfectly bouncy collisions heat and motion agree to 5%;
+  a collision that loses energy keeps motion a little cooler than heat, and that is left alone.
+
+| measured, 2026-11-14 | before | after |
+|---|---|---|
+| energy gained in 5 s, 400 bonded hexagons (bonding on contact / everything on) | 2.8 / 9.7 | 0.015 / −0.015 |
+| energy gained in 5 s, 800 hexagons reacting | 2.2 | 0.05, then 0.2 once bonds wiggle at the world's temperature (the stepping rule's own error, which grows with how hard things ring; every other rule adds nothing) |
+| a single bonded pair, first second | 0.004 | 0.000006 |
+| time per frame | — | about 10% more |
+
+**What that did to the chemistry numbers, and why the old van 't Hoff was wrong.** The old 102%
+was two errors cancelling. For two pieces joining in a flat world, ln K against 1/T should have
+slope B − T/2, not B: a bond's own wiggling holds heat (classically K grows as √T·e^(B/T) from the
+room a spring gives). With one temperature and fair dampers, `chemistry-probe.mjs` reads **3.54
+against 3.36 (105%)** at bond energy 4 and **5.49 against 5.19 (106%)** at 6, straight to r² 0.999.
+In between, with the Langevin step but the old dampers, it read 117% — bonds wiggling colder than
+the world looked more comfortable than they are. Mass action came out −10% and +6%, a barrier of 3
+moved the balance 6–9% while taking six times as long, hand-overs moved it 8–14% on single runs
+(scatter is about ±15%), and energy-rich pieces still held a fed world well above rest.
+
+**Two more laws** (`matter-probe.mjs`, run by hand):
+
+- **Arrhenius.** How often A + B join per pair that could, at five temperatures: ln(rate) against
+  1/T has slope **−1.98, −3.85 and −5.81 for barriers of 2, 4 and 6** — 96 to 99%.
+- **Boiling** (Clausius–Clapeyron). A drop of 144 hexagons held by "Everything sticks a little",
+  in a box it can boil into: ln(gas density) against 1/T has slope **−2.25**, against **2.31** for
+  the energy to pull one hexagon out of the liquid (1.95, measured separately as the drop's sticking
+  energy per hexagon, plus T for the push of the gas) — **97%**. Nothing was tuned to get it.
+
+The gas has to be at balance for this to mean anything: in the first try, in a box 60 wide, a
+hexagon took minutes to wander back to the drop, the gas was still filling, and the slope came
+out twice the right size. A smaller box, run longer, and a fit that weights each temperature by how
+much gas it saw, gave the line above.
 
 ### Hands
 

@@ -4,10 +4,17 @@
    does? Three measurements, each against a number worked out in advance:
 
    1. VAN 'T HOFF. Two kinds that pair up and nothing else (A + B ⇌ AB). At
-      equilibrium K = [AB] / ([A][B]) should follow exp(B / T), so ln K
-      plotted against 1/T is a straight line whose slope is the bond energy.
-      The slope is the measurement; the line's height depends on geometry and
-      is not predicted.
+      equilibrium K = [AB] / ([A][B]), and ln K plotted against 1/T is a
+      straight line whose slope is the energy given off. For two pieces
+      joining in a flat world that is the bond energy less T/2, not the bond
+      energy itself: the bond's own wiggling holds heat (classically, K grows
+      as sqrt(T) exp(B/T) from the room a spring gives). The probe prints
+      both. The line's height depends on geometry and is not predicted.
+
+      Until 2026-11-14 this read 102% of the bond energy and was taken as
+      right. It was two errors cancelling: a world whose heat and motion were
+      at different temperatures, and dampers that only took motion away.
+      Fixed, it reads a few percent above B - T/2.
 
    2. MASS ACTION. The same two kinds at the same temperature, mixed 1:1 and
       then 3:1. K is a property of the reaction, not of the mix, so it should
@@ -77,7 +84,7 @@ function settle(w, wait = 150, over = 60) {
 
 console.log(`Bond energy ${BOND}, ${SETTLE ? "bonds settle with temperature" : "the world WITHOUT settling (--old)"}.\n`);
 
-console.log("1. van 't Hoff: ln K against 1/T should have slope " + BOND);
+console.log("1. van 't Hoff: ln K against 1/T should have slope " + BOND + " less half the temperature");
 const rows = [];
 for (const T0 of [0.6, 0.9, 1.3, 2, 3, 5]) {
   const r = settle(world(300, 300, { startTemp: T0 }));
@@ -90,7 +97,8 @@ let num = 0, den = 0, ss = 0, st = 0;
 xs.forEach((x, i) => { num += (x - mx) * (ys[i] - my); den += (x - mx) ** 2; });
 const slope = num / den;
 ys.forEach((y, i) => { const fit = my + slope * (xs[i] - mx); ss += (y - fit) ** 2; st += (y - my) ** 2; });
-console.log(`   slope ${slope.toFixed(2)} = ${(100 * slope / BOND).toFixed(0)}% of the bond energy, straight to r² ${(1 - ss / st).toFixed(3)}\n`);
+const Tmid = 1 / mx, expect = BOND - Tmid / 2;
+console.log(`   slope ${slope.toFixed(2)}: ${(100 * slope / expect).toFixed(0)}% of B - T/2 = ${expect.toFixed(2)} at the middle temperature ${Tmid.toFixed(2)} (${(100 * slope / BOND).toFixed(0)}% of B), straight to r² ${(1 - ss / st).toFixed(3)}\n`);
 
 console.log("2. Mass action at one temperature: K should not care about the mix");
 const even = settle(world(300, 300, { startTemp: 1.3 }));

@@ -60,7 +60,10 @@ function other(it, base, alt) {
      to do anything. */
   const needs = { bigMass: { layout: "sun" }, maxBonds: cold, bondSpeed: cold,
                   breaking: hot, toughness: hot, fragmentMass: hot, meltTemp: hot,
-                  align: { angles: 0.6 } };
+                  align: { angles: 0.6 },
+                  /* The chemistry settings that only exist on top of another. */
+                  charge: cold, ions: { charge: 3 }, shapeBy: { angles: 0.6 }, swap: { settle: true }, order: { settle: true },
+                  fuelRate: { fuel: 3 } };
   const alt = { limit: 3, maxBonds: 1, bondSpeed: 0.5 };
   for (const it of items(Physics)) {
     const base = needs[it.key] === cold ? cold : Object.assign({}, busy, needs[it.key] || {});
@@ -149,9 +152,18 @@ function other(it, base, alt) {
     check(w.kind[a] === 4 && Math.abs(w.heat[a] / w.m[a] - 5) < 1e-9, "physics: an edit did not take");
     w.edit(c, { mass: 80 });
     check(w.m[c] === 80 && w.r[c] > w.r[a], "physics: making one heavier did not make it heavier and bigger");
-    for (let f = 0; f < 600; f++) w.step(1 / 60);
+    /* The loose one is hot and bounces round the box, so where it is at the
+       end is chance; what must hold is that it fell, and never went through
+       the pinned one. */
+    let closest = Infinity, lowest = w.y[a];
+    for (let f = 0; f < 600; f++) {
+      w.step(1 / 60);
+      closest = Math.min(closest, Math.hypot(w.x[a] - w.x[b], w.y[a] - w.y[b]) / (w.r[a] + w.r[b]));
+      lowest = Math.max(lowest, w.y[a]);
+    }
     check(w.x[b] === 20 && w.y[b] === 30 && w.vx[b] === 0 && w.vy[b] === 0, "physics: a pinned hexagon moved");
-    check(w.y[a] > 6 && w.y[a] < 30, `physics: the loose one above the pin fell to ${w.y[a]}, through it or not at all`);
+    check(lowest > 6, `physics: the loose one never fell (lowest ${lowest})`);
+    check(closest > 0.5, `physics: the loose one went into the pinned one (closest ${closest} of touching)`);
     check(w.warm(20, 30, 2, 10) >= 1 && w.heat[b] > 0, "physics: heating a place heated nothing");
     check(w.remove(a) && !w.remove(a) && w.stats().count === 2 && w.describe(a) === null, "physics: removing one did not remove exactly one");
     let bad = 0;

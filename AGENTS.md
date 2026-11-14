@@ -514,6 +514,15 @@ nobody had linked was a page nobody could find.
   `fuel` (deliberately unbalanced — the drive). Fuel does nothing without a barrier: measured,
   the energy only warms the world. Do not "fix" that by making fuel stronger; the barrier is
   the physics. Every new step is in the all-on books test to 1e-9.
+  **Motion and heat** (same day, "do it" to fixing the foundation): velocity Verlet with the
+  step run whole before collisions and bonds see it, dampers that count what they take,
+  collisions that pay for their push (heldAround), and Langevin on every hexagon plus the
+  matching kick on every damper, so heat and motion are one temperature. This changed every
+  world. Load-bearing and easy to undo by accident: the matching kicks (without them
+  van 't Hoff reads 117%), and running the whole Verlet step before touch() (with collisions in
+  the middle, drift was 100x worse). van 't Hoff should read B - T/2, not B; the old 102% of B
+  was two errors cancelling. `matter-probe.mjs` holds Arrhenius (96-99%) and boiling against
+  Clausius-Clapeyron (97%). Re-run both probes after touching motion or heat.
   **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
