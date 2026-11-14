@@ -513,7 +513,9 @@ nobody had linked was a page nobody could find.
   step, a person sliding round a neighbour never counted, and a fifth of a default world starved
   beside full stores), and the land sets how *long* a day in the fields takes, not how much it
   brings. Moving house is an option in `choose`; a fed world almost never takes it, and that is
-  right — don't tune it until one churns. Conversation records surround
+  right — don't tune it until one churns. Sickness kills by `frailty` (young, old, hungry), about
+  3% of fed adults; it killed 22% of everybody until that date and shrank every world.
+  Conversation records surround
   the entire interaction, since several branches change state after speaking; do not infer an
   outcome from a dialogue type or move those effects into the renderer. The quick checks are in
   `projects/world-builder/test/conversations.test.mjs` and `.github/checks.mjs`. Read the vision before planning further milestones.

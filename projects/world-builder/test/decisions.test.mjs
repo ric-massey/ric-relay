@@ -66,4 +66,23 @@ for (const [key, floor] of Object.entries(mustBite)) {
     "% of an adult's hours, under the " + (floor * 100) + "% this check requires. A setting nobody can feel is a lie on the settings screen.");
 }
 
+/* ── the sickness kills like a village fever, not like smallpox ──────────────
+   Until 2026-11-14 it killed 22% of everybody who caught it, the strong and the
+   starving alike. Give a whole fed world the fever at once: a few in a hundred
+   should die of it, mostly the very young and the old. Measured 4.0–6.3% over
+   three seeds when this was written. */
+{
+  let died = 0, n = 0;
+  for (const seed of SEEDS) {
+    const w = People.create({ people: 200, map: "small", plague: "none", seed });
+    n += w.people.length;
+    for (const p of w.people) p.sick = 7 * People.DAY_HOURS;
+    w.step(8 * People.DAY_HOURS);
+    died += w.stats().sick;
+  }
+  const rate = died / n;
+  assert.ok(rate > 0.01 && rate < 0.12, "a fever that everybody catches killed " + (rate * 100).toFixed(1) + "% of a fed world; it should be a few in a hundred");
+  report.push("fever kills " + (rate * 100).toFixed(1) + "%");
+}
+
 console.log("Decisions: a day is slept, worked and walked in human proportions; settings that must be felt are — " + report.join(", ") + ".");

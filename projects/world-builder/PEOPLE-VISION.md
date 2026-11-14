@@ -517,6 +517,8 @@ how much it brings, so `rich` and `uneven` move a day within three days. And mov
 option in the same comparison, so `switch`, `crowd` and `memory` have a decision to enter — which a
 fed, peaceful world almost never takes, correctly. README, "What a person decides to do".
 
+The same day, sickness was brought down from a 22% death rate for everybody to about 3% for a fed adult, with children, the old and the hungry far more at risk; default worlds stopped shrinking. README, "Sickness is a village fever".
+
 Ric's framing for why this came first: the Apocolips idea (a 3D apocalypse sandbox, city and
 rural, choose the conditions and follow the people) is the same engine under different pressures.
 With job scripts an apocalypse would have had to be a sixth script; with an appraisal it is new

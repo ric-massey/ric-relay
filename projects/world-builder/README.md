@@ -346,10 +346,18 @@ simulation, not medical nutrition or a validated agricultural model.
   future harvests and incoming trade are not part of that store-only estimate. One food-price
   unit now prices one adult-day ration.
 - Hungry hours accumulate and affect health; missing a meal does not cause instant death.
-  `hunger` still controls deterioration. Age, consumption and recovery update hourly. Sickness
-  lasts up to seven days, with the prior per-illness risk spread over those hours; this is a toy
-  illness rule. Spoilage, food variety, water and individual health/energy requirements are not
-  modeled yet.
+  `hunger` still controls deterioration. Age, consumption and recovery update hourly. Spoilage,
+  food variety, water and individual health/energy requirements are not modeled yet.
+- **Sickness is a village fever, not smallpox** (2026-11-14). It lasts seven days and kills about
+  3% of fed, rested adults who catch it (`SICK_HAZARD`) — three times that for a child under five,
+  for somebody near the end of their life and for anybody hungry, which is how a bad harvest and
+  an outbreak become one disaster (`frailty`). A conversation passes it on 15% of the time
+  (`CATCH`), and surviving it makes you immune for good. Before that date it killed 22% of
+  everybody who caught it, alike, and passed on 35% of the time, so it reached nearly everybody:
+  default worlds lost 60–83 of 400 people to it in 240 days and shrank. Measured after, the same
+  worlds lose about a dozen and grow. `decisions.test.mjs` gives a whole fed world the fever at
+  once and requires a few in a hundred to die. Births were checked at the same time and need no
+  change: about 49 a year per thousand people, inside the range of real pre-industrial villages.
 
 `advance(seconds)` advances seconds of playback at 1×. `step(hours)` advances simulated hours by
 calling that **same** function. Both run every action: 5 actions per playback second, 250 per

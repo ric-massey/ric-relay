@@ -35,6 +35,13 @@
   const ACTIONS_PER_HOUR = HOUR_SECONDS * 5;
   const REFLECT_HOURS = 6;
   const ILLNESS_HOURS = 7 * DAY_HOURS;
+  /* The sickness kills about one healthy adult in thirty-three who catch it —
+     the order of a bad village fever, not of smallpox — and far more of the
+     very young, the old and the hungry. Until 2026-11-14 it killed 22% of
+     everybody who caught it, alike, and caught nearly everybody: one
+     outbreak every two months took a fifth of a world. */
+  const SICK_HAZARD = 1 - Math.pow(1 - 0.03, 1 / ILLNESS_HOURS);
+  const CATCH = 0.15;               // chance a conversation passes it on
   const pct = v => Math.round(v * 100) + "%";
   const scale = (words) => v => words[Math.min(words.length - 1, Math.floor(v * words.length))];
 
@@ -229,7 +236,7 @@
     const people = [], byId = new Map();
     const villages = [], factions = [];
     const events = [], chatter = [], history = [];
-    const count = { births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { infected: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0 };
     let t = 0, activityTicks = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
 
@@ -1215,8 +1222,8 @@
       const like = 1 - Math.abs(a.views - b.views);          // 1 agree … −1 opposite
       const open = 1 - S.stubborn;
       /* Sickness goes where talk goes. */
-      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < 0.35) b.sick = ILLNESS_HOURS;
-      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < 0.35) a.sick = ILLNESS_HOURS;
+      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < CATCH) { b.sick = ILLNESS_HOURS; count.infected++; }
+      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < CATCH) { a.sick = ILLNESS_HOURS; count.infected++; }
 
       /* 1 — somebody is hungry and the other has food. */
       const hungry = a.hungry > 0 ? a : b.hungry > 0 ? b : null;
@@ -1349,6 +1356,16 @@
       p.cargo = null; go(p, v.x + (R() - 0.5) * 2, v.y + (R() - 0.5) * 2, adult(p) ? "eat" : "idle"); p.wait = 0;
     }
 
+    /* How much worse the sickness is for this person than for a fed, rested
+       adult. The young and the old die of the same fever the strong shrug
+       off, and hunger is the great multiplier — which is how a bad harvest
+       and an outbreak become one disaster rather than two. */
+    function frailty(p) {
+      const old = p.dieAt > 0 ? p.age / p.dieAt : 0;
+      return (p.age < 5 ? 3 : p.age < 12 ? 1.5 : 1) * (old > 0.8 ? 3 : old > 0.65 ? 1.6 : 1) *
+             (p.hungry > 0 ? 3 : 1) * (p.rest > 0.8 ? 1.4 : 1);
+    }
+
     /* ── one person, one tick ──────────────────────────────────────────── */
     function live(p) {
       p.age += 1 / YEAR;
@@ -1397,7 +1414,7 @@
       if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
       if (p.sick > 0) {
         p.sick--;
-        if (R() < 0.0035 * 70 / ILLNESS_HOURS) { die(p, "sick"); return; }
+        if (R() < SICK_HAZARD * frailty(p)) { die(p, "sick"); return; }
         if (p.sick === 0) p.immune = true;
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
@@ -1630,7 +1647,7 @@
       const odds = S.plague === "none" ? 0 : S.plague === "rare" ? 0.004 : 0.02;
       if (v.sick === 0 && R() < odds) {
         const here = people.filter(p => p.home === v.id && !p.immune);
-        if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); }
+        if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; count.infected++; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); }
       }
       if (v.hungry > v.pop * 0.4 && v.pop > 8 && (!v.famine || t - v.famine >= 30 * DAY_HOURS)) {
         v.famine = t; note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f);
