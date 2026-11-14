@@ -13,7 +13,9 @@ const People = require("../people.js");
 
 /* The activity line the page shows, with the other person's name taken off:
    "Talking to Mara" and "Talking to Tovin" are the same way to spend an hour. */
-export const bucket = a => (a.startsWith("Talking to") ? "Talking" : a);
+export const bucket = a => a.startsWith("Talking to") ? "Talking" :
+  a.startsWith("Carrying ") ? "Carrying goods" :
+  /^(Checking the market in|Going to load goods in) /.test(a) ? "Travelling to trade" : a;
 
 /* One run, reduced to how its people spent their time and what came of it. */
 export function probe(base, set, seed, days) {

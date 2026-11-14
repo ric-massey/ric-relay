@@ -539,6 +539,19 @@ nobody had linked was a page nobody could find.
   old generation-scale experiments remain explicit `--generations` work and are not a claim of
   validated long-term balance. Plain role/activity labels, harvesting patches and conversation
   links explain what is happening; a spatial hash keeps bodies 0.42 tiles apart.
+  **People use boxes** (2026-11-14, Ric: "people can be boxes"), including the miniature;
+  children stay smaller, and gear, colour views and leader rings remain. Ric also found people
+  "get stuck at vilages": stalled walkers now use bounded half-tile A* routes around bodies.
+  Local tasks retain nearby arrival within 2.5 tiles after repeated failed routes; eating and
+  outfitting also require proximity to home. Never finish distant travel at somebody’s feet;
+  an enclosed courier still needs a real opening.
+  Fed traders can choose to check another safe market without cargo when prices offer no
+  profitable load. This competes with needs in `choose()`; preserve the newer decisions, homes,
+  work durations and migration rather than restoring the fixed job loops. Prospecting creates
+  no cargo or profit. Buying a load requires reaching its source; shared-store carriers remain
+  within their faction, and hostile/abandoned markets are excluded. The README records limits;
+  `projects/world-builder/test/travel.test.mjs` runs in the quick checks. Destination names are
+  grouped into stable categories by `test/day.mjs` so names do not distort day measurements.
   **Physics numbers are typed as well as slid** (Ric, 2026-11-12: "you can type one",
   after pushing a particle above a billion). Sliders keep their convenient sweeps; actual
   numeric limits live on `SCHEMA.inputMin` / `inputMax` and `clean()` uses those for typed

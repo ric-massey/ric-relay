@@ -117,6 +117,7 @@ const SUITES = [
   /* One clock through frames/hours/batches, plus daily food and lifecycle boundaries. */
   ['world-builder time and food', ['projects/world-builder/test/time-food.test.mjs']],
   ['world-builder equipment', ['projects/world-builder/test/equipment.test.mjs']],
+  ['world-builder travel', ['projects/world-builder/test/travel.test.mjs']],
   /* Actual effects and a held transcript that survives rolling history. */
   ['world-builder conversations', ['projects/world-builder/test/conversations.test.mjs']],
   /* A setting has to be something you can feel. The hash check in the slow lane

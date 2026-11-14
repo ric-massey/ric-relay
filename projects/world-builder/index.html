@@ -323,7 +323,7 @@
   </div>
   <div id="stage">
     <canvas id="view"></canvas>
-    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong><button type="button" class="shut" id="key-shut" aria-expanded="true" aria-controls="people-key-body" aria-label="Hide the key">×</button><span class="body" id="people-key-body">At 1×, one day = 20 minutes.<br>Colour follows the selected view (faction by default). Small figures are children; a white ring marks a leader. A gold line joins people talking. Zoom in to see carried tools, packs, weapons and shields.<br>Tap a person to zoom in and follow their work.</span></div>
+    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong><button type="button" class="shut" id="key-shut" aria-expanded="true" aria-controls="people-key-body" aria-label="Hide the key">×</button><span class="body" id="people-key-body">At 1×, one day = 20 minutes.<br>Colour follows the selected view (faction by default). Each box is a person; smaller boxes are children; a white ring marks a leader. A gold line joins people talking. Zoom in to see carried tools, packs, weapons and shields.<br>Tap a person to zoom in and follow their work.</span></div>
     <div id="rail" hidden>
       <div id="tools" role="group" aria-label="What a tap does"></div>
       <div id="palette" hidden></div>
@@ -1006,9 +1006,10 @@
         ctx.fillStyle = "#e3e9e6"; ctx.fillText(v.name, x, y + k + 5);
       }
     }
-    /* All adults have the same human silhouette. Work is named, not encoded in shapes. */
+    /* Ric, 2026-11-13: people can be boxes. Keep colour, child size and real gear. */
     const talking = [], labels = [];
-    const rad = Math.max(1, s * 0.20);
+    // The square diagonal fits inside the 0.42-tile body clearance.
+    const rad = Math.max(1, s * 0.145);
     for (const p of w.people) {
       const q = p.sayT > 0 && w.byId.get(p.talkingTo);
       if (!q || q.sayT <= 0 || q.talkingTo !== p.id || p.id > q.id) continue;
@@ -1020,13 +1021,8 @@
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
       const r = p.job === "child" ? rad * 0.68 : rad;
       ctx.fillStyle = personColour(p); ctx.strokeStyle = "#070a0b"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(x, y - r * 0.56, r * 0.40, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.roundRect(x - r * 0.42, y - r * 0.06, r * 0.84, r * 0.65, r * 0.2); ctx.fill(); ctx.stroke();
-      if (s >= 20) {
-        ctx.strokeStyle = personColour(p); ctx.lineWidth = Math.max(1.2, r * 0.25); ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(x - r * 0.72, y + r * 0.35); ctx.lineTo(x, y + r * 0.08); ctx.lineTo(x + r * 0.72, y + r * 0.35);
-        ctx.moveTo(x - r * 0.26, y + r * 0.92); ctx.lineTo(x, y + r * 0.45); ctx.lineTo(x + r * 0.26, y + r * 0.92); ctx.stroke(); ctx.lineCap = "butt";
-      }
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.strokeRect(x - r, y - r, r * 2, r * 2);
       if (s >= 20) drawEquipment(p, x, y, r);
       if (p.sayT > 0 && p.say) talking.push(p);
       if (p.hit > 0) { ctx.strokeStyle = "#ff5d4d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 3, 0, 6.2832); ctx.stroke(); }
@@ -1389,7 +1385,7 @@
       ["Wars started", st.wars], ["Peaces made", st.peaces], ["Villages taken", st.captures], ["Villages founded", st.founded], ["Breakaways", st.secessions], ["Votes held", st.elections], ["Factions fallen", st.fallen]];
     if (w.settings.money === "coins") rows.push(["Coins in the world", num(st.money, 0)], ["Held by the richest tenth", Math.round(st.topShare * 100) + "%"]);
     return "<h3>Since this world began</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
-      "<p class='small'>Figures are people; small figures are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Squares are villages; outlined crop patches show harvesting. At 1× a day takes twenty minutes.</p>";
+      "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Larger filled squares are villages; outlined crop patches show harvesting. At 1× a day takes twenty minutes.</p>";
   }
   /* Each faction's head count, stacked, since the world began. */
   function drawChart() {
@@ -1438,7 +1434,7 @@
             g.fillStyle = "rgb(" + c.join(",") + ")"; g.fillRect(ox + x * s, oy + y * s, s + 0.5, s + 0.5);
           }
           for (const v of w.villages) if (v.alive) { g.fillStyle = w.factions[v.f].colour; g.fillRect(ox + v.x * s - 4, oy + v.y * s - 4, 8, 8); }
-          for (const p of w.people) { g.fillStyle = w.factions[p.f].colour; g.beginPath(); g.arc(ox + p.x * s, oy + p.y * s, p.job === "child" ? 1.6 : 2.4, 0, 6.2832); g.fill(); }
+          for (const p of w.people) { const r = p.job === "child" ? 1.3 : 1.9; g.fillStyle = w.factions[p.f].colour; g.fillRect(ox + p.x * s - r, oy + p.y * s - r, r * 2, r * 2); }
         }
       }
     };

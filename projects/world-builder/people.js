@@ -18,8 +18,9 @@
    people — the food that changed hands, the news that was passed on, the
    mind that was changed. A line never makes anything happen.
 
-   Every setting on the page is read somewhere below; test/people.test.mjs
-   walks the list and checks each one changes the world it makes.
+   Every setting on the page is read somewhere below; test/world-builder.test.mjs
+   retains setting experiments behind --generations. decisions.test.mjs checks
+   how much the daily settings change a life (see README).
 
    One file, no dependencies, the same in a browser and in node. */
 (function (root, factory) {
@@ -578,7 +579,7 @@
           if (free(p, nx, ny)) { p.tx = nx; p.ty = ny; break search; }
         }
       }
-      p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0;
+      p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0; p.route = null; p.routeRetry = 0;
     }
     function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = 10 + Math.floor(R() * 30); }
 
@@ -811,6 +812,15 @@
           weigh("carry", (0.2 + n.provide * 0.95) * skilled(p, "trader") * w.load * (0.7 + p.greed * 0.6)
                           - away(dist(p, w.here)) * 0.5 - n.food * 0.4 - n.rest * 0.4 - n.safety * 0.8 - dark * 0.4,
             () => { trade(p); });
+        // No profitable load need not mean never leaving home. Prospecting
+        // competes with real needs and work; it creates no goods or payment.
+        else if (p.job === "trader") {
+          const next = nextMarket(p, w.here);
+          if (next && p.food >= 0.6)
+            weigh("scout", 0.3 + p.greed * 0.2 + n.provide * 0.3 - away(dist(p, next)) * 0.4
+                            - n.food * 0.6 - n.rest * 0.5 - n.safety * 0.8 - dark * 0.5,
+              () => { p.at = next.id; go(p, next.x, next.y, "scout"); p.wait = 0; });
+        }
       }
 
       /* Standing guard, and going where the fighting is. */
@@ -888,7 +898,7 @@
        finished the person goes back to `choose`. */
     function work(p) {
       const v = villages[p.home];
-      if (p.task === "eat") { shop(p, v); p.task = "idle"; p.wait = spell("meal"); return; }
+      if (p.task === "eat") { p.at = v.id; shop(p, v); p.task = "idle"; p.wait = spell("meal"); return; }
       if (p.task === "gear") { outfit(p, v); shop(p, v); p.task = "idle"; p.wait = spell("market"); return; }
       if (p.task === "sleep") { p.rest = 0; p.task = "idle"; p.wait = 0; return; }
       if (p.task === "rest") { p.rest = Math.max(0, p.rest - 0.25); p.task = "idle"; p.wait = 0; return; }
@@ -952,6 +962,12 @@
         p.task = "idle"; p.wait = spell("market");
         return;
       }
+      if (p.task === "scout") {
+        const here = villages[p.at];
+        if (here.alive && !atWar(here.f, p.f)) { shop(p, here); rememberMarket(p, here); }
+        p.task = "idle"; p.wait = spell("market"); return;
+      }
+      if (p.task === "pickup") { p.task = "idle"; trade(p); return; }
       if (p.task === "carry") { trade(p); return; }
       /* A watch lasts a watch. Marching and fighting carry on while the enemy
          is there; a quiet circuit ends and the soldier decides again — which is
@@ -968,6 +984,16 @@
         go(p, to.x + (R() - 0.5), to.y + (R() - 0.5), "carry"); p.wait = 0; return;
       }
       choose(p);
+    }
+
+    function rememberMarket(p, v) {
+      if (!p.markets) p.markets = {};
+      p.markets[v.id] = sceneTick;
+    }
+    function nextMarket(p, here) {
+      return villages.filter(o => o.alive && o !== here && !atWar(o.f, p.f) &&
+        (!shared || o.f === p.f) && dist(here, o) <= 34)
+        .sort((a, b) => (p.markets?.[a.id] || 0) - (p.markets?.[b.id] || 0) || dist(here, a) - dist(here, b))[0];
     }
 
     /* Where a load would be worth carrying from here, and what it is worth.
@@ -997,6 +1023,13 @@
        With no money they carry food from the fullest store to the emptiest. */
     function trade(p) {
       const here = villages[p.at];
+      if ((!here.alive || atWar(here.f, p.f)) && here.id !== p.home) {
+        const home = villages[p.home]; p.at = home.id; go(p, home.x, home.y, "carry"); return;
+      }
+      // A different task may have taken them away since their last market
+      // visit. Reaching the source comes before any purchase or delivery.
+      if (dist(p, here) > 2.5) { go(p, here.x, here.y, p.cargo ? "carry" : "pickup"); p.wait = 0; return; }
+      rememberMarket(p, here);
       if (p.task === "carry") {
         if (p.cargo) {
           const got = sell(p, here, p.cargo.what, p.cargo.amount);
@@ -1436,7 +1469,9 @@
       if (p.task === "visit") return walking ? "Going to see somebody" : "Visiting";
       if (p.task === "gear") return walking ? "Going for tools" : "Fitting tools";
       if (p.task === "fight") return "Fighting";
-      if (p.cargo) return "Carrying goods";
+      if (p.task === "scout") return "Checking the market in " + villages[p.at].name;
+      if (p.task === "pickup") return "Going to load goods in " + villages[p.at].name;
+      if (p.cargo) return "Carrying " + p.cargo.what + " to " + villages[p.at].name;
       if (p.job === "soldier") return walking ? "Patrolling" : "Standing guard";
       if (p.job === "trader") return walking ? "Travelling to trade" : "Trading";
       return walking ? "Walking" : p.job === "child" ? "Playing" : "Resting";
@@ -1470,6 +1505,69 @@
         occupied.get(cell(p.x, p.y))?.delete(p);
         p.x += mx; p.y += my; put(p); return;
       }
+    }
+    /* A short sidestep cannot escape a crescent of bodies: it oscillates at
+       the same entrance. Plan around occupied space only after progress stops.
+       Half-tile A* is bounded, deterministic and cached as waypoints; every
+       edge and actual footstep still checks bodies. No teleporting or overlap. */
+    function routeAround(p) {
+      // On this half-tile lattice these are every possible arrival node.
+      // A packed destination has no route, regardless of how far we search.
+      // Reject it cheaply instead of exploring 800 nodes on every retry.
+      let arrival = false;
+      const gx = Math.floor((p.tx - p.x) * 2), gy = Math.floor((p.ty - p.y) * 2);
+      for (let y = gy - 1; y <= gy + 1; y++) for (let x = gx - 1; x <= gx + 1; x++) {
+        const nx = p.x + x * 0.5, ny = p.y + y * 0.5;
+        if (Math.hypot(nx - p.tx, ny - p.ty) <= 0.5 && free(p, nx, ny)) arrival = true;
+      }
+      if (!arrival) return null;
+      const heap = [], costs = new Map(), clear = new Map();
+      const key = (x, y) => x + "," + y;
+      const distance = n => Math.hypot(p.tx - n.x, p.ty - n.y);
+      function push(n) {
+        let i = heap.length; heap.push(n);
+        while (i > 0) { const j = (i - 1) >> 1; if (heap[j].f <= n.f) break; heap[i] = heap[j]; i = j; }
+        heap[i] = n;
+      }
+      function pop() {
+        const first = heap[0], last = heap.pop();
+        if (heap.length) {
+          let i = 0;
+          while (i * 2 + 1 < heap.length) {
+            let j = i * 2 + 1;
+            if (j + 1 < heap.length && heap[j + 1].f < heap[j].f) j++;
+            if (heap[j].f >= last.f) break;
+            heap[i] = heap[j]; i = j;
+          }
+          heap[i] = last;
+        }
+        return first;
+      }
+      const start = { ix: 0, iy: 0, x: p.x, y: p.y, g: 0, parent: null };
+      start.f = distance(start); costs.set("0,0", 0); push(start);
+      for (let tries = 0; heap.length && tries < 800; tries++) {
+        const n = pop();
+        if (n.g !== costs.get(key(n.ix, n.iy))) continue;
+        if (distance(n) <= 0.5) {
+          const path = [];
+          for (let q = n; q.parent; q = q.parent) path.push({ x: q.x, y: q.y });
+          return path.reverse();
+        }
+        for (let iy = -1; iy <= 1; iy++) for (let ix = -1; ix <= 1; ix++) {
+          if (!ix && !iy) continue;
+          const nx = n.ix + ix, ny = n.iy + iy, k = key(nx, ny);
+          const x = p.x + nx * 0.5, y = p.y + ny * 0.5, g = n.g + Math.hypot(ix, iy) * 0.5;
+          if (g >= (costs.get(k) ?? Infinity)) continue;
+          if (!clear.has(k)) clear.set(k, free(p, x, y));
+          if (!clear.get(k)) continue;
+          let fits = true;
+          for (let s = 1; s < 6; s++) if (!free(p, n.x + ix * 0.5 * s / 6, n.y + iy * 0.5 * s / 6)) { fits = false; break; }
+          if (!fits) continue;
+          const q = { ix: nx, iy: ny, x, y, g, parent: n }; q.f = g + distance(q);
+          costs.set(k, g); push(q);
+        }
+      }
+      return null; // A fully enclosed person waits for a real opening.
     }
     let sceneTick = 0;
     function actionTick() {
@@ -1511,26 +1609,39 @@
       const partner = p.sayT > 0 && byId.get(p.talkingTo);
       if (partner && partner.sayT > 0 && partner.talkingTo === p.id) return;
       if (d > Math.max(pace, 0.5)) {
-        /* Stuck is measured against the closest they have been, not the last
-           step. Until 2026-11-14 it was the last step, and somebody sliding to
-           and fro round a neighbour got a hair closer every other tick, so was
-           never counted as stuck: measured, adults spent seventy hours a few
-           steps from the store "Walking", and a fifth of a default world starved
-           within twenty days beside full, cheap stores. After a few fresh tries
-           at a spot nearby, they do the thing from where they stand — a shop
-           and a store do not need anybody on one particular tile. */
         if (d < (p.lastDistance ?? Infinity) - 0.1) { p.lastDistance = d; p.stuck = 0; }
         else p.stuck = (p.stuck || 0) + 1;
-        if (p.stuck > 25) {
-          const tries = (p.blocked || 0) + 1;
-          if (tries > 3) { p.tx = p.x; p.ty = p.y; p.blocked = 0; p.stuck = 0; }
-          else { go(p, p.tx, p.ty, p.task); p.blocked = tries; }
+        // Preserve the daily engine's nearby arrival rule for local work.
+        // Long journeys and all inter-village tasks must physically arrive.
+        const localTask = ["sleep", "rest", "idle", "visit", "field", "home", "make", "patrol"].includes(p.task) ||
+          (["eat", "gear"].includes(p.task) && dist(p, villages[p.home]) <= 2.5);
+        if (localTask && d <= 2.5) {
+          p.route = null;
+          if (p.stuck > 25) {
+            const tries = (p.blocked || 0) + 1;
+            if (tries > 3) { p.tx = p.x; p.ty = p.y; p.blocked = 0; p.stuck = 0; }
+            else { go(p, p.tx, p.ty, p.task); p.blocked = tries; }
+          } else move(p, dx / d * pace, dy / d * pace);
+        } else {
+          if (p.routeRetry > 0) p.routeRetry--;
+          if (p.stuck >= 12 && !p.route && !p.routeRetry) {
+            p.route = routeAround(p); p.routeRetry = 30;
+          }
+          while (p.route?.length && dist(p, p.route[0]) < pace) p.route.shift();
+          if (p.route?.length) {
+            const q = p.route[0], length = dist(p, q), mx = (q.x - p.x) / length * pace, my = (q.y - p.y) / length * pace;
+            if (free(p, p.x + mx, p.y + my)) move(p, mx, my);
+            else p.route = null; // The crowd changed; replan after the cooldown.
+          } else {
+            p.route = null;
+            move(p, dx / d * pace, dy / d * pace);
+          }
         }
-        else move(p, dx / d * pace, dy / d * pace);
       }
       else {
         // Shared destinations (markets, fields) are reached from beside a neighbour.
         // Do not require everyone to occupy the exact same target point.
+        p.route = null; p.stuck = 0;
         if (p.wait > 0) p.wait--; else work(p);
       }
 

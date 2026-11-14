@@ -18,7 +18,7 @@ next features from the vision". This table records implementation, not approval 
 
 | Area | What exists | What remains from this vision |
 |---|---|---|
-| Recognizing people | Human figures, smaller children, a leader ring and faction/mood/belief/wealth colour views. | Individual appearance and more varied equipment. |
+| Recognizing people | Boxes (Ric’s 2026-11-13 preference), smaller children, a leader ring and faction/mood/belief/wealth colour views. | Individual appearance and more varied equipment. |
 | Understanding actions | Close-up role/activity labels, an activity line in inspection, visible harvesting patches. | Reasons for choices, blocked-action explanations and lasting work sites. |
 | Selecting and following | People list with name search, settlement/faction/job filters, pagination and preserved list position; select and follow on the map; living-family links and either Talk participant selectable. | Bookmarks, durable family histories and navigation to the dead. |
 | Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list, a held exchange with original context and before/after effects, participant navigation, map location and a short pause while speaking. | Longer interaction sequences, agreements and remembered follow-through. |
@@ -523,3 +523,14 @@ Ric's framing for why this came first: the Apocolips idea (a 3D apocalypse sandb
 rural, choose the conditions and follow the people) is the same engine under different pressures.
 With job scripts an apocalypse would have had to be a sixth script; with an appraisal it is new
 pressures and new affordances fed to the same machine.
+
+## 2026-11-14 review — boxes and market journeys
+
+Ric: "people can be boxes" and "people dont travel to other places much seems like they get
+stuck at vilages". People and the miniature now use boxes, retaining smaller children, colour
+views, equipment and leader rings. Blocked walkers can take bounded routes around crowds;
+nearby daily tasks retain bounded arrival allowances, while enclosed couriers still need an opening. Fed traders may choose to check another safe
+market when there is no profitable cargo. That choice competes with the newer daily needs
+and work system; it never schedules a journey for everybody or invents a load or profit.
+The existing decisions, household work sites and migration are preserved. Seasonal cultivation,
+roads, persistence and direct control remain separate future work.

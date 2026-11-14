@@ -33,6 +33,7 @@ what has shipped from future direction, including the shared daily clock and rem
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
+| `test/travel.test.mjs` | Quick travel checks: a detour out of a U-shaped crowd without teleporting/overlap, real equal-price market visits, conserved coins and closed borders. |
 | `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
 | `test/conversations.test.mjs` | Quick receipt checks: observed effects, a conserved grain transfer, stable IDs and a held record surviving history eviction. |
 | `test/world-builder.test.mjs` | Physics settings/conservation and seven actual days per People preset; `--generations` opts into the retained long-term experiments. These can be very expensive on the real clock; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
@@ -447,9 +448,10 @@ people by day 20 and 148 by day 60 — no war, no plague — while its stores he
 rations at under a coin each and the dead had coins in their pockets. They were stuck: the walk
 code counted somebody as stuck only if they got no closer *than the last step*, so a person
 sliding to and fro round a neighbour got a hair closer every other tick and was never counted.
-One was traced spending seventy hours "Walking" 1.2 tiles from home. Now stuck is measured
-against the closest they have been; after three fresh tries at a spot nearby they do the thing
-from where they stand (`act`). Starvation in the same worlds went to zero, walking fell from
+One was traced spending seventy hours "Walking" 1.2 tiles from home. The first repair measured stuck
+against the closest they had been; after three fresh tries at a spot nearby they did the thing
+from where they stood (`act`). The routing update below bounds that nearby-arrival fallback and excludes distant travel tasks.
+In the first repair’s measurements, starvation went to zero and walking fell from
 about 13% of an adult's hours to 4%, and rerolling the seed now moves 4.9% of a day rather than
 13.5% — much of the old "variety between worlds" was which villages happened to jam. **Every
 measurement taken before this date includes the jam**, the 2026-11-13 after-numbers above among
@@ -596,7 +598,9 @@ player equipment choices and the larger production system remain future work.
   the current conversation partner are linked in inspection. Either name in Talk can be selected;
   people who have died are labelled rather than linked. A selected person's death has a way back
   to the living population. There is still no archive of the dead or saved bookmarks.
-- **People are human figures, with smaller children and a white ring on leaders.** Roles are
+- **People are boxes, with smaller children and a white ring on leaders.** Ric, 2026-11-13:
+  "people can be boxes". The square diagonal fits the body clearance; equipment still reads
+  actual ownership. The miniature uses boxes too. Roles are
   written beside them at close zoom, rather than encoded as triangles or dots. Tapping a person
   zooms in and follows them; the Person tab states their current activity. A map key explains this
   on the running screen; it folds back to its one-line clock when it is in the way, and the `?`
@@ -624,11 +628,25 @@ player equipment choices and the larger production system remain future work.
 - **People occupy space.** Bodies stay at least 0.42 tiles apart, including starting crowds and
   newborns. Each movement checks a spatial hash and tries to slide round a blocked neighbour;
   if no step fits, the person waits. Destinations choose a free nearby spot, and a person who
-  stops getting closer than they have already been retries that choice three times, then does
-  the thing from where they stand. Starting residents wait where they fit instead of
-  all heading for the village centre. Markets and fields accept arrival within half a tile so a
-  shared destination does not require sharing a position. This is local avoidance, not a global
-  route planner: very dense crowds can still queue.
+  stops getting closer than they have already been tries a bounded half-tile A* route around
+  the crowd, including paths that first move away from the destination. Every route edge and
+  footstep checks body spacing. The search stops after 800 expansions and retries at most
+  every thirty activity ticks. Starting residents wait where they fit instead of all heading
+  for the village centre. Markets and fields accept arrival within half a tile so a shared
+  destination does not require sharing a position. Local tasks within 2.5 tiles retain the daily engine’s existing nearby-arrival rule:
+  after twenty-five stalled ticks they retry a free nearby spot, up to three retries, then
+  work from the nearby spot they occupy. Eating/outfitting also require proximity to home. Inter-village scouting, loading and
+  delivery never use that shortcut; an enclosed courier still needs a real opening.
+- **Traders may prospect for a market when prices are equal.** Ric, 2026-11-13: "people dont
+  travel to other places much seems like they get stuck at vilages". This is a choice in
+  `choose()`, competing with feeding, rest, safety and useful work. Fed traders can visit the
+  least recently checked safe market within the existing 34-tile reach, preferring closer
+  places on ties. Shared-store carriers stay within their faction. Arrivals are remembered;
+  prospecting creates no cargo or profit. All purchases still need real stock and coins;
+  a person away from the source walks back to load rather than buying from a distant store.
+  Hostile and abandoned markets are excluded. Activities name the destination; `test/day.mjs`
+  groups names back into stable activity categories for the existing day-shape measurements.
+  Other occupations retain the newer engine's work, family and migration choices.
 - **Speech is drawn as words only when zoomed in**; farther out a small mark shows somebody is
   talking. The Talk tab has the last forty exchanges either way.
 - "← Settings" is the way out of a running world; the site's "← Ric's Terminal" control is on the
@@ -649,3 +667,18 @@ player equipment choices and the larger production system remain future work.
 - People: nobody remembers a dead friend, there is no trade in more than two goods, and soldiers
   never attack anyone but soldiers.
 - Neither world has sound.
+
+## 2026-11-14 — boxes and journeys around crowds
+
+Ric asked for boxes and found people staying around villages. This update preserves the newer
+need-based decisions, homes, work durations and migration from `76c68dcd`; it adds route finding
+and a scored prospecting choice rather than restoring the older fixed job loops. The existing
+wrapping toolbar, folding key, camera fix and physics work are retained.
+
+Before/after check of the new decision baseline (`behaviour.mjs --days=1 --seeds=2
+--only=rich,talk`, 220 people, small map, seeds 11 and 108): identical seeds stayed identical.
+Sleep occupied 36.7% → 36.8% of adult hours, making goods 20.7% → 20.5%, harvesting
+13.7% → 13.3%, and talking 9.6% → 9.9%. Changing richness moved 9.3% → 9.2% of a day;
+changing talk moved 3.8% → 6.2%; reseeding moved 7.5% → 8.2%. These are short daily
+measurements, not seasonal or generation-scale validation. Targeted travel fixtures separately
+check physical market arrivals, distant deliveries and a crowd detour that must first retreat.
