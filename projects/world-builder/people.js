@@ -168,6 +168,13 @@
     ]},
   ];
 
+  /* Settings that can be changed while a world runs (Ric, 2026-11-14). Only
+     ones the engine reads as it goes: a setting that only shapes the first
+     day — the map, how many people, the seed, how it starts — would change
+     nothing if moved later, which is the one thing a control must not do. */
+  const LIVE = new Set(["rich", "latitude", "winter", "weather", "crowd", "births", "hunger", "plague", "prices", "tax",
+                        "talk", "stubborn", "memory", "switch", "rebel", "war", "aggression", "soldiers", "deadly"]);
+  for (const g of SCHEMA) for (const it of g.items) if (LIVE.has(it.key)) it.live = true;
   const DEFAULTS = {};
   for (const g of SCHEMA) for (const it of g.items) DEFAULTS[it.key] = it.def;
 
@@ -324,8 +331,8 @@
 
     const people = [], byId = new Map();
     const villages = [], factions = [];
-    const events = [], chatter = [], history = [];
-    const count = { infected: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const events = [], chatter = [], history = [], moves = [];
+    const count = { infected: 0, grain: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0 };
     let t = 0, activityTicks = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
 
@@ -369,7 +376,7 @@
        and summer stands until it is reaped, so a field holds a season's growth
        rather than sixty days of it. Without this the fields sat full from June
        and everything that would have grown after that was lost. */
-    const FIELD_CAP = TILE_CAP * (1 + 1.5 * S.winter);
+    let FIELD_CAP = TILE_CAP * (1 + 1.5 * S.winter);
     let aheadAt = -1, aheadDays = 0;
     function winterAhead() {
       if (S.winter <= 0) return 0;
@@ -691,10 +698,32 @@
         } else c.carer = 0;
         for (const q of keepers) q.feeds += baseNeed(c) / keepers.length;
       }
+      /* What a village's houses could sell beyond their own winter, and what
+         they are short of the next two weeks. A grain trader reads these:
+         with seasons the grain is in houses, not the store, and before
+         2026-11-14 traders read only the store and so never moved any. */
+      for (const v of villages) { v.spare = 0; v.short = 0; v.purse = 0; }
+      for (const p of people) {
+        if (!adult(p) || p.hp === -99) continue;
+        const v = villages[p.home], r = reserve(p), soon = 14 * (baseNeed(p) + (p.feeds || 0));
+        if (p.food > r) v.spare += p.food - r;
+        if (p.food < soon) { v.short += soon - p.food; v.purse += p.coins; }
+      }
     }
+    /* One row a day: what the graphs on the page are drawn from. */
     function sample() {
-      const row = { year: year(), pop: {} };
+      const row = { year: year(), day: Math.floor(t / DAY_HOURS), pop: {} };
       for (const f of factions) if (f.alive) row.pop[f.id] = f.pop;
+      let held = 0, store = 0, price = 0, n = 0, hungry = 0, loyal = 0, adults = 0;
+      for (const p of people) { held += p.food; if (p.hungry > 0) hungry++; if (adult(p)) { loyal += p.loyal; adults++; } }
+      for (const v of villages) if (v.alive) { store += v.food; price += v.priceFood; n++; }
+      row.people = people.length;
+      row.food = people.length ? (held + store) / people.length : 0;
+      row.price = n ? price / n : 0;
+      row.hungry = people.length ? hungry / people.length : 0;
+      row.loyal = adults ? loyal / adults : 0;
+      for (const k of ["births", "starved", "sick", "battle", "old", "moved", "switched", "grain"]) row[k] = count[k] || 0;
+      row.wars = 0; for (const f of factions) if (f.alive) for (const o of factions) if (o.alive && o.id > f.id && f.rel[o.id].war) row.wars++;
       history.push(row);
       if (history.length > 600) history.splice(0, history.length - 600);
     }
@@ -787,6 +816,8 @@
 
     /* Buying and selling. Every coin that leaves a hand arrives in a till or a
        treasury, so the total never changes — the test adds it up every year. */
+    /* A village's tax: its own, if whoever rules it has set one, else its faction's. */
+    function taxOf(v) { return v.tax != null ? v.tax : factions[v.f].tax; }
     function buy(p, v, what, amount) {
       const have = what === "food" ? v.food : v.goods;
       amount = Math.min(amount, have);
@@ -795,7 +826,7 @@
         const price = what === "food" ? v.priceFood : v.priceGoods;
         amount = Math.min(amount, p.coins / price);
         if (amount <= 0.01) return 0;
-        const cost = amount * price, tax = cost * factions[v.f].tax;
+        const cost = amount * price, tax = cost * taxOf(v);
         p.coins -= cost; v.till += cost - tax; factions[v.f].treasury += tax;
       }
       if (what === "food") { v.food -= amount; p.food += amount; } else { v.goods -= amount; p.goods += amount; }
@@ -809,7 +840,7 @@
         if (amount <= 0.01) return 0;
         /* Tax is taken on a sale as well as a purchase: most of what moves in
            a farming village is grain going into the store. */
-        const pay = amount * price, tax = pay * factions[v.f].tax;
+        const pay = amount * price, tax = pay * taxOf(v);
         v.till -= pay; p.coins += pay - tax; factions[v.f].treasury += tax;
       }
       if (what === "food") v.food += amount; else v.goods += amount;
@@ -826,7 +857,7 @@
       if (p.food < 0.6) {
         buy(p, v, "food", 1.1 - p.food);
         const f = factions[v.f];
-        if (p.food < 0.2 && !shared && f.relief && v.f === p.f) {
+        if (p.food < 0.2 && !shared && (v.relief != null ? v.relief : f.relief) && v.f === p.f) {
           /* Relief: the treasury buys bread for somebody who cannot. */
           const amount = Math.min(0.6, v.food), cost = amount * v.priceFood;
           if (amount > 0.05 && f.treasury >= cost) { f.treasury -= cost; v.till += cost; v.food -= amount; p.food += amount; }
@@ -869,6 +900,8 @@
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
+    /* Grain goes by cart, not on a back: eight packs' worth. */
+    function grainLoad(p) { return tradeCapacity(p) * 8; }
     function craftOutput(p, v) { return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1); }
     function strike(p, foe, base) {
       const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1);
@@ -1019,7 +1052,9 @@
           () => { const [x, y] = plaza(v, v.radius * 0.95); go(p, x, y, "make"); p.wait = 0; });
 
         /* A load to carry, if anywhere reachable wants what is here. */
-        if (w.route.best)
+        /* Carting grain between villages is a trader's work; anybody may still
+           carry a pack of goods to where it sells. */
+        if (w.route.best && (w.route.what !== "grain" || p.job === "trader"))
           /* A load is worth carrying for the profit in it, not only because
              somebody is short: trading is a living, and a trader who has done
              well this year still trades. */
@@ -1300,6 +1335,19 @@
             const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02);
             if (g > gain && (w === "food" ? here.food : here.goods) > 1) { gain = g; best = o; what = w; }
           }
+          /* Grain from houses with more than their winter to houses going
+             short — the trade that keeps a village on poor land alive. */
+          /* Not while the grain is still standing: carting comes after the
+             reaping, not instead of it. */
+          if ((here.spare || 0) > 5 && (o.short || 0) > 5 && p.coins > 2 && season().ripe < 1.5) {
+            /* Only as much as the households going short there can pay for:
+               a cart of grain nobody can buy is grain taken from neighbours at
+               home who could have. Measured 2026-11-14 without this, a hard
+               winter starved more with grain trade than without it. */
+            const load = grainLoad(p), moved = Math.min(here.spare, o.short, load, (o.purse || 0) / 2);
+            const g = moved / load * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02);
+            if (g > gain) { gain = g; best = o; what = "grain"; }
+          }
         }
       }
       return { best: best, gain: gain, what: what };
@@ -1317,7 +1365,27 @@
       if (dist(p, here) > 2.5) { go(p, here.x, here.y, p.cargo ? "carry" : "pickup"); p.wait = 0; return; }
       rememberMarket(p, here);
       if (p.task === "carry") {
-        if (p.cargo) {
+        if (p.cargo && p.cargo.grain) {
+          /* Door to door, the most short first, at what it cost plus the
+             carrying; whoever cannot pay does not get it — a trader is not
+             charity. What nobody buys goes to the store, and what the store
+             cannot pay for the trader keeps. */
+          const ask = clamp(p.cargo.paid / Math.max(p.cargo.amount, 0.01) * 1.4, 0.5, 9);
+          const buyers = people.filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p)
+            .map(q => [q, 14 * (baseNeed(q) + (q.feeds || 0)) - q.food]).filter(x => x[1] > 0.2).sort((a, b) => b[1] - a[1]);
+          let sold = 0;
+          for (const [q, short] of buyers) {
+            if (p.cargo.amount - sold <= 0.01) break;
+            const amount = Math.min(p.cargo.amount - sold, short, q.coins / ask);
+            if (amount <= 0.01) continue;
+            q.coins -= amount * ask; p.coins += amount * ask; q.food += amount; sold += amount;
+          }
+          const rest = p.cargo.amount - sold, intoStore = rest > 0.01 ? sell(p, here, "food", rest) : 0;
+          p.food += rest - intoStore;
+          if (sold + intoStore > 0.5) { count.grain = (count.grain || 0) + sold + intoStore; p.say = "Grain from away — " + Math.round(sold + intoStore) + " days of it."; p.sayT = 60; }
+          if (here.f !== p.f && sold > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
+          p.cargo = null; wear(p, "pack");
+        } else if (p.cargo) {
           const got = sell(p, here, p.cargo.what, p.cargo.amount);
           if (p.cargo.what === "food") p.food += p.cargo.amount - got; else p.goods += p.cargo.amount - got;
           if (here.f !== p.f && got > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
@@ -1334,6 +1402,28 @@
         const home = villages[p.home];
         if (here !== home) { p.at = home.id; go(p, home.x, home.y, "carry"); }
         else { shop(p, here); near(p, here, 2); p.wait = 40; }
+        return;
+      }
+      if (what === "grain") {
+        /* Buying door to door from the houses with most to spare, at the
+           price each would ask (the same rule as a neighbour's), never into
+           a seller's own winter. */
+        const sellers = people.filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p && q.food > reserve(q) + 0.5)
+          .sort((a, b) => (b.food - reserve(b)) - (a.food - reserve(a)));
+        const cap = Math.min(grainLoad(p), (best.purse || 0) / 2);
+        let load = 0, paid = 0;
+        for (const q of sellers) {
+          if (load >= cap - 0.01 || p.coins < 0.1) break;
+          const price = clamp(1.5 * reserve(q) / Math.max(q.food, 0.1), 0.4, 8);
+          const amount = Math.min(cap - load, q.food - reserve(q), p.coins / price);
+          if (amount <= 0.01) continue;
+          p.coins -= amount * price; q.coins += amount * price; q.food -= amount;
+          load += amount; paid += amount * price;
+        }
+        if (load <= 0.5) { near(p, here, 2); p.wait = 40; return; }
+        p.cargo = { what: "food", amount: load, grain: true, paid: paid };
+        p.say = "A cart of grain for " + best.name + "."; p.sayT = 60;
+        p.at = best.id; go(p, best.x + (R() - 0.5), best.y + (R() - 0.5), "carry");
         return;
       }
       const before = what === "food" ? p.food : p.goods;
@@ -1665,6 +1755,11 @@
     function rehome(p, v, why) {
       /* A leader does not walk out on their own faction. */
       if (v.f !== p.f && factions[p.f].leader === p.id) return;
+      if (adult(p) && p.home !== v.id) {
+        const was = villages[p.home];
+        moves.push({ t: t, from: [was.x, was.y], to: [v.x, v.y], why: why, f: v.f });
+        if (moves.length > 300) moves.splice(0, moves.length - 300);
+      }
       p.home = v.id; p.at = v.id; p.settled = t;
       if (v.f !== p.f) {
         if (p.job === "soldier") p.job = "farmer";
@@ -1909,6 +2004,13 @@
             if (tries > 3) { p.tx = p.x; p.ty = p.y; p.blocked = 0; p.stuck = 0; }
             else { go(p, p.tx, p.ty, p.task); p.blocked = tries; }
           } else move(p, dx / d * pace, dy / d * pace);
+        } else if (p.stuck > 200 && d <= 2.5) {
+          /* A journey that has stood within a stone's throw of its end for
+             most of an hour, rerouting and all, has arrived: measured
+             2026-11-14, forty carriers aimed at one village's middle jammed
+             there for a week, and a fifth of a hard winter's dead were the
+             ones they were carrying food to. */
+          p.route = null; p.tx = p.x; p.ty = p.y; p.stuck = 0;
         } else {
           if (p.routeRetry > 0) p.routeRetry--;
           if (p.stuck >= 12 && !p.route && !p.routeRetry) {
@@ -1949,14 +2051,14 @@
       let friendsHere = 0;
       for (const s of p.friends.values()) if (s > 0.2) friendsHere++;
       const want = (p.hungry > 0 ? 0 : 0.45) + (p.goods > 0.1 ? 0.12 : 0) + Math.min(0.15, friendsHere * 0.03) +
-                   (anyWar ? 0 : 0.1) + (p.partner ? 0.08 : 0) + (0.1 - f.tax * 0.25) - (p.sick > 0 ? 0.2 : 0);
+                   (anyWar ? 0 : 0.1) + (p.partner ? 0.08 : 0) + (0.1 - taxOf(v) * 0.25) - (p.sick > 0 ? 0.2 : 0);
       p.mood += (clamp(want, 0, 1) - p.mood) * 0.15;
       p.mood = clamp(p.mood, 0, 1);
       /* Loyalty follows how life is going, how far the leader's mind is from
          theirs, and whether this flag was ever theirs. */
       const lead = byId.get(f.leader);
       const far = lead ? Math.abs(p.views - lead.views) : 0.5;
-      const wantLoyal = p.mood * 0.85 + (S.loyalty - 0.5) * 0.7 + 0.2 - far * 0.22 - f.tax * 0.4 -
+      const wantLoyal = p.mood * 0.85 + (S.loyalty - 0.5) * 0.7 + 0.2 - far * 0.22 - taxOf(v) * 0.4 -
                         (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06);
       p.loyal += (clamp(wantLoyal, 0, 1) - p.loyal) * 0.05;
 
@@ -2213,13 +2315,13 @@
       const hungry = f.pop ? f.hungry / f.pop : 0;
       let wars = 0;
       for (const o of factions) if (o.alive && o !== f && f.rel[o.id].war) wars++;
-      f.army = clamp(S.soldiers * (wars ? 2.6 : 1) + (wars ? 0.08 : 0), 0, 0.6);
+      f.army = f.yours ? f.yours.army : clamp(S.soldiers * (wars ? 2.6 : 1) + (wars ? 0.08 : 0), 0, 0.6);
       /* Stand soldiers down when there are more than are wanted, call some up
          when there are too few. */
       if (f.soldiers > f.army * f.adults * 1.25 + 1) {
         let extra = Math.floor(f.soldiers - f.army * f.adults);
         for (const p of people) { if (extra <= 0) break; if (p.f === f.id && p.job === "soldier") { p.job = "farmer"; p.task = "idle"; extra--; } }
-      } else if (wars && f.soldiers < f.army * f.adults) {
+      } else if ((wars || f.yours) && f.soldiers < f.army * f.adults) {
         let need = Math.ceil(f.army * f.adults - f.soldiers);
         for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === "farmer" && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
@@ -2229,11 +2331,14 @@
         /* A leader drifts from the tax the world was set up with only as far
            as paying the soldiers demands, and comes back when it does not. */
         const wages = f.soldiers * WAGE * 7;
-        if (f.treasury < wages && f.tax < 0.6) f.tax = Math.min(0.6, f.tax + 0.02);
-        else if (f.treasury > wages * 3 + f.pop * 0.5 && f.tax > S.tax * 0.5) f.tax = Math.max(S.tax * 0.5, f.tax - 0.02);
-        /* A leader who believes in sharing feeds anybody who cannot pay; one
-           who does not waits until the treasury is overflowing. */
-        f.relief = lead.views > 0.1 || f.treasury > wages * 2 + f.pop * 1.5;
+        if (f.yours) { f.tax = f.yours.tax; f.relief = f.yours.relief; }
+        else {
+          if (f.treasury < wages && f.tax < 0.6) f.tax = Math.min(0.6, f.tax + 0.02);
+          else if (f.treasury > wages * 3 + f.pop * 0.5 && f.tax > S.tax * 0.5) f.tax = Math.max(S.tax * 0.5, f.tax - 0.02);
+          /* A leader who believes in sharing feeds anybody who cannot pay; one
+             who does not waits until the treasury is overflowing. */
+          f.relief = lead.views > 0.1 || f.treasury > wages * 2 + f.pop * 1.5;
+        }
         /* Coins a treasury has no use for go back into the tills of its
            villages — it buys from them — or every coin in the world would end
            up in a chest and nobody could pay a farmer. */
@@ -2249,6 +2354,8 @@
         const rel = f.rel[o.id], back = o.rel[f.id];
         rel.grief *= 0.985; rel.op *= 0.995;
         const b = border(f, o);
+        /* Whoever is ruled from the page makes war and peace from the page. */
+        if (f.yours) { if (rel.war && b.pair) f.target[o.id] = b.pair[1].id; continue; }
         if (rel.war) {
           if (b.pair) f.target[o.id] = b.pair[1].id;
           const weary = rel.dead / (f.pop + 1) * 5 + (t - rel.since) / YEAR * 0.12 + hungry * 0.5;
@@ -2336,6 +2443,85 @@
     }
     function step(hours = 1) { advance(hours * HOUR_SECONDS); }
 
+    /* ── you, ruling ──────────────────────────────────────────────────────────
+       Ric, 2026-11-14: "the person watching can choose the tax and big
+       decisions and stuff for each area". A faction ruled from the page has
+       its leader's decisions — tax, how many under arms, feeding the hungry
+       from the treasury, war and peace — made by the watcher instead, and a
+       village can be given its own tax and relief. Everybody else still lives
+       by the same needs and choices, so a heavy tax is felt, resented and
+       fled from exactly as a leader's would be. Nothing here decides anything
+       on its own. */
+    function rule(fid, on) {
+      const f = factions[fid]; if (!f || !f.alive) return false;
+      const at = villages.find(v => v.alive && v.f === f.id) || { x: 0, y: 0 };
+      if (on && !f.yours) {
+        f.yours = { tax: f.tax, army: f.army, relief: !!f.relief };
+        note("rule", "You have taken the decisions of " + f.name + " into your own hands.", 2, at.x, at.y, f.id);
+      } else if (!on && f.yours) {
+        f.yours = null;
+        for (const v of villages) if (v.f === f.id) { v.tax = null; v.relief = null; }
+        note("rule", "You have handed " + f.name + " back to its leaders.", 2, at.x, at.y, f.id);
+      }
+      return true;
+    }
+    function order(fid, o) {
+      const f = factions[fid]; if (!f || !f.yours) return false;
+      if ("tax" in o) f.yours.tax = f.tax = clamp(+o.tax || 0, 0, 0.6);
+      if ("army" in o) f.yours.army = f.army = clamp(+o.army || 0, 0, 0.6);
+      if ("relief" in o) f.yours.relief = f.relief = !!o.relief;
+      return true;
+    }
+    function orderVillage(vid, o) {
+      const v = villages[vid]; if (!v || !v.alive || !factions[v.f].yours) return false;
+      if ("tax" in o) v.tax = o.tax == null ? null : clamp(+o.tax || 0, 0, 0.6);
+      if ("relief" in o) v.relief = o.relief == null ? null : !!o.relief;
+      return true;
+    }
+    /* War and peace. Peace takes two: the other side accepts it only if it is
+       weary — its dead, the years and its hungry, as its own leader would
+       weigh them — or outmatched. */
+    function declare(fid, oid, what) {
+      const f = factions[fid], o = factions[oid];
+      if (!f || !o || !f.yours || !f.alive || !o.alive || f === o) return "";
+      const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o), at = b.pair ? b.pair[0] : { x: 0, y: 0 };
+      if (what === "war") {
+        if (!S.war) return "Wars are switched off in this world.";
+        if (rel.war) return "";
+        rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0;
+        if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
+        count.wars++;
+        note("war", f.name + " has gone to war with " + o.name + ", on your word.", 4, at.x, at.y, f.id);
+        return "war";
+      }
+      if (what === "peace" && rel.war) {
+        const olead = byId.get(o.leader);
+        const theirs = back.dead / (o.pop + 1) * 5 + (t - back.since) / YEAR * 0.12 + (o.pop ? o.hungry / o.pop : 0) * 0.5;
+        /* Nobody makes peace the week they were attacked unless they are badly outmatched. */
+        if ((t - back.since > 7 * DAY_HOURS && theirs > 0.1 + (olead ? olead.bold : 0.5) * 0.2) || o.soldiers < f.soldiers * 0.3) {
+          rel.war = back.war = false; rel.peaceAt = back.peaceAt = t; rel.grief *= 0.4; back.grief *= 0.4;
+          count.peaces++;
+          note("peace", f.name + " and " + o.name + " have made peace after " + (rel.dead + back.dead) + " dead.", 3.5, at.x, at.y, f.id);
+          return "peace";
+        }
+        note("peace", o.name + " refused the offer of peace from " + f.name + ".", 2, at.x, at.y, o.id);
+        return "refused";
+      }
+      return "";
+    }
+    /* Changing the rules of a running world: only the settings marked live,
+       through the same bounds as the setup page. */
+    function set(key, value) {
+      const it = SCHEMA.flatMap(g => g.items).find(i => i.key === key);
+      if (!it || !it.live) return false;
+      const next = clean(Object.assign({}, S, { [key]: value }));
+      if (next[key] === S[key]) return false;
+      S[key] = next[key];
+      if (key === "winter") FIELD_CAP = TILE_CAP * (1 + 1.5 * S.winter);
+      seasonDay = -1; aheadAt = -1;
+      return true;
+    }
+
     function stats() {
       let age = 0, coins = 0, richest = 0, wars = 0;
       for (const p of people) { age += p.age; coins += p.coins; if (p.coins > richest) richest = p.coins; }
@@ -2365,12 +2551,11 @@
       fert: fert, ore: ore, stock: stock, owner: owner,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
-      step: step, advance: advance, season: season, activity: activity, urgency: urgency, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity, urgency: urgency, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },
       get sceneTick() { return sceneTick; },
-      set: function (k, v) { const next = clean(Object.assign({}, S, { [k]: v })); S[k] = next[k]; },
     };
   }
 

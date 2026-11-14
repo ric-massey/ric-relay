@@ -549,6 +549,12 @@ nobody had linked was a page nobody could find.
   a harvest window back in. Every mechanism it brought (harvest, putting by, asking a neighbour,
   carers, famine migration) was added because a year-long run starved without it — measure a
   year before removing one.
+  **The watcher can rule a faction** (Ric, 2026-11-14): tax, army, relief and war or peace on the
+  Factions tab, a tax and relief per village, and the `live` settings changed mid-run on the World
+  tab. Only settings the engine reads as it goes may be marked live; a world nobody rules must stay
+  byte for byte the same (`test/rule.test.mjs`). Ric's next list — military reach, production
+  chains, what people know, relationships, households and politics — is at the end of
+  `projects/world-builder/PEOPLE-VISION.md`, in the agreed order.
   Conversation records surround
   the entire interaction, since several branches change state after speaking; do not infer an
   outcome from a dialogue type or move those effects into the renderer. The quick checks are in

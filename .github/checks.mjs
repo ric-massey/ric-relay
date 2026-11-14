@@ -125,6 +125,8 @@ const SUITES = [
      only proves a setting changed *something*; this one measures how much of an
      adult's day it moves, and pins the shape of a day that made it possible. */
   ['world-builder decisions', ['projects/world-builder/test/decisions.test.mjs']],
+  // Ruling a faction, live settings and grain trade: decisions do what they say, are felt, conserve coins.
+  ['world-builder rule and grain', ['projects/world-builder/test/rule.test.mjs']],
   /* Physics settings/conservation and seven actual days per People preset.
      The shared daily clock superseded the compressed headless century in
      2026-11-12. Generation-scale experiments remain explicit --generations

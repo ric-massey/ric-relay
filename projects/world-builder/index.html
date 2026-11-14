@@ -34,6 +34,21 @@
 
   .btn { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .55rem .9rem; min-height: 44px; }
   .btn:hover { border-color: var(--dim); }
+  /* Ruling a faction, and the rules of a running world: one row per decision. */
+  .rule { border: 1px solid var(--line); background: var(--raise); padding: .5rem .6rem; margin: -.2rem 0 .8rem; }
+  .rule h4 { margin: .6rem 0 .2rem; font-size: 13px; color: var(--dim); font-weight: 600; }
+  .row { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin: .2rem 0; }
+  .row .lbl { flex: 1 1 10rem; min-width: 0; }
+  .meter { display: block; height: 3px; background: var(--line); margin-top: .3rem; max-width: 12rem; }
+  .meter i { display: block; height: 100%; background: var(--acc); }
+  .row .step { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
+  .row .val { min-width: 3.2rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .row .btn { min-width: 44px; padding: .4rem .6rem; }
+  .rule-msg { color: var(--acc); }
+  .graph { margin: .1rem 0 .5rem; }
+  .graph .gl { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
+  .graph .gl b { color: var(--ink); font-weight: 600; }
+  .graph canvas { display: block; width: 100%; height: 48px; border: 1px solid var(--line); background: var(--bg); }
   .btn.go { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 700; }
   .btn.go:hover { filter: brightness(1.08); }
   .btn.quiet { background: none; }
@@ -1006,6 +1021,37 @@
         ctx.fillStyle = "#e3e9e6"; ctx.fillText(v.name, x, y + k + 5);
       }
     }
+    /* What has been happening, drawn where it happened (2026-11-14): households
+       that moved, as fading trails from the old home to the new, and the big
+       news of the last fortnight as a ring and a word. Nothing here is drawn
+       that the engine did not record. */
+    const now = w.tick, FADE = 20 * 24;
+    ctx.lineCap = "round";
+    for (const m of w.moves) {
+      const age = now - m.t; if (age > FADE) continue;
+      const a = 1 - age / FADE, x0 = ox + m.from[0] * s, y0 = oy + m.from[1] * s, x1 = ox + m.to[0] * s, y1 = oy + m.to[1] * s;
+      ctx.globalAlpha = 0.25 + 0.5 * a; ctx.strokeStyle = w.factions[m.f] ? w.factions[m.f].colour : "#e3e9e6"; ctx.lineWidth = 2;
+      ctx.setLineDash(m.why === "hungry" ? [6, 4] : []);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      const ang = Math.atan2(y1 - y0, x1 - x0);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - 9 * Math.cos(ang - 0.45), y1 - 9 * Math.sin(ang - 0.45));
+      ctx.moveTo(x1, y1); ctx.lineTo(x1 - 9 * Math.cos(ang + 0.45), y1 - 9 * Math.sin(ang + 0.45)); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
+                   peace: ["Peace", "#8fd39a"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], gone: ["Abandoned", "#98a8a5"] };
+    ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    for (let i = w.events.length - 1; i >= 0; i--) {
+      const e = w.events[i], age = now - e.t; if (age > 14 * 24) break;
+      const m = MARK[e.kind]; if (!m || (!e.x && !e.y)) continue;
+      const x = ox + e.x * s, y = oy + e.y * s, r = Math.max(10, s * 1.4) + (age < 48 ? 4 * Math.sin(performance.now() / 300) : 0);
+      ctx.globalAlpha = Math.max(0.3, 1 - age / (14 * 24));
+      ctx.strokeStyle = m[1]; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.stroke();
+      const tw = ctx.measureText(m[0]).width;
+      ctx.fillStyle = "rgba(7,10,11,.78)"; ctx.fillRect(x - tw / 2 - 3, y - r - 18, tw + 6, 16);
+      ctx.fillStyle = m[1]; ctx.fillText(m[0], x, y - r - 3);
+    }
+    ctx.globalAlpha = 1; ctx.textBaseline = "top";
     /* Ric, 2026-11-13: people can be boxes. Keep colour, child size and real gear. */
     const talking = [], labels = [];
     // The square diagonal fits inside the 0.42-tile body clearance.
@@ -1103,6 +1149,7 @@
     if (active) [...el.querySelectorAll("button[data-go]")].find(b => b.dataset.go === active)?.focus({ preventScroll: true });
     el.scrollTop = keep;
     if (mode === "people" && tab === "factions") drawChart();
+    if (mode === "people" && tab === "world") drawGraphs();
   }
   /* The panel redraws itself several times a second. Not while a finger is on
      it, or the button being pressed is replaced before the click lands. */
@@ -1139,6 +1186,29 @@
     }
     if (a[0] === "village") { const v = world.villages[+a[1]]; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
+    if (mode === "people" && ["rule", "ftax", "army", "relief", "vtax", "vrelief", "vreset", "war", "peace", "live"].includes(a[0])) {
+      const w = world, f = w.factions[+a[1]];
+      ruleMsg = "";
+      if (a[0] === "rule") w.rule(f.id, !f.yours);
+      if (a[0] === "ftax") w.order(f.id, { tax: f.yours.tax + 0.02 * +a[2] });
+      if (a[0] === "army") w.order(f.id, { army: f.yours.army + 0.02 * +a[2] });
+      if (a[0] === "relief") w.order(f.id, { relief: !f.yours.relief });
+      if (a[0] === "vtax") { const v = w.villages[+a[1]]; w.orderVillage(v.id, { tax: w.taxOf(v) + 0.02 * +a[2] }); }
+      if (a[0] === "vrelief") { const v = w.villages[+a[1]]; w.orderVillage(v.id, { relief: v.relief == null ? true : v.relief ? false : null }); }
+      if (a[0] === "vreset") w.orderVillage(+a[1], { tax: null, relief: null });
+      if (a[0] === "war" || a[0] === "peace") {
+        const r = w.declare(+a[1], +a[2], a[0]), o = w.factions[+a[2]];
+        ruleMsg = r === "refused" ? o.name + " refused. Peace takes two: they want it once the war has cost them, or when they are badly outmatched."
+                : r === "peace" ? "Peace with " + o.name + "." : r === "war" ? "At war with " + o.name + "." : r;
+      }
+      if (a[0] === "live") {
+        const it = window.WBPeople.SCHEMA.flatMap(g => g.items).find(i => i.key === a[1]), S = w.settings, dir = +a[2];
+        if (it && it.type === "range") w.set(it.key, posToValue(it, valueToPos(it, S[it.key]) + dir * 50));
+        else if (it && it.type === "toggle") w.set(it.key, !S[it.key]);
+        else if (it) { const opts = it.options.map(o => o[0]); w.set(it.key, opts[(opts.indexOf(S[it.key]) + 1) % opts.length]); }
+      }
+      pane();
+    }
     if (a[0] === "body") { picked = { body: +a[1] }; pane(); }
     if (a[0] === "ed" && picked && picked.body != null) {
       const i = picked.body, d = world.describe(i);
@@ -1296,6 +1366,81 @@
       "<p class='small'>Changes are recorded at the time of the exchange. They do not describe what these people think now.</p><button class='btn' data-go='exchange-place'>Where they spoke</button>";
   }
 
+  /* ═══ you, ruling ══════════════════════════════════════════════════════
+     Ric, 2026-11-14: "the person watching can choose the tax and big
+     decisions and stuff for each area". Step buttons rather than sliders:
+     this panel redraws several times a second and would pull a slider out
+     from under a finger. */
+  let ruleMsg = "";
+  const pctOf = v => Math.round(v * 100) + "%";
+  const stepRow = (label, value, go, extra) => "<div class='row'><span class='lbl'>" + label + "</span>" +
+    "<span class='step'><button class='btn' data-go='" + go + ":-1' aria-label='Less " + esc(label.replace(/<[^>]*>/g, "")) + "'>\u2212</button><span class='val'>" + value + "</span>" +
+    "<button class='btn' data-go='" + go + ":1' aria-label='More " + esc(label.replace(/<[^>]*>/g, "")) + "'>+</button></span>" + (extra || "") + "</div>";
+  function rulePane(f) {
+    const w = world, coins = w.settings.money === "coins";
+    if (!f.yours) return "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Rule " + esc(f.name) + " yourself</button></div>";
+    const vs = w.villages.filter(v => v.alive && v.f === f.id);
+    const others = w.factions.filter(o => o.alive && o !== f);
+    return "<div class='rule'><p class='small'>You make the decisions of " + esc(f.name) + ". Its people still live by their own needs: they feel what you do, and may leave or turn on you for it." +
+      (coins ? " Treasury: " + Math.round(f.treasury) + " coins." : "") + "</p>" +
+      (ruleMsg ? "<p class='small rule-msg'>" + esc(ruleMsg) + "</p>" : "") +
+      (coins ? stepRow("Tax on every sale", pctOf(f.yours.tax), "ftax:" + f.id) : "") +
+      stepRow("Under arms", pctOf(f.yours.army) + " (" + f.soldiers + ")", "army:" + f.id) +
+      (coins ? "<div class='row'><span class='lbl'>Treasury buys bread for the hungry</span><button class='btn' data-go='relief:" + f.id + "' aria-pressed='" + f.yours.relief + "'>" + (f.yours.relief ? "Yes" : "No") + "</button></div>" : "") +
+      (coins && vs.length ? "<h4>Each village</h4>" + vs.map(v => {
+        const own = v.tax != null, rel = v.relief == null ? "as " + esc(f.name) : v.relief ? "feeds its hungry" : "no relief";
+        return stepRow(esc(v.name) + " \u00b7 " + v.pop + " people", pctOf(w.taxOf(v)) + (own ? "" : "*"), "vtax:" + v.id,
+          "<button class='btn' data-go='vrelief:" + v.id + "'>" + rel + "</button>" + (own || v.relief != null ? "<button class='btn' data-go='vreset:" + v.id + "'>Same as all</button>" : ""));
+      }).join("") + "<p class='small'>* the tax set for the whole faction.</p>" : "") +
+      (others.length ? "<h4>Neighbours</h4>" + others.map(o => "<div class='row'><span class='lbl'><span class='sw' style='background:" + o.colour + "'></span>" + esc(o.name) + "</span>" +
+        (f.rel[o.id].war ? "<button class='btn' data-go='peace:" + f.id + ":" + o.id + "'>Offer peace</button>"
+                         : w.settings.war ? "<button class='btn' data-go='war:" + f.id + ":" + o.id + "'>Declare war</button>" : "<span class='small'>at peace \u2014 wars are off</span>") + "</div>").join("") : "") +
+      "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Hand " + esc(f.name) + " back to its leaders</button></div></div>";
+  }
+  /* The rules a running world can still change: only what the engine reads
+     as it goes (`live` in the schema). */
+  function livePane() {
+    const w = world, S = w.settings;
+    const items = window.WBPeople.SCHEMA.flatMap(g => g.items).filter(it => it.live && (!it.when || it.when(S)));
+    return "<h3>Change the rules</h3><p class='small'>These take effect at once. The rest were fixed when the world began.</p>" +
+      items.map(it => it.type === "range" ? stepRow(esc(it.label) + "<span class='meter' aria-hidden='true'><i style='width:" + Math.round(valueToPos(it, S[it.key]) / 10) + "%'></i></span>",
+                                                    esc(words(it, S[it.key])), "live:" + it.key)
+        : "<div class='row'><span class='lbl'>" + esc(it.label) + "</span><button class='btn' data-go='live:" + it.key + ":1'>" + esc(words(it, S[it.key])) + "</button></div>").join("");
+  }
+  /* What the graphs show, read from the engine's one row a day. */
+  const GRAPHS = [
+    ["people", "People", r => r.people, v => Math.round(v)],
+    ["food", "Food on hand, days a head", r => r.food, v => v.toFixed(1)],
+    ["price", "Price of food", r => r.price, v => v.toFixed(2)],
+    ["hungry", "Going hungry", r => r.hungry, v => Math.round(v * 100) + "%"],
+    ["dead", "Deaths a day (hunger, sickness, war)", (r, p) => p ? (r.starved - p.starved) + (r.sick - p.sick) + (r.battle - p.battle) : 0, v => Math.round(v)],
+    ["loyal", "Loyalty", r => r.loyal, v => Math.round(v * 100) + "%"],
+    ["grain", "Grain carried between villages, a day", (r, p) => p ? (r.grain || 0) - (p.grain || 0) : 0, v => Math.round(v)],
+  ];
+  function graphsPane() {
+    const h = world.history;
+    if (h.length < 2) return "<h3>How it is going</h3><p class='small'>The graphs start after the first day.</p>";
+    const last = h[h.length - 1], prev = h[h.length - 2];
+    return "<h3>How it is going</h3><p class='small'>One point a day, since the world began (the last " + h.length + " days).</p>" +
+      GRAPHS.map(g => "<div class='graph'><div class='gl'><span>" + g[1] + "</span><b>" + g[3](g[2](last, prev)) + "</b></div>" +
+        "<canvas data-graph='" + g[0] + "' width='632' height='96' aria-label='" + esc(g[1]) + ", now " + esc(String(g[3](g[2](last, prev)))) + "'></canvas></div>").join("");
+  }
+  function drawGraphs() {
+    const h = world.history, cs = getComputedStyle(document.documentElement);
+    const ink = cs.getPropertyValue("--acc").trim() || "#e0a340", grid = cs.getPropertyValue("--line").trim() || "#2a383f";
+    for (const c of document.querySelectorAll("canvas[data-graph]")) {
+      const g = GRAPHS.find(x => x[0] === c.dataset.graph); if (!g || h.length < 2) continue;
+      const vals = h.map((r, i) => g[2](r, h[i - 1]));
+      let lo = Math.min(0, ...vals), hi = Math.max(...vals); if (hi - lo < 1e-9) hi = lo + 1;
+      const x = c.getContext("2d"), W = c.width, H = c.height;
+      x.clearRect(0, 0, W, H);
+      x.strokeStyle = grid; x.lineWidth = 1; x.beginPath(); x.moveTo(0, H - 1); x.lineTo(W, H - 1); x.stroke();
+      x.strokeStyle = ink; x.lineWidth = 2; x.beginPath();
+      vals.forEach((v, i) => { const px = i / (vals.length - 1) * W, py = H - 3 - (v - lo) / (hi - lo) * (H - 8); if (i) x.lineTo(px, py); else x.moveTo(px, py); });
+      x.stroke();
+    }
+  }
+
   function peoplePane() {
     const w = world, st = w.stats(), Y = w.YEAR;
     if (tab === "people") return populationPane();
@@ -1312,7 +1457,7 @@
             "<span class='ln'>" + f.pop + " people · " + vs.length + (vs.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms</span>" +
             "<span class='ln'>Led by " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (w.settings.money === "coins" ? " · tax " + Math.round(f.tax * 100) + "%" : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + "</button>";
+            (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + "</button>" + rulePane(f);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");
     }
@@ -1389,7 +1534,7 @@
       ["Conversations", st.talks], ["Changed faction", st.switched], ["Thefts", st.thefts],
       ["Wars started", st.wars], ["Peaces made", st.peaces], ["Villages taken", st.captures], ["Villages founded", st.founded], ["Breakaways", st.secessions], ["Votes held", st.elections], ["Factions fallen", st.fallen]];
     if (w.settings.money === "coins") rows.push(["Coins in the world", num(st.money, 0)], ["Held by the richest tenth", Math.round(st.topShare * 100) + "%"]);
-    return "<h3>Since this world began</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
+    return graphsPane() + livePane() + "<h3>Since this world began</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
       "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Larger filled squares are villages; outlined crop patches show harvesting. At 1× a day takes twenty minutes.</p>";
   }
   /* Each faction's head count, stacked, since the world began. */

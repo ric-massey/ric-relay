@@ -725,6 +725,53 @@ Things found while tuning it, so nobody undoes them:
   beside a full store unless the leader believes in sharing or a neighbour is kind. That is what
   the money setting is for.
 
+### Ruling, live rules, graphs and grain trade (2026-11-14)
+
+Ric: *"the person watching can choose the tax and big decisions and stuff for each area"*, and
+asked for the graphs and the grain trade the year needed. All of it is on the running page.
+
+- **Ruling a faction.** On the Factions tab, *Rule it yourself* hands that faction's leader
+  decisions to the watcher (`rule`, `order`, `orderVillage`, `declare` in `people.js`): the tax on
+  every sale, the share of adults under arms (filled in peace too), whether the treasury buys
+  bread for the hungry, and war or peace with each neighbour. Each village can be given its own
+  tax and its own relief (`taxOf`), which is what "each area" means here. Nothing else changes:
+  people still live by their needs, so a heavy tax is felt and resented — `test/rule.test.mjs`
+  holds that a sixty per cent tax costs loyalty against the same world left alone. Peace takes
+  two: the other side weighs its own dead, years and hungry as its leader would, and nobody makes
+  peace the week they were attacked unless badly outmatched. Elections and successions still
+  happen; the watcher's decisions outlast leaders until handed back. Your decisions are in the
+  news. A world nobody rules is byte for byte the world it was.
+- **Live rules.** The World tab's *Change the rules* lists only the settings the engine reads as
+  it goes (`LIVE` in `people.js`, marked `live` in the schema): land, the year, crowding,
+  children, hunger, sickness, prices, tax, the minds, breaking away and war. The ones that shape
+  only the first day — the map, how many people, the seed, how it starts, money, inequality —
+  are not offered, because moving them later would change nothing. Step buttons, not sliders:
+  the panel redraws several times a second.
+- **Graphs.** The World tab draws one point a day (`sample`): people, food on hand in days a head,
+  the price of food, the share going hungry, deaths a day, loyalty, and grain carried between
+  villages. The last 600 days.
+- **The map shows what happened.** Households that moved are drawn as fading arrows from the old
+  home to the new (dashed when hunger drove them) for twenty days, and the big news of the last
+  fortnight — famine, war, peace, a village taken, founded, abandoned or broken away, sickness —
+  as a ring and a word where it happened. Only what the engine recorded (`moves`, `events`).
+- **Grain trade.** With seasons the grain is in houses and the store is empty all winter, so the
+  old traders, who read only the store, never moved any. A trader now also carries grain: from a
+  village whose houses hold more than their winter (`spare`) to one whose houses are short of the
+  next fortnight (`short`), a cart of eight packs, bought door to door at each seller's price and
+  never into their own winter, sold door to door to the most short at cost plus forty per cent;
+  whoever cannot pay does not get it. A trader takes only as much as the short households there
+  can pay for (`purse`), never while the harvest is still standing, and only traders cart grain —
+  when anybody could, two-fifths of a hard winter's adults chose to carry food to one village,
+  jammed at its middle for a week and stopped sleeping. Coins are conserved.
+  **What it does not do yet:** with grain carts on and off, same code and seeds, four year-long
+  runs lost 50 and 48 — no measurable effect on survival — and with carting left to traders,
+  few of whom exist, under a dozen rations a year now move. The mechanism is real; making it
+  matter (more traders when grain is dear, granaries, credit) is not done.
+- **A jammed journey arrives.** A trip between villages finishes only by physically getting
+  there (the crowd routing above) — except when it has stood within 2.5 tiles of its end for most
+  of an hour after rerouting, when it counts as arrived. Forty carriers aimed at one village's
+  middle otherwise never arrived at all.
+
 ### Equipment: a first connected set
 
 Added 2026-11-12 as the next readability milestone in the People vision. Items are in each

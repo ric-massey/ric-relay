@@ -536,3 +536,24 @@ market when there is no profitable cargo. That choice competes with the newer da
 and work system; it never schedules a journey for everybody or invents a load or profit.
 The existing decisions, household work sites and migration are preserved. Seasonal cultivation,
 roads, persistence and direct control remain separate future work.
+
+## 2026-11-14 — Ric's next list
+
+Ric, after ruling, graphs and grain trade went in. Recorded whole so later work builds toward it;
+the order is the one agreed in that conversation, each a piece of its own, measured on year-long
+runs before it is called done.
+
+1. **Military reach.** Make it depend on food carried and access to resupply, distance from
+   friendly settlements, equipment replacement, the farm labour lost to recruitment, and
+   recovery after losses. Today troops move, fight and take undefended villages with no supply.
+2. **Production and accounting.** Actual inputs: materials become goods, goods become equipment.
+   Demand tied to household needs and equipment replacement. Occupations that change on whether
+   the work actually supports the household. A clear ledger of production, consumption, stocks
+   and shortages.
+3. **What people know, not what exists.** Traders remember prices from their last visit;
+   travellers bring reports about other villages; reports go out of date; experience teaches
+   which routes, jobs and neighbours are dependable; people sometimes make reasonable decisions
+   on wrong information.
+4. **Relationships and memories with consequences.**
+5. **Households and politics, joined** — what a tax, a conscripted son or a lost harvest does to
+   one household, and what that household then does about it.
