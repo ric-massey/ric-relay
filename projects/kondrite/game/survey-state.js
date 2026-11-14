@@ -316,9 +316,14 @@ function surveyState() {
     whoKnows: {
       friends: (surv.friends || []).map(f => ({
         name: f.name, faction: factionOf(f.faction).short,
-        why: f.why, repaid: !!f.repaid
+        why: f.why, repaid: !!f.repaid,
+        bound: f.bound || "",
+        lost: f.lost || "",
+        lostTo: f.lost && f.lost !== "you" && f.lost !== "gone" &&
+                FACTIONS.some(x => x.key === f.lost) ? factionOf(f.lost).short : ""
       })),
-      grudges: (surv.grudges || []).map(g => ({ name: g.name, hp: g.hp }))
+      grudges: (surv.grudges || []).map(g => ({ name: g.name, hp: g.hp,
+                                                runs: g.runs || 1 }))
     },
     /* The named thing in reach, and the card for the one you asked about.
        `near` is what the panel offers; `lore` is what the page draws, and they

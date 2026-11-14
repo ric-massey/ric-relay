@@ -335,10 +335,36 @@ HUD.drawRecord = function (st, dt) {
   }
   friends.forEach((f, i) => {
     const yy = ROW(y, i) + 2;
+    /* A lost ship keeps its line, struck through: the name is the record,
+       and the record does not tidy itself. */
+    if (f.lost) {
+      fitText(f.name, full.x + PAGE.PAD, yy, SIZE.cap, VIOLET_LOW, "left", 0.7, 280,
+              "0.06em");
+      const { ctx } = api;
+      ctx.save();
+      ctx.strokeStyle = VIOLET_LOW; ctx.globalAlpha = 0.7; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(full.x + PAGE.PAD, yy - 4);
+      ctx.lineTo(full.x + PAGE.PAD + Math.min(280, f.name.length * 9), yy - 4);
+      ctx.stroke();
+      ctx.restore();
+      label(f.faction, full.x + PAGE.PAD + 300, yy, SIZE.cap, VIOLET_LOW,
+            "left", 0.6, "0.08em");
+      fitText(f.lost === "you" ? "destroyed by you"
+              : f.lostTo ? "lost to " + f.lostTo : "lost",
+              full.x + full.w - PAGE.PAD, yy, SIZE.cap,
+              f.lost === "you" ? WARN : VIOLET_DIM, "right", 0.8, 300);
+      return;
+    }
     fitText(f.name, full.x + PAGE.PAD, yy, SIZE.cap, HUD_CASH, "left", 0.95, 280,
             "0.06em");
     label(f.faction, full.x + PAGE.PAD + 300, yy, SIZE.cap, VIOLET_DIM,
           "left", 0.7, "0.08em");
+    // Where it was last flying cargo to: a dock, by the name on your chart.
+    if (f.bound) {
+      fitText("→ " + f.bound, full.x + PAGE.PAD + 400, yy, SIZE.cap, AMBER_DIM,
+              "left", 0.8, full.w - PAGE.PAD * 2 - 720);
+    }
     fitText(f.why === "water" ? (f.repaid ? "you gave them water · squared"
                                           : "you gave them water")
                               : (f.repaid ? "you got them out of it · squared"
@@ -352,7 +378,8 @@ HUD.drawRecord = function (st, dt) {
             "0.06em");
     label("PIRATE", full.x + PAGE.PAD + 300, yy, SIZE.cap, VIOLET_DIM,
           "left", 0.7, "0.08em");
-    fitText("got away from you · coming back", full.x + full.w - PAGE.PAD, yy,
+    fitText(g.runs > 1 ? "got away again · coming back"
+                       : "got away from you · coming back", full.x + full.w - PAGE.PAD, yy,
             SIZE.cap, WARN, "right", 0.85, 300);
   });
   y += knownH + gap;

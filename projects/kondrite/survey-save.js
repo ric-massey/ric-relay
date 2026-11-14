@@ -636,7 +636,11 @@ function validateSurveyBook(b) {
                                 faction: f.faction.slice(0, 20),
                                 hull: String(f.hull || "drayman").slice(0, 20),
                                 why: String(f.why || "").slice(0, 20),
-                                repaid: !!f.repaid }))
+                                repaid: !!f.repaid,
+                                // Where it was last flying cargo to, and
+                                // who ended it, if anybody has.
+                                bound: String(f.bound || "").slice(0, 24),
+                                lost: String(f.lost || "").slice(0, 20) }))
                    .slice(0, 12)
         : [],
       grudges: Array.isArray(b.grudges)
@@ -644,6 +648,7 @@ function validateSurveyBook(b) {
                    .map(g => ({ name: g.name.slice(0, 40),
                                 hull: String(g.hull || "needle").slice(0, 20),
                                 hp: Math.max(1, Math.min(20, Math.floor(Number(g.hp)) || 5)),
+                                runs: Math.max(1, Math.min(9, Math.floor(Number(g.runs)) || 1)),
                                 cool: Math.max(0, Math.min(900, Number(g.cool) || 0)) }))
                    .slice(0, 6)
         : [],

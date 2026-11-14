@@ -18,7 +18,9 @@ questions are N8–N9. No gameplay changes were requested in this discussion.
 > teach** ("Parts teach through use", below), which re-paired three parts with
 > the rooms they light — README, "The pairing changed" — and **two leads**
 > ("Leave a lead before the opening ends" and "Exploration could leave
-> unfinished business", below) — README, "Leads".
+> unfinished business", below) — README, "Leads" — and **encounters that
+> continue** ("Encounters could continue", below) — README, "Encounters that
+> continue".
 > That page is a decision that overrides section 3: major news does not
 > appear as a card at the edge of the flight screen. It goes to a page the
 > player opens, which also carries messages addressed to them — Ric's words

@@ -1153,6 +1153,8 @@ function killTraffic(i, byYou, swallowed) {
      carrying. Battles still lay out their own field of wrecks when they end,
      which is the version of this that was always right, because a battle is an
      event and a single kill is not. */
+  // A ship you knew by name. See `friendLost`.
+  if (t.friend) friendLost(t, byYou);
   if (t.id) surv.goneTraffic.add(t.id);
   surv.traffic.splice(i, 1);
   if (t.boss) bossDown(t, byYou);

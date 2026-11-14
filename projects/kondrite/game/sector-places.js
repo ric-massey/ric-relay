@@ -1010,6 +1010,8 @@ function rememberGrudge(t) {
   if (surv.grudges.some(g => g.name === t.name)) return;
   surv.grudges.push({ name: t.name, hull: t.hull,
                       hp: Math.max(1, Math.round(t.hp)),
+                      // How many times it has got away, this one included.
+                      runs: (t.runs || 0) + 1,
                       // Long enough that it is not the next thing that happens.
                       cool: rand(90, 260) });
   if (surv.grudges.length > GRUDGE_KEEP) surv.grudges.shift();
@@ -1027,7 +1029,8 @@ function adoptFriend(t) {
   if (t.role !== "freight" && t.role !== "trader") return;
   if (surv.traffic.some(o => o.friend)) return;
   if (Math.random() > 0.25) return;
-  const pick = surv.friends.filter(f => f.faction === t.faction);
+  // A ship that was lost stays lost. Its name does not fly again.
+  const pick = surv.friends.filter(f => f.faction === t.faction && !f.lost);
   if (!pick.length) return;
   const f = pick[Math.floor(Math.random() * pick.length)];
   t.friend = f;
@@ -1047,6 +1050,7 @@ function friendMeeting(t, near) {
                                       : "You got them out of trouble once."),
             CASH);
   }
+  friendBound(t);
   if (!t.friend.repaid && near < 700 * U && surv.water < WATER_FULL * 0.25) {
     t.friend.repaid = true;
     surv.water = Math.min(WATER_FULL, surv.water + REPAY_WATER);
@@ -1055,6 +1059,50 @@ function friendMeeting(t, near) {
     gameSound("win", t.x, t.y);
     saveSurveyBook();
   }
+}
+
+/* ── the record keeps going ───────────────────────────────────────────────
+   WORLD-IDEAS.md, "Encounters could continue" (built 2026-11-14). A ship you
+   saved had a name and one line, and that line never changed — so the second
+   meeting was the first one again. Two things are added to it, and both are
+   read off what the ship is really doing:
+
+   **Where it is going.** A hauler with cargo aboard is flying it to a dock
+   (`t.mark`). Once you have been greeted, that dock goes onto your chart by
+   name and onto the ship's line — the favour paid back as a place, which is
+   what a quest was asked to do (reveal somewhere) without anybody inventing
+   an errand. It is looked for every frame the ship is close, because a
+   freighter picks its dock when it has something to sell, not when it meets
+   you. Never a count of meetings: the panel's rule is that a tally would turn
+   the list into a score.
+
+   **Whether it is still flying.** If the hull that carries the name is
+   destroyed, the name is struck through and never adopted again. If it was
+   your guns, the line says so. Nothing decides that a friend should die — it
+   happens when the sector kills that freighter, and only then. */
+function friendBound(t) {
+  const f = t.friend;
+  if (!f || !t.greeted) return;
+  if (t.markKind !== "station" || !t.mark || !t.cargo || !t.cargo.length) return;
+  const name = stationName(t.mark);
+  if (f.bound === name) return;
+  f.bound = name;
+  const fresh = noteKnown("station", t.mark.x, t.mark.y, name);
+  chatter(t.name + " — bound for " + name +
+          (fresh ? ". It is on your chart." : "."), CASH);
+  saveSurveyBook();
+}
+
+function friendLost(t, byYou) {
+  const f = t.friend;
+  if (!f || f.lost) return;
+  f.lost = byYou ? "you" : (t.killer || "gone");
+  transmit({ kind: "news", from: t.name,
+             text: byYou ? "destroyed — by your guns" : "lost with all hands",
+             colour: "#ff8f77", source: "scan", x: t.x, y: t.y, placed: true });
+  chatter(byYou ? t.name + " — you knew that ship."
+                : t.name + " is gone. You knew that ship.", "#ff8f77");
+  saveSurveyBook();
 }
 
 /* And the one that got away, coming back. Spawned rather than generated, for
@@ -1075,7 +1123,7 @@ function grudgeVisit(dt) {
   }
   surv.traffic.push({
     id: null, kind: "hunter", role: "hunter", faction: "pirate",
-    hull: g.hull, name: g.name, grudge: true,
+    hull: g.hull, name: g.name, grudge: true, runs: g.runs || 1,
     x: me.x + Math.cos(a) * d, y: me.y + Math.sin(a) * d, a: a + Math.PI,
     from: { x: me.x, y: me.y }, to: { x: me.x, y: me.y }, leg: 1,
     /* The hull points it got away with, and no more. It ran because it was
@@ -1086,7 +1134,9 @@ function grudgeVisit(dt) {
     cargo: [], cool: 1.2, doom: 0, guards: 0, space: 0, trades: false,
     phase: Math.random() * 6.28, angry: true
   });
-  chatter(g.name + " — the one that got away. It found you.", "#ff8f77");
+  chatter(g.name + ((g.runs || 1) > 1
+            ? " — it got away again. It found you again."
+            : " — the one that got away. It found you."), "#ff8f77");
   gameSound("alarm", me.x, me.y);
   saveSurveyBook();
 }

@@ -813,6 +813,10 @@ nobody had linked was a page nobody could find.
   2026-11-14): each points at a landmark that already exists and is shown only
   as a bearing from home — never give a lead a distance or a position, and
   never make a place for one to point at.
+  **A ship you saved keeps a record** (2026-11-14, README "Encounters that
+  continue"): where it trades and whether it was lost are read off the real
+  freighter — never schedule a friend's death, invent its errand, or add a
+  count of meetings to WHO KNOWS YOU.
   The news reports the record and never creates an event. §28 is in too — leaders who
   face an election every forty-five turns and fall when a power collapses, three
   laws that each change something the player can feel (letters of marque put

@@ -665,8 +665,12 @@ They remain proposals; recording them is not a request to implement them.
     and a signal that answers the beacon (pointing at the last transmission).
     A bearing from home on COMMS, the missions page and the chart; never a
     position. README, "Leads"; `game/leads.js`; `test/leads.js`.
-  - [ ] **Encounters continue** — beyond the saved ship and the grudge that
-    already come back.
+  - [x] **Encounters continue** (2026-11-14) — a saved ship met again shows
+    the dock it trades at (onto the chart), a destroyed one stays on the
+    record as lost and its name never flies again, and a second escape is
+    remembered. README, "Encounters that continue"; `test/encounters.js`.
+    Not built: salvage tied to an abandoned ship (nothing is ever abandoned),
+    and who killed a lost friend (`t.killer` is never set).
   - [ ] **Politics you can see** — the camps inside each power, a war with an
     object, leader cards with a record, checkpoints and blockades as traffic.
   - [ ] **The computer's records** — SEEN BEFORE on a ship you have met.

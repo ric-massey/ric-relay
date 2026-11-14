@@ -1021,6 +1021,9 @@ function shipCard(t) {
         factionOf(t.faction).name + ", and it knows you by sight. Almost " +
         "nothing out here is named — a name means you were part of what " +
         "happened to it.",
+        t.friend.bound
+          ? "Last you saw, it was flying cargo to " + t.friend.bound + "."
+          : "You have not seen where it trades yet.",
         t.friend.repaid
           ? "It has already squared the favour with you. Nothing is owed in " +
             "either direction now."

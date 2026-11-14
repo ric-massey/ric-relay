@@ -440,6 +440,14 @@ if (debugOn) {
     },
     // And `adoptFriend`, which is a roll: a harness drives it rather than waits.
     adopt: t => { adoptFriend(t); return t; },
+    // A ship destroyed through the real path, by you or by the sector.
+    killTraffic: (t, byYou) => {
+      const i = surv.traffic.indexOf(t);
+      if (i >= 0) killTraffic(i, !!byYou);
+      return i >= 0;
+    },
+    grudgeVisit: dt => grudgeVisit(dt),
+    remember: t => rememberGrudge(t),
     // Life support, so a harness can run a tank down without waiting twelve
     // real minutes for it.
     tanks: () => ({ water: surv.water, food: surv.food,

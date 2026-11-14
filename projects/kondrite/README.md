@@ -575,7 +575,34 @@ shown two, chose both (`game/leads.js`):
   back from. The mark-one tractor still has the arrow first.
 - Finding the place closes the lead. `test/leads.js` holds all of it.
 
-Not built: encounters that continue beyond the saved ship and the grudge.
+### Encounters that continue
+
+WORLD-IDEAS.md, "Encounters could continue" (built 2026-11-14; the examples
+there were the assistant's, so this is the smallest version that is entirely
+read off what ships really do — nothing here was specified by Ric line by
+line). A ship you saved had a name and one line that never changed, so the
+second meeting was the first again. Now the record keeps going
+(`game/sector-places.js`, "the record keeps going"):
+
+- **A saved ship shows you where it trades.** Met again with cargo aboard, the
+  dock it is really flying to (`t.mark`) goes on your chart by name and on the
+  ship's line on the RECORD page ("→ CASYX"). An empty hold says nothing: no
+  errand is invented for it.
+- **A lost ship stays lost.** If the freighter carrying the name is destroyed,
+  the name is kept, struck through, reported on COMMS, and never adopted by
+  another freighter. If the guns were yours the line reads "destroyed by you".
+  Nothing schedules this; it happens when the sector kills that hull.
+- **A pirate that gets away twice is remembered as having done so** (`runs`),
+  on its line and in what is said when it finds you.
+- **Still no tally.** WHO KNOWS YOU does not count meetings — the panel's
+  rule is that a count would turn the list into a score. `test/encounters.js`
+  holds that along with the rest.
+
+Stations already keep their record of you on the JOBS page (units brought
+there by you). Not built: a salvage opportunity tied to a ship somebody
+abandoned — no ship in the sector is ever abandoned, so there is nothing true
+for it to point at yet. `t.killer` is read but nothing sets it, so a lost
+ship's line says "lost" and not who did it.
 
 
 
@@ -1495,6 +1522,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/jobs.js` | The job board: every offer is a real shortage at a station the generator really makes, no shortage means no row, taking one puts the dock on the chart by name, the bonus is paid once and only when the count is met, a need that goes away lapses the job, and none of it can be planted by a hand-edited book. |
 | `test/comms.js` | Transmissions: news is only ever an event in the record, worded by the record's own line; small or far things are not news and a war is; scan, unconfirmed and station report are told apart and docking confirms; the flight screen carries a count and no sentence; the page reads on opening; the book round-trips and comes in clamped. |
 | `test/lessons.js` | A part teaches the room it lights: the pairing is the one that makes sense and every room has exactly one part, every part has an errand about what the part is, an errand is ticked where the thing is done and only once its part is home, and the missions page keeps it until then. |
+| `test/encounters.js` | Encounters that continue: a saved ship met again with cargo puts its real dock on the chart once, an empty one invents nothing, a destroyed one stays on the record as lost (or "destroyed by you") and never flies again, a second escape is remembered, the page keeps no tally, and the book keeps all of it. |
 | `test/leads.js` | Leads, over four seeds: each points at a landmark the sector really has, is given once, arrives on COMMS as unconfirmed with a bearing and no place, says its range in words, takes the arrow only when a tank can reach it, closes when the place is found, and cannot be planted by a book. |
 | `test/gamepad.js` | The gamepad, with a fake `navigator.getGamepads` the test owns: nothing plugged in changes nothing; the CONTROLLER tab names the pad without its driver id, lists the layout and shows what is pressed; at the title A is Enter exactly once however long it is held; in the cockpit the stick turns, the stick and RT thrust, A fires without pressing Enter, X is slot one and START pauses; and unplugging lets go of everything |
 | `test/door.js` | The account layer and the boards, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name · and for step 5: that `saves` stayed private while `scores` became public, that no policy lets a score be edited or deleted, that a local game reports nothing, that you can only ever be the reporter, and that a report survives a closed tab |
