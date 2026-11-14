@@ -163,8 +163,9 @@
         say: v => (v < 0.6 ? "mostly bruises" : v < 1.6 ? "people die" : "few walk away") },
     ]},
     { title: "Time", items: [
-      { key: "rate", label: "Clock", type: "range", min: 0.25, max: 16, step: 0.25, def: 1, curve: 2,
-        say: v => v + "×", help: "At 1× one day takes twenty minutes. You can change this while it runs." },
+      { key: "rate", label: "Clock", type: "range", min: 0.25, max: 1000, step: 0.25, def: 1, curve: 4,
+        say: v => (v >= 1000 ? "as fast as it will go" : v + "×"),
+        help: "At 1× one day takes twenty minutes. Above 16× the world runs as fast as this computer allows, and the page says how fast that is. You can change this while it runs." },
     ]},
   ];
 
@@ -335,6 +336,14 @@
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
     const owner = new Int16Array(tiles).fill(-1);
     const buckets = []; for (let i = 0; i < tiles; i++) buckets.push([]);
+    /* Who is on which tile, for talking and fighting. Only the tiles that had
+       anybody are cleared; the order within a tile is the people array's. */
+    const bucketsUsed = [];
+    function rebucket() {
+      for (const i of bucketsUsed) buckets[i].length = 0;
+      bucketsUsed.length = 0;
+      for (const p of people) { const i = tileAt(p.x, p.y), b = buckets[i]; if (!b.length) bucketsUsed.push(i); b.push(p); }
+    }
 
     const people = [], byId = new Map();
     const villages = [], factions = [];
@@ -1924,31 +1933,44 @@
     }
 
     const BODY = 0.42;
-    const occupied = new Map(), placed = new Set();
+    /* Who stands where, by tile. Plain arrays reused from tick to tick, and a
+       list of the cells in use so a tick clears only those: until 2026-11-14
+       this was a Map of Sets rebuilt from nothing every tick — 43% of the
+       engine's time, with every tile of the map wiped 6,000 times a day.
+       The contents and their order are exactly what the Map held, so the
+       world is the same world; it is only faster. */
+    const placed = new Set(), occ = new Array(cols * rows), occUsed = [];
     const cell = (x, y) => Math.floor(y) * cols + Math.floor(x);
     function put(p) {
       const key = cell(p.x, p.y);
-      if (!occupied.has(key)) occupied.set(key, new Set());
-      occupied.get(key).add(p);
+      let list = occ[key];
+      if (!list) { list = occ[key] = []; }
+      if (!list.length) occUsed.push(key);
+      if (!list.includes(p)) list.push(p);
+    }
+    function unput(p) {
+      const list = occ[cell(p.x, p.y)]; if (!list) return;
+      const i = list.indexOf(p); if (i >= 0) list.splice(i, 1);
     }
     function free(p, x, y) {
       if (x < 0.25 || y < 0.25 || x > cols - 0.25 || y > rows - 0.25) return false;
+      const fy = Math.floor(y), fx = Math.floor(x), r2 = (BODY - 1e-9) ** 2;
       for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
-        const list = occupied.get((Math.floor(y) + j) * cols + Math.floor(x) + i);
-        if (list) for (const q of list) if (q !== p && q.hp !== -99 && (x - q.x) ** 2 + (y - q.y) ** 2 < (BODY - 1e-9) ** 2) return false;
+        const list = occ[(fy + j) * cols + fx + i];
+        if (list) for (let k = 0; k < list.length; k++) { const q = list[k]; if (q !== p && q.hp !== -99 && (x - q.x) ** 2 + (y - q.y) ** 2 < r2) return false; }
       }
       return true;
     }
     function move(p, dx, dy) {
       // Try the heading, then slide round a neighbour rather than walking through them.
       if (free(p, p.x + dx, p.y + dy)) {
-        occupied.get(cell(p.x, p.y))?.delete(p);
+        unput(p);
         p.x += dx; p.y += dy; put(p); return;
       }
       const options = [[dx * 0.7 - dy * 0.7, dy * 0.7 + dx * 0.7],
         [dx * 0.7 + dy * 0.7, dy * 0.7 - dx * 0.7], [-dy, dx], [dy, -dx]];
       for (const [mx, my] of options) if (free(p, p.x + mx, p.y + my)) {
-        occupied.get(cell(p.x, p.y))?.delete(p);
+        unput(p);
         p.x += mx; p.y += my; put(p); return;
       }
     }
@@ -2018,7 +2040,8 @@
     let sceneTick = 0;
     function actionTick() {
       sceneTick++;
-      occupied.clear();
+      for (const key of occUsed) if (occ[key]) occ[key].length = 0;
+      occUsed.length = 0;
       // Reserve existing bodies first. Only a new arrival needs placement; walking
       // already checks every step, so checking every settled body again is wasted work.
       for (const p of people) if (placed.has(p.id)) put(p);
@@ -2040,8 +2063,7 @@
         p.tx = p.x; p.ty = p.y;
         put(p); placed.add(p.id);
       }
-      for (const b of buckets) b.length = 0;
-      for (const p of people) buckets[tileAt(p.x, p.y)].push(p);
+      rebucket();
       for (const p of people) if (p.hp !== -99) act(p);
     }
 
@@ -2461,9 +2483,8 @@
         if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich * grow);
         /* What is still standing when the frost comes is lost a little at a time. */
         if (frost > 0 && stock[i] > 0) stock[i] -= stock[i] * frost;
-        buckets[i].length = 0;
       }
-      for (const p of people) buckets[tileAt(p.x, p.y)].push(p);
+      rebucket();
       for (let i = 0; i < people.length; i++) {
         const p = people[i];
         if (p.hp === -99) continue;

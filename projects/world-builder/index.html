@@ -545,7 +545,7 @@
 
   /* ═══ the world ════════════════════════════════════════════════════════ */
   const canvas = $("view"), ctx = canvas.getContext("2d");
-  let world = null, raf = 0, paused = false, rate = 1, last = 0, lag = 0;
+  let world = null, raf = 0, paused = false, rate = 1, last = 0, lag = 0, reached = 0;
   let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, follow = false, tab = "", paneAt = 0;
   let land = null, landAt = -1e9;
   let populationPage = 0, populationScroll = 0, selectedExchange = null, talkScroll = 0;
@@ -605,13 +605,13 @@
 
   function buildBar() {
     const sp = $("speeds"); sp.textContent = "";
-    const list = mode === "physics" ? [0.25, 0.5, 1, 2, 4] : [0.5, 1, 2, 4, 8, 16];
+    const list = mode === "physics" ? [0.25, 0.5, 1, 2, 4] : [0.5, 1, 2, 4, 8, 16, 50, 100, 250, 1000];
     if (list.indexOf(rate) < 0) list.push(rate);
     list.sort((a, b) => a - b);
     for (const r of list) {
-      const b = document.createElement("button"); b.className = "btn"; b.textContent = r + "×";
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = r >= 1000 && mode === "people" ? "Max" : r + "×";
       b.setAttribute("aria-pressed", String(r === rate));
-      b.addEventListener("click", () => { rate = r; for (const o of sp.children) o.setAttribute("aria-pressed", String(o === b)); });
+      b.addEventListener("click", () => { rate = r; reached = 0; for (const o of sp.children) o.setAttribute("aria-pressed", String(o === b)); });
       sp.appendChild(b);
     }
     const vw = $("views"); vw.textContent = "";
@@ -821,12 +821,28 @@
     if (!paused) {
       const t0 = performance.now();
       if (mode === "physics") world.step(Math.min(1 / 30, real) * rate);
-      else {
+      else if (rate <= 16) {
         // Activity keeps moving while the twenty-minute calendar day advances.
         world.advance(real * rate);
+      } else {
+        /* Fast: as much of the asked-for time as fits in 40 ms, in small
+           slices, and the rest dropped — the world goes slower than asked,
+           never differently, and the page keeps answering. What it actually
+           managed is measured and said (2026-11-14, Ric: "a year every
+           minute should be the fastest"; this computer decides how near). */
+        const want = real * rate; let done = 0;
+        while (done < want && performance.now() - t0 < 40) { const take = Math.min(2, want - done); world.advance(take); done += take; }
+        reached = reached ? reached * 0.92 + (done / Math.max(real, 1e-3)) * 0.08 : done / Math.max(real, 1e-3);
       }
-      lag = lag * 0.95 + (performance.now() - t0 > 30 ? 1 : 0) * 0.05;
-      $("slow").hidden = lag < 0.5;
+      if (rate > 16) {
+        const yearMin = 365 * 1200 / Math.max(1, reached) / 60;
+        $("slow").hidden = false;
+        $("slow").textContent = "Running at " + Math.round(reached) + "× — a year every " + (yearMin < 1.5 ? Math.round(yearMin * 60) + " seconds" : Math.round(yearMin) + " minutes");
+      } else {
+        lag = lag * 0.95 + (performance.now() - t0 > 30 ? 1 : 0) * 0.05;
+        $("slow").hidden = lag < 0.5;
+        $("slow").textContent = "Running behind — fewer things or a slower clock will catch it up";
+      }
     }
     const d = sizeCanvas();
     ctx.setTransform(d, 0, 0, d, 0, 0);

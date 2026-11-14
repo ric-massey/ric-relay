@@ -772,6 +772,24 @@ asked for the graphs and the grain trade the year needed. All of it is on the ru
   of an hour after rerouting, when it counts as arrived. Forty carriers aimed at one village's
   middle otherwise never arrived at all.
 
+### How fast a world can run (2026-11-14)
+
+Ric: *"16x is pretty slow ... a year every minute should be the fastest probably"*. The clock now
+goes to 50×, 100×, 250× and **Max**. Above 16× the page runs as much simulation as fits in 40 ms a
+frame and drops the rest — the world goes slower than asked, never differently — and says what it
+reached: *"Running at 900× — a year every 8 minutes"*.
+
+A year a minute is about 7,300×, and the engine does not reach it. Everybody acts 250 times a game
+hour, so walking, crowding and who meets whom are exact; measured without drawing, 200 people ran
+at 670×, 400 at 400× and 900 at 100× (cost grows faster than the head count). The tables of who
+stands where were a Map of Sets rebuilt from nothing every tick — 43% of the time; they are now
+reused arrays with only the used cells cleared, which gives the identical world (same seed, same
+state, checked) about 1.3× faster in Node and around 900× in a browser at 400 people. The next
+exact saving — letting somebody asleep or mid-shift skip the ticks in which nothing about them
+changes — is perhaps another 2×. Reaching a year a minute would need people to move in coarser
+jumps at high speed, which would make a world play out differently depending on how fast it is
+watched; that breaks a rule this engine was built on and has not been done.
+
 ### War has to be fed (2026-11-14)
 
 Ric: military reach should depend on *"food carried and access to resupply, distance from
