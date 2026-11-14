@@ -69,7 +69,7 @@ for(const life of [20,120]){
  assert.ok(new Set([0,1,2].map(peak)).size>1,"a late year has a late harvest");
 }
 {
- const w=resting({money:"shared",hunger:1}),p=w.people[0];p.food=0;
+ const w=resting({money:"shared",hunger:1}),p=w.people[0];for(const q of w.people)q.food=0;   // nobody to eat from: a household shares its pot (2026-11-14)
  w.villages[p.home].food=0;w.step(24);
  assert.ok(p.hp>0&&p.hp<1&&p.hungry===24,"missing a day's food creates sustained hunger, not instant death");
  const money=w.stats().money, dead=w.people[1].id;w.people[1].dieAt=w.people[1].age;w.step(1);

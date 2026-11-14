@@ -572,7 +572,9 @@ nobody had linked was a page nobody could find.
   number that is really a person's nature is per person and inherited (stubbornness, with "How
   much they differ"); a number that is really a leader's decision is only the starting value
   (soldiers, tax), and is not offered as live; a village can be "as many as its land can feed";
-  children hold no coins; a regime of chiefs or the rich can fall to its own people. Before adding
+  a household is one purse and one pot, so a child never holds money or food while a parent
+  starves; how bodies, minds and places are (starvation, memory, latitude) is set at the start
+  and is not live; a regime of chiefs or the rich can fall to its own people. Before adding
   a setting, ask which of those it is. `test/settings-sense.test.mjs` holds them.
   Conversation records surround
   the entire interaction, since several branches change state after speaking; do not infer an

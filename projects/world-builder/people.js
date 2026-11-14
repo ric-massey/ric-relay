@@ -119,7 +119,7 @@
         help: "With a shared store everybody puts in what they grow and takes what they need." },
       { key: "coins", when: s => s.money === "coins", label: "Coins to start, on average", type: "range", min: 0, max: 40, step: 1, def: 8,
         say: v => v + " coins a head",
-        help: "Held by the grown-ups — children have none of their own, and what one inherits is kept for them until they are grown. How evenly it is spread is the next setting." },
+        help: "Everybody's own, children's too — but a household spends as one, so whoever feeds a child can spend its coins on the family. How evenly it is spread is the next setting." },
       { key: "unequal", when: s => s.money === "coins", label: "Who starts rich", type: "range", min: 0, max: 1, step: 0.05, def: 0.3,
         say: scale(["everybody the same", "some a little more", "a few rich families", "one in ten owns most of it"]),
         help: "How the starting coins are spread: evenly, or most of them in a few hands." },
@@ -190,8 +190,12 @@
   /* Not "stubborn", "differ", "soldiers" or "rule" any more: since
      2026-11-14 those are people's own natures and leaders' own decisions,
      set at the start and passed on or changed from there. */
-  const LIVE = new Set(["rich", "latitude", "winter", "weather", "crowd", "births", "hunger", "plague", "prices",
-                        "talk", "memory", "switch", "rebel", "war", "aggression", "deadly"]);
+  /* Nor the things that are how bodies, minds and places are (Ric,
+     2026-11-14: "starvation should be decided at the beginning"): how long
+     somebody lasts with no food, how many people a mind can hold, and where
+     on the earth the world is. Those are set once, at the start. */
+  const LIVE = new Set(["rich", "winter", "weather", "crowd", "births", "plague", "prices",
+                        "talk", "switch", "rebel", "war", "aggression", "deadly"]);
   for (const g of SCHEMA) for (const it of g.items) if (LIVE.has(it.key)) it.live = true;
   const DEFAULTS = {};
   for (const g of SCHEMA) for (const it of g.items) DEFAULTS[it.key] = it.def;
@@ -634,7 +638,7 @@
         /* Unequal starts are a long tail: most near nothing, a few a lot. The
            total is the same either way, so the setting moves coins, not mints them. */
         const tail = Math.pow(R(), 1 + S.unequal * 8) * (1 + S.unequal * 8);
-        p.coins = shared || !adult(p) ? 0 : S.coins * ((1 - S.unequal) + S.unequal * tail * 1.6);
+        p.coins = shared ? 0 : S.coins * ((1 - S.unequal) + S.unequal * tail * 1.6);
         if (adult(p)) p.job = "farmer";
       }
       for (const v of villages) {
@@ -643,13 +647,6 @@
         v.food = n * (0.8 + putByDays(S.stored) * 0.25); v.goods = n * 0.1; v.till = shared ? 0 : n * 2 + 5;
       }
       for (const f of factions) f.treasury = shared ? 0 : 10;
-      /* The children's share of "Coins to start, on average" is their
-         parents': the same total, held by the grown-ups. */
-      if (!shared) {
-        let held = 0; for (const p of people) held += p.coins;
-        const want = S.coins * people.length;
-        if (held > 0) for (const p of people) p.coins *= want / held;
-      }
       /* "Food put by": days of each person's own need, in the house. */
       if (S.stored > 0) for (const p of people) p.food += putByDays(S.stored) * baseNeed(p);
       count.minted = money();
@@ -691,7 +688,7 @@
 
     function money() {
       let c = 0;
-      for (const p of people) c += p.coins + (p.trust || 0);
+      for (const p of people) c += p.coins;
       for (const v of villages) c += v.till;
       for (const f of factions) c += f.treasury;
       return c;
@@ -749,7 +746,7 @@
          whoever in the village has most put by. Until then an orphan could
          eat only from the village store, which is empty all winter, and they
          were half of the dead of a hard winter. */
-      for (const p of people) p.feeds = 0;
+      for (const p of people) { p.feeds = 0; p.wards = null; }
       for (const c of people) {
         if (adult(c) || c.hp === -99) continue;
         const keepers = [byId.get(c.mum), byId.get(c.dad)].filter(q => q && q.hp > 0 && q.home === c.home);
@@ -767,7 +764,7 @@
           }
           if (carer) keepers.push(carer);
         } else c.carer = 0;
-        for (const q of keepers) q.feeds += baseNeed(c) / keepers.length;
+        for (const q of keepers) { q.feeds += baseNeed(c) / keepers.length; (q.wards || (q.wards = [])).push(c); }
       }
       /* What a village's houses could sell beyond their own winter, and what
          they are short of the next two weeks. A grain trader reads these:
@@ -887,6 +884,29 @@
 
     /* Buying and selling. Every coin that leaves a hand arrives in a till or a
        treasury, so the total never changes — the test adds it up every year. */
+    /* A household spends as one (Ric, 2026-11-14: never "a kid having a bunch
+       of money while his parents are starving"). Children may hold coins —
+       from the start or an inheritance — and whoever feeds them may spend
+       those coins for the household once their own are gone; a couple's
+       coins are one purse, as their food is one pot. */
+    function funds(p) {
+      let c = p.coins;
+      if (p.wards && adult(p)) for (const k of p.wards) if (k.hp > 0) c += k.coins;
+      const mate = p.partner && byId.get(p.partner);
+      if (mate && mate.home === p.home && mate.hp > 0) c += mate.coins;
+      return c;
+    }
+    /* Own coins first, then the children's, then the partner's. */
+    function pay(p, cost) {
+      const own = Math.min(p.coins, cost); p.coins -= own; cost -= own;
+      const mate = p.partner && byId.get(p.partner);
+      if (cost > 1e-12 && p.wards) for (const k of p.wards) {
+        if (cost <= 1e-12) break;
+        if (k.hp <= 0) continue;
+        const take = Math.min(k.coins, cost); k.coins -= take; cost -= take;
+      }
+      if (cost > 1e-12 && mate && mate.home === p.home && mate.hp > 0) { const take = Math.min(mate.coins, cost); mate.coins -= take; cost -= take; }
+    }
     /* A village's tax: its own, if whoever rules it has set one, else its faction's. */
     function taxOf(v) { return v.tax != null ? v.tax : factions[v.f].tax; }
     function buy(p, v, what, amount) {
@@ -895,10 +915,10 @@
       if (amount <= 0.01) return 0;
       if (!shared) {
         const price = what === "food" ? v.priceFood : v.priceGoods;
-        amount = Math.min(amount, p.coins / price);
+        amount = Math.min(amount, funds(p) / price);
         if (amount <= 0.01) return 0;
         const cost = amount * price, tax = cost * taxOf(v);
-        p.coins -= cost; v.till += cost - tax; factions[v.f].treasury += tax;
+        pay(p, cost); v.till += cost - tax; factions[v.f].treasury += tax;
       }
       if (what === "food") { v.food -= amount; p.food += amount; } else { v.goods -= amount; p.goods += amount; }
       return amount;
@@ -923,8 +943,8 @@
       /* Laying in for the winter: somebody with coins and no field buys
          toward a winter's store, with no more than half of what they have. */
       const want = reserve(p);
-      if (!shared && want > 1.2 && p.food < want * 0.6 && p.coins > 1)
-        buy(p, v, "food", Math.min(want - p.food, p.coins * 0.5 / Math.max(0.3, v.priceFood)));
+      if (!shared && want > 1.2 && p.food < want * 0.6 && funds(p) > 1)
+        buy(p, v, "food", Math.min(want - p.food, funds(p) * 0.5 / Math.max(0.3, v.priceFood)));
       if (p.food < 0.6) {
         buy(p, v, "food", 1.1 - p.food);
         const f = factions[v.f];
@@ -1211,7 +1231,7 @@
         /* Nobody at home has any: the next village might, for coin. A village
            on poor land otherwise starved beside a full one, because grain
            crossed between villages only when whole families moved. */
-        if ((!giver || giver.food < 4) && p.coins > 0.5 && !shared) {
+        if ((!giver || giver.food < 4) && funds(p) > 0.5 && !shared) {
           for (const q of people) {
             if (q.home === p.home || !adult(q) || q.hp <= 0 || q.food < 6 || atWar(q.f, p.f)) continue;
             const d = dist(p, villages[q.home]);
@@ -1262,10 +1282,10 @@
       const want = 5 * dailyNeed(p);
       const spare = Math.max(0, q.food - reserve(q));
       let got = 0;
-      if (!shared && spare > 0.1 && p.coins > 0.05) {
+      if (!shared && spare > 0.1 && funds(p) > 0.05) {
         const price = clamp(1.5 * reserve(q) / Math.max(q.food, 0.1), 0.4, 8);
-        const amount = Math.min(want, spare, p.coins / price);
-        p.coins -= amount * price; q.coins += amount * price;
+        const amount = Math.min(want, spare, funds(p) / price);
+        pay(p, amount * price); q.coins += amount * price;
         q.food -= amount; p.food += amount; got += amount;
       }
       if (got < want * 0.5) {
@@ -1447,9 +1467,9 @@
           let sold = 0;
           for (const [q, short] of buyers) {
             if (p.cargo.amount - sold <= 0.01) break;
-            const amount = Math.min(p.cargo.amount - sold, short, q.coins / ask);
+            const amount = Math.min(p.cargo.amount - sold, short, funds(q) / ask);
             if (amount <= 0.01) continue;
-            q.coins -= amount * ask; p.coins += amount * ask; q.food += amount; sold += amount;
+            pay(q, amount * ask); p.coins += amount * ask; q.food += amount; sold += amount;
           }
           const rest = p.cargo.amount - sold, intoStore = rest > 0.01 ? sell(p, here, "food", rest) : 0;
           p.food += rest - intoStore;
@@ -1623,8 +1643,7 @@
           heirs = people.filter(q => q.hp !== -99 && (q.mum === p.id || q.dad === p.id));
           if (!heirs.length && p.partner && byId.get(p.partner)) heirs = [byId.get(p.partner)];
         } else if (S.inherit === "village") heirs = people.filter(q => q.hp !== -99 && q.home === p.home && q !== p);
-        /* A child's inheritance is kept for them until they are grown. */
-        if (heirs.length) for (const h of heirs) { if (adult(h)) h.coins += p.coins / heirs.length; else h.trust = (h.trust || 0) + p.coins / heirs.length; }
+        if (heirs.length) for (const h of heirs) h.coins += p.coins / heirs.length;
         else f.treasury += p.coins;
         p.coins = 0;
       }
@@ -1943,6 +1962,12 @@
           /* And a couple eats from one pot. */
           const mate = byId.get(p.partner);
           if (mate && mate.food > 0.6) { const half = mate.food / 2; mate.food -= half; p.food += half; fed = true; }
+          /* And from what the children hold beyond their own next few days:
+             a child with a larder while a parent starves is not a household. */
+          if (!fed && p.wards) for (const k of p.wards) {
+            const spare = k.hp > 0 ? k.food - 3 * dailyNeed(k) : 0;
+            if (spare > 0.3) { const take = Math.min(spare, 1); k.food -= take; p.food += take; fed = true; break; }
+          }
         }
         if (!fed) {
           /* A shared store feeds anybody. Any village feeds its own children,
@@ -1963,7 +1988,7 @@
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
       if (p.age >= p.dieAt) { die(p, "old"); return; }
-      if (p.job === "child" && adult(p)) { p.job = chooseJob(p); if (p.trust) { p.coins += p.trust; p.trust = 0; } }
+      if (p.job === "child" && adult(p)) p.job = chooseJob(p);
 
     }
 

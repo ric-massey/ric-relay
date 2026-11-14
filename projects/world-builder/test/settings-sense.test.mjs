@@ -12,23 +12,32 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 
-/* Coins start with the grown-ups; the total is the setting's, and a child's
-   inheritance is held for them until they are grown. */
+/* Children may hold coins, but a household spends as one: never a child with
+   money while the parent who feeds it goes hungry (Ric, 2026-11-14). And no
+   coin is made or lost by it. */
 {
   const w = People.create({ people: 150, map: "small", seed: 4, coins: 10 });
-  assert.ok(w.people.filter(p => !w.adult(p)).every(p => p.coins === 0), "no child starts with coins");
-  const held = w.people.reduce((s, p) => s + p.coins, 0);
-  assert.ok(Math.abs(held - 10 * w.people.length) < 1e-6, "the people hold the setting's coins a head between them");
-  const child = w.people.find(p => !w.adult(p) && p.mum), parent = w.byId.get(child.mum);
+  w.step(7);
+  const kid = w.people.find(p => !w.adult(p) && p.mum && w.byId.get(p.mum) && w.byId.get(p.mum).home === p.home);
+  const mum = w.byId.get(kid.mum), mate = mum.partner && w.byId.get(mum.partner);
+  mum.coins = 0; if (mate) mate.coins = 0; kid.coins = 30; mum.food = 0;
+  w.villages[mum.home].food = 50;
   const money = w.stats().money;
-  parent.coins = 30; const extra = 30 - (w.stats().money - money);           // what was added by hand
-  const total = w.stats().money;
-  parent.dieAt = parent.age; w.step(1);
-  assert.ok(child.coins === 0 && child.trust > 0, "a child's inheritance is held in trust");
-  assert.ok(Math.abs(w.stats().money - total) < 1e-6, "coins held in trust still count: none made or lost");
-  child.age = w.settings.grown; w.step(1);
-  assert.ok(child.coins > 0 && !child.trust, "grown, they have it");
-  assert.ok(extra >= 0);
+  w.step(24);
+  assert.ok(kid.coins < 30, "a parent with nothing buys the household's food with the child's coins");
+  assert.ok(mum.food > 0, "and the parent eats");
+  assert.ok(Math.abs(w.stats().money - money) < 1e-6, "no coin is made or lost by a household purse");
+}
+/* Nor a child with a larder while a parent starves. */
+{
+  const w = People.create({ people: 150, map: "small", seed: 4, money: "coins" });
+  w.step(7);
+  const kid = w.people.find(p => !w.adult(p) && p.mum && w.byId.get(p.mum) && w.byId.get(p.mum).home === p.home);
+  const mum = w.byId.get(kid.mum), mate = mum.partner && w.byId.get(mum.partner);
+  mum.food = 0; mum.coins = 0; if (mate) { mate.food = 0; mate.coins = 0; } kid.coins = 0; kid.food = 40;
+  for (const v of w.villages) v.food = 0;
+  w.step(6);
+  assert.ok(kid.food < 40 && mum.hungry === 0, "a parent with nothing eats from the child's spare food");
 }
 
 /* Stubbornness is each person's own, spread by "How much they differ", and
@@ -80,4 +89,4 @@ const People = createRequire(import.meta.url)("../people.js");
   assert.equal(borne.stats().revolutions || 0, 0, "a rule of the rich its people put up with stands");
 }
 
-console.log("Settings sense: coins with the grown-ups and in trust, inherited natures with a spread, a full village by its land, leaders' armies, and revolutions only where they are wanted.");
+console.log("Settings sense: one household purse and pot, inherited natures with a spread, a full village by its land, leaders' armies, and revolutions only where they are wanted.");

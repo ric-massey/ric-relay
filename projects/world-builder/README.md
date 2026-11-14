@@ -864,9 +864,14 @@ be decided by leaders"*. Each is now what the engine does (`test/settings-sense.
   eight tiles grow on an average day, a ration a head (`crowdOf`, `landFeeds`), worked out daily
   with the territory, so lost land or thin soil makes a village full sooner. The number stays as
   an option, and is still the default.
-- **Coins to start, on average**: held by the grown-ups, the same total as before; children have
-  none of their own. A child's inheritance is held in `trust` and is theirs when they are grown,
-  and still counts in the money that is checked for being conserved.
+- **A household is one purse and one pot.** Children may hold coins, from the start or an
+  inheritance (an earlier version of this day kept them from children altogether; Ric: *"kids
+  should be allowed to hold coins. But their parents can use them"*). Whoever feeds a child can
+  spend its coins for the household once their own are gone, and a couple's coins are one purse
+  (`funds`, `pay`); a parent with nothing eats from what a child holds beyond its own next three
+  days, as already from a partner's plate. The rule behind it, in Ric's words: settings can be
+  played with, but the core must never make *"a kid having a bunch of money while his parents
+  are starving"*.
 - **Natures are personal and inherited.** Stubbornness was one number for the whole world; now each
   person has their own (`stub`), and a conversation moves each by their own openness. Children take
   after their parents. **How much they differ** sets how far one founder's nature — stubbornness,
@@ -884,7 +889,10 @@ be decided by leaders"*. Each is now what the engine does (`test/settings-sense.
   a bold leader, less when the treasury cannot pay — and recruits toward it in peace too. Matching
   a neighbour in full was an arms race to the cap; half settles near eight in a hundred.
 - **No longer live:** stubbornness, how much they differ, peacetime soldiers and tax are people's
-  natures and leaders' decisions now, so the running World tab no longer offers them. Tax had been
+  natures and leaders' decisions now, so the running World tab no longer offers them; nor are how
+  long somebody lasts with no food, how many people a mind holds, or the distance from the
+  equator — how bodies, minds and places are is set once, at the start (Ric: *"starvation should
+  be decided at the beginning"*). Tax had been
   live and did nothing: moving it shifted only a floor leaders seldom reached, and no faction's
   actual tax changed. It is **Tax at the start**; to set a tax mid-run, rule the faction.
 

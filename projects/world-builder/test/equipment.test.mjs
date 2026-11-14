@@ -11,7 +11,7 @@ const ready = w => {
 {
   const w = make(), [p,v] = ready(w);
   v.goods = 0; w.outfit(p,v); assert.deepEqual(w.equipment(p), [], "no supply means no free equipment");
-  v.goods = 5; p.coins = 0; w.outfit(p,v); assert.deepEqual(p.gear, {}, "no money means no free purchase");
+  v.goods = 5; for (const q of w.people) q.coins = 0; w.outfit(p,v); assert.deepEqual(p.gear, {}, "no money means no free purchase");   // the whole household: it spends as one (2026-11-14)
   p.coins = 20; const money = w.stats().money, goods = v.goods;
   w.outfit(p,v);
   assert.equal(p.gear.tool, 1); assert.ok(Math.abs(v.goods - goods + 0.6) < 1e-10);

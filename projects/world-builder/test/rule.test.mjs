@@ -67,10 +67,10 @@ const print = w => JSON.stringify({ people: w.people.map(p => [p.id, p.x, p.y, p
   assert.equal(w.set("talk", 0.1), false, "setting the same value is not a change");
   assert.equal(w.set("people", 10), false, "the number of people is fixed when a world begins");
   assert.equal(w.settings.people, 120);
-  assert.equal(w.set("hunger", 99), true); assert.equal(w.settings.hunger, 3, "live values go through the same bounds as the setup page");
+  assert.equal(w.set("deadly", 99), true); assert.equal(w.settings.deadly, 3, "live values go through the same bounds as the setup page");
   const live = People.SCHEMA.flatMap(g => g.items).filter(i => i.live).map(i => i.key);
   assert.equal(w.set("tax", 0.5), false, "tax is each leader's call once a world runs: rule the faction to set it");
-  for (const k of ["seed", "map", "people", "factions", "villages", "stored", "standing", "ages", "settled", "start", "coins", "unequal", "money", "tax", "soldiers", "stubborn", "differ", "rule"])
+  for (const k of ["seed", "map", "people", "factions", "villages", "stored", "standing", "ages", "settled", "start", "coins", "unequal", "money", "tax", "soldiers", "stubborn", "differ", "rule", "hunger", "latitude", "memory"])
     assert.ok(!live.includes(k), k + " only shapes the first day, so it must not be offered as live");
 }
 
