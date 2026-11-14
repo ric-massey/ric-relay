@@ -329,6 +329,17 @@
     const growth = () => season().growth;
     const daylight = () => season().daylight;
     function isDark(hour) { const half = daylight() / 2; return hour < 13 - half || hour >= 13 + half; }
+    /* How long a sleep lasts: in the dark, until it gets light (an hour at
+       least, ten at most); in daylight, a whole sleep for somebody spent.
+       Before 2026-11-14 it was always seven hours, which was right only while
+       every night was the same length — with real days, somebody who woke
+       before a spring dawn went back to bed until one in the afternoon. */
+    function sleepTicks() {
+      const hour = t % DAY_HOURS;
+      if (!isDark(hour)) return spell("sleep");
+      const dawn = 13 - daylight() / 2;
+      return Math.round(clamp((dawn - hour + DAY_HOURS) % DAY_HOURS, 1, 10) * ACTIONS_PER_HOUR);
+    }
     /* Days of eating ahead with nothing growing: what a store has to cover. */
     /* Days of eating ahead that the land will not cover: from the next time
        the year turns lean (growth under what a field gives in an ordinary
@@ -934,7 +945,7 @@
       /* A child keeps near whoever feeds it, and sleeps at night. */
       if (!adult(p)) {
         weigh("sleep", n.rest + dark * 0.8, () => {
-          go(p, p.hx + (R() - 0.5) * 0.5, p.hy + (R() - 0.5) * 0.5, "sleep"); p.wait = spell("sleep");
+          go(p, p.hx + (R() - 0.5) * 0.5, p.hy + (R() - 0.5) * 0.5, "sleep"); p.wait = sleepTicks();
         });
         weigh("idle", 0.3 + n.company * 0.5, () => {
           const mum = byId.get(p.mum) || byId.get(p.dad);
@@ -948,7 +959,7 @@
       const far = Math.hypot(p.hx - p.x, p.hy - p.y);
       weigh("sleep", n.rest + dark * 0.6 - 0.22 - away(far) * 0.4, () => {
         go(p, p.hx + (R() - 0.5) * 0.4, p.hy + (R() - 0.5) * 0.4, "sleep");
-        p.wait = spell("sleep");
+        p.wait = sleepTicks();
       });
 
       /* Eat. Only worth the walk if there is anything to be had. */
