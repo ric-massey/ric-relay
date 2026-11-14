@@ -548,6 +548,36 @@ room for the whole word; the page's title is TRANSMISSIONS).
 `test/comms.js` holds it. Not built: a tiny map on an item (it has a range and
 a bearing instead), and SEEN BEFORE on a ship you have met.
 
+### Leads
+
+WORLD-IDEAS.md: *"Leave a lead before the opening ends … so completing the
+opening leaves them with somewhere they already want to go"*, and *"Exploration
+could leave unfinished business."* No lead had been chosen. Ric, 2026-11-14,
+shown two, chose both (`game/leads.js`):
+
+| Lead | Given when | Points at |
+|---|---|---|
+| A TRACKER THAT IS NOT YOURS | the drive spar is picked up, at the wreck field | THE VAULT |
+| SOMETHING ANSWERED THE BEACON | the signal beacon is fitted | LAST TRANSMISSION |
+
+- **A lead makes nothing.** It is a pointer at a landmark that already stands
+  in the sector. If that landmark is already logged there is no lead.
+- **It never hands you a position** — the rule this mode's navigation has not
+  broken. It arrives on COMMS as UNCONFIRMED with a bearing from home; the
+  missions page lists it under OPEN LEADS with that bearing and a word for how
+  far; the chart draws a dashed line from your station along the bearing.
+- **How far each one is, is the sector's business.** Landmarks are dealt to the
+  ladder's rungs per world: over four seeds the last transmission stood 27,000
+  units out in one and six million in another. So neither lead's words claim a
+  distance, a lead further than one tank reaches says *past your range*, and
+  **once the station is whole the arrow takes the nearest lead a tank can
+  reach** — ahead of the book's next landmark, never one you could not come
+  back from. The mark-one tractor still has the arrow first.
+- Finding the place closes the lead. `test/leads.js` holds all of it.
+
+Not built: encounters that continue beyond the saved ship and the grudge.
+
+
 
 ### And then the hours after it
 
@@ -1387,7 +1417,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | File | Responsibility |
 |---|---|
 | `index.html` | The page: markup, styles, and the script tags in the order the game needs |
-| `game/` | The game, in forty-three chapters that share one global scope and run in this order: |
+| `game/` | The game, in forty-four chapters that share one global scope and run in this order: |
 | `game/setup.js` | THE ARENA — Canvas, the two coordinate spaces, the modes, the base tuning, the stationary hazards and the players. Everything else is built on the numbers here. |
 | `game/controls.js` | CONTROLS — Thumb controls, the four slots as keys, key names, the settings-page state and how the ship is flown. |
 | `game/sound.js` | SOUND — The synthesised sound engine: how loud, which dial, the compressor and the limiter. sounds/listen.html lifts this file at load, so its section markers are load-bearing. |
@@ -1416,6 +1446,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `game/living.js` | THE LIVING WORLD — Powers with needs, provinces with resources, five actions and the events they leave behind. Nothing here writes a story: rules make pressures, pressures pick actions, actions make events, events change the world, and the world remembers. The player is one more actor in it. LIVING-WORLD.md is the brief; this is its first version — §27 with §16 and the front of §28 — built on the war that already moves the borders (war.js) rather than beside it. |
 | `game/jobs.js` | SURVEY — JOBS — A station's job board: what the stations it knows are short of, as work you can take; what you have taken; and what you have done for whom. Every offer is a real shortage, and delivering is the ordinary sale. |
 | `game/comms.js` | SURVEY — TRANSMISSIONS — What has come in over the radio: the big changes near you, each with where the ship heard it, and the messages addressed to you. Nothing here reaches the flight screen as a sentence. |
+| `game/leads.js` | SURVEY — LEADS — Two things picked up during the opening that are not yours to finish yet: a tracker that is not one of your six, and a signal that answers the beacon. Each is a bearing to a landmark that already stands in the sector, kept until you find it. |
 | `game/survey-draw.js` | SURVEY — DRAWING — Drawing the sector and the world: nebulae, stations, words around circles, what a thing is at a glance, a working engine, what the devices leave behind, and the Leviathan's plates. |
 | `game/survey-warrens.js` | SURVEY — THE WARRENS, AND THE ORDER IT IS DRAWN IN — The Warrens' rock, traced rather than stamped; the Vault; and drawSurveyWorld, which draws everything in survey-draw.js and here in the order it stacks. |
 | `game/survey-state.js` | SURVEY — WHAT THE INTERFACE IS HANDED — surveyState(): everything survey-hud/ reads, gathered once a frame. A new thing on a Survey page is a field here and a line in its survey-hud/ file. Then what the front page says about your sector, and where a ship is allowed to appear. |
@@ -1464,6 +1495,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/jobs.js` | The job board: every offer is a real shortage at a station the generator really makes, no shortage means no row, taking one puts the dock on the chart by name, the bonus is paid once and only when the count is met, a need that goes away lapses the job, and none of it can be planted by a hand-edited book. |
 | `test/comms.js` | Transmissions: news is only ever an event in the record, worded by the record's own line; small or far things are not news and a war is; scan, unconfirmed and station report are told apart and docking confirms; the flight screen carries a count and no sentence; the page reads on opening; the book round-trips and comes in clamped. |
 | `test/lessons.js` | A part teaches the room it lights: the pairing is the one that makes sense and every room has exactly one part, every part has an errand about what the part is, an errand is ticked where the thing is done and only once its part is home, and the missions page keeps it until then. |
+| `test/leads.js` | Leads, over four seeds: each points at a landmark the sector really has, is given once, arrives on COMMS as unconfirmed with a bearing and no place, says its range in words, takes the arrow only when a tank can reach it, closes when the place is found, and cannot be planted by a book. |
 | `test/gamepad.js` | The gamepad, with a fake `navigator.getGamepads` the test owns: nothing plugged in changes nothing; the CONTROLLER tab names the pad without its driver id, lists the layout and shows what is pressed; at the title A is Enter exactly once however long it is held; in the cockpit the stick turns, the stick and RT thrust, A fires without pressing Enter, X is slot one and START pauses; and unplugging lets go of everything |
 | `test/door.js` | The account layer and the boards, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name · and for step 5: that `saves` stayed private while `scores` became public, that no policy lets a score be edited or deleted, that a local game reports nothing, that you can only ever be the reporter, and that a report survives a closed tab |
 | `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |

@@ -232,6 +232,13 @@ function objectiveTarget() {
       return { key: "tractormk1", name: surv.mk1Site.name,
                x: surv.mk1Site.x, y: surv.mk1Site.y };
     }
+    /* A lead you picked up during the opening comes before the book: it is
+       the place you already wanted to go. Vague, like every landmark. */
+    const lead = leadInReach();
+    if (lead) {
+      return { key: "lead", vague: true, name: lead.spec.name,
+               x: lead.lm.x, y: lead.lm.y };
+    }
     /* And then the book, for as long as the book has holes in it. `vague`
        is what keeps the promise the scan makes: a bearing and a band, never
        a distance — a landmark's exact range is its position, and the one
@@ -314,6 +321,8 @@ function objective() {
        People stopped playing here, and they were reading it correctly.
 
        So it keeps answering, out of the book, for the rest of the run. */
+    const lead = leadInReach();
+    if (lead) return { text: lead.spec.name, sub: lead.spec.text, colour: lead.spec.colour };
     const next = afterGate();
     if (next && next.kind === "lair") {
       return { text: next.at.name,
@@ -549,6 +558,8 @@ function surveyParts(dt) {
     surv.parts.splice(i, 1);
     dropEchoAt(pt.x, pt.y);
     if (pt.mod) storeAdd(pt.key, 1); else surv.carrying.add(pt.key);
+    // The first part comes with something that is not yours (leads.js).
+    if (!pt.mod && pt.key === "spar") giveLead("tracker");
     /* A spare that came from a site in the sector is remembered as taken, or
        the next time its chunk is rebuilt from the seed it grows back. Only
        ones with a `site`: a spare you dropped when you died is remembered by
@@ -636,6 +647,8 @@ function surveyParts(dt) {
               (svc ? " \u2014 " + svc.name + " is running" : ""), CASH);
     }
     // The beacon is a radio: the first thing it does is say so, on COMMS.
+    // The second thing is that something answers it (leads.js).
+    if (key === "beacon") giveLead("answer");
     if (key === "beacon") {
       transmitMsg("YOUR STATION", "beacon lit \u2014 the counter can order in now",
                   CASH, HOME_STATION);

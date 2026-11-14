@@ -143,7 +143,8 @@ function surveyBook() {
              strength: surv.war.strength, calm: Math.round(surv.war.calm) },
       living: livingToBook(),
       jobs: jobsToBook(),
-      comms: commsToBook()
+      comms: commsToBook(),
+      leads: leadsToBook()
   };
 }
 

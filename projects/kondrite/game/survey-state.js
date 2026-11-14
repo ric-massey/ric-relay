@@ -892,6 +892,8 @@ function surveyState() {
     jobs: jobsState(state === "jobs"),
     /* What has come in (comms.js). Opening the page is what reads it. */
     comms: commsState(),
+    // Open leads: a bearing from home each, never a position (leads.js).
+    leads: leadsState(),
     onComms: () => { commsOpened(); lessonDid("beacon"); state = "comms"; },
     onJobs: () => {
       if (!surv.docked) { gameSound("hit"); return; }

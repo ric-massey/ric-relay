@@ -659,11 +659,14 @@ They remain proposals; recording them is not a request to implement them.
     with rooms — spar the hangar, coil the mouth, plate the dock — and each
     of the six has one errand that uses its room. README, "the pairing
     changed"; `LESSONS` in `game/factions.js`; `test/lessons.js`.
-  - [ ] **A lead before the opening ends.** No lead chosen.
+  - [x] **A lead before the opening ends**, and **unfinished business on
+    the chart.** Done 2026-11-14: Ric, shown two leads, chose both — a
+    tracker that is not yours (with the first part, pointing at the Vault)
+    and a signal that answers the beacon (pointing at the last transmission).
+    A bearing from home on COMMS, the missions page and the chart; never a
+    position. README, "Leads"; `game/leads.js`; `test/leads.js`.
   - [ ] **Encounters continue** — beyond the saved ship and the grudge that
     already come back.
-  - [ ] **Unfinished business on the chart** — a find past your ship's reach,
-    marked for later.
   - [ ] **Politics you can see** — the camps inside each power, a war with an
     object, leader cards with a record, checkpoints and blockades as traffic.
   - [ ] **The computer's records** — SEEN BEFORE on a ship you have met.

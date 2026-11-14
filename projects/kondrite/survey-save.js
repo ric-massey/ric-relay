@@ -240,7 +240,7 @@ function freshBook() {
                   memorials: [], bossesDown: [],
                   dropped: [], tow: null, coilFired: false,
                   friends: [], grudges: [], claims: [], mapped: [], war: null,
-                  living: null, jobs: null, comms: null,
+                  living: null, jobs: null, comms: null, leads: [],
            alert: { water: { taught: 0 }, food: { taught: 0 } } };
 }
 
@@ -607,6 +607,9 @@ function validateSurveyBook(b) {
                ? { seq: b.comms.seq, lastEvent: b.comms.lastEvent,
                    dockEvent: b.comms.dockEvent, list: b.comms.list.slice(0, 30) }
                : null,
+      // Leads (game/leads.js): keys only; `leadsFromBook` drops unknown ones.
+      leads: (Array.isArray(b.leads) ? b.leads : [])
+        .filter(k => typeof k === "string").slice(0, 8),
       mapped: (Array.isArray(b.mapped) ? b.mapped : [])
         .filter(e => Array.isArray(e) && cellKeyOk(e[0]) && e[1] &&
                      typeof e[1].r === "string" && typeof e[1].o === "string")

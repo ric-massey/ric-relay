@@ -239,6 +239,15 @@ if (debugOn) {
       did: key => lessonDid(key)
     },
     jump: (x, y) => lightJump(x, y),
+    /* Leads (leads.js): hand one over, and what is still open. */
+    leads: {
+      give: key => giveLead(key),
+      open: () => leadsState(),
+      raw: () => surv && surv.leads,
+      reach: () => surveyReach(),
+      inReach: () => { const l = leadInReach(); return l ? l.spec.key : null; },
+      all: () => LEADS.map(l => ({ key: l.key, at: l.at, name: l.name, text: l.text }))
+    },
     /* Transmissions (comms.js): the turn's look at the record, a docking,
        a message, opening the page, and the book's copy. */
     comms: {

@@ -579,6 +579,27 @@ HUD.drawChart = function (st, dt) {
   ctx.strokeRect(view.x, view.y, view.w, view.h);
   ctx.restore();
 
+  /* Open leads (game/leads.js): a dashed line from your station along the
+     bearing, running off the chart. It says which way and never where - the
+     place itself goes on the chart when you find it. */
+  for (const ld of (st.leads || [])) {
+    const x0 = mx(ld.hx), y0 = my(ld.hy);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(view.x, view.y, view.w, view.h);
+    ctx.clip();
+    ctx.strokeStyle = ld.colour;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 9]);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x0 + Math.cos(ld.ang) * 4000, y0 + Math.sin(ld.ang) * 4000);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   drawScaleBar(view);
   drawChartLegend(view, st);
   drawChartReadout(view, st);

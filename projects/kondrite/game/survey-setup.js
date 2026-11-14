@@ -62,6 +62,8 @@ function setupSurvey() {
     jobs: jobsFromBook(carried ? book.jobs : null),
     /* What has come in over the radio. See comms.js. */
     comms: commsFromBook(carried ? book.comms : null),
+    /* Leads picked up and not yet followed to the end. See leads.js. */
+    leads: leadsFromBook(carried ? book.leads : null),
     /* The war as it stands, which is not the war the world rolled once it has
        been running a while. `strength` is each power's ability to keep
        fighting, 1 being whole; see `surveyWar`. */

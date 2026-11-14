@@ -720,6 +720,24 @@ function missionBands(st, full, y0) {
     });
     tail = ly + PANEL_H(rows);
   }
+  /* Open leads (game/leads.js): which way from home, and a word for how far.
+     Never a distance - a lead is not a position. */
+  const leads = st.leads || [];
+  if (leads.length) {
+    const ly = tail + PAGE.STEP;
+    panel(full.x, ly, full.w, PANEL_H(leads.length), AMBER, "OPEN LEADS",
+          "BEARING FROM YOUR STATION");
+    leads.forEach((ld, i) => {
+      const y = ROW(ly, i) + 2;
+      fitText(ld.name, full.x + PAGE.PAD, y, SIZE.cap, ld.colour, "left", 1,
+              330, "0.06em");
+      fitText(ld.text, full.x + PAGE.PAD + 350, y, SIZE.cap, AMBER_DIM, "left",
+              0.75, full.w - PAGE.PAD * 2 - 350 - 250);
+      label(String(ld.bearing).padStart(3, "0") + "\u00b0  \u00b7  " + ld.range,
+            full.x + full.w - PAGE.PAD, y, SIZE.cap, AMBER, "right", 0.9);
+    });
+    tail = ly + PANEL_H(leads.length);
+  }
   // During the opening the jobs go under the manifest, which keeps the top.
   if (!finished && jobsTaken.length) tail = takenBand(st, full, tail + PAGE.STEP);
   return tail;

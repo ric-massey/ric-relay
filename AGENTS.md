@@ -709,7 +709,7 @@ nobody had linked was a page nobody could find.
   see and a pilot thrashing at its brake threshold on every slingshot approach.
   `attract.js` now has a dead-air clock (`DEAD_AIR`) that reads the same counters
   the test does, and the test flies three seeds and judges the worst; the 12 did
-  not move. **`projects/kondrite/game/` is the game, in forty-three chapters.** It was the
+  not move. **`projects/kondrite/game/` is the game, in forty-four chapters.** It was the
   inline script at the foot of `index.html` — twenty-eight thousand lines in one
   HTML file — and came out the same day, first as one file byte for byte and then
   cut along its section markers. The chapters are classic scripts sharing the
@@ -735,6 +735,10 @@ nobody had linked was a page nobody could find.
   `game/factions.js` keeps one first-use errand per part on MISSIONS until
   the action completes. `test/lessons.js` runs through the Kondrite test glob
   in `.github/checks.mjs`'s slow lane.
+  **Two leads are picked up during the opening** (`game/leads.js`, Ric
+  2026-11-14): each points at a landmark that already exists and is shown only
+  as a bearing from home — never give a lead a distance or a position, and
+  never make a place for one to point at.
   The news reports the record and never creates an event. §28 is in too — leaders who
   face an election every forty-five turns and fall when a power collapses, three
   laws that each change something the player can feel (letters of marque put
