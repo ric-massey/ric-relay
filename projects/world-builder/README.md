@@ -28,12 +28,17 @@ what has shipped from future direction, including the shared daily clock and rem
 | `index.html` | The page: choose a sandbox → settings → the running world. Styles and page script inline. |
 | `physics.js` | The physics sandbox's engine. No DOM; runs the same in node. |
 | `test/breakup.test.mjs` | Quick physics checks: fracture/shedding, mass, momentum, energy, large bodies, bonds, capacity and repeatable links. Runs in the quick lane of `.github/checks.mjs`. |
+| `test/shape.test.mjs` | Quick checks on facings, slots, the angle spring's books, alignment, the sequence a chain reads as, and that a world with both new settings off is the world it always was. Quick lane. |
+| `replication-probe.mjs` | Not a check — a measurement, run by hand. Seeds copies of a sequence, runs the identical world without them as a control, and counts only the copies made of fresh hexagons. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
 | `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
 | `test/conversations.test.mjs` | Quick receipt checks: observed effects, a conserved grain transfer, stable IDs and a held record surviving history eviction. |
 | `test/world-builder.test.mjs` | Physics settings/conservation and seven actual days per People preset; `--generations` opts into the retained long-term experiments. These can be very expensive on the real clock; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
+| `test/day.mjs` | The one definition of "a different day": tallies adult person-hours per activity and measures what share of them two runs spend differently. Shared by the two below so a measurement and a check cannot disagree. |
+| `test/behaviour.mjs` | Not a check — a measurement. Reports what share of an adult's hours each setting actually moves, against rerolling the seed as the null. Run it before and after changing how people decide. A short probe cannot see a slow mechanism; use `--days`. |
+| `test/decisions.test.mjs` | Quick decision checks: a day slept, worked and walked in human proportions, and seven settings that must move at least 3–5% of an adult's hours. Guards against the hash check passing while a setting does nothing. |
 
 No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1`, then open
 `/projects/world-builder/`.
@@ -118,7 +123,8 @@ settings presets; no outcome is scheduled.
   tab says so. Dead slots are reused only after the spatial-hash walk ends. Pinned bodies stay
   whole, so a wall or anchor remains held.
 
-`node projects/world-builder/test/breakup.test.mjs` checks these accounts quickly on every push;
+`node projects/world-builder/test/breakup.test.mjs` and
+`node projects/world-builder/test/shape.test.mjs` check these accounts quickly on every push;
 the longer sandbox suite also checks that each new setting changes a world and each preset runs.
 Use `node projects/world-builder/test/world-builder.test.mjs --physics` for just its physics
 settings, presets and conservation checks; the default still runs both engines.
@@ -144,10 +150,102 @@ outcome in:
 - **Energy going through.** Reactions need heat arriving and leaving, so the "Things that react"
   preset has a hot middle and a leak. A sealed cold world reacts until it runs out and stops.
 
-What this does **not** do, and should not be claimed: bonds have no direction, so a thing has no
-shape — a chain and a ring of the same kinds are one entry in the census. Nothing copies itself,
-and nothing here says it will. Bonds that hold an angle are the next step if this is taken
-further, and they need each hexagon to have a facing.
+What this does **not** do, and should not be claimed: **self-replication remains an untested
+possibility** (Ric, 2026-11-13). Nothing seeds a copier, no rule rewards copying, and a world has
+never been run long enough to look properly — so a thing that makes more of itself is neither
+claimed nor ruled out. The first version of this paragraph said flatly that nothing copies itself,
+which was a claim nobody had measured either.
+
+**Measured, 2026-11-13, before any of what the next section adds.** Three worlds of 1,200
+hexagons, 400 simulated seconds each. The "things that react" preset, bonds up to three, coalesced
+into one 1,319-hexagon blob and its count of different things fell 61 → 11. Chains (`maxBonds` 2,
+breaking on, `shift` 1) settled instead: about 200 things and 130 different ones, the commonest
+trimers sitting at 5–13 copies with no trend, and about 130 loose hexagons still spare the whole
+time. `shift` 2 over a hotter middle did the same, 4–8 copies, flat. Nothing accelerated while
+there was still material on the table, which is evidence against autocatalysis **in those
+settings** and not proof against it anywhere.
+
+Two things ruled replication out rather than leaving it untested, and both are gone as of
+2026-11-14 — see the next section. Bonds held no angle, so a thing had connectivity and no shape:
+a chain and a ring of the same kinds were one entry in the census, and there was nowhere for a
+copy to lie alongside an original. And `affinity()` read only the two kinds and how many bonds
+each end already held, so a structure carried nothing a passing hexagon could read.
+
+### Shape, and a sequence that can be read
+
+Ric, 2026-11-14, after reading the measurement above: *"can you also do give each hexagon a facing
+so bonds hold an angle, and let affinity see one neighbour-of-neighbour"* — and, as the rule for
+all of it, *"i doint need things replicating constantly i just want it possible."* So: three
+settings, all **off by default**, which together make a copier arithmetically possible. None of
+them makes one happen, and none of them is allowed to.
+
+- **Bonds hold an angle** (`angles`, 0 = off). Every hexagon faces a way, and its six slots sit
+  60° apart from that facing. A bond takes one slot at each end and a straightening spring turns
+  each end until its slot points along the bond; **one slot holds one bond**, and a bond whose
+  slot is taken does not form. That is the whole of what shape means here: a chain keeps its
+  zig-zag, a ring closes, and two hexagons held against the same neighbour stay in step. Heat
+  turns a hexagon as well as shoving it, or a free one could never bring a slot round to meet
+  anything.
+- **How closely they must line up** (`align`, 30° = anything, so the setting only ever tightens).
+  A bond forms only if the slot each end would use is pointing within that angle. This is the
+  knob that templating hangs on: at a few degrees a bond almost never happens by chance, while
+  two hexagons that something else is already **holding in place** can still make one. A template
+  is then nothing more than a neighbour that holds things still; no rule says it is a template.
+- **A bond reads the next one along** (`look`, 0 = off). What a hexagon bonds *as* depends on the
+  **kind** of the neighbour it already holds, not only on how many it holds. That is a readable
+  sequence: the same kind offers a different site depending on what it sits next to, so a chain
+  presents a different face along its length. Still arithmetic on kinds — no table of which
+  reactions exist, which is the rule this project and the Universe project both keep.
+
+What else changed with them:
+
+- **The census reads a chain or a ring along itself.** `1-2-3` and `1-3-2` are different things;
+  `3-2-1` is the same thing the other way round; a ring is read round its best rotation and
+  written `1○2○3`. Anything that branches has no one way to read it and stays what it was, its
+  kinds counted up (`1·2·3`). **Counts of "different things" before and after 2026-11-14 are not
+  comparable** — the same world now reports more of them, because order is information it used to
+  throw away. This is also the only place a replicator could show: a sequence whose count climbs.
+- **A standing bond is re-read when `look` is on**, not only when `shift` is (`react()`). A bond's
+  worth depends on what its ends hold, so a newcomer changes what the old bond is worth, which is
+  what a reaction is here.
+- **The books have two more terms.** `springEnergy` and `twistEnergy` are what the distance spring
+  and the angle spring are holding right now, and a bond that lets go hands both back as heat.
+  Before this, breaking a stretched bond quietly took that energy out of the world (measured: a
+  shaken world lost about 0.1% of its energy an interaction).
+- **The hexagon inspector shows a facing and takes one**, in degrees, like every other field.
+
+**What it conserves, and what it does not** (the three limits above still stand; these are the new
+ones, and they are measured, not assumed). The straightening spring leans on the line between the
+two middles as hard as it turns the hexagon, equal and opposite, so **momentum is kept exactly**
+(1e-16 over 100 seconds) and the spring is a real potential rather than a free source of spin —
+without that lean a bonded world ran **560% hot**, which is how the bug was found. **Energy in a
+bonded world closes to about a part in ten thousand, not to the last digit**: both springs are
+integrated a step at a time, and the error is bounded, not a leak (0.024% after 100 seconds and
+the same 0.024% after 600). The angular damper takes spin out against nothing, so **angular
+momentum is not conserved** — the energy is, it becomes heat. Heat's turning shove is exact.
+
+**Is it possible, then, and has it happened?** Possible: a chain whose ends are held by a template
+can make bonds that would essentially never form free, and `look` means the copy's sites depend on
+the template's sequence. Not seen: `replication-probe.mjs` is the measurement, run by hand, and
+the method is the control the physical-replicator people use — run the same world twice, once with
+copies of a sequence dropped in and once with exactly the same hexagons scattered loose, and count
+only the products made of fresh hexagons. At its own defaults, three runs of 180 seconds: 0–1 new
+copies in the seeded world against 0–2 in the control. **No difference, so nothing copied
+anything.** That is a null for those settings and that long, and it is the honest state: the
+arithmetic no longer forbids a copier, and none has turned up.
+
+**What is still given, and what is not.** One thing is handed to the world: a hexagon has a facing
+and six slots. Every system that has ever managed this gives something — JohnnyVon gives its
+codons a T-shape, Squirm3 gives a reaction table, the Sussex group cut their pucks out of plastic
+to a particular shape. What this engine still refuses to give: which sequences bond, what counts
+as a copy, when a thing splits in two. Separation here has to come out of heat against bonds of
+different strengths, and nothing announces that a copy is finished. That is a harder road than
+JohnnyVon took, and it may be why nothing has copied itself yet.
+
+Two failure modes to watch for before believing anything, both from the Sussex work: a sequence
+that was **assembled rather than copied** (which is why the probe runs a control at all), and the
+**elongation catastrophe**, where strands join at staggered ends and simply get longer. A row
+whose length keeps climbing is that, not a replicator.
 
 ### Hands
 
@@ -183,6 +281,43 @@ them in either direction.
 `projects/universe/SOURCES.md`): the bonding rule that reads a strength off two kinds by
 arithmetic rather than from a table — "pairs that add up" is its law 2, `B = M − |v₁ + v₂ − M|` —
 and "matter is the sum of kinds", which is what lets two bodies fuse into one.
+
+Three more were read properly on 2026-11-14, before shape and sequences were built, because the
+point of that work was to be right rather than to look right. Nothing was ported; each paper was
+read and the mechanism written here from its description.
+
+- **Smith, Arnold, Peter Turney and Robert Ewaschuk (2002).** *JohnnyVon: Self-Replicating
+  Automata in Continuous Two-Dimensional Space.* National Research Council Canada, NRC/ERB-1099;
+  arXiv [cs/0212010](https://arxiv.org/abs/cs/0212010). T-shaped "codons" in a virtual liquid,
+  with arms that bond and a **straightening force** that twists two bonded codons until their
+  arms lie along the line joining their middles — which is exactly the spring `angles` turns on.
+  Took, as well: **two bond classes with very different angular tolerance** (π/256 for the
+  backbone, π/3 for the cross-link), and the reason it works — a backbone bond is almost
+  impossible by chance *and* easy once two codons are held side by side by something else. That
+  is what `align` is, with one number instead of two classes. In their soup of 88 free codons a
+  pair formed by chance at step 164,450 and replicated immediately.
+  **Not** taken: their splitting. A finite state machine passes a signal down a finished double
+  strand and a timed repulsive field shoves the copy off. This project does not script outcomes,
+  so separation here has to come from heat against bonds of different strengths — a harder road,
+  deliberately.
+- **Hutton, Tim J. (2002).** *Evolvable Self-Replicating Molecules in an Artificial Chemistry.*
+  Artificial Life 8(4)
+  ([PDF](https://faculty.cc.gatech.edu/~turk/bio_sim/articles/hutton_rep_molecules.pdf)).
+  Squirm3: atoms with a fixed **type** and a changing **state**, where what an atom will do next
+  depends on what it is bonded to, and self-replicating strings emerge from a random soup. `look`
+  is that idea and only that idea: a hexagon's site depends on the kind it holds. **Not** taken:
+  the method. Squirm3's chemistry is a table of reactions on (type, state) pairs — `R1: e8 + e0
+  → e4e3` and seven more — and an enumerated table is the one thing rule 4 of the Universe
+  project forbids and this engine has never had.
+- **Virgo, Nathaniel, Chrisantha Fernando, Bill Bigge and Phil Husbands (2011).** *The Elongation
+  Catastrophe in Physical Self-Replicators.* ECAL 2011, MIT Press, pp. 828–835
+  ([PDF](https://users.sussex.ac.uk/~philh/pubs/VIRGO.pdf)). Shaped plastic pucks with magnets on
+  an air-hockey table. Took the **measurement**: run the system with and without a seed of the
+  sequence, and only the difference is templated replication, because self-assembly of novel
+  sequences is easier than copying and counts identically if you only look at the products. That
+  is `replication-probe.mjs`. Took the two **failure modes** as the things to disbelieve first:
+  non-templated ligation, and the elongation catastrophe — strands joining at staggered ends and
+  growing without bound.
 
 ## The people sandbox (`people.js`)
 
@@ -233,6 +368,84 @@ The existing speed controls multiply time handed to the same engine; they never 
 model or skip consequences. A slow device may run below the requested speed. At 1× a year still
 costs 121 hours 40 minutes of playback; even headless generation-scale runs require all those
 walking/work steps. Optimization, higher-speed design and persistence remain future work.
+
+### What a person decides to do
+
+Rebuilt 2026-11-13 after Ric: *"what you change doesn't change a lot for the people day to day"*.
+He was right, and `test/behaviour.mjs` was written to find out how right. It tallies every adult's
+activity every simulated hour, so a run becomes a distribution of person-hours, and compares two
+runs by **what share of hours are spent differently** — with *rerolling the seed* as the null,
+since a setting you cannot feel more than a reroll is a setting you cannot feel.
+
+**What it found.** Twenty of thirty-one settings moved a day less than half as much as a reroll
+did; the median setting moved **0.6%** of an adult's hours, and twelve moved **exactly none**
+(`crowd`, `births`, `hunger`, `plague`, `inherit`, `memory`, `rule`, `term`, `rebel`, `war`,
+`aggression`, `deadly`). The four-day probe is too short to see the slow ones — elections, war and
+plague are not four-day mechanisms — but `hunger`, `rich`, `crowd` and `memory` should move a day
+and did not. Three causes, all structural:
+
+1. **A day was five scripts, one per job.** `work` branched on `p.job` and ran a fixed sequence.
+   Nothing a setting could change altered the shape of a day, only a number inside one.
+2. **Work cost no time and fed everybody.** A day's field work took six *simulated minutes* and
+   brought back 3.6 adult-day rations. Adults spent 54% of their hours walking, 0.1% harvesting,
+   and were never short of food — so nothing downstream of scarcity could bite.
+3. **How much the land grows only changed how fast a field refilled**, never its ceiling or a
+   day's yield, so rich and thin ground fed a farmer identically.
+
+**What replaced it.** One place where a person decides, and it is a comparison:
+
+- **Needs.** Besides food: `rest` (rises with the hours awake, faster at real work, cleared by a
+  night in a bed), `alone` (hours since anybody spoke to them), `fear` (a siege, a war, a blow
+  just taken). `urgency(p)` turns them into 0–1.4 wants and is exported, so the person panel shows
+  the same figures the engine decided with.
+- **Options.** Sleep, eat, a day in the fields, a day at the bench, a load to carry, standing
+  guard, going to find somebody, fitting tools, sitting the day out. Each is scored against what
+  the person needs, what the walk and the risk cost, and what they are good at. The best wins,
+  with a little noise so neighbours do not move as one.
+- **A job is competence, not a script.** It is worth about a third again at the work it names, and
+  anybody may do anybody's work when their circumstances call for it. `chooseJob` and the daily
+  choice read the *same* figures (`livelihood`), so what somebody is called and how they spend
+  their hours cannot drift apart — before this they did: a sixth of a village were called crafters
+  while 0.1% of its hours went on making anything.
+- **Work costs hours and feeds about one household.** `SPELL` holds the hours: sleep 7, a day at
+  the bench 5, a watch 4. A day in the fields brings back 1.8 rations, 2.25 with a tool. **The land
+  sets how long that takes, not how much it is** (2026-11-14): five hours on ordinary ground,
+  divided by how fast it gives — `rich` across the world, the patch's own fertility locally, so
+  `uneven` decides who finishes early — and capped at nine (`FIELD_HOURS`), after which they bring
+  back what they managed. Scaling the load instead (the 2026-11-13 version) moved a fed farmer's
+  day by 2.7%, because a fixed shift on rich land looks exactly like one on thin land; scaling the
+  hours is how farming labour actually differs, and it moves a day 7–9%. Land is the thing there is
+  not enough of, which is what gives the settings about land something to bite on.
+- **People have houses.** Spread over the village's own ground, shared by a couple and their
+  children. Bodies cannot overlap, so when people were first given a reason to all be home at
+  night, one point in the middle of a village could not hold them and the village gridlocked;
+  the market, the workshops and the fields are places now, not points.
+
+The village store stays a shared pool, so selling into it does not require standing on a
+particular tile — fitting tools still does, and the `gear` task still walks to the middle for it.
+
+**Moving house is a choice** (2026-11-14). Before, a person changed village only by accident — two
+people of different flags happening to talk, a dice roll on a full village, or hunger. Now
+`choose` weighs a `move` option against everything else: how fed and how full somewhere reachable
+is against home, against what holds them (a partner, children, the friends they remember living
+there, the flag). `switch` is how much a border counts against a place, `crowd` what "full" means,
+and `memory` how many ties a person can hold. Somebody who has just moved settles for ninety days
+before weighing it again. In a fed, peaceful world almost nobody moves — 1 to 3 people in sixty
+days of a default world — and that is correct: these three settings are felt over a season or
+under pressure, not on day three. Don't tune the weights until a fed world churns.
+
+**The famine that was a traffic jam** (found 2026-11-14). A default world starved 77 of its 400
+people by day 20 and 148 by day 60 — no war, no plague — while its stores held hundreds of
+rations at under a coin each and the dead had coins in their pockets. They were stuck: the walk
+code counted somebody as stuck only if they got no closer *than the last step*, so a person
+sliding to and fro round a neighbour got a hair closer every other tick and was never counted.
+One was traced spending seventy hours "Walking" 1.2 tiles from home. Now stuck is measured
+against the closest they have been; after three fresh tries at a spot nearby they do the thing
+from where they stand (`act`). Starvation in the same worlds went to zero, walking fell from
+about 13% of an adult's hours to 4%, and rerolling the seed now moves 4.9% of a day rather than
+13.5% — much of the old "variety between worlds" was which villages happened to jam. **Every
+measurement taken before this date includes the jam**, the 2026-11-13 after-numbers above among
+them.
 
 **Verification changed with the clock.** The old `step()` experiments allowed only eight actions
 per 1/200 year and no longer describe this world. Routine simulations now check seven **actual**
@@ -297,7 +510,7 @@ till/tax paths as any purchase; shared stores supply actual goods without coins.
 
 | Item | Goods for a new item | Use | Condition used per completed use |
 |---|---:|---|---:|
-| Work tool | 0.6 | Farmers take up to 4.5 food rather than 3.6 per harvest, deducted from actual fields; crafters make 20% more goods per batch. | 0.003 |
+| Work tool | 0.6 | Farmers take up to 2.25 food rather than 1.8 from a day in the fields, deducted from actual fields; crafters make 20% more goods per batch. | 0.003 |
 | Trade pack | 0.8 | Traders can buy/carry up to 5 rather than 3 units, still limited by stock and money. | 0.004 per delivered load |
 | Weapon | 1 | Soldiers deal 25% more damage on a successful hit. | 0.01 per successful hit |
 | Shield | 1 | Soldiers take 25% less damage on a successful hit. | 0.01 per hit received |
@@ -403,7 +616,8 @@ player equipment choices and the larger production system remain future work.
 - **People occupy space.** Bodies stay at least 0.42 tiles apart, including starting crowds and
   newborns. Each movement checks a spatial hash and tries to slide round a blocked neighbour;
   if no step fits, the person waits. Destinations choose a free nearby spot, and a person who
-  stops making progress retries that choice. Starting residents wait where they fit instead of
+  stops getting closer than they have already been retries that choice three times, then does
+  the thing from where they stand. Starting residents wait where they fit instead of
   all heading for the village centre. Markets and fields accept arrival within half a tile so a
   shared destination does not require sharing a position. This is local avoidance, not a global
   route planner: very dense crowds can still queue.

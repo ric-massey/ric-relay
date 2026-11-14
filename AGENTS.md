@@ -464,7 +464,29 @@ nobody had linked was a page nobody could find.
   heats, cools and pins hexagons, and the `shift` setting makes a bond change what a
   hexagon bonds with next, so things react instead of only stick. The README's "Making
   emergence possible" says what was added and — as important — what must not be claimed
-  for it. **It is not on the front door or in `latest.js` yet** — it has
+  for it. **Self-replication remains an untested possibility** (Ric, 2026-11-13): the
+  README and the running world's World tab both say it is neither claimed nor ruled out.
+  Don't write that nothing copies itself — that is what the README said until that date,
+  and it was a claim nobody had measured — and don't advertise that something does.
+  **Shape and a readable sequence make a copier possible** (2026-11-14, Ric: "give each
+  hexagon a facing so bonds hold an angle, and let affinity see one neighbour-of-neighbour
+  … i doint need things replicating constantly i just want it possible"). Three settings,
+  **all off by default**, and a world with them off is byte for byte the world it was —
+  `test/shape.test.mjs` holds that: `angles` (a hexagon faces a way, its six slots are 60°
+  apart, one slot holds one bond, a straightening spring turns each end), `align` (how
+  closely two slots must point at each other for a bond to form — tight means a bond
+  needs something else to hold the pair still, which is what makes a template possible
+  without anything being called one) and `look` (what a hexagon bonds as depends on the
+  KIND it already holds, so a chain carries a sequence). The census now reads a chain or
+  a ring along itself (`1-2-3`, `1○2○3`), so counts of "different things" are not
+  comparable with any taken before that date. **Nothing has replicated**:
+  `projects/world-builder/replication-probe.mjs` is the measurement — the seeded-versus-
+  unseeded control from Virgo et al. (2011), run by hand — and at its defaults it reports
+  no difference. Keep it that way: don't script a copier, don't reward copying, and don't
+  tune the constants until one appears. The straightening spring's sideways lean on the
+  pair is load-bearing (without it a bonded world runs 560% hot), and the three papers the
+  work was read from are credited in the README — JohnnyVon's splitting signal is
+  deliberately NOT copied, because it scripts the outcome. **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
@@ -476,7 +498,22 @@ nobody had linked was a page nobody could find.
   the shipped readability pass and searchable People browser with living-family navigation;
   the held conversation inspector and its before/after receipts have also shipped, followed by
   the first equipment set. Specialist production and multi-step agreements remain future work;
-  the shared daily clock and food foundation now follow the equipment milestone. Conversation records surround
+  the shared daily clock and food foundation now follow the equipment milestone.
+  **Since 2026-11-13 people decide by comparison, not by job script** (Ric: "what you change
+  doesn't change a lot for the people day to day"). `work` carries out a task; `choose` picks the
+  next one by scoring every option against needs (food, rest, company, fear), the cost of the walk
+  and the risk, and what the person is good at. **Do not add behaviour as a new branch on
+  `p.job`** — that is the thing that was removed, and it is why eleven settings did nothing. Add a
+  need, an option or a term in a cost. `chooseJob` and `choose` must keep reading the same
+  `livelihood` figures, or an occupation and a life drift apart again. `test/behaviour.mjs`
+  measures what share of an adult's hours a setting actually moves, with rerolling the seed as the
+  null; run it before and after touching how people decide, and quote its numbers rather than
+  asserting a setting "works". **Two things from 2026-11-14 not to undo:** a walker counts as
+  stuck when they get no closer than the *closest* they have been (measured against the last
+  step, a person sliding round a neighbour never counted, and a fifth of a default world starved
+  beside full stores), and the land sets how *long* a day in the fields takes, not how much it
+  brings. Moving house is an option in `choose`; a fed world almost never takes it, and that is
+  right — don't tune it until one churns. Conversation records surround
   the entire interaction, since several branches change state after speaking; do not infer an
   outcome from a dialogue type or move those effects into the renderer. The quick checks are in
   `projects/world-builder/test/conversations.test.mjs` and `.github/checks.mjs`. Read the vision before planning further milestones.

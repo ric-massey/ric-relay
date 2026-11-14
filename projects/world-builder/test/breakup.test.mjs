@@ -7,7 +7,12 @@ const Physics = createRequire(import.meta.url)("../physics.js");
 const make = set => Physics.create({ layout: "empty", size: 1000, edge: "wrap", sized: false,
   startTemp: 0, startSpeed: 0, gravity: 0, fall: 0, shake: 0, conduct: 0, radiate: 0,
   bounce: 1, toughness: 2, fragmentMass: 1, meltTemp: 20, limit: 1e6, ...set });
-const energy = s => s.motion + s.heat + s.radiated + s.dragged + s.breakWork - s.bondEnergy - s.heated;
+/* springEnergy and twistEnergy are what a bond's two springs are holding at
+   this moment (added 2026-11-14 with bonds that hold an angle). They belong
+   in the books: a bond that lets go hands them back as heat, so leaving them
+   out made a stretched bond look like it had made energy. */
+const energy = s => s.motion + s.heat + s.radiated + s.dragged + s.breakWork
+  + s.springEnergy + s.twistEnergy - s.bondEnergy - s.heated;
 const close = (a, b, message) => assert.ok(Math.abs(a - b) < 1e-9 * Math.max(1, Math.abs(a), Math.abs(b)), `${message}: ${a} / ${b}`);
 function books(w, before) {
   const after = w.stats();

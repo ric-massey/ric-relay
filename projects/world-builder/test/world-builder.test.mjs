@@ -55,8 +55,12 @@ function other(it, base, alt) {
   /* Some settings only bite in a world that pushes on them. */
   const cold = { size: 30, count: 420, kinds: 4, bonding: "any", startTemp: 0, startSpeed: 3, gravity: 0, shake: 0 };
   const hot = { layout: "sun", count: 1, size: 80, bigMass: 80, gravity: 0, fall: 0, bonding: "none", fuse: "never", startTemp: 80, startSpeed: 0, shake: 0, conduct: 0, radiate: 0, meltTemp: 20, toughness: 8, fragmentMass: 1, sized: false, edge: "wrap" };
+  /* "How closely they must line up" only exists in a world whose bonds hold
+     an angle, so that world has to have them on before the setting is asked
+     to do anything. */
   const needs = { bigMass: { layout: "sun" }, maxBonds: cold, bondSpeed: cold,
-                  breaking: hot, toughness: hot, fragmentMass: hot, meltTemp: hot };
+                  breaking: hot, toughness: hot, fragmentMass: hot, meltTemp: hot,
+                  align: { angles: 0.6 } };
   const alt = { limit: 3, maxBonds: 1, bondSpeed: 0.5 };
   for (const it of items(Physics)) {
     const base = needs[it.key] === cold ? cold : Object.assign({}, busy, needs[it.key] || {});

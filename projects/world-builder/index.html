@@ -829,8 +829,20 @@
   const FAST = RAMP([[36, 52, 70], [50, 120, 170], [110, 210, 220], [240, 250, 255]]);
   const MOOD = RAMP([[214, 84, 74], [226, 170, 90], [200, 205, 190], [120, 205, 140]]);
   let hotTop = 1, fastTop = 1;
-  function hexPath(p, x, y, rad) {
+  function hexPath(p, x, y, rad, turn) {
     if (rad < 1.7) { p.rect(x - rad, y - rad, rad * 2, rad * 2); return; }
+    /* With bonds that hold an angle a hexagon faces a way, and turning the
+       drawn shape is the whole of showing it: six slots, 60 degrees apart,
+       so the shape says which way they point. */
+    if (turn) {
+      const c = Math.cos(turn), n = Math.sin(turn);
+      for (let k = 0; k < 6; k++) {
+        const vx = HEX[k][0] * rad, vy = HEX[k][1] * rad;
+        const px = x + vx * c - vy * n, py = y + vx * n + vy * c;
+        if (k === 0) p.moveTo(px, py); else p.lineTo(px, py);
+      }
+      p.closePath(); return;
+    }
     p.moveTo(x + HEX[0][0] * rad, y + HEX[0][1] * rad);
     for (let k = 1; k < 6; k++) p.lineTo(x + HEX[k][0] * rad, y + HEX[k][1] * rad);
     p.closePath();
@@ -863,6 +875,7 @@
       ctx.stroke();
     }
     const paths = new Map();
+    const turned = S.angles > 0 && S.bonding !== "none";
     let topT = 0.05, topV = 0.5;
     for (let i = 0; i < n; i++) {
       if (!w.alive[i]) continue;
@@ -874,7 +887,7 @@
                 : viewMode === "heat" ? HOT[Math.min(23, Math.floor(Math.sqrt(T / hotTop) * 23))]
                 : FAST[Math.min(23, Math.floor(v / fastTop * 23))];
       let p = paths.get(col); if (!p) { p = new Path2D(); paths.set(col, p); }
-      hexPath(p, x, y, rad);
+      hexPath(p, x, y, rad, turned ? w.face[i] : 0);
     }
     /* The scales ease toward the hottest and fastest thing there is, so the
        colours do not flicker when one body spikes. */
@@ -1101,7 +1114,9 @@
   $("panes").addEventListener("input", e => {
     const input = e.target.closest("input[data-edit]");
     if (!input || !input.checkValidity() || !picked || picked.body == null || mode !== "physics") return;
-    world.edit(picked.body, { [input.dataset.edit]: +input.value });
+    /* The page talks in degrees; the engine keeps radians. */
+    const key = input.dataset.edit;
+    world.edit(picked.body, { [key]: key === "facing" ? +input.value * Math.PI / 180 : +input.value });
   });
   $("panes").addEventListener("pointerdown", () => { paneHeld = true; });
   for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $("panes").addEventListener(ev, () => { setTimeout(() => { paneHeld = false; }, 60); });
@@ -1151,9 +1166,11 @@
       return "<h3><span class='sw' style='background:" + KIND[(d.kind - 1) % S.kinds % 8] + "'></span>" + (d.mass > S.kinds ? "A fused body" : "Kind " + d.kind) + "</h3>" +
         "<dl class='kv'><dt>Mass</dt><dd>" + num(d.mass, 0) + "</dd><dt>Temperature</dt><dd>" + num(d.temperature, 2) + "</dd>" +
         "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + S.maxBonds + "</dd>" +
-        (S.shift > 0 && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
+        ((S.shift > 0 || S.look > 0) && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
+        (d.turning ? "<dt>Facing</dt><dd>" + num(((d.facing * 180 / Math.PI) % 360 + 360) % 360, 0) + "\u00b0, turning " + num(d.spin, 2) + " a second</dd>" : "") +
         (d.pinned ? "<dt>Pinned</dt><dd>held still</dd>" : "") + "</dl>" +
-        "<div class='body-values'>" + [["mass", "Mass", d.mass, 0.000001], ["temperature", "Temperature", d.temperature, 0], ["vx", "Velocity X", world.vx[d.id], -1e12], ["vy", "Velocity Y", world.vy[d.id], -1e12]].map(a =>
+        "<div class='body-values'>" + [["mass", "Mass", d.mass, 0.000001], ["temperature", "Temperature", d.temperature, 0], ["vx", "Velocity X", world.vx[d.id], -1e12], ["vy", "Velocity Y", world.vy[d.id], -1e12]]
+          .concat(d.turning ? [["facing", "Facing (\u00b0)", Math.round(((d.facing * 180 / Math.PI) % 360 + 360) % 360), -1e12]] : []).map(a =>
           "<label>" + a[1] + "<input type='number' required step='any' min='" + a[3] + "' max='1000000000000' data-edit='" + a[0] + "' value='" + a[2] + "'></label>").join("") + "</div>" +
         "<div class='edits'>" +
         "<button class='btn' data-go='ed:kind:-1'>Kind \u2212</button><button class='btn' data-go='ed:kind:1'>Kind +</button>" +
@@ -1192,7 +1209,10 @@
 
   /* What the world has made. A thing is named by the kinds in it; the count
      of different things, now and ever, is the plainest sign of whether a
-     world is making anything new or only more of the same. */
+     world is making anything new or only more of the same. The note at the
+     foot is deliberate: self-replication has never been tested in here, so
+     the pane says it is neither claimed nor ruled out rather than saying
+     nothing copies itself, which nobody has measured either. */
   function censusPane(S) {
     if (S.bonding === "none") return "";
     const c = world.census();
@@ -1205,10 +1225,14 @@
       "<dt>Loose hexagons</dt><dd>" + c.free.toLocaleString("en-US") + "</dd>" +
       (S.shift > 0 ? "<dt>Reactions</dt><dd>" + st.reacted.toLocaleString("en-US") + "</dd>" : "") + "</dl>";
     for (const t of c.types.slice(0, 10)) {
+      const shape = t.shape === "chain" ? "in a row" : t.shape === "ring" ? "in a ring" : "";
       out += "<div class='thing'>" + (t.kinds ? t.kinds.map(k => "<b style='background:" + KIND[(k - 1) % 8] + "' title='kind " + k + "'></b>").join("") : esc(t.sig)) +
-             "<span>" + (t.kinds ? t.size + " \u00b7 " : "") + "\u00d7" + t.count + "</span></div>";
+             "<span>" + (t.kinds ? t.size + (shape ? " " + shape : "") + " \u00b7 " : "") + "\u00d7" + t.count + "</span></div>";
     }
     if (!c.types.length) out += "<p class='small'>Nothing is bonded to anything yet.</p>";
+    out += "<p class='small'>" + (S.angles > 0 && S.look > 0
+      ? "Things are read along themselves now, so a row of the same kinds in a different order is a different thing. Nothing seeds a copier and no rule rewards copying: a thing that makes more of itself is possible here and has never been seen. One would show as a row whose count climbs."
+      : "Self-replication is untested here: nothing seeds a copier and no rule rewards copying, so something that makes more of itself is neither claimed nor ruled out. It needs shape and a sequence \u2014 \u201cBonds hold an angle\u201d and \u201ca bond reads the next one along\u201d, both off in this world.") + "</p>";
     return out;
   }
 
@@ -1327,10 +1351,21 @@
       const listener = talking && talking.sayT > 0 && talking.talkingTo === p.id ? talking : null;
       const familyLink = id => "<button class='btn family-link' data-go='person:" + id + "'>" + esc(w.byId.get(id).name) + "</button>";
       const job = p.job === "child" ? "a child" : p.id === f.leader ? "leader of " + esc(f.name) + ", and a " + p.job : "a " + p.job;
-      const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(v * 100) + "%'></b></i>";
+      const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(Math.max(0, Math.min(1, v)) * 100) + "%'></b></i>";
+      /* Why they are doing it, not only what. Since 2026-11-13 a person weighs
+         every option they have against what they need, so the need that won is
+         the reason — and it is read off the same figures the engine decided
+         with, never a label written beside the choice. */
+      const need = w.urgency(p);
+      const pressing = [["food", "Needs to eat"], ["rest", "Worn out"], ["safety", "Afraid"],
+                        ["company", "Has had nobody to talk to"], ["provide", "Wants more put by"]]
+                       .reduce((a, b) => (need[b[0]] > need[a[0]] ? b : a));
       return "<button class='btn' data-go='people'>Back to People</button>" + (selectedExchange ? " <button class='btn' data-go='read-talk'>Back to selected exchange</button>" : "") + "<h3>" + esc(p.name) + "</h3>" +
         "<p>" + Math.floor(p.age) + " years old, " + job + " in <button class='linkish' style='min-height:0;padding:0' data-go='village:" + home.id + "'>" + esc(home.name) + "</button>.</p>" +
-        "<p><strong>Now: " + esc(w.activity(p)) + "</strong></p>" +
+        "<p><strong>Now: " + esc(w.activity(p)) + "</strong>" +
+          (w.adult(p) ? "<br><span class='small'>" + (need[pressing[0]] < 0.15 ? "Nothing pressing." : esc(pressing[1]) + ".") + "</span>" : "") + "</p>" +
+        (w.adult(p) ? "<div class='bars'>" + bar("Hungry", need.food / 1.4) + bar("Tired", p.rest) +
+          bar("Alone", p.alone / 30) + bar("Afraid", p.fear) + "</div>" : "") +
         "<p>" + fname(p.f) + (p.from !== p.f ? " <span class='small'>— born under " + esc(w.factions[p.from].name) + "</span>" : "") + "</p>" +
         "<p class='small'>" + (w.leans(p) === "share" ? "Believes what is grown should be shared out." : w.leans(p) === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
         (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +

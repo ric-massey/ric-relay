@@ -19,7 +19,11 @@ for (const c of world.chatter) {
   }
 }
 assert.ok(world.chatter.some(c => ["politics", "news"].includes(c.kind) && c.effects.some(e => e.field === "trust")), "friendship effects applied after said() must be recorded");
-world.advance(300);
+/* Run until the rolling buffer has actually evicted the held record. Since
+   2026-11-13 people sleep, work a real day and go looking for company instead
+   of talking to whoever they bump into, so a fixed number of seconds is no
+   longer a reliable way to produce 160 exchanges. */
+for (let i = 0; i < 400 && world.chatter.includes(held); i++) world.advance(60);
 assert.ok(world.chatter.length <= 160);
 assert.ok(!world.chatter.includes(held), "the held record must outlive rolling history eviction");
 assert.equal(JSON.stringify(held), saved, "later conversations must not rewrite an inspected exchange");

@@ -22,7 +22,8 @@ next features from the vision". This table records implementation, not approval 
 | Understanding actions | Close-up role/activity labels, an activity line in inspection, visible harvesting patches. | Reasons for choices, blocked-action explanations and lasting work sites. |
 | Selecting and following | People list with name search, settlement/faction/job filters, pagination and preserved list position; select and follow on the map; living-family links and either Talk participant selectable. | Bookmarks, durable family histories and navigation to the dead. |
 | Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list, a held exchange with original context and before/after effects, participant navigation, map location and a short pause while speaking. | Longer interaction sequences, agreements and remembered follow-through. |
-| Pacing and bodies | Twenty-minute days at 1×; one clock for frames/headless/fast-forward, hourly daily food needs, age-based child rations, reserve estimates, slower walking and body separation. | Long-term balance, faster generation-scale runs, persistence and reliable navigation through very dense crowds. |
+| Pacing and bodies | Twenty-minute days at 1×; one clock for frames/headless/fast-forward, hourly daily food needs, age-based child rations, reserve estimates, slower walking and body separation. Since 2026-11-13 a day has a shape: work costs hours, people sleep at night in houses of their own. | Long-term balance, faster generation-scale runs, persistence and reliable navigation through very dense crowds. |
+| Why somebody does something | Needs (food, rest, company, fear), one appraisal over every option a person has, occupations that read the same figures as the daily choice, and a person panel that names the need that won. | Plans that outlive the moment, remembered commitments, skills that grow with practice. |
 | Work and society | Farming, generic goods, trade, families, leaders, factions, conflict and breakaways. | Seasonal cultivation, buildings, learning and deeper production chains; a first set of useful tools and equipment now exists. |
 | Continuity and control | A running world lives in the current page; copied links reproduce settings. | Saved worlds, durable family histories and player control. |
 
@@ -480,3 +481,43 @@ still applied; the daily-clock milestone below supersedes that evidence.
 food an hourly-consumed daily supply with age-scaled child needs and store coverage estimates.
 Retained the old long experiments explicitly, replacing routine compressed-century claims with
 same-world parity and seven actual days per preset. Long-term balance remains unmeasured.
+
+**2026-11-13 decision milestone — the one thing under all of section 15.** Ric: *"what you change
+doesn't change a lot for the people day to day... i want to make it a more realistic sim"*, and
+*"lets make that work right first"*. This is the piece section 16 did not have as a numbered step:
+it was folded inside item 3, and items 2 and 3 cannot work without it.
+
+Measured first (`test/behaviour.mjs`, a measurement and not a check). Of thirty-one settings,
+twenty moved an adult's day less than half as much as rerolling the seed did; the median moved
+0.6% of an adult's hours and twelve moved none at all. The causes were structural, not a matter of
+tuning: a day was five fixed scripts chosen by job title, a day's field work took six simulated
+minutes and fed a household three times over, and "how much it grows" only changed how fast a
+field refilled — never its ceiling, so thin and rich land fed a farmer the same. 54% of an adult's
+hours went on walking and 0.1% on harvesting.
+
+Built: needs beyond food (rest, time alone, fear); hours that cost hours; one appraisal where
+every option a person has is scored against what they need, what the walk and the risk cost and
+what they are good at; occupations that read the same figures as the daily choice, so a label and
+a life cannot disagree; and houses, because bodies cannot overlap and a village whose whole
+population aims at one tile at bedtime jams solid. The person panel now shows the need that won
+alongside what they are doing, read off the same `urgency` the engine decided with.
+
+What this does **not** do, and should not be claimed: there are no agreements, no promises, no
+memory of an unresolved matter, no skills that grow with practice, no buildings and no seasons.
+A person compares the options in front of them *now*; they do not plan, and nothing they decide
+today is remembered as a commitment tomorrow. Sections 6, 7, 9 and 10 are untouched. What changed
+is that those systems now have somewhere to plug in: each would be a new need, a new option or a
+new term in a cost, rather than a sixth script.
+
+**2026-11-14 follow-up.** Three fixes on top, all measured with the same harness. The walk code
+never counted somebody sliding round a neighbour as stuck, so a fifth of a default world starved
+within twenty days beside full, cheap stores; fixed, starvation in those worlds is zero and walking
+fell to about 4% of adult hours. The land now sets how long a day in the fields takes rather than
+how much it brings, so `rich` and `uneven` move a day within three days. And moving house is an
+option in the same comparison, so `switch`, `crowd` and `memory` have a decision to enter — which a
+fed, peaceful world almost never takes, correctly. README, "What a person decides to do".
+
+Ric's framing for why this came first: the Apocolips idea (a 3D apocalypse sandbox, city and
+rural, choose the conditions and follow the people) is the same engine under different pressures.
+With job scripts an apocalypse would have had to be a sixth script; with an appraisal it is new
+pressures and new affordances fed to the same machine.

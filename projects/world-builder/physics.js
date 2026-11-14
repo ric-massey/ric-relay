@@ -107,6 +107,15 @@
       { key: "shift", when: s => s.bonding !== "none" && s.bonding !== "any", label: "A bond changes what it holds", type: "range", min: 0, max: 3, step: 1, def: 0,
         say: v => (v === 0 ? "no — a kind is always that kind" : "each bond moves a hexagon " + v + (v === 1 ? " kind" : " kinds") + " on"),
         help: "With this on, a hexagon that is already bonded bonds like a different kind — so what it is joined to decides what it joins next, and a new neighbour can knock an old one off. This is what lets things react instead of only stick." },
+      { key: "angles", when: s => s.bonding !== "none", label: "Bonds hold an angle", type: "range", min: 0, max: 1, step: 0.05, def: 0,
+        say: off(pct),
+        help: "Off, a bond is a distance and nothing more, so a thing has no shape. On, every hexagon faces a way and its bonds sit in six slots 60° apart, so a chain holds its zig-zag, a ring stays a ring, and two hexagons held side by side stay in step. Higher is stiffer." },
+      { key: "align", when: s => s.bonding !== "none" && s.angles > 0, label: "How closely they must line up", type: "range", min: 1, max: 30, step: 1, def: 30,
+        say: v => (v >= 30 ? "any angle" : "within " + v + "°"),
+        help: "A bond forms only when the slot each one would use is pointing near enough at the other. At 30° anything that touches can bond. A few degrees and a bond almost never happens by chance — but two hexagons that something else is already holding in place can still make one." },
+      { key: "look", when: s => s.bonding !== "none" && s.bonding !== "any", label: "A bond reads the next one along", type: "range", min: 0, max: 3, step: 1, def: 0,
+        say: v => (v === 0 ? "no — only the two that are touching" : "a neighbour's kind moves it " + v + (v === 1 ? " kind" : " kinds") + " on"),
+        help: "On, what a hexagon bonds as depends on the KIND of the neighbour it already holds, not only on how many it holds. That is what lets a chain carry a sequence worth reading: the same kind offers a different site depending on what it sits next to." },
       { key: "bondSpeed", when: s => s.bonding !== "none", label: "Too fast to bond", type: "range", min: 0.5, max: 30, step: 0.5, def: 6,
         say: v => "over " + v + " a second", help: "Two hexagons meeting faster than this bounce instead." },
     ]},
@@ -145,10 +154,10 @@
   const INPUT_LIMITS = {
     size: [4, 1000], count: [0, 20000], kinds: [1, 64], seed: [0, 4294967295],
     bigMass: [0.000001, 1e12], bounce: [0, 1], bondChance: [0, 1],
-    maxBonds: [0, 255], shake: [0, 1], conduct: [0, 1],
+    maxBonds: [0, 255], shake: [0, 1], conduct: [0, 1], angles: [0, 1], align: [0.01, 30], look: [0, 64],
     limit: [0, 1e12], rate: [0.001, 100], toughness: [0.000001, 1e12], fragmentMass: [0.000001, 1e12]
   };
-  const WHOLE = new Set(["count", "kinds", "seed", "maxBonds", "shift"]);
+  const WHOLE = new Set(["count", "kinds", "seed", "maxBonds", "shift", "look"]);
   for (const g of SCHEMA) for (const it of g.items) if (it.type === "range") {
     [it.inputMin, it.inputMax] = INPUT_LIMITS[it.key] || [0, 1e12];
     it.integer = WHOLE.has(it.key);
@@ -250,6 +259,10 @@
   const BREAK_RATE = 3;      // attempts a second at shaking a bond loose
   const SPARE = 3000;        // hexagons a visitor may add to a running world
   const REACT_RATE = 4;      // times a second a bond notices its ends have changed
+  const SLOTS = 6;           // a hexagon's six bond directions, 60° apart from the way it faces
+  const ANG_K = 40;          // the straightening spring that turns a slot to face its partner
+  const ANG_DAMP = 6;        // and what it loses to heat as it swings
+  const TAU = Math.PI * 2;
   const GRID = 16;           // gravity's coarse grid, cells a side
   const DIRECT_MAX = 500;    // bodies below which gravity is every pair exactly
 
@@ -273,7 +286,15 @@
     const pinned = new Uint8Array(cap);       // held where it was put; nothing moves it
     const impact = new Float64Array(cap), impactX = new Float64Array(cap), impactY = new Float64Array(cap);
     const shedding = new Float64Array(cap), broken = new Uint8Array(cap);
-    const bonds = new Map();      // a * cap + b (a < b) → { a, b, B, rest }
+    const bonds = new Map();      // a * cap + b (a < b) → { a, b, B, rest, sa, sb }
+    /* Which way each hexagon faces, and how fast it is turning. Only moved
+       when bonds hold an angle; with that off these stay zero and the world
+       is the same world it was before any of this existed. */
+    const face = new Float64Array(cap), spin = new Float64Array(cap);
+    /* Who is in each of a hexagon's six slots, or -1. With angles on a slot
+       is a real direction; with them off it is only a list of who it holds,
+       which is what "a bond reads the next one along" needs. */
+    const adj = new Int32Array(cap * SLOTS).fill(-1);
     let n = 0;                    // slots used; dead ones stay where they are
     const tally = { time: 0, radiated: 0, dragged: 0, heated: 0, fused: 0, left: 0, bondsMade: 0, bondsBroken: 0,
                     placed: 0, removed: 0, reacted: 0, fractured: 0, shed: 0, breakWork: 0 };
@@ -287,6 +308,8 @@
       else { for (let q = 0; q < cap; q++) if (!alive[q]) { i = q; break; } }     // full: take a dead one's place
       if (i < 0) return -1;
       nb[i] = 0; pinned[i] = 0; shedding[i] = 0; broken[i] = 0;
+      for (let s = 0; s < SLOTS; s++) adj[i * SLOTS + s] = -1;
+      spin[i] = 0; face[i] = S.angles > 0 ? R() * TAU : 0;
       impact[i] = 0; impactX[i] = 0; impactY[i] = 0;
       x[i] = px; y[i] = py; vx[i] = pvx || 0; vy[i] = pvy || 0;
       kind[i] = k; m[i] = mass || k; r[i] = radiusOf(m[i]);
@@ -500,7 +523,81 @@
        torn (the tally counts that as work done on the world). */
     const key = (a, b) => (a < b ? a * cap + b : b * cap + a);
     function bondTemp(a, b) { return (heat[a] + heat[b]) / (m[a] + m[b]); }
-    function unbond(k, bd) { bonds.delete(k); nb[bd.a]--; nb[bd.b]--; tally.bondsBroken++; }
+    function unbond(k, bd) {
+      const held = strain(bd);
+      if (held > 0) {
+        const a = bd.a, b = bd.b, share = m[a] / (m[a] + m[b]);
+        heat[a] += held * share; heat[b] += held * (1 - share);
+      }
+      bonds.delete(k); nb[bd.a]--; nb[bd.b]--; tally.bondsBroken++;
+      if (bd.sa >= 0) adj[bd.a * SLOTS + bd.sa] = -1;
+      if (bd.sb >= 0) adj[bd.b * SLOTS + bd.sb] = -1;
+    }
+    /* What a bond's two springs are holding right now: the distance spring
+       stretched or squashed, and the angle spring bent. stats() counts the
+       same thing over the standing bonds, so a bond that lets go has to hand
+       this back rather than take it out of the world. */
+    function strain(bd) {
+      const dx = sep(x[bd.b] - x[bd.a], W), dy = sep(y[bd.b] - y[bd.a], H);
+      const d = Math.hypot(dx, dy) || 1e-9, off = d - bd.rest;
+      let held = 0.5 * BOND_K * (m[bd.a] * m[bd.b] / (m[bd.a] + m[bd.b])) * off * off;
+      if (spun() && bd.sa >= 0 && bd.sb >= 0) {
+        const along = Math.atan2(dy, dx);
+        const ea = wrapAngle(along - slotDir(bd.a, bd.sa));
+        const eb = wrapAngle(along + Math.PI - slotDir(bd.b, bd.sb));
+        held += 0.5 * ANG_K * S.angles * ((pinned[bd.a] ? 0 : inertia(bd.a) * ea * ea) + (pinned[bd.b] ? 0 : inertia(bd.b) * eb * eb));
+      }
+      return held;
+    }
+
+    /* -- shape --------------------------------------------------------------
+       A hexagon faces a way, and its six slots are 60° apart from that facing.
+       A bond sits in one slot at each end and holds it there, and that is the
+       whole of what shape means here: a chain keeps its zig-zag, a ring
+       closes, and two hexagons held against the same neighbour stay in step.
+       The straightening spring is JohnnyVon's (Smith, Turney and Ewaschuk,
+       2002), written here from the paper's description and credited in
+       README.md -- no code was taken from it. */
+    const spun = () => S.angles > 0 && S.bonding !== "none";
+    const wrapAngle = a => a - TAU * Math.round(a / TAU);
+    const slotDir = (i, slot) => face[i] + slot * (TAU / SLOTS);
+    const inertia = i => 0.5 * m[i] * r[i] * r[i];
+    /* The slot a bond in this direction would have to use, or -1: the nearest
+       one, if it is empty and pointing near enough. Nearest only -- a bond
+       does not get to pick another slot because the right one is full, which
+       is what stops a hexagon holding six things in the same place. */
+    function slotFor(i, dx, dy) {
+      const base = i * SLOTS;
+      if (!spun()) { for (let s = 0; s < SLOTS; s++) if (adj[base + s] < 0) return s; return -1; }
+      const want = Math.atan2(dy, dx);
+      let best = -1, off = Infinity;
+      for (let s = 0; s < SLOTS; s++) {
+        const e = Math.abs(wrapAngle(want - slotDir(i, s)));
+        if (e < off) { off = e; best = s; }
+      }
+      if (best < 0 || adj[base + best] >= 0) return -1;
+      return off <= S.align * Math.PI / 180 ? best : -1;
+    }
+    /* The kind of the neighbour a hexagon already holds: the first slot with
+       one in it, skipping whoever is asking. Kind 1 means "nobody", because
+       kind 1 moves nothing on. */
+    function heldKind(i, skip) {
+      const base = i * SLOTS;
+      for (let s = 0; s < SLOTS; s++) {
+        const o = adj[base + s];
+        if (o >= 0 && o !== skip && alive[o]) return ((kind[o] - 1) % S.kinds) + 1;
+      }
+      return 1;
+    }
+    /* What a hexagon bonds AS: its own kind, moved on by how many bonds it
+       holds (`shift`) and by the kind of the one it already holds (`look`).
+       `less` is 1 when the bond being judged is one of its own, so a standing
+       bond is read off the OTHER bonds its ends hold. */
+    function siteOf(i, skip, less) {
+      let moved = (nb[i] - (less || 0)) * S.shift;
+      if (S.look > 0) moved += S.look * (heldKind(i, skip) - 1);
+      return moved;
+    }
     function bondForces(dt) {
       for (const [k, bd] of bonds) {
         const a = bd.a, b = bd.b;
@@ -525,7 +622,33 @@
         const f = spring + damp;
         ax[a] += f * ux / m[a]; ay[a] += f * uy / m[a];
         ax[b] -= f * ux / m[b]; ay[b] -= f * uy / m[b];
+        if (spun() && bd.sa >= 0 && bd.sb >= 0) {
+          const along = Math.atan2(dy, dx);
+          /* Each end's spring turns that end and leans on the line between
+             the two middles, which is what it is measured against. The lean
+             is equal and opposite, so the pair keeps its momentum. */
+          const lean = (twist(a, bd.sa, along, dt) + twist(b, bd.sb, along + Math.PI, dt)) / d;
+          const px = -uy, py = ux;
+          ax[a] += lean * px / m[a]; ay[a] += lean * py / m[a];
+          ax[b] -= lean * px / m[b]; ay[b] -= lean * py / m[b];
+        }
       }
+    }
+    /* Turn one end so its slot points along the bond, damp the swinging, and
+       hand back the torque so the caller can lean on the line the angle is
+       measured against. The spring is held in the books as twistEnergy; what
+       the damper takes out becomes heat, exactly as the distance spring's
+       damper does. A pinned hexagon is held: it neither turns nor is turned,
+       and its end of the spring does nothing. */
+    function twist(i, slot, want, dt) {
+      if (pinned[i]) return 0;
+      const err = wrapAngle(want - slotDir(i, slot));
+      spin[i] += ANG_K * S.angles * err * dt;
+      const keep = Math.max(0, 1 - ANG_DAMP * S.angles * dt);
+      const was = spin[i];
+      spin[i] = was * keep;
+      heat[i] += 0.5 * inertia(i) * (was * was - spin[i] * spin[i]);
+      return inertia(i) * ANG_K * S.angles * err;
     }
     function shakeBonds(dt) {
       if (!bonds.size) return;
@@ -551,12 +674,12 @@
        worth nothing at all the bond lets go. That is a reaction: nothing here
        says which ones happen, only the arithmetic the visitor chose. */
     function react(dt) {
-      if (S.shift === 0 || !bonds.size) return;
+      if ((S.shift === 0 && S.look === 0) || !bonds.size) return;
       const odds = REACT_RATE * dt;
       for (const [k, bd] of bonds) {
         if (R() > odds) continue;
         const a = bd.a, b = bd.b;
-        const want = S.bondStrength * affinity(S.bonding, kind[a], kind[b], S.kinds, (nb[a] - 1) * S.shift, (nb[b] - 1) * S.shift);
+        const want = S.bondStrength * affinity(S.bonding, kind[a], kind[b], S.kinds, siteOf(a, b, 1), siteOf(b, a, 1));
         if (want === bd.B) continue;
         const have = heat[a] + heat[b];
         if (want > bd.B) {
@@ -648,6 +771,12 @@
       if (!(amount >= S.fragmentMass && m[i] - amount >= S.fragmentMass)) return false;
       const j = add(x[i], y[i], kind[i], 0, 0, amount);
       if (j < 0) { fragmentLimit = true; return false; }
+      /* Let go of its bonds BEFORE the piece is moved. A bond hands back what
+         its springs were holding, and after the move that is a different
+         number: the two ends have been put somewhere else without the spring
+         doing the work. Here the strain lands in heat[i] and is shared out
+         with the rest of it below. */
+      for (const [k, bd] of bonds) if (bd.a === i || bd.b === i) unbond(k, bd);
       if (!ux && !uy) { const angle = R() * Math.PI * 2; ux = Math.cos(angle); uy = Math.sin(angle); }
       const length = Math.hypot(ux, uy); ux /= length; uy /= length;
       const M = m[i], remain = M - amount, part = amount / M;
@@ -661,7 +790,6 @@
       vx[i] -= ux * speed * part; vy[i] -= uy * speed * part;
       m[i] = remain; r[i] = radiusOf(remain);
       heat[j] = h * part; heat[i] = h - heat[j];
-      for (const [k, bd] of bonds) if (bd.a === i || bd.b === i) unbond(k, bd);
       // The field is held for this frame; a new/reused slot inherits its parent's acceleration.
       gax[j] = gax[i]; gay[j] = gay[i];
       broken[i] = broken[j] = 1;
@@ -760,12 +888,23 @@
         if (chipJ) { impact[j] += lost * hj; impactX[j] += ux * lost * hj; impactY[j] += uy * lost * hj; }
       }
       if (!chipI && !chipJ && S.bonding !== "none" && nb[i] < S.maxBonds && nb[j] < S.maxBonds && Math.abs(vn) < S.bondSpeed) {
-        const a = affinity(S.bonding, kind[i], kind[j], S.kinds, nb[i] * S.shift, nb[j] * S.shift);
+        const a = affinity(S.bonding, kind[i], kind[j], S.kinds, siteOf(i, j, 0), siteOf(j, i, 0));
         if (a > 0 && R() < S.bondChance * Math.min(1, dt * 30)) {
-          const B = S.bondStrength * a;
-          bonds.set(key(i, j), { a: Math.min(i, j), b: Math.max(i, j), B: B, rest: reach });
-          nb[i]++; nb[j]++; tally.bondsMade++;
-          heat[i] += B * hi; heat[j] += B * hj;
+          /* Which slot each end would use. With angles off this is only a
+             note of who holds whom and a full list never refuses a bond; with
+             them on, a bond with nowhere to sit, or one that would sit
+             crooked, does not happen at all. */
+          const si = slotFor(i, ux, uy), sj = slotFor(j, -ux, -uy);
+          if (!spun() || (si >= 0 && sj >= 0)) {
+            const B = S.bondStrength * a;
+            const lo = Math.min(i, j), up = Math.max(i, j);
+            bonds.set(key(i, j), { a: lo, b: up, B: B, rest: reach,
+                                   sa: lo === i ? si : sj, sb: lo === i ? sj : si });
+            if (si >= 0) adj[i * SLOTS + si] = j;
+            if (sj >= 0) adj[j * SLOTS + sj] = i;
+            nb[i]++; nb[j]++; tally.bondsMade++;
+            heat[i] += B * hi; heat[j] += B * hj;
+          }
         }
       }
     }
@@ -794,6 +933,16 @@
           const kx = Math.cos(a) * dv, ky = Math.sin(a) * dv;
           const cost = m[i] * (vx[i] * kx + vy[i] * ky) + dE;
           if (cost <= heat[i]) { vx[i] += kx; vy[i] += ky; heat[i] -= cost; }
+        }
+        /* The same shove, about the middle instead of across the world. A
+           free hexagon has to be able to turn, or it could never bring a slot
+           round to meet anything. Charged for exactly the spin it makes. */
+        if (S.shake > 0 && spun() && heat[i] > 1e-9 && !pinned[i]) {
+          const I = inertia(i);
+          const dE = heat[i] * Math.min(0.5, S.shake * dt);
+          const dw = (R() < 0.5 ? -1 : 1) * Math.sqrt(2 * dE / I);
+          const cost = I * spin[i] * dw + dE;
+          if (cost <= heat[i]) { spin[i] += dw; heat[i] -= cost; }
         }
       }
     }
@@ -827,7 +976,7 @@
     function substep(dt) {
       ax.set(gax); ay.set(gay);
       bondForces(dt);
-      const lim = S.limit, keep = S.drag > 0 ? Math.exp(-S.drag * dt) : 1;
+      const lim = S.limit, keep = S.drag > 0 ? Math.exp(-S.drag * dt) : 1, turning = spun();
       for (let i = 0; i < n; i++) {
         if (!alive[i]) continue;
         if (pinned[i]) { vx[i] = 0; vy[i] = 0; continue; }
@@ -840,6 +989,7 @@
         const sp = Math.hypot(vx[i], vy[i]);
         if (sp > lim) { vx[i] *= lim / sp; vy[i] *= lim / sp; }
         x[i] += vx[i] * dt; y[i] += vy[i] * dt;
+        if (turning) face[i] += spin[i] * dt;
       }
       edges();
       buildHash();
@@ -876,16 +1026,28 @@
     function find(i) { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; }
     function stats() {
       let count = 0, mass = 0, ke = 0, ht = 0, px = 0, py = 0, biggest = 0, heaviest = 0;
+      const turns = spun();
       for (let i = 0; i < n; i++) {
         parent[i] = i;
         if (!alive[i]) continue;
         count++; mass += m[i]; ht += heat[i];
         ke += 0.5 * m[i] * (vx[i] * vx[i] + vy[i] * vy[i]);
+        if (turns) ke += 0.5 * inertia(i) * spin[i] * spin[i];
         px += m[i] * vx[i]; py += m[i] * vy[i];
         if (m[i] > heaviest) heaviest = m[i];
       }
-      let be = 0;
-      for (const bd of bonds.values()) { be += bd.B; const a = find(bd.a), b = find(bd.b); if (a !== b) parent[a] = b; }
+      /* The two springs hold energy while they are stretched or bent. Neither
+         is heat and neither is motion, so the books name them: without them a
+         bonded world looks like it is making energy every time it rings. */
+      let be = 0, pull = 0, bend = 0;
+      for (const bd of bonds.values()) {
+        be += bd.B;
+        const dx = sep(x[bd.b] - x[bd.a], W), dy = sep(y[bd.b] - y[bd.a], H);
+        const d = Math.hypot(dx, dy) || 1e-9, off = d - bd.rest;
+        const stretch = 0.5 * BOND_K * (m[bd.a] * m[bd.b] / (m[bd.a] + m[bd.b])) * off * off;
+        pull += stretch; bend += strain(bd) - stretch;
+        const a = find(bd.a), b = find(bd.b); if (a !== b) parent[a] = b;
+      }
       const sizes = new Map();
       for (const bd of bonds.values()) { const f = find(bd.a); sizes.set(f, 0); }
       let clustered = 0;
@@ -893,7 +1055,8 @@
       for (const s of sizes.values()) if (s > biggest) biggest = s;
       return {
         time: tally.time, count: count, started: started, mass: mass, startMass: startMass,
-        motion: ke, heat: ht, bondEnergy: be, temperature: mass > 0 ? ht / mass : 0,
+        motion: ke, heat: ht, bondEnergy: be, springEnergy: pull, twistEnergy: bend,
+        temperature: mass > 0 ? ht / mass : 0,
         momentumX: px, momentumY: py, bonds: bonds.size, clusters: sizes.size, biggest: biggest,
         clustered: clustered, heaviest: heaviest,
         radiated: tally.radiated, dragged: tally.dragged, heated: tally.heated,
@@ -915,19 +1078,77 @@
       for (let i = 0; i < n; i++) if (alive[i] && nb[i] > 0) {
         const f = find(i);
         let g = groups.get(f); if (!g) { g = []; groups.set(f, g); }
-        g.push(((kind[i] - 1) % S.kinds) + 1);
+        g.push(i);
       }
       const types = new Map();
       let free = 0;
       for (let i = 0; i < n; i++) if (alive[i] && nb[i] === 0) free++;
       for (const g of groups.values()) {
-        g.sort((a, b) => a - b);
-        const sig = g.length > 12 ? g.length + " hexagons" : g.join("\u00b7");
-        const t = types.get(sig);
-        if (t) t.count++; else types.set(sig, { sig: sig, kinds: g.length > 12 ? null : g, size: g.length, count: 1 });
+        const read = readThing(g);
+        const t = types.get(read.sig);
+        if (t) t.count++;
+        else types.set(read.sig, { sig: read.sig, kinds: read.kinds, shape: read.shape, size: g.length, count: 1 });
       }
       const list = [...types.values()].sort((a, b) => b.count - a.count || b.size - a.size);
       return { free: free, things: groups.size, distinct: list.length, types: list };
+    }
+
+    /* What one bonded thing IS. A chain and a ring are read along themselves,
+       so "1-2-3" and "1-3-2" are two different things and "3-2-1" is the same
+       thing the other way round; anything that branches has no one way to
+       read it, so it stays what it has always been, its kinds counted up.
+       This is the only place a replicator could show: a sequence whose count
+       climbs is one making more of itself. */
+    const kindOf = i => ((kind[i] - 1) % S.kinds) + 1;
+    function readThing(g) {
+      const size = g.length;
+      let ends = [], simple = true;
+      for (const i of g) {
+        if (nb[i] > 2) { simple = false; break; }
+        if (nb[i] === 1) ends.push(i);
+      }
+      if (simple && size <= 12 && (ends.length === 2 || (ends.length === 0 && size >= 3))) {
+        const ring = ends.length === 0;
+        const seq = walk(ring ? g[0] : ends[0], size);
+        if (seq) {
+          const best = ring ? bestRing(seq) : bestLine(seq);
+          return { sig: best.join(ring ? "\u25cb" : "-"), kinds: best, shape: ring ? "ring" : "chain" };
+        }
+      }
+      const sorted = g.map(kindOf).sort((a, b) => a - b);
+      return size > 12
+        ? { sig: size + " hexagons", kinds: null, shape: "clump" }
+        : { sig: sorted.join("\u00b7"), kinds: sorted, shape: "clump" };
+    }
+    /* Walk a chain or a ring from one hexagon to the next, by the slots. */
+    function walk(start, size) {
+      const seq = [kindOf(start)];
+      let prev = -1, at = start;
+      for (let step = 1; step < size; step++) {
+        let next = -1;
+        for (let sl = 0; sl < SLOTS; sl++) {
+          const o = adj[at * SLOTS + sl];
+          if (o >= 0 && o !== prev && alive[o]) { next = o; break; }
+        }
+        if (next < 0) return null;               // adjacency ran out: not a walk
+        seq.push(kindOf(next)); prev = at; at = next;
+      }
+      return seq;
+    }
+    const before = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
+    function bestLine(seq) {
+      const back = seq.slice().reverse();
+      return before(back, seq) ? back : seq;
+    }
+    function bestRing(seq) {
+      let best = null;
+      for (const way of [seq, seq.slice().reverse()]) {
+        for (let r = 0; r < way.length; r++) {
+          const turn = way.slice(r).concat(way.slice(0, r));
+          if (!best || before(turn, best)) best = turn;
+        }
+      }
+      return best;
     }
 
     /* ── a visitor's hands ─────────────────────────────────────────────────
@@ -955,7 +1176,9 @@
       if (change.temperature != null) heat[i] = Math.max(0, change.temperature) * m[i];
       if (change.vx != null) vx[i] = change.vx;
       if (change.vy != null) vy[i] = change.vy;
-      if (change.pinned != null) { pinned[i] = change.pinned ? 1 : 0; if (pinned[i]) { vx[i] = 0; vy[i] = 0; } }
+      if (change.pinned != null) { pinned[i] = change.pinned ? 1 : 0; if (pinned[i]) { vx[i] = 0; vy[i] = 0; spin[i] = 0; } }
+      if (change.facing != null && isFinite(change.facing)) face[i] = change.facing;
+      if (change.spin != null && isFinite(change.spin)) spin[i] = change.spin;
       if (change.loosen) loosen(i);
       return true;
     }
@@ -991,13 +1214,16 @@
       for (const bd of bonds.values()) if (bd.a === i || bd.b === i) with_.push({ other: bd.a === i ? bd.b : bd.a, strength: bd.B });
       return { id: i, kind: kind[i], mass: m[i], temperature: heat[i] / m[i], heat: heat[i],
                speed: Math.hypot(vx[i], vy[i]), bonds: with_, pinned: !!pinned[i],
-               /* The kind it bonds as right now, moved on by the bonds it holds. */
-               actsAs: ((kind[i] - 1 + nb[i] * S.shift) % S.kinds) + 1 };
+               facing: face[i], spin: spin[i], turning: spun(),
+               /* The kind it bonds as right now, moved on by the bonds it
+                  holds and by the kind of the one it is holding. */
+               actsAs: ((kind[i] - 1 + siteOf(i, -1, 0)) % S.kinds) + 1 };
     }
 
     return {
       settings: S, width: W, height: H, cap: cap,
       x: x, y: y, vx: vx, vy: vy, m: m, r: r, heat: heat, kind: kind, nb: nb, alive: alive, pinned: pinned, bonds: bonds,
+      face: face, spin: spin, slots: adj, SLOTS: SLOTS,
       get n() { return n; },
       step: step, stats: stats, at: at, describe: describe, census: census,
       place: place, remove: remove, edit: edit, near: near, warm: warm,

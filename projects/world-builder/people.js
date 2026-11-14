@@ -44,7 +44,7 @@
         options: [["small", "A valley"], ["medium", "A country"], ["large", "A continent"]] },
       { key: "rich", label: "How much it grows", type: "range", min: 0.2, max: 2, step: 0.05, def: 1,
         say: v => (v < 0.6 ? "thin soil" : v < 1.3 ? "decent land" : "it grows anything"),
-        help: "How fast food grows back on a field. Thin soil means people run out of land sooner." },
+        help: "How fast food grows, and grows back. On thin soil a day in the fields runs long; on rich land it is done by midday." },
       { key: "uneven", label: "How uneven it is", type: "range", min: 0, max: 1, step: 0.05, def: 0.6,
         say: scale(["the same everywhere", "gentle", "good valleys and bad hills", "rich pockets in a waste"]),
         help: "Uneven land gives some villages more than others." },
@@ -192,10 +192,21 @@
      is tuned is the one place it is written. */
   const EAT = 1 / DAY_HOURS;        // adult-day rations consumed per hour
   const WALK = 0.15;                // tiles walked
-  const CARRY = 3.6;                // food one trip to the fields brings back
+  const FIELD_HOURS = 9;           // the longest a day in the fields can run
+  const CARRY = 1.8;                // food a day in the fields brings back
   const TILE_CAP = 48;             // food a perfect field holds
   const REGROW = TILE_CAP / (60 * DAY_HOURS);    // and how fast it comes back
   const WAGE = 1;                   // coins per day; default fixed-price daily food costs 1
+
+  /* How long a thing takes, in hours. Measured 2026-11-13: before this table
+     existed a day's field work took six simulated minutes and brought back
+     3.6 adult-day rations, so an adult spent 54% of their hours walking, 0.1%
+     harvesting, and was never short of food. Nothing downstream of scarcity
+     could bite — changing how much the land grows moved 0.0% of anybody's day.
+     Work now costs hours and feeds about one household, so land is the thing
+     there is not enough of, and the settings about land mean something. */
+  const SPELL = { sleep: 7, harvest: 5, craft: 5, guard: 4, trade: 1, rest: 2, market: 0.5, meal: 0.4, visit: 0.5, idle: 1 };
+  const spell = k => Math.round(SPELL[k] * ACTIONS_PER_HOUR);
   // Equipment uses the existing goods economy. Costs are goods converted into
   // the item, not coins minted or a second resource appearing from nowhere.
   const GEAR = {
@@ -289,6 +300,30 @@
       villages.push(v);
       return v;
     }
+    /* Where somebody lives. Before 2026-11-13 nobody had a home: every task
+       aimed at the village centre, and when people were given a reason to all
+       be home at night the centre could not physically hold them — bodies
+       cannot overlap, so a village gridlocked and nobody ever arrived anywhere.
+       Houses are spread over the village's own ground by area, so a village
+       has room for its people. A couple and their children share a house. */
+    function house(p, v, from) {
+      if (from && from.home === v.id) { p.hx = from.hx; p.hy = from.hy; return; }
+      const a = R() * 6.2832, r = v.radius * (0.2 + Math.sqrt(R()) * 1.05);
+      p.hx = clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6);
+      p.hy = clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6);
+    }
+
+    /* Somewhere in the village to stand, spread over its ground rather than on
+       one tile in the middle. Measured 2026-11-13: with the market, the
+       workshops and the tool-fitting all aimed at a point a tile across, a
+       village jammed solid and an adult spent a third of their hours walking
+       into the backs of their neighbours. Bodies cannot overlap, so a place
+       that everybody uses has to be a place, not a point. */
+    function plaza(v, reach) {
+      const a = R() * 6.2832, r = reach * (0.3 + Math.sqrt(R()) * 0.7);
+      return [clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6), clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6)];
+    }
+
     function newPerson(v, age, mum, dad) {
       const f = factions[v.f];
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
@@ -297,7 +332,15 @@
                   hp: 1, bold: R(), warm: R(), greed: R(), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, friends: new Map(), partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
-                  unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id };
+                  unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id,
+                  /* What they need besides food, which `p.food` already holds.
+                     Rest rises with the hours awake, falls while asleep; alone
+                     counts the hours since anybody spoke to them; fear comes
+                     from war, a siege and fighting they can see. All three are
+                     read by `urgency` and nothing else sets them. */
+                  rest: R() * 0.3, alone: Math.floor(R() * 20), fear: 0, chose: "", until: 0, making: false, settled: -1e9,
+                  hx: v.x, hy: v.y };
+      house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
         // A newborn is fed from the same household/store as other children.
@@ -459,20 +502,64 @@
       if (history.length > 600) history.splice(0, history.length - 600);
     }
 
-    /* ── work ──────────────────────────────────────────────────────────── */
+    /* ── work ────────────────────────────────────────────────────────────────
+       What a day of each kind of work looks like it would be worth to this
+       person, here, today. `chooseJob` and `choose` both read these figures, so
+       what somebody is called and what they actually spend their day doing
+       cannot drift apart — before 2026-11-13 they did: a sixth of a village
+       were called crafters and 0.1% of its hours went on making anything. */
+    function livelihood(p, v) {
+      /* The land: what the patch they would walk to actually has standing on
+         it, against what a day's work could carry away. Thin, crowded or
+         worked-out ground is worth less than the walk. */
+      const ti = pickField(p, v);
+      let land = 0, tx = 0, ty = 0;
+      if (ti >= 0) {
+        tx = ti % cols; ty = Math.floor(ti / cols);
+        let standing = 0, best = 0;
+        for (let k = 0; k < 9; k++) {
+          const x = tx + PATCH[k][0], y = ty + PATCH[k][1];
+          if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+          standing += stock[y * cols + x]; best += TILE_CAP;
+        }
+        /* Two things, and both of them matter. Can a day's work be filled at
+           all — and is this ground worth the walk compared with ground at its
+           best? The second term is why good land is sought out, why a worked-out
+           or crowded village pushes people into other trades or other places,
+           and how `uneven` reaches a decision at all. */
+        const fills = Math.min(1, standing / Math.max(1e-6, harvestCapacity(p)));
+        const quality = best > 0 ? standing / best : 0;
+        /* And how fast the ground gives: an hour on thin land is worth less
+           than an hour at the bench, an hour on rich land more. */
+        land = fills * (0.3 + 0.7 * Math.min(1, quality * 1.4)) * Math.min(1.3, harvestPace());
+      }
+      /* The bench: what a batch would be worth at what the village is paying
+         for goods. A village short of goods pays more, which is the signal
+         that makes somebody take it up. */
+      const bench = clamp(craftOutput(p, v) * (shared ? 1.6 : v.priceGoods * 0.8), 0, 1.4);
+      /* The road: whether anywhere reachable wants what is here. */
+      const here = villages[p.at] && villages[p.at].alive ? villages[p.at] : v;
+      const route = villages.filter(o => o.alive).length > 1 ? bestRoute(p, here) : { best: null, gain: 0, what: "food" };
+      const load = route.best ? clamp(route.gain, 0, 1.2) : 0;
+      return { land: land, tile: ti, tx: tx, ty: ty, bench: bench, load: load, here: here, route: route };
+    }
+
     function chooseJob(p) {
       const v = villages[p.home], f = factions[p.f];
       if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold > 0.35 && R() < 0.8) { f.soldiers++; return "soldier"; }
-      const short = v.food < v.pop * 0.5;
-      if (short) return "farmer";
-      const roll = R();
-      /* A village with more food than it can eat can afford people who do
-         something else. */
-      const plenty = v.food > v.pop * 2 ? 2 : 1;
-      const craft = (0.08 + v.ore * 0.35) * plenty, trade = (shared ? 0.05 : 0.04 + p.greed * 0.1) * plenty;
-      if (roll < craft) return "crafter";
-      if (roll < craft + trade && villages.filter(o => o.alive).length > 1) return "trader";
-      return "farmer";
+      /* A village that cannot feed itself needs food, whatever else pays. */
+      if (v.food < v.pop * 0.5) return "farmer";
+      const w = livelihood(p, v);
+      /* Somebody takes up the work that looks worth most to them. Greed makes
+         the paid trades more tempting; nobody becomes a trader with nowhere to
+         trade with, and nobody works land that has nothing on it. */
+      const score = { farmer: w.land, crafter: w.bench * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) };
+      let job = "farmer", bs = -Infinity;
+      for (const k of ["farmer", "crafter", "trader"]) {
+        const s = score[k] + (R() - 0.5) * 0.15;
+        if (s > bs) { bs = s; job = k; }
+      }
+      return job;
     }
     function go(p, x, y, task) {
       p.tx = clamp(x, 0.5, cols - 0.5); p.ty = clamp(y, 0.5, rows - 0.5); p.task = task;
@@ -484,7 +571,7 @@
           if (free(p, nx, ny)) { p.tx = nx; p.ty = ny; break search; }
         }
       }
-      p.lastDistance = Infinity; p.stuck = 0;
+      p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0;
     }
     function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = 10 + Math.floor(R() * 30); }
 
@@ -546,6 +633,8 @@
       outfit(p, v);
       if (p.goods < 0.15 && (shared ? v.goods > v.pop * 0.05 : p.coins > v.priceGoods * 3)) buy(p, v, "goods", 1);
     }
+    /* Declarations, not arrows: `livelihood` reads them from `chooseJob`, which
+       `settle` calls while the world is still being built. */
     function equipped(p, key) { return GEAR[key].jobs.includes(p.job) && (p.gear[key] || 0) > 0; }
     function equipment(p) {
       return Object.keys(p.gear).map(key => ({ key, name: GEAR[key].name, condition: p.gear[key],
@@ -564,74 +653,337 @@
       }
     }
     function wear(p, key) { if (equipped(p, key)) p.gear[key] = Math.max(0, p.gear[key] - GEAR[key].wear); }
-    const harvestCapacity = p => CARRY * (equipped(p, "tool") ? 1.25 : 1);
-    const tradeCapacity = p => equipped(p, "pack") ? 5 : 3;
-    const craftOutput = (p, v) => (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1);
+    /* What a day in the fields brings back, and how long it takes. How much
+       the land grows is how fast the work goes: a day's work carries the same
+       load anywhere, but thin land takes longer to fill it and rich land frees
+       the afternoon. Before 2026-11-13 it was only on how fast a field
+       recovered, and the richest and the thinnest land fed a farmer
+       identically (0.3% of an adult's hours); on 2026-11-13 it scaled the load
+       instead, which a fed farmer working a fixed shift never felt in a day
+       (2.7%). Now it is the hours, which is how farming labour actually
+       differs — capped at what daylight allows, after which they bring back
+       what they managed. */
+    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1); }
+    function harvestPace() { return 0.5 + 0.5 * S.rich; }
+
+    function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
+    function craftOutput(p, v) { return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1); }
     function strike(p, foe, base) {
       const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1);
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
       return damage;
     }
 
+    /* ── what somebody needs ─────────────────────────────────────────────────
+       How badly each thing is wanted, 0 to about 1.4. Food is allowed past 1
+       because nothing competes with starving. Every term is read off the person
+       or the village in front of them; nothing here is on a timer. */
+    function urgency(p) {
+      const v = villages[p.home];
+      const days = p.food / Math.max(1e-6, dailyNeed(p));
+      /* The people they feed. A parent of three wants a reserve that somebody
+         on their own does not. */
+      const household = Math.min(0.5, p.kids * 0.14) + (p.partner ? 0.08 : 0);
+      return {
+        food: clamp((1.7 - days) * 0.5, 0, 1.4) * (0.55 + S.hunger * 0.45),
+        /* Squared, so an ordinary evening does not outrank a day's work but a
+           second night awake outranks everything except hunger. */
+        rest: p.rest * p.rest * 1.2,
+        safety: clamp(p.fear, 0, 1.2),
+        company: clamp(p.alone / 30, 0, 1) * (0.2 + S.talk * 0.9),
+        /* Wanting more than today's meal. Money and a full store take the edge
+           off it but never remove it: capped, because an uncapped term meant
+           anybody who had done well stopped working altogether. */
+        provide: clamp(0.3 + household - Math.max(0, days - 2) * 0.1 -
+                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01), 0, 1) * (0.5 + p.greed * 0.6),
+      };
+    }
+
+    /* A job is what somebody is good at and what their village expects of them,
+       not a script. It is worth about a third again at the work it names, and
+       anybody may still do anybody's work when their circumstances call for it. */
+    const skilled = (p, job) => (p.job === job ? 1.35 : 0.72);
+    const atWarAnywhere = f => { for (const k in f.rel) if (f.rel[k].war) return true; return false; };
+
+    /* Somebody worth walking to see: whoever they are closest to who is here. */
+    function someoneToSee(p) {
+      const mate = byId.get(p.partner);
+      if (mate && mate.home === p.home && mate.hp > 0 && mate.task !== "sleep") return mate;
+      let best = null, bs = 0.2;
+      for (const [id, score] of p.friends) {
+        const q = byId.get(id);
+        if (!q || q.hp <= 0 || q.home !== p.home || q.task === "sleep") continue;
+        if (score > bs) { bs = score; best = q; }
+      }
+      if (best) return best;
+      for (const id of [p.mum, p.dad]) {
+        const q = byId.get(id);
+        if (q && q.hp > 0 && q.home === p.home && q.task !== "sleep") return q;
+      }
+      const b = buckets[tileAt(p.x, p.y)];
+      for (const q of b) if (q !== p && q.hp > 0 && q.task !== "sleep") return q;
+      return null;
+    }
+
+    /* ── what somebody does next ─────────────────────────────────────────────
+       Until 2026-11-13 this was five scripts, one for each job: a farmer always
+       walked to a field, harvested, walked home and sold, whatever else was
+       happening. Ric: "what you change doesn't change a lot for the people day
+       to day". It could not — no setting changed the shape of a day, only a
+       number inside one.
+
+       Now there is one place where a person decides, and it is a comparison.
+       Everything they could do is scored against what they need, what the walk
+       and the risk would cost, and what they are good at. A setting changes a
+       need, a cost or a yield, and the choice moves with it.
+
+       Nothing here schedules an event, and no option exists that the person
+       could not actually carry out. */
+    function choose(p) {
+      const v = villages[p.home], f = factions[p.f];
+      const n = urgency(p);
+      const hour = t % DAY_HOURS;
+      const dark = hour >= 21 || hour < 5 ? 1 : 0;
+      const away = d => d * 0.035;                 // what a journey costs, in need units
+      let bestScore = -Infinity, chosen = null, chosenTask = "";
+      const weigh = (task, score, start) => {
+        /* A little noise, so two people with the same life do not move as one.
+           Not enough to overrule a need. */
+        const s = score + (R() - 0.5) * 0.07;
+        if (s > bestScore) { bestScore = s; chosen = start; chosenTask = task; }
+      };
+
+      /* A child keeps near whoever feeds it, and sleeps at night. */
+      if (!adult(p)) {
+        weigh("sleep", n.rest + dark * 0.8, () => {
+          go(p, p.hx + (R() - 0.5) * 0.5, p.hy + (R() - 0.5) * 0.5, "sleep"); p.wait = spell("sleep");
+        });
+        weigh("idle", 0.3 + n.company * 0.5, () => {
+          const mum = byId.get(p.mum) || byId.get(p.dad);
+          if (mum && mum.home === p.home) { go(p, mum.x + (R() - 0.5) * 2, mum.y + (R() - 0.5) * 2, "idle"); p.wait = spell("visit"); }
+          else near(p, v, 4);
+        });
+        chosen(); p.chose = chosenTask; return;
+      }
+
+      /* Sleep, in their own house. The one thing a night is for. */
+      const far = Math.hypot(p.hx - p.x, p.hy - p.y);
+      weigh("sleep", n.rest + dark * 0.6 - 0.22 - away(far) * 0.4, () => {
+        go(p, p.hx + (R() - 0.5) * 0.4, p.hy + (R() - 0.5) * 0.4, "sleep");
+        p.wait = spell("sleep");
+      });
+
+      /* Eat. Only worth the walk if there is anything to be had. */
+      if ((v.food > 0.05 || p.food > 0.05) && t - p.ate >= 2 && !p.cargo)
+        weigh("eat", n.food * 1.15 + (p.food < 0.3 ? 0.35 : 0) - away(dist(p, v)), () => {
+          const [x, y] = plaza(v, v.radius * 0.7);
+          p.ate = t; go(p, x, y, "eat"); p.wait = 0;
+        });
+
+      /* A day in the fields. What the patch would actually give decides whether
+         it is worth the walk — so thin, crowded or worked-out land pushes people
+         into other work, other villages, or somebody else's store. */
+      if (!p.cargo) {
+        const w = livelihood(p, v);
+        /* A day in the fields. */
+        if (w.tile >= 0)
+          weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, "farmer") * w.land
+                          - away(Math.hypot(w.tx + 0.5 - p.x, w.ty + 0.5 - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
+            () => { go(p, w.tx + 0.2 + R() * 0.6, w.ty + 0.2 + R() * 0.6, "field"); p.wait = 0; });
+
+        /* A day at the bench. */
+        weigh("make", (n.provide * 1.05 + 0.1) * skilled(p, "crafter") * w.bench
+                       - away(dist(p, v)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
+          () => { const [x, y] = plaza(v, v.radius * 0.95); go(p, x, y, "make"); p.wait = 0; });
+
+        /* A load to carry, if anywhere reachable wants what is here. */
+        if (w.route.best)
+          /* A load is worth carrying for the profit in it, not only because
+             somebody is short: trading is a living, and a trader who has done
+             well this year still trades. */
+          weigh("carry", (0.2 + n.provide * 0.95) * skilled(p, "trader") * w.load * (0.7 + p.greed * 0.6)
+                          - away(dist(p, w.here)) * 0.5 - n.food * 0.4 - n.rest * 0.4 - n.safety * 0.8 - dark * 0.4,
+            () => { trade(p); });
+      }
+
+      /* Standing guard, and going where the fighting is. */
+      if (p.job === "soldier")
+        weigh("patrol", 0.4 + n.safety * 0.9 + p.loyal * 0.35 + (atWarAnywhere(f) ? 0.5 : 0)
+                         - n.rest * 0.4 - n.food * 0.5, () => { p.until = t + SPELL.guard; soldier(p); });
+
+      /* Moving house. Until 2026-11-14 a person changed village only by
+         accident — two people from different flags happening to talk, or a
+         quarterly dice roll on a full village — so "changing sides" moved 0.2%
+         of anybody's hours whatever it was set to. Now it is weighed like
+         anything else: how fed and how full the place is against somewhere
+         they could reach, against what holds them here (a partner, children,
+         the friends they remember living here, the flag). `switch` is how far
+         a border counts against a place; `crowd` is what "full" means;
+         `memory` is how many ties a person can hold. Somebody who has just
+         moved settles in for a season before weighing it again. */
+      if (!p.cargo && p.job !== "soldier" && p.id !== f.leader && t - (p.settled || -1e9) > 90 * DAY_HOURS) {
+        const perHead = o => o.food / (o.pop + 1);
+        const room = o => clamp(1 - o.pop / S.crowd, -1, 1);
+        const mate = byId.get(p.partner);
+        let ties = 0.25 + (mate && mate.home === p.home && mate.hp > 0 ? 0.55 : 0) + p.kids * 0.12;
+        for (const [id, s] of p.friends) if (s > 0.2) { const q = byId.get(id); if (q && q.home === p.home) ties += 0.05; }
+        let best = null, bs = 0;
+        for (const o of villages) {
+          if (!o.alive || o === v || atWar(o.f, p.f)) continue;
+          const d = dist(p, o);
+          if (d > 20) continue;
+          const foreign = o.f !== p.f;
+          if (foreign && S.switch <= 0) continue;
+          const g = clamp((perHead(o) - perHead(v)) / 8, -1, 1) * 0.7 + (room(o) - room(v)) * 0.6
+                    - (foreign ? (1 - S.switch) * 0.7 + p.loyal * 0.6 : 0) - away(d) * 0.4;
+          if (g > bs) { bs = g; best = o; }
+        }
+        if (best) {
+          const there = best;
+          weigh("move", bs + n.food * 0.5 + (1 - p.mood) * 0.3 - ties + p.bold * 0.15 - dark * 0.5, () => {
+            const kids = people.filter(q => (q.mum === p.id || q.dad === p.id) && !adult(q) && q.hp > 0 && q.home === p.home);
+            const why = there.f !== p.f ? "left" : "moved";
+            p.say = there.f !== p.f ? "I'm going over to " + factions[there.f].name + ". Better there." : "We're moving to " + there.name + ".";
+            p.sayT = 80;
+            rehome(p, there, why);
+            for (const k of kids) rehome(k, there, why);
+          });
+        }
+      }
+
+      /* Going to find somebody. This is what stops talking being an accident of
+         two people happening to stand on the same tile. */
+      weigh("visit", n.company * 1.25 - 0.08 - n.food * 0.4 - n.safety * 0.4 - dark * 0.5, () => {
+        const who = someoneToSee(p);
+        if (who) go(p, who.x + (R() - 0.5), who.y + (R() - 0.5), "visit");
+        else near(p, v, 3);
+        p.task = "visit"; p.wait = spell("visit");
+      });
+
+      /* Fitting or mending the tools of their trade. */
+      if (Object.keys(GEAR).some(k => GEAR[k].jobs.includes(p.job) && (p.gear[k] || 0) <= 0.25) && !p.cargo)
+        weigh("gear", 0.28 + n.provide * 0.3 - away(dist(p, v)) - n.food * 0.6 - dark * 0.4, () => {
+          /* Tools are fitted at the middle: `outfit` wants them actually there. */
+          const [x, y] = plaza(v, 1.6);
+          go(p, x, y, "gear"); p.wait = 0;
+        });
+
+      /* Sitting out the day: ill, spent, or nothing better on offer. */
+      weigh("rest", n.rest * 0.7 + (p.sick > 0 ? 0.45 : 0) + 0.05 - away(far) * 0.3, () => {
+        go(p, p.hx + (R() - 0.5) * 0.6, p.hy + (R() - 0.5) * 0.6, "rest"); p.wait = spell("rest");
+      });
+
+      chosen(); p.chose = chosenTask;
+    }
+
+    /* ── carrying out what was chosen ──────────────────────────────────────
+       One branch per task, and none of them chooses anything: when a task is
+       finished the person goes back to `choose`. */
     function work(p) {
       const v = villages[p.home];
-      /* Before anything else: somebody with an empty bag goes home to eat —
-         once, and then gets on with it, so a village with nothing to give does
-         not hold its farmers at the door. */
-      if (p.task === "eat") { shop(p, v); p.task = "idle"; p.wait = 2; return; }
-      if (p.food < 0.4 && adult(p) && !p.cargo && t - p.ate >= 2) {
-        p.ate = t; go(p, v.x + (R() - 0.5), v.y + (R() - 0.5), "eat"); p.wait = 0; return;
+      if (p.task === "eat") { shop(p, v); p.task = "idle"; p.wait = spell("meal"); return; }
+      if (p.task === "gear") { outfit(p, v); shop(p, v); p.task = "idle"; p.wait = spell("market"); return; }
+      if (p.task === "sleep") { p.rest = 0; p.task = "idle"; p.wait = 0; return; }
+      if (p.task === "rest") { p.rest = Math.max(0, p.rest - 0.25); p.task = "idle"; p.wait = 0; return; }
+      if (p.task === "visit") {
+        /* Standing next to somebody is the whole point; `act` does the talking
+           when they are close enough, and `converse` clears the need. */
+        p.task = "idle"; p.wait = 0; return;
       }
-      if (p.job === "farmer") {
-        if (p.task === "idle") {
-          /* With a full larder and nobody buying, a farmer takes the day off —
-             which is when the talking gets done. */
-          if (p.food > 4 + p.kids) { near(p, v, 3); p.wait = 25 + Math.floor(R() * 40); return; }
-          const ti = pickField(p, v);
-          if (ti < 0) { near(p, v, 3); return; }
-          go(p, (ti % cols) + 0.2 + R() * 0.6, Math.floor(ti / cols) + 0.2 + R() * 0.6, "field");
-        } else if (p.task === "field") {
-          if (!p.harvesting) { p.harvesting = true; p.wait = 25; return; }
-          p.harvesting = false;
-          /* A day's work covers the field they are standing in and the ones
-             round it. */
-          const fx = Math.floor(p.x), fy = Math.floor(p.y);
-          const capacity = harvestCapacity(p);
-          let need = capacity;
-          for (let k = 0; k < 9 && need > 0.01; k++) {
-            const x = fx + PATCH[k][0], y = fy + PATCH[k][1];
-            if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
-            const ti = y * cols + x, got = Math.min(stock[ti], need);
-            stock[ti] -= got; need -= got;
+      if (p.task === "field") {
+        if (!p.harvesting) {
+          /* And the ground under them: a good patch is quicker to work than a
+             poor one, so how uneven the land is decides who finishes early. */
+          let f0 = 0, n0 = 0;
+          for (const [ox, oy] of PATCH) { const x = Math.floor(p.x) + ox, y = Math.floor(p.y) + oy;
+            if (x >= 0 && y >= 0 && x < cols && y < rows) { f0 += fert[y * cols + x]; n0++; } }
+          const pace = harvestPace() * clamp((n0 ? f0 / n0 : 0.55) / 0.55, 0.4, 1.6);
+          const hours = Math.min(FIELD_HOURS, SPELL.harvest / pace);
+          p.harvesting = true; p.harvestShare = hours * pace / SPELL.harvest;
+          p.wait = Math.round(hours * ACTIONS_PER_HOUR); return;
+        }
+        p.harvesting = false;
+        /* A day's work covers the field they are standing in and the ones
+           round it. */
+        const fx = Math.floor(p.x), fy = Math.floor(p.y);
+        const capacity = harvestCapacity(p) * (p.harvestShare ?? 1);
+        p.harvestShare = 1;
+        let need = capacity;
+        for (let k = 0; k < 9 && need > 0.01; k++) {
+          const x = fx + PATCH[k][0], y = fy + PATCH[k][1];
+          if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+          const ti = y * cols + x, got = Math.min(stock[ti], need);
+          stock[ti] -= got; need -= got;
+        }
+        p.food += capacity - need;
+        if (capacity > need) wear(p, "tool");
+        /* The load goes to their own house, not to one point in the middle of
+           the village: measured 2026-11-13, every farmer converging on the
+           market square at the end of the day spent 13% of their life shoving
+           through the crowd there, because bodies cannot overlap. The village
+           store is a shared pool, so selling into it does not need them to
+           stand on a particular tile; fitting tools still does, and the `gear`
+           task still goes to the middle for it. */
+        p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
+        return;
+      }
+      if (p.task === "home") {
+        const keep = 1.1 + p.kids * 0.5;
+        if (p.food > keep) { const sold = sell(p, v, "food", p.food - keep); p.food -= sold; }
+        shop(p, v);
+        p.task = "idle"; p.wait = spell("market");
+        return;
+      }
+      if (p.task === "make") {
+        if (!p.making) { p.making = true; p.wait = spell("craft"); return; }
+        p.making = false;
+        const made = craftOutput(p, v);
+        wear(p, "tool");
+        p.goods += made;
+        if (p.goods > 1) { const sold = sell(p, v, "goods", p.goods - 1); p.goods -= sold; }
+        shop(p, v);
+        p.task = "idle"; p.wait = spell("market");
+        return;
+      }
+      if (p.task === "carry") { trade(p); return; }
+      /* A watch lasts a watch. Marching and fighting carry on while the enemy
+         is there; a quiet circuit ends and the soldier decides again — which is
+         how a soldier gets to eat and sleep like everybody else. */
+      if (p.task === "march" || p.task === "fight") { soldier(p); return; }
+      if (p.task === "patrol") {
+        if (t < p.until) { soldier(p); return; }
+        p.task = "idle"; p.wait = 0;
+      }
+      /* A load in somebody's hands is not theirs to keep: whatever else has
+         happened to them, it gets delivered before they decide anything. */
+      if (p.cargo) {
+        const to = villages[p.at] && villages[p.at].alive ? villages[p.at] : v;
+        go(p, to.x + (R() - 0.5), to.y + (R() - 0.5), "carry"); p.wait = 0; return;
+      }
+      choose(p);
+    }
+
+    /* Where a load would be worth carrying from here, and what it is worth.
+       `choose` reads the same figure to decide whether carrying is worth a day,
+       so the route a trader takes and the reason they took it are one number. */
+    function bestRoute(p, here) {
+      let best = null, gain = shared ? 0.25 : 0.3, what = "food";
+      for (const o of villages) {
+        if (!o.alive || o === here) continue;
+        if (o.f !== p.f && (atWar(o.f, p.f) || shared)) continue;
+        const d = Math.hypot(o.x - here.x, o.y - here.y);
+        if (d > 34) continue;
+        if (shared) {
+          const g = here.food / (here.pop + 1) - o.food / (o.pop + 1);
+          if (g > gain) { gain = g; best = o; what = "food"; }
+        } else {
+          for (const w of ["food", "goods"]) {
+            const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02);
+            if (g > gain && (w === "food" ? here.food : here.goods) > 1) { gain = g; best = o; what = w; }
           }
-          p.food += capacity - need;
-          if (capacity > need) wear(p, "tool");
-          p.wait = 6; go(p, v.x + (R() - 0.5) * 1.5, v.y + (R() - 0.5) * 1.5, "home");
-        } else if (p.task === "home") {
-          const keep = 1.1 + p.kids * 0.5;
-          if (p.food > keep) { const sold = sell(p, v, "food", p.food - keep); p.food -= sold; }
-          shop(p, v);
-          p.task = "idle"; p.wait = 4 + Math.floor(R() * 14);
         }
-      } else if (p.job === "crafter") {
-        if (p.task === "idle") { go(p, v.x + (R() - 0.5) * 2, v.y + (R() - 0.5) * 2, "make"); }
-        else {
-          const made = craftOutput(p, v);
-          wear(p, "tool");
-          p.goods += made;
-          if (p.goods > 1) { const sold = sell(p, v, "goods", p.goods - 1); p.goods -= sold; }
-          shop(p, v);
-          p.task = "idle"; p.wait = 30 + Math.floor(R() * 20);
-        }
-      } else if (p.job === "trader") {
-        trade(p);
-      } else if (p.job === "soldier") {
-        soldier(p);
-      } else {
-        const mum = byId.get(p.mum);
-        if (mum && mum.home === p.home && R() < 0.5) { go(p, mum.x + (R() - 0.5) * 2, mum.y + (R() - 0.5) * 2, "idle"); p.wait = 10; }
-        else near(p, v, 4);
       }
+      return { best: best, gain: gain, what: what };
     }
 
     /* A trader buys where a thing is cheap and walks it to where it is dear.
@@ -650,22 +1002,7 @@
         return;
       }
       shop(p, here);
-      let best = null, gain = shared ? 0.25 : 0.3, what = "food";
-      for (const o of villages) {
-        if (!o.alive || o === here) continue;
-        if (o.f !== p.f && (atWar(o.f, p.f) || shared)) continue;
-        const d = Math.hypot(o.x - here.x, o.y - here.y);
-        if (d > 34) continue;
-        if (shared) {
-          const g = here.food / (here.pop + 1) - o.food / (o.pop + 1);
-          if (g > gain) { gain = g; best = o; what = "food"; }
-        } else {
-          for (const w of ["food", "goods"]) {
-            const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02);
-            if (g > gain && (w === "food" ? here.food : here.goods) > 1) { gain = g; best = o; what = w; }
-          }
-        }
-      }
+      const { best, what } = bestRoute(p, here);
       if (!best) {
         /* Nothing worth carrying from here: go home, or try the next village. */
         const home = villages[p.home];
@@ -843,6 +1180,9 @@
         news: p.news, sick: p.sick > 0, hungry: p.hungry > 0 };
     }
     function converse(a, b) {
+      /* Both of them have now had company. This is the only thing that clears
+         it, so somebody nobody speaks to keeps going out to look for company. */
+      a.alone = 0; b.alone = 0;
       const before = [conversationState(a, b), conversationState(b, a)], previous = nextExchange;
       const diplomacy = a.f !== b.f ? [factions[a.f], factions[b.f]].map((f, i) => {
         const other = i === 0 ? b.f : a.f;
@@ -902,7 +1242,8 @@
           const mover = villages[a.home].pop <= villages[b.home].pop ? a : b, stay = mover === a ? b : a;
           said(a, b, "pair", "Come and live with me in " + villages[stay.home].name + ".", "I will.");
           rehome(mover, villages[stay.home], "married");
-        } else said(a, b, "pair", "Stay with me.", "I will.");
+          mover.hx = stay.hx; mover.hy = stay.hy;
+        } else { said(a, b, "pair", "Stay with me.", "I will."); b.hx = a.hx; b.hy = a.hy; }
         return;
       }
       /* 3 — news travels. Whoever has heard the newer thing passes it on. */
@@ -998,18 +1339,31 @@
     function rehome(p, v, why) {
       /* A leader does not walk out on their own faction. */
       if (v.f !== p.f && factions[p.f].leader === p.id) return;
-      p.home = v.id; p.at = v.id;
+      p.home = v.id; p.at = v.id; p.settled = t;
       if (v.f !== p.f) {
         if (p.job === "soldier") p.job = "farmer";
         p.f = v.f; p.loyal = why === "married" ? 0.6 : 0.5; count.switched++;
       }
       count.moved++;
+      house(p, v, byId.get(p.partner));
       p.cargo = null; go(p, v.x + (R() - 0.5) * 2, v.y + (R() - 0.5) * 2, adult(p) ? "eat" : "idle"); p.wait = 0;
     }
 
     /* ── one person, one tick ──────────────────────────────────────────── */
     function live(p) {
       p.age += 1 / YEAR;
+
+      /* The needs that are not food, once an hour. Rest rises with the hours
+         awake and faster at real work; a night in a bed clears it. Being alone
+         is counted in hours since anybody last spoke to them. Fear comes from a
+         siege on the village they live in, a war their faction is in and a blow
+         they have just taken, and drains away when none of that is true. */
+      const resting = p.task === "sleep" && Math.hypot(p.tx - p.x, p.ty - p.y) < 0.6;
+      if (resting) p.rest = Math.max(0, p.rest - 1 / SPELL.sleep);
+      else p.rest = Math.min(1, p.rest + (p.task === "field" || p.task === "make" || p.task === "fight" || p.task === "march" ? 0.075 : 0.05));
+      p.alone++;
+      const near0 = villages[p.home], f0 = factions[p.f];
+      p.fear = clamp(p.fear + (near0.siege > 0 ? 0.3 : 0) + (atWarAnywhere(f0) ? 0.06 : 0) + (p.hit > 0 ? 0.35 : 0) - 0.05, 0, 1);
 
       /* Eating. A child eats from whichever parent has food before it goes hungry. */
       p.food -= EAT * dailyNeed(p);
@@ -1060,6 +1414,10 @@
       if (p.task === "home") return "Bringing food home";
       if (p.task === "eat") return walking ? "Going to eat" : "Buying food";
       if (p.task === "make") return walking ? "Walking to workshop" : "Making goods";
+      if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
+      if (p.task === "rest") return walking ? "Going home" : p.sick > 0 ? "Ill at home" : "Resting at home";
+      if (p.task === "visit") return walking ? "Going to see somebody" : "Visiting";
+      if (p.task === "gear") return walking ? "Going for tools" : "Fitting tools";
       if (p.task === "fight") return "Fighting";
       if (p.cargo) return "Carrying goods";
       if (p.job === "soldier") return walking ? "Patrolling" : "Standing guard";
@@ -1136,9 +1494,21 @@
       const partner = p.sayT > 0 && byId.get(p.talkingTo);
       if (partner && partner.sayT > 0 && partner.talkingTo === p.id) return;
       if (d > Math.max(pace, 0.5)) {
-        p.stuck = d >= (p.lastDistance ?? Infinity) - 0.005 ? (p.stuck || 0) + 1 : 0;
-        p.lastDistance = d;
-        if (p.stuck > 20) go(p, p.tx, p.ty, p.task);
+        /* Stuck is measured against the closest they have been, not the last
+           step. Until 2026-11-14 it was the last step, and somebody sliding to
+           and fro round a neighbour got a hair closer every other tick, so was
+           never counted as stuck: measured, adults spent seventy hours a few
+           steps from the store "Walking", and a fifth of a default world starved
+           within twenty days beside full, cheap stores. After a few fresh tries
+           at a spot nearby, they do the thing from where they stand — a shop
+           and a store do not need anybody on one particular tile. */
+        if (d < (p.lastDistance ?? Infinity) - 0.1) { p.lastDistance = d; p.stuck = 0; }
+        else p.stuck = (p.stuck || 0) + 1;
+        if (p.stuck > 25) {
+          const tries = (p.blocked || 0) + 1;
+          if (tries > 3) { p.tx = p.x; p.ty = p.y; p.blocked = 0; p.stuck = 0; }
+          else { go(p, p.tx, p.ty, p.task); p.blocked = tries; }
+        }
         else move(p, dx / d * pace, dy / d * pace);
       }
       else {
@@ -1148,11 +1518,11 @@
       }
 
       /* Talking to whoever is standing on the same ground. */
-      if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && p.task !== "field" && p.task !== "make" && R() < S.talk * 0.12) {
+      if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && p.task !== "field" && p.task !== "make" && p.task !== "sleep" && R() < S.talk * 0.12) {
         const b = buckets[tileAt(p.x, p.y)];
         if (b.length > 1) {
           const q = b[Math.floor(R() * b.length)];
-          if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4) converse(p, q);
+          if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4 && q.task !== "sleep") converse(p, q);
         }
       }
     }
@@ -1576,7 +1946,7 @@
       fert: fert, ore: ore, stock: stock, owner: owner,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
-      step: step, advance: advance, activity: activity, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      step: step, advance: advance, activity: activity, urgency: urgency, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },
