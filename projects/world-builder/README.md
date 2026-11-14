@@ -461,11 +461,16 @@ simulation, not medical nutrition or a validated agricultural model.
     tiles, not at war) and buy from a household there — strangers sell, only people who know
     each other give.
   - **Where it stands.** Year-long runs of a 300-person valley, starved out of 300: default mild
-    winter 1, 9 and 1 over three seeds; hard winter 0 and 4; no winter 0. Before buying from the
-    next village was added, the same mild-winter seed lost 40 and a hard winter up to 63 —
-    villages on thin ground ran out in February while the next valley held months a head. Grain
-    still does not move by trade (traders read the store, and the store is empty in winter); the
-    hungry carry it themselves.
+    winter 4, 27 and 6 over seeds 11, 108 and 205; hard winter 2 and 4; no winter 0. Seed 108 is
+    a valley with villages on thin ground and a poor first year, and it has ranged from 9 to 40
+    across small changes — read it as "a bad year on poor land kills one in ten", not as a fixed
+    number. Before buying from the next village was added the same seed lost 40 and a hard
+    winter up to 63. Grain still does not move by trade (traders read the store, and the store
+    is empty in winter); the hungry carry it themselves.
+  - **A night lasts until dawn.** A sleep chosen in the dark ends when it gets light (one to ten
+    hours); a sleep in daylight is a whole one. While it was always seven hours, somebody who
+    woke before a spring dawn at 45° went back to bed until one in the afternoon, and adults
+    spent 54% of their hours asleep.
 - **Sickness is a village fever, not smallpox** (2026-11-14). It lasts seven days and kills about
   3% of fed, rested adults who catch it (`SICK_HAZARD`) — three times that for a child under five,
   for somebody near the end of their life and for anybody hungry, which is how a bad harvest and
