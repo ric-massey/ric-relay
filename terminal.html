@@ -602,6 +602,24 @@ type Sydney's cat's name for a surprise!</div>
 
     const PROJECTS = [
       {
+        command: "classics", aliases: ["classic-games"], room: "gaming",
+        title: "The Classics", description: "nine familiar games, with initials and shared scoreboards",
+        href: "projects/classics/index.html",
+      },
+      ...[
+        ["solitaire", ["patience", "solitare"], "Solitaire", "draw-one Klondike, fastest completed games"],
+        ["tictactoe", ["tic-tac-toe", "noughts"], "Tic-tac-toe", "three in a row against a friend or the computer"],
+        ["chess", [], "Chess", "all legal moves, against a friend or a casual computer"],
+        ["wordle", [], "Wordle", "a daily five-letter word and unlimited practice"],
+        ["sudoku", ["soduku"], "Sudoku", "unique puzzles in three difficulties"],
+        ["minesweeper", ["mines"], "Minesweeper", "three fields, a safe opening and fastest-time boards"],
+        ["tetris", [], "Tetris", "falling blocks and a shared high-score board"],
+        ["checkers", ["draughts"], "Checkers", "American checkers with forced jumps and kings"],
+        ["snake", [], "Snake", "eat, grow and leave your initials on the board"],
+      ].map(([command, aliases, title, description]) => ({
+        command, aliases, title, description, room: "gaming", href: "projects/classics/index.html#" + command,
+      })),
+      {
         command: "state", aliases: ["state-of-mind", "bipolar"], room: "psyche",
         title: "State-of-Mind Line", description: "animated bipolar mood-pattern model",
         href: "projects/state-of-mind-line/index.html",

@@ -53,8 +53,8 @@ window.TERMINAL_PAGES = [
   "href": "gaming.html",
   "title": "Arcade",
   "keys": "playable games",
-  "body": "A small arcade of playable games — vector combat, a relativistic rocket, a momentum prototype, and Interstate 40 as an arcade cabinet. Click a cover to play.",
-  "text": "Kondrite · Three more, in beta · A rocket at lightspeed · All momentum, all feel · Interstate 40, exit to exit · Nothing to install, nothing to sign into",
+  "body": "A browser arcade: Solitaire, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers, Snake and Tic-tac-toe with scoreboards, plus four original games. Click a cover to play.",
+  "text": "Kondrite · Always time for one more · Three more, in beta · A rocket at lightspeed · All momentum, all feel · Interstate 40, exit to exit · Nothing to install, nothing to sign into",
   "room": "gaming"
  },
  {
@@ -96,6 +96,14 @@ window.TERMINAL_PAGES = [
   "body": "",
   "text": "The shape of the criteria · How it lines up",
   "room": "psyche"
+ },
+ {
+  "href": "projects/classics/index.html",
+  "title": "Classics",
+  "keys": "RIC//NET",
+  "body": "Nine familiar games, ready to play: Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake. Leave your initials on the scoreboards.",
+  "text": "The classics. · Scoreboard · At the table · A seat at the table.",
+  "room": "gaming"
  },
  {
   "href": "projects/climbing/board.html",

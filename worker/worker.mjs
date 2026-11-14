@@ -26,6 +26,7 @@
 
 import { handleHit, handleVisitors, handlePopular, isSiteAdmin } from './visitors.mjs';
 import { tmdbRoute } from './tmdb.mjs';
+import { arcadeRoute } from './arcade.mjs';
 import '../assets/scrub-media.js';   // sets globalThis.ScrubMedia
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -1952,7 +1953,7 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap', 'tmdb', 'universe', 'photo']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap', 'tmdb', 'universe', 'photo', 'arcade']);
 
 /* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
    One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
@@ -2350,6 +2351,7 @@ export default {
     }
     if (parts[0] === 'wx') return wxProxy(request, env, ctx, parts, url);
     if (parts[0] === 'tmdb') return tmdbRoute(request, env, ctx, parts, url, { json, cors });
+    if (parts[0] === 'arcade') return arcadeRoute(request, env, parts, url, { json, cors });
     if (parts[0] === 'meso') return mesoRoute(request, env, parts, stub);
     if (parts[0] === 'universe') return universeRoute(request, env, parts, stub);
     if (parts[0] === 'photo') return photosRoute(request, env, parts, stub);

@@ -39,7 +39,7 @@ const ROOM_OF = [
   // is written here, so tagging these 'mind' made both `in:mind` and
   // `in:psyche` match nothing at all.
   ['projects/psyche/', 'psyche'], ['projects/state-of-mind-line/', 'psyche'], ['projects/autism-reflection.html', 'psyche'], ['psyche.html', 'psyche'],
-  ['projects/kondrite/', 'gaming'], ['projects/farlight/', 'gaming'], ['projects/offramp/', 'gaming'], ['projects/starfield/', 'gaming'], ['gaming.html', 'gaming'],
+  ['projects/classics/', 'gaming'], ['projects/kondrite/', 'gaming'], ['projects/farlight/', 'gaming'], ['projects/offramp/', 'gaming'], ['projects/starfield/', 'gaming'], ['gaming.html', 'gaming'],
   ['projects/siege-conductor/', 'workbench'], ['workbench.html', 'workbench'],
   ['entertainment', 'entertainment'], ['weather', 'weather'],
   ['captures.html', 'captures'], ['orrin.html', 'orrin'], ['cs.html', 'cs'], ['val.html', 'val'],

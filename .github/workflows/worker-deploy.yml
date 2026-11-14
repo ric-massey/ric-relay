@@ -53,6 +53,7 @@ jobs:
       # this ran only the first (bug sweep A6-4).
       - run: node worker/test.mjs
       - run: node worker/visitors.test.mjs
+      - run: node worker/arcade.test.mjs
 
       - name: Deploy
         working-directory: worker

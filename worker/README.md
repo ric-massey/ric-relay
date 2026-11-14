@@ -6,6 +6,7 @@ is historical — every room that writes anything writes here:
 
 | Route | Room | What it holds |
 |---|---|---|
+| `/arcade/scores` | Gaming → Classics | public initials and scoreboards for the nine-game collection; separate D1 tables, highest points or lowest time/guesses; `arcade.mjs` |
 | `/log` | Training | ticks and notes against the plan |
 | `/strava` | Training | runs pushed by Strava's webhook |
 | `/board` | Training / Climbing | board-night dates from `projects/climbing/board-tick.mjs` |
@@ -43,6 +44,38 @@ Secrets, the Strava wiring and the security rules are in
 [`projects/training/README.md`](../projects/training/README.md) and at the top
 of `worker.mjs` and `wrangler.jsonc`. **If you add a route, add it to the regex
 in `dev.mjs` too**, or local testing quietly falls through to production.
+
+## Classics scoreboards
+
+Added 2026-11-13 for Ric's request for simple games with initials and scoreboards.
+`arcade.mjs` handles `GET /arcade/scores?board=<key>` and `POST /arcade/scores`
+with JSON `{id, board, initials, score}`. POST accepts 1–3 uppercase ASCII letters,
+a 12–64 character alphanumeric/hyphen retry id, a known board and a positive integer
+within that game's range. No account or owner token is needed. This is deliberately
+a casual, browser-reported scoreboard, not a server-verified game replay.
+
+Boards: `solitaire`, `snake`, `tetris`, `sudoku-{easy,medium,hard}`,
+`mines-{easy,medium,hard}`, `wordle-practice`, `wordle-YYYY-MM-DD` (UTC).
+Timed wins are integer seconds, Wordle is 1–6 guesses, Snake is multiples of ten,
+and Tetris is points. Daily boards close to new submissions after two days; dates
+must be real and within the past year. GET returns only `{scores:[{initials,score,at}]}`.
+Higher wins for Snake/Tetris; lower wins elsewhere. Ties use oldest submission, then
+id. The primary id makes a retry safe; the best 100 entries per board are kept and
+daily entries over a year old are removed on writes. Reads return ten with no cache.
+
+The existing `STATS` D1 binding creates `arcade_scores` / `arcade_ranking` and
+`arcade_rate` automatically. **No visitor table is read or written by this handler.**
+Bodies are capped at 2 KiB, methods/routes are fixed, cross-site browser writes are
+refused, and a D1 throttle allows ten writes a minute per client address. It keeps
+only a minute-specific SHA-256 hash, removed after ten minutes; raw addresses and
+analytics/browser ids are never stored in scores or returned. This limits casual
+spam, not deliberate cheating. Missing storage/failures return 503; the page labels
+its localStorage fallback as browser-only and does not silently upload it later.
+
+`node worker/arcade.test.mjs` runs against real in-memory SQLite and is in both
+the quick checks and **Deploy Worker**. `dev.mjs` routes `/arcade` locally so a test
+score never lands on production. Deploy the existing **Deploy Worker** workflow
+after publishing; there is no new secret, binding or manual migration.
 
 ## The visitor counter
 
