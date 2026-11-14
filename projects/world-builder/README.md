@@ -30,6 +30,8 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/breakup.test.mjs` | Quick physics checks: fracture/shedding, mass, momentum, energy, large bodies, bonds, capacity and repeatable links. Runs in the quick lane of `.github/checks.mjs`. |
 | `test/shape.test.mjs` | Quick checks on facings, slots, the angle spring's books, alignment, the sequence a chain reads as, and that a world with both new settings off is the world it always was. Quick lane. |
 | `replication-probe.mjs` | Not a check — a measurement, run by hand. Seeds copies of a sequence, runs the identical world without them as a control, and counts only the copies made of fresh hexagons. |
+| `test/chemistry.test.mjs` | Quick checks on valence and pull, that settling pays for every bond exactly, that heat thins bonds out, and that a barrier is lower for pieces held lined up. Quick lane. |
+| `chemistry-probe.mjs` | Not a check — a measurement, run by hand (a few minutes). Van 't Hoff, mass action and the barrier, each against the number it should give. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
@@ -124,8 +126,9 @@ settings presets; no outcome is scheduled.
   tab says so. Dead slots are reused only after the spatial-hash walk ends. Pinned bodies stay
   whole, so a wall or anchor remains held.
 
-`node projects/world-builder/test/breakup.test.mjs` and
-`node projects/world-builder/test/shape.test.mjs` check these accounts quickly on every push;
+`node projects/world-builder/test/breakup.test.mjs`,
+`node projects/world-builder/test/shape.test.mjs` and
+`node projects/world-builder/test/chemistry.test.mjs` check these accounts quickly on every push;
 the longer sandbox suite also checks that each new setting changes a world and each preset runs.
 Use `node projects/world-builder/test/world-builder.test.mjs --physics` for just its physics
 settings, presets and conservation checks; the default still runs both engines.
@@ -248,6 +251,84 @@ that was **assembled rather than copied** (which is why the probe runs a control
 **elongation catastrophe**, where strands join at staggered ends and simply get longer. A row
 whose length keeps climbing is that, not a replicator.
 
+### Chemistry with depth
+
+Ric, 2026-11-14: *"its chemical context is shallow still how do we make it less"*. Three things
+were shallow, and each is now a setting, **all off by default**. With all three off a world is
+byte for byte what it was before — checked against the previous commit's engine across every
+preset and two hand-built worlds on the day, and `test/chemistry.test.mjs` keeps the part of that
+a test can keep.
+
+- **Bonds per kind** (`bondsPer`: *the same for every kind* / *set by the kind*). A kind used to
+  be one number and nothing else. Set by the kind, it has a **valence** and a **pull**, both worked
+  out from its number — never looked up, so the no-table rule holds. Kinds run in rows of seven,
+  the way the main groups of a row of the periodic table do: valence goes **1, 2, 3, 4, 3, 2, 1**
+  along a row, which is the octet rule's shape (lithium to fluorine), so kind 1 caps a chain, kind
+  2 carries it on and kinds 3 and 4 branch it. Pull rises along a row, the way electronegativity
+  does, and a later row pulls a little less at each place, the way it does down a group. Two kinds
+  that pull differently bond harder: **Pauling's rule** (1932), the bond worth the like-with-like
+  strength plus a term in the *square* of the gap in pull. "Bond strength" stays the strongest bond
+  there is — the most unlike pair in a row — and two that pull alike bond at about 40% of it.
+  "Bonds per hexagon" still caps everything.
+- **How hard a bond is to start** (`barrier`, 0 = none). Heat that has to be found before a bond
+  can form *or* break, and is given straight back, so it moves how fast a world gets somewhere and
+  not where it ends up. With bonds that hold an angle, each end's slot that already points at the
+  other takes away its share (`cos 3e` per end: 1 lined up, 0 at 30° off), so **two hexagons that
+  something is holding lined up have little or nothing left to climb**. That is the orientation
+  part of catalysis — Page and Jencks (1971) put most of an enzyme's speed-up down to holding the
+  reacting pieces close and lined up — and nothing in the code names a catalyst. Measured: pairs
+  held lined up joined 879 times in two seconds against 42 for the same pairs turned 20° off, a
+  barrier of 4.5; with no barrier, 879 and 879. This is what a copier needs: a template that holds
+  the pieces is, here, a template that speeds up their joining.
+- **Bonds settle with temperature** (`settle`). Before, bonds formed by chance on impact and broke
+  on their own pair's heat, two mechanisms that knew nothing of each other, so a world settled
+  wherever those two happened to meet. Now forming and breaking are one step and its reverse,
+  accepted with the Boltzmann factor of what each has to find (the Metropolis rule, 1953, with a
+  barrier in it, which is transition-state theory's shape — Eyring, 1935). The heat comes out of,
+  and goes back into, everything around the bond — a circle holding about 60 mass, standing in
+  for the solvent — and a step and its exact reverse are always judged at one temperature, the
+  pool's with that bond not there. Attempts are made by pairs *nearly* touching, at any speed,
+  because a place to be balances and an impact does not, so "Too fast to bond" is greyed out while this
+  is on, and "How readily they bond" becomes how often a nearly-touching pair tries.
+
+**Measured, 2026-11-14** (`chemistry-probe.mjs`, run by hand; two kinds that pair and nothing else,
+A + B ⇌ AB, in a sealed world). Each line is against a number worked out first:
+
+| | the world before | settling on |
+|---|---|---|
+| **van 't Hoff**: slope of ln K against 1/T, should equal the bond energy (4) | 1.8 at first measure, 2.3 in the probe | **4.08** (102%), straight to r² 0.998; at bond energy 6, **6.11** |
+| **Mass action**: K for a 3:1 mix against 1:1, should be equal | −17% | **−10%** (−5% at bond energy 6), and more A pulled B from 55% to 89% paired, as Le Chatelier says |
+| **Barrier**: should change how fast, not where | barrier 3 cut K by a factor of 23 | K moved 6%; half-way took **16 s instead of 0.5 s** |
+
+Two things that looked right and were not, both found by measuring. Paying for a bond out of its
+own pair: a pair rarely holds a bond's worth of heat, and a new bond's heat landed in its own two
+ends and shook it apart — slope 1.8. Judging each step at the pool's temperature of the moment:
+a fresh bond's heat warmed the pool it was then judged against — slope 91%, and a barrier moved
+the balance by a quarter.
+
+**What it conserves.** Every make and break pays exactly: forming gives its worth less what the
+springs now hold to the pool, breaking takes its worth back and hands the springs' energy over as
+heat, and the test holds a world of held hexagons that made and broke hundreds of bonds to a part
+in a billion. **What it does not, and this is older than any of it:** a *moving* bonded world
+gains energy slowly through the integrator and the collision push-apart (which moves positions
+without charging the springs that are attached). Measured 2026-11-14 on 800 hexagons, five
+seconds, nothing settling: 1.8 units gained in the motion step and 0.4 in the push-apart with
+bonds forming the old way; settling makes many more bonds, so the same leak shows more (8.3 and
+2.5), though per bond-second it is lower. The settling steps themselves add exactly nothing. This
+contradicts the "about a part in ten thousand" figure above for busy worlds — that was measured on
+a quiet one — and fixing it means changing the integrator, which would change every bonded world.
+
+What was read, and what was used. Pauling, *The Nature of the Chemical Bond. IV*, J. Am. Chem.
+Soc. 54 (1932) 3570 — the square-of-the-gap rule. Metropolis, Rosenbluth, Rosenbluth, Teller and
+Teller, J. Chem. Phys. 21 (1953) 1087 — the acceptance rule. Eyring, J. Chem. Phys. 3 (1935) 107 —
+a barrier climbed both ways. van 't Hoff (1884) and Guldberg and Waage (1864) — the two lines the
+probe checks against. Page and Jencks, PNAS 68 (1971) 1678 — holding pieces lined up as most of
+catalysis. Dittrich, Ziegler and Banzhaf, *Artificial Chemistries — A Review*, Artificial Life 7
+(2001) 225, and Fontana and Buss (1994) are the standard places to see where this sits among
+artificial chemistries; nothing here was taken from them, and they were not read in full for it.
+Hutton's Squirm3 (credited below) is the other road: it gives each atom states and a reaction
+table, which this project refuses.
+
 ### Hands
 
 Ric, same day: *"i need a way to place them like place hexigons or give them stuff and modify
@@ -349,6 +430,42 @@ simulation, not medical nutrition or a validated agricultural model.
 - Hungry hours accumulate and affect health; missing a meal does not cause instant death.
   `hunger` still controls deterioration. Age, consumption and recovery update hourly. Spoilage,
   food variety, water and individual health/energy requirements are not modeled yet.
+- **The year** (2026-11-14). Until then every day was the same day, so nobody ever had a reason
+  to store. Every number in it is a setting or comes from the sky (Ric: *"the variables should
+  all be editable"*): **distance from the equator** sets day length from the sunrise equation with
+  the almanac's −0.833° (twelve hours on the equator, 15.6 / 8.8 at 45°, 18.7 / 5.9 at 60°), and
+  people work in the light; **how cold winter gets** sets growth, which follows a warmth curve
+  peaking in mid-July and stops below a frost line, normalised so a year with seasons grows what
+  one without does — in one half; **when the world starts**; and **year to year**, which draws
+  each year an early or late spring (up to three weeks), a warm or cold year and a good or poor
+  yield (±30%) from a hash of the seed and the year, so a seed always gives the same years and
+  two seeds give different ones. What happens in a year, all measured on year-long runs:
+  - **The harvest.** About two months after the warmest day the grain is ripe and a day's
+    reaping brings in up to four times a day's gathering; a late year has a late harvest. Without
+    it, nobody's day could bring in more than they ate and a hard-winter world starved to the
+    last person by February. With seasons a field holds a season's growth (`FIELD_CAP`), and
+    what is still standing when the frost comes is lost. At harvest everybody helps.
+  - **Putting by.** A household holds back food for the lean days ahead (`winterAhead`): every
+    day that grows less than a year's average, weighted by the shortfall and the cold, plus a
+    month for stripped fields to grow back — the hungry gap, without which a world that stored
+    for the frozen months still starved in April. A quarter over, for a long winter, for each
+    child's real need split between the parents at home (`feeds`). A full larder only stops
+    somebody wanting to work once it covers that. People with coins buy ahead.
+  - **When it runs short.** With the grain in houses the village store is empty all winter, so
+    somebody going hungry goes to a neighbour (`ask`): family first, then friends, then whoever
+    has most put by. They buy what that household can spare beyond its own winter, at a price
+    that climbs as the seller's store falls; what money cannot buy, kinship or a warm nature may
+    give. Orphans are taken in by a grown sibling or whoever has most (`carer`). A whole village
+    that runs short moves: the move option judges a place by what its houses hold, and a couple
+    goes together. When nobody at home has any, they walk to the next village (within twenty
+    tiles, not at war) and buy from a household there — strangers sell, only people who know
+    each other give.
+  - **Where it stands.** Year-long runs of a 300-person valley, starved out of 300: default mild
+    winter 1, 9 and 1 over three seeds; hard winter 0 and 4; no winter 0. Before buying from the
+    next village was added, the same mild-winter seed lost 40 and a hard winter up to 63 —
+    villages on thin ground ran out in February while the next valley held months a head. Grain
+    still does not move by trade (traders read the store, and the store is empty in winter); the
+    hungry carry it themselves.
 - **Sickness is a village fever, not smallpox** (2026-11-14). It lasts seven days and kills about
   3% of fed, rested adults who catch it (`SICK_HAZARD`) — three times that for a child under five,
   for somebody near the end of their life and for anybody hungry, which is how a bad harvest and
@@ -471,7 +588,8 @@ node projects/world-builder/test/world-builder.test.mjs --generations
 That is an explicitly expensive experiment, not a CI check that was run for this change. A week
 of stability is not evidence of century-scale balance; earlier century measurements are superseded.
 
-33 settings in eight groups: the land, the people, lives (lifespan, childhood, children, hunger,
+37 settings in nine groups: the land, the year (distance from the equator, how cold winter gets,
+when the world starts, year to year), the people, lives (lifespan, childhood, children, hunger,
 sickness), money (coins or a shared store, inequality, prices, tax, inheritance), minds (talk,
 stubbornness, how divided, memory, changing sides), power (who leads, terms, loyalty, breaking
 away), war, and time.

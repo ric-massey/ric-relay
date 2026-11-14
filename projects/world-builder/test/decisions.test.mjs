@@ -20,7 +20,7 @@ import assert from "node:assert/strict";
 import { probe, spentDifferently, other, People } from "./day.mjs";
 
 const BASE = { people: 140, map: "small", factions: 2, villages: 2, crowd: 60 };
-const DAYS = 3, SEEDS = [11, 108];
+const DAYS = 3, SEEDS = [11, 108, 205];   // three: with two, `uneven` read 2.4% one day and 4.3% over four seeds
 
 const base = SEEDS.map(s => probe(BASE, {}, s, DAYS));
 
@@ -36,7 +36,7 @@ const share = (...names) => names.reduce((sum, n) => sum + (mix[n] || 0), 0);
 const asleep = share("Asleep", "Going home to sleep");
 const working = share("Harvesting", "Making goods", "Bringing food home", "Patrolling", "Standing guard", "Carrying goods", "Trading");
 const walking = share("Walking", "Walking to field", "Walking to workshop", "Going to eat", "Going home",
-                      "Going to see somebody", "Going for tools", "Travelling to trade");
+                      "Going to see somebody", "Going for tools", "Travelling to trade", "Going to ask for food");
 
 assert.ok(asleep > 0.18 && asleep < 0.45, "a night has to be a night: " + (asleep * 100).toFixed(1) + "% of adult hours went on sleep");
 assert.ok(working > 0.15, "work has to cost hours: only " + (working * 100).toFixed(1) + "% of adult hours went on it");

@@ -116,8 +116,16 @@
       { key: "look", when: s => s.bonding !== "none" && s.bonding !== "any", label: "A bond reads the next one along", type: "range", min: 0, max: 3, step: 1, def: 0,
         say: v => (v === 0 ? "no — only the two that are touching" : "a neighbour's kind moves it " + v + (v === 1 ? " kind" : " kinds") + " on"),
         help: "On, what a hexagon bonds as depends on the KIND of the neighbour it already holds, not only on how many it holds. That is what lets a chain carry a sequence worth reading: the same kind offers a different site depending on what it sits next to." },
-      { key: "bondSpeed", when: s => s.bonding !== "none", label: "Too fast to bond", type: "range", min: 0.5, max: 30, step: 0.5, def: 6,
+      { key: "bondSpeed", when: s => s.bonding !== "none" && !s.settle, label: "Too fast to bond", type: "range", min: 0.5, max: 30, step: 0.5, def: 6,
         say: v => "over " + v + " a second", help: "Two hexagons meeting faster than this bounce instead." },
+      { key: "bondsPer", when: s => s.bonding !== "none", label: "Bonds per kind", type: "select", def: "same",
+        options: [["same", "The same for every kind"], ["kind", "Set by the kind"]],
+        help: "Set by the kind, each kind has its own number of bonds and its own pull, worked out from its number the way a row of the periodic table runs: kinds 1 to 7 take 1, 2, 3, 4, 3, 2, 1 bonds, so kind 1 caps a chain, kind 2 carries it on and kind 3 branches it. Pull rises along the row, and two kinds that pull very differently bond harder than two that pull alike. “Bonds per hexagon” still caps all of it." },
+      { key: "settle", when: s => s.bonding !== "none", label: "Bonds settle with temperature", type: "toggle", def: false,
+        help: "On, forming a bond and breaking it are the same step run backwards, paid for out of the heat of everything nearby, so a world settles where its temperature says it should: hot worlds hold fewer bonds, cold worlds more, by an amount you can work out. “How readily they bond” becomes how often two hexagons that are nearly touching try. Off, bonds form on impact and shake loose on their own pair's heat, as they always have." },
+      { key: "barrier", when: s => s.bonding !== "none", label: "How hard a bond is to start", type: "range", min: 0, max: 30, step: 0.5, def: 0, curve: 2,
+        say: off(v => v + " energy"),
+        help: "Heat that has to be found before a bond can form or break, and is given straight back. It does not change which bonds win in the end, only how long it takes — so a bond can be worth making and still almost never happen. With bonds that hold an angle, two hexagons held already lined up have less of it to climb, which is how one thing can speed up the making of another." },
     ]},
     { title: "Heat", items: [
       { key: "startTemp", label: "Starting temperature", type: "range", min: 0, max: 40, step: 0.5, def: 0.5,
@@ -154,7 +162,7 @@
   const INPUT_LIMITS = {
     size: [4, 1000], count: [0, 20000], kinds: [1, 64], seed: [0, 4294967295],
     bigMass: [0.000001, 1e12], bounce: [0, 1], bondChance: [0, 1],
-    maxBonds: [0, 255], shake: [0, 1], conduct: [0, 1], angles: [0, 1], align: [0.01, 30], look: [0, 64],
+    maxBonds: [0, 255], shake: [0, 1], conduct: [0, 1], angles: [0, 1], align: [0.01, 30], look: [0, 64], barrier: [0, 1e6],
     limit: [0, 1e12], rate: [0.001, 100], toughness: [0.000001, 1e12], fragmentMass: [0.000001, 1e12]
   };
   const WHOLE = new Set(["count", "kinds", "seed", "maxBonds", "shift", "look"]);
@@ -248,6 +256,34 @@
     return Math.max(0, (M - Math.abs(v1 + v2 - M)) / M);        // "sum"
   }
 
+  /* ── a kind's own character ("Bonds per kind": set by the kind) ──────────
+     Worked out from the kind's number, never looked up, so the no-table rule
+     holds. Kinds run in rows of seven, the way the main groups of a row of
+     the periodic table do. Along a row the number of bonds goes 1, 2, 3, 4,
+     3, 2, 1, which is the shape of the octet rule (lithium's row runs
+     1-2-3-4-3-2-1 from lithium to fluorine), and the pull goes up, which is
+     what electronegativity does along a row. A later row pulls a little less
+     at every place, which is what it does down a group. The pull is a number
+     from 0 to 1 and means nothing on its own; only the gap between two
+     pulls is used. */
+  const ROW = 7;
+  function valence(k) { const c = (k - 1) % ROW; return 4 - Math.abs(c - 3); }
+  function pull(k) { const c = (k - 1) % ROW, row = Math.floor((k - 1) / ROW); return (c + 1) / (ROW + row); }
+  /* How much harder an unlike pair bonds. Pauling's rule (1932): a bond
+     between A and B is worth the average of A-A and B-B, plus a term that
+     grows with the SQUARE of how differently the two pull. Here the
+     like-with-like strength is the base, the square term is added on, and
+     the whole is scaled so the most unlike pair in a row comes out at exactly
+     "Bond strength" — which keeps that slider meaning what it always has, the
+     strongest bond there is. Two kinds that pull alike bond at 1/(1 + λ·gap²)
+     of that, about 40%. */
+  const PULL_LAMBDA = 2;
+  const PULL_GAP = (ROW - 1) / ROW;
+  function polar(k1, k2) {
+    const gap = pull(k1) - pull(k2);
+    return Math.min(1, (1 + PULL_LAMBDA * gap * gap) / (1 + PULL_LAMBDA * PULL_GAP * PULL_GAP));
+  }
+
   const SOFT = 0.6;          // gravity's softening length, in hexagons
   /* The two reaches pull equally hard at this distance, so the one slider
      means about the same thing under either: beyond it "far" is the stronger,
@@ -262,6 +298,20 @@
   const SLOTS = 6;           // a hexagon's six bond directions, 60° apart from the way it faces
   const ANG_K = 40;          // the straightening spring that turns a slot to face its partner
   const ANG_DAMP = 6;        // and what it loses to heat as it swings
+  /* With "Bonds settle with temperature": the heat for making or breaking a
+     bond comes out of, and goes back into, everything around the bond's
+     middle — the pair's surroundings, standing in for the solvent or the gas
+     that does this job in real chemistry. One pair alone is far too small a
+     store of heat: at the temperatures where chemistry is interesting a pair
+     rarely holds a bond's worth, so it could never break one by heat, and a
+     fresh bond dumped its whole energy into its own two ends and shook itself
+     apart (measured 2026-11-14: van 't Hoff slope 1.8 where the bond energy
+     was 4). The surroundings are sized by how much is in them, not by
+     distance, so a crowded world and a thin one hold the same store: a
+     circle around the bond holding about POOL_MASS of mass on average. The
+     bigger it is, the less one bond's heat moves its temperature, and the
+     closer the world comes to the exact answer; it costs time. */
+  const POOL_MASS = 60;
   const TAU = Math.PI * 2;
   const GRID = 16;           // gravity's coarse grid, cells a side
   const DIRECT_MAX = 500;    // bodies below which gravity is every pair exactly
@@ -598,6 +648,170 @@
       if (S.look > 0) moved += S.look * (heldKind(i, skip) - 1);
       return moved;
     }
+
+    /* ── chemistry with depth ───────────────────────────────────────────────
+       Three settings, all off by default (2026-11-14). Off, none of the code
+       below draws a random number or changes a value, so a world is byte for
+       byte what it was before they existed; test/chemistry.test.mjs holds
+       that. */
+    const baseKind = i => ((kind[i] - 1) % S.kinds) + 1;
+    /* How many bonds this hexagon can hold: the world's cap, and under "set
+       by the kind" its own valence too. */
+    function capOf(i) {
+      return S.bondsPer === "kind" ? Math.min(S.maxBonds, valence(baseKind(i))) : S.maxBonds;
+    }
+    /* What a bond between these two is worth. `less` as in siteOf. */
+    function worth(i, j, less) {
+      const a = affinity(S.bonding, kind[i], kind[j], S.kinds, siteOf(i, j, less), siteOf(j, i, less));
+      if (!(a > 0)) return 0;
+      return S.bondStrength * a * (S.bondsPer === "kind" ? polar(baseKind(i), baseKind(j)) : 1);
+    }
+    /* The barrier a bond in this direction (i towards j, angle `along`) has
+       to climb, to form or to break; the same number both ways, which is what
+       keeps it out of where the balance settles. Without shape it is the
+       whole barrier. With shape, each end's slot that already points at the
+       other takes away its share: cos(3e) is 1 for a slot pointing straight
+       at its partner and 0 at 30° off, the furthest a nearest slot can be.
+       So two hexagons something else is holding lined up have nothing left to
+       climb. That is the orientation part of catalysis — Page and Jencks
+       (1971) put most of an enzyme's speed-up down to holding the reacting
+       pieces close and lined up — and nothing here says what a catalyst is. */
+    function barrierAt(i, si, j, sj, along) {
+      if (!(S.barrier > 0)) return 0;
+      if (!spun() || si < 0 || sj < 0) return S.barrier;
+      const qa = Math.max(0, Math.cos(3 * wrapAngle(along - slotDir(i, si))));
+      const qb = Math.max(0, Math.cos(3 * wrapAngle(along + Math.PI - slotDir(j, sj))));
+      return S.barrier * (1 - qa * qb);
+    }
+    /* Everyone within poolR of a point, from the grid built this substep:
+       their heat and their mass, and who they are in poolIds. poolR is set
+       once a substep, from how thickly mass is spread over the grid. */
+    const poolIds = new Int32Array(cap);
+    let poolN = 0, poolHeat = 0, poolMass = 0, POOL_R = 5;
+    function sizePool() {
+      let total = 0;
+      for (let i = 0; i < n; i++) if (alive[i]) total += m[i];
+      const area = hw * cs * hh * (S.edge === "open" ? cs : H / hh);
+      const spread = total / Math.max(area, 1e-9);
+      POOL_R = Math.min(Math.max(W, H) / 2, Math.max(2, Math.sqrt(POOL_MASS / (Math.PI * Math.max(spread, 1e-9)))));
+    }
+    function gatherPool(px, py) {
+      poolN = 0; poolHeat = 0; poolMass = 0;
+      const rowH = S.edge === "open" ? cs : H / hh;
+      const ci = Math.floor((px - hx0) / cs), cj = Math.floor((py - hy0) / rowH);
+      const rx = Math.ceil(POOL_R / cs), ry = Math.ceil(POOL_R / rowH);
+      const nx = wrap ? Math.min(hw, 2 * rx + 1) : 2 * rx + 1, ny = wrap ? Math.min(hh, 2 * ry + 1) : 2 * ry + 1;
+      const add = q => {
+        const d = Math.hypot(sep(x[q] - px, W), sep(y[q] - py, H));
+        if (d <= POOL_R) { poolIds[poolN++] = q; poolHeat += heat[q]; poolMass += m[q]; }
+      };
+      for (let oj = 0; oj < ny; oj++) for (let oi = 0; oi < nx; oi++) {
+        let gi = ci - rx + oi, gj = cj - ry + oj;
+        if (wrap) { gi = ((gi % hw) + hw) % hw; gj = ((gj % hh) + hh) % hh; }
+        else if (gi < 0 || gi >= hw || gj < 0 || gj >= hh) continue;
+        for (let q = heads[gj * hw + gi]; q >= 0; q = nexts[q]) if (alive[q]) add(q);
+      }
+      for (let b = 0; b < bigs.length; b++) if (alive[bigs[b]]) add(bigs[b]);
+    }
+    /* Give heat to the pool by mass, so it lands at one temperature. */
+    function poolGive(e) {
+      for (let p = 0; p < poolN; p++) { const q = poolIds[p]; heat[q] += e * m[q] / poolMass; }
+    }
+    /* Take heat from the pool by heat, so nobody goes below nothing. */
+    function poolTake(e) {
+      const share = e / poolHeat;
+      for (let p = 0; p < poolN; p++) { const q = poolIds[p]; heat[q] -= heat[q] * share; }
+    }
+    /* Make the bond: the record, the slots, the counts. Shared by both ways
+       of forming one; the caller has decided it happens and pays for it. */
+    function link(i, j, si, sj, B, rest) {
+      const lo = Math.min(i, j), up = Math.max(i, j);
+      const bd = { a: lo, b: up, B: B, rest: rest, sa: lo === i ? si : sj, sb: lo === i ? sj : si };
+      bonds.set(key(i, j), bd);
+      if (si >= 0) adj[i * SLOTS + si] = j;
+      if (sj >= 0) adj[j * SLOTS + sj] = i;
+      nb[i]++; nb[j]++; tally.bondsMade++;
+      return bd;
+    }
+
+    /* ── settling (with "Bonds settle with temperature") ───────────────────
+       Forming and breaking are one step and its reverse, at one attempt rate
+       ν, each accepted with the Boltzmann factor of the energy it has to find:
+
+         form:  ν · exp(−(barrier + max(0, −drop)) / T)
+         break: ν · exp(−(barrier + max(0,  drop)) / T)
+
+       where `drop` is what forming gives off — the bond's worth less whatever
+       its two springs are holding at that moment — and T is the temperature
+       of the pool around the bond AS IT IS WITH THE BOND NOT THERE: its heat
+       now when forming, its heat now less `drop` when breaking. So a step and
+       its exact reverse are always judged at one temperature. Judging each at
+       the pool's temperature of the moment looked the same and was not: a
+       fresh bond's own heat warmed the pool it was then judged against, and
+       measured, the slope fell to 91% of the bond energy and a barrier moved
+       the balance by a quarter; judged this way, 102% and 6%
+       (chemistry-probe.mjs, 2026-11-14).
+
+       The ratio of the two is exp(drop / T) for
+       every arrangement of the pieces, which is detailed balance, so a world
+       settles where its bond energies and its temperature put it and not
+       where two unrelated knobs happen to meet. That is the Metropolis rule
+       (Metropolis et al., 1953) with a barrier in it, which is
+       transition-state theory's shape (Eyring, 1935); the barrier cancels
+       from the ratio, as a catalyst must.
+
+       Every joule is accounted for: forming gives `drop` to the pool and the
+       springs hold the rest; breaking takes the bond's worth from the pool
+       and unbond() hands the springs' back. If the pool cannot pay, nothing
+       happens. Attempts are made by pairs NEARLY touching (within a tenth of
+       contact), whatever their speed: that is a place to be, which balances,
+       where an impact is an event, which does not. */
+    function trySettle(i, j, ux, uy, reachIJ, dt) {
+      if (nb[i] >= capOf(i) || nb[j] >= capOf(j)) return false;
+      const nu = S.bondChance * Math.min(1, dt * 30);
+      if (R() >= nu) return false;
+      const B = worth(i, j, 0);
+      if (!(B > 0)) return false;
+      const si = slotFor(i, ux, uy), sj = slotFor(j, -ux, -uy);
+      if (spun() && (si < 0 || sj < 0)) return false;
+      const along = Math.atan2(uy, ux);
+      const Ea = barrierAt(i, si, j, sj, along);
+      const bd = link(i, j, si, sj, B, reachIJ);
+      const drop = B - strain(bd);
+      gatherPool(x[i] + sep(x[j] - x[i], W) / 2, y[i] + sep(y[j] - y[i], H) / 2);
+      const T = poolMass > 0 ? poolHeat / poolMass : 0;
+      const climb = Ea + Math.max(0, -drop);
+      const ok = climb === 0 || (T > 0 && poolHeat >= Math.max(0, -drop) && R() < Math.exp(-climb / T));
+      if (!ok) {                              // never was: put everything back as it stood
+        bonds.delete(key(i, j)); nb[i]--; nb[j]--; tally.bondsMade--;
+        if (si >= 0) adj[i * SLOTS + si] = -1;
+        if (sj >= 0) adj[j * SLOTS + sj] = -1;
+        return false;
+      }
+      if (drop >= 0) poolGive(drop); else poolTake(-drop);
+      return true;
+    }
+    function settleBonds(dt) {
+      if (!bonds.size) return;
+      const nu = S.bondChance * Math.min(1, dt * 30);
+      for (const [k, bd] of bonds) {
+        if (R() >= nu) continue;
+        const a = bd.a, b = bd.b;
+        const dx = sep(x[b] - x[a], W), dy = sep(y[b] - y[a], H);
+        const drop = bd.B - strain(bd);
+        const Ea = barrierAt(a, bd.sa, b, bd.sb, Math.atan2(dy, dx));
+        gatherPool(x[a] + dx / 2, y[a] + dy / 2);
+        if (poolHeat < bd.B || poolMass <= 0) continue;   // nothing near enough can pay for it
+        /* The temperature the pool would have with this bond broken: the
+           same one its forming was judged at, so each make-and-break pair is
+           judged at one temperature. See the note above trySettle. */
+        const T = (poolHeat - drop) / poolMass;
+        if (!(T > 0)) continue;
+        if (R() >= Math.exp(-(Ea + Math.max(0, drop)) / T)) continue;
+        poolTake(bd.B);
+        unbond(k, bd);
+      }
+    }
     function bondForces(dt) {
       for (const [k, bd] of bonds) {
         const a = bd.a, b = bd.b;
@@ -655,7 +869,10 @@
       for (const [k, bd] of bonds) {
         const T = bondTemp(bd.a, bd.b);
         if (T <= 0) continue;
-        if (R() < BREAK_RATE * dt * Math.exp(-bd.B / T)) {
+        /* The barrier is climbed on the way out as well as the way in. */
+        const Ea = S.barrier > 0
+          ? barrierAt(bd.a, bd.sa, bd.b, bd.sb, Math.atan2(sep(y[bd.b] - y[bd.a], H), sep(x[bd.b] - x[bd.a], W))) : 0;
+        if (R() < BREAK_RATE * dt * Math.exp(-(bd.B + Ea) / T)) {
           const have = heat[bd.a] + heat[bd.b];
           if (have < bd.B) continue;                 // not enough heat here to pay for it
           const share = bd.B / have;
@@ -679,7 +896,7 @@
       for (const [k, bd] of bonds) {
         if (R() > odds) continue;
         const a = bd.a, b = bd.b;
-        const want = S.bondStrength * affinity(S.bonding, kind[a], kind[b], S.kinds, siteOf(a, b, 1), siteOf(b, a, 1));
+        const want = worth(a, b, 1);
         if (want === bd.B) continue;
         const have = heat[a] + heat[b];
         if (want > bd.B) {
@@ -701,6 +918,7 @@
        off the grid and tested against everybody, because there are never many
        of those and one in the grid would make every cell its neighbour. */
     let cs = 2, hw = 1, hh = 1, heads = new Int32Array(1), nexts = new Int32Array(cap);
+    let hx0 = 0, hy0 = 0;     // where the grid starts, kept for gatherPool
     const bigs = [];
     function buildHash() {
       let x0 = 0, y0 = 0;
@@ -713,9 +931,11 @@
         if (x0 === Infinity) { x0 = y0 = 0; x1 = y1 = 1; }
         cs = Math.max(2.4 * radiusOf(S.kinds), (x1 - x0) / 300, (y1 - y0) / 300, 1.2);
         hw = Math.floor((x1 - x0) / cs) + 1; hh = Math.floor((y1 - y0) / cs) + 1;
+        hx0 = x0; hy0 = y0;
       } else {
         cs = Math.max(2.4 * radiusOf(S.kinds), 1.2);
         hw = Math.max(3, Math.floor(W / cs)); hh = Math.max(3, Math.floor(H / cs));
+        hx0 = 0; hy0 = 0;
         cs = W / hw;
       }
       if (heads.length < hw * hh) heads = new Int32Array(hw * hh);
@@ -853,6 +1073,9 @@
         const flow = Math.min(0.5, S.conduct * 6 * dt) * (Ti - Tj) * (m[i] * m[j] / (m[i] + m[j]));
         heat[i] -= flow; heat[j] += flow;
       }
+      /* Settling bonds are tried by pairs that are nearly touching, before
+         and instead of anything an impact would do. */
+      if (S.settle && S.bonding !== "none" && !bonds.has(key(i, j)) && trySettle(i, j, ux, uy, reach, dt)) return;
       if (d > reach) return;
       const bonded = bonds.has(key(i, j));
       const vn = (vx[j] - vx[i]) * ux + (vy[j] - vy[i]) * uy;
@@ -887,7 +1110,7 @@
         if (chipI) { impact[i] += lost * hi; impactX[i] -= ux * lost * hi; impactY[i] -= uy * lost * hi; }
         if (chipJ) { impact[j] += lost * hj; impactX[j] += ux * lost * hj; impactY[j] += uy * lost * hj; }
       }
-      if (!chipI && !chipJ && S.bonding !== "none" && nb[i] < S.maxBonds && nb[j] < S.maxBonds && Math.abs(vn) < S.bondSpeed) {
+      if (!S.settle && !chipI && !chipJ && S.bonding !== "none" && nb[i] < capOf(i) && nb[j] < capOf(j) && Math.abs(vn) < S.bondSpeed) {
         const a = affinity(S.bonding, kind[i], kind[j], S.kinds, siteOf(i, j, 0), siteOf(j, i, 0));
         if (a > 0 && R() < S.bondChance * Math.min(1, dt * 30)) {
           /* Which slot each end would use. With angles off this is only a
@@ -895,14 +1118,12 @@
              them on, a bond with nowhere to sit, or one that would sit
              crooked, does not happen at all. */
           const si = slotFor(i, ux, uy), sj = slotFor(j, -ux, -uy);
-          if (!spun() || (si >= 0 && sj >= 0)) {
-            const B = S.bondStrength * a;
-            const lo = Math.min(i, j), up = Math.max(i, j);
-            bonds.set(key(i, j), { a: lo, b: up, B: B, rest: reach,
-                                   sa: lo === i ? si : sj, sb: lo === i ? sj : si });
-            if (si >= 0) adj[i * SLOTS + si] = j;
-            if (sj >= 0) adj[j * SLOTS + sj] = i;
-            nb[i]++; nb[j]++; tally.bondsMade++;
+          /* A barrier has to be climbed with the heat the two of them have. */
+          const T = bondTemp(i, j);
+          const stuck = S.barrier > 0 && !(T > 0 && R() < Math.exp(-barrierAt(i, si, j, sj, Math.atan2(uy, ux)) / T));
+          if (!stuck && (!spun() || (si >= 0 && sj >= 0))) {
+            const B = worth(i, j, 0);
+            link(i, j, si, sj, B, reach);
             heat[i] += B * hi; heat[j] += B * hj;
           }
         }
@@ -993,12 +1214,13 @@
       }
       edges();
       buildHash();
+      if (S.settle && S.bonding !== "none") sizePool();
       impact.fill(0); impactX.fill(0); impactY.fill(0);
       eachPair((i, j) => touch(i, j, dt));
       heatStep(dt);
       breakBodies(dt);
       react(dt);
-      shakeBonds(dt);
+      if (S.settle && S.bonding !== "none") settleBonds(dt); else shakeBonds(dt);
       tally.time += dt;
     }
 
@@ -1215,6 +1437,9 @@
       return { id: i, kind: kind[i], mass: m[i], temperature: heat[i] / m[i], heat: heat[i],
                speed: Math.hypot(vx[i], vy[i]), bonds: with_, pinned: !!pinned[i],
                facing: face[i], spin: spin[i], turning: spun(),
+               /* How many bonds it can hold, and with "set by the kind", its
+                  pull (null when every kind is the same). */
+               canHold: capOf(i), pull: S.bondsPer === "kind" ? pull(baseKind(i)) : null,
                /* The kind it bonds as right now, moved on by the bonds it
                   holds and by the kind of the one it is holding. */
                actsAs: ((kind[i] - 1 + siteOf(i, -1, 0)) % S.kinds) + 1 };
@@ -1232,5 +1457,6 @@
     };
   }
 
-  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, clean: clean, create: create, affinity: affinity };
+  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, clean: clean, create: create, affinity: affinity,
+           valence: valence, pull: pull, polar: polar };
 });

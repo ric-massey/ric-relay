@@ -503,7 +503,7 @@ population aims at one tile at bedtime jams solid. The person panel now shows th
 alongside what they are doing, read off the same `urgency` the engine decided with.
 
 What this does **not** do, and should not be claimed: there are no agreements, no promises, no
-memory of an unresolved matter, no skills that grow with practice, no buildings and no seasons.
+memory of an unresolved matter, no skills that grow with practice and no buildings. (Seasons came on 2026-11-14 — see below.)
 A person compares the options in front of them *now*; they do not plan, and nothing they decide
 today is remembered as a commitment tomorrow. Sections 6, 7, 9 and 10 are untouched. What changed
 is that those systems now have somewhere to plug in: each would be a new need, a new option or a
@@ -518,6 +518,8 @@ option in the same comparison, so `switch`, `crowd` and `memory` have a decision
 fed, peaceful world almost never takes, correctly. README, "What a person decides to do".
 
 The same day, sickness was brought down from a 22% death rate for everybody to about 3% for a fed adult, with children, the old and the hungry far more at risk; default worlds stopped shrinking. README, "Sickness is a village fever".
+
+**Seasons (2026-11-14).** The year is now four settings — distance from the equator, how cold winter gets, when the world starts, and year to year — and with them came a harvest, putting by, asking neighbours for food, orphans taken in and famine migration, each because a year-long run starved without it. A hungry household can buy from the next village; grain trade by traders is still open, since traders read an empty store. README, "The year".
 
 Ric's framing for why this came first: the Apocolips idea (a 3D apocalypse sandbox, city and
 rural, choose the conditions and follow the people) is the same engine under different pressures.

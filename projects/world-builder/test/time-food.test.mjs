@@ -15,7 +15,7 @@ assert.throws(()=>batched.advance(-1),RangeError);assert.throws(()=>batched.step
 
 // Isolate feeding from work so the daily ration has a measurable meaning.
 function resting(extra={}){
- const w=People.create({...options,people:20,talk:0,births:0,...extra});
+ const w=People.create({...options,people:20,talk:0,births:0,winter:0,weather:0,...extra});   // no cold: rations here are the plain daily one
  for(const p of w.people){p.age=30;p.dieAt=120;p.food=20;p.goods=0;p.partner=0;p.mum=0;p.dad=0;p.task="idle";p.wait=100000;p.tx=p.x;p.ty=p.y;}
  return w;
 }
@@ -37,9 +37,36 @@ for(const life of [20,120]){
  w.step(1);assert.ok(p.food>0&&p.hungry===0,"a parent shares a meal without needing more than a whole day's food");
 }
 {
- const w=resting(),p=w.people[0];w.stock.fill(0);const fert=[...w.fert].reduce((a,b)=>a+b,0);
+ // Without seasons, the documented sixty-day scale exactly.
+ const w=resting({winter:0,weather:0}),p=w.people[0];w.stock.fill(0);const fert=[...w.fert].reduce((a,b)=>a+b,0);
  w.step(24);
  assert.ok(Math.abs(w.stock.reduce((a,b)=>a+b,0)-fert*w.tileCapacity/60*w.settings.rich)<0.01,"crops replenish on the documented sixty-day scale");
+}
+{
+ // The year, read off its settings (the slow suite runs a world into the frost).
+ const base=People.clean({winter:1,weather:0,latitude:45,start:"spring"});
+ const at=(d,x={})=>People.seasonAt(d,{...base,...x});
+ assert.equal(at(0).name,"spring");
+ assert.equal(at(0,{start:"autumn"}).name,"autumn");assert.equal(at(0,{start:"winter"}).name,"winter");
+ const jan=365-105+15;            // a spring-started world reaches mid-January here
+ assert.equal(at(jan).name,"winter");assert.equal(at(jan).growth,0,"nothing grows in a hard midwinter");
+ // Day length is the real sun's: twelve hours on the equator all year,
+ // about fifteen and nine at 45°, about eighteen and six at 60°.
+ const june=182-105, dec=355-105;
+ for(const d of [june,dec])assert.ok(Math.abs(at(d,{latitude:0}).daylight-12.1)<0.2,"the equator has twelve-hour days");
+ assert.ok(Math.abs(at(june).daylight-15.6)<0.3&&Math.abs(at(dec).daylight-8.9)<0.3,"45°: about 15.6 hours in June and 8.9 in December, as an almanac gives");
+ assert.ok(at(june,{latitude:60}).daylight>18&&at(dec,{latitude:60}).daylight<6.5,"60°: long June days, short December ones");
+ // A year with seasons grows what a year without them does; weather makes years differ, by seed.
+ let year=0,mild=0;for(let d=0;d<365;d++){year+=at(d).growth;mild+=at(d,{winter:0.5}).growth;}
+ assert.ok(Math.abs(year/365-1)<1e-9&&Math.abs(mild/365-1)<1e-9,"seasons move the harvest through the year without changing its size");
+ assert.ok(at(jan,{winter:0}).growth===1,"with no winter things grow all year");
+ const yearsFor=seed=>[0,1,2,3].map(y=>at(y*365+100,{weather:1,seed}).growth.toFixed(4)).join();
+ assert.equal(yearsFor(11),yearsFor(11),"the same seed gives the same years");
+ assert.notEqual(yearsFor(11),yearsFor(12),"different seeds give different years");
+ assert.equal(new Set(yearsFor(11).split(",")).size,4,"with weather on, no two years are alike");
+ assert.equal(new Set([0,1,2,3].map(y=>at(y*365+100,{weather:0}).growth.toFixed(9))).size,1,"with weather off, every year is the same");
+ const peak=d=>{let b=0,bd=0;for(let k=0;k<365;k++){const r=at(d*365+k,{weather:1,seed:5}).ripe;if(r>b){b=r;bd=k}}return bd};
+ assert.ok(new Set([0,1,2].map(peak)).size>1,"a late year has a late harvest");
 }
 {
  const w=resting({money:"shared",hunger:1}),p=w.people[0];p.food=0;

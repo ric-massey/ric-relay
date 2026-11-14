@@ -59,6 +59,19 @@
       { key: "seed", label: "Seed", type: "range", min: 1, max: 9999, step: 1, def: 11,
         say: v => "#" + v, help: "The same seed and settings start the same world." },
     ]},
+    { title: "The year", items: [
+      { key: "latitude", label: "Distance from the equator", type: "range", min: 0, max: 70, step: 1, def: 45,
+        say: v => (v === 0 ? "on the equator" : v + "°") + " — " + daySpan(v),
+        help: "How long the days are, worked out from the real sun: twelve hours all year on the equator, and at 60° about eighteen in June and six in December. People work in the light." },
+      { key: "winter", label: "How cold winter gets", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["no winter — things grow all year", "mild winters", "a real winter", "hard winters"]),
+        help: "Crops grow in the warm months and stop in the cold. In a hard winter people eat more, nothing grows for months, and what was not brought in by autumn freezes in the fields." },
+      { key: "start", label: "The world starts in", type: "select", def: "spring",
+        options: [["spring", "Spring"], ["summer", "Summer"], ["autumn", "Autumn — the harvest is in the fields"], ["winter", "Winter — with nothing put by"]] },
+      { key: "weather", label: "Year to year", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
+        say: scale(["every year the same", "a little different", "good years and bad", "droughts and killing frosts"]),
+        help: "Each year draws its own spring, warmth and harvest — early or late, warm or cold, plenty or want. Drawn from the seed, so the same seed gives the same years." },
+    ]},
     { title: "The people", items: [
       { key: "people", label: "How many people", type: "range", min: 20, max: 2000, step: 10, def: 400, curve: 2,
         say: v => v.toLocaleString("en-US"), help: "How many are alive when it starts." },
@@ -204,6 +217,64 @@
   const CARRY = 1.8;                // food a day in the fields brings back
   const TILE_CAP = 48;             // food a perfect field holds
   const REGROW = TILE_CAP / (60 * DAY_HOURS);    // and how fast it comes back
+  /* ── the year ────────────────────────────────────────────────────────────
+     Every number here is a setting or comes from the sky (Ric, 2026-11-14:
+     "the variables should all be editable"). `latitude` sets the length of
+     the day from the real sun; `winter` how cold the cold half gets; `start`
+     where in the year a world begins; `weather` how much one year differs
+     from the next — drawn from the seed, so a seed always gives the same
+     years and two seeds give different ones. */
+  const START_DOY = { spring: 105, summer: 182, autumn: 278, winter: 15 };
+  const WARM_PEAK = 196;            // warmest day: the solstice plus the lag of the land and sea
+  const GROW_LINE = -0.35;          // warmth below which nothing grows
+  const RIPE_AFTER = 59;            // the grain is ripest about two months after the warmest day
+  const coldCurve = doy => Math.cos(2 * Math.PI * (doy - WARM_PEAK) / 365);
+  /* A year with seasons grows what a year without them does, on average —
+     it grows it in one half, for anybody who stored. */
+  const GROW_MEAN = (() => { let m = 0; for (let d = 0; d < 365; d++) m += Math.max(0, coldCurve(d) - GROW_LINE); return m / 365; })();
+  const SEASONS = ["winter", "spring", "summer", "autumn"];
+  /* Hours from sunrise to sunset: the sun's declination and the sunrise
+     equation, with the sun's top edge and the bending of light by the air
+     (−0.833°) counted as almanacs do. Polar day and night are clamped. */
+  function daylightAt(doy, latitude) {
+    const rad = Math.PI / 180, decl = 23.44 * rad * Math.sin(2 * Math.PI * (284 + doy) / 365), phi = latitude * rad;
+    const c = (Math.sin(-0.833 * rad) - Math.sin(phi) * Math.sin(decl)) / (Math.cos(phi) * Math.cos(decl));
+    return clampHours(2 * Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI / 15);
+  }
+  const clampHours = h => Math.max(4, Math.min(20, h));
+  function daySpan(latitude) {
+    const a = Math.round(daylightAt(172, latitude)), b = Math.round(daylightAt(355, latitude));
+    return a === b ? "twelve-hour days all year" : a + " hours of light in June, " + b + " in December";
+  }
+  /* One year's own weather: how early its spring, how warm, how good the
+     ground. A hash of the seed and the year, not the world's random stream,
+     so asking about a year never changes anything else. */
+  function yearOf(seed, year, weather) {
+    const r = rng((seed * 2654435761 + year * 40503 + 7) >>> 0);
+    const u = () => r() * 2 - 1;
+    return { shift: Math.round(u() * 21 * weather), warm: u() * 0.3 * weather, yield: 1 + u() * 0.3 * weather };
+  }
+  /* Everything the year changes, on day `day` of a world (day 0 is the day it
+     starts), for its settings `S`. */
+  function seasonAt(day, S) {
+    const first = START_DOY[S.start] ?? START_DOY.spring;
+    const abs = first + Math.floor(day), doy = ((abs % 365) + 365) % 365, year = Math.floor(abs / 365);
+    const y = yearOf(S.seed || 1, year, S.weather || 0);
+    const w = coldCurve(doy - y.shift) + y.warm, winter = S.winter;
+    const q = Math.floor(((doy + 365 - 79) % 365) / 91.25);    // spring starts at the equinox
+    return { day: Math.floor(day), doy: doy, year: year, name: SEASONS[(q + 1) % 4], warmth: w,
+             growth: ((1 - winter) + winter * Math.max(0, w - GROW_LINE) / GROW_MEAN) * y.yield,
+             daylight: daylightAt(doy, S.latitude ?? 45),
+             /* The harvest. Around two months after the warmest day the grain
+                is ripe, and a day's reaping brings in up to four times what a
+                day of gathering does — the whole reason anybody can store for a
+                winter. A late year has a late harvest. Measured 2026-11-14
+                without it: the fields stood full all autumn, nobody's day could
+                bring in more than they ate, the frost took the crop and a
+                hard-winter world starved to the last person by February. */
+             ripe: 1 + 3 * winter * Math.min(1, Math.max(0, (Math.cos(2 * Math.PI * (doy - y.shift - WARM_PEAK - RIPE_AFTER) / 365) - 0.75) / 0.25)),
+             yearNote: y };
+  }
   const WAGE = 1;                   // coins per day; default fixed-price daily food costs 1
 
   /* How long a thing takes, in hours. Measured 2026-11-13: before this table
@@ -245,7 +316,55 @@
     const pick = a => a[Math.floor(R() * a.length)];
     const tileAt = (x, y) => clamp(Math.floor(y), 0, rows - 1) * cols + clamp(Math.floor(x), 0, cols - 1);
     const year = () => activityTicks / ACTIONS_PER_HOUR / YEAR;
-    const dailyNeed = p => adult(p) ? 1 : 0.35 + 0.65 * clamp(p.age / S.grown, 0, 1);
+    /* ── the year ──────────────────────────────────────────────────────────
+       Added 2026-11-14: until then every day of the year was the same day,
+       so nobody ever had a reason to store, to work harder in autumn, or to
+       go short in February. `winter` is how far the year turns; at 0 the
+       world is exactly what it was without seasons. */
+    const today = () => Math.floor(t / DAY_HOURS);
+    let seasonDay = -1, seasonNow = null;
+    const season = () => { const d = today(); if (d !== seasonDay) { seasonDay = d; seasonNow = seasonAt(d, S); } return seasonNow; };
+    const doy = () => season().doy;
+    const warmth = () => season().warmth;
+    const growth = () => season().growth;
+    const daylight = () => season().daylight;
+    function isDark(hour) { const half = daylight() / 2; return hour < 13 - half || hour >= 13 + half; }
+    /* Days of eating ahead with nothing growing: what a store has to cover. */
+    /* Days of eating ahead that the land will not cover: from the next time
+       the year turns lean (growth under what a field gives in an ordinary
+       year), every lean day counts by how far short it falls, in proportion
+       to what people eat in that cold — and then a month more, because a
+       field the frost stripped has to grow back before it can be reaped.
+       That last month is the hungry gap, and before it was counted a world
+       that had stored for the frozen months still starved in April. */
+    /* With seasons a field is a crop, not a larder: what grows through spring
+       and summer stands until it is reaped, so a field holds a season's growth
+       rather than sixty days of it. Without this the fields sat full from June
+       and everything that would have grown after that was lost. */
+    const FIELD_CAP = TILE_CAP * (1 + 1.5 * S.winter);
+    let aheadAt = -1, aheadDays = 0;
+    function winterAhead() {
+      if (S.winter <= 0) return 0;
+      if (aheadAt === t) return aheadDays;
+      let days = 0, inLean = false;
+      for (let d = 0; d < 250; d++) {
+        const s0 = seasonAt(today() + d, S);
+        if (s0.growth < 1) {
+          inLean = true;
+          days += (1 - s0.growth) * (1 + 0.25 * S.winter * Math.max(0, -s0.warmth));
+        } else if (inLean) break;
+      }
+      aheadAt = t; aheadDays = days > 0 ? days + 30 * S.winter : 0;
+      return aheadDays;
+    }
+    /* What a household holds back: today and tomorrow, plus the cold days
+       still ahead, for themselves and the children they feed. Households
+       stored their own grain; a village market can only buy as much as its
+       till holds, so a farmer's autumn mostly stays under their own roof. */
+    const reserve = p => (baseNeed(p) + (p.feeds || 0)) * (1.1 + winterAhead() * 1.25);   // a quarter over, for a long winter
+    /* The cold costs food: people eat up to a quarter more in a hard winter. */
+    const baseNeed = p => (adult(p) ? 1 : 0.35 + 0.65 * clamp(p.age / S.grown, 0, 1));
+    const dailyNeed = p => baseNeed(p) * (1 + 0.25 * S.winter * Math.max(0, -warmth()));
     const storeDays = v => {
       let need = 0; for (const p of people) if (p.home === v.id && p.hp !== -99) need += dailyNeed(p);
       return need > 0 ? v.food / need : 0;
@@ -491,17 +610,45 @@
       }
     }
     function census() {
-      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; }
+      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; }
       for (const f of factions) { f.pop = 0; f.soldiers = 0; f.hungry = 0; f.loyal = 0; f.adults = 0; }
       for (const p of people) {
         const v = villages[p.home], f = factions[p.f];
-        v.pop++; f.pop++;
+        v.pop++; f.pop++; v.held += p.food;
         if (p.hungry > 0) { v.hungry++; f.hungry++; }
         if (p.sick > 0) v.sick++;
         if (adult(p)) { v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") f.soldiers++; }
       }
       for (const v of villages) v.loyal = v.adults ? v.loyal / v.adults : 0.6;
       for (const f of factions) f.loyal = f.adults ? f.loyal / f.adults : 0.6;
+      /* Who feeds whom. Each child's real need is split between the parents
+         at home with it, so a household stores for the children it actually
+         has — before 2026-11-14 every child counted as half an adult whatever
+         its age, and a widowed farmer with four stored for three. A child with
+         no parent at home is taken in: by a grown brother or sister, else by
+         whoever in the village has most put by. Until then an orphan could
+         eat only from the village store, which is empty all winter, and they
+         were half of the dead of a hard winter. */
+      for (const p of people) p.feeds = 0;
+      for (const c of people) {
+        if (adult(c) || c.hp === -99) continue;
+        const keepers = [byId.get(c.mum), byId.get(c.dad)].filter(q => q && q.hp > 0 && q.home === c.home);
+        if (!keepers.length) {
+          let carer = byId.get(c.carer);
+          if (!carer || carer.hp <= 0 || carer.home !== c.home || !adult(carer)) {
+            carer = null; let best = -1;
+            for (const q of people) {
+              if (q.home !== c.home || !adult(q) || q.hp <= 0) continue;
+              const kin = (c.mum && q.mum === c.mum) || (c.dad && q.dad === c.dad);
+              const score = q.food + (kin ? 1e6 : 0);
+              if (score > best) { best = score; carer = q; }
+            }
+            c.carer = carer ? carer.id : 0;
+          }
+          if (carer) keepers.push(carer);
+        } else c.carer = 0;
+        for (const q of keepers) q.feeds += baseNeed(c) / keepers.length;
+      }
     }
     function sample() {
       const row = { year: year(), pop: {} };
@@ -528,7 +675,7 @@
         for (let k = 0; k < 9; k++) {
           const x = tx + PATCH[k][0], y = ty + PATCH[k][1];
           if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
-          standing += stock[y * cols + x]; best += TILE_CAP;
+          standing += stock[y * cols + x]; best += FIELD_CAP;
         }
         /* Two things, and both of them matter. Can a day's work be filled at
            all — and is this ground worth the walk compared with ground at its
@@ -629,6 +776,11 @@
     /* What somebody does on reaching their own village: put in, take out. */
     function shop(p, v) {
       if (v.f !== p.f && atWar(v.f, p.f)) return;
+      /* Laying in for the winter: somebody with coins and no field buys
+         toward a winter's store, with no more than half of what they have. */
+      const want = reserve(p);
+      if (!shared && want > 1.2 && p.food < want * 0.6 && p.coins > 1)
+        buy(p, v, "food", Math.min(want - p.food, p.coins * 0.5 / Math.max(0.3, v.priceFood)));
       if (p.food < 0.6) {
         buy(p, v, "food", 1.1 - p.food);
         const f = factions[v.f];
@@ -671,7 +823,7 @@
        (2.7%). Now it is the hours, which is how farming labour actually
        differs — capped at what daylight allows, after which they bring back
        what they managed. */
-    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1); }
+    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe; }
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
@@ -702,9 +854,27 @@
         /* Wanting more than today's meal. Money and a full store take the edge
            off it but never remove it: capped, because an uncapped term meant
            anybody who had done well stopped working altogether. */
-        provide: clamp(0.3 + household - Math.max(0, days - 2) * 0.1 -
-                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01), 0, 1) * (0.5 + p.greed * 0.6),
+        /* A full larder only takes the edge off once it covers the winter
+           ahead too — before 2026-11-14 ten days of food in the house switched
+           off the wish to work in October as surely as in May. */
+        provide: clamp(0.3 + household - Math.max(0, days - 2 - winterAhead()) * 0.1 +
+                       clamp((winterAhead() - days) / (winterAhead() + 1), 0, 1) * 0.5 * S.winter -
+                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v), 0, 1.3) * (0.5 + p.greed * 0.6),
       };
+    }
+
+    /* Getting the store ready for winter: how far what the village holds falls
+       short of the cold days ahead. It is read off the village's own store, not
+       the calendar — a village that has put enough by works no harder in
+       October than in May. Worked out once per village per hour. */
+    function putBy(v) {
+      if (S.winter <= 0) return 0;
+      if (v.putByAt !== t) {
+        v.putByAt = t;
+        const ahead = winterAhead();
+        v.putBy = ahead > 0 ? clamp((ahead - storeDays(v)) / ahead, 0, 1) * 0.5 : 0;
+      }
+      return v.putBy;
     }
 
     /* A job is what somebody is good at and what their village expects of them,
@@ -751,7 +921,7 @@
       const v = villages[p.home], f = factions[p.f];
       const n = urgency(p);
       const hour = t % DAY_HOURS;
-      const dark = hour >= 21 || hour < 5 ? 1 : 0;
+      const dark = isDark(hour) ? 1 : 0;
       const away = d => d * 0.035;                 // what a journey costs, in need units
       let bestScore = -Infinity, chosen = null, chosenTask = "";
       const weigh = (task, score, start) => {
@@ -795,7 +965,9 @@
         const w = livelihood(p, v);
         /* A day in the fields. */
         if (w.tile >= 0)
-          weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, "farmer") * w.land
+          /* At harvest everybody helps: ripe grain left standing is lost to the
+             frost, so bringing it in is worth a day whatever is in the larder. */
+          weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12 + 0.35 * (season().ripe - 1) / 3) * skilled(p, "farmer") * w.land
                           - away(Math.hypot(w.tx + 0.5 - p.x, w.ty + 0.5 - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, w.tx + 0.2 + R() * 0.6, w.ty + 0.2 + R() * 0.6, "field"); p.wait = 0; });
 
@@ -839,7 +1011,11 @@
          `memory` is how many ties a person can hold. Somebody who has just
          moved settles in for a season before weighing it again. */
       if (!p.cargo && p.job !== "soldier" && p.id !== f.leader && t - (p.settled || -1e9) > 90 * DAY_HOURS) {
-        const perHead = o => o.food / (o.pop + 1);
+        /* What a place has to eat is in its houses as well as its store —
+           with seasons, mostly in its houses. Judged on the store alone, a
+           village on poor land starved to the last household in March while
+           the next valley held ten months of grain a head, and nobody went. */
+        const perHead = o => (o.food + (o.held || 0)) / (o.pop + 1);
         const room = o => clamp(1 - o.pop / S.crowd, -1, 1);
         const mate = byId.get(p.partner);
         let ties = 0.25 + (mate && mate.home === p.home && mate.hp > 0 ? 0.55 : 0) + p.kids * 0.12;
@@ -851,19 +1027,55 @@
           if (d > 20) continue;
           const foreign = o.f !== p.f;
           if (foreign && S.switch <= 0) continue;
-          const g = clamp((perHead(o) - perHead(v)) / 8, -1, 1) * 0.7 + (room(o) - room(v)) * 0.6
+          const g = clamp((perHead(o) - perHead(v)) / (8 + winterAhead()), -1, 1) * 0.7 + (room(o) - room(v)) * 0.6
                     - (foreign ? (1 - S.switch) * 0.7 + p.loyal * 0.6 : 0) - away(d) * 0.4;
           if (g > bs) { bs = g; best = o; }
         }
         if (best) {
           const there = best;
           weigh("move", bs + n.food * 0.5 + (1 - p.mood) * 0.3 - ties + p.bold * 0.15 - dark * 0.5, () => {
-            const kids = people.filter(q => (q.mum === p.id || q.dad === p.id) && !adult(q) && q.hp > 0 && q.home === p.home);
+            const kids = people.filter(q => (q.mum === p.id || q.dad === p.id || q.carer === p.id) && !adult(q) && q.hp > 0 && q.home === p.home);
+            /* A couple goes together. */
+            if (mate && mate.home === p.home && mate.hp > 0 && mate.id !== factions[mate.f].leader) kids.push(mate);
             const why = there.f !== p.f ? "left" : "moved";
             p.say = there.f !== p.f ? "I'm going over to " + factions[there.f].name + ". Better there." : "We're moving to " + there.name + ".";
             p.sayT = 80;
             rehome(p, there, why);
             for (const k of kids) rehome(k, there, why);
+          });
+        }
+      }
+
+      /* Going to a neighbour for food. When the store is empty the grain is in
+         people's houses, and somebody going short goes to ask: their own
+         family first, then friends, then whoever has most put by. Added
+         2026-11-14 — before it, a hard winter starved a sixth of a village
+         while the median neighbour sat on four months of grain, because the
+         only way food crossed between houses was two people happening to
+         meet, and in winter nobody is out. */
+      if (n.food > 0.35 && p.food < 1 && v.food <= 0.05) {
+        let giver = null, gs = 0;
+        for (const q of people) {
+          if (q === p || q.home !== p.home || !adult(q) || q.hp <= 0 || q.food < 2 || q.id === p.partner) continue;
+          const sc = q.food * (kin(p, q) ? 2 : 1) * ((q.friends.get(p.id) || 0) > 0.2 ? 1.5 : 1);
+          if (sc > gs) { gs = sc; giver = q; }
+        }
+        /* Nobody at home has any: the next village might, for coin. A village
+           on poor land otherwise starved beside a full one, because grain
+           crossed between villages only when whole families moved. */
+        if ((!giver || giver.food < 4) && p.coins > 0.5 && !shared) {
+          for (const q of people) {
+            if (q.home === p.home || !adult(q) || q.hp <= 0 || q.food < 6 || atWar(q.f, p.f)) continue;
+            const d = dist(p, villages[q.home]);
+            if (d > 20) continue;
+            const sc = q.food * (q.f === p.f ? 1 : 0.7) / (1 + d * 0.05);
+            if (sc > gs) { gs = sc; giver = q; }
+          }
+        }
+        if (giver) {
+          const q = giver;
+          weigh("ask", n.food * 1.3 + 0.15 - away(dist(p, q)) - dark * 0.3, () => {
+            go(p, q.x + (R() - 0.5) * 0.6, q.y + (R() - 0.5) * 0.6, "ask"); p.askOf = q.id; p.wait = 0;
           });
         }
       }
@@ -893,6 +1105,33 @@
       chosen(); p.chose = chosenTask;
     }
 
+    /* What happens at the neighbour's door. They sell what they can spare
+       beyond their own winter, at a price that climbs as their store runs
+       down; coins go from one hand to the other, so the total never changes.
+       What money cannot buy, kinship, friendship or a warm nature may give.
+       Nothing here decides who is asked — `choose` did that. */
+    function askFor(p, q) {
+      const want = 5 * dailyNeed(p);
+      const spare = Math.max(0, q.food - reserve(q));
+      let got = 0;
+      if (!shared && spare > 0.1 && p.coins > 0.05) {
+        const price = clamp(1.5 * reserve(q) / Math.max(q.food, 0.1), 0.4, 8);
+        const amount = Math.min(want, spare, p.coins / price);
+        p.coins -= amount * price; q.coins += amount * price;
+        q.food -= amount; p.food += amount; got += amount;
+      }
+      if (got < want * 0.5) {
+        const tie = (kin(p, q) ? 0.6 : 0) + (q.friends.get(p.id) || 0) + q.warm + (q.views > 0 ? 0.3 : 0);
+        if (q.food > 1 && (q.home === p.home || kin(p, q) || (q.friends.get(p.id) || 0) > 0.2) && tie > 0.6 + R() * 0.7) {
+          const give = Math.min(want - got, q.food * 0.25);
+          q.food -= give; p.food += give; got += give; befriend(p, q, 0.3);
+        } else befriend(p, q, -0.1);
+      }
+      p.say = got > 0.05 ? (got >= want * 0.5 ? "Thank you. That will see us through the week." : "It's something.") : "They had nothing for me.";
+      p.sayT = 60;
+      if (got > 0.05) { q.say = "Take it."; q.sayT = 60; }
+    }
+
     /* ── carrying out what was chosen ──────────────────────────────────────
        One branch per task, and none of them chooses anything: when a task is
        finished the person goes back to `choose`. */
@@ -902,6 +1141,11 @@
       if (p.task === "gear") { outfit(p, v); shop(p, v); p.task = "idle"; p.wait = spell("market"); return; }
       if (p.task === "sleep") { p.rest = 0; p.task = "idle"; p.wait = 0; return; }
       if (p.task === "rest") { p.rest = Math.max(0, p.rest - 0.25); p.task = "idle"; p.wait = 0; return; }
+      if (p.task === "ask") {
+        const q = byId.get(p.askOf);
+        if (q && q.hp > 0) askFor(p, q);
+        p.task = "idle"; p.wait = spell("visit"); return;
+      }
       if (p.task === "visit") {
         /* Standing next to somebody is the whole point; `act` does the talking
            when they are close enough, and `converse` clears the need. */
@@ -945,7 +1189,7 @@
         return;
       }
       if (p.task === "home") {
-        const keep = 1.1 + p.kids * 0.5;
+        const keep = reserve(p);
         if (p.food > keep) { const sold = sell(p, v, "food", p.food - keep); p.food -= sold; }
         shop(p, v);
         p.task = "idle"; p.wait = spell("market");
@@ -1423,7 +1667,7 @@
         if (!adult(p)) {
           /* Whichever parent has more. */
           const m1 = byId.get(p.mum), d1 = byId.get(p.dad);
-          const par = m1 && d1 ? (m1.food >= d1.food ? m1 : d1) : (m1 || d1);
+          const par = m1 && d1 ? (m1.food >= d1.food ? m1 : d1) : (m1 || d1 || byId.get(p.carer));
           if (par && par.food > 0.25) {
             const share = Math.min(0.5, par.food - 0.25);
             par.food -= share; p.food += share; fed = true;
@@ -1467,6 +1711,7 @@
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
       if (p.task === "rest") return walking ? "Going home" : p.sick > 0 ? "Ill at home" : "Resting at home";
       if (p.task === "visit") return walking ? "Going to see somebody" : "Visiting";
+      if (p.task === "ask") return walking ? "Going to ask for food" : "Asking for food";
       if (p.task === "gear") return walking ? "Going for tools" : "Fitting tools";
       if (p.task === "fight") return "Fighting";
       if (p.task === "scout") return "Checking the market in " + villages[p.at].name;
@@ -1993,9 +2238,13 @@
     /* ── the tick ──────────────────────────────────────────────────────── */
     function hour() {
       t++;
+      const grow = growth();
+      const frost = S.winter * Math.max(0, GROW_LINE - warmth()) * 0.004;
       for (let i = 0; i < tiles; i++) {
-        const cap = fert[i] * TILE_CAP;
-        if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich);
+        const cap = fert[i] * FIELD_CAP;
+        if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich * grow);
+        /* What is still standing when the frost comes is lost a little at a time. */
+        if (frost > 0 && stock[i] > 0) stock[i] -= stock[i] * frost;
         buckets[i].length = 0;
       }
       for (const p of people) buckets[tileAt(p.x, p.y)].push(p);
@@ -2074,7 +2323,7 @@
       fert: fert, ore: ore, stock: stock, owner: owner,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
-      step: step, advance: advance, activity: activity, urgency: urgency, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      step: step, advance: advance, season: season, activity: activity, urgency: urgency, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },
@@ -2083,5 +2332,5 @@
     };
   }
 
-  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, HOUR_SECONDS, DAY_HOURS, clean: clean, create: create };
+  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, HOUR_SECONDS, DAY_HOURS, START_DOY, seasonAt, clean: clean, create: create };
 });

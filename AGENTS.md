@@ -486,7 +486,22 @@ nobody had linked was a page nobody could find.
   tune the constants until one appears. The straightening spring's sideways lean on the
   pair is load-bearing (without it a bonded world runs 560% hot), and the three papers the
   work was read from are credited in the README — JohnnyVon's splitting signal is
-  deliberately NOT copied, because it scripts the outcome. **It is not on the front door or in `latest.js` yet** — it has
+  deliberately NOT copied, because it scripts the outcome.
+  **Chemistry with depth** (2026-11-14, Ric: "its chemical context is shallow still"): three
+  more settings, all off by default and byte-identical off — `bondsPer` (valence 1-2-3-4-3-2-1
+  and pull along rows of seven, Pauling's square-of-the-gap bond strength; all arithmetic on
+  the kind's number, never a table), `barrier` (climbed both ways, lower for slots already
+  lined up, which is the only catalysis there is and nothing names it) and `settle` (forming
+  and breaking as one Metropolis step and its reverse, paid from a pool of about 60 mass).
+  `chemistry-probe.mjs` is the measurement, run by hand: van 't Hoff slope 102% of the bond
+  energy, mass action within 10%, a barrier moving the balance by about 6%. Two rules that
+  are load-bearing and look optional: a settling step and its reverse are judged at ONE
+  temperature (the pool's with the bond absent) — judging at the moment's temperature gave
+  91% and let a barrier move the balance by a quarter — and the heat comes from the pool,
+  not the pair (the pair alone gave 1.8 where the answer was 4). Re-run the probe after
+  touching any of it. A moving bonded world drifts upward in energy through the integrator
+  and the collision push-apart; that predates all of this and is written up in the README,
+  not hidden. **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
@@ -515,6 +530,12 @@ nobody had linked was a page nobody could find.
   brings. Moving house is an option in `choose`; a fed world almost never takes it, and that is
   right — don't tune it until one churns. Sickness kills by `frailty` (young, old, hungry), about
   3% of fed adults; it killed 22% of everybody until that date and shrank every world.
+  **The year is settings, not constants** (Ric, 2026-11-14: "the variables should all be editable"):
+  latitude, winter, start and year-to-year weather, with day length from the real sunrise
+  equation and each year's weather hashed from the seed. Don't hard-code a date, a day length or
+  a harvest window back in. Every mechanism it brought (harvest, putting by, asking a neighbour,
+  carers, famine migration) was added because a year-long run starved without it — measure a
+  year before removing one.
   Conversation records surround
   the entire interaction, since several branches change state after speaking; do not infer an
   outcome from a dialogue type or move those effects into the renderer. The quick checks are in

@@ -298,6 +298,14 @@ if (!physicsOnly && process.argv.includes("--generations")) {
     const w = run(Object.assign({}, small, { plague: "none" }), 20);
     check(w.stats().sick === 0, "people: somebody died of sickness with sickness off");
   }
+  {
+    /* Into the frost: a hard-winter world run to January grows nothing, and
+       what is still standing in the fields is lost a little each day. */
+    const w = run(Object.assign({}, small, { winter: 1, weather: 0 }), 281 / 365), s = w.season();
+    check(s.name === "winter" && s.growth === 0, "people: a hard winter's January still grows crops");
+    const before = w.stock.reduce((a, b) => a + b, 0); w.step(24);
+    check(w.stock.reduce((a, b) => a + b, 0) < before, "people: crops standing through a hard frost are not lost");
+  }
   console.log("world builder: checking the busy century");
   /* And the things the page promises can happen, do — somewhere in a busy
      century, without anything being told to. */

@@ -51,6 +51,7 @@ const SUITES = [
   ['the terminal shell', ['.github/test/terminal-shell.mjs']],
   ['world-builder breakup keeps its books', ['projects/world-builder/test/breakup.test.mjs']],
   ['world-builder shape and sequence', ['projects/world-builder/test/shape.test.mjs']],
+  ['world-builder chemistry', ['projects/world-builder/test/chemistry.test.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   /* The finder's filters against the Worker's /tmdb/discover whitelist. */
   ['the entertainment finder', ['projects/entertainment/test/finder.mjs']],

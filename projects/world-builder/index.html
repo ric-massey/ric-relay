@@ -1083,7 +1083,7 @@
       if (p) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + p.x * s, oy + p.y * s, rad + 6, 0, 6.2832); ctx.stroke(); }
     }
     const st = w.stats();
-    const clockText = "Day " + (Math.floor(w.days % 365) + 1) + " · " + String(Math.floor(w.days % 1 * 24)).padStart(2, "0") + ":" + String(Math.floor(w.days % 1 * 1440) % 60).padStart(2, "0") + " · Year " + (Math.floor(w.days / 365) + 1) + " · " + st.people.toLocaleString("en-US") + " people";
+    const clockText = "Day " + (Math.floor(w.days % 365) + 1) + " · " + String(Math.floor(w.days % 1 * 24)).padStart(2, "0") + ":" + String(Math.floor(w.days % 1 * 1440) % 60).padStart(2, "0") + " · " + (w.season && w.season().name ? w.season().name[0].toUpperCase() + w.season().name.slice(1) + " · " : "") + "Year " + (Math.floor(w.days / 365) + 1) + " · " + st.people.toLocaleString("en-US") + " people";
     $("clock").textContent = clockText;
     $("people-time").textContent = clockText;
   }
@@ -1161,7 +1161,8 @@
       if (!d) return "<p class='small'>" + (picked ? "That hexagon is gone — fused into another, removed, or off the edge." : "Tap a hexagon to see what it is, and to change it: its kind, weight, heat, or whether it can move.") + "</p>";
       return "<h3><span class='sw' style='background:" + KIND[(d.kind - 1) % S.kinds % 8] + "'></span>" + (d.mass > S.kinds ? "A fused body" : "Kind " + d.kind) + "</h3>" +
         "<dl class='kv'><dt>Mass</dt><dd>" + num(d.mass, 0) + "</dd><dt>Temperature</dt><dd>" + num(d.temperature, 2) + "</dd>" +
-        "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + S.maxBonds + "</dd>" +
+        "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + d.canHold + "</dd>" +
+        (d.pull != null ? "<dt>Pull</dt><dd>" + num(d.pull, 2) + "</dd>" : "") +
         ((S.shift > 0 || S.look > 0) && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
         (d.turning ? "<dt>Facing</dt><dd>" + num(((d.facing * 180 / Math.PI) % 360 + 360) % 360, 0) + "\u00b0, turning " + num(d.spin, 2) + " a second</dd>" : "") +
         (d.pinned ? "<dt>Pinned</dt><dd>held still</dd>" : "") + "</dl>" +
