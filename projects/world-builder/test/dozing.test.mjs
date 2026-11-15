@@ -1,10 +1,12 @@
 // Passing over people with nothing to do must not change the world
 // (TODO.md item 2, 2026-11-15).
 //
-// people.js no longer visits everybody on every step: somebody asleep or at a
-// day's work is passed over until their wait is up, somebody jammed in a crowd
-// until room is made beside them, and the lists of who stands where and who
-// lives where are kept up instead of being made again. Each is only allowed
+// people.js no longer visits everybody on every step: somebody asleep, at a
+// day's work, idle between tries at a word, or standing in conversation is
+// passed over until their time is up, somebody jammed in a crowd until room is
+// made beside them (or, where their search for a way round ran out of tries,
+// until anybody there moves at all), and the lists of who stands where and who
+// lives where are kept up instead of being made again (TODO.md 2 and 2b). Each is only allowed
 // to be faster. `create(options, { plainWalking: true })` runs the engine the
 // long way round — everybody, every step, every list refilled — and the two
 // are held equal here hour by hour, on this machine (a stored answer would
@@ -144,5 +146,28 @@ sameFor("changed from outside", { people: 300, factions: 2, villages: 2, map: 8,
     assert.ok(p.wait === q.wait && p.stuck === q.stuck && p.routeRetry === q.routeRetry, "somebody passed over must carry the counts they would have had: " + p.name);
   }
 }
+
+// 11. The page's way of handing over time: a frame at a time, giving its word
+//     that it has touched nobody (`advance(seconds, true)`), with a rule of the
+//     world changed through the engine's own door part-way. Nobody is looked
+//     over and no count is put right until `settle()` — after which it must be
+//     the world a single batch gives, to the last count.
+{
+  const options = { people: 250, factions: 1, villages: 1, map: 6, seed: 12, plague: "none" };
+  const whole = w => JSON.stringify({ people: w.people, friends: w.people.map(p => [...p.friends]), stats: w.stats() });
+  const batch = People.create(options), framed = People.create(options, { audit: true });
+  const third = People.DAY_SECONDS / 6 + People.HOUR_SECONDS * 0.4;   // not on the hour, when everybody has just been woken
+  batch.advance(third); batch.set("talk", 0.2); batch.advance(third);
+  for (let i = 0; i < third * 60; i++) framed.advance(1 / 60, true);
+  framed.set("talk", 0.2);
+  for (let i = 0; i < third * 60; i++) framed.advance(1 / 60, true);
+  assert.ok(framed.passedOver > 0, "somebody should be passed over when the frames stop");
+  framed.settle();
+  assert.equal(whole(batch), whole(framed), "frames handed over untouched must give the world a batch gives");
+}
+
+// 12. A dense small country, where searches for a way round run out of tries
+//     and are remembered until anybody nearby moves: two days of it.
+sameFor("a dense small country", { people: 600, map: 8, seed: 7, plague: "none" }, 40);
 
 console.log("dozing: passing over people with nothing to do leaves the world exactly as it was");

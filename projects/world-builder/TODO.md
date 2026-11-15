@@ -213,7 +213,21 @@ Research notes (2026-11-15):
 - These sources were read as search summaries only: the session's network would not open the
   pages. Every figure here is one measured on this engine.
 
-### [ ] 2b. What item 2 measured and left
+### [x] 2b. What item 2 measured and left
+
+**Done 2026-11-15** (Ric: "do 2b finish 2 all the way"). (a) When somebody next tries to speak is
+drawn once instead of rolled every step, so the idle are passed over, and so are two people in
+conversation; this is the one part that makes a seed a different world from before, and a year of
+the default world both ways over twelve seeds shows the same country (README, "When somebody next
+speaks"). (c) A search for a way round that ran out of tries is remembered until anybody there
+moves; it was 60% of a dense small land's time. (d) The page gives its word that it touched
+nobody (`advance(seconds, true)`) and the look at everybody is left out. Everything but (a) gives
+the identical world. At 20,000 people a person is now looked at on 9% of steps (the
+target was under 10%). **Not met, and moved on:** the 2,000-on-17-km row still costs more per
+person than the 5,000 row — what is left is searching for a way round a crowd that is always
+moving, which is the crowding itself, and is written into item 7; and (b), asking a neighbour
+without reading the village, could not be done with the same giver coming out, and is written
+into item 11.
 
 **Now** (measured 2026-11-15, cloud machine, after item 2):
 - **Idle people are visited every step to roll for a conversation.** Somebody idle with no word
@@ -243,7 +257,36 @@ Show him a year of the default world both ways, measured, before doing it.
 costs no more per person than the 5,000 row; everything except (a) gives the identical world.
 **Budget:** faster only.
 
-Research notes:
+Research notes (2026-11-15):
+- **Measured first.** In the 2,000-on-17-km world, by how a search for a way round ended:
+  remembered 138,582 a day at 0.4 µs; walled in 14,992 at 4 µs; no place to arrive 19,072 at
+  1.5 µs; found 1,355 at 170 µs; **out of tries 3,325 at 730 µs — 2.4 of the day's 4.1 seconds.**
+  So "run again when somebody nearby moves", as written above, was the wrong culprit: those are
+  cheap. And at 20,000 people, once the idle were passed over, 9.5% of person-steps were people
+  standing in conversation.
+- **Drawing the wait instead of rolling for it.** The number of rolls until the first success is
+  geometric, and is drawn in one go by inverse transform, `1 + floor(ln U / ln(1 − p))`, U never
+  zero ([randlib's igngeom](https://git.fossee.in/scilab_for_xcos_on_cloud/.git/tree/modules/randlib/src/c/igngeom.c);
+  [worked answer](https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/23517138/random-number-generator-using-geometric-distribution)).
+  Chosen: every wait is exactly as likely as it was, one draw a try instead of one a step.
+  Apache Commons draws it as the floor of an exponential instead
+  ([RNG-69](https://issues.apache.org/jira/browse/RNG-69)); not needed at one draw every few steps.
+- **A dice stream for each purpose** ([L'Ecuyer, Simard, Chen & Kelton 2002](https://econpapers.repec.org/RePEc:inm:oropre:v:50:y:2002:i:6:p:1073-1075);
+  [ns-2's rule](https://www.isi.edu/nsnam/ns/doc/node267.html): "each random variable should use
+  a separate RNG object"). Not chosen for this: it keeps everything else's dice still when
+  talking changes, but somebody would still roll every step, which was the cost. Worth doing
+  for its own sake when settings are compared (`test/behaviour.mjs`): a later item.
+- **"No way through", cheaply.** Nothing found that gives the same answer as a search with a cap
+  on its tries except running it; so it is remembered exactly instead — valid while every body
+  on the ground it looked at is where it was — and the audit checks that claim itself.
+- **Tried and taken out:** number tables in place of the search's two Maps. Same answers
+  (720,000 searches compared), no measurable gain: the time is in asking "is anybody in the way"
+  six times for every neighbour, not in the look-ups.
+- **(b), not done.** The giver is the best of food × kin × friendship over the village, and the
+  friendship is the *giver's* memory of the asker, so no list kept per village gives the same
+  answer without following all 21 places a person's food changes (and whatever a test does).
+  Reading a village's larders is also not something a person could do. Moved to item 11.
+- Sources read as search summaries only; the session's network would not open the pages.
 
 ### [ ] 3. Off the page's thread, no top on people, and "what can this computer run"
 
@@ -326,6 +369,11 @@ there are no roads. Measured 2026-11-15 (item 1): houses are scattered over a vi
 closer together than bodies fit, so a village of several hundred is a solid disc — at 5,000
 people in eight villages, 87% of all steps are somebody failing to reach their bed or bench.
 Item 1 made that cheap; it did not make it stop. This item should.
+Left by 2b (2026-11-15): in a dense small land (2,000 people on 17 km) a person-step still costs
+about three times what it does at 5,000 on 40 km, and what is left is the search for a way round
+running out of its 800 tries — about 2,300 times a day at 650 µs — in a crowd that is always
+moving, so that nothing remembered about it lasts. **Done when** for this item should include:
+that row costs no more per person than the 5,000 row on `test/bench.mjs`.
 **Do:** a house is a building on the land that takes work and material to put up. A field is
 land a household works, visible as theirs. Stores, workshops and wells are buildings. Roads and
 paths appear where people walk and make walking faster. This is the "green land their farming
@@ -398,6 +446,11 @@ certain number of bits of information."
 or felt: who or what it is about, what kind (friend, grudge, debt, news, skill, a price, a
 place), how strong, how old. When the mind is full the weakest goes. Decisions read the mind.
 The friends list, the single piece of news and belief move into it.
+Left by 2b (2026-11-15): somebody going short asks "whoever has most put by" in the village, and
+finds them by reading every neighbour's larder (`choose`, "ask") — which nobody could know, and
+which costs more the bigger the village (with bodies at real size it is most of what is left:
+43 million larders a day at 20,000 people before item 2, still one read each now). When what a
+person knows is held in slots, they ask among those they know of, and this cost goes with it.
 **Research first:** how many people a person can really keep track of, and in what layers; how
 memories fade; fixed-size ways to store this that cost nothing to copy or scan.
 **Ric decides:** the default number of slots; whether people differ in how many they have.
@@ -560,4 +613,6 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-15 | 1 | Apple M1, 8 GB | 4.4 s a day, 68× | 21 s a day, 14× | 0.8 KB at the start (0.6 before) | `test/bench.mjs`; same world; a 20,000 start 25.7 → 2.6 s |
 | 2026-11-15 | 1 | Intel Xeon 2.1 GHz (cloud), 16 GB | 9.1 s a day, 33× | 46.4 s a day, 6× | 0.7 and 1.1 KB at the start | the same engine as the row above, on the machine item 2 was built on: about 2.2 times slower than the M1 |
 | 2026-11-15 | 2 | Intel Xeon 2.1 GHz (cloud), 16 GB | 3.5 s a day, 86× | 15.5 s a day, 19× | 0.3 and 1.1 KB at the start | same world; a person is looked at on 52% and 30% of steps; real-size bodies 10.9 → 3.4 s and 70 → 17 s; a year of the default world 368 → 173 s |
+| 2026-11-15 | 2 | Intel Xeon 2.3 GHz (another cloud machine), 16 GB | 2.4 s a day, 127× | 8.6 s a day, 35× | 0.3 and 1.1 KB at the start | item 2 again, on the machine 2b was built on (nearly twice as fast as the row above's) |
+| 2026-11-15 | 2b | Intel Xeon 2.3 GHz, 16 GB | 2.6 s a day, 117× | 5.7 s a day, 52× | 0.15 and 1.2 KB at the start | a person looked at on 22% and 9% of steps; **a seed is a different world from this row on** (the 5,000 row is one world against another; five seeds average the same either way); handed over in frames with the page's word costs no more than in one piece |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

@@ -38,10 +38,10 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/lab.test.mjs` | Quick checks: typed-in kinds obeyed, setups built exactly, the control is the same hexagons loose, loaded setups checked, experiments report what they say. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
-| `TODO.md` | The People simulator's work in order, twenty numbered items (and 2b, what item 2 measured and left). "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
+| `TODO.md` | The People simulator's work in order, twenty numbered items (and 2b, what item 2 measured and left, done). "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
 | `test/bench.mjs` | Not a check — the People engine's speed, measured the same way every time: `node --expose-gc test/bench.mjs`. Its numbers are one machine's and go in `TODO.md`'s speed log. "visited" is the share of person-steps on which anybody was looked at. |
 | `test/walking.test.mjs` | Quick check that the walking short cuts only make the engine faster: the same engine with them off (`create(options, { plainWalking: true })`) must give the identical world — packed villages, deaths, people moved or killed from outside, a crowd placed at once. |
-| `test/dozing.test.mjs` | Quick check that passing over people with nothing to do (TODO item 2) only makes the engine faster: against the engine run the long way round, hour by hour, with `{ audit: true }` making the short cuts check themselves — an ordinary country, a packed village, war, a hungry winter, a shared store, real-size bodies, nobody talking, people changed from outside, a fight at night, moving house, and time handed over in frames. |
+| `test/dozing.test.mjs` | Quick check that passing over people with nothing to do (TODO item 2) only makes the engine faster: against the engine run the long way round, hour by hour, with `{ audit: true }` making the short cuts check themselves — an ordinary country, a packed village, war, a hungry winter, a shared store, real-size bodies, nobody talking, people changed from outside, a fight at night, moving house, time handed over in frames (with and without the page's word that it touched nobody), and a dense small country. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
 | `test/travel.test.mjs` | Quick travel checks: a detour out of a U-shaped crowd without teleporting/overlap, real equal-price market visits, conserved coins and closed borders. |
 | `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
@@ -1194,12 +1194,13 @@ are asleep or at work. Measured on this machine at 20,000 people:
   kept under the old limit in anything measured; no world changed.) And what is kept is the ground
   the search looked at, not that ground stretched to where the walker was going: in a 2,000-person
   country on 17 km, 96,000 searches a day were run again because somebody moved between a walker
-  and a bed twenty squares off, for 1,355 ways found. Now 33,000.
+  and a bed twenty squares off, for 1,355 ways found. Now 33,000. *(A search out of tries is
+  remembered after all since later the same day, until anybody there moves: below.)*
 
-**Why some people are still visited every step.** Somebody idle and due a word with a neighbour
-rolls the dice on every step to see whether they start talking. The dice are one stream; drawing
-them in another order is another world. So they are visited — about one person-step in six at
-20,000. Changing that changes the world and is Ric's call (`TODO.md` 2b).
+**Why some people were still visited every step.** Somebody idle and due a word with a neighbour
+rolled the dice on every step to see whether they started talking. The dice are one stream;
+drawing them in another order is another world. So they were visited — about one person-step in
+six at 20,000. *Changed later the same day, on Ric's word: "When somebody next speaks", below.*
 
 **The world is the same world**, step for step. `create(options, { plainWalking: true })` runs the
 engine the long way round — everybody, every step, every list refilled — and
@@ -1242,7 +1243,7 @@ when a piece is two steps, and 22 when every step is its own piece — still und
 dearer than a big one (the 2,000-on-17-km row): there the search for a way round a crowd is half
 the time. People who may start a conversation are still visited every step. Asking a neighbour
 for food still reads through the village, so it grows with the village, not the world. All three
-are `TODO.md` 2b.
+are `TODO.md` 2b — done the same day, next section.
 
 **Rules this leaves** (also in `/AGENTS.md`): anything new that changes *another* person in the
 middle of a step calls `wakeUp(them)` first; anything that changes where somebody lives calls
@@ -1265,6 +1266,122 @@ Object layouts and why one is fast and many are slow:
 These were found and read as search summaries; the session's network did not allow the pages
 themselves to be opened, so the figures in this section are the ones measured here, not theirs.
 None of their code is used.
+
+### When somebody next speaks, and the rest of what item 2 left (2026-11-15)
+
+`TODO.md` 2b. Ric: *"do 2b finish 2 all the way"*. Four things item 2 had measured and left.
+
+**1. When somebody next speaks — the one change that makes a different world.** On every step on
+which somebody could speak, they rolled the dice for whether they tried to, at the same odds each
+step (30% at the default). So the step on which they next try is a number that can be drawn once:
+how many rolls until the first that comes up (`nextTry`, kept as `tryIn` on the person and counted
+down only on steps they could have spoken). Every wait is exactly as likely as it was. What
+changes is which numbers come off the dice, so **a seed gives a different world from the one it
+gave before this date** — the same country, another history. Nothing else about talking changed:
+who can be spoken to, what is said, what it does.
+
+Measured, because "the same in law" should be shown and not only argued: a year of the default
+world, twelve seeds, under the old rule and the new. The last column is how far apart the two
+are, in units of how much one seed differs from the next; with twelve seeds, anything under about
+0.8 is what chance alone gives.
+
+| A year of the default world | Old rule, mean ± one seed's spread | New rule | Apart by |
+|---|---|---|---|
+| People alive at the end | 379 ± 16 | 373 ± 24 | 0.3 |
+| Births | 13.5 ± 3.2 | 16.1 ± 5.2 | 0.6 |
+| Starved | 8.6 ± 11.8 | 14.8 ± 19.8 | 0.4 |
+| Died of sickness | 14.2 ± 4.9 | 16.0 ± 4.0 | 0.4 |
+| Died in battle | 10.6 ± 7.0 | 11.3 ± 9.0 | 0.1 |
+| Conversations a person a day | 9.3 ± 1.1 | 9.9 ± 1.1 | 0.6 |
+| Moves of house | 368 ± 104 | 327 ± 117 | 0.4 |
+| Changes of flag | 109 ± 73 | 114 ± 72 | 0.1 |
+| Wars | 4.5 ± 1.8 | 4.5 ± 2.0 | 0.0 |
+| Share of coins held by the top tenth | 0.56 ± 0.05 | 0.55 ± 0.04 | 0.2 |
+| People remembered, a person | 8.95 ± 0.20 | 8.92 ± 0.23 | 0.2 |
+| Mood | 0.72 ± 0.02 | 0.71 ± 0.03 | 0.6 |
+| Grown-ups' hours: asleep | 40.8% ± 2.1 | 40.0% ± 2.1 | 0.4 |
+| … at a bench | 16.2% ± 3.8 | 14.3% ± 3.0 | 0.6 |
+| … in the fields | 8.2% ± 0.4 | 8.5% ± 0.7 | 0.4 |
+| … in conversation | 8.8% ± 1.3 | 9.6% ± 1.3 | 0.6 |
+
+Conversation was the nearest to the line, so it was measured alone over a month in **200 seeds
+each way: 8.909 conversations a person a day under the old rule, 8.914 under the new** (give or
+take 0.1 either way; the middle seed 8.75 and 8.70; one seed in ten under 7.8 or over 10 in
+both). Under either rule about one world in fifty goes into a trading rush in which half of
+everybody is on the road with a load and talks twice as much (2 of 200 old, 4 of 200 new).
+
+What it buys: between tries there is nothing for somebody idle to do, so they are passed over
+like anybody asleep, and so is somebody jammed in a crowd who is idle. Two people in conversation
+are passed over too until the first of them has finished (`untilHeard`): once the idle were, that
+was one person-step in ten.
+
+**2. A search that ran out of tries is remembered, until anybody there moves.** Item 2 stopped
+remembering these, rightly: an arrival can make such a search succeed. But they were 60% of a
+dense small land's time — 3,325 searches a day at 730 millionths of a second each in the
+2,000-on-17-km world, run again every seven steps by somebody who had not moved, in a crowd that
+had not moved either. With every body where it was, a search is the same search. So each square
+also keeps the count at which somebody last *came* to stand on it (`cameAt`, `came`, beside
+`roomAt`), and this kind of memory (`rm.any`) is dropped when anybody on the ground it looked at
+comes, goes or dies. The search itself also stopped working out the same two square roots at
+every look. Its answers are the same: 720,000 searches were run both ways side by side.
+
+**3. The page says it has touched nobody.** `advance(seconds, true)` leaves out the look at
+everybody for what was done to them from outside, and the putting-right of passed-over people's
+counts afterwards. The page gives its word because it only draws people; a test or a console
+leaves it off and gets both. The engine's own doors (`rule`, `order`, `orderVillage`, `declare`,
+`set`) say for themselves that something was done. **After `advance(…, true)`, call
+`world.settle()` before reading anybody's `wait`, `stuck`, `routeRetry`, `talk`, `tryIn` or
+`sayT`.**
+
+**4. Asking a neighbour for food** still reads through the village. No way was found to find the
+best giver without reading everybody's larder that gives the same giver, short of following every
+change to anybody's food. The honest fix is that nobody knows the larder of two and a half
+thousand neighbours: it belongs with what a person holds in mind, and it is now part of `TODO.md`
+item 11.
+
+**The world is the same world** for 2, 3 and 4, and for 1 it is the world the new rule makes run
+the long way round: `test/dozing.test.mjs`, twelve kinds of world now. The audit was made to
+check what each memory actually claims — that every body on that ground is where it was, and for
+a search out of tries that nobody else has come — and to search again whatever is remembered and
+see that there is still no way. Broken on purpose 31 ways; it catches all 31. (It caught two real
+mistakes while this was being built: a listener reading what a passed-over speaker still had to
+say from a count that was behind, and a false alarm of its own.) Before the talking rule
+changed, the engine with 2, 3 and the faster search was run against the engine as item 2 left it:
+identical over the thirteen kinds of world, and hour by hour for 60 hours at 2,000 people, 36 at
+5,000 and 26 at 20,000.
+
+**What it bought** (Intel Xeon 2.3 GHz cloud machine, 16 GB — a different, faster cloud machine from the one in the table
+above, so both columns were measured again on it; bodies as drawn, seed 7):
+
+| People | Land | A day takes, item 2 → 2b | Top speed | Steps on which a person is looked at |
+|---|---|---|---|---|
+| 400 | 17 km | 0.39 → 0.32 s | 767× → 938× | 45% → 27% |
+| 2,000 | 17 km | 3.8 → 3.4 s | 80× → 89× | 68% → 48% |
+| 5,000 | 40 km | 2.4 → 2.6 s | 127× → 117× | 52% → 22% |
+| 20,000 | 80 km | 8.6 → 5.7 s | 35× → 52× | 30% → 9% |
+| 400 | 500 km | 0.19 → 0.19 s | 1,559× → 1,566× | 39% → 24% |
+
+Handed over in pieces, at 20,000 people: before, a stretch that took 8.1 s in one piece took
+8.7 s two steps at a time and 12.6 s a step at a time. Now, with the page's word, pieces of any
+size cost what one piece costs (9.7, 9.7 and 9.7 s for the same stretch of the new world);
+without it, 12.5 and 16.8.
+
+**What it did not fix, and should not hide.** A dense small land is still dearer per person than
+a big one. With the talking rule changed, one seed is no longer the same world before and after,
+so a single row is one world against another: the 5,000 row above is slower by that and nothing else — over five seeds a day at 5,000
+people took 3.4 s under either talking rule. What is left there is the search for a
+way round in a crowd that is always moving, and that is the crowding itself — `TODO.md` item 7.
+With bodies at real size the cost is still asking a neighbour (item 11).
+
+Sources. Drawing the number of rolls until the first success in one go is the inverse-transform
+way of sampling a geometric distribution, `1 + floor(ln U / ln(1 − p))` with U never zero
+([randlib's igngeom](https://git.fossee.in/scilab_for_xcos_on_cloud/.git/tree/modules/randlib/src/c/igngeom.c);
+[a worked answer](https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/23517138/random-number-generator-using-geometric-distribution)).
+Giving talking a dice stream of its own
+([L'Ecuyer et al., streams and substreams](https://econpapers.repec.org/RePEc:inm:oropre:v:50:y:2002:i:6:p:1073-1075))
+was looked at and not used: it keeps other things' dice still when talking changes, but somebody
+would still have to roll every step. Read as search summaries, as above. None of their code is
+used.
 
 ### War has to be fed (2026-11-14)
 

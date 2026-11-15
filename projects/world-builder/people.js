@@ -680,6 +680,9 @@
                      when and for which ground they last asked to be told of
                      room being made (`watchFor`). */
                   ix: -1, bk: -1, wg: -1, wb: -1,
+                  /* Steps, of those on which they could speak, until they next
+                     try to (0: not drawn yet). See "when somebody next speaks". */
+                  tryIn: 0,
                   /* Everything set later in a life is named here, empty, so every
                      person is the same kind of object from birth (2026-11-15).
                      Measured: with these added one by one as they were first used,
@@ -2311,7 +2314,14 @@
     const MEMO = !REAL_BODIES && !PLAIN;
     const roomAt = MEMO ? new Float64Array(cols * rows) : null;
     let clock = 0;
-    const madeRoom = (x, y) => { if (MEMO) { const i = cell(x, y); roomAt[i] = ++clock; tell(Math.floor(x), Math.floor(y)); } };
+    const madeRoom = (x, y) => { if (MEMO) { const i = cell(x, y); roomAt[i] = ++clock; tell(Math.floor(x), Math.floor(y), false); } };
+    /* Somebody has come to stand at (x, y) (2026-11-15, TODO 2b). An arrival
+       cannot unblock a step or open a way for somebody walled in, so those
+       memories ignore it; but a search that ran out of tries can come out
+       differently when anybody at all moves on the ground it looked at, so
+       that memory reads these counts as well as the room made. */
+    const cameAt = MEMO ? new Float64Array(cols * rows) : null;
+    const came = (x, y) => { if (MEMO) { cameAt[cell(x, y)] = ++clock; tell(Math.floor(x), Math.floor(y), true); } };
     /* Has room been made near (x, y) since count `since`? A remembered step
        is at most two pieces of 0.2: the walker can be 0.2 away when they try
        the second, try a spot 0.2 further, and be stopped by somebody 0.42
@@ -2376,7 +2386,7 @@
            aside and straight back, which is what a packed crowd mostly does:
            82,000 such steps an hour against 1,600 that got anywhere. Nobody
            else acts in between, so nothing saw it and no room was made. */
-        if (p.x !== x0 || p.y !== y0) { madeRoom(x0, y0); p.ox = p.x; p.oy = p.y; p.mc = -1; }
+        if (p.x !== x0 || p.y !== y0) { madeRoom(x0, y0); came(p.x, p.y); p.ox = p.x; p.oy = p.y; p.mc = -1; }
         /* Only a step of one or two pieces is remembered: see `quiet`. A
            longer one (a faster walker, a finer map) is worked out every time. */
         else if (k <= 2) { p.mc = clock; p.mx = x0; p.my = y0; p.mdx = dx; p.mdy = dy; }
@@ -2405,9 +2415,10 @@
        123 of them found anything. `m` holds where they stood, where they were
        going, the squares the search looked at, and the count then; until room
        is made on one of those squares the search would fail again. */
-    function noWay(p, x0, y0, x1, y1) {
+    function noWay(p, x0, y0, x1, y1, any) {
       if (!MEMO) return null;
-      const m = p.rm || (p.rm = { c: -1, x: 0, y: 0, tx: 0, ty: 0, x0: 0, y0: 0, x1: 0, y1: 0 });
+      const m = p.rm || (p.rm = { c: -1, x: 0, y: 0, tx: 0, ty: 0, x0: 0, y0: 0, x1: 0, y1: 0, any: false });
+      m.any = !!any;       // true: forgotten when anybody moves there at all, not only when room is made
       m.x0 = clamp(Math.floor(x0 - BODY), 0, cols - 1); m.x1 = clamp(Math.floor(x1 + BODY), 0, cols - 1);
       m.y0 = clamp(Math.floor(y0 - BODY), 0, rows - 1); m.y1 = clamp(Math.floor(y1 + BODY), 0, rows - 1);
       /* A search that wandered very far is not remembered. Until 2026-11-15
@@ -2418,16 +2429,47 @@
          run again every time. */
       if ((m.x1 - m.x0 + 1) * (m.y1 - m.y0 + 1) > 1024) { m.c = -1; return null; }
       m.c = clock; m.x = p.x; m.y = p.y; m.tx = p.tx; m.ty = p.ty;
+      if (AUDIT) { const snap = bodiesIn(m, p); snap.strict = outOfTries; snaps.set(p, snap); }
       return null;
+    }
+    /* For the audit: everybody standing on the ground a memory covers, and
+       exactly where. The memory's claim is that they are all still there —
+       and, for a search that ran out of tries, that nobody else is. */
+    const snaps = new WeakMap();
+    function bodiesIn(m, p) {
+      const out = [];
+      for (let y = m.y0; y <= m.y1; y++) for (let x = m.x0; x <= m.x1; x++) { const l = occ[y * cols + x]; if (l) for (const q of l) if (q !== p && q.hp !== -99) out.push(q.id + ":" + q.x + ":" + q.y); }
+      return out.sort();
+    }
+    /* The search whatever is remembered, leaving what is remembered as it was. */
+    function searchAnyway(p) {
+      const kept = Object.assign({}, p.rm), snap = snaps.get(p);
+      sure = true; const found = routeAround(p); sure = false;
+      Object.assign(p.rm, kept); snaps.set(p, snap);
+      return found;
+    }
+    function auditMemory(p) {
+      const m = p.rm, snap = snaps.get(p), now = new Set(bodiesIn(m, p));
+      for (const b of snap) if (!now.has(b)) throw new Error("audit: somebody on the ground " + p.name + "'s failed search looked at has gone, and it was not forgotten");
+      if ((m.any || snap.strict) && now.size !== snap.length) throw new Error("audit: somebody has come onto the ground " + p.name + "'s search ran out of tries on, and it was not forgotten");
     }
     function stillNoWay(p) {
       const m = p.rm;
       if (!m || m.c < 0 || m.x !== p.x || m.y !== p.y || m.tx !== p.tx || m.ty !== p.ty) return false;
-      for (let y = m.y0; y <= m.y1; y++) { const row = y * cols; for (let x = m.x0; x <= m.x1; x++) if (roomAt[row + x] > m.c) return false; }
+      for (let y = m.y0; y <= m.y1; y++) { const row = y * cols; for (let x = m.x0; x <= m.x1; x++) if (roomAt[row + x] > m.c || (m.any && cameAt[row + x] > m.c)) return false; }
       return true;
     }
+    const DIAGONAL = Math.hypot(1, 1) * 0.5;
+    let sure = false, outOfTries = false;      // the audit's: search whatever is remembered; how the last search ended
     function routeAround(p) {
-      if (MEMO && stillNoWay(p)) return null;
+      if (MEMO && !sure && stillNoWay(p)) {
+        /* For tests: search anyway, and see that there really is still no way. */
+        if (AUDIT) {
+          auditMemory(p);
+          if (searchAnyway(p)) throw new Error("audit: " + p.name + " was remembered as having no way round, and has one");
+        }
+        return null;
+      }
       // On this half-tile lattice these are every possible arrival node.
       // A packed destination has no route, regardless of how far we search.
       // Reject it cheaply instead of exploring 800 nodes on every retry.
@@ -2437,6 +2479,7 @@
         const nx = p.x + x * 0.5, ny = p.y + y * 0.5;
         if (Math.hypot(nx - p.tx, ny - p.ty) <= 0.5 && free(p, nx, ny)) arrival = true;
       }
+      outOfTries = false;
       if (!arrival) return noWay(p, p.tx - 0.5, p.ty - 0.5, p.tx + 0.5, p.ty + 0.5);
       const heap = [], costs = new Map(), clear = new Map();
       let lx = p.x, ly = p.y, hx = p.x, hy = p.y;   // every place the search looks at lies in this box
@@ -2464,12 +2507,18 @@
         }
         return first;
       }
-      const start = { ix: 0, iy: 0, x: p.x, y: p.y, g: 0, parent: null };
-      start.f = distance(start); costs.set(key(0, 0), 0); push(start);
+      /* How far a place is from where they are going is worked out once and
+         kept on it (`h`), and the length of a step along the lattice is one
+         of two numbers (2026-11-15, TODO 2b): the search asked for both
+         again at every look, 6,400 square roots a search for the step alone,
+         and a sixth of a dense land's time was that one sum. The same
+         numbers, so the same search. */
+      const start = { ix: 0, iy: 0, x: p.x, y: p.y, g: 0, parent: null, h: 0, f: 0 };
+      start.h = distance(start); start.f = start.h; costs.set(key(0, 0), 0); push(start);
       for (let tries = 0; heap.length && tries < 800; tries++) {
         const n = pop();
         if (n.g !== costs.get(key(n.ix, n.iy))) continue;
-        if (distance(n) <= 0.5) {
+        if (n.h <= 0.5) {
           const path = [];
           for (let q = n; q.parent; q = q.parent) path.push({ x: q.x, y: q.y });
           return path.reverse();
@@ -2477,7 +2526,7 @@
         for (let iy = -1; iy <= 1; iy++) for (let ix = -1; ix <= 1; ix++) {
           if (!ix && !iy) continue;
           const nx = n.ix + ix, ny = n.iy + iy, k = key(nx, ny);
-          const x = p.x + nx * 0.5, y = p.y + ny * 0.5, g = n.g + Math.hypot(ix, iy) * 0.5;
+          const x = p.x + nx * 0.5, y = p.y + ny * 0.5, g = n.g + (ix && iy ? DIAGONAL : 0.5);
           if (g >= (costs.get(k) ?? Infinity)) continue;
           if (x < lx) lx = x; else if (x > hx) hx = x;
           if (y < ly) ly = y; else if (y > hy) hy = y;
@@ -2486,18 +2535,23 @@
           let fits = true;
           for (let s = 1; s < 6; s++) if (!free(p, n.x + ix * 0.5 * s / 6, n.y + iy * 0.5 * s / 6)) { fits = false; break; }
           if (!fits) continue;
-          const q = { ix: nx, iy: ny, x, y, g, parent: n }; q.f = g + distance(q);
+          const q = { ix: nx, iy: ny, x, y, g, parent: n, h: 0, f: 0 }; q.h = distance(q); q.f = g + q.h;
           costs.set(k, g); push(q);
         }
       }
       /* Out of tries with places still to look at is a different failure from
-         being walled in, and it is not remembered (2026-11-15): somebody
-         arriving can shut off a dead end the search was wasting its 800 looks
-         in, and the same search then gets through. Only "nobody new can open
-         a way" is safe to keep, and that is true of walls, not of patience.
-         Measured, under 3% of failures; none had been small enough to be
-         remembered under the old 144-square line, so no world changed. */
-      if (heap.length) { if (p.rm) p.rm.c = -1; return null; }
+         being walled in. Somebody arriving can shut off a dead end the search
+         was wasting its 800 looks in, and the same search then gets through:
+         so "nobody new can open a way" is true of walls and not of patience.
+         It is remembered all the same (2026-11-15, TODO 2b), but only until
+         anybody on the ground it looked at moves at all — comes, goes or
+         dies — because with every body where it was, the search is the same
+         search. Measured in a 2,000-person country on 17 km: these were
+         3,325 searches a day at 730 millionths of a second each, 60% of the
+         engine's time, each run again every seven steps by somebody who had
+         not moved in a crowd that had not moved either. */
+      outOfTries = heap.length > 0;      // told to the audit separately from what is remembered
+      if (heap.length) return noWay(p, lx, ly, hx, hy, true);
       // A fully enclosed person waits for a real opening.
       /* What is remembered is the ground the search looked at, and no more.
          Until 2026-11-15 the box was stretched to take in where they were
@@ -2591,10 +2645,35 @@
     const quietTask = k => k === "sleep" || k === "field" || k === "make" || k === "fight";
     const paceOf = p => WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1);
     const whole = v => Math.floor(v) === v;
+    /* How many rolls, at the odds of trying to speak on one step, until the
+       first that comes up: at least one. */
+    function nextTry() {
+      const odds = Math.min(0.9, S.talk * 0.12 / STEP_SCALE);
+      return 1 + Math.floor(Math.log(1 - R()) / Math.log(1 - odds));
+    }
+    /* For two in conversation: the step, counted from the one just had, on
+       which the first of them has finished. `heard` is what the other still
+       has to say as this one will next see it. */
+    function untilHeard(p, r, heard) {
+      if (!whole(p.sayT) || !whole(heard) || !(p.talk <= 0 || whole(p.talk))) return 1;
+      return Math.min(p.sayT, heard);
+    }
+    function inTalk(p) {
+      const r = p.sayT > 0 && !(p.hit > 0) && p.hp !== -99 ? byId.get(p.talkingTo) : null;
+      return r && r.sayT > 0 && r.talkingTo === p.id ? r : null;
+    }
+    /* The step, counted from the one just had, on which talking next needs
+       them looked at: when a word owing runs down to nothing (others read
+       that), or when they next try to speak. Until then it only counts. */
+    function untilTalk(p) {
+      if (p.talk > 0) return whole(p.talk) ? p.talk : 1;
+      if (S.talk <= 0 || quietTask(p.task)) return p.talk === 0 ? Infinity : 1;
+      return p.tryIn >= 1 && whole(p.tryIn) ? p.tryIn : 1;
+    }
     /* 1: waiting. A step is only the count. */
     function dozeable(p) {
-      return p.wait > 0 && whole(p.wait) && !(p.sayT > 0) && !(p.hit > 0) && !(p.talk > 0) && p.hp !== -99 &&
-        (S.talk <= 0 || quietTask(p.task)) && Math.hypot(p.tx - p.x, p.ty - p.y) <= Math.max(paceOf(p), 0.5);
+      return p.wait > 0 && whole(p.wait) && !(p.sayT > 0) && !(p.hit > 0) && p.hp !== -99 &&
+        Math.hypot(p.tx - p.x, p.ty - p.y) <= Math.max(paceOf(p), 0.5);
     }
     /* 2: jammed. Measured after the waiting were passed over: at 20,000
        people with bodies as drawn, 74% of all steps were still somebody
@@ -2613,7 +2692,7 @@
     const RETRY = TK(30), LOOK = TK(12);
     function jamFields(p) {
       if (!(p.mc >= 0) || p.mx !== p.x || p.my !== p.y || p.route !== null || p.hp === -99) return false;
-      if (p.sayT > 0 || p.hit > 0 || p.talk > 0 || !(S.talk <= 0 || quietTask(p.task))) return false;
+      if (p.sayT > 0 || p.hit > 0) return false;
       if (!(p.routeRetry >= 1 && p.routeRetry <= RETRY && whole(p.routeRetry) && p.stuck >= LOOK && whole(p.stuck))) return false;
       const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), pace = paceOf(p);
       if (!(d > 2.5 && d > pace) || d < (p.lastDistance ?? Infinity) - 0.1) return false;
@@ -2639,15 +2718,27 @@
        `wg` and `wb` are when and for which blocks somebody last asked, so
        dozing off again in the same spot does not put them on a list twice. */
     const BLOCK = 4, bcols = Math.ceil(cols / BLOCK), brows = Math.ceil(rows / BLOCK);
-    const watch = MEMO ? new Array(bcols * brows) : null, firedAt = MEMO ? new Float64Array(bcols * brows) : null;
+    /* Two lists a block: [2b] is told when room is made, [2b + 1] when
+       anybody moves there at all (for a memory of a search out of tries). */
+    const watch = MEMO ? new Array(bcols * brows * 2) : null, firedAt = MEMO ? new Float64Array(bcols * brows * 2) : null;
     let fires = 0;
+    function stillWatching(p) {
+      const m = p.rm, fx = Math.floor(p.x), fy = Math.floor(p.y);
+      const x0 = Math.floor(clamp(Math.min(fx - 1, m.x0), 0, cols - 1) / BLOCK), x1 = Math.floor(clamp(Math.max(fx + 1, m.x1), 0, cols - 1) / BLOCK);
+      const y0 = Math.floor(clamp(Math.min(fy - 1, m.y0), 0, rows - 1) / BLOCK), y1 = Math.floor(clamp(Math.max(fy + 1, m.y1), 0, rows - 1) / BLOCK);
+      const any = m.any ? 1 : 0;
+      if ((((y0 * bcols + x0) * 1024 + (x1 - x0)) * 1024 + (y1 - y0)) * 2 + any !== p.wb) return false;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (firedAt[(y * bcols + x) * 2 + any] > p.wg) return false;
+      return true;
+    }
     function watchFor(p) {
       const m = p.rm, fx = Math.floor(p.x), fy = Math.floor(p.y);
       const x0 = Math.floor(clamp(Math.min(fx - 1, m.x0), 0, cols - 1) / BLOCK), x1 = Math.floor(clamp(Math.max(fx + 1, m.x1), 0, cols - 1) / BLOCK);
       const y0 = Math.floor(clamp(Math.min(fy - 1, m.y0), 0, rows - 1) / BLOCK), y1 = Math.floor(clamp(Math.max(fy + 1, m.y1), 0, rows - 1) / BLOCK);
-      const box = ((y0 * bcols + x0) * 1024 + (x1 - x0)) * 1024 + (y1 - y0), same = box === p.wb;   // one number for each possible box
+      const any = m.any ? 1 : 0;
+      const box = (((y0 * bcols + x0) * 1024 + (x1 - x0)) * 1024 + (y1 - y0)) * 2 + any, same = box === p.wb;   // one number for each possible box and list
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-        const b = y * bcols + x;
+        const b = (y * bcols + x) * 2 + any;
         if (same && firedAt[b] <= p.wg) continue;       // still on this list from last time
         let list = watch[b]; if (!list) list = watch[b] = [];
         /* A list nobody empties (no room is ever made there) could fill with
@@ -2661,12 +2752,15 @@
       }
       p.wb = box; p.wg = fires;
     }
-    function tell(x, y) {
-      const b = Math.floor(clamp(y, 0, rows - 1) / BLOCK) * bcols + Math.floor(clamp(x, 0, cols - 1) / BLOCK), list = watch[b];
-      firedAt[b] = ++fires;
-      if (!list || !list.length) return;
-      for (let k = 0; k < list.length; k++) { const q = list[k]; if (kind[q.ix] === 2) wakeUp(q); }
-      list.length = 0;
+    function tell(x, y, arrival) {
+      const b = (Math.floor(clamp(y, 0, rows - 1) / BLOCK) * bcols + Math.floor(clamp(x, 0, cols - 1) / BLOCK)) * 2;
+      for (let s = arrival ? b + 1 : b; s <= b + 1; s++) {
+        const list = watch[s];
+        firedAt[s] = ++fires;
+        if (!list || !list.length) continue;
+        for (let k = 0; k < list.length; k++) { const q = list[k]; if (kind[q.ix] === 2) wakeUp(q); }
+        list.length = 0;
+      }
     }
     /* Called before anything changes somebody other than the one acting, and
        when room is made beside somebody jammed. People act in the order of
@@ -2680,9 +2774,14 @@
     }
     /* Their counts as they would stand after step `done`. */
     function caughtUp(q, i, k, done) {
-      if (k === 1) { q.wait = wake[i] - 1 - done; return; }
       const n = done - since[i];
-      if (n > 0) { q.stuck += n; q.routeRetry = ((q.routeRetry - 1 - n) % RETRY + RETRY) % RETRY + 1; since[i] = done; }
+      if (!(n > 0)) return;
+      since[i] = done;
+      if (k === 3) { q.sayT -= n; if (q.talk > 0) q.talk = Math.max(0, q.talk - n); return; }
+      if (k === 1) q.wait -= n;
+      else { q.stuck += n; q.routeRetry = ((q.routeRetry - 1 - n) % RETRY + RETRY) % RETRY + 1; }
+      if (q.talk > 0) q.talk -= n;
+      else if (S.talk > 0 && !quietTask(q.task)) q.tryIn -= n;
     }
     function wakeAll() {
       for (let i = 0; i < people.length; i++) if (kind[i]) { caughtUp(people[i], i, kind[i], activityTicks); kind[i] = 0; wake[i] = 0; }
@@ -2697,14 +2796,17 @@
       for (let i = 0; i < people.length; i++) {
         const p = people[i];
         if (p.ix !== i) p.ix = i;
-        if (kind[i] === 1) { if (dozeable(p)) wake[i] = activityTicks + p.wait + 1; else { kind[i] = 0; wake[i] = 0; } }
+        if (kind[i] === 1) {
+          const h = dozeable(p) ? Math.min(p.wait + 1, untilTalk(p)) : 0;
+          if (h > 1) { wake[i] = activityTicks + h; since[i] = activityTicks; } else { kind[i] = 0; wake[i] = 0; }
+        }
         if (!p.on) { kind[i] = 0; wake[i] = 0; continue; }
         if (MEMO) {
           /* Moved by something other than a step: the place they left has
              room in it now. */
           if (p.x !== p.ox || p.y !== p.oy) {
             if (p.ox === p.ox) { unputAt(p, cell(p.ox, p.oy)); madeRoom(p.ox, p.oy); }
-            p.ox = p.x; p.oy = p.y; put(p);
+            p.ox = p.x; p.oy = p.y; put(p); came(p.x, p.y);
           }
           if (p.hp === -99 && p.on !== 2) { madeRoom(p.x, p.y); p.on = 2; }   // killed by something other than `die`
         }
@@ -2713,7 +2815,26 @@
       /* Somebody jammed is looked at for what can be changed from outside —
          themselves. Whether room has been made is not read again: the moves
          and deaths above told everybody they could matter to. */
-      if (MEMO) for (let i = 0; i < people.length; i++) if (kind[i] === 2 && !jamFields(people[i])) { kind[i] = 0; wake[i] = 0; }
+      for (let i = 0; i < people.length; i++) if (kind[i] === 3) {
+        /* Between steps both have had the last one; whoever comes later in
+           the array will see the other one step further on. */
+        const p = people[i], r = inTalk(p), h = r ? untilHeard(p, r, r.ix < i ? r.sayT : r.sayT + 1) : 0;
+        if (h > 1) { wake[i] = activityTicks + h; since[i] = activityTicks; } else { kind[i] = 0; wake[i] = 0; }
+      }
+      if (MEMO) for (let i = 0; i < people.length; i++) if (kind[i] === 2) {
+        const h = jamFields(people[i]) ? untilTalk(people[i]) : 0;
+        if (h > 1) { wake[i] = activityTicks + h; since[i] = activityTicks; } else { kind[i] = 0; wake[i] = 0; }
+      }
+    }
+    /* For the audit: would somebody passed over as in conversation really
+       still be standing listening on step `now`? What each still has to say
+       is worked out as it would stand if they had been visited. */
+    function stillInTalk(p, now) {
+      const r = inTalk(p);
+      if (!r) return false;
+      const mine = p.sayT - (now - since[p.ix]);
+      const theirs = kind[r.ix] === 3 ? r.sayT - ((r.ix < p.ix ? now : now - 1) - since[r.ix]) : r.sayT;
+      return mine > 0 && theirs > 0;
     }
     /* For tests: the lists kept up as people move must be the lists a refill
        would make, and nobody passed over may have been changed. */
@@ -2728,6 +2849,13 @@
         if (b.length !== w.length || b.some((p, k) => p !== w[k])) throw new Error("audit: the list for square " + i + " is not what a refill would make");
       }
       if (listed !== people.length) throw new Error("audit: " + listed + " people listed on squares, " + people.length + " alive");
+      /* Somebody passed over as jammed on the strength of a search that ran
+         out of tries: search again, and see that it still finds nothing. */
+      for (let i = 0; i < people.length; i++) if (kind[i] === 2) auditMemory(people[i]);
+      for (let i = 0; i < people.length; i++) if (kind[i] === 2 && people[i].rm.any) {
+        const p = people[i];
+        if (searchAnyway(p)) throw new Error("audit: " + p.name + " is passed over as having no way round, and has one");
+      }
       if (MEMO) {
         let stood = 0;
         for (const key in occ) { const l = occ[key]; if (!l) continue; stood += l.length; for (const p of l) if (cell(p.x, p.y) !== +key || people[p.ix] !== p) throw new Error("audit: " + p.name + " is listed standing where they are not"); }
@@ -2775,7 +2903,7 @@
         p.tx = p.x; p.ty = p.y;
         p.ox = p.x; p.oy = p.y;
         put(p); p.on = true;
-        if (!PLAIN) shifted.push(p);
+        if (!PLAIN) { shifted.push(p); came(p.x, p.y); }
       }
       taken = null; takenSlot = null;
       rebucket();
@@ -2785,11 +2913,11 @@
       for (cur = 0; cur < people.length; cur++) {
         const w = wake[cur];
         if (w > now) {
-          if (AUDIT && !(kind[cur] === 1 ? dozeable(people[cur]) : jamFields(people[cur]) && quietNear(people[cur]) && stillNoWay(people[cur]))) { const q = people[cur]; throw new Error("audit: " + q.name + " was changed while passed over, and not woken (" + (kind[cur] === 1 ? "waiting" : "jammed, quiet " + quietNear(q) + ", no way " + stillNoWay(q)) + "; task " + q.task + ", said " + q.sayT + ", talk " + q.talk + ", hit " + q.hit + ")"); }
+          if (AUDIT && !(kind[cur] === 1 ? dozeable(people[cur]) : kind[cur] === 3 ? stillInTalk(people[cur], now) : jamFields(people[cur]) && quietNear(people[cur]) && stillNoWay(people[cur]))) { const q = people[cur]; throw new Error("audit: " + q.name + " was changed while passed over, and not woken (" + (kind[cur] === 1 ? "waiting" : kind[cur] === 3 ? "in conversation" : "jammed, quiet " + quietNear(q) + ", no way " + stillNoWay(q)) + "; task " + q.task + ", said " + q.sayT + ", talk " + q.talk + ", hit " + q.hit + ")"); }
           continue;
         }
         const p = people[cur];
-        if (w) { p.wait = 0; wake[cur] = 0; kind[cur] = 0; }
+        if (w) { caughtUp(p, cur, kind[cur], now - 1); wake[cur] = 0; kind[cur] = 0; }
         visits++;
         if (p.hp !== -99) act(p);
       }
@@ -2806,7 +2934,20 @@
       const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
       const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1);
       const partner = p.sayT > 0 && byId.get(p.talkingTo);
-      if (partner && partner.sayT > 0 && partner.talkingTo === p.id) return;
+      if (partner && partner.sayT > 0 && partner.talkingTo === p.id) {
+        /* 3: in conversation. They stand and listen until one of the two
+           has finished speaking, and a step is only that count running down
+           (2026-11-15, TODO 2b: once the idle were passed over, one
+           person-step in ten at 20,000 people was this). */
+        if (!PLAIN && !(p.hit > 0)) {
+          /* What the other still has to say, as it stands this moment: if
+             they are being passed over too, what they carry is behind. */
+          const j = partner.ix, heard = kind[j] === 3 ? partner.sayT - ((j < cur ? activityTicks : activityTicks - 1) - since[j]) : partner.sayT;
+          const h = untilHeard(p, partner, heard);
+          if (h > 1) { kind[p.ix] = 3; wake[p.ix] = activityTicks + h; since[p.ix] = activityTicks; }
+        }
+        return;
+      }
       if (d > Math.max(pace, 0.5)) {
         if (d < (p.lastDistance ?? Infinity) - 0.1) { p.lastDistance = d; p.stuck = 0; }
         else p.stuck = (p.stuck || 0) + 1;
@@ -2851,23 +2992,48 @@
         if (p.wait > 0) { p.wait--; counted = true; } else work(p);
       }
 
-      /* Talking to whoever is standing on the same ground. */
-      if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && p.task !== "field" && p.task !== "make" && p.task !== "sleep" && R() < Math.min(0.9, S.talk * 0.12 / STEP_SCALE)) {
-        const b = bucketAt(tileAt(p.x, p.y));
-        if (b.length > 1) {
-          const q = b[Math.floor(R() * b.length)];
-          if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4 && q.task !== "sleep") converse(p, q);
+      /* Talking to whoever is standing on the same ground.
+         ── when somebody next speaks (2026-11-15, TODO 2b; Ric: "do 2b finish
+         2 all the way") ───────────────────────────────────────────────────
+         Until then, on every step on which somebody could speak they rolled
+         the dice for whether they tried to: the same odds each step. So the
+         step on which they next try is a number that can be drawn once — how
+         many rolls until the first that comes up — instead of found by
+         rolling. The odds of every wait are exactly what they were; what
+         changed is which numbers come off the dice, so the same seed is a
+         different world from the one it was before this date, with the same
+         amount of talking in it (measured: README, "When somebody next
+         speaks"). What it buys: between tries there is nothing to do for
+         somebody idle, so they can be passed over like anybody else. That
+         was one person-step in six at 20,000 people. */
+      if (p.talk === 0 && S.talk > 0 && !quietTask(p.task)) {
+        if (!(p.tryIn >= 1)) p.tryIn = nextTry();
+        if (--p.tryIn === 0) {
+          const b = bucketAt(tileAt(p.x, p.y));
+          if (b.length > 1) {
+            const q = b[Math.floor(R() * b.length)];
+            if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4 && q.task !== "sleep") converse(p, q);
+          }
+          p.tryIn = nextTry();
         }
       }
       if (PLAIN) return;
       /* Nothing to do but count until the wait is up: not visited until then. */
       if (counted) {
-        if (p.wait > 0 && whole(p.wait) && !(p.sayT > 0) && !(p.hit > 0) && !(p.talk > 0) && (S.talk <= 0 || quietTask(p.task))) {
-          kind[p.ix] = 1; wake[p.ix] = activityTicks + p.wait + 1;
+        if (p.wait > 0 && whole(p.wait) && !(p.sayT > 0) && !(p.hit > 0)) {
+          const h = Math.min(p.wait + 1, untilTalk(p));
+          if (h > 1) { kind[p.ix] = 1; wake[p.ix] = activityTicks + h; since[p.ix] = activityTicks; }
         }
       /* Jammed, with nothing to do but stand until room is made. */
-      } else if (MEMO && p.mc >= 0 && p.route === null && p.stuck >= LOOK && jammed(p)) {
-        kind[p.ix] = 2; wake[p.ix] = Infinity; since[p.ix] = activityTicks; watchFor(p);
+      } else if (MEMO && p.mc >= 0 && p.route === null && p.stuck >= LOOK && jamFields(p)) {
+        const h = untilTalk(p);
+        /* Somebody woken only to try a word is still on every list they
+           were on if none of those has told anybody since — and then no
+           room has been made on their ground either, and none of it need be
+           read again. */
+        if (h > 1 && (stillWatching(p) || (quiet(p.x, p.y, p.mc) && stillNoWay(p) && (watchFor(p), true)))) {
+          kind[p.ix] = 2; wake[p.ix] = activityTicks + h; since[p.ix] = activityTicks;
+        }
       }
     }
 
@@ -3360,19 +3526,34 @@
     // step() accepts simulated hours; advance() accepts seconds at 1×. Neither
     // skips walking, exchanges, consumption or hourly updates at higher speed.
     let elapsed = 0, compensation = 0;
-    function advance(seconds) {
+    /* `untouched` (2026-11-15, TODO 2b): the caller's word that it has changed
+       nobody since the last call, and reads nobody's `wait`, `stuck` or
+       `routeRetry`. The page gives it; it only draws people. Then the look at
+       everybody for what was done from outside, and the putting-right of
+       those counts afterwards, are left out — at 20,000 people they were a
+       third again on a day handed over two steps at a time, and nearly
+       double a step at a time. Anything else (a test, a console) leaves it
+       off and gets both; and the engine's own doors say so themselves. */
+    let touched = false, unsettled = false;
+    function advance(seconds, untouched) {
       if (!Number.isFinite(seconds) || seconds < 0) throw new RangeError("Time must be a finite nonnegative number of seconds.");
       const add = seconds - compensation, next = elapsed + add;
       compensation = (next - elapsed) - add; elapsed = next;
       const target = Math.floor(elapsed * TICKS_PER_SECOND + 1e-8);
       if (activityTicks >= target) return;
-      if (!PLAIN) lookRound();
+      if (!PLAIN && (touched || !untouched)) { if (unsettled) settle(); lookRound(); }
+      touched = false;
       while (activityTicks < target) {
         activityTicks++; actionTick();
         if (activityTicks % ACTIONS_PER_HOUR === 0) hour();
       }
-      if (!PLAIN) settle();
+      if (PLAIN) return;
+      if (untouched) unsettled = true; else { settle(); unsettled = false; }
     }
+    /* Before anything outside the engine reads or changes the counts a
+       passed-over person carries (`wait`, `stuck`, `routeRetry`), and before
+       the engine's own doors (`rule`, `order`, `set`, …) change anything. */
+    function openUp() { if (unsettled) { settle(); unsettled = false; } touched = true; }
     function step(hours = 1) { advance(hours * HOUR_SECONDS); }
 
     /* ── you, ruling ──────────────────────────────────────────────────────────
@@ -3385,6 +3566,7 @@
        fled from exactly as a leader's would be. Nothing here decides anything
        on its own. */
     function rule(fid, on) {
+      openUp();
       const f = factions[fid]; if (!f || !f.alive) return false;
       const at = villages.find(v => v.alive && v.f === f.id) || { x: 0, y: 0 };
       if (on && !f.yours) {
@@ -3398,6 +3580,7 @@
       return true;
     }
     function order(fid, o) {
+      openUp();
       const f = factions[fid]; if (!f || !f.yours) return false;
       if ("tax" in o) f.yours.tax = f.tax = clamp(+o.tax || 0, 0, 0.6);
       if ("army" in o) f.yours.army = f.army = clamp(+o.army || 0, 0, 0.6);
@@ -3405,6 +3588,7 @@
       return true;
     }
     function orderVillage(vid, o) {
+      openUp();
       const v = villages[vid]; if (!v || !v.alive || !factions[v.f].yours) return false;
       if ("tax" in o) v.tax = o.tax == null ? null : clamp(+o.tax || 0, 0, 0.6);
       if ("relief" in o) v.relief = o.relief == null ? null : !!o.relief;
@@ -3414,6 +3598,7 @@
        weary — its dead, the years and its hungry, as its own leader would
        weigh them — or outmatched. */
     function declare(fid, oid, what) {
+      openUp();
       const f = factions[fid], o = factions[oid];
       if (!f || !o || !f.yours || !f.alive || !o.alive || f === o) return "";
       const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o), at = b.pair ? b.pair[0] : { x: 0, y: 0 };
@@ -3444,6 +3629,7 @@
     /* Changing the rules of a running world: only the settings marked live,
        through the same bounds as the setup page. */
     function set(key, value) {
+      openUp();
       const it = SCHEMA.flatMap(g => g.items).find(i => i.key === key);
       if (!it || !it.live) return false;
       const next = clean(Object.assign({}, S, { [key]: value }));
@@ -3487,6 +3673,8 @@
       step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity,
       /* Asked from outside, perhaps just after somebody was given another home. */
       urgency: p => { changedHomes(); return urgency(p); },
+      /* After `advance(seconds, true)`: put passed-over people's counts right before reading them. */
+      settle: openUp,
       dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },

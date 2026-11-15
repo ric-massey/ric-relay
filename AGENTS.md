@@ -618,11 +618,24 @@ nobody had linked was a page nobody could find.
   person in the middle of a step calls `wakeUp(them)` first; anything that changes where somebody
   lives calls `changedHomes()`; a new field of a person goes in the literal in `newPerson`, never
   where it is first used; and a failed search for a way round is remembered only when it was
-  walled in, never when it ran out of tries.** Idle people are still visited every step because
-  they roll the dice to start a conversation, and the dice must be drawn in the same order —
-  don't "fix" that without Ric: it changes the world, and it is `TODO.md` 2b. The speed figures
-  for item 2 are a cloud machine's, not the M1's; the M1 row in the speed log is waiting on a run
-  of the bench there.
+  walled in — or, where it ran out of tries, only until anybody on that ground moves at all (next
+  paragraph).** The speed figures for item 2 are a cloud machine's, not the M1's; the M1 row in
+  the speed log is waiting on a run of the bench there.
+  **2b is done too (2026-11-15, Ric: "do 2b finish 2 all the way"), and it made every seed a
+  different world.** When somebody next tries to speak is drawn once (`nextTry`, `tryIn`) instead
+  of rolled on every step: every wait is exactly as likely as it was, but different numbers come
+  off the dice, so a world from a seed is not the world that seed gave before this date. A year
+  of the default world both ways over twelve seeds is in the README ("When somebody next speaks")
+  — don't go back to a roll a step; it is what lets the idle, and two people in conversation, be
+  passed over. Three more rules: **anything that puts a body somewhere calls `came(x, y)`** as
+  well as `madeRoom` for where it left (a search out of tries is remembered until anybody there
+  moves, and that is how it hears); **the page calls `advance(seconds, true)`**, its word that it
+  changed nobody and reads nobody's counts — anything that writes to people between steps must
+  leave the `true` off, and after an untouched advance `world.settle()` comes before reading
+  `wait`, `stuck`, `routeRetry`, `talk`, `tryIn` or `sayT`; **a new door into the engine from
+  outside calls `openUp()` first**, as `rule`, `order` and `set` do. `{ audit: true }` now checks
+  what each memory claims (every body where it was) and searches again whatever is remembered.
+  Two things 2b could not do are written into items 7 and 11 of `TODO.md`.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

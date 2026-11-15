@@ -828,7 +828,10 @@
       if (mode === "physics") world.step(Math.min(1 / 30, real) * rate);
       else if (rate <= 16) {
         // Activity keeps moving while the twenty-minute calendar day advances.
-        world.advance(real * rate);
+// `true`: this page changes nobody between steps and reads none of the counts a
+// passed-over person carries, so the engine need not look everybody over each frame.
+// Anything added here that writes to a person must drop it (people.js, `advance`).
+        world.advance(real * rate, true);
       } else {
         /* Fast: as much of the asked-for time as fits in 40 ms, in small
            slices, and the rest dropped — the world goes slower than asked,
@@ -837,7 +840,7 @@
            minute should be the fastest"; this computer decides how near). */
         // Max has no ceiling: a faster computer fits more into the same 40 ms.
         const want = rate >= 1000 ? Infinity : real * rate; let done = 0;
-        while (done < want && performance.now() - t0 < 40) { const take = Math.min(2, want - done); world.advance(take); done += take; }
+        while (done < want && performance.now() - t0 < 40) { const take = Math.min(2, want - done); world.advance(take, true); done += take; }
         reached = reached ? reached * 0.92 + (done / Math.max(real, 1e-3)) * 0.08 : done / Math.max(real, 1e-3);
       }
       if (rate > 16) {
@@ -1648,7 +1651,7 @@
           g.stroke();
           for (let i = 0; i < w.n; i++) { if (!w.alive[i]) continue; const p = new Path2D(); hexPath(p, ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12); g.fillStyle = KIND[(w.kind[i] - 1) % 4]; g.fill(p); }
         } else {
-          w.advance(1 / 60);
+          w.advance(1 / 60, true);
           const s = Math.max(W / w.cols, H / w.rows), ox = (W - w.cols * s) / 2, oy = (H - w.rows * s) / 2;
           for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
             const i = y * w.cols + x; let c = mix(mix([92, 80, 58], [52, 104, 62], w.fert[i]), [10, 14, 16], 0.45);
@@ -1660,7 +1663,7 @@
         }
       }
     };
-    if (still) { for (let i = 0; i < 120; i++) { minis.physics.step(1 / 40); minis.people.advance(0.2); } draw(); return; }
+    if (still) { for (let i = 0; i < 120; i++) { minis.physics.step(1 / 40); minis.people.advance(0.2, true); } draw(); return; }
     const loop = () => { miniRaf = requestAnimationFrame(loop); draw(); };
     miniRaf = requestAnimationFrame(loop);
   }
