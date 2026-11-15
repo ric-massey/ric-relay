@@ -599,6 +599,13 @@ nobody had linked was a page nobody could find.
   N" means item N of that file, done the whole way through its "How to do an item": research
   first and written into the file, Ric's questions asked, measured before and after, a bug hunt
   in the new code, docs, then the item ticked. One item a session; do not half-finish one.
+  **Item 1 is done (2026-11-15): walking remembers what it already worked out.** A blocked step
+  and a failed way round are not tried again until room is made nearby (`move`, `quiet`, `noWay`
+  in `people.js`), and a crowd is placed with a finer map. These may only ever be faster:
+  `test/walking.test.mjs` runs the engine with them off (`create(options, { plainWalking: true })`)
+  and holds the two worlds equal. **Anything new that makes room for a walker — removes a body,
+  moves one, makes one passable — must call `madeRoom`, or people stand blocked beside an empty
+  space**; add the case to that test. `test/bench.mjs` is the speed measurement every item uses.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

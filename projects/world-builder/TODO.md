@@ -42,8 +42,8 @@ Do these in order. Do not skip one because the item looks small.
 4. **Ask Ric** the item's "Ric decides" questions, all at once, with your recommendation for
    each. Wait for his answers. Write them into the item with the date and his words. If the item
    has none, tell him the approach in a few lines and carry on.
-5. **Measure before.** Run `node test/bench.mjs` (it exists once item 1 is done) and note the
-   numbers.
+5. **Measure before.** Run `node --expose-gc test/bench.mjs` from this folder (`--quick` for the
+   three small rows) and note the numbers.
 6. **Build it**, following the rules below.
 7. **Test it.** Add tests for the new thing and list them in `/.github/checks.mjs`. Run
    `node .github/checks.mjs` from the repo root, and `--slow` if the engine changed.
@@ -90,7 +90,15 @@ finish Na properly rather than half-finishing N.
 
 ## The list
 
-### [ ] 1. A speed test in the repo, and cheap walking
+### [x] 1. A speed test in the repo, and cheap walking
+
+**Done 2026-11-15.** `test/bench.mjs` is the speed test; blocked steps and failed ways round are
+remembered, the in-the-way check reads fewer squares, a crowd is placed with a finer map. Same
+world, step for step (`test/walking.test.mjs`). 5,000 people 13× → 68×; 20,000 people 2× → 14×; a
+20,000-person start 25.7 s → 2.6 s. Left out, on purpose: the crowding itself (see item 7's
+"Now"), and visiting everybody every step (item 2). README, "A crowd that costs what it should".
+Found on the way: the slow suite (`test/world-builder.test.mjs`) had been red since the
+five-minute day went in — three checks still expected a twenty-minute day. Fixed.
 
 **Why first:** everything later adds work per person, and three quarters of the engine's time
 is already going on one thing.
@@ -111,13 +119,35 @@ cheap alternatives to A* for stepping round a body.
 bench shows at least 3× faster at 5,000 people; a 20,000-person world starts in under 3 s.
 **Budget:** this item must make things faster, never slower.
 
-Research notes:
+Research notes (2026-11-15):
+- **Measured first.** At 5,000 people, 6.25 million of 7.19 million person-steps a day were a walk
+  that ended where it began; 82,000 an hour were a step aside and straight back. The route search
+  ran 892,000 times a day and found a way 123 times. So the cost was not looking up neighbours
+  slowly; it was asking the same question again when nothing had changed.
+- **Sleep and wake.** Physics engines stop working on a body that cannot change and wake it when
+  a neighbour moves ([Roblox's sleep system](https://create.roblox.com/docs/physics/sleep-system.md)).
+  The known failure is a sleeper that is never told
+  ([their write-up of one](https://corp.roblox.com/newsroom/2020/07/roblox-physics-building-better-sleep-system)).
+  Chosen: remember a blocked step, and count every way room can be made — a step, a death, a
+  person moved or killed from outside. Cost: eight bytes a square, nine fields a person.
+- **Grid cell size.** The usual advice is a cell about the size of the query
+  ([rustsim-crowd](https://docs.rs/crate/rustsim-crowd/0.0.1/source/src/broadphase.rs);
+  [FRNN for agent simulations](https://eprints.whiterose.ac.uk/153625/7/1-s2.0-S0743731519301340-main.pdf)).
+  Not chosen: a finer grid would have changed every list the engine keeps. Chosen instead: keep the
+  one-square grid and read only the squares a body's width can reach (1, 2 or 4, not 9).
+- **Placing a crowd.** [Bridson's Poisson-disk sampling](https://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph07-poissondisk.pdf)
+  uses a background grid fine enough that a cell answers "taken" by itself. Used as a filter in
+  front of the existing ring search, so everybody stands exactly where they did.
+- **Not done because it would change the world:** back-off or reservation for blocked walkers.
 
 ### [ ] 2. Do not visit people who have nothing to do
 
 **Now:** every person is visited every step, 1,440 times a day. Hourly samples show 31% asleep,
-26% making something, 24% idle. After item 1, `choose` and `work` are the next cost, and each
-gets dearer per person as the crowd grows.
+26% making something, 24% idle. Measured after item 1 (5,000 people): the largest costs are the
+loops that touch everybody each step — `actionTick` refilling the who-stands-where lists, `act`,
+and `rebucket` — then the route search, then `census`. With bodies at real size `choose` and
+`work` lead, and each gets dearer per person as the crowd grows. Item 1's blocked-step memory
+(`move`, `quiet`) is the same idea in one place; this item is that idea for the whole person.
 **Do:** a person who is asleep, working a set spell or waiting is not touched until their time
 is up or something near them wakes them (a fight, a visitor, a fire). Find what in `choose` and
 `work` grows with the size of the crowd and stop it.
@@ -209,7 +239,10 @@ Research notes:
 ### [ ] 7. Houses, fields and roads as real things
 
 **Now:** a house is a spot where a family sleeps; fields are squares people happen to harvest;
-there are no roads.
+there are no roads. Measured 2026-11-15 (item 1): houses are scattered over a village's ground
+closer together than bodies fit, so a village of several hundred is a solid disc — at 5,000
+people in eight villages, 87% of all steps are somebody failing to reach their bed or bench.
+Item 1 made that cheap; it did not make it stop. This item should.
 **Do:** a house is a building on the land that takes work and material to put up. A field is
 land a household works, visible as theirs. Stores, workshops and wells are buildings. Roads and
 paths appear where people walk and make walking faster. This is the "green land their farming
@@ -441,3 +474,4 @@ One row per finished item. Same machine where possible; say which machine.
 | Date | After item | Machine | 5,000 people, 40 km | 20,000 people, 80 km | Memory per person | Note |
 |---|---|---|---|---|---|---|
 | 2026-11-14 | (start) | Apple M1, 8 GB | 24 s a day, 13× | 129 s a day, 2× | about 1.5 KB | measured by hand before this list existed |
+| 2026-11-15 | 1 | Apple M1, 8 GB | 4.4 s a day, 68× | 21 s a day, 14× | 0.8 KB at the start (0.6 before) | `test/bench.mjs`; same world; a 20,000 start 25.7 → 2.6 s |

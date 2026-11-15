@@ -359,11 +359,20 @@ if (!physicsOnly) {
     w.advance(0.2);
     check(separated(), "people: bodies overlapped while walking");
   }
-  w.advance(1170);
-  check(Math.abs(w.days - 1) < 1e-9 && People.DAY_SECONDS === 1200, "people: 1200 seconds at 1× is not one day");
+  /* The rest of the first day. These three checks were written for the
+     twenty-minute day and went red, unnoticed in the slow lane, when a day
+     became five minutes on 2026-11-14; fixed 2026-11-15. The length of a day
+     is the engine's to say (`DAY_SECONDS`), and whether anybody walks is
+     looked for through the day, not only at midnight when they are in bed. */
+  let walking = false;
+  for (let left = People.DAY_SECONDS - 30; left > 1e-9; left -= 15) {
+    w.advance(Math.min(15, left));
+    walking = walking || w.people.some(p => Math.hypot(p.x - p.tx, p.y - p.ty) > 0.5);
+  }
+  check(Math.abs(w.days - 1) < 1e-9, "people: DAY_SECONDS at 1× is not one day");
   check(w.people.length === 80 && w.stats().starved === 0, "people: the first watchable day lost people");
   check(Math.abs(w.stats().money - coins) < 1e-6, "people: the watchable clock created or lost money");
-  check(w.people.some(p => Math.hypot(p.x - p.tx, p.y - p.ty) > 0.5), "people: the activity clock never started walking");
+  check(walking, "people: the activity clock never started walking");
   const crowded = People.create({ people: 2000, map: "small", villages: 1, factions: 1 });
   let overlap = false;
   for (let i = 0; i < crowded.people.length; i++) for (let j = i + 1; j < crowded.people.length; j++) {
@@ -377,7 +386,7 @@ if (!physicsOnly) {
   let speaker;
   for (let i = 0; i < 500 && !speaker; i++) {
     social.advance(0.2);
-    speaker = social.people.find(p => p.sayT > 15 && social.byId.get(p.talkingTo)?.talkingTo === p.id);
+    speaker = social.people.find(p => p.sayT > 2 && social.byId.get(p.talkingTo)?.talkingTo === p.id);   // a line is held seven steps now, not thirty
   }
   check(!!speaker, "people: no conversation pair became visible");
   if (speaker) {

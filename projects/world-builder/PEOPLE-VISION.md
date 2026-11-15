@@ -873,11 +873,12 @@ when it is built.
 
 **12. The engine**
 - Now: measured above. 20,000 people is the slider's top and runs at 2×.
-- [ ] Make the walking check cheap, with the same world coming out.
+- [x] Make the walking check cheap, with the same world coming out. (2026-11-15, `TODO.md` item 1:
+  5,000 people 13× → 68×, 20,000 people 2× → 14×, identical worlds.)
 - [ ] Stop visiting people who have nothing to do.
 - [ ] Make choosing and working cheap as the crowd grows.
 - [ ] Run the engine off the page's own thread.
-- [ ] Starting a big world in seconds, not half a minute.
+- [x] Starting a big world in seconds, not half a minute. (2026-11-15: 20,000 people, 25.7 → 2.6 s.)
 - [ ] No fixed top on the number of people.
 - [ ] The readout: what this computer can carry, shown on the setup page, never a block.
 

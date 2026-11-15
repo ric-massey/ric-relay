@@ -394,8 +394,12 @@
   };
   const PATCH = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
 
-  function create(input) {
+  /* `check` is for tests only: { plainWalking: true } turns off the two
+     short cuts in the walking code (the blocked-step memory and the placing
+     map), so a test can run the same world both ways and hold them equal. */
+  function create(input, check) {
     const S = clean(input);
+    const PLAIN = !!(check && check.plainWalking);
     const R = rng(S.seed * 1597334677);
     const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
@@ -591,7 +595,12 @@
                      from war, a siege and fighting they can see. All three are
                      read by `urgency` and nothing else sets them. */
                   rest: R() * 0.3, alone: Math.floor(R() * 20), fear: 0, chose: "", until: 0, making: false, settled: -1e9,
-                  hx: v.x, hy: v.y };
+                  hx: v.x, hy: v.y,
+                  /* Walking's own book-keeping (2026-11-15), nothing a person is:
+                     where they last were seen standing, their last blocked step, the last
+                     way round that could not be found, and whether they have been
+                     given a place to stand yet. */
+                  ox: NaN, oy: NaN, mc: -1, mx: NaN, my: NaN, mdx: 0, mdy: 0, rm: null, on: false };
       house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
@@ -823,19 +832,36 @@
          eat only from the village store, which is empty all winter, and they
          were half of the dead of a hard winter. */
       for (const p of people) { p.feeds = 0; p.wards = null; }
+      /* The best carer in a village, and the best one who shares a mother or
+         a father with the child, found in one pass over everybody and only if
+         some child needs one. Until 2026-11-15 each such child read the whole
+         population: at 20,000 people that was most of two seconds at the
+         start and a sixth of every census after. `at` is the place in the
+         list, so that between equals the first still wins, as it did. */
+      let carers = null;
+      const better = (a, b) => !b || a.score > b.score || (a.score === b.score && a.at < b.at) ? a : b;
+      function findCarers() {
+        carers = { any: new Map(), mum: new Map(), dad: new Map() };
+        for (let at = 0; at < people.length; at++) {
+          const q = people[at];
+          if (!adult(q) || q.hp <= 0) continue;
+          const plain = { q: q, score: q.food, at: at }, kin = { q: q, score: q.food + 1e6, at: at };
+          carers.any.set(q.home, better(plain, carers.any.get(q.home)));
+          if (q.mum) { const k = q.home + ":" + q.mum; carers.mum.set(k, better(kin, carers.mum.get(k))); }
+          if (q.dad) { const k = q.home + ":" + q.dad; carers.dad.set(k, better(kin, carers.dad.get(k))); }
+        }
+      }
       for (const c of people) {
         if (adult(c) || c.hp === -99) continue;
         const keepers = [byId.get(c.mum), byId.get(c.dad)].filter(q => q && q.hp > 0 && q.home === c.home);
         if (!keepers.length) {
           let carer = byId.get(c.carer);
           if (!carer || carer.hp <= 0 || carer.home !== c.home || !adult(carer)) {
-            carer = null; let best = -1;
-            for (const q of people) {
-              if (q.home !== c.home || !adult(q) || q.hp <= 0) continue;
-              const kin = (c.mum && q.mum === c.mum) || (c.dad && q.dad === c.dad);
-              const score = q.food + (kin ? 1e6 : 0);
-              if (score > best) { best = score; carer = q; }
-            }
+            if (!carers) findCarers();
+            let pick = carers.any.get(c.home);
+            if (c.mum) { const k = carers.mum.get(c.home + ":" + c.mum); if (k) pick = better(k, pick); }
+            if (c.dad) { const k = carers.dad.get(c.home + ":" + c.dad); if (k) pick = better(k, pick); }
+            carer = pick && pick.score > -1 ? pick.q : null;
             c.carer = carer ? carer.id : 0;
           }
           if (carer) keepers.push(carer);
@@ -1737,6 +1763,7 @@
     function die(p, why, by) {
       if (p.hp === -99) return;
       p.hp = -99;
+      if (p.on) { madeRoom(p.x, p.y); p.on = 2; }   // the dead are in nobody's way: see `move`. 2: counted
       count[why]++;
       const v = villages[p.home], f = factions[p.f];
       if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else v.goods += p.cargo.amount; }
@@ -2129,22 +2156,63 @@
        box otherwise. At real size the bookkeeping of who stands where is
        skipped altogether: nobody is ever in the way. */
     const REAL_BODIES = S.bodies === "real";
-    const BODY = REAL_BODIES ? 0.002 : 0.42;
+    const BODY = REAL_BODIES ? 0.002 : 0.42, BODY2 = (BODY - 1e-9) ** 2;
     /* Who stands where, by tile. Plain arrays reused from tick to tick, and a
        list of the cells in use so a tick clears only those: until 2026-11-14
        this was a Map of Sets rebuilt from nothing every tick — 43% of the
        engine's time, with every tile of the map wiped 6,000 times a day.
        The contents and their order are exactly what the Map held, so the
        world is the same world; it is only faster. */
-    const placed = new Set(), occ = new Array(cols * rows), occUsed = [];
+    const occ = new Array(cols * rows), occUsed = [];
     const cell = (x, y) => Math.floor(y) * cols + Math.floor(x);
+    /* ── a blocked step is remembered (2026-11-15) ─────────────────────────
+       Measured on a 5,000-person world: 87% of everybody's steps were an
+       attempt to walk that was blocked — a village that size is packed, so
+       a person aiming at their bed or bench tries the heading and four ways
+       round it every step, and ends the step standing where they began. That was
+       6.25 million blocked attempts a day and three quarters of the engine's
+       time, for people who never moved.
+       A blocked attempt changes nothing, and it can only come out differently
+       if room has been made: somebody within reach has stepped away or died.
+       So each square keeps the count (`clock`) at which room was last made
+       on it, and a person keeps the count at their last blocked attempt. If
+       they stand where they stood, want the same step, and no square around
+       them has had room made since, the answer is the same and is not worked
+       out again. Somebody arriving can only block, never free, so arrivals
+       are not counted. The world that comes out is the same world, step for
+       step: test/walking.test.mjs runs it both ways.
+       (The idea is the sleeping body of a physics engine: stop working on
+       what cannot change, and wake it when a neighbour moves.) */
+    const MEMO = !REAL_BODIES && !PLAIN;
+    const roomAt = MEMO ? new Float64Array(cols * rows) : null;
+    let clock = 0;
+    const madeRoom = (x, y) => { if (MEMO) roomAt[cell(x, y)] = ++clock; };
+    /* Has room been made near (x, y) since count `since`? A remembered step
+       is at most two pieces of 0.2: the walker can be 0.2 away when they try
+       the second, try a spot 0.2 further, and be stopped by somebody 0.42
+       from that — 0.82 in all, under one square. So everybody who can matter
+       is on this square or one of the eight round it. (Off the edge of a row
+       this reads a square that is not a neighbour; that can only say "look
+       again", never "skip".) */
+    function quiet(x, y, since) {
+      const fx = Math.floor(x), fy = Math.floor(y);
+      for (let j = -1; j <= 1; j++) {
+        const i = (fy + j) * cols + fx;
+        if (roomAt[i - 1] > since || roomAt[i] > since || roomAt[i + 1] > since) return false;
+      }
+      return true;
+    }
     function put(p) {
       if (REAL_BODIES) return;
       const key = cell(p.x, p.y);
       let list = occ[key];
       if (!list) { list = occ[key] = []; }
       if (!list.length) occUsed.push(key);
-      if (!list.includes(p)) list.push(p);
+      /* No look for "already here": the lists are emptied and refilled every
+         step, a step takes somebody out before putting them back, and `free`
+         only asks whether anybody is in the way, so a second mention of the
+         same person could not change an answer. */
+      list.push(p);
     }
     function unput(p) {
       const list = occ[cell(p.x, p.y)]; if (!list) return;
@@ -2153,21 +2221,39 @@
     function free(p, x, y) {
       if (x < 0.25 || y < 0.25 || x > cols - 0.25 || y > rows - 0.25) return false;
       if (REAL_BODIES) return true;
-      const fy = Math.floor(y), fx = Math.floor(x), r2 = (BODY - 1e-9) ** 2;
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
-        const list = occ[(fy + j) * cols + fx + i];
-        if (list) for (let k = 0; k < list.length; k++) { const q = list[k]; if (q !== p && q.hp !== -99 && (x - q.x) ** 2 + (y - q.y) ** 2 < r2) return false; }
+      /* Only the squares a body's width from (x, y) can touch: one, two or
+         four of them, not always nine. Until 2026-11-15 it read all nine, and
+         reading squares that could not hold anybody close enough was a third
+         of the engine's time once blocked steps were remembered. Anybody on a
+         square left out is further off than a body, so the answer is the same. */
+      const x0 = Math.floor(x - BODY), x1 = Math.floor(x + BODY), y1 = Math.floor(y + BODY);
+      for (let cy = Math.floor(y - BODY); cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+        const list = occ[cy * cols + cx];
+        if (list) for (let k = 0; k < list.length; k++) { const q = list[k]; if (q !== p && q.hp !== -99 && (x - q.x) ** 2 + (y - q.y) ** 2 < BODY2) return false; }
       }
       return true;
     }
     /* A stride longer than a body is taken in pieces, each checked, so a
        longer step a tick (the five-minute day) never walks through anybody. */
     function move(p, dx, dy) {
+      if (MEMO && p.mc >= 0 && p.mx === p.x && p.my === p.y && p.mdx === dx && p.mdy === dy && quiet(p.x, p.y, p.mc)) return;
+      const x0 = p.x, y0 = p.y;
       const k = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 0.2));
       for (let i = 0; i < k; i++) {
         const bx = p.x, by = p.y;
         moveOnce(p, dx / k, dy / k);
         if (p.x === bx && p.y === by) break;
+      }
+      if (MEMO) {
+        /* Standing where they started counts as blocked even if they stepped
+           aside and straight back, which is what a packed crowd mostly does:
+           82,000 such steps an hour against 1,600 that got anywhere. Nobody
+           else acts in between, so nothing saw it and no room was made. */
+        if (p.x !== x0 || p.y !== y0) { madeRoom(x0, y0); p.ox = p.x; p.oy = p.y; p.mc = -1; }
+        /* Only a step of one or two pieces is remembered: see `quiet`. A
+           longer one (a faster walker, a finer map) is worked out every time. */
+        else if (k <= 2) { p.mc = clock; p.mx = x0; p.my = y0; p.mdx = dx; p.mdy = dy; }
+        else p.mc = -1;
       }
     }
     function moveOnce(p, dx, dy) {
@@ -2187,7 +2273,30 @@
        the same entrance. Plan around occupied space only after progress stops.
        Half-tile A* is bounded, deterministic and cached as waypoints; every
        edge and actual footstep still checks bodies. No teleporting or overlap. */
+    /* A way round that could not be found is remembered too, the same way as
+       a blocked step: measured, 892,000 searches a day at 5,000 people and
+       123 of them found anything. `m` holds where they stood, where they were
+       going, the squares the search looked at, and the count then; until room
+       is made on one of those squares the search would fail again. */
+    function noWay(p, x0, y0, x1, y1) {
+      if (!MEMO) return null;
+      const m = p.rm || (p.rm = { c: -1, x: 0, y: 0, tx: 0, ty: 0, x0: 0, y0: 0, x1: 0, y1: 0 });
+      m.x0 = clamp(Math.floor(x0 - BODY), 0, cols - 1); m.x1 = clamp(Math.floor(x1 + BODY), 0, cols - 1);
+      m.y0 = clamp(Math.floor(y0 - BODY), 0, rows - 1); m.y1 = clamp(Math.floor(y1 + BODY), 0, rows - 1);
+      /* A search that wandered far is not worth remembering: reading its
+         squares again would cost as much as it did. */
+      if ((m.x1 - m.x0 + 1) * (m.y1 - m.y0 + 1) > 144) { m.c = -1; return null; }
+      m.c = clock; m.x = p.x; m.y = p.y; m.tx = p.tx; m.ty = p.ty;
+      return null;
+    }
+    function stillNoWay(p) {
+      const m = p.rm;
+      if (!m || m.c < 0 || m.x !== p.x || m.y !== p.y || m.tx !== p.tx || m.ty !== p.ty) return false;
+      for (let y = m.y0; y <= m.y1; y++) { const row = y * cols; for (let x = m.x0; x <= m.x1; x++) if (roomAt[row + x] > m.c) return false; }
+      return true;
+    }
     function routeAround(p) {
+      if (MEMO && stillNoWay(p)) return null;
       // On this half-tile lattice these are every possible arrival node.
       // A packed destination has no route, regardless of how far we search.
       // Reject it cheaply instead of exploring 800 nodes on every retry.
@@ -2197,9 +2306,13 @@
         const nx = p.x + x * 0.5, ny = p.y + y * 0.5;
         if (Math.hypot(nx - p.tx, ny - p.ty) <= 0.5 && free(p, nx, ny)) arrival = true;
       }
-      if (!arrival) return null;
+      if (!arrival) return noWay(p, p.tx - 0.5, p.ty - 0.5, p.tx + 0.5, p.ty + 0.5);
       const heap = [], costs = new Map(), clear = new Map();
-      const key = (x, y) => x + "," + y;
+      let lx = p.x, ly = p.y, hx = p.x, hy = p.y;   // every place the search looks at lies in this box
+      /* A number, not "x,y": the search makes a key for every neighbour of
+         every place it looks at, and building a string each time was a third
+         of its cost. 800 looks cannot get 4,096 half-squares from the start. */
+      const key = (x, y) => (x + 4096) * 8192 + (y + 4096);
       const distance = n => Math.hypot(p.tx - n.x, p.ty - n.y);
       function push(n) {
         let i = heap.length; heap.push(n);
@@ -2221,7 +2334,7 @@
         return first;
       }
       const start = { ix: 0, iy: 0, x: p.x, y: p.y, g: 0, parent: null };
-      start.f = distance(start); costs.set("0,0", 0); push(start);
+      start.f = distance(start); costs.set(key(0, 0), 0); push(start);
       for (let tries = 0; heap.length && tries < 800; tries++) {
         const n = pop();
         if (n.g !== costs.get(key(n.ix, n.iy))) continue;
@@ -2235,6 +2348,8 @@
           const nx = n.ix + ix, ny = n.iy + iy, k = key(nx, ny);
           const x = p.x + nx * 0.5, y = p.y + ny * 0.5, g = n.g + Math.hypot(ix, iy) * 0.5;
           if (g >= (costs.get(k) ?? Infinity)) continue;
+          if (x < lx) lx = x; else if (x > hx) hx = x;
+          if (y < ly) ly = y; else if (y > hy) hy = y;
           if (!clear.has(k)) clear.set(k, free(p, x, y));
           if (!clear.get(k)) continue;
           let fits = true;
@@ -2244,7 +2359,61 @@
           costs.set(k, g); push(q);
         }
       }
-      return null; // A fully enclosed person waits for a real opening.
+      // A fully enclosed person waits for a real opening.
+      return noWay(p, Math.min(lx, p.tx - 1), Math.min(ly, p.ty - 1), Math.max(hx, p.tx + 1), Math.max(hy, p.ty + 1));
+    }
+    /* ── placing a crowd (2026-11-15) ──────────────────────────────────────
+       Everybody new is stood on the nearest spot to where they appeared that
+       nobody is within a body of, looking outward ring by ring. For a whole
+       world at once that was most of a start: 20,000 people took 24 seconds,
+       because somebody arriving in the middle of 2,500 others tries a few
+       thousand spots, each a look through the neighbours.
+       `taken` is a finer map of the same ground, sixteen to a square's side,
+       marking every small square that lies wholly inside one body's reach.
+       A spot on a marked square is taken without looking further, and a ring
+       that only crosses squares marked all over is skipped whole. It only
+       ever says "taken" where `free` would say so too, so everybody ends up
+       standing exactly where they did before. Made when a crowd arrives
+       together, thrown away after. */
+    const SUB = 16;
+    let taken = null, takenSlot = null;   // the marked squares, and which of them each square of the land is (0: none yet)
+    function markTaken(q) {
+      const s = 1 / SUB, lim = (BODY - 1e-6) ** 2;
+      const gx1 = Math.floor((q.x + BODY) * SUB), gy1 = Math.floor((q.y + BODY) * SUB);
+      for (let gy = Math.floor((q.y - BODY) * SUB); gy <= gy1; gy++) for (let gx = Math.floor((q.x - BODY) * SUB); gx <= gx1; gx++) {
+        // the corner of this small square furthest from the body
+        const ax = Math.max(Math.abs(gx * s - q.x), Math.abs((gx + 1) * s - q.x)), ay = Math.max(Math.abs(gy * s - q.y), Math.abs((gy + 1) * s - q.y));
+        if (ax * ax + ay * ay >= lim) continue;
+        const tx = Math.floor(gx / SUB), ty = Math.floor(gy / SUB);
+        if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) continue;
+        const key = ty * cols + tx;
+        let e = taken[takenSlot[key]]; if (!e) { takenSlot[key] = taken.length; taken.push(e = { a: new Uint8Array(SUB * SUB), n: 0 }); }
+        const i = (gy - ty * SUB) * SUB + gx - tx * SUB;
+        if (!e.a[i]) { e.a[i] = 1; e.n++; }
+      }
+    }
+    function takenAt(x, y) {
+      const fx = Math.floor(x), fy = Math.floor(y);
+      if (fx < 0 || fy < 0 || fx >= cols || fy >= rows) return true;   // off the land: never a place to stand
+      const e = taken[takenSlot[fy * cols + fx]];
+      if (!e) return false;
+      return e.a[Math.min(SUB - 1, Math.floor((y - fy) * SUB)) * SUB + Math.min(SUB - 1, Math.floor((x - fx) * SUB))] === 1;
+    }
+    /* Is every square the circle of radius r round (x, y) crosses marked all
+       over (or off the land)? Row by row: within a row of squares the circle
+       lies between two distances either side of x. */
+    function ringTaken(x, y, r) {
+      const full = (tx, ty) => { if (tx < 0 || tx >= cols) return true; const e = taken[takenSlot[ty * cols + tx]]; return !!e && e.n === SUB * SUB; };
+      const ty1 = Math.floor(y + r);
+      for (let ty = Math.floor(y - r); ty <= ty1; ty++) {
+        if (ty < 0 || ty >= rows) continue;
+        const near = y < ty ? ty - y : y > ty + 1 ? y - ty - 1 : 0, far = Math.max(Math.abs(ty - y), Math.abs(ty + 1 - y));
+        if (near > r) continue;
+        const hi = Math.sqrt(r * r - near * near) + 1e-9, lo = far >= r ? 0 : Math.max(0, Math.sqrt(r * r - far * far) - 1e-9);
+        for (let tx = Math.floor(x + lo), e = Math.floor(x + hi); tx <= e; tx++) if (!full(tx, ty)) return false;
+        for (let tx = Math.floor(x - hi), e = Math.floor(x - lo); tx <= e; tx++) if (!full(tx, ty)) return false;
+      }
+      return true;
     }
     let sceneTick = 0;
     function actionTick() {
@@ -2253,29 +2422,47 @@
       occUsed.length = 0;
       // Reserve existing bodies first. Only a new arrival needs placement; walking
       // already checks every step, so checking every settled body again is wasted work.
-      if (!REAL_BODIES) for (const p of people) if (placed.has(p.id)) put(p);
+      let fresh = null;
       for (const p of people) {
-        if (placed.has(p.id)) continue;
+        if (!p.on) { (fresh || (fresh = [])).push(p); continue; }
+        if (REAL_BODIES) continue;
+        /* Moved by something other than a step (a test, the page): the place
+           they left has room in it now. */
+        if (MEMO && (p.x !== p.ox || p.y !== p.oy)) { if (p.ox === p.ox) madeRoom(p.ox, p.oy); p.ox = p.x; p.oy = p.y; }
+        if (MEMO && p.hp === -99 && p.on !== 2) { madeRoom(p.x, p.y); p.on = 2; }   // killed by something other than `die`
+        put(p);
+      }
+      if (fresh && fresh.length >= 64 && MEMO) {
+        taken = [null]; takenSlot = new Int32Array(cols * rows);
+        for (const q of people) if (q.on && q.hp !== -99) markTaken(q);
+      }
+      if (fresh) for (const p of fresh) {
         if (!free(p, p.x, p.y)) {
           const x = p.x, y = p.y;
           search: for (let ring = 1; ring < Math.max(cols, rows) * 4; ring++) {
             const r = ring * BODY * 0.5, n = Math.ceil(6.3 * r / BODY) + 1;
+            if (taken && ringTaken(x, y, r)) continue;
             for (let k = 0; k < n; k++) {
               const a = k / n * Math.PI * 2 + p.id;
               const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
+              if (taken && takenAt(nx, ny)) continue;
               if (free(p, nx, ny)) { p.x = nx; p.y = ny; break search; }
             }
           }
         }
+        if (taken) markTaken(p);
         // Initial residents and newborns wait where they actually fit. Sending
         // every new person to the village centre creates an impassable crowd.
         p.tx = p.x; p.ty = p.y;
-        put(p); placed.add(p.id);
+        p.ox = p.x; p.oy = p.y;
+        put(p); p.on = true;
       }
+      taken = null; takenSlot = null;
       rebucket();
       for (const p of people) if (p.hp !== -99) act(p);
     }
 
+    const LOCAL_TASK = new Set(["sleep", "rest", "idle", "visit", "field", "home", "make", "patrol"]);
     function act(p) {
       if (p.sayT > 0) p.sayT--;
       if (p.hit > 0) p.hit--;
@@ -2290,8 +2477,8 @@
         else p.stuck = (p.stuck || 0) + 1;
         // Preserve the daily engine's nearby arrival rule for local work.
         // Long journeys and all inter-village tasks must physically arrive.
-        const localTask = ["sleep", "rest", "idle", "visit", "field", "home", "make", "patrol"].includes(p.task) ||
-          (["eat", "gear"].includes(p.task) && dist(p, villages[p.home]) <= 2.5);
+        const localTask = LOCAL_TASK.has(p.task) ||
+          ((p.task === "eat" || p.task === "gear") && dist(p, villages[p.home]) <= 2.5);
         if (localTask && d <= 2.5) {
           p.route = null;
           if (p.stuck > TK(25)) {
@@ -2786,7 +2973,7 @@
       }
       /* The dead leave the list. */
       let dead = false;
-      for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); placed.delete(p.id); }
+      for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); }
       if (dead) { let w = 0; for (let i = 0; i < people.length; i++) if (people[i].hp !== -99) people[w++] = people[i]; people.length = w; }
 
       if (t % REFLECT_HOURS === 0) {

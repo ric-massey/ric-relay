@@ -39,6 +39,8 @@ what has shipped from future direction, including the shared daily clock and rem
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `TODO.md` | The People simulator's work in order, twenty numbered items. "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
+| `test/bench.mjs` | Not a check — the People engine's speed, measured the same way every time: `node --expose-gc test/bench.mjs`. Its numbers are one machine's and go in `TODO.md`'s speed log. |
+| `test/walking.test.mjs` | Quick check that the walking short cuts only make the engine faster: the same engine with them off (`create(options, { plainWalking: true })`) must give the identical world — packed villages, deaths, people moved or killed from outside, a crowd placed at once. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
 | `test/travel.test.mjs` | Quick travel checks: a detour out of a U-shaped crowd without teleporting/overlap, real equal-price market visits, conserved coins and closed borders. |
 | `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
@@ -1060,6 +1062,81 @@ exact saving — letting somebody asleep or mid-shift skip the ticks in which no
 changes — is perhaps another 2×. Reaching a year a minute would need people to move in coarser
 jumps at high speed, which would make a world play out differently depending on how fast it is
 watched; that breaks a rule this engine was built on and has not been done.
+
+### A crowd that costs what it should (2026-11-15)
+
+`TODO.md` item 1. Ric: *"efficiency is importnat for the program"*, and *"i feel like right now im
+running it inefficiantly"*. He was right, and the waste was in one place.
+
+**What was measured.** On a 5,000-person world, 87% of everybody's steps were an attempt to walk
+that got nowhere. A village that size is packed as tight as bodies allow, so a person aiming at
+their bed or bench tries the heading and four ways round it, and ends the step where they began —
+most often by stepping aside and straight back. That was 6.25 million such attempts a day, three
+quarters of the engine's time, spent on people who never moved. The search for a way round a crowd
+ran 892,000 times a day and found a way 123 times.
+
+**What changed.** Nothing about what happens; only what is worked out twice.
+
+- **A blocked step is remembered** (`move`, `quiet`). It can only come out differently if room has
+  been made near the walker: somebody stepped away or died. Each square keeps the count at which
+  room was last made on it; a person who stands where they stood, wants the same step and has had
+  no room made on the nine squares round them is blocked again without looking. An arrival can
+  only block, so arrivals are not counted. A step aside-and-back counts as blocked: nobody else
+  acts in between, so nothing saw it.
+- **A way round that could not be found is remembered** the same way (`noWay`, `stillNoWay`), over
+  the squares the search actually looked at.
+- **"Is anybody in the way" reads one, two or four squares, not always nine** (`free`): only the
+  squares a body's width from the spot can touch.
+- **A crowd is placed with a finer map** (`markTaken`, `takenAt`, `ringTaken`): sixteen small
+  squares to a square's side, each marked when it lies wholly inside one body's reach. A spot on a
+  marked square is taken without looking; a ring crossing only fully marked squares is skipped.
+- **Who takes an orphan in** is found in one pass over the population (`findCarers` in `census`),
+  not one pass per orphan.
+- Smaller things: no list built per person per step to ask "is this a local task", number keys
+  in the route search, no search of a square's list before adding somebody to it.
+
+**The world is the same world**, step for step. The idea is the sleeping body of a physics engine
+(a thing that cannot change is not worked on until a neighbour moves), and the danger with it is
+well known: a sleeper that never hears it should wake. So every way room can be made is counted —
+a step, a death (`die`), and a person moved or marked dead from outside the engine, which the
+tests and the page are allowed to do — and `test/walking.test.mjs` runs the engine both ways and
+holds them equal, hour by hour. It was checked by breaking each short cut on purpose (eight ways);
+the test caught every one. The old engine and the new were also run side by side from the same
+seed: a year of the default world, six days of 3,000 people at war with sickness, a day of 20,000.
+Identical every time.
+
+Because a sine differs by a hair between an Apple and an Intel chip, the test compares two runs on
+the machine it is on rather than against a stored answer.
+
+**What it bought** (Apple M1, 8 GB, `test/bench.mjs`, bodies as drawn):
+
+| People | Land | Start, before → after | A day takes, before → after | Top speed, before → after |
+|---|---|---|---|---|
+| 400 | 17 km | 0.02 → 0.02 s | 0.78 → 0.52 s | 382× → 577× |
+| 2,000 | 17 km | 0.12 → 0.05 s | 11.9 → 4.4 s | 25× → 68× |
+| 5,000 | 40 km | 0.90 → 0.15 s | 23.8 → 4.4 s | 13× → 68× |
+| 20,000 | 80 km | 25.7 → 2.6 s | 132 → 21 s | 2× → 14× |
+| 400 | 500 km | 0.17 → 0.19 s | 0.47 → 0.37 s | 644× → 813× |
+
+**What it costs.** Eight bytes a square of land for the room counts, only with bodies as drawn:
+about 14 MB more on the 500 km map (56 → 69 MB at the start). Nine small fields on a person. The
+finer map exists only while a crowd is being placed.
+
+**What it did not fix, and should not hide.** The crowd itself. With the default eight villages a
+world of thousands is eight solid discs of people who mostly cannot get to where they are going;
+that is now cheap, and it is still what happens. It is the same world as before on purpose (this
+item was not allowed to change it). Giving houses and fields real ground of their own is `TODO.md`
+item 7. And every person is still visited every step whether or not they have anything to do:
+after this change that visiting, not walking, is the largest cost, and it is item 2.
+
+Sources read for this: on grid cell size against query radius, the
+[rustsim-crowd broadphase notes](https://docs.rs/crate/rustsim-crowd/0.0.1/source/src/broadphase.rs)
+and [Fixed-radius near neighbours for agent simulations](https://eprints.whiterose.ac.uk/153625/7/1-s2.0-S0743731519301340-main.pdf);
+on sleeping and waking, [Roblox's sleep system](https://create.roblox.com/docs/physics/sleep-system.md)
+and its account of [a sleeper that was never woken](https://corp.roblox.com/newsroom/2020/07/roblox-physics-building-better-sleep-system);
+on placing points that keep their distance with a background grid,
+[Bridson's Fast Poisson Disk Sampling](https://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph07-poissondisk.pdf).
+None of their code is used.
 
 ### War has to be fed (2026-11-14)
 

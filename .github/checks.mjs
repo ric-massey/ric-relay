@@ -132,6 +132,12 @@ const SUITES = [
   ['world-builder war', ['projects/world-builder/test/war.test.mjs']],
   // Settings mean what they say: coins, inherited natures, land-fed villages, leaders' armies, revolutions.
   ['world-builder settings sense', ['projects/world-builder/test/settings-sense.test.mjs']],
+  /* The walking short cuts (a blocked step remembered, a failed way round
+     remembered, a crowd placed with a finer map) may only be faster: the same
+     engine with them switched off has to give the identical world. Run both
+     ways on this machine rather than against a stored answer, because a
+     simulation's numbers are one machine's. */
+  ['world-builder walking is the same world', ['projects/world-builder/test/walking.test.mjs']],
   /* Physics settings/conservation and seven actual days per People preset.
      The shared daily clock superseded the compressed headless century in
      2026-11-12. Generation-scale experiments remain explicit --generations
