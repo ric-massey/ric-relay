@@ -1008,7 +1008,34 @@ The map has a scale: **a square is 250 metres**, so a village's fields, about ei
 reach two kilometres, as farming villages' did. **How much land** is a slider in kilometres east
 to west, 5 to 40 (north to south is 0.62 of it); the old valley, district and region are 11, 17
 and 25 on it, and a link or preset that names one still opens it (Ric: *"we should be able to
-choose how big the land is"*). Below 5 km the default eight villages do not fit. People
+choose how big the land is"*). Below 5 km the default eight villages do not fit.
+
+**Up to the size of a state, on a computer that can carry it** (Ric: *"largest should be the size
+of like a state … Idaho or Utah or Tennessee"*, and *"a big computer could run bigger worlds with
+options to turn parts of tracking off"*). Land goes to 500 × 310 km — about 155,000 km², between
+Tennessee and Utah — and people to 20,000. Three things make that possible, measured:
+
+- **Detail**, a settings group: **Bodies** "as drawn" (the default; everybody keeps a drawn box's
+  width apart, so nobody overlaps on screen) or "real size" (half a metre on 250-metre squares:
+  nobody is ever in the way, the bookkeeping of who stands where is skipped, and a world runs
+  about 3½ times faster — 400 people, a year in 1.8 minutes instead of 6.3 — but boxes drawn
+  larger than life can overlap); **Conversations** "every one written down" or "only what
+  happens" (they still pass on news, friendship and sickness; little faster on its own).
+- **Land over 40 km is mostly wild** (`WILD`, `worked`): crops are worked out only within four
+  kilometres of a village, and a square first reached is a full stand of virgin growth. Every
+  map up to 40 km is exactly as it was. Borders are worked out around each village rather than
+  by asking every square about every village, and the lists of who stands on each square exist
+  only where somebody stands — both give the identical world, checked on three seeds.
+- **The page paints a big land a pixel a square**, its soil worked out once, and repaints it at
+  most every two seconds; eight pixels a square would have been a canvas larger than a browser
+  allows.
+
+Measured headless with real-size bodies: 500 km and 2,000 people, a year in about 9 minutes; in a
+browser at Max about 5. **Many thousands of people are still slow** — 8,000 on 500 km took an hour
+a year — because some of what a person does still looks through everybody (who to ask for food,
+who to buy grain from); that is the next thing to make fast. Tests move "how many people" and
+"how much land" to twice and ten kilometres more, not half way to their ends, which test the
+computer rather than the world. People
 **walk 4.5 km an hour**, 18 squares (`TILE_METRES`, `WALK_KMH`); until this they covered about
 37 squares an hour, nine kilometres, on a map with no size. A stride longer than a fifth of a
 square is taken in checked pieces, so nobody walks through anybody. Tests step the world by

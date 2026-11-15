@@ -33,6 +33,11 @@ function other(it, base, alt) {
   if (alt && it.key in alt) return alt[it.key];
   if (it.type === "toggle") return !base;
   if (it.type === "select") return it.options.map(o => o[0]).find(v => v !== base);
+  /* How many people and how much land go as far as a computer can carry
+     (2026-11-14); half way to that end is a test of the computer, not of
+     the world. Twice the people, ten more kilometres. */
+  if (it.key === "people") return Math.min(it.max, base * 2);
+  if (it.key === "map") return Math.min(it.max, base + 10);
   const far = Math.abs(it.max - base) > Math.abs(it.min - base) ? it.max : it.min;
   /* Half way to the far end, on a step: the extremes are often degenerate. */
   const v = base + (far - base) * 0.5;

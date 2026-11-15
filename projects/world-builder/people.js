@@ -60,7 +60,7 @@
 
   const SCHEMA = [
     { title: "The land", items: [
-      { key: "map", label: "How much land", type: "range", min: 5, max: 40, step: 1, def: 17,   // 5: below it the default eight villages do not fit
+      { key: "map", label: "How much land", type: "range", min: 5, max: 500, step: 1, def: 17, curve: 2.5,   // 5: below it the default eight villages do not fit
         say: v => v + " by " + Math.round(landHigh(v)) + " km — " + (v <= 12 ? "a valley" : v <= 20 ? "a district" : v <= 30 ? "a region" : "a small country"),
         help: "Measured in kilometres, east to west. A square of the map is 250 metres: a village's fields reach about two kilometres, as farming villages' did, and people walk four and a half kilometres an hour. Bigger land is slower to run." },
       { key: "rich", label: "How much it grows", type: "range", min: 0.2, max: 2, step: 0.05, def: 1,
@@ -101,7 +101,7 @@
         help: "How many start in couples, and how many friends — and so who they will ask for food or follow — they already have." },
     ]},
     { title: "The people", items: [
-      { key: "people", label: "How many people", type: "range", min: 20, max: 2000, step: 10, def: 400, curve: 2,
+      { key: "people", label: "How many people", type: "range", min: 20, max: 20000, step: 10, def: 400, curve: 3,
         say: v => v.toLocaleString("en-US"),
         help: "How many are alive when it starts. For scale, farming country held about 10 to 50 people a square kilometre; the land setting above says how many square kilometres there are." },
       { key: "factions", label: "How many factions", type: "range", min: 1, max: 8, step: 1, def: 4,
@@ -189,6 +189,19 @@
         help: "After that each leader keeps as many as their neighbours' armies, their old wars and their treasury call for. Soldiers do not farm, and somebody has to pay them." },
       { key: "deadly", when: s => s.war, label: "How deadly a fight is", type: "range", min: 0.1, max: 3, step: 0.1, def: 1,
         say: v => (v < 0.6 ? "mostly bruises" : v < 1.6 ? "people die" : "few walk away"), help: "How often a blow in a fight kills." },
+    ]},
+    /* What the engine keeps track of, against how fast it runs (Ric,
+       2026-11-14: "options to turn parts of tracking off would make it
+       faster"). Measured, most of a world's cost is bodies keeping out of each
+       other's way and the bookkeeping of who stands where, not anybody's
+       decisions; these turn that off, each saying what it costs. */
+    { title: "Detail", items: [
+      { key: "bodies", label: "Bodies", type: "select", def: "drawn",
+        options: [["drawn", "As drawn — nobody overlaps on screen"], ["real", "Real size — faster; boxes may overlap on screen"]],
+        help: "As drawn, every person keeps as far from the next as their box is wide, so crowds queue and walk round each other. At real size a person is half a metre wide on 250-metre squares: nobody is ever in anybody's way, which is true to life and much faster, but the boxes drawn larger than life can overlap." },
+      { key: "records", label: "Conversations", type: "select", def: "full",
+        options: [["full", "Every one written down"], ["light", "Only what happens — faster"]],
+        help: "Written down, the Talk tab shows each exchange, word for word, and what it changed. Otherwise conversations still pass on news, friendship, opinions and sickness, but are not kept." },
     ]},
     { title: "Time", items: [
       { key: "rate", label: "Clock", type: "range", min: 0.25, max: 1000, step: 0.25, def: 1, curve: 4,
@@ -388,14 +401,22 @@
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
     const owner = new Int16Array(tiles).fill(-1);
-    const buckets = []; for (let i = 0; i < tiles; i++) buckets.push([]);
+    const reachBest = new Float32Array(tiles).fill(1e9);   // territory(): the best claim on each square
+    let ownedList = [];
+    const WILD = cols > 160, inReach = WILD ? new Uint8Array(tiles) : null;   // worked(): land over 40 km
+    let workedList = null;
+    /* Lists of who is on each square, made only for squares somebody stands
+       on: on a state-sized map most squares are empty, and a list for each of
+       millions of them was most of the memory. */
+    const buckets = new Array(tiles), NOBODY = [];
+    const bucketAt = i => buckets[i] || NOBODY;
     /* Who is on which tile, for talking and fighting. Only the tiles that had
        anybody are cleared; the order within a tile is the people array's. */
     const bucketsUsed = [];
     function rebucket() {
       for (const i of bucketsUsed) buckets[i].length = 0;
       bucketsUsed.length = 0;
-      for (const p of people) { const i = tileAt(p.x, p.y), b = buckets[i]; if (!b.length) bucketsUsed.push(i); b.push(p); }
+      for (const p of people) { const i = tileAt(p.x, p.y); let b = buckets[i]; if (!b) b = buckets[i] = []; if (!b.length) bucketsUsed.push(i); b.push(p); }
     }
 
     const people = [], byId = new Map();
@@ -740,18 +761,46 @@
         v.feeds = food;
       }
     }
+    /* Who holds each square: the village it lies nearest the middle of, by
+       the village's reach. Worked out around each village only — the same
+       answer as asking every square of the map about every village, which on
+       a state-sized map was most of a day's work. */
     function territory() {
       for (const v of villages) v.radius = v.alive ? 2.6 + Math.sqrt(Math.max(1, v.pop)) * 0.55 : 0;
-      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-        let best = -1, bd = 1e9;
-        for (const v of villages) {
-          if (!v.alive) continue;
-          const d = Math.hypot(v.x - x - 0.5, v.y - y - 0.5);
-          if (d < v.radius && d / v.radius < bd) { bd = d / v.radius; best = v.id; }
-        }
-        owner[y * cols + x] = best;
+      for (const i of ownedList) { owner[i] = -1; reachBest[i] = 1e9; }
+      ownedList = [];
+      for (const v of villages) {
+        if (!v.alive) continue;
+        const r = Math.ceil(v.radius) + 1;
+        for (let y = Math.max(0, Math.floor(v.y) - r); y <= Math.min(rows - 1, Math.floor(v.y) + r); y++)
+          for (let x = Math.max(0, Math.floor(v.x) - r); x <= Math.min(cols - 1, Math.floor(v.x) + r); x++) {
+            const d = Math.hypot(v.x - x - 0.5, v.y - y - 0.5);
+            if (d >= v.radius) continue;
+            const i = y * cols + x, ratio = d / v.radius;
+            if (ratio < reachBest[i]) { if (reachBest[i] === 1e9) ownedList.push(i); reachBest[i] = ratio; owner[i] = v.id; }
+          }
       }
+      worked();
       landFeeds();
+    }
+    /* Land over 40 km is mostly wild: its growth is worked out only within
+       sixteen squares (four kilometres) of a village, and a square that comes
+       into reach for the first time is a full stand of wild growth, as virgin
+       ground is. Every map up to 40 km grows every square every hour, exactly
+       as it always has. */
+    function worked() {
+      if (!WILD) return;
+      const list = [], seen = new Uint8Array(tiles);
+      for (const v of villages) {
+        if (!v.alive) continue;
+        const r = 16;
+        for (let y = Math.max(0, Math.floor(v.y) - r); y <= Math.min(rows - 1, Math.floor(v.y) + r); y++)
+          for (let x = Math.max(0, Math.floor(v.x) - r); x <= Math.min(cols - 1, Math.floor(v.x) + r); x++) {
+            const i = y * cols + x; if (seen[i]) continue; seen[i] = 1; list.push(i);
+            if (!inReach[i]) { inReach[i] = 1; stock[i] = fert[i] * FIELD_CAP; }
+          }
+      }
+      workedList = list;
     }
     function census() {
       for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; }
@@ -1113,7 +1162,7 @@
         const q = byId.get(id);
         if (q && q.hp > 0 && q.home === p.home && q.task !== "sleep") return q;
       }
-      const b = buckets[tileAt(p.x, p.y)];
+      const b = bucketAt(tileAt(p.x, p.y));
       for (const q of b) if (q !== p && q.hp > 0 && q.task !== "sleep") return q;
       return null;
     }
@@ -1580,7 +1629,7 @@
       const cx = Math.floor(p.x), cy = Math.floor(p.y), k = Math.ceil(reach);
       for (let y = Math.max(0, cy - k); y <= Math.min(rows - 1, cy + k); y++)
         for (let x = Math.max(0, cx - k); x <= Math.min(cols - 1, cx + k); x++) {
-          const b = buckets[y * cols + x];
+          const b = bucketAt(y * cols + x);
           for (let i = 0; i < b.length; i++) {
             const q = b[i];
             /* The wounded leaving the field are let go (2026-11-14): chased and
@@ -1785,6 +1834,7 @@
     function said(a, b, kind, la, lb) {
       a.say = la; a.sayT = TK(30); b.say = lb || ""; b.sayT = TK(30);
       a.talkingTo = b.id; b.talkingTo = a.id;
+      if (S.records === "light") return;
       chatter.push({ id: nextExchange++, day: activityTicks / ACTIONS_PER_HOUR / DAY_HOURS, t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
       if (chatter.length > 160) chatter.splice(0, chatter.length - 160);
     }
@@ -1807,6 +1857,7 @@
       /* Both of them have now had company. This is the only thing that clears
          it, so somebody nobody speaks to keeps going out to look for company. */
       a.alone = 0; b.alone = 0;
+      if (S.records === "light") { exchange(a, b); return; }
       const before = [conversationState(a, b), conversationState(b, a)], previous = nextExchange;
       const diplomacy = a.f !== b.f ? [factions[a.f], factions[b.f]].map((f, i) => {
         const other = i === 0 ? b.f : a.f;
@@ -2074,7 +2125,11 @@
       return walking ? "Walking" : p.job === "child" ? "Playing" : "Resting";
     }
 
-    const BODY = 0.42;
+    /* Half a metre on a 250-metre square, at "Real size"; as wide as a drawn
+       box otherwise. At real size the bookkeeping of who stands where is
+       skipped altogether: nobody is ever in the way. */
+    const REAL_BODIES = S.bodies === "real";
+    const BODY = REAL_BODIES ? 0.002 : 0.42;
     /* Who stands where, by tile. Plain arrays reused from tick to tick, and a
        list of the cells in use so a tick clears only those: until 2026-11-14
        this was a Map of Sets rebuilt from nothing every tick — 43% of the
@@ -2084,6 +2139,7 @@
     const placed = new Set(), occ = new Array(cols * rows), occUsed = [];
     const cell = (x, y) => Math.floor(y) * cols + Math.floor(x);
     function put(p) {
+      if (REAL_BODIES) return;
       const key = cell(p.x, p.y);
       let list = occ[key];
       if (!list) { list = occ[key] = []; }
@@ -2096,6 +2152,7 @@
     }
     function free(p, x, y) {
       if (x < 0.25 || y < 0.25 || x > cols - 0.25 || y > rows - 0.25) return false;
+      if (REAL_BODIES) return true;
       const fy = Math.floor(y), fx = Math.floor(x), r2 = (BODY - 1e-9) ** 2;
       for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
         const list = occ[(fy + j) * cols + fx + i];
@@ -2196,7 +2253,7 @@
       occUsed.length = 0;
       // Reserve existing bodies first. Only a new arrival needs placement; walking
       // already checks every step, so checking every settled body again is wasted work.
-      for (const p of people) if (placed.has(p.id)) put(p);
+      if (!REAL_BODIES) for (const p of people) if (placed.has(p.id)) put(p);
       for (const p of people) {
         if (placed.has(p.id)) continue;
         if (!free(p, p.x, p.y)) {
@@ -2274,7 +2331,7 @@
 
       /* Talking to whoever is standing on the same ground. */
       if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && p.task !== "field" && p.task !== "make" && p.task !== "sleep" && R() < Math.min(0.9, S.talk * 0.12 / STEP_SCALE)) {
-        const b = buckets[tileAt(p.x, p.y)];
+        const b = bucketAt(tileAt(p.x, p.y));
         if (b.length > 1) {
           const q = b[Math.floor(R() * b.length)];
           if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4 && q.task !== "sleep") converse(p, q);
@@ -2396,7 +2453,7 @@
       const k = 3;
       for (let y = Math.max(0, Math.floor(v.y) - k); y <= Math.min(rows - 1, Math.floor(v.y) + k); y++)
         for (let x = Math.max(0, Math.floor(v.x) - k); x <= Math.min(cols - 1, Math.floor(v.x) + k); x++)
-          for (const p of buckets[y * cols + x]) {
+          for (const p of bucketAt(y * cols + x)) {
             if (p.job !== "soldier") continue;
             if (p.f === v.f) ours++; else if (atWar(p.f, v.f)) theirs[p.f] = (theirs[p.f] || 0) + 1;
           }
@@ -2712,7 +2769,9 @@
       t++;
       const grow = growth();
       const frost = S.winter * Math.max(0, GROW_LINE - warmth()) * 0.004;
-      for (let i = 0; i < tiles; i++) {
+      const n = WILD && workedList ? workedList.length : tiles;
+      for (let k = 0; k < n; k++) {
+        const i = WILD && workedList ? workedList[k] : k;
         const cap = fert[i] * FIELD_CAP;
         if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich * grow);
         /* What is still standing when the frost comes is lost a little at a time. */
