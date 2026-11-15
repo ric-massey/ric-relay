@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Lab — World Builder</title>
+<meta name="description" content="Place hexagons on a grid, type in what each kind is and the rules they follow, and run it against a control to see whether anything copies itself.">
+<meta name="theme-color" content="#0c1113">
+<script src="../../assets/visit.js" defer></script>
+<style>
+  /* THE LAB — World Builder's bench. Same table as the sandbox (its colours
+     and type), laid out for building one thing exactly rather than watching
+     a crowd. Text clears 4.5:1; nothing under 12px. */
+  :root {
+    --bg: #0c1113; --panel: #12191c; --raise: #182226; --line: #2a383f;
+    --ink: #e3e9e6; --dim: #98a8a5; --acc: #e0a340; --acc-ink: #1a1304;
+    --warn: #ef8a7c; --good: #8fd39a;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-text-size-adjust: 100%; }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--acc); }
+  :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; }
+  .btn { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .45rem .8rem; min-height: 40px; }
+  .btn:hover { border-color: var(--dim); }
+  .btn.go { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 700; }
+  .btn[aria-pressed="true"] { border-color: var(--acc); color: var(--acc); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .small { font-size: 13px; color: var(--dim); }
+  .warn { color: var(--warn); }
+  .good { color: var(--good); }
+
+  header.top { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; padding: .7rem 16px; border-bottom: 1px solid var(--line); }
+  header.top h1 { font-size: 1.5rem; }
+  header.top p { margin: 0; color: var(--dim); font-size: 13px; flex: 1 1 18rem; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; flex: 1; min-height: 0; }
+  @media (max-width: 860px) { body { display: block; } main { grid-template-columns: 1fr; } }
+  .stage { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--line); }
+  .tools { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; padding: .5rem 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .tools .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 .2rem; }
+  .sw { width: 34px; height: 34px; border: 2px solid transparent; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #0c1113; }
+  .sw[aria-pressed="true"] { border-color: #fff; }
+  #view { flex: 1; width: 100%; min-height: 320px; display: block; touch-action: none; background: #070a0b; }
+  @media (max-width: 860px) { #view { height: auto; aspect-ratio: 1 / 1; flex: none; } }
+  .status { padding: .4rem 16px; font-size: 13px; color: var(--dim); border-top: 1px solid var(--line); min-height: 2.2rem; border-bottom: 1px solid var(--line); border-top: 0; }
+  .status b { color: var(--ink); font-weight: 600; }
+
+  aside { background: var(--panel); overflow: auto; }
+  .tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 1; }
+  .tabs button { flex: 1 1 auto; background: none; border: 0; border-bottom: 2px solid transparent; padding: .65rem .5rem; color: var(--dim); min-height: 44px; }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--acc); }
+  .pane { padding: .9rem 16px 2rem; }
+  .pane h2 { font-size: 1.05rem; margin: .9rem 0 .4rem; }
+  .pane h2:first-child { margin-top: 0; }
+  .pane p { margin: .3rem 0 .7rem; }
+  .field { display: flex; align-items: center; gap: .5rem; margin: .35rem 0; flex-wrap: wrap; }
+  .field label { flex: 1 1 9rem; min-width: 0; }
+  .field input[type=number], .field input[type=text], .field select { background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: .35rem .45rem; min-height: 36px; }
+  .field input[type=number] { width: 6rem; }
+  .field input[type=range] { flex: 1 1 8rem; accent-color: var(--acc); }
+  .field input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--acc); }
+  .help { font-size: 12.5px; color: var(--dim); margin: 0 0 .5rem; }
+  .group { border-top: 1px solid var(--line); margin-top: .6rem; padding-top: .3rem; }
+  .group > h3 { font-size: .95rem; margin: .4rem 0; }
+  table.grid { border-collapse: collapse; font-size: 13px; }
+  table.grid th, table.grid td { border: 1px solid var(--line); padding: 2px; text-align: center; }
+  table.grid input { width: 3.4rem; background: var(--bg); border: 0; text-align: center; padding: .3rem 0; }
+  .kind { border: 1px solid var(--line); padding: .4rem .6rem; margin: .5rem 0; background: var(--raise); }
+  .kind .head { display: flex; align-items: center; gap: .5rem; }
+  .bar { height: 6px; background: var(--line); margin: .5rem 0; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--acc); }
+  table.res { border-collapse: collapse; width: 100%; font-size: 13px; margin: .4rem 0; }
+  table.res th, table.res td { border-bottom: 1px solid var(--line); padding: .3rem .25rem; text-align: right; }
+  table.res th:first-child, table.res td:first-child { text-align: left; }
+  .verdict { border-left: 3px solid var(--acc); padding: .3rem .7rem; margin: .6rem 0; background: var(--raise); }
+  ul.list { list-style: none; padding: 0; margin: .4rem 0; }
+  ul.list li { display: flex; align-items: center; gap: .4rem; border-bottom: 1px solid var(--line); padding: .3rem 0; }
+  ul.list li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .msg { min-height: 1.4rem; font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>The Lab</h1>
+  <p>Place hexagons on the grid, say what each kind is and which rules they follow, then run it — or run it as an experiment against a control. <a href="index.html#physics">Back to the sandbox</a></p>
+</header>
+<main>
+  <section class="stage" aria-label="The bench">
+    <div class="tools" id="tools">
+      <button class="btn" data-tool="place" aria-pressed="true">Place</button>
+      <button class="btn" data-tool="bond" aria-pressed="false">Bond</button>
+      <button class="btn" data-tool="pin" aria-pressed="false">Pin</button>
+      <button class="btn" data-tool="erase" aria-pressed="false">Erase</button>
+      <span class="sep" aria-hidden="true"></span>
+      <span id="palette" role="group" aria-label="Kind to place"></span>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="btn go" id="run">Run</button>
+      <button class="btn" id="reset" hidden>Back to building</button>
+      <label class="small">Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label>
+    </div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <canvas id="view" aria-label="The grid. Use the tools above to place, bond, pin and erase hexagons."></canvas>
+  </section>
+  <aside>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="build" aria-selected="true">Build</button>
+      <button role="tab" data-tab="kinds" aria-selected="false">Kinds</button>
+      <button role="tab" data-tab="rules" aria-selected="false">Rules</button>
+      <button role="tab" data-tab="exp" aria-selected="false">Experiment</button>
+      <button role="tab" data-tab="saved" aria-selected="false">Saved</button>
+    </div>
+
+    <div class="pane" data-pane="build">
+      <h2>This setup</h2>
+      <div class="field"><label for="name">Name</label><input type="text" id="name" maxlength="80"></div>
+      <div class="field"><label for="size">Grid size</label><input type="number" id="size" min="8" max="60" step="1"></div>
+      <p class="help">How many hexagons across. Changing it keeps what fits.</p>
+      <h2>Tools</h2>
+      <p class="help"><b>Place</b>: tap or drag to put the chosen kind down (tap one to change its kind). <b>Bond</b>: tap one hexagon, then a touching one, to bond them — or unbond them if they already are. <b>Pin</b>: tap to hold one still. <b>Erase</b>: tap or drag.</p>
+      <h2>A soup to work with</h2>
+      <div class="field"><label for="looseKind">Kind</label><select id="looseKind"></select></div>
+      <div class="field"><label for="looseCount">How many</label><input type="number" id="looseCount" min="1" max="2000" value="40"></div>
+      <button class="btn" id="addLoose">Scatter them loose</button>
+      <p class="help">Put down on random empty cells, unbonded — the raw material a template could copy from.</p>
+      <h2>Start again</h2>
+      <div class="field"><select id="example"><option value="chain">A chain in a soup</option><option value="empty">An empty grid</option></select><button class="btn" id="loadExample">Load</button></div>
+      <button class="btn" id="clear">Clear the grid</button>
+      <p class="msg" id="buildMsg"></p>
+    </div>
+
+    <div class="pane" data-pane="kinds" hidden>
+      <h2>Kinds</h2>
+      <p class="help">What each kind is. <b>Bonds</b>: how many it can hold. <b>Pull</b>: how hard it pulls on what a bond shares; with charge on, the harder puller goes negative. <b>Shape</b>: where its bonds may sit — straight, bent at 120°, a Y, a cross, or anywhere; it only counts when “Bonds hold an angle” is on in Rules.</p>
+      <div id="kinds"></div>
+      <button class="btn" id="addKind">Add a kind</button>
+      <button class="btn" id="dropKind">Remove the last</button>
+      <h2>Who bonds with whom</h2>
+      <p class="help">How strong a bond between each pair is, in energy. 0 means they never bond. Both halves of the table are kept the same.</p>
+      <div id="matrix"></div>
+    </div>
+
+    <div class="pane" data-pane="rules" hidden>
+      <p class="help">The same physics as the sandbox. What the world is made of comes from the grid and the kinds, so those settings are not here.</p>
+      <div id="rules"></div>
+    </div>
+
+    <div class="pane" data-pane="exp" hidden>
+      <h2>Run an experiment</h2>
+      <p class="help">Runs the setup as built, and a <b>control</b>: the same hexagons scattered loose with no bonds and nothing pinned, for the same time on the same world seeds. Whatever the built world ends with more of than the control — beyond what it started with — is the only thing building it can take credit for. That is how copying is told apart from things simply assembling.</p>
+      <div class="field"><label for="secs">Seconds of world time</label><input type="number" id="secs" min="5" max="3600" value="120"></div>
+      <div class="field"><label for="runs">Runs (world seeds)</label><input type="number" id="runs" min="1" max="20" value="3"></div>
+      <div class="field"><label for="oneOff">Also run with each rule that is on switched off, one at a time</label><input type="checkbox" id="oneOff" checked></div>
+      <button class="btn go" id="start">Start</button>
+      <button class="btn" id="cancel" hidden>Stop</button>
+      <div class="bar" aria-hidden="true"><i id="bar"></i></div>
+      <p class="msg" id="expMsg" aria-live="polite"></p>
+      <div id="results"></div>
+    </div>
+
+    <div class="pane" data-pane="saved" hidden>
+      <h2>Saved in this browser</h2>
+      <button class="btn" id="save">Save this setup</button>
+      <ul class="list" id="savedList"></ul>
+      <h2>Share and keep</h2>
+      <button class="btn" id="link">Copy a link to it</button>
+      <button class="btn" id="download">Download it</button>
+      <label class="btn" for="upload">Open a file</label><input type="file" id="upload" accept="application/json,.json" hidden>
+      <p class="msg" id="savedMsg" aria-live="polite"></p>
+    </div>
+  </aside>
+</main>
+<script src="physics.js"></script>
+<script src="lab-core.js"></script>
+<script src="lab.js"></script>
+<script src="../relay-return.js" data-home="../../index.html" data-egg="worlds" defer></script>
+</body>
+</html>

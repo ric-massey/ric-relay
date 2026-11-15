@@ -33,6 +33,10 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/chemistry.test.mjs` | Quick checks on valence and pull, that settling pays for every bond exactly, that heat thins bonds out, that a barrier is lower for pieces held lined up, that charge lands where the pulls say, keeps the books, and makes lopsided pairs stick, and that shape, sticking, ions, double bonds and energy-rich pieces each do what they say and pay exactly. Quick lane. |
 | `chemistry-probe.mjs` | Not a check — a measurement, run by hand (a few minutes). Van 't Hoff, mass action, the barrier, hand-overs and energy-rich pieces, each against the number it should give. |
 | `matter-probe.mjs` | Not a check — a measurement, run by hand (several minutes). Arrhenius (how fast bonds form against the barrier) and boiling against Clausius–Clapeyron. |
+| `lab.html`, `lab.js` | The Lab: a hexagon grid to build one setup exactly, its kinds and rules, live runs and experiments. |
+| `lab-core.js` | The Lab's core — building a world from a setup, its control, and judging an experiment. No DOM; the page, the worker and node all use it. |
+| `lab-worker.js` | Runs an experiment off the page's thread. |
+| `test/lab.test.mjs` | Quick checks: typed-in kinds obeyed, setups built exactly, the control is the same hexagons loose, loaded setups checked, experiments report what they say. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
@@ -487,6 +491,45 @@ rule. Each is now measured, in `test/chemistry.test.mjs`.
 - **Saturation with exposed sites — already here.** Kinds 1 and 4 mixed, settling for a minute: 58
   molecules closed (the 1·1 pair, and 1·1·1·1·4, flattened methane) and 76 keeping open sites on
   the outside (1·4 with three, 1·1·4 with two, and so on).
+
+### The Lab
+
+Ric, 2026-11-14: *"a hexagon grid pops up. You place the hexagons, choose the rules for the
+hexagons and the properties of them … then can run it. So you can try a bunch of different ones to
+see if you can make a self replicating thing … so then we can test each individual property. …
+It wouldn't be a sandbox right?"* — right: a sandbox is for playing, this is for finding out.
+`lab.html`, linked under the two doors.
+
+- **The grid.** Cells one hexagon wide, every other row shifted half, so each touches six others
+  at the six directions a hexagon's bond slots point. Tools: **Place** (tap or drag; tap one to
+  change its kind), **Bond** (tap one, then a touching one; again to unbond), **Pin**, **Erase**;
+  a soup of any kind can be scattered on the empty cells.
+- **Kinds typed in.** For each kind: bonds it holds (0–6), pull, mass, shape (anywhere, straight,
+  bent at 120°, a Y, a cross), and a table of how strongly each pair bonds (0 = never; the two
+  halves kept equal). This deliberately breaks the sandbox's rule that a kind is worked out from
+  its number and never looked up — the sandbox stays honest by that rule, and the Lab exists to
+  test one property at a time, which needs typing them in. The engine takes them as `kindsDef`;
+  without it the sandbox is byte for byte what it was (tested).
+- **Rules.** The sandbox's own settings, built from the same list, minus the ones the grid and the
+  kinds decide. A Lab setup starts calm: looped edges, no gravity, nothing breaks, one size,
+  bonds that hold an angle and settle with temperature. All of it can be changed.
+- **Run** builds the world exactly as drawn (a drawn bond that the table, room or shape will not
+  allow is skipped and said so) and runs it live.
+- **Experiment.** The setup as built against a **control** — the same hexagons scattered loose,
+  unbonded and unpinned — for the same seconds on the same world seeds, the method of
+  `replication-probe.mjs` and for its reason (Virgo et al., ECAL 2011). For each thing the setup
+  starts with: how many more the built world ends with, how many the control ends with, and the
+  difference, which is the only part building it can claim. Optionally again with each rule that is
+  on switched off in turn, so each rule's part shows on its own. Runs in a worker; the verdict says
+  "no copying" or "a difference, not yet a finding", never more.
+- **Keeping it.** Save in the browser, download or open a file, or copy a link (the setup in the
+  address, up to about 60 kB). Anything loaded is checked: kinds clamped, cells kept to the grid
+  and to kinds that exist, bonds only between neighbours.
+
+Checked on the day in a browser at desktop and phone width: placing, bonding by tap-then-tap,
+running, and a two-run experiment with every rule off in turn. The first replication probe on the
+new chemistry (three setups, 1-2-3 chains in a soup) found no copying, which is what this is for:
+trying many specific setups, not adding more rules.
 
 ### Hands
 

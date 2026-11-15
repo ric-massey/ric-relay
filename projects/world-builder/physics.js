@@ -415,13 +415,51 @@
   /* With "Everything sticks a little": the reach past touching. */
   const STICK_R = 0.6;
   /* create() has its own `pull`, gravity's; this is the kind's. */
-  const kindPull = pull;
+  const modulePull = pull;
   const TAU = Math.PI * 2;
   const GRID = 16;           // gravity's coarse grid, cells a side
   const DIRECT_MAX = 500;    // bodies below which gravity is every pair exactly
 
+  /* ── kinds you define (the Lab) ──────────────────────────────────────────
+     The sandbox works every kind out from its number and never looks one up.
+     The Lab is for testing one property at a time, so there a visitor types
+     each kind in: how many bonds it holds, how hard it pulls, its mass, its
+     shape, and how strongly it bonds with each other kind (0 = never). Passed
+     as `kindsDef` beside the settings; without it nothing below is used and
+     the sandbox is what it was. Out-of-range numbers are brought in, never
+     trusted. */
+  const SHAPES = { any: 63, straight: 9, bent: 5, y: 21, cross: 27 };
+  function labKinds(list) {
+    if (!Array.isArray(list) || !list.length) return null;
+    const k = Math.min(8, list.length);
+    const num = (v, lo, hi, d) => { v = Number(v); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+    const out = [];
+    for (let a = 0; a < k; a++) {
+      const d = list[a] || {};
+      out.push({
+        valence: Math.round(num(d.valence, 0, 6, 1)),
+        pull: num(d.pull, 0, 1, 0.5),
+        mass: num(d.mass, 0.1, 100, 1),
+        shape: SHAPES[d.shape] != null ? d.shape : "any",
+        mask: SHAPES[d.shape] != null ? SHAPES[d.shape] : 63,
+        bonds: Array.from({ length: k }, (_, b) => num(d.bonds && d.bonds[b], 0, 1000, 0)),
+      });
+    }
+    /* The same bond read from either end: the two entries are averaged, so a
+       table typed lopsided is still one number per pair. */
+    for (let a = 0; a < k; a++) for (let b = a + 1; b < k; b++) {
+      const v = (out[a].bonds[b] + out[b].bonds[a]) / 2;
+      out[a].bonds[b] = v; out[b].bonds[a] = v;
+    }
+    return out;
+  }
+
   function create(input) {
     const S = clean(input);
+    const DEF = labKinds(input && input.kindsDef);
+    /* With kinds of its own, a world has that many, bonds anything to anything
+       the table allows, and holds each kind to its own shape. */
+    if (DEF) { S.kinds = DEF.length; if (S.bonding === "none") S.bonding = "any"; S.shapeBy = true; }
     const R = rng(S.seed * 2654435761);
     const W = S.size, H = S.size;
     const wrap = S.edge === "wrap";
@@ -455,6 +493,8 @@
        running world finds the charges already right. */
     const q = new Float64Array(cap);
     const charged = () => S.charge > 0 && S.bonding !== "none";
+    /* A kind's pull: typed in the Lab, or worked out from its number. */
+    const kindPull = k => (DEF ? DEF[k - 1].pull : modulePull(k));
     /* A whole charge held (-1, 0, +1), with "Whole charges can jump"; it is
        part of q too. The energy a free hexagon has been charged up with,
        with "Energy-rich pieces". How many of its bonds a hexagon is using,
@@ -757,7 +797,7 @@
     const piOf = i => (S.order ? used[i] - nb[i] : 0);
     /* Do the slots it uses, and `extra`, sit on its pattern for `pi`? */
     function shapeHolds(i, extra, pi) {
-      const pat = shapeMask((baseKind(i) - 1) % 7, pi);
+      const pat = DEF ? DEF[baseKind(i) - 1].mask : shapeMask((baseKind(i) - 1) % 7, pi);
       let mask = extra;
       for (let t = 0; t < SLOTS; t++) if (adj[i * SLOTS + t] >= 0) mask |= 1 << t;
       for (let t = 0; t < SLOTS; t++) if ((rotMask(pat, t) & mask) === mask) return true;
@@ -795,10 +835,12 @@
        by the kind" its own valence too. */
     function capOf(i) {
       if (S.ions && z[i] !== 0) return 0;          // an ion is held by charge, not bonds
+      if (DEF) return DEF[baseKind(i) - 1].valence;
       return S.bondsPer === "kind" ? Math.min(S.maxBonds, valence(baseKind(i))) : S.maxBonds;
     }
     /* What a bond between these two is worth. `less` as in siteOf. */
     function worth(i, j, less) {
+      if (DEF) return DEF[baseKind(i) - 1].bonds[baseKind(j) - 1];
       const a = affinity(S.bonding, kind[i], kind[j], S.kinds, siteOf(i, j, less), siteOf(j, i, less));
       if (!(a > 0)) return 0;
       return S.bondStrength * a * (S.bondsPer === "kind" ? polar(baseKind(i), baseKind(j)) : 1);
@@ -1734,7 +1776,7 @@
         if (chipJ) { impact[j] += lost * hj; impactX[j] += ux * lost * hj; impactY[j] += uy * lost * hj; }
       }
       if (!S.settle && !chipI && !chipJ && S.bonding !== "none" && units(i) < capOf(i) && units(j) < capOf(j) && Math.abs(vn) < S.bondSpeed) {
-        const a = affinity(S.bonding, kind[i], kind[j], S.kinds, siteOf(i, j, 0), siteOf(j, i, 0));
+        const a = DEF ? worth(i, j, 0) : affinity(S.bonding, kind[i], kind[j], S.kinds, siteOf(i, j, 0), siteOf(j, i, 0));
         if (a > 0 && R() < S.bondChance * Math.min(1, dt * 30)) {
           /* Which slot each end would use. With angles off this is only a
              note of who holds whom and a full list never refuses a bond; with
@@ -2049,6 +2091,27 @@
       if (i >= 0) tally.placed++;
       return i;
     }
+    /* A bond made by hand, the Lab's way of building a thing exactly: only
+       between two that could bond (room left, a strength above nothing, and
+       with shape on, a free slot facing the other within reach). Like any
+       hand edit it is not physics: no heat is given off for it. */
+    function bond(i, j) {
+      if (i === j || i < 0 || j < 0 || i >= n || j >= n || !alive[i] || !alive[j] || bonds.has(key(i, j))) return false;
+      if (units(i) >= capOf(i) || units(j) >= capOf(j)) return false;
+      const B = worth(i, j, 0);
+      if (!(B > 0)) return false;
+      const dx = sep(x[j] - x[i], W), dy = sep(y[j] - y[i], H), d = Math.hypot(dx, dy) || 1e-9;
+      const si = slotFor(i, dx / d, dy / d), sj = slotFor(j, -dx / d, -dy / d);
+      if (spun() && (si < 0 || sj < 0)) return false;
+      link(i, j, si, sj, B, r[i] + r[j]);
+      return true;
+    }
+    function unbondPair(i, j) {
+      const bd = bonds.get(key(i, j));
+      if (!bd) return false;
+      unbond(key(i, j), bd);
+      return true;
+    }
     function loosen(i) { for (const [k, bd] of bonds) if (bd.a === i || bd.b === i) unbond(k, bd); }
     function remove(i) {
       if (i < 0 || i >= n || !alive[i]) return false;
@@ -2118,12 +2181,13 @@
       face: face, spin: spin, slots: adj, SLOTS: SLOTS,
       get n() { return n; },
       step: step, stats: stats, at: at, describe: describe, census: census,
-      place: place, remove: remove, edit: edit, near: near, warm: warm,
+      place: place, remove: remove, edit: edit, near: near, warm: warm, bond: bond, unbondPair: unbondPair,
+      kindsDef: DEF,
       /* The clock and a few others can be turned while it runs. */
       set: function (k, v) { const next = clean(Object.assign({}, S, { [k]: v })); S[k] = next[k]; },
     };
   }
 
   return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, clean: clean, create: create, affinity: affinity,
-           valence: valence, pull: pull, polar: polar };
+           valence: valence, pull: pull, polar: polar, labKinds: labKinds, SHAPES: SHAPES };
 });
