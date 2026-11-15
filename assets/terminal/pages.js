@@ -378,6 +378,14 @@ window.TERMINAL_PAGES = [
   "room": null
  },
  {
+  "href": "projects/world-builder/lab.html",
+  "title": "The Lab",
+  "keys": "World Builder",
+  "body": "Place hexagons on a grid, type in what each kind is and the rules they follow, and run it against a control to see whether anything copies itself.",
+  "text": "The Lab · This setup · Tools · A soup to work with · Start again · Kinds · Who bonds with whom · Run an experiment · Saved in this browser · Share and keep",
+  "room": null
+ },
+ {
   "href": "psyche.html",
   "title": "Psyche",
   "keys": "Human Systems",

@@ -790,6 +790,18 @@
          they are short of the next two weeks. A grain trader reads these:
          with seasons the grain is in houses, not the store, and before
          2026-11-14 traders read only the store and so never moved any. */
+      /* What a household is worth, and what the village and the faction are
+         worth a head: ambition and envy are measured against these. */
+      for (const v of villages) { v.wealth = 0; v.adultsW = 0; }
+      for (const f of factions) { f.wealth = 0; }
+      for (const p of people) {
+        if (p.hp === -99) continue;
+        const w = p.coins + p.food * 0.8 + p.goods * 2, v = villages[p.home];
+        factions[p.f].wealth += w;
+        if (adult(p)) { v.wealth += w; v.adultsW++; }
+      }
+      for (const v of villages) v.wealth = v.adultsW ? v.wealth / v.adultsW : 0;
+      for (const f of factions) f.wealth = f.pop ? f.wealth / f.pop : 0;
       for (const v of villages) { v.spare = 0; v.short = 0; v.purse = 0; }
       for (const p of people) {
         if (!adult(p) || p.hp === -99) continue;
@@ -1030,6 +1042,15 @@
       /* The people they feed. A parent of three wants a reserve that somebody
          on their own does not. */
       const household = Math.min(0.5, p.kids * 0.14) + (p.partner ? 0.08 : 0);
+      /* Wanting more than enough (2026-11-14, Ric: "they weren't greedy"). A
+         person measures what their household is worth against their
+         neighbours': the greedy want to stand above the middle of the
+         village, and keep working, trading and saving until they do. Without
+         it a household with a full larder had nothing left to want, and a
+         world of fed people slept and sat. */
+      const worth = p.coins + p.food * 0.8 + p.goods * 2;
+      const aim = (v.wealth || 0) * (0.8 + 1.2 * p.greed);
+      const ambition = adult(p) && aim > 0 ? clamp((aim - worth) / Math.max(aim, 1), 0, 1) * p.greed : 0;
       return {
         food: clamp((1.7 - days) * 0.5, 0, 1.4) * (0.55 + S.hunger * 0.45),
         /* Squared, so an ordinary evening does not outrank a day's work but a
@@ -1045,7 +1066,8 @@
            off the wish to work in October as surely as in May. */
         provide: clamp(0.3 + household - Math.max(0, days - 2 - winterAhead()) * 0.1 +
                        clamp((winterAhead() - days) / (winterAhead() + 1), 0, 1) * 0.5 * S.winter -
-                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v), 0, 1.3) * (0.5 + p.greed * 0.6),
+                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v) + ambition * 0.7, 0, 1.3) * (0.5 + p.greed * 0.6),
+        ambition: ambition,
       };
     }
 
@@ -1554,7 +1576,9 @@
           const b = buckets[y * cols + x];
           for (let i = 0; i < b.length; i++) {
             const q = b[i];
-            if (q.job !== "soldier" || q.hp <= 0 || !atWar(p.f, q.f)) continue;
+            /* The wounded leaving the field are let go (2026-11-14): chased and
+               cut down as they walked home, they were most of a war's dead. */
+            if (q.job !== "soldier" || q.hp < 0.45 || !atWar(p.f, q.f)) continue;
             const d = dist(p, q);
             if (d < bd) { bd = d; best = q; }
           }
@@ -1612,8 +1636,17 @@
       if (foe) {
         if (dist(p, foe) < 0.8) {
           p.hit = TK(6);
-          if (R() < 0.07 * S.deadly) {
-            strike(p, foe, 0.35 + R() * 0.45);
+          /* A fight is skirmishing, not a slaughter: about a one-in-four chance
+             of landing a blow in an hour of close contact at "How deadly" 1,
+             and a blow wounds more often than it kills, so a soldier is
+             usually hit twice, falls under the line where the wounded go home
+             (above), and leaves the field before a third blow can kill them.
+             Until 2026-11-14 a blow landed within the first hour almost
+             certainly and took up to four-fifths of a life: measured, armies
+             fed a soldier a day into the line all war, and a world lost a
+             quarter of its people to battle in eleven days. */
+          if (R() < 1 - Math.pow(1 - Math.min(0.95, 0.25 * S.deadly), 1 / ACTIONS_PER_HOUR)) {
+            strike(p, foe, 0.15 + R() * 0.3);
             if (foe.hp <= 0) die(foe, "battle", p);
           }
           p.task = "idle"; p.wait = 0;
@@ -2360,14 +2393,27 @@
             if (p.job !== "soldier") continue;
             if (p.f === v.f) ours++; else if (atWar(p.f, v.f)) theirs[p.f] = (theirs[p.f] || 0) + 1;
           }
+      /* A village defends itself: a quarter of its grown-ups take up arms
+         behind its walls, besides any soldiers near. Besiegers make headway
+         only while they outnumber all of that by a fifth, and a bigger place
+         holds out longer — four days, and a day more for every fifteen who
+         live there. Until 2026-11-14 a village with no soldier near it fell in
+         four days, and a world's wars were won, lost and over in a month. */
       const sides = Object.keys(theirs);
-      if (sides.length && ours === 0) {
+      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = ours + v.adults * 0.25;
+      if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
-        if (v.siege >= 4) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]]); }
+        if (v.siege >= 4 + Math.floor(v.pop / 15)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]]); }
       } else v.siege = Math.max(0, v.siege - 1);
 
       /* Too full: some of them go and start somewhere new, if there is land. */
       if (v.pop > crowdOf(v) && R() < 0.25) found(v);
+      /* Land hunger: a village whose fields feed fewer than two a head, with
+         good land open within reach, sends its bolder families out to break
+         new ground — the way farming peoples spread, long before any village
+         was full by a count. found() takes them, and goes nowhere if there is
+         no such land; that is felt as cramped, and a reason to fight. */
+      else if (v.pop >= 16 && (v.feeds || 0) / Math.max(1, v.pop) < 2 && R() < 0.03) found(v);
       /* Had enough: see `secede`. */
       if (S.rebel > 0 && v.adults >= 10 && v.loyal < 0.15 + S.rebel * 0.4 && (v.broke || 0) < t - YEAR * 4) secede(v);
     }
@@ -2615,26 +2661,39 @@
         if (f.yours) { if (rel.war && b.pair) f.target[o.id] = b.pair[1].id; continue; }
         if (rel.war) {
           if (b.pair) f.target[o.id] = b.pair[1].id;
-          const weary = rel.dead / (f.pop + 1) * 5 + (t - rel.since) / YEAR * 0.12 + hungry * 0.5;
+          /* Weariness builds with the dead, the years and the hungry. A war
+             between equals used to end within months and a handful of dead;
+             it now lasts until it has cost something. */
+          const weary = rel.dead / (f.pop + 1) * 3 + (t - rel.since) / YEAR * 0.3 + hungry * 0.5;
           if (weary > 0.35 + lead.bold * 0.5 + S.aggression * 0.3) {
-            const theirs = back.dead / (o.pop + 1) * 5 + (t - back.since) / YEAR * 0.12;
+            const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3;
             const olead = byId.get(o.leader);
-            if (theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 || f.soldiers < o.soldiers * 0.5) {
+            if (theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 || f.soldiers < o.soldiers * 0.35) {
               rel.war = back.war = false; rel.peaceAt = back.peaceAt = t;
               rel.grief *= 0.4; back.grief *= 0.4;
               count.peaces++;
               note("peace", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead.", 3.5, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
             }
           }
-        } else if (S.war && b.d < 26 && t - rel.peaceAt > YEAR * 3 && t > YEAR * 2) {
-          const land = (f.cramped && t - f.cramped < YEAR * 2 ? 0.5 : 0) + hungry * 1.2;
-          const want = (rel.grief + land + Math.max(0, -rel.op) * 0.6) * (0.35 + lead.bold) * (0.25 + S.aggression * 1.5);
+        /* Rivals may take up arms again eighteen months after a peace, and from
+           the first half-year: with three years and a year, every war in a
+           world began in its thirteenth month and the next three years were
+           silent. */
+        } else if (S.war && b.d < 26 && t - rel.peaceAt > YEAR * 1.5 && t > YEAR * 0.5) {
+          /* Reasons to fight besides an old wrong: running out of land (no
+             open ground left to found on, or fields feeding under two a head),
+             hunger, and — for a greedy leader — a neighbour richer a head. */
+          let feeds = 0; for (const vv of villages) if (vv.alive && vv.f === f.id) feeds += vv.feeds || 0;
+          const short = clamp(1 - feeds / Math.max(1, f.pop) / 2, 0, 1) * 0.5;
+          const land = (f.cramped && t - f.cramped < YEAR * 2 ? 0.5 : 0) + hungry * 1.2 + short;
+          const covet = clamp((o.wealth || 0) / Math.max(0.1, f.wealth || 0) - 1.1, 0, 1.5) * lead.greed * 0.6;
+          const want = (rel.grief + land + covet + Math.max(0, -rel.op) * 0.6) * (0.35 + lead.bold) * (0.25 + S.aggression * 1.5);
           const mine = f.soldiers + f.adults * 0.15, theirs = o.soldiers + o.adults * 0.15;
           if (want > 0.8 && mine > theirs * 0.7 && R() < 0.5) {
             rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0;
             if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
             count.wars++;
-            const why = rel.grief > land && rel.grief > 0.3 ? "over old wrongs" : land > 0.3 ? "for land" : "out of plain dislike";
+            const why = rel.grief > land && rel.grief > covet && rel.grief > 0.3 ? "over old wrongs" : covet > land && covet > 0.3 ? "for its wealth" : land > 0.3 ? "for land" : "out of plain dislike";
             note("war", f.name + " has gone to war with " + o.name + ", " + why + ".", 4, b.pair ? b.pair[1].x : 0, b.pair ? b.pair[1].y : 0, f.id);
           }
         }

@@ -557,5 +557,7 @@ runs before it is called done.
    which routes, jobs and neighbours are dependable; people sometimes make reasonable decisions
    on wrong information.
 4. **Relationships and memories with consequences.**
+(2026-11-14, before the list was begun: the world went still — no expansion, no ambition, no
+wars — and that was fixed first; README, "A world that does not go still".)
 5. **Households and politics, joined** — what a tax, a conscripted son or a lost harvest does to
    one household, and what that household then does about it.

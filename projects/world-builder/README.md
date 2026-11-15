@@ -954,6 +954,42 @@ Then a pass over every other setting for the same kind of thing:
 - **Settings with no explanation** — who starts rich, inheritance, loyalty, how quick to fight, how
   deadly, villages each — now say what they do.
 
+### A world that does not go still (2026-11-14)
+
+Ric: *"the people stopped doing things — they didn't take more land, they weren't greedy, they
+weren't fighting ever, wars are always really fast … the simulation got to a point where no one
+was doing anything."* Measured over two years of a 200-person valley, he was right: no war, no new
+village, no faction risen or fallen, and adults asleep or sitting at home 50–75% of their hours.
+Once a household had its winter put by, nothing in the engine gave anybody a reason to want more.
+What was added, each measured over three years on three seeds:
+
+- **Ambition.** A person measures what their household is worth (coins, food, goods) against
+  their village's average, and the greedy want to stand above it (`ambition` in `urgency`): they
+  keep working, trading and saving after the larder is full. Making goods rose from 4–9% of adult
+  hours to 17–29% in a first year.
+- **Land hunger.** A village whose fields feed fewer than two a head sends its bolder families
+  out to found a new village on good open land (`found`), long before it is "full" by a count.
+  Villages now spread in the first months until territories meet; where no land is left, that is
+  felt as cramped.
+- **Reasons to fight.** Besides old wrongs and hunger: land running short (fields feeding under
+  two a head across the faction) and, for a greedy leader, a neighbour richer a head (`covet`).
+  Wars may begin from the first half-year, and between the same two eighteen months after a peace
+  (they were held off a year and three years, so every war in a world began in its thirteenth
+  month and the next years were silent).
+- **Wars that last and do not slaughter.** A village defends itself: a quarter of its grown-ups
+  stand behind its walls besides any soldiers, besiegers make headway only while they outnumber
+  all of that by a fifth, and a bigger place holds out longer. A fight is skirmishing: about one
+  blow in four hours of close contact, and a blow wounds more than it kills; the wounded go home
+  and are let go rather than cut down as they leave — chased down, they had been most of a war's
+  dead, a quarter of a world in eleven days. War-weariness builds with the dead, the years and the
+  hungry, so wars between equals run through campaigns and winters.
+
+**What a three-year run looks like now:** wars from the seventh month that run one to two years
+with a fifth of adults under arms, famine in the war winters because soldiers do not farm (the
+heavier cost of war, as it was), villages taken late, one faction swallowing another, peace, and
+new villages founded throughout. Battle deaths are about five in a hundred over a war. Wars and
+famine are not scripted: each comes from people's land, wealth, grievances and leaders.
+
 ### A five-minute day and a map with a size (2026-11-14)
 
 Ric: *"generations take hours even at 1500x speed … what if instead of 20 minute day it was a 5
