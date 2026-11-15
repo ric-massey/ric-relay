@@ -32,7 +32,7 @@ for (const tool of [false,true]) {
   if(tool) p.gear.tool=1;
   w.stock.fill(100);
   const food=p.food, stock=w.stock.reduce((a,b)=>a+b,0);
-  w.advance(0.2);
+  w.advance(People.STEP);
   /* Read the capacity off the engine rather than writing the number twice:
      a day's work is a balance choice and it has moved once already. */
   const expected=w.harvestCapacity(p);
@@ -52,7 +52,7 @@ for (const pack of [false,true]) {
   w.step(9);
   p.wait=0;p.rest=0;p.greed=1;p.food=2;p.job="trader";
   v.food=100;v.priceFood=1;destination.priceFood=5;destination.food=0;
-  w.advance(0.2);
+  w.advance(People.STEP);
   assert.equal(p.cargo?.what,"food");assert.equal(p.cargo.amount,pack?5:3,"real cargo obeys pack capacity");
 }
 {

@@ -22,7 +22,7 @@ next features from the vision". This table records implementation, not approval 
 | Understanding actions | Close-up role/activity labels, an activity line in inspection, visible harvesting patches. | Reasons for choices, blocked-action explanations and lasting work sites. |
 | Selecting and following | People list with name search, settlement/faction/job filters, pagination and preserved list position; select and follow on the map; living-family links and either Talk participant selectable. | Bookmarks, durable family histories and navigation to the dead. |
 | Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list, a held exchange with original context and before/after effects, participant navigation, map location and a short pause while speaking. | Longer interaction sequences, agreements and remembered follow-through. |
-| Pacing and bodies | Twenty-minute days at 1×; one clock for frames/headless/fast-forward, hourly daily food needs, age-based child rations, reserve estimates, slower walking and body separation. Since 2026-11-13 a day has a shape: work costs hours, people sleep at night in houses of their own. | Long-term balance, faster generation-scale runs, persistence and reliable navigation through very dense crowds. |
+| Pacing and bodies | Five-minute days at 1× since 2026-11-14 (twenty before), 250 m squares, walking at 4.5 km/h; one clock for frames/headless/fast-forward, hourly daily food needs, age-based child rations, reserve estimates, slower walking and body separation. Since 2026-11-13 a day has a shape: work costs hours, people sleep at night in houses of their own. | Long-term balance, faster generation-scale runs, persistence and reliable navigation through very dense crowds. |
 | Why somebody does something | Needs (food, rest, company, fear), one appraisal over every option a person has, occupations that read the same figures as the daily choice, and a person panel that names the need that won. | Plans that outlive the moment, remembered commitments, skills that grow with practice. |
 | Work and society | Farming, generic goods, trade, families, leaders, factions, conflict and breakaways. | Seasonal cultivation, buildings, learning and deeper production chains; a first set of useful tools and equipment now exists. |
 | Continuity and control | A running world lives in the current page; copied links reproduce settings. | Saved worlds, durable family histories and player control. |
@@ -372,7 +372,7 @@ they are not scenarios the engine must force to happen.
 
 ### Time must support the activities
 
-The twenty-minute day at 1× is a settled requirement from 2026-11-12. The rest of the daily
+The twenty-minute day at 1× was a settled requirement from 2026-11-12; on 2026-11-14 Ric made it five minutes so generations can be watched. The rest of the daily
 schedule is still a design question. At that pace, a 365-day year takes about 121 hours and
 40 minutes of uninterrupted real time; at the current 16× maximum, about 7 hours and 36 minutes.
 Watching generations therefore needs a deliberately designed fast-forward experience or a
@@ -439,7 +439,7 @@ These are design review goals, not claims about tests or current feature support
 - What should controlling a person feel like: direct movement, action choices, setting goals,
   or a combination? Which decisions stay autonomous?
 - What visual style makes individuals and equipment recognizable at the intended scale?
-- With the settled twenty-minute day at 1×, what daily schedule and fast-forward experience
+- With the five-minute day at 1× (2026-11-14), what daily schedule and fast-forward experience
   support both individual lives and generations? Should reading an exchange pause automatically?
 - Which farming, materials, building and production systems form the first connected set?
 - How should people choose projects, own property and coordinate shared work?

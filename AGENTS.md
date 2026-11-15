@@ -587,6 +587,10 @@ nobody had linked was a page nobody could find.
   production, cargo capacity and damage use the same equipped-state checks as inspection.
   `projects/world-builder/test/equipment.test.mjs` runs in the quick checks. The nearest README
   records costs, effects, wear and salvage; detailed production chains remain future work.
+  **A day at 1× is five minutes since 2026-11-14** (Ric: "generations take hours even at
+  1500x … what if instead of 20 minute day it was a 5 minute day"); a square of the map is 250 m
+  and people walk 4.5 km/h. Step-counted timers are converted by `TK` in `people.js`, and long
+  strides are taken in checked pieces. What follows is the history of the twenty-minute day.
   **People playback changed on 2026-11-12:** Ric: "1x should be a 20 minute day", "the
   people should move slower", and "they shouldnt" walk inside each other. `advance(seconds)`
   uses five activity ticks per second at 1×, with hourly needs/aging updates and 365 days per

@@ -29,11 +29,23 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  const DAY_SECONDS = 1200;         // Ric, 2026-11-12: a day at 1× takes twenty minutes
+  /* A day at 1× takes five minutes (Ric, 2026-11-14: "generations take hours
+     even at 1500x … what if instead of 20 minute day it was a 5 minute day").
+     It was twenty from 2026-11-12. The engine's cost is the number of small
+     steps a game day holds, so this is what makes a generation watchable: 60
+     steps a game hour instead of 250. Everything measured in hours is
+     unchanged; everything that was counted in steps is converted below by
+     `TK`, so it lasts the same game time it always did. */
+  const DAY_SECONDS = 300;
   const DAY_HOURS = 24;
   const YEAR = 365 * DAY_HOURS;     // hourly updates, independently of lifespan
   const HOUR_SECONDS = DAY_SECONDS / DAY_HOURS;
-  const ACTIONS_PER_HOUR = HOUR_SECONDS * 5;
+  const ACTIONS_PER_HOUR = 60;
+  const TICKS_PER_SECOND = ACTIONS_PER_HOUR / HOUR_SECONDS;
+  /* Steps were tuned at 250 a game hour; this turns one of those counts into
+     the same stretch of game time now. */
+  const STEP_SCALE = ACTIONS_PER_HOUR / 250;
+  const TK = n => Math.max(1, Math.round(n * STEP_SCALE));
   const REFLECT_HOURS = 6;
   const ILLNESS_HOURS = 7 * DAY_HOURS;
   /* The sickness kills about one healthy adult in thirty-three who catch it —
@@ -49,7 +61,8 @@
   const SCHEMA = [
     { title: "The land", items: [
       { key: "map", label: "How much land", type: "select", def: "medium",
-        options: [["small", "A valley"], ["medium", "A country"], ["large", "A continent"]] },
+        options: [["small", "A valley — 11 by 7 km"], ["medium", "A district — 17 by 10 km"], ["large", "A region — 25 by 15 km"]],
+        help: "A square of the map is 250 metres: a village's fields reach about two kilometres, as farming villages' did, and people walk four and a half kilometres an hour." },
       { key: "rich", label: "How much it grows", type: "range", min: 0.2, max: 2, step: 0.05, def: 1,
         say: v => (v < 0.6 ? "thin soil" : v < 1.3 ? "decent land" : "it grows anything"),
         help: "How fast food grows, and grows back. On thin soil a day in the fields runs long; on rich land it is done by midday." },
@@ -89,7 +102,8 @@
     ]},
     { title: "The people", items: [
       { key: "people", label: "How many people", type: "range", min: 20, max: 2000, step: 10, def: 400, curve: 2,
-        say: v => v.toLocaleString("en-US"), help: "How many are alive when it starts." },
+        say: v => v.toLocaleString("en-US"),
+        help: "How many are alive when it starts. For scale: the valley is 77 km², the district 179 km², the region 388 km², and farming country held about 10 to 50 people a km²." },
       { key: "factions", label: "How many factions", type: "range", min: 1, max: 8, step: 1, def: 4,
         say: v => (v === 1 ? "one people" : v + " factions"), help: "They may not stay this many." },
       { key: "villages", label: "Villages each", type: "range", min: 1, max: 4, step: 1, def: 2,
@@ -179,7 +193,7 @@
     { title: "Time", items: [
       { key: "rate", label: "Clock", type: "range", min: 0.25, max: 1000, step: 0.25, def: 1, curve: 4,
         say: v => (v >= 1000 ? "as fast as it will go" : v + "×"),
-        help: "At 1× one day takes twenty minutes. Above 16× the world runs as fast as this computer allows, and the page says how fast that is. You can change this while it runs." },
+        help: "At 1× one day takes five minutes. Above 16× the world runs as fast as this computer allows, and the page says how fast that is. You can change this while it runs." },
     ]},
   ];
 
@@ -255,7 +269,13 @@
   /* How fast things happen, per tick. Kept together so the one place a number
      is tuned is the one place it is written. */
   const EAT = 1 / DAY_HOURS;        // adult-day rations consumed per hour
-  const WALK = 0.15;                // tiles walked
+  /* The map's scale (Ric, 2026-11-14: "maybe we need to define how big the
+     map is"). A square is 250 m, so a village's fields — about eight squares
+     out — reach two kilometres, as farming villages' did, and people walk at
+     a walking pace: 4.5 km an hour, 18 squares. Until that date they covered
+     37 squares an hour, about 9 km/h, on a map with no size at all. */
+  const TILE_METRES = 250, WALK_KMH = 4.5;
+  const WALK = WALK_KMH * 1000 / TILE_METRES / ACTIONS_PER_HOUR;   // squares a step
   const FIELD_HOURS = 9;           // the longest a day in the fields can run
   const CARRY = 1.8;                // food a day in the fields brings back
   const TILE_CAP = 48;             // food a perfect field holds
@@ -532,10 +552,10 @@
       const f = factions[v.f];
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
-                  tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30), food: 0.8 + R() * 0.6, coins: 0, goods: 0, gear: {},
+                  tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30 * STEP_SCALE), food: 0.8 + R() * 0.6, coins: 0, goods: 0, gear: {},
                   hp: 1, bold: nature(R()), warm: nature(R()), greed: nature(R()), stub: clamp(S.stubborn + (R() - 0.5) * S.differ, 0, 1), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, friends: new Map(), partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
-                  talk: Math.floor(R() * 40), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
+                  talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
                   unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id,
                   /* What they need besides food, which `p.food` already holds.
                      Rest rises with the hours awake, falls while asleep; alone
@@ -867,7 +887,7 @@
       }
       p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0; p.route = null; p.routeRetry = 0;
     }
-    function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = 10 + Math.floor(R() * 30); }
+    function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = TK(10) + Math.floor(R() * 30 * STEP_SCALE); }
 
     function pickField(p, v) {
       let best = -1, bs = 0.25;
@@ -1207,7 +1227,7 @@
             if (mate && mate.home === p.home && mate.hp > 0 && mate.id !== factions[mate.f].leader) kids.push(mate);
             const why = there.f !== p.f ? "left" : "moved";
             p.say = there.f !== p.f ? "I'm going over to " + factions[there.f].name + ". Better there." : "We're moving to " + there.name + ".";
-            p.sayT = 80;
+            p.sayT = TK(80);
             rehome(p, there, why);
             for (const k of kids) rehome(k, there, why);
           });
@@ -1296,8 +1316,8 @@
         } else befriend(p, q, -0.1);
       }
       p.say = got > 0.05 ? (got >= want * 0.5 ? "Thank you. That will see us through the week." : "It's something.") : "They had nothing for me.";
-      p.sayT = 60;
-      if (got > 0.05) { q.say = "Take it."; q.sayT = 60; }
+      p.sayT = TK(60);
+      if (got > 0.05) { q.say = "Take it."; q.sayT = TK(60); }
     }
 
     /* ── carrying out what was chosen ──────────────────────────────────────
@@ -1473,7 +1493,7 @@
           }
           const rest = p.cargo.amount - sold, intoStore = rest > 0.01 ? sell(p, here, "food", rest) : 0;
           p.food += rest - intoStore;
-          if (sold + intoStore > 0.5) { count.grain = (count.grain || 0) + sold + intoStore; p.say = "Grain from away — " + Math.round(sold + intoStore) + " days of it."; p.sayT = 60; }
+          if (sold + intoStore > 0.5) { count.grain = (count.grain || 0) + sold + intoStore; p.say = "Grain from away — " + Math.round(sold + intoStore) + " days of it."; p.sayT = TK(60); }
           if (here.f !== p.f && sold > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
           p.cargo = null; wear(p, "pack");
         } else if (p.cargo) {
@@ -1483,7 +1503,7 @@
           p.cargo = null; wear(p, "pack");
         }
         shop(p, here);
-        p.task = "idle"; p.wait = 8;
+        p.task = "idle"; p.wait = TK(8);
         return;
       }
       shop(p, here);
@@ -1492,7 +1512,7 @@
         /* Nothing worth carrying from here: go home, or try the next village. */
         const home = villages[p.home];
         if (here !== home) { p.at = home.id; go(p, home.x, home.y, "carry"); }
-        else { shop(p, here); near(p, here, 2); p.wait = 40; }
+        else { shop(p, here); near(p, here, 2); p.wait = TK(40); }
         return;
       }
       if (what === "grain") {
@@ -1511,16 +1531,16 @@
           p.coins -= amount * price; q.coins += amount * price; q.food -= amount;
           load += amount; paid += amount * price;
         }
-        if (load <= 0.5) { near(p, here, 2); p.wait = 40; return; }
+        if (load <= 0.5) { near(p, here, 2); p.wait = TK(40); return; }
         p.cargo = { what: "food", amount: load, grain: true, paid: paid };
-        p.say = "A cart of grain for " + best.name + "."; p.sayT = 60;
+        p.say = "A cart of grain for " + best.name + "."; p.sayT = TK(60);
         p.at = best.id; go(p, best.x + (R() - 0.5), best.y + (R() - 0.5), "carry");
         return;
       }
       const before = what === "food" ? p.food : p.goods;
       const got = buy(p, here, what, tradeCapacity(p));
       if (what === "food") p.food = before; else p.goods = before;
-      if (got <= 0.01) { near(p, here, 2); p.wait = 40; return; }
+      if (got <= 0.01) { near(p, here, 2); p.wait = TK(40); return; }
       p.cargo = { what: what, amount: got };
       p.at = best.id; go(p, best.x + (R() - 0.5), best.y + (R() - 0.5), "carry");
     }
@@ -1591,7 +1611,7 @@
       const foe = foeNear(p, 3);
       if (foe) {
         if (dist(p, foe) < 0.8) {
-          p.hit = 6;
+          p.hit = TK(6);
           if (R() < 0.07 * S.deadly) {
             strike(p, foe, 0.35 + R() * 0.45);
             if (foe.hp <= 0) die(foe, "battle", p);
@@ -1621,7 +1641,7 @@
       if (p.food < 0.5 && dist(p, home) > 1.5) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; }
       if (dist(p, home) < 1.5) shop(p, home);
       const a = R() * 6.2832, d = home.radius * (0.4 + R() * 0.6);
-      go(p, home.x + Math.cos(a) * d, home.y + Math.sin(a) * d, "patrol"); p.wait = 6;
+      go(p, home.x + Math.cos(a) * d, home.y + Math.sin(a) * d, "patrol"); p.wait = TK(6);
     }
 
     /* ── dying, and what is left behind ────────────────────────────────── */
@@ -1648,7 +1668,7 @@
         p.coins = 0;
       }
       const mate = byId.get(p.partner);
-      if (mate) { mate.partner = 0; mate.mood -= 0.2; mate.say = "I miss " + p.name + "."; mate.sayT = 80; }
+      if (mate) { mate.partner = 0; mate.mood -= 0.2; mate.say = "I miss " + p.name + "."; mate.sayT = TK(80); }
       if (why === "battle" && by) {
         const rel = f.rel[by.f];
         if (rel) { rel.dead++; rel.grief = clamp(rel.grief + 0.02, 0, 3); }
@@ -1723,7 +1743,7 @@
     }
     const leans = p => (p.views > 0.25 ? "share" : p.views < -0.25 ? "keep" : "middle");
     function said(a, b, kind, la, lb) {
-      a.say = la; a.sayT = 30; b.say = lb || ""; b.sayT = 30;
+      a.say = la; a.sayT = TK(30); b.say = lb || ""; b.sayT = TK(30);
       a.talkingTo = b.id; b.talkingTo = a.id;
       chatter.push({ id: nextExchange++, day: activityTicks / ACTIONS_PER_HOUR / DAY_HOURS, t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
       if (chatter.length > 160) chatter.splice(0, chatter.length - 160);
@@ -1772,7 +1792,7 @@
     }
     function exchange(a, b) {
       count.talks++;
-      a.talk = 25 + Math.floor(R() * 50 * (1.2 - S.talk)); b.talk = 25 + Math.floor(R() * 50 * (1.2 - S.talk));
+      a.talk = TK(25) + Math.floor(R() * 50 * STEP_SCALE * (1.2 - S.talk)); b.talk = TK(25) + Math.floor(R() * 50 * STEP_SCALE * (1.2 - S.talk));
       const same = a.f === b.f, war = atWar(a.f, b.f);
       const fa = factions[a.f], fb = factions[b.f];
       const fr = a.friends.get(b.id) || 0;
@@ -2043,7 +2063,17 @@
       }
       return true;
     }
+    /* A stride longer than a body is taken in pieces, each checked, so a
+       longer step a tick (the five-minute day) never walks through anybody. */
     function move(p, dx, dy) {
+      const k = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 0.2));
+      for (let i = 0; i < k; i++) {
+        const bx = p.x, by = p.y;
+        moveOnce(p, dx / k, dy / k);
+        if (p.x === bx && p.y === by) break;
+      }
+    }
+    function moveOnce(p, dx, dy) {
       // Try the heading, then slide round a neighbour rather than walking through them.
       if (free(p, p.x + dx, p.y + dy)) {
         unput(p);
@@ -2167,12 +2197,12 @@
           (["eat", "gear"].includes(p.task) && dist(p, villages[p.home]) <= 2.5);
         if (localTask && d <= 2.5) {
           p.route = null;
-          if (p.stuck > 25) {
+          if (p.stuck > TK(25)) {
             const tries = (p.blocked || 0) + 1;
             if (tries > 3) { p.tx = p.x; p.ty = p.y; p.blocked = 0; p.stuck = 0; }
             else { go(p, p.tx, p.ty, p.task); p.blocked = tries; }
           } else move(p, dx / d * pace, dy / d * pace);
-        } else if (p.stuck > 200 && d <= 2.5) {
+        } else if (p.stuck > TK(200) && d <= 2.5) {
           /* A journey that has stood within a stone's throw of its end for
              most of an hour, rerouting and all, has arrived: measured
              2026-11-14, forty carriers aimed at one village's middle jammed
@@ -2181,8 +2211,8 @@
           p.route = null; p.tx = p.x; p.ty = p.y; p.stuck = 0;
         } else {
           if (p.routeRetry > 0) p.routeRetry--;
-          if (p.stuck >= 12 && !p.route && !p.routeRetry) {
-            p.route = routeAround(p); p.routeRetry = 30;
+          if (p.stuck >= TK(12) && !p.route && !p.routeRetry) {
+            p.route = routeAround(p); p.routeRetry = TK(30);
           }
           while (p.route?.length && dist(p, p.route[0]) < pace) p.route.shift();
           if (p.route?.length) {
@@ -2203,7 +2233,7 @@
       }
 
       /* Talking to whoever is standing on the same ground. */
-      if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && p.task !== "field" && p.task !== "make" && p.task !== "sleep" && R() < S.talk * 0.12) {
+      if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && p.task !== "field" && p.task !== "make" && p.task !== "sleep" && R() < Math.min(0.9, S.talk * 0.12 / STEP_SCALE)) {
         const b = buckets[tileAt(p.x, p.y)];
         if (b.length > 1) {
           const q = b[Math.floor(R() * b.length)];
@@ -2661,7 +2691,7 @@
       if (!Number.isFinite(seconds) || seconds < 0) throw new RangeError("Time must be a finite nonnegative number of seconds.");
       const add = seconds - compensation, next = elapsed + add;
       compensation = (next - elapsed) - add; elapsed = next;
-      const target = Math.floor(elapsed * 5 + 1e-8);
+      const target = Math.floor(elapsed * TICKS_PER_SECOND + 1e-8);
       while (activityTicks < target) {
         activityTicks++; actionTick();
         if (activityTicks % ACTIONS_PER_HOUR === 0) hour();
@@ -2785,5 +2815,5 @@
     };
   }
 
-  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, HOUR_SECONDS, DAY_HOURS, START_DOY, seasonAt, clean: clean, create: create };
+  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, HOUR_SECONDS, DAY_HOURS, ACTIONS_PER_HOUR, WALK, STEP: HOUR_SECONDS / ACTIONS_PER_HOUR, START_DOY, seasonAt, clean: clean, create: create };
 });

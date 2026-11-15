@@ -563,7 +563,7 @@ read and the mechanism written here from its description.
 ## The people sandbox (`people.js`)
 
 A map of land that grows food, villages, and a few hundred people who each need to eat. At 1×, one day takes **twenty real minutes**, and 365 days make a year (Ric, 2026-11-12:
-"1x should be a 20 minute day" and "the people should move slower"). The visible clock shows
+"1x should be a 20 minute day" and "the people should move slower"; since 2026-11-14 a day is five minutes — see "A five-minute day and a map with a size" below). The visible clock shows
 day, time and year. Pause freezes both activity and calendar; the speed buttons scale both.
 
 ### One clock and food measured in days
@@ -910,6 +910,27 @@ Then a pass over every other setting for the same kind of thing:
   starts.
 - **Settings with no explanation** — who starts rich, inheritance, loyalty, how quick to fight, how
   deadly, villages each — now say what they do.
+
+### A five-minute day and a map with a size (2026-11-14)
+
+Ric: *"generations take hours even at 1500x speed … what if instead of 20 minute day it was a 5
+minute day"*, and then *"I don't want the people moving faster … maybe we need to define how big
+the map is"*. A day at 1× is five minutes. The engine's cost is the number of small steps a game
+day holds, so it now takes 60 a game hour instead of 250 (`ACTIONS_PER_HOUR`): everything measured
+in hours — sleep, shifts, seasons, rations — is as it was, and everything that was counted in
+steps (how long a conversation stands, cooldowns, when somebody counts as stuck) is converted by
+`TK` to last the same game time. Measured headless: 200 people run a year in about 3 minutes, 400
+in about 8 (a little over three times faster than the twenty-minute day). A world plays out the
+same at any viewing speed; it is only coarser in its steps than it was.
+
+The map has a scale: **a square is 250 metres**, so a village's fields, about eight squares out,
+reach two kilometres, as farming villages' did; the maps are a valley of 11 × 7 km, a district of
+17 × 10 km and a region of 25 × 15 km (they had been called a country and a continent). People
+**walk 4.5 km an hour**, 18 squares (`TILE_METRES`, `WALK_KMH`); until this they covered about
+37 squares an hour, nine kilometres, on a map with no size. A stride longer than a fifth of a
+square is taken in checked pieces, so nobody walks through anybody. Tests step the world by
+`People.STEP` (one step) or by game hours, never by seconds, which mean a different amount of the
+world at a different day length.
 
 ### How fast a world can run (2026-11-14)
 

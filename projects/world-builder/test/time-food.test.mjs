@@ -4,13 +4,13 @@ const People=createRequire(import.meta.url)("../people.js");
 const options={people:40,map:"small",talk:0.8,seed:11,plague:"none"};
 const print=w=>JSON.stringify({ people:w.people, friends:w.people.map(p=>[...p.friends]), factions:w.factions,villages:w.villages,stock:[...w.stock],events:w.events,chatter:w.chatter,stats:w.stats() });
 const batched=People.create(options), hourly=People.create(options), framed=People.create(options);
-batched.advance(1200);
+batched.advance(People.DAY_SECONDS);   // one day at 1×: five minutes since 2026-11-14
 for(let i=0;i<24;i++)hourly.step(1);
-for(let i=0;i<72000;i++)framed.advance(1/60);
+for(let i=0;i<People.DAY_SECONDS*60;i++)framed.advance(1/60);
 assert.equal(print(batched),print(hourly),"headless hours and browser seconds must produce the same world");
 assert.equal(print(batched),print(framed),"fast-forward and frame-sized calls must produce the same world");
-assert.equal(batched.days,1);assert.equal(batched.tick,24);assert.equal(batched.activityTicks,6000);
-assert.ok(batched.chatter.some(c=>c.day>0 && c.day<batched.days-1/6000),"batch calls must timestamp when speech happens, not at the batch end");
+assert.equal(batched.days,1);assert.equal(batched.tick,24);assert.equal(batched.activityTicks,24*People.ACTIONS_PER_HOUR);
+assert.ok(batched.chatter.some(c=>c.day>0 && c.day<batched.days-1/(24*People.ACTIONS_PER_HOUR)),"batch calls must timestamp when speech happens, not at the batch end");
 assert.throws(()=>batched.advance(-1),RangeError);assert.throws(()=>batched.step(Infinity),RangeError);
 
 // Isolate feeding from work so the daily ration has a measurable meaning.

@@ -340,7 +340,7 @@
   </div>
   <div id="stage">
     <canvas id="view"></canvas>
-    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong><button type="button" class="shut" id="key-shut" aria-expanded="true" aria-controls="people-key-body" aria-label="Hide the key">×</button><span class="body" id="people-key-body">At 1×, one day = 20 minutes.<br>Colour follows the selected view (faction by default). Each box is a person; smaller boxes are children; a white ring marks a leader. A gold line joins people talking. Zoom in to see carried tools, packs, weapons and shields.<br>Tap a person to zoom in and follow their work.</span></div>
+    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong><button type="button" class="shut" id="key-shut" aria-expanded="true" aria-controls="people-key-body" aria-label="Hide the key">×</button><span class="body" id="people-key-body">At 1×, one day = 5 minutes.<br>Colour follows the selected view (faction by default). Each box is a person; smaller boxes are children; a white ring marks a leader. A gold line joins people talking. Zoom in to see carried tools, packs, weapons and shields.<br>Tap a person to zoom in and follow their work.</span></div>
     <div id="rail" hidden>
       <div id="tools" role="group" aria-label="What a tap does"></div>
       <div id="palette" hidden></div>
@@ -842,7 +842,7 @@
            shimmers, and the third figure is noise anyway. */
         if (now - readAt > 500) {
           readAt = now;
-          const shown = Number(reached.toPrecision(2)), yearMin = 365 * 1200 / Math.max(1, reached) / 60;
+          const shown = Number(reached.toPrecision(2)), yearMin = 365 * window.WBPeople.DAY_SECONDS / Math.max(1, reached) / 60;
           $("slow").hidden = false;
           $("slow").textContent = "Running at " + shown.toLocaleString("en-US") + "× — a year every " + (yearMin < 1.5 ? Math.round(yearMin * 60) + " seconds" : Math.round(yearMin) + " minutes");
         }
@@ -1566,7 +1566,7 @@
       ["Wars started", st.wars], ["Peaces made", st.peaces], ["Villages taken", st.captures], ["Villages founded", st.founded], ["Breakaways", st.secessions], ["Votes held", st.elections], ["Factions fallen", st.fallen]];
     if (w.settings.money === "coins") rows.push(["Coins in the world", num(st.money, 0)], ["Held by the richest tenth", Math.round(st.topShare * 100) + "%"]);
     return graphsPane() + livePane() + "<h3>Since this world began</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
-      "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Larger filled squares are villages; outlined crop patches show harvesting. At 1× a day takes twenty minutes.</p>";
+      "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Larger filled squares are villages; outlined crop patches show harvesting. At 1× a day takes five minutes. A square of the map is 250 metres.</p>";
   }
   /* Each faction's head count, stacked, since the world began. */
   function drawChart() {

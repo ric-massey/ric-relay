@@ -33,7 +33,7 @@ assert.ok(world.chatter.every((c,i,a) => i === 0 || c.id > a[i-1].id));
 // A deliberately hungry, generous community exercises an actual grain transfer.
 const hungry = People.create({ people: 60, talk: 1, factions: 1, villages: 1, seed: 5 });
 for (const p of hungry.people) { p.age = 25; p.warm = 1; p.views = 1; p.hungry = 1; p.food = p.id % 2 ? 3 : 0; }
-hungry.advance(90);
+hungry.step(1.8);   // the same game time as before the five-minute day (2026-11-14)
 const help = hungry.chatter.find(c => c.kind === "help");
 assert.ok(help, "fixture must include food changing hands");
 const food = help.effects.filter(e => e.field === "food");

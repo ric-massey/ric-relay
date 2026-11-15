@@ -20,9 +20,9 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   for (const y of [8, 12.05]) for (let x = 8; x < 10.8; x += 0.45) park(x, y);
   let minX = p.x;
   for (let i = 0; i < 600; i++) {
-    const before = { x: p.x, y: p.y }; w.advance(0.2);
+    const before = { x: p.x, y: p.y }; w.advance(People.STEP);
     minX = Math.min(minX, p.x);
-    assert.ok(distance(p, before) <= 0.15 + 1e-9, "routing cannot teleport or speed up a walker");
+    assert.ok(distance(p, before) <= People.WALK + 1e-9, "routing cannot teleport or speed up a walker");
     for (const q of w.people.slice(1)) assert.ok(distance(p, q) >= 0.42 - 1e-9, "routing preserves body spacing");
   }
   assert.ok(minX < 8, "the route must back out through the open end of the crowd");
@@ -46,7 +46,7 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   const visits = new Set(), money = w.stats().money;
   assert.ok(traders.length > 0);
   for (let i = 0; i < 1000; i++) {
-    w.advance(0.2);
+    w.advance(People.STEP);
     for (const p of traders) {
       assert.equal(p.cargo, null, "equal-price scouting creates no cargo");
       for (const v of w.villages) if (v.id !== p.home && distance(p, v) < 2) visits.add(p.id);
@@ -78,7 +78,7 @@ for (const distant of [false, true]) {
   p.at = distant ? dest.id : home.id;
   if (distant) p.cargo = { what: "goods", amount: 1 };
   const stock = dest.goods;
-  for (let i = 0; i < 160; i++) w.advance(0.2);
+  for (let i = 0; i < 160; i++) w.advance(People.STEP);
   assert.ok(distance(p, { x: 10, y: 10 }) < 0.3, "an enclosed person does not teleport out");
   if (distant) {
     assert.ok(p.cargo, "a trapped courier cannot complete a faraway delivery");
@@ -96,10 +96,10 @@ for (const distant of [false, true]) {
   p.food = 3; p.job = "trader";
   const stock = dest.goods, money = w.stats().money;
   assert.ok(distance(p, dest) > 3);
-  w.advance(0.2);
+  w.advance(People.STEP);
   assert.equal(dest.goods, stock, "a faraway delivery cannot change the store");
   assert.ok(p.cargo, "the load stays carried until arrival");
-  for (let i = 0; i < 1000 && p.cargo; i++) w.advance(0.2);
+  for (let i = 0; i < 1000 && p.cargo; i++) w.advance(People.STEP);
   assert.equal(p.cargo, null, "the load is eventually delivered");
   assert.ok(distance(p, dest) <= 2.5, "delivery happens at the destination");
   assert.ok(Math.abs(w.stats().money - money) < 1e-8);
