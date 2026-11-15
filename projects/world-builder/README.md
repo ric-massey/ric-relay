@@ -38,9 +38,10 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/lab.test.mjs` | Quick checks: typed-in kinds obeyed, setups built exactly, the control is the same hexagons loose, loaded setups checked, experiments report what they say. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
-| `TODO.md` | The People simulator's work in order, twenty numbered items. "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
-| `test/bench.mjs` | Not a check — the People engine's speed, measured the same way every time: `node --expose-gc test/bench.mjs`. Its numbers are one machine's and go in `TODO.md`'s speed log. |
+| `TODO.md` | The People simulator's work in order, twenty numbered items (and 2b, what item 2 measured and left). "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
+| `test/bench.mjs` | Not a check — the People engine's speed, measured the same way every time: `node --expose-gc test/bench.mjs`. Its numbers are one machine's and go in `TODO.md`'s speed log. "visited" is the share of person-steps on which anybody was looked at. |
 | `test/walking.test.mjs` | Quick check that the walking short cuts only make the engine faster: the same engine with them off (`create(options, { plainWalking: true })`) must give the identical world — packed villages, deaths, people moved or killed from outside, a crowd placed at once. |
+| `test/dozing.test.mjs` | Quick check that passing over people with nothing to do (TODO item 2) only makes the engine faster: against the engine run the long way round, hour by hour, with `{ audit: true }` making the short cuts check themselves — an ordinary country, a packed village, war, a hungry winter, a shared store, real-size bodies, nobody talking, people changed from outside, a fight at night, moving house, and time handed over in frames. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
 | `test/travel.test.mjs` | Quick travel checks: a detour out of a U-shaped crowd without teleporting/overlap, real equal-price market visits, conserved coins and closed borders. |
 | `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
@@ -1136,6 +1137,133 @@ on sleeping and waking, [Roblox's sleep system](https://create.roblox.com/docs/p
 and its account of [a sleeper that was never woken](https://corp.roblox.com/newsroom/2020/07/roblox-physics-building-better-sleep-system);
 on placing points that keep their distance with a background grid,
 [Bridson's Fast Poisson Disk Sampling](https://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph07-poissondisk.pdf).
+None of their code is used.
+
+### Only people with something to do (2026-11-15)
+
+`TODO.md` item 2. After item 1 the largest cost was no longer walking: it was that every person,
+and every list of who stands where, was gone through on every step — 1,440 times a day — whether
+or not anything about them could change.
+
+**What was measured first**, because the guess was wrong. The plan was to stop visiting people who
+are asleep or at work. Measured on this machine at 20,000 people:
+
+- **A third of all the time was the computer not knowing what a person is.** Eight fields were
+  added to a person the first time they were used (`stuck`, `lastDistance`, `markets`, …), in
+  whatever order a life happened to use them, so there were 21 different layouts of "a person" in
+  memory. A JavaScript engine keeps a short cut for reading a field off objects it has seen laid
+  out the same way; past a few layouts it gives up and looks the field up by name every time. That
+  was 35% of the time with bodies as drawn and 50% at real size.
+- **Most people who looked asleep were not.** With bodies as drawn, 74% of all person-steps were
+  somebody standing jammed in a packed village more than 2.5 squares from the bed, field or bench
+  they were walking to (the crowding item 1 found; item 7 is its cure). They are "walking", so a
+  rule for sleepers never reaches them.
+- **With bodies at real size, half the time was `choose` looking through everybody alive** to find
+  the people of one village: 43 million neighbours a day looked through to find somebody to ask
+  for food.
+
+**What changed.** Nothing about what happens.
+
+- **Every person has every field from birth** (`newPerson`), empty until used: one layout. This
+  alone halved a day at 5,000 and 20,000 people. **Add any new field of a person there**, not
+  where it is first used.
+- **Somebody with nothing to do but wait is passed over** (`wake`, at `act`): asleep, in the middle
+  of a day's field work or a batch at the bench — standing where they mean to be, with a wait
+  running, nothing said or struck still showing, and in a task in which nobody starts a
+  conversation. The loop does not look at them until the step their wait runs out.
+- **Somebody jammed is passed over until room is made near them** (`jammed`, `watchFor`, `tell`).
+  Item 1 already remembers their blocked step and the failed search for a way round; while both
+  stand, a step changes two counts and nothing else. They are put on a list for the ground those
+  memories read, in blocks of four squares; `madeRoom` — a step taken, a death — tells the block.
+- **Whoever dozes is woken before anybody else changes them** (`wakeUp`): spoken to, asked for
+  food, widowed, taken along to another village. Everybody is woken on the hour, when anything may
+  touch anybody (one visit in sixty). Their counts are put right as they wake, and before `advance`
+  returns (`settle`), so nothing outside the engine ever reads a stale one.
+- **The lists of who is on each square are kept up, not emptied and refilled** (`rebucket`,
+  `shifted`, `gone`; `put`/`unput`): only somebody who crossed onto another square is moved, into
+  the same place in the order.
+- **Who lives in each village is a list** (`residents`), made again only after a birth, a move, a
+  village changing hands, the dead leaving, or the hour — so asking a neighbour, selling a cartload
+  door to door, an army's rations and what a village eats in a day no longer go through the world.
+- **Asking for food looks at what a neighbour has first**, and passes by anybody who could not beat
+  the best so far even as kin and a friend.
+- **Two things about item 1's memory of a failed way round.** It is kept only when the search was
+  *walled in* — ran out of places to look. A search that ran out of *tries* is not kept: somebody
+  arriving can shut off a dead end it was wasting its 800 looks in, and the same search then gets
+  through, so "nobody new can open a way" is not true of it. (None had been small enough to be
+  kept under the old limit in anything measured; no world changed.) And what is kept is the ground
+  the search looked at, not that ground stretched to where the walker was going: in a 2,000-person
+  country on 17 km, 96,000 searches a day were run again because somebody moved between a walker
+  and a bed twenty squares off, for 1,355 ways found. Now 33,000.
+
+**Why some people are still visited every step.** Somebody idle and due a word with a neighbour
+rolls the dice on every step to see whether they start talking. The dice are one stream; drawing
+them in another order is another world. So they are visited — about one person-step in six at
+20,000. Changing that changes the world and is Ric's call (`TODO.md` 2b).
+
+**The world is the same world**, step for step. `create(options, { plainWalking: true })` runs the
+engine the long way round — everybody, every step, every list refilled — and
+`test/dozing.test.mjs` holds the two equal hour by hour over ten kinds of world, with
+`{ audit: true }` making the short cuts check themselves on every step: nobody passed over may
+have been changed, every kept list must be what making it again would give. It was checked by
+breaking each short cut on purpose, 22 ways: the test catches 20. The other two cannot show —
+not waking the dead (they do nothing either way), and keeping a search that ran out of tries
+(the case it guards is too rare to stage). The engine as it was before this item and the engine
+now were also run side by side from the same seed: **a year of the default world, identical on
+every one of 365 days**; a day and more of 20,000 people, a day and a half of 5,000 with bodies as drawn and at real size, and two
+and a half days of 2,000 on 17 km, all with the audit on, identical every hour.
+
+**What it bought** (Intel Xeon 2.1 GHz cloud machine, 16 GB, `test/bench.mjs`, bodies as drawn — not the M1 of the table
+above: this was built in a cloud session, and its numbers are about 2.2 times the M1's):
+
+| People | Land | A day takes, before → after | Top speed, before → after | Steps on which a person is looked at |
+|---|---|---|---|---|
+| 400 | 17 km | 0.92 → 0.60 s | 327× → 499× | 45% |
+| 2,000 | 17 km | 8.5 → 5.6 s | 35× → 54× | 68% |
+| 5,000 | 40 km | 9.1 → 3.5 s | 33× → 86× | 52% |
+| 20,000 | 80 km | 46.4 → 15.5 s | 6× → 19× | 30% |
+| 400 | 500 km | 0.61 → 0.28 s | 489× → 1,084× | 39% |
+
+With bodies at real size: 5,000 people 10.9 → 3.4 s a day, 20,000 people 70 → 17 s. A year of the
+default world: 368 → 173 s. Starting a world is unchanged (20,000: 4.4 → 4.3 s). Per person-step,
+5,000 and 20,000 people now cost about the same (0.49 and 0.54 millionths of a second; before,
+1.26 and 1.61). **On the M1 the 20,000 row should come out near 7 s a day, about 43× — worked out
+from the ratio between the two machines, not measured: run `node --expose-gc test/bench.mjs` there
+and put the row in `TODO.md`'s speed log.**
+
+**What it costs.** Four small fields on a person, twenty bytes a person of tables, and a list of
+watchers per block of ground while people are jammed. When time is handed over in small pieces
+(the page, a frame at a time) everybody is looked at once per piece for anything done to them
+from outside: at 20,000 people a day's working-out goes from about 12 to 15 seconds
+when a piece is two steps, and 22 when every step is its own piece — still under the
+46 it took before.
+
+**What it did not fix, and should not hide.** Per person, a dense small land is still four times
+dearer than a big one (the 2,000-on-17-km row): there the search for a way round a crowd is half
+the time. People who may start a conversation are still visited every step. Asking a neighbour
+for food still reads through the village, so it grows with the village, not the world. All three
+are `TODO.md` 2b.
+
+**Rules this leaves** (also in `/AGENTS.md`): anything new that changes *another* person in the
+middle of a step calls `wakeUp(them)` first; anything that changes where somebody lives calls
+`changedHomes()`; anything that makes room calls `madeRoom` (item 1); a new field of a person goes
+in `newPerson`. Run `test/dozing.test.mjs` — the audit names what was missed.
+
+Sources. The method — keep, for each part, the time of the next thing it will do, and go straight
+to it — is next-event time advance, the ordinary way of running a discrete-event simulation
+([course notes after Leemis & Park](https://huichen-cs.github.io/course/CSCI570/notes/lecture10_nes.pdf);
+[Discrete-event simulation](https://en.wikipedia.org/wiki/Discrete-event_simulation)), and its use
+for agents is argued in [Event-driven agent-based simulation](https://www.doi.org/10.1186/2194-3206-1-3)
+("regards only those points in time when changes actually occur"). Timing wheels
+([Varghese & Lauck, 1987](https://blog.acolyer.org/2015/11/23/hashed-and-hierarchical-timing-wheels/))
+were looked at for holding the wake times and not used: a plain table read in the order of the
+people array keeps the dice in order, which a wheel does not. Being woken by a change in somebody
+else is Repast's "watcher" ([Repast4Py guide](https://jozik.github.io/goes_bing/guide/user_guide.html)).
+Same result however the time is handed over: [Fix Your Timestep](https://gafferongames.com/post/fix_your_timestep/).
+Object layouts and why one is fast and many are slow:
+[Hidden classes and inline caches in V8](https://dev.to/omriluz1/hidden-classes-and-inline-caches-in-v8-36fp).
+These were found and read as search summaries; the session's network did not allow the pages
+themselves to be opened, so the figures in this section are the ones measured here, not theirs.
 None of their code is used.
 
 ### War has to be fed (2026-11-14)

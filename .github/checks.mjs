@@ -138,6 +138,12 @@ const SUITES = [
      ways on this machine rather than against a stored answer, because a
      simulation's numbers are one machine's. */
   ['world-builder walking is the same world', ['projects/world-builder/test/walking.test.mjs']],
+  /* TODO.md item 2 (2026-11-15): people with nothing to do are passed over
+     until their wait is up or somebody makes room beside them, and the lists
+     of who stands where and who lives where are kept up, not made again. The
+     engine run the long way round has to give the identical world, hour by
+     hour, and the short cuts check themselves on every step (`audit`). */
+  ['world-builder passing people over is the same world', ['projects/world-builder/test/dozing.test.mjs']],
   /* Physics settings/conservation and seven actual days per People preset.
      The shared daily clock superseded the compressed headless century in
      2026-11-12. Generation-scale experiments remain explicit --generations

@@ -3,7 +3,9 @@
 // people.js remembers a blocked step and a way round that could not be found,
 // and places a crowd with a finer map of taken ground. Each is only allowed to
 // be faster. `create(options, { plainWalking: true })` runs the same engine with
-// all three turned off, so the two can be held equal here, on this machine —
+// all three turned off (and, since item 2, with everybody visited on every step:
+// test/dozing.test.mjs is the test of that), so the two can be held equal here,
+// on this machine —
 // a stored answer would not do, because a sine differs by a hair between an
 // Apple and an Intel chip and a simulation compounds it.
 //
@@ -13,7 +15,7 @@ import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 
 // What a person is, without walking's own book-keeping.
-const OWN = new Set(["ox", "oy", "mc", "mx", "my", "mdx", "mdy", "rm", "on"]);
+const OWN = new Set(["ox", "oy", "mc", "mx", "my", "mdx", "mdy", "rm", "on", "ix", "bk", "wg", "wb"]);
 const picture = w => JSON.stringify({
   people: w.people.map(p => JSON.stringify(p, (k, v) => OWN.has(k) ? undefined : v instanceof Map ? [...v] : v)),
   villages: w.villages, factions: w.factions, events: w.events, stats: w.stats()

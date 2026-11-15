@@ -875,8 +875,13 @@ when it is built.
 - Now: measured above. 20,000 people is the slider's top and runs at 2×.
 - [x] Make the walking check cheap, with the same world coming out. (2026-11-15, `TODO.md` item 1:
   5,000 people 13× → 68×, 20,000 people 2× → 14×, identical worlds.)
-- [ ] Stop visiting people who have nothing to do.
-- [ ] Make choosing and working cheap as the crowd grows.
+- [x] Stop visiting people who have nothing to do. (2026-11-15, `TODO.md` item 2: asleep, at work
+  or jammed, a person is passed over until their time is up or room is made; identical worlds;
+  on the cloud machine it was built on, 20,000 people 6× → 19×, to be confirmed on the M1. People
+  idle and due a word are still visited: `TODO.md` 2b.)
+- [x] Make choosing and working cheap as the crowd grows. (2026-11-15, item 2: who lives in each
+  village is a kept list, so nothing a person chooses goes through the whole world; with bodies
+  at real size 20,000 people 70 → 17 s a day. Asking a neighbour still grows with the village: 2b.)
 - [ ] Run the engine off the page's own thread.
 - [x] Starting a big world in seconds, not half a minute. (2026-11-15: 20,000 people, 25.7 → 2.6 s.)
 - [ ] No fixed top on the number of people.

@@ -606,6 +606,23 @@ nobody had linked was a page nobody could find.
   and holds the two worlds equal. **Anything new that makes room for a walker — removes a body,
   moves one, makes one passable — must call `madeRoom`, or people stand blocked beside an empty
   space**; add the case to that test. `test/bench.mjs` is the speed measurement every item uses.
+  **Item 2 is done (2026-11-15): people with nothing to do are not visited.** Somebody asleep, at a
+  day's work or jammed in a crowd is passed over until their wait is up or room is made beside
+  them (`wake`, `jammed`, `tell` in `people.js`); the lists of who is on each square and who lives
+  in each village are kept up, not made again; and every person has every field from birth, which
+  alone halved a day (a person had come in 21 layouts, and the engine was looking fields up by
+  name). These may only ever be faster: `test/dozing.test.mjs` holds the world equal to
+  `{ plainWalking: true }` — which now means the whole long way round, everybody visited every
+  step — and runs with `{ audit: true }`, which names anybody changed while passed over and any
+  kept list that is out of date. Four rules it leaves: **anything new that changes *another*
+  person in the middle of a step calls `wakeUp(them)` first; anything that changes where somebody
+  lives calls `changedHomes()`; a new field of a person goes in the literal in `newPerson`, never
+  where it is first used; and a failed search for a way round is remembered only when it was
+  walled in, never when it ran out of tries.** Idle people are still visited every step because
+  they roll the dice to start a conversation, and the dice must be drawn in the same order —
+  don't "fix" that without Ric: it changes the world, and it is `TODO.md` 2b. The speed figures
+  for item 2 are a cloud machine's, not the M1's; the M1 row in the speed log is waiting on a run
+  of the bench there.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

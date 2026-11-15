@@ -20,6 +20,10 @@ One item per session. Do not start an item whose earlier items are unticked unle
 3. `README.md` in this folder, for the part of the engine the item touches.
 4. This file's **Rules for every item** and **Speed log**.
 
+A lettered item (2b) is what a finished item measured and left. It does not stand in the way of
+the numbered items after it: "work on 3" means item 3 even while 2b is unticked. Ric asks for a
+lettered one by name ("work on 2b").
+
 ## What this is, in five lines
 
 A simulator of people: choose settings, press start, watch. Any scenario. Land from about 2 km²
@@ -140,7 +144,22 @@ Research notes (2026-11-15):
   front of the existing ring search, so everybody stands exactly where they did.
 - **Not done because it would change the world:** back-off or reservation for blocked walkers.
 
-### [ ] 2. Do not visit people who have nothing to do
+### [x] 2. Do not visit people who have nothing to do
+
+**Done 2026-11-15.** Somebody asleep, at a day's work, or jammed in a crowd is passed over until
+their wait is up or room is made beside them; the lists of who stands where and who lives where
+are kept up instead of made again; and every person is one kind of object from birth, which was
+the largest single gain and not in the plan. Same world, step for step (`test/dozing.test.mjs`; a
+year of the default world identical on all 365 days). On the cloud machine this was built on:
+5,000 people 33× → 86×, 20,000 people 6× → 19×, and a person-step costs about the same at 5,000
+as at 20,000 (0.49 and 0.54 µs; before, 1.26 and 1.61). **Not confirmed on the M1**: by the ratio
+of the two machines 20,000 people should run at about 43× there (the target was 30×) — run the
+bench on the Mac and add the row. Left out, on purpose, and now item 2b: people who may start a
+conversation are still visited every step; asking a neighbour for food still reads through the
+village; the search for a way round in a dense small land; the look at everybody each time the
+page hands over a frame. README, "Only people with something to do".
+Found on the way: a failed search for a way round that ran out of *tries* must not be remembered
+(item 1 remembered any failure small enough); none had been in anything measured, and it is fixed.
 
 **Now:** every person is visited every step, 1,440 times a day. Hourly samples show 31% asleep,
 26% making something, 24% idle. Measured after item 1 (5,000 people): the largest costs are the
@@ -158,6 +177,70 @@ difference, measured, before going on.
 **Done when:** cost per person no longer rises with the number of people; 20,000 people run at
 30× or better on the M1; frames, hours and batches still give the same world
 (`test/time-food.test.mjs`).
+**Budget:** faster only.
+
+Research notes (2026-11-15):
+- **Measured first** (20,000 people, 80 km, the machine in the speed log). The plan above was half
+  wrong. (a) 35% of the time — 50% with bodies at real size — was the JavaScript engine looking
+  fields up by name, because a person came in 21 layouts: eight fields were added the first time
+  they were used. (b) With bodies as drawn only a few percent of steps were anybody asleep or at
+  work *in place*; 74% were somebody jammed more than 2.5 squares from where they were going,
+  counted as walking. (c) With bodies at real size `choose` was 55% of the time, nearly all of it
+  going through every person alive to find one village's.
+- **Next-event time advance.** A discrete-event simulation keeps the time of the next thing each
+  part will do and goes straight to it; nothing is worked out for a part between its events
+  ([Leemis & Park course notes](https://huichen-cs.github.io/course/CSCI570/notes/lecture10_nes.pdf),
+  [Discrete-event simulation](https://en.wikipedia.org/wiki/Discrete-event_simulation)). For
+  agents: "regards only those points in time when changes actually occur"
+  ([Event-driven agent-based simulation](https://www.doi.org/10.1186/2194-3206-1-3)). Chosen, in
+  its plainest form: a wake step for each place in the people array. Cost: 17 bytes a person.
+- **Timer wheels and calendar queues** ([Varghese & Lauck](https://blog.acolyer.org/2015/11/23/hashed-and-hierarchical-timing-wheels/)).
+  Not chosen. They find "who is due now" without looking at everybody, but hand them over in the
+  order they fall due; people must act in the order of the people array or the dice are drawn in
+  a different order and it is a different world. Reading a table of numbers in that order costs
+  about a thousandth of a visit, so there was nothing left to win.
+- **Woken by a change in somebody else** is Repast's "watcher"
+  ([Repast4Py guide](https://jozik.github.io/goes_bing/guide/user_guide.html)), and the sleeping
+  body of item 1's notes. Chosen for the jammed: a list per block of ground, told by `madeRoom`.
+  The known danger is the same — a sleeper nobody tells — so the test runs with an audit that
+  looks at every sleeper on every step.
+- **The same world however the time is handed over** ([Fix Your Timestep](https://gafferongames.com/post/fix_your_timestep/)):
+  already how `advance` works; kept by putting every dozer's counts right before it returns.
+- **One layout for every object of a kind** ([hidden classes and inline caches in V8](https://dev.to/omriluz1/hidden-classes-and-inline-caches-in-v8-36fp)):
+  name every field when the object is made. Chosen; no cost.
+- **Not done because it would change the world:** letting idle people skip the roll for starting
+  a conversation (see 2b). **Not done because it is item 20:** packing people into number arrays.
+- These sources were read as search summaries only: the session's network would not open the
+  pages. Every figure here is one measured on this engine.
+
+### [ ] 2b. What item 2 measured and left
+
+**Now** (measured 2026-11-15, cloud machine, after item 2):
+- **Idle people are visited every step to roll for a conversation.** Somebody idle with no word
+  owing rolls the dice each step to see whether they speak to whoever shares their square. One
+  person-step in six at 20,000 people is this, and it cannot be passed over without drawing the
+  dice in another order — a different world.
+- **Asking a neighbour for food reads through the village** (`choose`, "ask"). Cheaper than it
+  was, but it still grows with the size of the village: with bodies at real size a person-step
+  costs 0.48 µs at 5,000 and 0.59 at 20,000.
+- **The search for a way round, in a dense small land.** 2,000 people on 17 km cost 1.9 µs a
+  person-step against 0.5 elsewhere; half of it is `routeAround` run again when somebody nearby
+  moves (33,000 times a day for 1,355 ways found).
+- **A look at everybody each time the page hands over time** (`lookRound`), for anything done to
+  people from outside. At 20,000 people a day costs 12 s worked out in one piece, 15 s two steps
+  at a time, 22 s a step at a time.
+**Do:** (a) give talking its own dice, or roll once for when an idle person next speaks, so they
+can be passed over like anybody else; (b) find a giver without reading the village — the houses
+of item 7 or the mind of item 11 may be the right place, in which case fold it into that item;
+(c) make the failed search cheaper or rarer — item 7's uncrowding may remove it; (d) let the
+page say it has not touched anybody, or do the look only when something outside has.
+**Research first:** independent random streams in simulations (one per purpose) and what they
+buy; drawing the time of the next event instead of rolling every step (geometric waiting times);
+how crowd simulators answer "no way through" cheaply.
+**Ric decides:** (a) changes which conversations happen — same rules, same odds, different dice.
+Show him a year of the default world both ways, measured, before doing it.
+**Done when:** under 10% of person-steps are visits at 20,000 people; the 2,000-on-17-km row
+costs no more per person than the 5,000 row; everything except (a) gives the identical world.
 **Budget:** faster only.
 
 Research notes:
@@ -475,3 +558,6 @@ One row per finished item. Same machine where possible; say which machine.
 |---|---|---|---|---|---|---|
 | 2026-11-14 | (start) | Apple M1, 8 GB | 24 s a day, 13× | 129 s a day, 2× | about 1.5 KB | measured by hand before this list existed |
 | 2026-11-15 | 1 | Apple M1, 8 GB | 4.4 s a day, 68× | 21 s a day, 14× | 0.8 KB at the start (0.6 before) | `test/bench.mjs`; same world; a 20,000 start 25.7 → 2.6 s |
+| 2026-11-15 | 1 | Intel Xeon 2.1 GHz (cloud), 16 GB | 9.1 s a day, 33× | 46.4 s a day, 6× | 0.7 and 1.1 KB at the start | the same engine as the row above, on the machine item 2 was built on: about 2.2 times slower than the M1 |
+| 2026-11-15 | 2 | Intel Xeon 2.1 GHz (cloud), 16 GB | 3.5 s a day, 86× | 15.5 s a day, 19× | 0.3 and 1.1 KB at the start | same world; a person is looked at on 52% and 30% of steps; real-size bodies 10.9 → 3.4 s and 70 → 17 s; a year of the default world 368 → 173 s |
+| | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

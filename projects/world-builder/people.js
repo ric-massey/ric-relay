@@ -399,7 +399,11 @@
      map), so a test can run the same world both ways and hold them equal. */
   function create(input, check) {
     const S = clean(input);
-    const PLAIN = !!(check && check.plainWalking);
+    /* `plainWalking` runs the engine the long way round: no remembered steps
+       (item 1), and everybody visited and every list refilled on every step
+       (item 2). It is what the tests hold the short cuts equal to. `audit`
+       makes the short cuts check themselves as they go; it is for tests. */
+    const PLAIN = !!(check && check.plainWalking), AUDIT = !!(check && check.audit);
     const R = rng(S.seed * 1597334677);
     const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
@@ -417,13 +421,48 @@
     /* Who is on which tile, for talking and fighting. Only the tiles that had
        anybody are cleared; the order within a tile is the people array's. */
     const bucketsUsed = [];
+    /* Since 2026-11-15 (TODO item 2) the lists are not emptied and refilled:
+       only somebody who has crossed onto another square since the last time
+       (`shifted`) is taken off one list and put on another, in the same place
+       in the order they would have had — the people array's — and the dead
+       come off (`gone`) at the first refill after they left the array, which
+       is when the old refill dropped them. So every list holds exactly the
+       people it held, in the order it held them, at every moment anything
+       reads one. `create(options, { plainWalking: true })` still refills. */
+    const shifted = [], gone = [];
+    function leaveBucket(p) {
+      if (p.bk < 0) return;
+      const b = buckets[p.bk], k = b.indexOf(p);
+      if (k >= 0) b.splice(k, 1);
+      p.bk = -1;
+    }
     function rebucket() {
-      for (const i of bucketsUsed) buckets[i].length = 0;
-      bucketsUsed.length = 0;
-      for (const p of people) { const i = tileAt(p.x, p.y); let b = buckets[i]; if (!b) b = buckets[i] = []; if (!b.length) bucketsUsed.push(i); b.push(p); }
+      if (PLAIN) {
+        for (const i of bucketsUsed) buckets[i].length = 0;
+        bucketsUsed.length = 0;
+        for (const p of people) { const i = tileAt(p.x, p.y); let b = buckets[i]; if (!b) b = buckets[i] = []; if (!b.length) bucketsUsed.push(i); b.push(p); }
+        return;
+      }
+      for (const p of gone) leaveBucket(p);
+      gone.length = 0;
+      for (const p of shifted) {
+        const i = tileAt(p.x, p.y);
+        if (i === p.bk || people[p.ix] !== p) continue;
+        leaveBucket(p);
+        let b = buckets[i]; if (!b) b = buckets[i] = [];
+        let k = b.length; b.push(p);
+        while (k > 0 && b[k - 1].ix > p.ix) { b[k] = b[k - 1]; k--; }
+        b[k] = p; p.bk = i;
+      }
+      shifted.length = 0;
     }
 
     const people = [], byId = new Map();
+    /* TODO item 2: people made and not yet stood anywhere; and, for each place
+       in the people array, the step at which that person next has anything to
+       do (0: now). See "not visiting people with nothing to do", by `act`. */
+    const freshList = [];
+    let wake = new Float64Array(1024), kind = new Uint8Array(1024), since = new Float64Array(1024), cur = Infinity;
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const count = { infected: 0, grain: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
@@ -494,8 +533,43 @@
     /* The cold costs food: people eat up to a quarter more in a hard winter. */
     const baseNeed = p => (adult(p) ? 1 : 0.35 + 0.65 * clamp(p.age / S.grown, 0, 1));
     const dailyNeed = p => baseNeed(p) * (1 + 0.25 * S.winter * Math.max(0, -warmth()));
+    /* ── who lives where (2026-11-15, TODO item 2) ─────────────────────────
+       Several things a person does went through everybody alive to find the
+       people of one village: what the village eats in a day, who to ask for
+       food, who to sell a cartload to, whose house an army's rations come
+       from. One person's choice then cost more the more people there were
+       anywhere — with bodies at real size, half the engine's time at 20,000.
+       `residents` is those people, a list per village in the order of the
+       people array, so anything that takes "the first" or adds up along the
+       way gets what it got. It is made again, the first time it is wanted,
+       after anything that can change it: a birth, a move, a village changing
+       hands, the dead leaving the array, the hour, and whatever was done
+       from outside between steps. What a village eats in a day is kept the
+       same way, and is also worked out again after a death. */
+    let rosterStamp = 1, rosterAt = 0, needStamp = 1;
+    const roster = [], needOf = [], needAt = [];
+    function residents(id) {
+      if (rosterAt !== rosterStamp) {
+        for (const l of roster) if (l) l.length = 0;
+        for (const p of people) (roster[p.home] || (roster[p.home] = [])).push(p);
+        rosterAt = rosterStamp;
+      }
+      const list = roster[id] || (roster[id] = []);
+      if (AUDIT) { const want = people.filter(p => p.home === id); if (want.length !== list.length || want.some((p, k) => p !== list[k])) throw new Error("audit: the list of who lives in village " + id + " is out of date"); }
+      return list;
+    }
+    const changedHomes = () => { rosterStamp++; needStamp++; };
     const storeDays = v => {
-      let need = 0; for (const p of people) if (p.home === v.id && p.hp !== -99) need += dailyNeed(p);
+      let need = 0;
+      if (PLAIN) { for (const p of people) if (p.home === v.id && p.hp !== -99) need += dailyNeed(p); }
+      else {
+        if (needAt[v.id] !== needStamp) {
+          for (const p of residents(v.id)) if (p.hp !== -99) need += dailyNeed(p);
+          needOf[v.id] = need; needAt[v.id] = needStamp;
+        }
+        need = needOf[v.id];
+        if (AUDIT) { let n = 0; for (const p of people) if (p.home === v.id && p.hp !== -99) n += dailyNeed(p); if (n !== need) throw new Error("audit: what " + v.name + " eats in a day is out of date"); }
+      }
       return need > 0 ? v.food / need : 0;
     };
 
@@ -600,7 +674,22 @@
                      where they last were seen standing, their last blocked step, the last
                      way round that could not be found, and whether they have been
                      given a place to stand yet. */
-                  ox: NaN, oy: NaN, mc: -1, mx: NaN, my: NaN, mdx: 0, mdy: 0, rm: null, on: false };
+                  ox: NaN, oy: NaN, mc: -1, mx: NaN, my: NaN, mdx: 0, mdy: 0, rm: null, on: false,
+                  /* And the engine's (TODO item 2): their place in the people
+                     array, which square's list they are on (-1: none yet), and
+                     when and for which ground they last asked to be told of
+                     room being made (`watchFor`). */
+                  ix: -1, bk: -1, wg: -1, wb: -1,
+                  /* Everything set later in a life is named here, empty, so every
+                     person is the same kind of object from birth (2026-11-15).
+                     Measured: with these added one by one as they were first used,
+                     there were 21 layouts of "a person", and looking a field up on
+                     an object that might be any of them was a third of the engine's
+                     time at 20,000 people and half of it with bodies at real size.
+                     `undefined` reads exactly as a missing field did. */
+                  feeds: undefined, wards: undefined, route: undefined, stuck: undefined, lastDistance: undefined,
+                  blocked: undefined, routeRetry: undefined, askOf: undefined, carer: undefined,
+                  harvesting: undefined, harvestShare: undefined, markets: undefined };
       house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
@@ -620,7 +709,15 @@
         const camp = R() < 0.5 ? -1 : 1;
         p.views = clamp(f.views * 0.5 + camp * S.divided * 0.7 + (R() - 0.5) * (0.3 + S.divided * 0.5), -1, 1);
       }
-      people.push(p); byId.set(p.id, p);
+      p.ix = people.length; people.push(p); byId.set(p.id, p);
+      if (!PLAIN) {
+        changedHomes();
+        freshList.push(p);
+        if (people.length > wake.length) {
+          const n = wake.length * 2, w = new Float64Array(n), k = new Uint8Array(n), z = new Float64Array(n);
+          w.set(wake); k.set(kind); z.set(since); wake = w; kind = k; since = z;
+        }
+      }
       return p;
     }
 
@@ -1326,7 +1423,7 @@
         if (best) {
           const there = best;
           weigh("move", bs + n.food * 0.5 + (1 - p.mood) * 0.3 - ties + p.bold * 0.15 - dark * 0.5, () => {
-            const kids = people.filter(q => (q.mum === p.id || q.dad === p.id || q.carer === p.id) && !adult(q) && q.hp > 0 && q.home === p.home);
+            const kids = (PLAIN ? people : residents(p.home)).filter(q => (q.mum === p.id || q.dad === p.id || q.carer === p.id) && !adult(q) && q.hp > 0 && q.home === p.home);
             /* A couple goes together. */
             if (mate && mate.home === p.home && mate.hp > 0 && mate.id !== factions[mate.f].leader) kids.push(mate);
             const why = there.f !== p.f ? "left" : "moved";
@@ -1347,8 +1444,14 @@
          meet, and in winter nobody is out. */
       if (n.food > 0.35 && p.food < 1 && v.food <= 0.05) {
         let giver = null, gs = 0;
-        for (const q of people) {
-          if (q === p || q.home !== p.home || !adult(q) || q.hp <= 0 || q.food < 2 || q.id === p.partner) continue;
+        for (const q of PLAIN ? people : residents(p.home)) {
+          /* What they have is looked at first, and somebody who could not beat
+             the best so far even as kin and a friend (three times their food
+             at most) is passed by before either is looked up: measured at
+             20,000 with bodies at real size, this was 43 million neighbours
+             looked through a day. The same giver is found. */
+          if (q.food < 2 || q.food * 3 <= gs) continue;
+          if (q === p || q.home !== p.home || !adult(q) || q.hp <= 0 || q.id === p.partner) continue;
           const sc = q.food * (kin(p, q) ? 2 : 1) * ((q.friends.get(p.id) || 0) > 0.2 ? 1.5 : 1);
           if (sc > gs) { gs = sc; giver = q; }
         }
@@ -1356,12 +1459,30 @@
            on poor land otherwise starved beside a full one, because grain
            crossed between villages only when whole families moved. */
         if ((!giver || giver.food < 4) && funds(p) > 0.5 && !shared) {
-          for (const q of people) {
+          if (PLAIN) for (const q of people) {
             if (q.home === p.home || !adult(q) || q.hp <= 0 || q.food < 6 || atWar(q.f, p.f)) continue;
             const d = dist(p, villages[q.home]);
             if (d > 20) continue;
             const sc = q.food * (q.f === p.f ? 1 : 0.7) / (1 + d * 0.05);
             if (sc > gs) { gs = sc; giver = q; }
+          }
+          /* The same search a village at a time, leaving out whole villages
+             that are too far. Going through everybody in order, the first
+             of two equally good is the one kept; so here an equal score
+             wins only from further up the people array. */
+          else {
+            let far = null;
+            for (const o of villages) {
+              if (o.id === p.home) continue;
+              const d = dist(p, o);
+              if (d > 20) continue;
+              for (const q of residents(o.id)) {
+                if (q.food < 6 || !adult(q) || q.hp <= 0 || atWar(q.f, p.f)) continue;
+                const sc = q.food * (q.f === p.f ? 1 : 0.7) / (1 + d * 0.05);
+                if (sc > gs || (sc === gs && far !== null && q.ix < far.ix)) { gs = sc; far = q; }
+              }
+            }
+            if (far) giver = far;
           }
         }
         if (giver) {
@@ -1403,6 +1524,7 @@
        What money cannot buy, kinship, friendship or a warm nature may give.
        Nothing here decides who is asked — `choose` did that. */
     function askFor(p, q) {
+      wakeUp(q);
       const want = 5 * dailyNeed(p);
       const spare = Math.max(0, q.food - reserve(q));
       let got = 0;
@@ -1586,7 +1708,7 @@
              charity. What nobody buys goes to the store, and what the store
              cannot pay for the trader keeps. */
           const ask = clamp(p.cargo.paid / Math.max(p.cargo.amount, 0.01) * 1.4, 0.5, 9);
-          const buyers = people.filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p)
+          const buyers = (PLAIN ? people : residents(here.id)).filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p)
             .map(q => [q, 14 * (baseNeed(q) + (q.feeds || 0)) - q.food]).filter(x => x[1] > 0.2).sort((a, b) => b[1] - a[1]);
           let sold = 0;
           for (const [q, short] of buyers) {
@@ -1623,7 +1745,7 @@
         /* Buying door to door from the houses with most to spare, at the
            price each would ask (the same rule as a neighbour's), never into
            a seller's own winter. */
-        const sellers = people.filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p && q.food > reserve(q) + 0.5)
+        const sellers = (PLAIN ? people : residents(here.id)).filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p && q.food > reserve(q) + 0.5)
           .sort((a, b) => (b.food - reserve(b)) - (a.food - reserve(a)));
         const cap = Math.min(grainLoad(p), (best.purse || 0) / 2);
         let load = 0, paid = 0;
@@ -1691,7 +1813,7 @@
       const fromStore = Math.min(want, v.food, f.treasury / Math.max(0.3, v.priceFood));
       if (fromStore > 0.01) { const cost = fromStore * v.priceFood; f.treasury -= cost; v.till += cost; v.food -= fromStore; p.food += fromStore; got += fromStore; }
       if (got < want - 0.2 && f.treasury > 0.5) {
-        for (const q of people) {
+        for (const q of PLAIN ? people : residents(v.id)) {
           if (got >= want - 0.2 || f.treasury < 0.3) break;
           if (q.home !== v.id || !adult(q) || q.hp <= 0 || q === p || q.food <= reserve(q) + 0.5) continue;
           const price = clamp(1.5 * reserve(q) / Math.max(q.food, 0.1), 0.4, 8);
@@ -1762,7 +1884,8 @@
     /* ── dying, and what is left behind ────────────────────────────────── */
     function die(p, why, by) {
       if (p.hp === -99) return;
-      p.hp = -99;
+      wakeUp(p);
+      p.hp = -99; needStamp++;
       if (p.on) { madeRoom(p.x, p.y); p.on = 2; }   // the dead are in nobody's way: see `move`. 2: counted
       count[why]++;
       const v = villages[p.home], f = factions[p.f];
@@ -1778,13 +1901,13 @@
         if (S.inherit === "kids") {
           heirs = people.filter(q => q.hp !== -99 && (q.mum === p.id || q.dad === p.id));
           if (!heirs.length && p.partner && byId.get(p.partner)) heirs = [byId.get(p.partner)];
-        } else if (S.inherit === "village") heirs = people.filter(q => q.hp !== -99 && q.home === p.home && q !== p);
+        } else if (S.inherit === "village") heirs = (PLAIN ? people : residents(p.home)).filter(q => q.hp !== -99 && q.home === p.home && q !== p);
         if (heirs.length) for (const h of heirs) h.coins += p.coins / heirs.length;
         else f.treasury += p.coins;
         p.coins = 0;
       }
       const mate = byId.get(p.partner);
-      if (mate) { mate.partner = 0; mate.mood -= 0.2; mate.say = "I miss " + p.name + "."; mate.sayT = TK(80); }
+      if (mate) { wakeUp(mate); mate.partner = 0; mate.mood -= 0.2; mate.say = "I miss " + p.name + "."; mate.sayT = TK(80); }
       if (why === "battle" && by) {
         const rel = f.rel[by.f];
         if (rel) { rel.dead++; rel.grief = clamp(rel.grief + 0.02, 0, 3); }
@@ -1881,6 +2004,7 @@
         news: p.news, sick: p.sick > 0, hungry: p.hungry > 0 };
     }
     function converse(a, b) {
+      wakeUp(a); wakeUp(b);
       /* Both of them have now had company. This is the only thing that clears
          it, so somebody nobody speaks to keeps going out to look for company. */
       a.alone = 0; b.alone = 0;
@@ -2040,6 +2164,7 @@
     /* Moving house — a marriage, a migration, a defection or a flight. The
        flag changes when the village's flag is different. */
     function rehome(p, v, why) {
+      wakeUp(p);
       /* A leader does not walk out on their own faction. */
       if (v.f !== p.f && factions[p.f].leader === p.id) return;
       if (adult(p) && p.home !== v.id) {
@@ -2047,7 +2172,7 @@
         moves.push({ t: t, from: [was.x, was.y], to: [v.x, v.y], why: why, f: v.f });
         if (moves.length > 300) moves.splice(0, moves.length - 300);
       }
-      p.home = v.id; p.at = v.id; p.settled = t;
+      p.home = v.id; p.at = v.id; p.settled = t; changedHomes();
       if (v.f !== p.f) {
         if (p.job === "soldier") p.job = "farmer";
         p.f = v.f; p.loyal = why === "married" ? 0.6 : 0.5; count.switched++;
@@ -2186,7 +2311,7 @@
     const MEMO = !REAL_BODIES && !PLAIN;
     const roomAt = MEMO ? new Float64Array(cols * rows) : null;
     let clock = 0;
-    const madeRoom = (x, y) => { if (MEMO) roomAt[cell(x, y)] = ++clock; };
+    const madeRoom = (x, y) => { if (MEMO) { const i = cell(x, y); roomAt[i] = ++clock; tell(Math.floor(x), Math.floor(y)); } };
     /* Has room been made near (x, y) since count `since`? A remembered step
        is at most two pieces of 0.2: the walker can be 0.2 away when they try
        the second, try a spot 0.2 further, and be stopped by somebody 0.42
@@ -2208,16 +2333,16 @@
       let list = occ[key];
       if (!list) { list = occ[key] = []; }
       if (!list.length) occUsed.push(key);
-      /* No look for "already here": the lists are emptied and refilled every
-         step, a step takes somebody out before putting them back, and `free`
-         only asks whether anybody is in the way, so a second mention of the
-         same person could not change an answer. */
+      /* No look for "already here": somebody is always taken out before
+         being put back, and `free` only asks whether anybody is in the way,
+         so a second mention of the same person could not change an answer. */
       list.push(p);
     }
-    function unput(p) {
-      const list = occ[cell(p.x, p.y)]; if (!list) return;
+    function unputAt(p, key) {
+      const list = occ[key]; if (!list) return;
       const i = list.indexOf(p); if (i >= 0) list.splice(i, 1);
     }
+    function unput(p) { unputAt(p, cell(p.x, p.y)); }
     function free(p, x, y) {
       if (x < 0.25 || y < 0.25 || x > cols - 0.25 || y > rows - 0.25) return false;
       if (REAL_BODIES) return true;
@@ -2244,6 +2369,8 @@
         moveOnce(p, dx / k, dy / k);
         if (p.x === bx && p.y === by) break;
       }
+      /* On another square now: their name moves to its list at the next refill. */
+      if (!PLAIN && (p.x !== x0 || p.y !== y0) && tileAt(p.x, p.y) !== p.bk) shifted.push(p);
       if (MEMO) {
         /* Standing where they started counts as blocked even if they stepped
            aside and straight back, which is what a packed crowd mostly does:
@@ -2283,9 +2410,13 @@
       const m = p.rm || (p.rm = { c: -1, x: 0, y: 0, tx: 0, ty: 0, x0: 0, y0: 0, x1: 0, y1: 0 });
       m.x0 = clamp(Math.floor(x0 - BODY), 0, cols - 1); m.x1 = clamp(Math.floor(x1 + BODY), 0, cols - 1);
       m.y0 = clamp(Math.floor(y0 - BODY), 0, rows - 1); m.y1 = clamp(Math.floor(y1 + BODY), 0, rows - 1);
-      /* A search that wandered far is not worth remembering: reading its
-         squares again would cost as much as it did. */
-      if ((m.x1 - m.x0 + 1) * (m.y1 - m.y0 + 1) > 144) { m.c = -1; return null; }
+      /* A search that wandered very far is not remembered. Until 2026-11-15
+         (TODO item 2) the line was 144 squares, on the thought that reading
+         them again would cost what the search did; measured, a failed search
+         is some hundreds of times dearer than reading a thousand numbers,
+         and at 20,000 people 92,000 searches a day were over the line and
+         run again every time. */
+      if ((m.x1 - m.x0 + 1) * (m.y1 - m.y0 + 1) > 1024) { m.c = -1; return null; }
       m.c = clock; m.x = p.x; m.y = p.y; m.tx = p.tx; m.ty = p.ty;
       return null;
     }
@@ -2359,8 +2490,23 @@
           costs.set(k, g); push(q);
         }
       }
+      /* Out of tries with places still to look at is a different failure from
+         being walled in, and it is not remembered (2026-11-15): somebody
+         arriving can shut off a dead end the search was wasting its 800 looks
+         in, and the same search then gets through. Only "nobody new can open
+         a way" is safe to keep, and that is true of walls, not of patience.
+         Measured, under 3% of failures; none had been small enough to be
+         remembered under the old 144-square line, so no world changed. */
+      if (heap.length) { if (p.rm) p.rm.c = -1; return null; }
       // A fully enclosed person waits for a real opening.
-      return noWay(p, Math.min(lx, p.tx - 1), Math.min(ly, p.ty - 1), Math.max(hx, p.tx + 1), Math.max(hy, p.ty + 1));
+      /* What is remembered is the ground the search looked at, and no more.
+         Until 2026-11-15 the box was stretched to take in where they were
+         going as well, though a search that ran out of places never got
+         there: so somebody stepping aside anywhere between a walled-in
+         walker and a bed twenty squares off sent them searching again —
+         measured in a 2,000-person country on 17 km, 96,000 searches a day
+         run again for 1,355 ways found. */
+      return noWay(p, lx, ly, hx, hy);
     }
     /* ── placing a crowd (2026-11-15) ──────────────────────────────────────
        Everybody new is stood on the nearest spot to where they appeared that
@@ -2415,23 +2561,196 @@
       }
       return true;
     }
-    let sceneTick = 0;
+    /* ── not visiting people with nothing to do (2026-11-15, TODO item 2) ──
+       Until now every person was visited on every step, 1,440 times a day,
+       and so were the lists of who stands where, emptied and refilled. But
+       somebody asleep, or at a day's work in a field or at a bench, does
+       nothing on a step except count it: their `wait` goes down by one.
+       So `wake` holds, for each place in the people array, the step at which
+       that person next does anything, and the loop passes over them until
+       then without looking at them at all. It is worked out at the end of
+       `act`, and only for somebody for whom a step is nothing but the count:
+       standing where they mean to be, waiting, nothing said or struck still
+       showing, not due a word with anybody, and in a task in which nobody
+       starts a conversation (that draws from the dice, and the dice must be
+       drawn in the same order or it is a different world).
+       What can end it early is somebody else: a neighbour speaks to them,
+       asks them for food, takes them along to another village, or they die.
+       Each of those calls `wakeUp` first, which gives them back the `wait`
+       they would have had and has them visited again. Everything that
+       happens on the hour (`hour`) may touch anybody, so everybody is woken
+       for it — one visit in sixty. And whatever the page or a test did to
+       people between two calls of `advance` is looked for once, at the start
+       of the next (`lookRound`), where the old loop looked on every step.
+       While somebody dozes their `wait` is behind; `settle` puts it right
+       before `advance` returns, so nothing outside ever sees it wrong.
+       The method is the oldest one in simulation — keep a time for the next
+       thing each part will do and go straight to it (README, "Only people
+       with something to do"). The world is the same world, step for step:
+       test/dozing.test.mjs runs it both ways. */
+    const quietTask = k => k === "sleep" || k === "field" || k === "make" || k === "fight";
+    const paceOf = p => WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1);
+    const whole = v => Math.floor(v) === v;
+    /* 1: waiting. A step is only the count. */
+    function dozeable(p) {
+      return p.wait > 0 && whole(p.wait) && !(p.sayT > 0) && !(p.hit > 0) && !(p.talk > 0) && p.hp !== -99 &&
+        (S.talk <= 0 || quietTask(p.task)) && Math.hypot(p.tx - p.x, p.ty - p.y) <= Math.max(paceOf(p), 0.5);
+    }
+    /* 2: jammed. Measured after the waiting were passed over: at 20,000
+       people with bodies as drawn, 74% of all steps were still somebody
+       standing in a packed village more than 2.5 squares from the bed, field
+       or bench they were walking to (TODO item 7 is the crowding itself).
+       Item 1 already remembers their blocked step and the way round that
+       could not be found, so such a step changes two counts and nothing
+       else: `stuck` goes up by one, and `routeRetry` runs down to the next
+       look for a way round, which is refused from memory. It stays so until
+       room is made on a square either memory reads — and `madeRoom` is the
+       one place that happens. So they are passed over until then, and the
+       two counts are put right when they are woken.
+       Nearer than 2.5 squares the steps are counted towards giving up, and
+       somebody not yet three steps stuck has not looked for a way round:
+       both are left to be visited. */
+    const RETRY = TK(30), LOOK = TK(12);
+    function jamFields(p) {
+      if (!(p.mc >= 0) || p.mx !== p.x || p.my !== p.y || p.route !== null || p.hp === -99) return false;
+      if (p.sayT > 0 || p.hit > 0 || p.talk > 0 || !(S.talk <= 0 || quietTask(p.task))) return false;
+      if (!(p.routeRetry >= 1 && p.routeRetry <= RETRY && whole(p.routeRetry) && p.stuck >= LOOK && whole(p.stuck))) return false;
+      const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), pace = paceOf(p);
+      if (!(d > 2.5 && d > pace) || d < (p.lastDistance ?? Infinity) - 0.1) return false;
+      if (p.mdx !== dx / d * pace || p.mdy !== dy / d * pace) return false;
+      const m = p.rm;
+      return !!m && m.c >= 0 && m.x === p.x && m.y === p.y && m.tx === p.tx && m.ty === p.ty;
+    }
+    function jammed(p) { return jamFields(p) && quiet(p.x, p.y, p.mc) && stillNoWay(p); }
+    /* For the audit: `quiet` without its look across the end of a row. That
+       look can only make `quiet` say "work it out again", which gives the
+       same answer; here it would be taken for somebody not having been told. */
+    function quietNear(p) {
+      const fx = Math.floor(p.x), fy = Math.floor(p.y);
+      for (let y = Math.max(0, fy - 1); y <= Math.min(rows - 1, fy + 1); y++)
+        for (let x = Math.max(0, fx - 1); x <= Math.min(cols - 1, fx + 1); x++) if (roomAt[y * cols + x] > p.mc) return false;
+      return true;
+    }
+    /* Who is to be told when room is made, kept by blocks of four squares a
+       side: the squares round them that a blocked step reads, and the ones
+       the failed search for a way round looked at. Telling too many is
+       harmless — they are visited, find nothing changed, and are passed over
+       again — so a block tells everybody on its list and empties it.
+       `wg` and `wb` are when and for which blocks somebody last asked, so
+       dozing off again in the same spot does not put them on a list twice. */
+    const BLOCK = 4, bcols = Math.ceil(cols / BLOCK), brows = Math.ceil(rows / BLOCK);
+    const watch = MEMO ? new Array(bcols * brows) : null, firedAt = MEMO ? new Float64Array(bcols * brows) : null;
+    let fires = 0;
+    function watchFor(p) {
+      const m = p.rm, fx = Math.floor(p.x), fy = Math.floor(p.y);
+      const x0 = Math.floor(clamp(Math.min(fx - 1, m.x0), 0, cols - 1) / BLOCK), x1 = Math.floor(clamp(Math.max(fx + 1, m.x1), 0, cols - 1) / BLOCK);
+      const y0 = Math.floor(clamp(Math.min(fy - 1, m.y0), 0, rows - 1) / BLOCK), y1 = Math.floor(clamp(Math.max(fy + 1, m.y1), 0, rows - 1) / BLOCK);
+      const box = ((y0 * bcols + x0) * 1024 + (x1 - x0)) * 1024 + (y1 - y0), same = box === p.wb;   // one number for each possible box
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const b = y * bcols + x;
+        if (same && firedAt[b] <= p.wg) continue;       // still on this list from last time
+        let list = watch[b]; if (!list) list = watch[b] = [];
+        /* A list nobody empties (no room is ever made there) could fill with
+           people who have since gone elsewhere. */
+        if (list.length >= 2048) {
+          const keep = new Set(list.filter(q => kind[q.ix] === 2 && people[q.ix] === q)); list.length = 0; for (const q of keep) list.push(q);
+          firedAt[b] = ++fires;      // anybody dropped must ask again, as if it had told them
+          if (keep.has(p)) continue;
+        }
+        list.push(p);
+      }
+      p.wb = box; p.wg = fires;
+    }
+    function tell(x, y) {
+      const b = Math.floor(clamp(y, 0, rows - 1) / BLOCK) * bcols + Math.floor(clamp(x, 0, cols - 1) / BLOCK), list = watch[b];
+      firedAt[b] = ++fires;
+      if (!list || !list.length) return;
+      for (let k = 0; k < list.length; k++) { const q = list[k]; if (kind[q.ix] === 2) wakeUp(q); }
+      list.length = 0;
+    }
+    /* Called before anything changes somebody other than the one acting, and
+       when room is made beside somebody jammed. People act in the order of
+       the array, so one further along has not had this step yet and one
+       further back has. */
+    function wakeUp(q) {
+      const i = q.ix, k = kind[i];
+      if (!k || people[i] !== q) return;
+      caughtUp(q, i, k, i < cur ? activityTicks : activityTicks - 1);
+      kind[i] = 0; wake[i] = 0;
+    }
+    /* Their counts as they would stand after step `done`. */
+    function caughtUp(q, i, k, done) {
+      if (k === 1) { q.wait = wake[i] - 1 - done; return; }
+      const n = done - since[i];
+      if (n > 0) { q.stuck += n; q.routeRetry = ((q.routeRetry - 1 - n) % RETRY + RETRY) % RETRY + 1; since[i] = done; }
+    }
+    function wakeAll() {
+      for (let i = 0; i < people.length; i++) if (kind[i]) { caughtUp(people[i], i, kind[i], activityTicks); kind[i] = 0; wake[i] = 0; }
+    }
+    function settle() {
+      for (let i = 0; i < people.length; i++) if (kind[i]) caughtUp(people[i], i, kind[i], activityTicks);
+    }
+    /* What was done to people from outside since the last step: moved, killed,
+       sent somewhere, kept waiting. */
+    function lookRound() {
+      changedHomes();
+      for (let i = 0; i < people.length; i++) {
+        const p = people[i];
+        if (p.ix !== i) p.ix = i;
+        if (kind[i] === 1) { if (dozeable(p)) wake[i] = activityTicks + p.wait + 1; else { kind[i] = 0; wake[i] = 0; } }
+        if (!p.on) { kind[i] = 0; wake[i] = 0; continue; }
+        if (MEMO) {
+          /* Moved by something other than a step: the place they left has
+             room in it now. */
+          if (p.x !== p.ox || p.y !== p.oy) {
+            if (p.ox === p.ox) { unputAt(p, cell(p.ox, p.oy)); madeRoom(p.ox, p.oy); }
+            p.ox = p.x; p.oy = p.y; put(p);
+          }
+          if (p.hp === -99 && p.on !== 2) { madeRoom(p.x, p.y); p.on = 2; }   // killed by something other than `die`
+        }
+        if (tileAt(p.x, p.y) !== p.bk) shifted.push(p);
+      }
+      /* Somebody jammed is looked at for what can be changed from outside —
+         themselves. Whether room has been made is not read again: the moves
+         and deaths above told everybody they could matter to. */
+      if (MEMO) for (let i = 0; i < people.length; i++) if (kind[i] === 2 && !jamFields(people[i])) { kind[i] = 0; wake[i] = 0; }
+    }
+    /* For tests: the lists kept up as people move must be the lists a refill
+       would make, and nobody passed over may have been changed. */
+    function audit() {
+      const want = new Map();
+      for (const p of people) { const i = tileAt(p.x, p.y); if (!want.has(i)) want.set(i, []); want.get(i).push(p); }
+      let listed = 0;
+      for (let i = 0; i < tiles; i++) {
+        const b = buckets[i]; if (!b || !b.length) continue;
+        const w = want.get(i) || [];
+        listed += b.length;
+        if (b.length !== w.length || b.some((p, k) => p !== w[k])) throw new Error("audit: the list for square " + i + " is not what a refill would make");
+      }
+      if (listed !== people.length) throw new Error("audit: " + listed + " people listed on squares, " + people.length + " alive");
+      if (MEMO) {
+        let stood = 0;
+        for (const key in occ) { const l = occ[key]; if (!l) continue; stood += l.length; for (const p of l) if (cell(p.x, p.y) !== +key || people[p.ix] !== p) throw new Error("audit: " + p.name + " is listed standing where they are not"); }
+        const on = people.filter(p => p.on).length;
+        if (stood !== on) throw new Error("audit: " + stood + " bodies listed, " + on + " standing");
+      }
+    }
+    let sceneTick = 0, visits = 0;
     function actionTick() {
       sceneTick++;
-      for (const key of occUsed) if (occ[key]) occ[key].length = 0;
-      occUsed.length = 0;
-      // Reserve existing bodies first. Only a new arrival needs placement; walking
-      // already checks every step, so checking every settled body again is wasted work.
+      cur = 0;                 // nobody has had this step yet
       let fresh = null;
-      for (const p of people) {
-        if (!p.on) { (fresh || (fresh = [])).push(p); continue; }
-        if (REAL_BODIES) continue;
-        /* Moved by something other than a step (a test, the page): the place
-           they left has room in it now. */
-        if (MEMO && (p.x !== p.ox || p.y !== p.oy)) { if (p.ox === p.ox) madeRoom(p.ox, p.oy); p.ox = p.x; p.oy = p.y; }
-        if (MEMO && p.hp === -99 && p.on !== 2) { madeRoom(p.x, p.y); p.on = 2; }   // killed by something other than `die`
-        put(p);
-      }
+      if (PLAIN) {
+        for (const key of occUsed) if (occ[key]) occ[key].length = 0;
+        occUsed.length = 0;
+        // Reserve existing bodies first. Only a new arrival needs placement; walking
+        // already checks every step, so checking every settled body again is wasted work.
+        for (const p of people) {
+          if (!p.on) { (fresh || (fresh = [])).push(p); continue; }
+          if (REAL_BODIES) continue;
+          put(p);
+        }
+      } else if (freshList.length) { fresh = freshList.slice(); freshList.length = 0; }
       if (fresh && fresh.length >= 64 && MEMO) {
         taken = [null]; takenSlot = new Int32Array(cols * rows);
         for (const q of people) if (q.on && q.hp !== -99) markTaken(q);
@@ -2456,14 +2775,30 @@
         p.tx = p.x; p.ty = p.y;
         p.ox = p.x; p.oy = p.y;
         put(p); p.on = true;
+        if (!PLAIN) shifted.push(p);
       }
       taken = null; takenSlot = null;
       rebucket();
-      for (const p of people) if (p.hp !== -99) act(p);
+      if (PLAIN) { visits += people.length; for (const p of people) if (p.hp !== -99) act(p); return; }
+      if (AUDIT && activityTicks % 12 === 0) audit();   // the lists, five times an hour; the people, every step (below)
+      const now = activityTicks;
+      for (cur = 0; cur < people.length; cur++) {
+        const w = wake[cur];
+        if (w > now) {
+          if (AUDIT && !(kind[cur] === 1 ? dozeable(people[cur]) : jamFields(people[cur]) && quietNear(people[cur]) && stillNoWay(people[cur]))) { const q = people[cur]; throw new Error("audit: " + q.name + " was changed while passed over, and not woken (" + (kind[cur] === 1 ? "waiting" : "jammed, quiet " + quietNear(q) + ", no way " + stillNoWay(q)) + "; task " + q.task + ", said " + q.sayT + ", talk " + q.talk + ", hit " + q.hit + ")"); }
+          continue;
+        }
+        const p = people[cur];
+        if (w) { p.wait = 0; wake[cur] = 0; kind[cur] = 0; }
+        visits++;
+        if (p.hp !== -99) act(p);
+      }
+      cur = Infinity;
     }
 
     const LOCAL_TASK = new Set(["sleep", "rest", "idle", "visit", "field", "home", "make", "patrol"]);
     function act(p) {
+      let counted = false;
       if (p.sayT > 0) p.sayT--;
       if (p.hit > 0) p.hit--;
       if (p.talk > 0) p.talk--;
@@ -2513,7 +2848,7 @@
         // Shared destinations (markets, fields) are reached from beside a neighbour.
         // Do not require everyone to occupy the exact same target point.
         p.route = null; p.stuck = 0;
-        if (p.wait > 0) p.wait--; else work(p);
+        if (p.wait > 0) { p.wait--; counted = true; } else work(p);
       }
 
       /* Talking to whoever is standing on the same ground. */
@@ -2523,6 +2858,16 @@
           const q = b[Math.floor(R() * b.length)];
           if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4 && q.task !== "sleep") converse(p, q);
         }
+      }
+      if (PLAIN) return;
+      /* Nothing to do but count until the wait is up: not visited until then. */
+      if (counted) {
+        if (p.wait > 0 && whole(p.wait) && !(p.sayT > 0) && !(p.hit > 0) && !(p.talk > 0) && (S.talk <= 0 || quietTask(p.task))) {
+          kind[p.ix] = 1; wake[p.ix] = activityTicks + p.wait + 1;
+        }
+      /* Jammed, with nothing to do but stand until room is made. */
+      } else if (MEMO && p.mc >= 0 && p.route === null && p.stuck >= LOOK && jammed(p)) {
+        kind[p.ix] = 2; wake[p.ix] = Infinity; since[p.ix] = activityTicks; watchFor(p);
       }
     }
 
@@ -2782,7 +3127,7 @@
         const v = villages.filter(o => o.alive && o.f === heir.id).sort((a, b) => dist(p, a) - dist(p, b))[0];
         if (!v) continue;
         if (p.job === "soldier") p.job = "farmer";
-        p.f = heir.id; p.home = v.id; p.at = v.id; p.loyal = 0.2; p.task = "idle"; p.cargo = null; count.switched++;
+        p.f = heir.id; p.home = v.id; p.at = v.id; p.loyal = 0.2; p.task = "idle"; p.cargo = null; count.switched++; changedHomes();
       }
       note("fell", f.name + " is no more" + (heir && to >= 0 ? "; its people now answer to " + heir.name : "") + ".", 4.5, 0, 0, f.id);
     }
@@ -2953,6 +3298,7 @@
 
     /* ── the tick ──────────────────────────────────────────────────────── */
     function hour() {
+      if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
       t++;
       const grow = growth();
       const frost = S.winter * Math.max(0, GROW_LINE - warmth()) * 0.004;
@@ -2974,7 +3320,22 @@
       /* The dead leave the list. */
       let dead = false;
       for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); }
-      if (dead) { let w = 0; for (let i = 0; i < people.length; i++) if (people[i].hp !== -99) people[w++] = people[i]; people.length = w; }
+      if (dead) {
+        let w = 0;
+        for (let i = 0; i < people.length; i++) {
+          const p = people[i];
+          if (p.hp !== -99) { p.ix = w; people[w++] = p; continue; }
+          p.ix = -1;
+          if (PLAIN) continue;
+          /* Off the lists that are no longer refilled: where they stood at
+             once (nobody could be blocked by the dead anyway), the square's
+             list at its next refill, as before. */
+          if (MEMO && p.on) unput(p);
+          if (p.bk >= 0) gone.push(p);
+        }
+        people.length = w; changedHomes();
+        if (freshList.length) { const left = freshList.filter(p => p.hp !== -99); freshList.length = 0; for (const p of left) freshList.push(p); }
+      }
 
       if (t % REFLECT_HOURS === 0) {
         census();
@@ -3004,10 +3365,13 @@
       const add = seconds - compensation, next = elapsed + add;
       compensation = (next - elapsed) - add; elapsed = next;
       const target = Math.floor(elapsed * TICKS_PER_SECOND + 1e-8);
+      if (activityTicks >= target) return;
+      if (!PLAIN) lookRound();
       while (activityTicks < target) {
         activityTicks++; actionTick();
         if (activityTicks % ACTIONS_PER_HOUR === 0) hour();
       }
+      if (!PLAIN) settle();
     }
     function step(hours = 1) { advance(hours * HOUR_SECONDS); }
 
@@ -3114,16 +3478,24 @@
     }
 
     actionTick();
+    if (!PLAIN) settle();
     return {
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
       fert: fert, ore: ore, stock: stock, owner: owner,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
-      step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity, urgency: urgency, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity,
+      /* Asked from outside, perhaps just after somebody was given another home. */
+      urgency: p => { changedHomes(); return urgency(p); },
+      dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },
       get sceneTick() { return sceneTick; },
+      /* How many times anybody has been visited on a step, and how many are
+         being passed over now: for the speed test and the tests. */
+      get visits() { return visits; },
+      get passedOver() { let n = 0; for (let i = 0; i < people.length; i++) if (kind[i]) n++; return n; },
     };
   }
 

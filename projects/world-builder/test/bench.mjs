@@ -8,6 +8,8 @@
 // TODO.md's speed log with the machine named. Run it before and after any change
 // to the engine. Fixed seed, sickness off, bodies as drawn (the default).
 //
+// "visited" is the share of person-steps on which a person was looked at at
+// all (TODO item 2): the rest were passed over, asleep, at work or jammed.
 // "top speed" is how many times faster than 1× the world could run flat out:
 // a day at 1× lasts DAY_SECONDS of real time, so top speed = DAY_SECONDS ÷ the
 // seconds a day takes to work out. Without --expose-gc the memory column is rough.
@@ -24,7 +26,7 @@ const used = () => { gc(); const m = process.memoryUsage(); return m.heapUsed + 
 const pad = (v, n) => String(v).padEnd(n);
 
 console.log(os.cpus()[0].model + ", " + Math.round(os.totalmem() / 2 ** 30) + " GB, node " + process.version + (global.gc ? "" : "  (no --expose-gc: memory is rough)"));
-console.log(pad("people", 8) + pad("land km", 9) + pad("start s", 9) + pad("s per day", 11) + pad("top speed", 11) + pad("µs/person-step", 16) + pad("MB", 8) + "KB per person");
+console.log(pad("people", 8) + pad("land km", 9) + pad("start s", 9) + pad("s per day", 11) + pad("top speed", 11) + pad("µs/person-step", 16) + pad("visited", 9) + pad("MB", 8) + "KB per person");
 for (const [n, map] of cases) {
   const before = used();
   let t = performance.now();
@@ -33,10 +35,12 @@ for (const [n, map] of cases) {
   const mem = used() - before, people = w.people.length;
   w.advance(People.DAY_SECONDS);                       // the first day is not typical: everybody is walking home
   const days = n > 10000 ? 1 : 2;
+  const visits = w.visits;
   t = performance.now();
   for (let d = 0; d < days; d++) w.advance(People.DAY_SECONDS);
   const perDay = (performance.now() - t) / 1000 / days;
   const steps = 24 * People.ACTIONS_PER_HOUR;
   console.log(pad(people, 8) + pad(map, 9) + pad(start.toFixed(2), 9) + pad(perDay.toFixed(2), 11) + pad(Math.round(People.DAY_SECONDS / perDay) + "×", 11)
-    + pad((perDay * 1e6 / steps / w.people.length).toFixed(2), 16) + pad((mem / 1e6).toFixed(1), 8) + (mem / people / 1024).toFixed(2));
+    + pad((perDay * 1e6 / steps / w.people.length).toFixed(2), 16) + pad(Math.round((w.visits - visits) / days / steps / w.people.length * 100) + "%", 9)
+    + pad((mem / 1e6).toFixed(1), 8) + (mem / people / 1024).toFixed(2));
 }
