@@ -1,5 +1,5 @@
 /* THE LAB — the page. Building a setup on the grid, editing its kinds and
-   rules, running it live, running it as an experiment (in lab-worker.js),
+   rules, running it live, running it as an experiment (on the grid, beside its control),
    and keeping it. The physics is physics.js; building a world from a setup
    and judging an experiment is lab-core.js. Nothing here changes either. */
 (function () {
@@ -15,7 +15,9 @@
 
   let setup = null, tool = "place", brush = 1, picked = null;     // picked: a cell index, for Bond
   let world = null, running = false, built = null, speed = 1;
-  let worker = null;
+  /* An experiment running on screen: the job list, the pair running now,
+     the finished ones, and the plan. */
+  let exp = null;
 
   /* ── the setup ────────────────────────────────────────────────────────── */
   function example(which) {
@@ -84,7 +86,8 @@
     ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = "#2a383f"; ctx.setLineDash(setup.rules.edge === "wrap" ? [5, 5] : []);
     ctx.strokeRect(ox, oy, setup.rules.size * s, setup.rules.size * s); ctx.setLineDash([]);
-    if (world) return drawWorld();
+    if (exp) return drawExperiment();
+    if (world) return drawWorld(world, view);
     /* The empty cells, faintly, when there is room to see them. */
     const { cols, rows } = L.gridSize(setup.rules.size);
     if (s >= 9) {
@@ -112,8 +115,25 @@
       ctx.stroke();
     }
   }
-  function drawWorld() {
-    const w = world, { s, ox, oy } = view, size = setup.rules.size;
+  /* The built world and its control, side by side (or one above the other
+     when the screen is tall), each in its own frame with its name over it. */
+  function drawExperiment() {
+    const { W, H } = view, size = setup.rules.size, wide = W >= H;
+    const rects = wide ? [[0, 0, W / 2, H], [W / 2, 0, W / 2, H]] : [[0, 0, W, H / 2], [0, H / 2, W, H / 2]];
+    ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
+    const names = [exp.run.job.off ? "As built, with “" + labelOf(exp.run.job.off) + "” off" : "As built", "Control (loose)"];
+    [exp.run.built, exp.run.control].forEach((w, k) => {
+      const [x0, y0, rw, rh] = rects[k], s = Math.min((rw - 16) / size, (rh - 34) / size);
+      const v = { s, ox: x0 + (rw - size * s) / 2, oy: y0 + 26 + (rh - 26 - size * s) / 2 };
+      ctx.strokeStyle = "#2a383f"; ctx.setLineDash(setup.rules.edge === "wrap" ? [5, 5] : []);
+      ctx.strokeRect(v.ox, v.oy, size * s, size * s); ctx.setLineDash([]);
+      ctx.fillStyle = k ? "#98a8a5" : "#e0a340"; ctx.font = "600 13px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(names[k], v.ox, v.oy - 11);
+      drawWorld(w, v);
+    });
+  }
+  function drawWorld(w, v) {
+    const { s, ox, oy } = v, size = setup.rules.size;
     const turned = w.settings.angles > 0;
     const paths = new Map();
     for (let i = 0; i < w.n; i++) {
@@ -198,6 +218,15 @@
 
   /* ── status ───────────────────────────────────────────────────────────── */
   function status() {
+    if (exp) {
+      const st = exp.run.built.stats(), a = L.tally(exp.run.built), c = L.tally(exp.run.control);
+      const things = [...exp.run.start.keys()].slice(0, 3).map(sig => sig + ": " + (a.get(sig) || 0) + " built, " + (c.get(sig) || 0) + " control").join(" · ");
+      const b = document.createElement("b");
+      b.textContent = "Run " + (exp.q + 1) + " of " + exp.list.length;
+      $("status").className = "status"; $("status").textContent = "";
+      $("status").append(b, " · " + st.time.toFixed(0) + " of " + exp.seconds + " s" + (things ? " · " + things : ""));
+      return;
+    }
     if (world) {
       const st = world.stats(), c = world.census();
       const top = c.types.slice(0, 5).map(t => t.count + "× " + t.sig).join(", ");
@@ -233,14 +262,21 @@
   let lastStatus = 0;
   function loop(t) {
     if (!running || !world) return;
-    for (let k = 0; k < speed; k++) world.step(1 / 60);
+    advance(t, () => world.step(1 / 60));
     draw();
     if (t - lastStatus > 400) { lastStatus = t; status(); }
     requestAnimationFrame(loop);
   }
   $("run").addEventListener("click", startRun);
   $("reset").addEventListener("click", stopRun);
-  $("speed").addEventListener("change", e => { speed = Number(e.target.value) || 1; });
+  $("speed").addEventListener("change", e => { speed = e.target.value === "max" ? "max" : Number(e.target.value) || 1; });
+  /* One frame's worth of steps: the speed, or with Max, as many as fit in
+     about a frame's time. */
+  function advance(t, stepOnce) {
+    if (speed !== "max") { for (let k = 0; k < speed; k++) stepOnce(); return; }
+    const until = performance.now() + 12;
+    do stepOnce(); while (performance.now() < until);
+  }
 
   /* ── tabs ─────────────────────────────────────────────────────────────── */
   for (const t of document.querySelectorAll("[data-tab]")) t.addEventListener("click", () => {
@@ -373,30 +409,52 @@
   const pick = (o, k) => ({ [k]: o[k] });
 
   /* ── Experiment pane ──────────────────────────────────────────────────── */
+  /* The experiment runs right on the grid: the built world and its control
+     side by side, at the toolbar's speed, one run after another, and the
+     table fills in as each run ends. */
   $("start").addEventListener("click", () => {
-    if (worker) return;
+    if (exp) return;
     if (world) stopRun();
-    const plan = { seconds: Number($("secs").value) || 120, runs: Number($("runs").value) || 3, oneAtATime: $("oneOff").checked };
-    try { worker = new Worker("lab-worker.js"); } catch (e) { $("expMsg").textContent = "This browser cannot run experiments in the background here."; return; }
-    $("start").disabled = true; $("cancel").hidden = false; $("results").textContent = "";
-    $("expMsg").textContent = "Running…"; $("bar").style.width = "0";
-    const t0 = performance.now();
-    worker.onmessage = e => {
-      if (e.data.progress != null) {
-        $("bar").style.width = (e.data.progress * 100).toFixed(1) + "%";
-        const spent = (performance.now() - t0) / 1000, left = e.data.progress > 0.02 ? spent / e.data.progress - spent : null;
-        $("expMsg").textContent = "Running… " + Math.round(e.data.progress * 100) + "%" + (left != null ? ", about " + Math.ceil(left) + " s left" : "");
-      }
-      if (e.data.error) { $("expMsg").textContent = "It stopped: " + e.data.error; endWorker(); }
-      if (e.data.result) { $("expMsg").textContent = "Done."; showResults(e.data.result); endWorker(); }
-    };
-    worker.postMessage({ setup, plan });
+    const plan = { seconds: Math.max(1, Math.min(3600, Number($("secs").value) || 120)), runs: Math.max(1, Math.min(20, Math.round(Number($("runs").value) || 3))), oneAtATime: $("oneOff").checked };
+    exp = { list: L.jobs(setup, plan), q: 0, done: [], seconds: plan.seconds, runs: plan.runs, run: null };
+    exp.run = L.startJob(P, setup, exp.list[0]);
+    if (speed === 1) { speed = 8; $("speed").value = "8"; }
+    $("start").hidden = true; $("cancel").hidden = false; $("results").textContent = "";
+    $("expMsg").textContent = exp.list.length + " run" + (exp.list.length === 1 ? "" : "s") + " of " + plan.seconds + " s each, shown on the grid. Speed it up with the speed menu.";
+    for (const b of document.querySelectorAll("[data-tool]")) b.disabled = true;
+    $("run").disabled = true;
+    if (canvas.getBoundingClientRect().top < 0 || canvas.getBoundingClientRect().bottom > innerHeight) canvas.scrollIntoView({ behavior: "smooth", block: "center" });
+    requestAnimationFrame(expLoop);
   });
-  function endWorker() { if (worker) worker.terminate(); worker = null; $("start").disabled = false; $("cancel").hidden = true; }
-  $("cancel").addEventListener("click", () => { endWorker(); $("expMsg").textContent = "Stopped."; });
+  function expLoop(t) {
+    if (!exp) return;
+    advance(t, () => {
+      if (exp.run.built.stats().time >= exp.seconds - 1e-9) return;
+      exp.run.built.step(1 / 60); exp.run.control.step(1 / 60);
+    });
+    if (exp.run.built.stats().time >= exp.seconds - 1e-9) {
+      exp.done.push(L.endJob(exp.run));
+      showResults(L.summarize(exp.done, exp.seconds, exp.runs), exp.q + 1 < exp.list.length);
+      exp.q++;
+      if (exp.q >= exp.list.length) return endExperiment("Done.");
+      exp.run = L.startJob(P, setup, exp.list[exp.q]);
+    }
+    draw();
+    if (t - lastStatus > 300) { lastStatus = t; status(); }
+    requestAnimationFrame(expLoop);
+  }
+  function endExperiment(word) {
+    exp = null;
+    $("start").hidden = false; $("cancel").hidden = true; $("run").disabled = false;
+    for (const b of document.querySelectorAll("[data-tool]")) b.disabled = false;
+    $("expMsg").textContent = word;
+    draw(); status();
+  }
+  $("cancel").addEventListener("click", () => endExperiment("Stopped. What finished is in the table."));
   const fmt = v => (Math.abs(v) < 0.05 ? "0" : v.toFixed(1));
-  function showResults(res) {
+  function showResults(res, partial) {
     const box = $("results"); box.textContent = "";
+    if (partial) { const p = document.createElement("p"); p.className = "small"; p.textContent = "So far — still running."; box.appendChild(p); }
     const v = document.createElement("div"); v.className = "verdict";
     const b = document.createElement("b"); b.textContent = res.verdict.word.charAt(0).toUpperCase() + res.verdict.word.slice(1) + ". ";
     v.append(b, res.verdict.text); box.appendChild(v);

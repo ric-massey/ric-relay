@@ -75,8 +75,6 @@
   table.grid input { width: 3.4rem; background: var(--bg); border: 0; text-align: center; padding: .3rem 0; }
   .kind { border: 1px solid var(--line); padding: .4rem .6rem; margin: .5rem 0; background: var(--raise); }
   .kind .head { display: flex; align-items: center; gap: .5rem; }
-  .bar { height: 6px; background: var(--line); margin: .5rem 0; }
-  .bar i { display: block; height: 100%; width: 0; background: var(--acc); }
   table.res { border-collapse: collapse; width: 100%; font-size: 13px; margin: .4rem 0; }
   table.res th, table.res td { border-bottom: 1px solid var(--line); padding: .3rem .25rem; text-align: right; }
   table.res th:first-child, table.res td:first-child { text-align: left; }
@@ -104,7 +102,7 @@
       <span class="sep" aria-hidden="true"></span>
       <button class="btn go" id="run">Run</button>
       <button class="btn" id="reset" hidden>Back to building</button>
-      <label class="small">Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label>
+      <label class="small">Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="32">32×</option><option value="max">Max</option></select></label>
     </div>
     <div class="status" id="status" aria-live="polite"></div>
     <canvas id="view" aria-label="The grid. Use the tools above to place, bond, pin and erase hexagons."></canvas>
@@ -154,13 +152,12 @@
 
     <div class="pane" data-pane="exp" hidden>
       <h2>Run an experiment</h2>
-      <p class="help">Runs the setup as built, and a <b>control</b>: the same hexagons scattered loose with no bonds and nothing pinned, for the same time on the same world seeds. Whatever the built world ends with more of than the control — beyond what it started with — is the only thing building it can take credit for. That is how copying is told apart from things simply assembling.</p>
+      <p class="help">Runs the setup as built and a <b>control</b> side by side on the grid, where you can watch them: the control is the same hexagons scattered loose with no bonds and nothing pinned, for the same time on the same world seeds. Whatever the built world ends with more of than the control — beyond what it started with — is the only thing building it can take credit for. That is how copying is told apart from things simply assembling.</p>
       <div class="field"><label for="secs">Seconds of world time</label><input type="number" id="secs" min="5" max="3600" value="120"></div>
       <div class="field"><label for="runs">Runs (world seeds)</label><input type="number" id="runs" min="1" max="20" value="3"></div>
       <div class="field"><label for="oneOff">Also run with each rule that is on switched off, one at a time</label><input type="checkbox" id="oneOff" checked></div>
       <button class="btn go" id="start">Start</button>
       <button class="btn" id="cancel" hidden>Stop</button>
-      <div class="bar" aria-hidden="true"><i id="bar"></i></div>
       <p class="msg" id="expMsg" aria-live="polite"></p>
       <div id="results"></div>
     </div>

@@ -527,11 +527,12 @@ nobody had linked was a page nobody could find.
   away; order changes only if both ends' bonds fit the old AND new shape, which keeps balance).
   Occupied space, orientation by charge and saturation needed no new rule and are measured in
   chemistry.test.mjs; do not add a "steric" rule — collisions already are one.
-  **The Lab** (`lab.html`, `lab.js`, `lab-core.js`, `lab-worker.js`; Ric: "a hexagon grid pops
+  **The Lab** (`lab.html`, `lab.js`, `lab-core.js`; Ric: "a hexagon grid pops
   up … test each individual property"): build a setup exactly, type kinds in (`kindsDef` in
   physics.js — the one place kinds are looked up, on purpose), run it, or run it as an
   experiment against a loose control with each rule off in turn. lab-core.js is the only place
-  a setup becomes a world; keep the page, worker and tests all going through it. Without
+  a setup becomes a world; keep the page and tests going through it. Experiments run on
+  the grid where they can be watched, not in a hidden worker (Ric asked for that). Without
   `kindsDef` the engine must stay byte-identical (lab.test.mjs holds it).
   **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric

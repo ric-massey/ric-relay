@@ -17,9 +17,8 @@
    And it can switch the setup's rules off one at a time and run again, so
    each rule's part shows on its own.
 
-   The same file runs in the page, in the worker that runs experiments off the
-   page's thread, and in node for the tests. It uses physics.js and adds no
-   physics of its own. */
+   The same file runs in the page and in node for the tests. It uses
+   physics.js and adds no physics of its own. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.LabCore = factory();
@@ -178,55 +177,63 @@
   }
   const mean = a => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
 
-  /* The experiment. For each world seed: the setup as built, and its control.
-     The things the built world holds at the start are the TARGETS; for each,
-     how many more it ends with ("made"), against how many the control ends
-     with having started with none. Then, if asked, the built world again with
-     each rule that is on switched off, against the same controls. */
-  function experiment(Physics, setup, plan, progress) {
-    const seconds = Math.max(1, Math.min(3600, Number(plan.seconds) || 120));
+  /* The experiment, in pieces the page can show running. A JOB is one world
+     seed of one variant (the setup as built, or with one rule switched off):
+     the built world and its control, built side by side and run for the
+     same seconds. `jobs` lists them; `startJob` builds one pair; `endJob`
+     reads what each holds at the end; `summarize` turns every finished job
+     into the table. The things the built world holds at the start are the
+     TARGETS; for each, how many more it ends with ("made"), against how many
+     the control ends with having started with none. */
+  function jobs(setup, plan) {
     const runs = Math.max(1, Math.min(20, Math.round(Number(plan.runs) || 3)));
-    const offs = plan.oneAtATime ? switchedOn(setup.rules) : [];
-    const variants = [null, ...offs];
-    const total = runs * (variants.length + 1);
-    let done = 0;
-    const tick = () => { done++; if (progress) progress(done / total); };
-    const run = w => { for (let f = 0; f < seconds * 60; f++) w.step(1 / 60); };
-
-    const controls = [];
-    for (let s = 1; s <= runs; s++) {
-      const { world } = build(Physics, setup, { seed: s, control: true });
-      run(world);
-      controls.push(tally(world));
-      tick();
-    }
-    const results = [];
-    let targets = null, failed = 0;
-    for (const off of variants) {
-      const per = [];
-      for (let s = 1; s <= runs; s++) {
-        const b = build(Physics, setup, { seed: s, off });
-        if (off === null && s === 1) failed = b.failed;
-        const start = tally(b.world);
-        if (!targets) targets = [...start.keys()];
-        run(b.world);
-        per.push({ start, end: tally(b.world) });
-        tick();
-      }
+    const variants = [null, ...(plan.oneAtATime ? switchedOn(setup.rules) : [])];
+    const out = [];
+    for (const off of variants) for (let s = 1; s <= runs; s++) out.push({ off, seed: s });
+    return out;
+  }
+  function startJob(Physics, setup, job) {
+    const b = build(Physics, setup, { seed: job.seed, off: job.off });
+    const c = build(Physics, setup, { seed: job.seed, off: job.off, control: true });
+    return { job, built: b.world, control: c.world, failed: b.failed, start: tally(b.world) };
+  }
+  function endJob(run) {
+    return { off: run.job.off, seed: run.job.seed, failed: run.failed, start: run.start, end: tally(run.built), control: tally(run.control) };
+  }
+  function summarize(done, seconds, runs) {
+    const variants = [];
+    for (const d of done) if (!variants.includes(d.off)) variants.push(d.off);
+    const first = done.find(d => d.off === null) || done[0];
+    const targets = first ? [...first.start.keys()] : [];
+    const results = variants.map(off => {
+      const per = done.filter(d => d.off === off);
       const rows = targets.map(sig => {
         const made = mean(per.map(p => (p.end.get(sig) || 0) - (p.start.get(sig) || 0)));
         const kept = mean(per.map(p => Math.min(p.end.get(sig) || 0, p.start.get(sig) || 0)));
-        const control = mean(controls.map(c => c.get(sig) || 0));
+        const control = mean(per.map(p => p.control.get(sig) || 0));
         return { sig, start: mean(per.map(p => p.start.get(sig) || 0)), kept, made, control, gain: made - control };
       });
       /* Anything else the built world made more of than the control did. */
-      const others = new Map();
-      for (const p of per) for (const [sig, n] of p.end) if (!targets.includes(sig)) others.set(sig, (others.get(sig) || 0) + n / runs);
-      const extra = [...others].map(([sig, n]) => ({ sig, built: n, control: mean(controls.map(c => c.get(sig) || 0)) }))
+      const sigs = new Set();
+      for (const p of per) for (const sig of p.end.keys()) if (!targets.includes(sig)) sigs.add(sig);
+      const extra = [...sigs].map(sig => ({ sig, built: mean(per.map(p => p.end.get(sig) || 0)), control: mean(per.map(p => p.control.get(sig) || 0)) }))
         .filter(o => o.built - o.control >= 1).sort((a, b) => (b.built - b.control) - (a.built - a.control)).slice(0, 5);
-      results.push({ off, rows, extra });
-    }
-    return { seconds, runs, failed, results, verdict: verdict(results[0], runs) };
+      return { off, rows, extra, runs: per.length };
+    });
+    const base = results.find(r => r.off === null) || { rows: [] };
+    return { seconds, runs, failed: first ? first.failed : 0, results, verdict: verdict(base, runs) };
+  }
+  /* All of it at once, for the tests and for running by hand in node. */
+  function experiment(Physics, setup, plan, progress) {
+    const seconds = Math.max(1, Math.min(3600, Number(plan.seconds) || 120));
+    const list = jobs(setup, plan), done = [];
+    list.forEach((job, q) => {
+      const run = startJob(Physics, setup, job);
+      for (let f = 0; f < seconds * 60; f++) { run.built.step(1 / 60); run.control.step(1 / 60); }
+      done.push(endJob(run));
+      if (progress) progress((q + 1) / list.length);
+    });
+    return summarize(done, seconds, Math.max(1, Math.min(20, Math.round(Number(plan.runs) || 3))));
   }
 
   /* Said the way the probe says it: a difference is not a finding. */
@@ -238,5 +245,5 @@
   }
 
   return { ROW, cellXY, cellAt, gridSize, adjacent, COLORS, defaultKinds, RULES, FIXED, SWITCHABLE, switchedOn,
-           blank, clean, build, tally, experiment, verdict };
+           blank, clean, build, tally, jobs, startJob, endJob, summarize, experiment, verdict };
 });

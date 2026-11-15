@@ -34,8 +34,7 @@ what has shipped from future direction, including the shared daily clock and rem
 | `chemistry-probe.mjs` | Not a check — a measurement, run by hand (a few minutes). Van 't Hoff, mass action, the barrier, hand-overs and energy-rich pieces, each against the number it should give. |
 | `matter-probe.mjs` | Not a check — a measurement, run by hand (several minutes). Arrhenius (how fast bonds form against the barrier) and boiling against Clausius–Clapeyron. |
 | `lab.html`, `lab.js` | The Lab: a hexagon grid to build one setup exactly, its kinds and rules, live runs and experiments. |
-| `lab-core.js` | The Lab's core — building a world from a setup, its control, and judging an experiment. No DOM; the page, the worker and node all use it. |
-| `lab-worker.js` | Runs an experiment off the page's thread. |
+| `lab-core.js` | The Lab's core — building a world from a setup, its control, and judging an experiment. No DOM; the page and node both use it. |
 | `test/lab.test.mjs` | Quick checks: typed-in kinds obeyed, setups built exactly, the control is the same hexagons loose, loaded setups checked, experiments report what they say. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
@@ -520,8 +519,11 @@ It wouldn't be a sandbox right?"* — right: a sandbox is for playing, this is f
   `replication-probe.mjs` and for its reason (Virgo et al., ECAL 2011). For each thing the setup
   starts with: how many more the built world ends with, how many the control ends with, and the
   difference, which is the only part building it can claim. Optionally again with each rule that is
-  on switched off in turn, so each rule's part shows on its own. Runs in a worker; the verdict says
-  "no copying" or "a difference, not yet a finding", never more.
+  on switched off in turn, so each rule's part shows on its own. It runs **on the grid, where you
+  can watch it**: the built world and its control side by side, at the toolbar's speed (up to Max),
+  one run after the next, the table filling in as each ends. (The first version ran it out of
+  sight with a progress bar; Ric: *"that's stupid it just needs to be able to run"*.) The verdict
+  says "no copying" or "a difference, not yet a finding", never more.
 - **Keeping it.** Save in the browser, download or open a file, or copy a link (the setup in the
   address, up to about 60 kB). Anything loaded is checked: kinds clamped, cells kept to the grid
   and to kinds that exist, bonds only between neighbours.

@@ -99,7 +99,7 @@ test("an experiment runs the setup, its control, and each rule off in turn", () 
   const on = Lab.switchedOn(setup.rules);
   assert.ok(on.includes("settle") && on.includes("angles"));
   assert.equal(res.results.length, 1 + on.length);
-  assert.equal(ticks, 2 * (res.results.length + 1), "progress after every world");
+  assert.equal(ticks, 2 * res.results.length, "progress after every pair of worlds");
   assert.equal(res.results[0].rows[0].sig, "1-2-3");
   assert.equal(res.results[0].rows[0].start, 1);
   assert.ok(["no copying", "a difference"].includes(res.verdict.word));
