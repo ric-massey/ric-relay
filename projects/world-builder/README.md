@@ -1005,8 +1005,10 @@ in about 8 (a little over three times faster than the twenty-minute day). A worl
 same at any viewing speed; it is only coarser in its steps than it was.
 
 The map has a scale: **a square is 250 metres**, so a village's fields, about eight squares out,
-reach two kilometres, as farming villages' did; the maps are a valley of 11 × 7 km, a district of
-17 × 10 km and a region of 25 × 15 km (they had been called a country and a continent). People
+reach two kilometres, as farming villages' did. **How much land** is a slider in kilometres east
+to west, 5 to 40 (north to south is 0.62 of it); the old valley, district and region are 11, 17
+and 25 on it, and a link or preset that names one still opens it (Ric: *"we should be able to
+choose how big the land is"*). Below 5 km the default eight villages do not fit. People
 **walk 4.5 km an hour**, 18 squares (`TILE_METRES`, `WALK_KMH`); until this they covered about
 37 squares an hour, nine kilometres, on a map with no size. A stride longer than a fifth of a
 square is taken in checked pieces, so nobody walks through anybody. Tests step the world by

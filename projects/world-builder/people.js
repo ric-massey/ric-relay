@@ -60,9 +60,9 @@
 
   const SCHEMA = [
     { title: "The land", items: [
-      { key: "map", label: "How much land", type: "select", def: "medium",
-        options: [["small", "A valley — 11 by 7 km"], ["medium", "A district — 17 by 10 km"], ["large", "A region — 25 by 15 km"]],
-        help: "A square of the map is 250 metres: a village's fields reach about two kilometres, as farming villages' did, and people walk four and a half kilometres an hour." },
+      { key: "map", label: "How much land", type: "range", min: 5, max: 40, step: 1, def: 17,   // 5: below it the default eight villages do not fit
+        say: v => v + " by " + Math.round(landHigh(v)) + " km — " + (v <= 12 ? "a valley" : v <= 20 ? "a district" : v <= 30 ? "a region" : "a small country"),
+        help: "Measured in kilometres, east to west. A square of the map is 250 metres: a village's fields reach about two kilometres, as farming villages' did, and people walk four and a half kilometres an hour. Bigger land is slower to run." },
       { key: "rich", label: "How much it grows", type: "range", min: 0.2, max: 2, step: 0.05, def: 1,
         say: v => (v < 0.6 ? "thin soil" : v < 1.3 ? "decent land" : "it grows anything"),
         help: "How fast food grows, and grows back. On thin soil a day in the fields runs long; on rich land it is done by midday." },
@@ -103,7 +103,7 @@
     { title: "The people", items: [
       { key: "people", label: "How many people", type: "range", min: 20, max: 2000, step: 10, def: 400, curve: 2,
         say: v => v.toLocaleString("en-US"),
-        help: "How many are alive when it starts. For scale: the valley is 77 km², the district 179 km², the region 388 km², and farming country held about 10 to 50 people a km²." },
+        help: "How many are alive when it starts. For scale, farming country held about 10 to 50 people a square kilometre; the land setting above says how many square kilometres there are." },
       { key: "factions", label: "How many factions", type: "range", min: 1, max: 8, step: 1, def: 4,
         say: v => (v === 1 ? "one people" : v + " factions"), help: "They may not stay this many." },
       { key: "villages", label: "Villages each", type: "range", min: 1, max: 4, step: 1, def: 2,
@@ -230,7 +230,14 @@
       set: { war: false, plague: "none", rich: 1.6, aggression: 0, rebel: 0.1 } },
   ];
 
+  /* Land was three sizes until 2026-11-14 (Ric: "we should be able to choose
+     how big the land is"); a link or preset that names one still opens it. */
+  const LEGACY_MAP = { small: 11, medium: 17, large: 25 };
+  /* North to south is 0.62 of east to west, rounded in squares so the old
+     district and region are exactly the sizes they were. */
+  const landHigh = km => Math.round(Math.round(km * 4) * 0.62) / 4;
   function clean(input) {
+    if (input && typeof input.map === "string" && LEGACY_MAP[input.map]) input = Object.assign({}, input, { map: LEGACY_MAP[input.map] });
     const S = {};
     for (const g of SCHEMA) for (const it of g.items) {
       let v = input && it.key in input ? input[it.key] : it.def;
@@ -257,7 +264,7 @@
     };
   }
 
-  const MAPS = { small: [44, 28], medium: [68, 42], large: [100, 62] };
+  const SQUARES_PER_KM = 4;   // a square is 250 m
   const COLOURS = ["#e0a340", "#5aa9e6", "#d9605a", "#7fc87a", "#b58be0", "#e58fb6", "#4fc3b0", "#c9c36a",
                    "#f08a4b", "#8fa3ff", "#b7d36b", "#e4dccb"];
   const ONSETS = ["b", "d", "f", "g", "h", "k", "l", "m", "n", "p", "r", "s", "t", "v", "w", "y", "br", "dr", "th", "sh", "st", "el", "or", "an", ""];
@@ -377,7 +384,7 @@
   function create(input) {
     const S = clean(input);
     const R = rng(S.seed * 1597334677);
-    const cols = MAPS[S.map][0], rows = MAPS[S.map][1];
+    const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
     const owner = new Int16Array(tiles).fill(-1);
