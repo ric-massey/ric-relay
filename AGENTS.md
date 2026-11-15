@@ -587,6 +587,18 @@ nobody had linked was a page nobody could find.
   the entire interaction, since several branches change state after speaking; do not infer an
   outcome from a dialogue type or move those effects into the renderer. The quick checks are in
   `projects/world-builder/test/conversations.test.mjs` and `.github/checks.mjs`. Read the vision before planning further milestones.
+  **The whole simulator, in Ric's words, is that file's last section** (2026-11-14, "put it on paper
+  in clear words"): land from 2 km² to a state, everyone always a real person, people limited only
+  by the computer, eras, catastrophes dropped mid-run, and the measurements taken that day. Its
+  "How to build it" part is proposed, NOT agreed (Ric: "im not sure") — ask before building from it.
+  **It is not a pivot** (Ric: "existing engine is good it just needs to be cleaned … its the things
+  that this is missing"): keep the engine, make it run smoothly, add what is missing; never rewrite
+  it or drop a mechanism without asking.
+  **`projects/world-builder/TODO.md` is the order of work** (Ric, 2026-11-14: "anytime i want to
+  work on it i can say work on 1 … then i can hand it to another llm to say work on2"). "Work on
+  N" means item N of that file, done the whole way through its "How to do an item": research
+  first and written into the file, Ric's questions asked, measured before and after, a bug hunt
+  in the new code, docs, then the item ticked. One item a session; do not half-finish one.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

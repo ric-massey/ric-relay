@@ -10,6 +10,9 @@ The [README](README.md) describes the implementation; this document describes th
 Several sessions have worked on the two sandboxes. Check the implementation baseline below
 and the current code before starting a milestone; preserve work that has already shipped.
 
+**Start with the last section, "2026-11-14 — The simulator, whole".** It is Ric's statement of
+the whole simulator in plain words, and where an older section disagrees with it, it is the newer word.
+
 ## Current implementation and the next piece
 
 Reviewed 2026-11-12 against `people.js`, `index.html` and the README, following the readability
@@ -561,3 +564,329 @@ runs before it is called done.
 wars — and that was fixed first; README, "A world that does not go still".)
 5. **Households and politics, joined** — what a tax, a conscripted son or a lost harvest does to
    one household, and what that household then does about it.
+
+## 2026-11-14 — The simulator, whole
+
+Ric described the whole thing in one conversation and then asked for it "on paper in clear
+words". This section is that paper. It sits above the numbered sections in authority: where an
+older section disagrees with what Ric said here, this is the newer word. As everywhere in this
+file, what he said, what was measured and what is only proposed are kept apart.
+
+### What it is
+
+A simulator of people. You choose the settings, press start, and it goes. It should be able to
+start "essentially any scenerio you can think of", and then you watch the little people live it.
+
+His example of the kind of question it should answer — an example only, not something to build
+for: "what if money was almost nonexistant and there were two tribes next to each other tht
+hated each other." And the kind of story it should be able to produce by itself: two tribes two
+kilometres apart "fighting a war that was decided a couple years prior and a new chief gets
+chosen and ends the war daplomacly."
+
+"i want the ability for antything to be able to happen and your able to see and follow all of it."
+
+### What Ric said it must have
+
+**Land.**
+- You choose how big the land is. The smallest is about 2 km². The largest is about the size of
+  a state, measured as land, in km².
+- You can choose to make the land "more involved with cities or towns". All of it is a choice.
+
+**People.**
+- You choose what the people are "kinda like", and they must be able to be "pretty realistic".
+- Every person is real, always. Nobody far away is replaced by a total.
+- A person should be small: "each person only needs like 10 traits that can be a number 1-10
+  and those numbers can change based on cercumstances that happen in a area that would effect
+  them." And: "a person can hold a certain number of bits of information."
+- How many people there are has no fixed limit: "the number of people should be infinite just
+  based on can your computer run it."
+
+**Time and era.**
+- "old times new times". Probably older times first. Modern counts, but "the money can be simple
+  the stores can be simple. just the building and weapons and travel really change more."
+
+**War.**
+- "i want war to be accurate to the time and i want the aftermath of war to be accurate too."
+
+**Catastrophes and control.**
+- "nukes apocolypses". You can change things while it runs: "you can be in control", and also
+  "drop a nuke start a zombie apocolypse. or any other apocolyps astroid volcano erupts. or
+  anything."
+
+**Communication.**
+- "i think comunication needs to be fixed probably or at least improved."
+
+**The computer.**
+- "i want there to be a way that i can see what my limit will be because of my computer. but if
+  a friend has a better one i want them to be able to push those limits."
+- It should not cost much to run: "i feel like right now im running it inefficiantly."
+
+**How it looks.**
+- "the visuals shouldnt be phenominal." People are "tiny dots (or squares)". Zoomed in you see
+  "the green land their farming and the brown box of a house they live in". Zoomed out you
+  "barely even see them or not see them at all."
+
+**How good it has to be.**
+- "decently accurate and complex. and working well all around."
+
+### What was measured the same day
+
+On Ric's computer (Apple M1, 8 GB), with the engine as it stood. The script was run by hand and
+is not in the repo; rerun the measurement before quoting these as current.
+
+| People | Land | Memory | One day takes | Fastest speed |
+|---|---|---|---|---|
+| 400 | 17 km | 3 MB | 0.7 s | 408× |
+| 2,000 | 17 km | 3 MB | 12.6 s | 24× |
+| 5,000 | 40 km | 6 MB | 24 s | 13× |
+| 20,000 | 80 km | 33 MB | 129 s | 2× |
+| 400 | 500 km | 89 MB | 0.5 s | 625× |
+
+- **Memory is not the limit.** A person is 61 fields and about 1.5 KB. That matters near a
+  million people, not before.
+- **Land costs almost no time.** 400 people run as fast on 500 km as on 17 km.
+- **Time is the limit, and most of it is wasted.** About three quarters of the time goes on the
+  check that stops people walking through each other, yet a person moves in under 3% of their
+  steps. The rest of the time they are asleep, making something, idle or eating, and the engine
+  still visits each of them 1,440 times a day.
+- With that check switched off (the "bodies" setting), 5,000 people go from 13× to 58× and
+  20,000 from 2× to 8×. After that, choosing and working are the next cost.
+- Starting a 20,000-person world takes 24 seconds, nearly all of it finding everybody a place
+  to stand.
+
+### How to build it — proposed, not agreed
+
+Ric's answer to these was "im not sure". Nothing below is decided. Do not build from it without
+asking him.
+
+**One rule.** An era, a catastrophe and a scenario are all made the same way: as numbers, and as
+things put into the world. Nothing ever says "now a war starts". This is the rule the sandbox
+already keeps ("nothing is scripted"), carried to everything new.
+
+1. **An era is numbers.** How many people one farmer feeds. How far a weapon reaches and how
+   deadly it is. How fast people and news travel. What a house is made of and how many it
+   holds. Old to modern is those numbers changing.
+2. **A catastrophe on the land is one tool.** A place, a size, what it does to people, buildings
+   and soil, and for how long. A nuke, an asteroid and a volcano differ only in their numbers.
+3. **A catastrophe in people is one tool.** A condition somebody carries, that spreads, and that
+   changes their body and what they want. Plague, radiation sickness and zombies are the same
+   mechanism. A zombie is the same real person, turned.
+
+**A person in three parts.**
+- *Nature:* about ten traits, each a small number, inherited, moved slowly by what happens to
+  them.
+- *Body:* hunger, rest, health, age, where they are.
+- *Mind:* a fixed number of slots, set by the visitor. One slot is one thing known or felt: who
+  or what it is about, what kind it is (friend, grudge, debt, news, skill), how strong, how old.
+  When the mind is full the weakest goes.
+
+**Communication is passing a slot.** Whether it is believed depends on trust. It can arrive
+weaker or changed. What appears on screen reports the slot that moved, so a rumour can be
+followed from person to person. (This is item 3 of Ric's earlier list, "what people know, not
+what exists", and it keeps the rule that speech reports what happened and never causes it.)
+
+**War.** A leader decides from their people's grudges and their stores. Soldiers are real people
+taken from the fields. Afterwards the dead are missing from their households, and the grudge
+stays in the minds of the living. A new leader with a different nature can end it.
+
+**Land.** Village, town and city are sizes a settlement grows into, not types. The visitor
+chooses how settled the land is at the start.
+
+**Drawing.** Three levels by zoom: settlements and borders, then fields and houses, then people.
+
+**Speed.** Stop visiting people who have nothing to do; someone asleep until dawn should cost
+nothing until dawn. Make the walking check cheap. Run the engine off the page's own thread.
+Pack people into plain number arrays only when the count makes memory matter.
+
+**The computer's limit.** Run a short hidden test world on the setup page and say what this
+computer can carry at what speed. The sliders show the mark and do not stop anybody going past it.
+
+### Decided since (2026-11-14, later the same conversation)
+
+- **This is not a pivot.** Ric: "existing engine is good it just needs to be cleaned. eveything in
+  the engine needs to be built to work smoother but alot fo the things in there i want." And:
+  "this istn a pivot. its the things that this is missing." So the engine is kept. The work is
+  making what is there run smoothly and adding what is missing. Do not rewrite it, and do not
+  drop a mechanism it has without asking him.
+- **Modern times are in, and so are the things they depend on.** Ric: "modern times sure but that
+  meance cell towers must be a thing too". Instant news is not a switch. A phone works only within
+  reach of a tower, and a tower is a building that can be built, lost in a war or flattened by a
+  catastrophe. Where there is no tower, news goes back to walking speed. (The same rule is
+  proposed for anything else modern: it exists as a thing in the world, never as a setting alone.)
+- **Grudges reach children both ways.** Ric: "childern can eherit. or hear. it needs to be a mix
+  of both". A child starts with some of what their parents feel, weaker, and also picks up more
+  by being told, like anybody else.
+
+### The ten traits — agreed 2026-11-14
+
+He asked which ten matter most, "the ones that drive their decisions", and said yes to this list
+("Yes, those ten"). Each is there because it decides a choice the engine already makes or needs
+to make. Five are in the engine today; the other five are not built yet.
+
+| Trait | What it decides |
+|---|---|
+| Bold | Whether to take a risk: fight or run, travel, settle new land. (In the engine now.) |
+| Warm | Whether to give, share and help somebody else. (In the engine now.) |
+| Greedy | How much is enough: keep working and hoarding, or stop. (In the engine now.) |
+| Stubborn | How hard it is to change their mind. (In the engine now.) |
+| Loyal | Their own group or themselves, when the two pull apart. (In the engine now.) |
+| Patient | Now or later: store for winter, save, wait years for revenge. |
+| Hot-tempered | How fast anger becomes an act: a fight, a feud, a killing. |
+| Hardworking | How much they do when nothing forces them to. |
+| Curious | Whether to try the new thing: a job, a place, a tool, an idea. |
+| Honest | Whether to steal, lie, or keep a promise when breaking it would pay. |
+
+Left out on purpose, and the first to swap in: **ambitious** (wanting to lead). For now, wanting
+to lead is read from bold, greedy and loyal together. What somebody believes (`views` in the
+engine) is not a trait: it is something held in the mind, and it moves by talking.
+
+
+### The list — everything to figure out, then build
+
+Ric, 2026-11-14: "you need to make a list of what to do. because i didnt see any mentioning of
+the land and how it looks. i can barely tell whats livable whats a forrest. what is a beach. seeds
+should decide all that. water, city... water isnt in there either. … there is alot to figure out
+and i will have you do it when its figured out".
+
+So this is a list of things to **settle with Ric first**. Nothing on it is to be built until he
+says that item is figured out. "Now" is what `people.js` and `index.html` had on that date, read
+from the code. Tick an item here, with the date and his words, when it is settled, and again
+when it is built.
+
+**1. The land**
+- Now: each square has two numbers, how well it grows and how much ore. It is drawn as one
+  brown-to-green wash. There is no water, no height, no forest, no coast.
+- [ ] What kinds of ground there are: sea, lake, river, beach, marsh, grassland, forest, hills,
+  mountain, desert, and which of them people can live on.
+- [ ] The seed decides all of it (Ric: "seeds should decide all that"): height first, water runs
+  downhill into rivers and lakes, forest and grass follow from water and warmth.
+- [ ] What each kind gives: wood from forest, fish from water, stone from hills, game, grazing.
+- [ ] What each kind costs: slow to cross, can't be farmed, can't be crossed without a boat or
+  a bridge.
+- [ ] How it is drawn so anybody can tell at a glance what is livable, forest, beach and water.
+- [ ] How much of each the visitor chooses (mostly sea, one big river, all forest) and how much
+  is left to the seed.
+- [ ] Size. The smallest is 5 km across now; Ric wants about 2 km². The largest is 500 km across;
+  a state is roughly 500 to 1,200 km. A square is 250 m, which is too coarse for a 2 km² world:
+  a house and its field would be one square. The square has to get smaller as the land does.
+- [ ] Land that changes: cleared forest, worn-out soil, flood, fire, land that recovers.
+
+**2. Water**
+- Now: none. People need only food.
+- [ ] Drinking water as a need, and where it comes from: river, lake, well, rain.
+- [ ] Water as the reason places are where they are: villages by rivers, towns at crossings and
+  harbours.
+- [ ] Water for crops: rain, dry years, irrigation.
+- [ ] Water as road and wall: boats, fords, bridges, an army stopped by a river.
+- [ ] Fishing as a way to live.
+
+**3. Places and buildings**
+- Now: a village is a point with a store. A house is a spot where a family sleeps. There are no
+  fields as things, no roads, no walls, and a village never becomes anything else.
+- [ ] Houses and fields as real things on the map, the brown box and the green land Ric described.
+- [ ] Other buildings: store, workshop, market, wall, well, bridge, harbour, and in modern times
+  the cell tower.
+- [ ] Roads and paths: built, or worn in by people walking.
+- [ ] How a village grows into a town and a city, and what a city needs from the land round it.
+- [ ] The start: empty land, villages, towns, or cities already standing (Ric: "all of this
+  being choices").
+- [ ] Ruins: what a dead or destroyed place leaves behind. Ric, 2026-11-14: "ruins... seems like it
+  needs to be viable for scavengers as well". So a ruin still holds real things — food that keeps,
+  tools, weapons, materials, shelter — and they run out as they are taken. Nothing is made up
+  to be found: what is in a ruin is what was there when it fell, less what rotted and what
+  others took first.
+- [ ] A world that starts already ruined, as a choice at the start.
+
+**4. A person**
+- Now: five of the ten agreed traits (bold, warm, greedy, stubborn, loyal), set at birth and
+  never moved by events. Needs for food, rest, company and safety. 61 fields, about 1.5 KB.
+- [ ] Add patient, hot-tempered, hardworking, curious, honest, and what each changes.
+- [ ] How events move traits, and how fast (Ric: "those numbers can change based on
+  cercumstances").
+- [ ] The mind: how many slots, what kinds of thing a slot holds, how the weakest is forgotten.
+- [ ] Skills: learned by doing, taught, lost when the people who had them die.
+- [ ] Health: wounds, sickness, old age, what a person can no longer do.
+- [ ] What the visitor sets about people at the start ("what the people are kinda like").
+- [ ] Making a person small in memory, once the count makes it matter.
+
+**5. Talking and knowing**
+- Now: two people who are close say a line picked from a short list. A person holds one piece
+  of news. Friendships are a list.
+- [ ] Talking as passing something one person holds to another.
+- [ ] Trust, and things arriving weaker or wrong.
+- [ ] People acting on what they know, not on what is true.
+- [ ] Children: some inherited, some heard (decided: "a mix of both"). How much of each.
+- [ ] News over distance by era: on foot, by rider, by letter, by radio, by phone within reach
+  of a tower.
+- [ ] Following it on screen: who told whom, and where a rumour started.
+
+**6. Making a living**
+- Now: farming, one kind of "goods", ore, trade, coins or sharing, tools and packs made from
+  goods.
+- [ ] Real materials: wood, stone, ore, cloth, and what is made from each.
+- [ ] Ways to live other than farming: fishing, herding, hunting, cutting wood, mining, and
+  scavenging ruins — a living that lasts only as long as the ruins do.
+- [ ] Money kept simple (decided). What "almost no money" means for how people trade.
+- [ ] Who owns land and buildings.
+
+**7. Eras**
+- Now: one era, roughly a farming village with hand weapons.
+- [ ] Which eras there are, from tribes to modern.
+- [ ] What changes between them (Ric: "the building and weapons and travel really change
+  more"): materials and size of buildings, weapons, travel, how many one farmer feeds, medicine.
+- [ ] Whether a world stays in its era or can move on by itself over centuries.
+- [ ] Modern things that must exist as things: towers, power, fuel, vehicles.
+
+**8. War and after**
+- Now: factions go to war and make peace, soldiers are real people, fights wear gear, armies
+  need food from home (first version, 2026-11-14).
+- [ ] War "accurate to the time": weapons, reach and deadliness by era, walls and sieges, raids,
+  how far an army can go.
+- [ ] Why a war starts and why it ends, from what the people and the leader hold in mind.
+- [ ] After: the dead missing from households, widows and orphans, burned places, lost
+  harvests, people fleeing, land taken, grudges that last.
+- [ ] Peace: a new leader, a treaty, tribute, a marriage, and whether it holds.
+
+**9. Leaders and factions**
+- Now: chiefs, votes, the rich ruling, tax, relief, breakaways, the visitor ruling a faction.
+- [ ] Factions that hate each other from the start, as a setting.
+- [ ] Dealings between factions short of war: alliance, trade deal, tribute, threat.
+- [ ] Who becomes leader, and how much their own nature decides what the faction does.
+
+**10. Catastrophes and reaching in**
+- Now: a sickness setting, and ruling a faction. Nothing can be dropped on the land.
+- [ ] One tool for the land: nuke, asteroid, volcano, flood, fire, drought, earthquake, each a
+  place, a size, what it does and for how long.
+- [ ] One tool for people: plague, radiation sickness, zombies, each something carried that
+  spreads and changes the body and what the person wants.
+- [ ] How the visitor places one while the world runs, and whether one can also be set to
+  arrive by itself.
+- [ ] What else the visitor may change mid-run, and whether they can be one person.
+
+**11. Watching**
+- Now: one zoom range, people as boxes, a people list, follow a person, read a conversation,
+  graphs, 400 remembered events.
+- [ ] Three levels by zoom: settlements and borders, then fields and houses, then people.
+- [ ] A history that can be gone back through, so a war can be traced to what started it.
+- [ ] Families and the dead: who somebody's grandparents were and what happened to them.
+- [ ] Saving a world and coming back to it.
+
+**12. The engine**
+- Now: measured above. 20,000 people is the slider's top and runs at 2×.
+- [ ] Make the walking check cheap, with the same world coming out.
+- [ ] Stop visiting people who have nothing to do.
+- [ ] Make choosing and working cheap as the crowd grows.
+- [ ] Run the engine off the page's own thread.
+- [ ] Starting a big world in seconds, not half a minute.
+- [ ] No fixed top on the number of people.
+- [ ] The readout: what this computer can carry, shown on the setup page, never a block.
+
+**13. Being right**
+- [ ] Where each real number comes from (yields, walking, weapons, sickness), written down
+  with its source, as the README does for the year and for food.
+- [ ] A year-long measurement for every new piece before it is called done, as now.
+
+**Order.** Settled the same day: [TODO.md](TODO.md) is this list cut into twenty numbered items
+in the order they are to be done, with the research, the questions for Ric, the speed budget and
+the bug hunt each one needs. When Ric says "work on N", that file says what to do. Tick lines
+here as that file's items ship.
