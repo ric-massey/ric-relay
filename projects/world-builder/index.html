@@ -758,7 +758,7 @@
   function hear(m, from) {
     if (from !== keeper) return;
     if (m.t === "started") {
-      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
+      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, shade: m.shade, riverTo: m.riverTo, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
       making = 0; $("slow").hidden = true; runTook = m.took;
       sizeCanvas();
       if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
@@ -811,7 +811,7 @@
     for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; reached = 0;
     tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
-    snap = null; vs = []; fs = []; landNow = null; landStale = false; bigAt = 0; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
+    snap = null; vs = []; fs = []; landNow = null; landStale = false; bigAt = 0; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
     paneData = null; paneAsked = false; paneWant = false; ruleMsg = "";
     setHash(toHash(true));
     $("run-title").textContent = ENGINES[mode].title;
@@ -982,7 +982,7 @@
   };
   function zoomAt(px, py, k) {
     const before = toWorld(px, py);
-    cam.s = Math.min(mode === "people" ? 64 : 160, Math.max(0.4, cam.s * k));
+    cam.s = Math.min(mode === "people" ? MAX_ZOOM : 160, Math.max(0.4, cam.s * k));
     const after = toWorld(px, py);
     cam.x += before[0] - after[0]; cam.y += before[1] - after[1]; cam.held = true;
   }
@@ -1237,60 +1237,106 @@
      A land more than about 500 squares across has its border squares
      lightened in the picture instead, as it always did: a list of edges for
      millions of squares would be the cost this is here to avoid. */
-  let tilesPic = null, soil = null, borders = null;
-  /* The colour of a square from its kind of ground (TODO 4a): water blue, snow white, bare
-     mountain grey; ground that grows things goes from dry tan to green by how well it grows,
-     forest darker. Item 5 is the real drawing of the land; this is so it can be seen. */
-  const WATER = [[38, 70, 98], [52, 92, 124], [70, 118, 150]];
-  function groundColour(k, f) {
-    if (k <= 2) return WATER[k].slice();
-    if (k === 10) return [214, 220, 226];
-    if (k === 8) return [112, 108, 104];
-    if (k === 4) return [70, 92, 72];
-    let c = mix([92, 80, 58], [52, 104, 62], f);
-    if (k === 6) c = mix(c, [32, 64, 40], 0.45);
-    else if (k === 7) c = mix(c, [118, 104, 76], 0.35);
-    else if (k === 3) c = mix(c, [176, 160, 112], 0.6);
-    else if (k === 9) c = mix(c, [146, 126, 86], 0.4);
-    return c;
+  let tilesPic = null, soil = null, borders = null, washPic = null, mips = [];
+  /* ── drawing the land so it can be read (TODO 5, 2026-11-16) ──────────
+     Ric: "i can barely tell whats livable whats a forrest. what is a
+     beach." Each kind of ground has its own colour and, nearer in, its own
+     marks (tree crowns, reeds and pools, peaks, waves), so it reads without
+     a key and without colour alone; hills and mountains are shaded from the
+     height, lit from the north-west as map-makers do (Imhof). Three ranges
+     of zoom: far out the whole land as one picture, smoothed, with villages
+     and borders and no people; nearer, the land in blocks with its marks,
+     fields and houses; close, finer marks and people. Only what is on
+     screen is drawn, and the blocks are kept while the view moves.
+     README, "Drawing the land". */
+  const LOOKS = {
+    /* Clear colours a map would use: blue water, green growing ground, tan dry, grey rock.
+       Ric chose it (2026-11-16, "Map colours") over a darker, earthier look as from the air. */
+    map: { name: "Map colours", dim: 0.18, relief: 0.55,
+      ground: [[52, 104, 150], [70, 128, 178], [96, 158, 206], [226, 208, 150], [104, 140, 112], [146, 186, 98], [56, 112, 62], [172, 150, 100], [146, 138, 132], [214, 186, 120], [236, 240, 244]] },
+  };
+  let look = "map";
+  const MAX_ZOOM = 128;
+  function groundColour(k, f, sh) {
+    const L = LOOKS[look], c = L.ground[k];
+    let r = c[0], g = c[1], b = c[2];
+    /* Growing ground a little greener where it grows better. */
+    if (k >= 3 && k !== 4 && k !== 8 && k !== 10) { const v = (f - 0.6) * 0.25; r *= 1 - v * 0.6; g *= 1 + v * 0.3; b *= 1 - v * 0.6; }
+    /* Lit or shadowed by the slope; water lies flat. */
+    if (k > 2 && sh != null) { const l = 1 + (sh / 180 - 1) * L.relief * 2; r *= l; g *= l; b *= l; }
+    r += (10 - r) * L.dim; g += (14 - g) * L.dim; b += (16 - b) * L.dim;
+    return [r, g, b];
   }
   function paintLand() {
     const w = world, cols = w.cols, rows = w.rows, n = cols * rows, px = 8, big = cols * px > 4096;
-    if (!tilesPic || !land || tilesPic.width !== cols || tilesPic.height !== rows) {
+    if (!tilesPic || !land || tilesPic.width !== cols || tilesPic.height !== rows || soil.look !== look) {
       tilesPic = document.createElement("canvas"); tilesPic.width = cols; tilesPic.height = rows;
-      soil = new Uint8ClampedArray(n * 3);
+      soil = new Uint8ClampedArray(n * 3); soil.look = look;
       for (let i = 0; i < n; i++) {
-        let c = w.ground ? groundColour(w.ground[i], w.fert[i]) : mix([92, 80, 58], [52, 104, 62], w.fert[i]);
-        /* Dry tan to green by how well it grows. A big land has its ore under
-           the harvest's paleness and a small one over it; each as it was. */
-        if (big && w.ore[i] > 0.55) c = mix(c, [96, 96, 104], (w.ore[i] - 0.55) * 1.2);
+        const c = w.ground ? groundColour(w.ground[i], w.fert[i], w.shade ? w.shade[i] : null) : mix([92, 80, 58], [52, 104, 62], w.fert[i]);
         soil[i * 3] = c[0]; soil[i * 3 + 1] = c[1]; soil[i * 3 + 2] = c[2];
       }
     }
-    const g = tilesPic.getContext("2d"), img = g.createImageData(cols, rows), d = img.data;
-    const tints = fs.map(f => rgb(f.colour)), fullOf = landNow.full, own = landNow.owner, vf = vs.map(v => v.f), ore = w.ore;
-    const whose = i => { const o = own[i]; return o >= 0 && vf[o] != null && tints[vf[o]] ? vf[o] : -1; };
-    for (let i = 0; i < n; i++) {
+    /* Two pictures, a pixel a square: the whole land as it is now, for far
+       out; and what changes on it (harvest and who holds it) as a wash with
+       see-through squares, laid over the blocks nearer in. */
+    if (!washPic || washPic.width !== cols || washPic.height !== rows) { washPic = document.createElement("canvas"); washPic.width = cols; washPic.height = rows; }
+    /* The two pictures' pixels are kept between repaints: a 1,000 km land is ten million squares. */
+    const g = tilesPic.getContext("2d"), wg = washPic.getContext("2d");
+    if (!paintLand.img || paintLand.img.width !== cols || paintLand.img.height !== rows) { paintLand.img = g.createImageData(cols, rows); paintLand.wimg = wg.createImageData(cols, rows); }
+    const img = paintLand.img, d = img.data, wimg = paintLand.wimg, wd = wimg.data;
+    const tints = fs.map(f => rgb(f.colour)), fullOf = landNow.full, own = landNow.owner;
+    /* Each village's faction, looked up once: -1 for none or one not drawn. */
+    const factionOf = new Int32Array(vs.length + 1).fill(-1);
+    for (let j = 0; j < vs.length; j++) { const f = vs[j] && vs[j].f; if (f != null && tints[f]) factionOf[j] = f; }
+    const whose = i => { const o = own[i]; return o >= 0 && o < vs.length ? factionOf[o] : -1; };
+    /* A big land is repainted 600,000 squares a frame, so no one frame
+       holds the page up (a 1,000 km land: 120 to 150 ms in one go, every two
+       seconds); the picture on screen is the last whole one until the new
+       one is done. A land of a million squares or fewer is done at once. */
+    painting = { i: 0, n, cols, big, d, wd, whose, tints, fullOf, img, wimg, g, wg };
+    paintMore(land && n > 1e6 ? 6e5 : Infinity);
+  }
+  let painting = null;
+  function paintMore(limit) {
+    const P = painting, { n, cols, big, d, wd, whose, tints, fullOf } = P, end = Math.min(n, P.i + limit);
+    for (let i = P.i; i < end; i++) {
       /* Paler where it has been harvested, and washed with the colour of
          whoever holds it. */
       const pale = 0.5 * (1 - fullOf[i] / 255);
       let r = soil[i * 3], gg = soil[i * 3 + 1], b = soil[i * 3 + 2];
       r += (120 - r) * pale; gg += (108 - gg) * pale; b += (80 - b) * pale;
-      if (!big && ore[i] > 0.55) { const k = (ore[i] - 0.55) * 1.2; r += (96 - r) * k; gg += (96 - gg) * k; b += (104 - b) * k; }
-      r += (10 - r) * 0.42; gg += (14 - gg) * 0.42; b += (16 - b) * 0.42;
+      let wr = 120, wgg = 108, wb = 80, wa = pale;
       const a = whose(i);
       if (a >= 0) {
-        const c = tints[a];
-        r += (c[0] - r) * 0.3; gg += (c[1] - gg) * 0.3; b += (c[2] - b) * 0.3;
+        const c = tints[a], t = 0.3;
+        r += (c[0] - r) * t; gg += (c[1] - gg) * t; b += (c[2] - b) * t;
+        const A = 1 - (1 - wa) * (1 - t);
+        wr = (wr * wa * (1 - t) + c[0] * t) / A; wgg = (wgg * wa * (1 - t) + c[1] * t) / A; wb = (wb * wa * (1 - t) + c[2] * t) / A; wa = A;
         if (big) {
           const x = i % cols, ro = x + 1 < cols ? whose(i + 1) : -1, bo = i + cols < n ? whose(i + cols) : -1;
-          if ((ro >= 0 && ro !== a) || (bo >= 0 && bo !== a)) { r += (255 - r) * 0.55; gg += (255 - gg) * 0.55; b += (255 - b) * 0.55; }
+          if ((ro >= 0 && ro !== a) || (bo >= 0 && bo !== a)) { r += (255 - r) * 0.55; gg += (255 - gg) * 0.55; b += (255 - b) * 0.55; wr = 255; wgg = 255; wb = 255; wa = Math.max(wa, 0.55); }
         }
       }
       const k = i * 4; d[k] = r; d[k + 1] = gg; d[k + 2] = b; d[k + 3] = 255;
+      wd[k] = wr; wd[k + 1] = wgg; wd[k + 2] = wb; wd[k + 3] = wa * 255;
     }
-    g.putImageData(img, 0, 0);
+    P.i = end;
+    if (end < n) return;
+    painting = null;
+    const rows = n / cols;
+    P.g.putImageData(P.img, 0, 0); P.wg.putImageData(P.wimg, 0, 0);
     land = tilesPic; borders = null;
+    /* Halved copies of the whole picture, for far out: shrinking a big land
+       smoothly on every frame cost more than drawing it (a 1,000 km land,
+       125 frames in three seconds against 295); a copy near the size on
+       screen is cheap to draw. Made when the land is repainted. */
+    mips = [];
+    for (let src = tilesPic; src.width > 512;) {
+      const c = document.createElement("canvas"); c.width = Math.ceil(src.width / 2); c.height = Math.ceil(src.height / 2);
+      const cg = c.getContext("2d"); cg.imageSmoothingEnabled = true; cg.drawImage(src, 0, 0, c.width, c.height);
+      mips.push(c); src = c;
+    }
     if (big) return;
     /* A line wherever one faction's land meets another's: left, top, width
        and height of each, in squares. */
@@ -1302,6 +1348,237 @@
       if (y + 1 < rows) { const o = whose(i + cols); if (o >= 0 && o !== a) borders.push(x, y + 0.875, 1, 0.25); }
     }
   }
+
+  /* ── the land in blocks, with its marks ──────────────────────────────
+     A block is a square of the land drawn once at a size (`P` pixels a
+     square, the next of 4, 8, 16, 32, 64 at or above the zoom) and kept:
+     panning draws kept blocks, and only a new size or a new part of the
+     land draws more. What a square looks like is the seed's: the same
+     square has the same trees every time. At most 80 blocks are kept. */
+  const chunks = new Map();
+  /* How many squares a block is across: what fits in 512 pixels (a bigger
+     block, full of marks, held a frame for 140 ms to draw), or the whole
+     land when it fits in 2,048 (one picture for a small land, as it was). */
+  const blockSquares = P => world && Math.max(world.cols, world.rows) * P <= 2048 ? Math.max(world.cols, world.rows) : Math.max(8, Math.floor(512 / P));
+  const BUCKETS = [4, 8, 16, 32, 64];
+  const hash = (x, y, k) => { let h = (x * 374761393 + y * 668265263 + k * 2246822519 + (world.settings.seed | 0) * 3266489917) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  let madeThisFrame = 0;
+  function blockOf(bx, by, P) {
+    const key = look + ":" + P + ":" + bx + ":" + by;
+    let c = chunks.get(key);
+    if (c) { chunks.delete(key); chunks.set(key, c); return c; }
+    /* One new block a frame: the rest of the view waits a frame or two,
+       showing the plain picture, rather than the page stopping to draw them
+       all at once (four at once held a frame for 570 ms). */
+    if (madeThisFrame++ > 0) return null;
+    const w = world, N = blockSquares(P), x0 = bx * N, y0 = by * N;
+    const cw = Math.min(N, w.cols - x0), ch = Math.min(N, w.rows - y0);
+    c = document.createElement("canvas"); c.width = cw * P; c.height = ch * P;
+    const g = c.getContext("2d");
+    /* The ground's colours, a pixel a square, then blown up: one draw, not a
+       rectangle a square (a first look at a big land at 3 pixels a square
+       held a frame for 95 ms). */
+    const base = document.createElement("canvas"); base.width = cw; base.height = ch;
+    const bg = base.getContext("2d"), bimg = bg.createImageData(cw, ch), bd = bimg.data;
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      const i = (y0 + y) * w.cols + x0 + x, k = (y * cw + x) * 4;
+      bd[k] = soil[i * 3]; bd[k + 1] = soil[i * 3 + 1]; bd[k + 2] = soil[i * 3 + 2]; bd[k + 3] = 255;
+    }
+    bg.putImageData(bimg, 0, 0);
+    g.imageSmoothingEnabled = false; g.drawImage(base, 0, 0, cw * P, ch * P);
+    if (P >= 8) markGround(g, x0, y0, cw, ch, P);
+    drawHouses(g, x0, y0, cw, ch, P);
+    chunks.set(key, c);
+    if (chunks.size > 80) chunks.delete(chunks.keys().next().value);
+    return c;
+  }
+  /* The marks of each kind of ground, so it reads without its colour. */
+  function markGround(g, x0, y0, cw, ch, P) {
+    const w = world, many = P >= 32 ? 2 : 1, L = LOOKS[look];
+    const shift = (c, k) => "rgb(" + c.map(v => Math.max(0, Math.min(255, v * k)) | 0).join(",") + ")";
+    const paths = new Map(), path = (style, kind) => { const key = style + "|" + kind; let p = paths.get(key); if (!p) { p = { p: new Path2D(), style, kind }; paths.set(key, p); } return p.p; };
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      const gx = x0 + x, gy = y0 + y, i = gy * w.cols + gx, k = w.ground[i], X = x * P, Y = y * P;
+      const base = L.ground[k], r = (n, j) => hash(gx, gy, n * 7 + j);
+      if (k <= 1) {                                   // sea, lake: a wave or two
+        const p = path(shift(base, 1.35), "stroke");
+        for (let j = 0; j < many; j++) { const cx = X + r(1, j) * P * 0.7 + P * 0.1, cy = Y + r(2, j) * P * 0.8 + P * 0.1, q = P * 0.14; p.moveTo(cx, cy); p.quadraticCurveTo(cx + q, cy - q * 0.7, cx + q * 2, cy); }
+      } else if (k === 2) {                           // river: the land it runs through, and the river as a line
+        /* A river square is 250 m, far wider than a river: the ground beside it
+           is drawn, and the river as a line from the middle toward each river,
+           lake or sea square next to it, meeting the next square's line at
+           the edge between them. */
+        let lc = null;
+        for (let d = 0; d < 8 && !lc; d++) { const nx = gx + [1, -1, 0, 0, 1, 1, -1, -1][d], ny = gy + [0, 0, 1, -1, 1, -1, 1, -1][d]; if (nx >= 0 && ny >= 0 && nx < w.cols && ny < w.rows && w.ground[ny * w.cols + nx] > 2) { const j = ny * w.cols + nx; lc = [soil[j * 3], soil[j * 3 + 1], soil[j * 3 + 2]]; } }
+        g.fillStyle = "rgb(" + (lc || L.ground[5]).map(v => v | 0).join(",") + ")"; g.fillRect(X, Y, P, P);
+        /* Along the way the water runs: to the square it flows into, and in
+           from each river square that flows into this one. */
+        const p = path(shift(base, 1), "river"), cx = X + P / 2, cy = Y + P / 2, DXs = [1, -1, 0, 0, 1, 1, -1, -1], DYs = [0, 0, 1, -1, 1, -1, 1, -1];
+        const out = w.riverTo ? w.riverTo[i] : 255;
+        if (out < 8) { p.moveTo(cx, cy); p.lineTo(cx + DXs[out] * P / 2, cy + DYs[out] * P / 2); }
+        for (let d = 0; d < 8; d++) {
+          const nx = gx + DXs[d], ny = gy + DYs[d]; if (nx < 0 || ny < 0 || nx >= w.cols || ny >= w.rows) continue;
+          const j = ny * w.cols + nx, o = w.riverTo ? w.riverTo[j] : 255;
+          if (w.ground[j] === 2 && o < 8 && nx + DXs[o] === gx && ny + DYs[o] === gy) { p.moveTo(cx, cy); p.lineTo(cx + DXs[d] * P / 2, cy + DYs[d] * P / 2); }
+        }
+      } else if (k === 3) {                           // beach: sand grains
+        const p = path(shift(base, 0.82), "fill");
+        for (let j = 0; j < 3 * many; j++) p.rect(X + r(1, j) * P, Y + r(2, j) * P, Math.max(1, P * 0.05), Math.max(1, P * 0.05));
+      } else if (k === 4) {                           // marsh: pools and reeds
+        const pool = path(shift(L.ground[1], 1.1), "fill"), reed = path(shift(base, 0.6), "stroke");
+        const cx = X + P * (0.25 + r(1, 0) * 0.5), cy = Y + P * (0.3 + r(2, 0) * 0.4);
+        pool.ellipse(cx, cy, P * 0.18, P * 0.09, 0, 0, 6.2832); pool.closePath();
+        for (let j = 0; j < 3 * many; j++) { const rx = X + r(3, j) * P * 0.9 + P * 0.05, ry = Y + P * 0.85 - r(4, j) * P * 0.2; reed.moveTo(rx, ry); reed.lineTo(rx + P * 0.03, ry - P * 0.22); }
+      } else if (k === 5) {                           // grassland: tufts
+        const p = path(shift(base, 1.18), "stroke");
+        for (let j = 0; j < 2 * many; j++) { const tx = X + r(1, j) * P * 0.8 + P * 0.1, ty = Y + r(2, j) * P * 0.8 + P * 0.15, q = P * 0.07; p.moveTo(tx - q, ty - q); p.lineTo(tx, ty); p.lineTo(tx + q, ty - q); }
+      } else if (k === 6) {                           // forest: tree crowns, dark under, light on the sunny side
+        const dark = path(shift(base, 0.7), "fill"), lit = path(shift(base, 1.35), "fill");
+        const n = 4 * many;
+        for (let j = 0; j < n; j++) {
+          const tx = X + (0.18 + r(1, j) * 0.64) * P, ty = Y + (0.18 + r(2, j) * 0.64) * P, tr = P * (0.13 + r(3, j) * 0.07);
+          dark.moveTo(tx + tr, ty); dark.arc(tx, ty, tr, 0, 6.2832);
+          lit.moveTo(tx - tr * 0.15, ty - tr * 0.35); lit.arc(tx - tr * 0.35, ty - tr * 0.35, tr * 0.42, 0, 6.2832);
+        }
+      } else if (k === 7) {                           // hills: a curve or two along the slope
+        if (r(7, 0) < 0.3) continue;              // hills: not every square, sizes vary
+        const p = path(shift(base, 0.72), "stroke");
+        for (let j = 0; j < many; j++) { const z = 0.6 + r(3, j) * 0.6, cx = X + P * (0.15 + r(1, j) * 0.4), cy = Y + P * (0.45 + r(2, j) * 0.35); p.moveTo(cx, cy); p.quadraticCurveTo(cx + P * 0.25 * z, cy - P * 0.32 * z, cx + P * 0.5 * z, cy); }
+      } else if (k === 8) {                           // mountain: a peak, shadow side and lit side
+        /* Not every square a peak, and no two alike: a range, not wallpaper. */
+        if (r(7, 0) < 0.45) continue;
+        const sh = path(shift(base, 0.62), "fill"), lt = path(shift(base, 1.28), "fill");
+        const size = 0.55 + r(3, 0) * 0.6, cx = X + P * (0.25 + r(1, 0) * 0.5), foot = Y + P * (0.75 + r(2, 0) * 0.2), top = foot - P * 0.7 * size, half = P * 0.36 * size;
+        lt.moveTo(cx, top); lt.lineTo(cx - half, foot); lt.lineTo(cx, foot); lt.closePath();
+        sh.moveTo(cx, top); sh.lineTo(cx, foot); sh.lineTo(cx + half, foot); sh.closePath();
+      } else if (k === 9) {                           // dry land: pebbles and a crack
+        const p = path(shift(base, 0.78), "fill"), c = path(shift(base, 0.72), "stroke");
+        for (let j = 0; j < 2 * many; j++) p.rect(X + r(1, j) * P * 0.9, Y + r(2, j) * P * 0.9, Math.max(1, P * 0.06), Math.max(1, P * 0.06));
+        if (r(5, 0) < 0.4) { const cx = X + P * 0.2, cy = Y + P * (0.3 + r(6, 0) * 0.4); c.moveTo(cx, cy); c.lineTo(cx + P * 0.25, cy + P * 0.08); c.lineTo(cx + P * 0.5, cy - P * 0.05); }
+      } else if (k === 10) {                          // snow and ice: blue-grey drifts
+        const p = path("rgb(150,168,184)", "stroke");
+        const cx = X + P * (0.15 + r(1, 0) * 0.4), cy = Y + P * (0.3 + r(2, 0) * 0.5); p.moveTo(cx, cy); p.quadraticCurveTo(cx + P * 0.2, cy - P * 0.12, cx + P * 0.45, cy);
+      }
+    }
+    g.lineWidth = Math.max(1, P * 0.045); g.lineCap = "round";
+    for (const { p, style, kind } of paths.values()) {
+      if (kind === "fill") { g.fillStyle = style; g.fill(p); }
+      else if (kind === "river") { g.save(); g.lineWidth = Math.max(2, P * 0.32); g.strokeStyle = style; g.stroke(p); g.restore(); }
+      else { g.strokeStyle = style; g.stroke(p); }
+    }
+  }
+  /* The land, as much of it as the view shows. */
+  function drawLand(W, H, s, ox, oy) {
+    const w = world;
+    if (s < 3) {
+      /* Far out: the one picture, smoothed, as a map is. */
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "low";
+      let pic = land; for (const m of mips) if (m.width >= w.cols * s) pic = m;
+      ctx.drawImage(pic, ox, oy, w.cols * s, w.rows * s);
+      ctx.imageSmoothingEnabled = false;
+      return;
+    }
+    const P = BUCKETS.find(b => b >= s) || 64, N = blockSquares(P);
+    const bx0 = Math.max(0, Math.floor(-ox / s / N)), by0 = Math.max(0, Math.floor(-oy / s / N));
+    const bx1 = Math.min(Math.ceil(w.cols / N) - 1, Math.floor((W - ox) / s / N)), by1 = Math.min(Math.ceil(w.rows / N) - 1, Math.floor((H - oy) / s / N));
+    ctx.imageSmoothingEnabled = P !== s;
+    madeThisFrame = 0;
+    for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
+      const c = blockOf(bx, by, P);
+      if (!c) {
+        const sx = bx * N, sy = by * N, sw = Math.min(N, w.cols - sx), sh = Math.min(N, w.rows - sy);
+        const X0 = Math.round(ox + sx * s), Y0 = Math.round(oy + sy * s), X1 = Math.round(ox + (sx + sw) * s), Y1 = Math.round(oy + (sy + sh) * s);
+        ctx.imageSmoothingEnabled = false; ctx.drawImage(land, sx, sy, sw, sh, X0, Y0, X1 - X0, Y1 - Y0);
+        continue;
+      }
+      /* On whole pixels, each block from where it starts to where the next starts: no seam between them. */
+      const x0 = Math.round(ox + bx * N * s), y0 = Math.round(oy + by * N * s), x1 = Math.round(ox + (bx * N + c.width / P) * s), y1 = Math.round(oy + (by * N + c.height / P) * s);
+      ctx.drawImage(c, x0, y0, x1 - x0, y1 - y0);
+    }
+    ctx.imageSmoothingEnabled = false;
+    if (washPic) ctx.drawImage(washPic, ox, oy, w.cols * s, w.rows * s);
+  }
+  /* Nearer in: fields as furrows on the ground a village holds and farms,
+     and houses round each village, as many as it has people for (one for
+     about four). Houses are drawn, not yet things in the world: that is
+     TODO item 7, where a house is somewhere a family lives and goes in. */
+  /* Both are kept in land units and drawn scaled: fields block by block,
+     made again when who holds the land is sent again; houses when the
+     villages are. Making them every frame was a third of a frame at the
+     usual size. */
+  const FIELD_BLOCK = 64, fieldBlocks = new Map();
+  let fieldsFor = null, housesFor = null, houses = null;   // houses: where they stand, baked into the blocks
+  function fieldBlock(bx, by) {
+    const w = world, own = landNow.owner, key = bx + ":" + by;
+    let p = fieldBlocks.get(key); if (p) return p;
+    p = new Path2D();
+    const x0 = bx * FIELD_BLOCK, y0 = by * FIELD_BLOCK, x1 = Math.min(w.cols, x0 + FIELD_BLOCK), y1 = Math.min(w.rows, y0 + FIELD_BLOCK);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = y * w.cols + x, k = w.ground[i];
+      if (own[i] < 0 || !(k === 3 || k === 5 || k === 7 || k === 9)) continue;
+      const across = hash(x, y, 99) < 0.5;
+      for (let j = 1; j < 4; j++) { if (across) { p.moveTo(x + 0.1, y + j / 4); p.lineTo(x + 0.9, y + j / 4); } else { p.moveTo(x + j / 4, y + 0.1); p.lineTo(x + j / 4, y + 0.9); } }
+    }
+    fieldBlocks.set(key, p);
+    return p;
+  }
+  /* Where the houses stand, from the villages: a list, drawn into the land blocks. */
+  function makeHouses() {
+    const w = world, out = [];
+    for (const v of vs) {
+      if (!v.alive) continue;
+      const n = Math.max(2, Math.min(80, Math.ceil((v.pop || 8) / 4)));
+      for (let j = 0; j < n; j++) {
+        const a = j * 2.39996 + v.id, rr = 0.6 + Math.sqrt(j) * 0.55 + hash(v.id, j, 7) * 0.3;
+        const hx = v.x + Math.cos(a) * rr, hy = v.y + Math.sin(a) * rr;
+        if (hx < 0 || hy < 0 || hx >= w.cols || hy >= w.rows || w.ground[Math.floor(hy) * w.cols + Math.floor(hx)] <= 2) continue;
+        out.push({ x: hx, y: hy, col: factionColour(v.f) });
+      }
+    }
+    return out;
+  }
+  /* The houses changed: only the blocks round the ones that came, went or changed colour are drawn again. */
+  function updateHouses() {
+    const next = makeHouses(), key = h => h.x.toFixed(3) + "," + h.y.toFixed(3) + "," + h.col;
+    const before = new Set((houses || []).map(key)), after = new Set(next.map(key));
+    const moved = (houses || []).filter(h => !after.has(key(h))).concat(next.filter(h => !before.has(key(h))));
+    if (moved.length) for (const k of [...chunks.keys()]) {
+      const [, P, bx, by] = k.split(":").map(Number), N = blockSquares(P);
+      if (moved.some(h => h.x >= bx * N - 1 && h.x < (bx + 1) * N + 1 && h.y >= by * N - 1 && h.y < (by + 1) * N + 1)) chunks.delete(k);
+    }
+    houses = next; housesFor = vs;
+  }
+  function drawHouses(g, x0, y0, cw, ch, P) {
+    if (!houses || P < 8) return;
+    const hs = 0.42 * P, walls = new Path2D(), roofs = new Map();
+    for (const h of houses) {
+      if (h.x < x0 - 1 || h.y < y0 - 1 || h.x > x0 + cw + 1 || h.y > y0 + ch + 1) continue;
+      const X = (h.x - x0) * P, Y = (h.y - y0) * P;
+      walls.rect(X - hs * 0.5, Y - hs * 0.2, hs, hs * 0.75);
+      let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
+      r.moveTo(X - hs * 0.66, Y - hs * 0.15); r.lineTo(X, Y - hs * 0.7); r.lineTo(X + hs * 0.66, Y - hs * 0.15); r.closePath();
+    }
+    g.lineWidth = 1; g.strokeStyle = "#2a2318";
+    g.fillStyle = "#d9c9a4"; g.fill(walls); g.stroke(walls);
+    for (const [col, r] of roofs) { g.fillStyle = col; g.fill(r); g.stroke(r); }
+  }
+  function drawFieldsAndHouses(W, H, s, ox, oy) {
+    const w = world;
+    if (s < 6) return;
+    const T = ctx.getTransform();
+    ctx.setTransform(T.a * s, 0, 0, T.d * s, T.e + T.a * ox, T.f + T.d * oy);
+    if (landNow && landNow.owner && s >= 20) {   // furrows from 20 pixels a square: the usual view of a small land is about 16, and costs what it did
+      if (fieldsFor !== landNow) { fieldBlocks.clear(); fieldsFor = landNow; }
+      const bx0 = Math.max(0, Math.floor(-ox / s / FIELD_BLOCK)), by0 = Math.max(0, Math.floor(-oy / s / FIELD_BLOCK));
+      const bx1 = Math.min(Math.ceil(w.cols / FIELD_BLOCK) - 1, Math.floor((W - ox) / s / FIELD_BLOCK)), by1 = Math.min(Math.ceil(w.rows / FIELD_BLOCK) - 1, Math.floor((H - oy) / s / FIELD_BLOCK));
+      ctx.strokeStyle = "rgba(60,48,30,.35)"; ctx.lineWidth = Math.max(1, s * 0.03) / s;
+      for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) ctx.stroke(fieldBlock(bx, by));
+    }
+    ctx.setTransform(T);
+  }
+
+  /* For checking the page from a test (headless browser): set the zoom and where to look. */
+  window.__wbZoom = (z, x, y) => { cam.s = z; if (x != null) { cam.x = x; cam.y = y; } else if (vs[0]) { cam.x = vs[0].x; cam.y = vs[0].y; window.__px0 = cam.x; window.__py0 = cam.y; } cam.held = true; follow = false; return true; };
   /* A person's colour, from the number the keeper sent for the view it was
      asked for: a faction, or a place on one of the ramps. */
   const BELIEF = ["#b9c4c1", "#ffd166", "#7bd88f"];
@@ -1341,7 +1618,8 @@
     const w = world, f = snap, n = f.k, X = f.x, Y = f.y, flags = f.flags;
     /* The land is repainted when the keeper has sent it again: every few
        steps for a small land, every two seconds for a big one. */
-    if (landNow && (landStale || !land)) { paintLand(); landStale = false; }
+    if (painting) paintMore(6e5);
+    else if (landNow && (landStale || !land)) { paintLand(); landStale = false; }
     const mine = picked && picked.person && f.picked && f.picked.id === picked.person ? f.picked : null;
     if (mine && mine.gone) { follow = false; jump = false; }
     else if (mine && jump) { cam.x = mine.x; cam.y = mine.y; cam.s = Math.max(cam.s, 48); jump = false; }
@@ -1349,7 +1627,9 @@
     ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
     const s = cam.s, ox = W / 2 - cam.x * s, oy = H / 2 - cam.y * s;
     ctx.imageSmoothingEnabled = false;
-    if (land) ctx.drawImage(land, ox, oy, w.cols * s, w.rows * s);
+    if (housesFor !== vs && world) updateHouses();
+    if (land) drawLand(W, H, s, ox, oy);
+    if (land) drawFieldsAndHouses(W, H, s, ox, oy);
     if (land && borders && borders.length) {
       ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath();
       for (let i = 0; i < borders.length; i += 4) {
@@ -1364,7 +1644,7 @@
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const v of vs) {
       if (!v.alive) continue;
-      const x = ox + v.x * s, y = oy + v.y * s, k = Math.max(4, s * 0.55);
+      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? Math.max(3, s * 0.18) : Math.max(4, s * 0.55);
       ctx.fillStyle = "#0c1113"; ctx.fillRect(x - k - 1, y - k - 1, k * 2 + 2, k * 2 + 2);
       ctx.fillStyle = factionColour(v.f); ctx.fillRect(x - k, y - k, k * 2, k * 2);
       if (v.siege) { ctx.strokeStyle = "#ef8a7c"; ctx.lineWidth = 2; ctx.strokeRect(x - k - 4, y - k - 4, k * 2 + 8, k * 2 + 8); }
@@ -1401,7 +1681,8 @@
        village showed as a black disc. */
     const paths = new Map(), lined = rad >= 1.5, under = lined ? new Path2D() : null;
     let marked = false;
-    for (let i = 0; i < n; i++) {
+    const farOut = s < 1.5;   // TODO 5: far out a person is less than a pixel; villages say where they are
+    for (let i = 0; i < n && !farOut; i++) {
       const x = ox + X[i] * s, y = oy + Y[i] * s;
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
       const r = flags[i] & FLAG.child ? small : rad, col = f.tint[i];
@@ -1414,7 +1695,7 @@
     for (const [col, p] of paths) { ctx.fillStyle = tintColour(f.view, col); ctx.fill(p); }
     /* And then whatever marks somebody out: what they carry, a wound, a
        sickness, a leader's ring, a field being reaped. */
-    if (marked) for (let i = 0; i < n; i++) {
+    if (marked && !farOut) for (let i = 0; i < n; i++) {
       const fl = flags[i];
       if (!(fl & ~FLAG.child) && !f.gear[i]) continue;
       const x = ox + X[i] * s, y = oy + Y[i] * s;
@@ -1438,12 +1719,18 @@
        map crawled with specks over every word (Ric, 2026-11-14: "the words
        get really static"). */
     ctx.textAlign = "center"; ctx.textBaseline = "top";
-    if (s > 7) for (const v of vs) {
+    /* Names at every zoom now (TODO 5), but never one over another: far out,
+       a name that would cover one already written is left out. */
+    const named = [];
+    for (const v of vs) {
       if (!v.alive) continue;
-      const x = ox + v.x * s, y = oy + v.y * s, k = Math.max(4, s * 0.55);
+      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? Math.max(3, s * 0.18) : Math.max(4, s * 0.55);
       if (x < -200 || y < -60 || x > W + 200 || y > H + 60) continue;
       ctx.font = "600 12px system-ui, sans-serif";
       const tw = ctx.measureText(v.name).width;
+      const box = [x - tw / 2 - 3, y + k + 3, tw + 6, 16];
+      if (named.some(o => box[0] < o[0] + o[2] && o[0] < box[0] + box[2] && box[1] < o[1] + o[3] && o[1] < box[1] + box[3])) continue;
+      named.push(box);
       ctx.fillStyle = "rgba(7,10,11,.82)"; ctx.fillRect(x - tw / 2 - 3, y + k + 3, tw + 6, 16);
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(v.name, x, y + k + 5);
     }

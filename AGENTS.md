@@ -675,7 +675,10 @@ nobody had linked was a page nobody could find.
   Ric wants to zoom down to a house, so finer detail is to be worked out from the seed for the
   part on screen (item 5), never stored. Since 4b (2026-11-16) nobody walks into the sea or a
   lake, rough ground is slower outside village land, a way round water is planned over the
-  squares, and a journey to another piece of land is refused.
+  squares, and a journey to another piece of land is refused. **The land is drawn to be read**
+  (TODO 5, 2026-11-16): Ric chose "Map colours"; each kind its own colour and marks, relief
+  shading, three ranges of zoom, blocks kept and one new block a frame; houses drawn round
+  villages are symbols until item 7.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

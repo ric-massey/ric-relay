@@ -765,7 +765,8 @@ when it is built.
 - [x] What each kind costs: slow to cross, can't be farmed, can't be crossed without a boat or
   a bridge. (2026-11-16, TODO 4a and 4b: paces by kind, nothing farmed on water, marsh, mountain
   or snow, the sea and lakes not walked; boats and bridges still to come.)
-- [ ] How it is drawn so anybody can tell at a glance what is livable, forest, beach and water.
+- [x] How it is drawn so anybody can tell at a glance what is livable, forest, beach and water.
+  (2026-11-16, TODO 5: colour, marks and relief; Ric named all eleven kinds on a new seed.)
 - [x] How much of each the visitor chooses (mostly sea, one big river, all forest) and how much
   is left to the seed. (2026-11-15, 4a: how much sea, rivers, forest and hills; the seed the rest.)
 - [ ] Size. The smallest is 5 km across now; Ric wants about 2 km². The largest is 500 km across;
@@ -868,7 +869,8 @@ when it is built.
 **11. Watching**
 - Now: one zoom range, people as boxes, a people list, follow a person, read a conversation,
   graphs, 400 remembered events.
-- [ ] Three levels by zoom: settlements and borders, then fields and houses, then people.
+- [x] Three levels by zoom: settlements and borders, then fields and houses, then people.
+  (2026-11-16, TODO 5; the houses are drawn until item 7 makes them real.)
 - [ ] A history that can be gone back through, so a war can be traced to what started it.
 - [ ] Families and the dead: who somebody's grandparents were and what happened to them.
 - [ ] Saving a world and coming back to it.

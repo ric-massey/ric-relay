@@ -93,9 +93,31 @@
       catch (e) { send({ t: "failed", why: String((e && e.message) || e) }); return; }
       world = w;
       rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0; maxSim = maxWall = 0;
-      const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice();
-      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore, ground: ground,
-             settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer, ground.buffer]);
+      const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice(), shade = hillShade(w), riverTo = w.riverTo.slice();
+      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore, ground: ground, shade: shade, riverTo: riverTo,
+             settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer, ground.buffer, shade.buffer, riverTo.buffer]);
+    }
+
+    /* ── hill shading (TODO 5) ─────────────────────────────────────────────
+       How lit each square is by a sun in the north-west 45° up, from the
+       slope of the land round it: Horn's gradient over the eight
+       neighbours, as ArcGIS and GDAL do it. Heights are exaggerated three
+       times, as small-scale maps do, so rolling ground still reads. 180 is
+       flat ground; less faces away from the light, more toward it. Once a
+       world: the land does not change. */
+    function hillShade(w) {
+      const cols = w.cols, rows = w.rows, h = w.height, out = new Uint8Array(cols * rows), cell = 250 / 3;
+      const zen = Math.PI / 4, az = (360 - 315 + 90) * Math.PI / 180, cz = Math.cos(zen), sz = Math.sin(zen);
+      const at = (x, y) => h[Math.min(rows - 1, Math.max(0, y)) * cols + Math.min(cols - 1, Math.max(0, x))];
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        const a = at(x - 1, y - 1), b = at(x, y - 1), c = at(x + 1, y - 1), d = at(x - 1, y), f2 = at(x + 1, y), g = at(x - 1, y + 1), hh = at(x, y + 1), i = at(x + 1, y + 1);
+        const dx = ((c + 2 * f2 + i) - (a + 2 * d + g)) / (8 * cell), dy = ((g + 2 * hh + i) - (a + 2 * b + c)) / (8 * cell);
+        const slope = Math.atan(Math.hypot(dx, dy));
+        let aspect = Math.atan2(dy, -dx); if (aspect < 0) aspect += 2 * Math.PI;
+        const v = 255 * (cz * Math.cos(slope) + sz * Math.sin(slope) * Math.cos(az - aspect));
+        out[y * cols + x] = v < 0 ? 0 : v > 255 ? 255 : v;
+      }
+      return out;
     }
 
     /* ── the clock ──────────────────────────────────────────────────────────
@@ -224,8 +246,9 @@
       /* Villages and factions are sent whole, but only when something the map
          shows of them has changed. */
       let sig = w.villages.length + "|";
-      for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "");
-      if (m.fresh || sig !== vsSig) { vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0 })); }
+      /* How many live there, to the nearest five: the houses drawn round a village follow it (TODO 5). */
+      for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "") + Math.round((v.pop || 0) / 5);
+      if (m.fresh || sig !== vsSig) { vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0, pop: v.pop || 0 })); }
       sig = fs.length + "|";
       for (const f of fs) sig += f.leader + (f.alive ? "a" : "d");
       if (m.fresh || sig !== fsSig) { fsSig = sig; out.fs = fs.map(f => ({ id: f.id, name: f.name, colour: f.colour, alive: f.alive })); }

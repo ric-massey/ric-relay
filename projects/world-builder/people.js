@@ -439,6 +439,9 @@
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
     const ground = new Uint8Array(tiles), height = new Float32Array(tiles);   // the kind of ground, and metres (TODO 4a)
+    /* Which way a river runs from each river square: 0 to 7 for the eight
+       neighbours, 255 elsewhere. For drawing it as a line (TODO 5). */
+    const riverTo = new Uint8Array(tiles).fill(255);
     const deep = k => k === G_SEA || k === G_LAKE;
     const wet = (x, y) => { const fx = Math.floor(x), fy = Math.floor(y); return fx >= 0 && fy >= 0 && fx < cols && fy < rows && deep(ground[fy * cols + fx]); };
     /* Which village holds each square. Thirty-two bits since TODO item 3:
@@ -708,7 +711,11 @@
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const i = y * cols + x; acc[i] = 0.4 + at(wet1, x, y) * 0.9 + at(wet2, x, y) * 0.3; }
       for (let k = n - 1; k >= 0; k--) { const i = order[k], d = down[i]; if (d >= 0) acc[d] += acc[i]; }
       const thr = S.rivers > 0 ? PER_KM * PER_KM * 60 * Math.pow(0.008, S.rivers) : Infinity;
-      for (let i = 0; i < n; i++) if (ground[i] === 255 && acc[i] > thr) ground[i] = G_RIVER;
+      for (let i = 0; i < n; i++) if (ground[i] === 255 && acc[i] > thr) {
+        ground[i] = G_RIVER;
+        const d = down[i];
+        if (d >= 0) { const ddx = d % cols - i % cols, ddy = ((d / cols) | 0) - ((i / cols) | 0); for (let k = 0; k < 8; k++) if (DX[k] === ddx && DY[k] === ddy) riverTo[i] = k; }
+      }
       /* Nearness to water, out to 2 km, for wetness. */
       const near = new Uint8Array(n).fill(255), qq = new Int32Array(n); let qh = 0, qt = 0;
       for (let i = 0; i < n; i++) if (ground[i] <= G_RIVER) { near[i] = 0; qq[qt++] = i; }
@@ -4153,7 +4160,7 @@
     if (!PLAIN) settle();
     return {
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
-      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height,
+      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
       step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity,

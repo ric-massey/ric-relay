@@ -1674,6 +1674,50 @@ cost of water taking room. The quick bench against 4a: 400 people 0.30 → 0.33 
 day (the way-finding arrays are made when first needed). `test/land.test.mjs` walks somebody to
 the far shore of a lake and sees them go round and arrive.
 
+### Drawing the land (2026-11-16)
+
+TODO item 5. Ric: "i can barely tell whats livable whats a forrest. what is a beach." The land
+is now drawn so each kind of ground reads without a key (Ric named all eleven on a land he had
+not seen, seed 26, without one), in the look he chose, "Map colours", over a darker, earthier
+one.
+
+- **Colour and marks.** Each kind has its own colour (`LOOKS` in `index.html`), and nearer in its
+  own marks drawn from the seed, the same square the same every time: waves on water, rivers as
+  lines along the way the water runs (`riverTo`, one byte a river square from the engine's
+  drainage), sand grains on beaches, pools and reeds in marsh, tufts on grass, tree crowns lit on
+  the sunny side in forest, curves on hills, peaks of different sizes on mountains, pebbles and
+  cracks on dry land, drifts on snow. Eleven kinds is too many for colour alone, and colour-blind
+  readers need more than colour (ColorBrewer's colour-blind-safe qualitative sets stop at four:
+  [ColorBrewer](https://en.wikipedia.org/wiki/ColorBrewer)), so the marks carry it as well.
+- **Relief.** Each square is lit by a sun in the north-west, 45° up, from the slope round it:
+  Horn's gradient and the hillshade formula as ArcGIS and GDAL use them
+  ([ArcGIS](https://pro.arcgis.com/en/pro-app/2.7/tool-reference/3d-analyst/how-hillshade-works.htm)),
+  heights exaggerated three times; worked out once a world by the keeper (`hillShade`). Shading
+  lit from the upper left is Imhof's "Swiss manner"
+  ([terrain cartography](https://www.wikipedia.com/wiki/Hillshade)).
+- **Three ranges of zoom.** Far out (under 3 pixels a square): the whole land as one picture,
+  smoothed, with halved copies so a big land is cheap to shrink; villages and their names (a name
+  that would cover another is left out); no people, who would be under a pixel. Nearer: the land
+  in blocks with its marks, the faction colour and harvest as a see-through wash on top, houses
+  round each village (one for about four people), and from 20 pixels a square furrows on the
+  fields. Close (up to 128 pixels a square, twice the old limit): the same marks larger, and
+  people. Houses are drawn, not yet things in the world: TODO item 7.
+- **Only what is on screen.** A block (512 pixels, or the whole land when it fits in 2,048) is
+  drawn once at the zoom's size and kept, 80 at most; at most one new block a frame, the rest of
+  the view showing the plain picture for a frame or two. Houses are drawn into the blocks, and
+  only the blocks round houses that changed are drawn again. Fields are kept as paths in land
+  units, made again when ownership is sent. A big land's picture is repainted 600,000 squares a
+  frame instead of all at once.
+
+Measured in headless Edge, frame drawing time (script, not GPU). The default world: 0.37–0.40 ms
+against 0.32–0.34 before, three runs each way, so **0.03 to 0.06 ms over** the item's budget of
+"no longer than now": the wash for harvest and faction colour is now its own picture over the
+land, and folding it back in would mean redrawing every mark at each repaint. A 1,000 km land:
+every zoom and panning at 275 to 300 frames in three seconds (the browser's limit); the slowest
+frame fell from about 150 ms (the repaint every two seconds, 119 ms before this item) to about
+20 ms; a jump to a new zoom on a 200 km land holds at most 30 ms for a frame or three, instead of
+570 ms.
+
 ### War has to be fed (2026-11-14)
 
 Ric: military reach should depend on *"food carried and access to resupply, distance from

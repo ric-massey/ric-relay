@@ -614,7 +614,7 @@ Research notes:
 - **Holding a big land.** Every square in typed arrays (as now) is about 4 bytes a number: 500 km
   × 310 km is 2.5 million squares, ~10 MB a number. A land twice as wide is four times that.
 
-### [ ] 5. Drawing the land so it can be read, at three zooms
+### [x] 5. Drawing the land so it can be read, at three zooms
 
 **Now:** one brown-to-green wash. Ric: "i can barely tell whats livable whats a forrest. what is
 a beach."
@@ -629,7 +629,42 @@ view); colours that still work for colour-blind people.
 a state-sized map stays smooth; nothing on the page drops below the site's contrast rule.
 **Budget:** drawing a frame takes no longer than now at the default size.
 
+Ric's answer (2026-11-16), shown six screenshots of one land (seed 3, 40 km) in two looks at
+three zooms: **"Map colours"**, the brighter, clearer one, over "Natural" (darker, earthier, as
+from the air) and over having both with a button.
+Asked (2026-11-16) whether, on a land he had not seen (seed 26, 200 km, 64° north), he could pick
+out sea, lakes, rivers, beach, marsh, grassland, forest, hills, mountains, dry land and snow and
+ice without a key: **"Yes, all of them".**
+
+**Done 2026-11-16.** Each kind its own colour and marks, relief shading, three ranges of zoom,
+houses and fields nearer in, no people far out, zoom to 128 pixels a square, only what is on
+screen drawn and kept in blocks; a 1,000 km land pans and zooms at the browser's frame rate.
+**Not met:** the default view's frame is 0.03–0.06 ms over "no longer than now" (0.37–0.40 ms
+against 0.32–0.34), the cost of the harvest-and-faction wash as its own picture (README,
+"Drawing the land"). Left: houses are drawn, not real (item 7); zooming in past 128 pixels a
+square, to a single house, waits for houses and smaller people (items 7 and 20).
+
 Research notes:
+- **Reading land without a key.** Imhof's *Cartographic Relief Presentation* is the reference:
+  shading lit from the upper left, with colour tints for height ("the Swiss manner";
+  [Wikipedia, terrain cartography](https://www.wikipedia.com/wiki/Hillshade)). Shading and areas
+  are read with the eye's edge, points and lines need looking at (UNBC relief lectures,
+  [2021](https://gis.unbc.ca/wp-content/uploads/2021/02/relief2021.pdf)). Chosen: each kind of
+  ground its own colour, the relief shaded from the height, and nearer in each kind its own marks
+  (tree crowns, reeds and pools, peaks, waves, furrows) so colour is never the only difference.
+- **Hill shading:** 255·(cos zenith·cos slope + sin zenith·sin slope·cos(azimuth − aspect)), a
+  sun at 315°, 45° up, slope and aspect from Horn's 3×3 gradient
+  ([ArcGIS, how hillshade works](https://pro.arcgis.com/en/pro-app/2.7/tool-reference/3d-analyst/how-hillshade-works.htm);
+  GDAL's defaults are the same). Heights exaggerated three times, as small-scale maps do.
+- **Colour-blind readers.** ColorBrewer's colour-blind-safe qualitative palettes stop at four
+  colours ([ColorBrewer](https://en.wikipedia.org/wiki/ColorBrewer)); for more classes the advice
+  is shape or pattern as well as colour ([EU data visualisation guide](https://data.europa.eu/apps/data-visualisation-guide/colour-for-categories)).
+  Eleven kinds of ground is too many for colour alone, so the marks carry it: water blue against
+  land (safe for red-green blindness), forest dark with crowns, snow light, rock grey with peaks.
+- **Drawing a big map cheaply.** Far out, one picture a pixel a square, smoothed; nearer, the land
+  drawn once into blocks at the zoom's size (4 to 64 pixels a square) and kept while the view
+  moves; what changes (harvest, who holds it) as a see-through wash a pixel a square on top. Only
+  blocks on screen are drawn or kept (40 at most).
 
 ### [ ] 6. Water people need and use
 
