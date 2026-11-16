@@ -141,6 +141,9 @@
       { key: "hunger", label: "Going hungry", type: "range", min: 0.2, max: 3, step: 0.1, def: 1,
         say: v => "about " + Math.round(1 / (STARVE * v) / 24) + " days with no food at all",
         help: "How long somebody with nothing to eat lasts. About six weeks is what a fed adult with water survives; a fortnight is a hard, cold, sick world." },
+      { key: "thirst", label: "Thirst", type: "select", def: "real",   // TODO 6a; Ric, 2026-11-16: "Real, on by default"
+        options: [["real", "Real — about three days without water"], ["gentle", "Gentler — about two weeks"], ["off", "Off — nobody needs water"]],
+        help: "A household keeps water at home and fetches it from a river or lake (the sea is salt), or digs a well when fresh water is far. Without any, people die in about three days, sooner in summer heat, as in life; gentler gives them about two weeks." },
       { key: "plague", label: "Sickness", type: "select", def: "rare",
         options: [["none", "None"], ["rare", "Now and then"], ["common", "Often"]],
         help: "A sickness starts in one person and passes to whoever they talk to." },
@@ -790,6 +793,38 @@
     })();
     const pieceAt = (x, y) => landPiece[clamp(Math.floor(y), 0, rows - 1) * cols + clamp(Math.floor(x), 0, cols - 1)];
 
+    /* ── water to drink (TODO 6a, 2026-11-16) ─────────────────────────────
+       A household keeps water at home and every one of them uses 20 litres
+       a day from it (WHO's basic access); anybody standing at a river or a
+       lake shore drinks there instead. With none, a person weakens and dies
+       in about three days, sooner in summer heat (Ric: "Real"), or about two
+       weeks if gentler. Water is fetched from the nearest river or lake shore,
+       40 litres a trip; the sea is salt. A village whose fresh water is over a
+       kilometre off digs a well, and fetches from that. With Thirst off none
+       of this runs and nothing is drawn from the dice: the world is as it was.
+       README, "Water to drink". */
+    const THIRST = S.thirst === "real" ? 1 : S.thirst === "gentle" ? 2 : 0;
+    const USE = 20, BUCKETS = 40, JAR = 300, WELL_HOURS = 240, FAR = 4;   // litres a day, a trip (two buckets), a house (a few large pots; at 160 a big family ran dry overnight, 13,000 dry hours a year); a well's person-hours; 1 km
+    /* For every land square within 12 km of fresh water, the nearest square to drink at: a river
+       square, or land beside a lake. -1 where there is none that near. Made once, only with
+       thirst on. */
+    const freshNear = THIRST ? new Int32Array(tiles).fill(-1) : null, freshDist = THIRST ? new Uint8Array(tiles).fill(255) : null;
+    if (THIRST) {
+      const q = new Int32Array(tiles); let qh = 0, qt = 0;
+      for (let i = 0; i < tiles; i++) {
+        if (ground[i] <= G_LAKE) continue;
+        let fresh = ground[i] === G_RIVER;
+        if (!fresh) { const x = i % cols, y = (i / cols) | 0; for (let dy = -1; dy <= 1 && !fresh; dy++) for (let dx = -1; dx <= 1 && !fresh; dx++) { const nx = x + dx, ny = y + dy; fresh = nx >= 0 && ny >= 0 && nx < cols && ny < rows && ground[ny * cols + nx] === G_LAKE; } }
+        if (fresh) { freshNear[i] = i; freshDist[i] = 0; q[qt++] = i; }
+      }
+      while (qh < qt) {
+        const i = q[qh++], x = i % cols, y = (i / cols) | 0, d = freshDist[i] + 1; if (d > 48) continue;
+        for (let k = 0; k < 4; k++) { const nx = x + [1, -1, 0, 0][k], ny = y + [0, 0, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const j = ny * cols + nx; if (ground[j] > G_LAKE && freshDist[j] > d) { freshDist[j] = d; freshNear[j] = freshNear[i]; q[qt++] = j; } }
+      }
+    }
+    if (THIRST) count.thirst = 0;
+
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
@@ -835,7 +870,7 @@
         x = clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6); y = clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6);
         if (!wet(x, y)) break;
       }
-      const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0 };
+      const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null };
       sizeHome(h, wealth);
       homes.push(h);
       return h;
@@ -852,6 +887,30 @@
       if (from && from.home === v.id && from.dwelling >= 0) { p.hx = from.hx; p.hy = from.hy; p.dwelling = from.dwelling; return; }
       const h = newHome(v, 0.5);
       p.hx = h.x; p.hy = h.y; p.dwelling = h.id;
+    }
+    /* Where a house fetches water from: its village's well if it has one and it is nearer, else
+       the nearest river or lake shore. Kept on the house; forgotten when a well is dug. */
+    function sourceOf(h) {
+      if (h.src) return h.src;
+      const v = villages[h.v], ti = tileAt(h.x, h.y), j = freshNear[ti];
+      let best = j >= 0 ? { x: j % cols + 0.5, y: ((j / cols) | 0) + 0.5, d: 0 } : null;
+      if (best) best.d = Math.hypot(best.x - h.x, best.y - h.y);
+      if (v && v.well) { const d = Math.hypot(v.well.x - h.x, v.well.y - h.y); if (!best || d < best.d) best = { x: v.well.x, y: v.well.y, d: d }; }
+      return h.src = best;
+    }
+    /* A child whose house is dry drinks from the fullest house of its own village. */
+    function shareWater(p) {
+      const best = villages[p.home].fullest;          // noted once an hour (`countHouses`)
+      if (!best || best.water < USE / DAY_HOURS) return false;
+      best.water -= USE / DAY_HOURS; return true;
+    }
+    /* Once an hour: how many live in each house, and each village's fullest house. Counting
+       them at every decision was a quarter of a 20,000-person world's time. */
+    function countHouses() {
+      for (const h of homes) h.n = 0;
+      for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) homes[p.dwelling].n++;
+      for (const v of villages) v.fullest = null;
+      for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
     }
     /* Somewhere inside one's own house, for sleeping. */
     function inHouse(p) {
@@ -974,6 +1033,7 @@
       for (let tries = 0; tries < 9000 && spots.length < want; tries++) {
         const x = 3 + R() * (cols - 6), y = 3 + R() * (rows - 6);
         if (!GROUND[ground[tileAt(x, y)]].live) continue;            // never in the sea, on a mountain or in a marsh
+        if (THIRST && tries < 3000 && freshDist[tileAt(x, y)] > 8) continue;   // within 2 km of fresh water, where the land allows (TODO 6a)
         if (fert[tileAt(x, y)] < 0.35 && tries < 4000) continue;
         const gap = tries > 6000 ? 1 : Math.max(5, Math.sqrt(Math.max(livable, 1) / want) * 0.62) * (tries > 3000 ? 0.6 : 1);
         if (spots.some(s => Math.hypot(s.x - x, s.y - y) < gap)) continue;
@@ -1498,6 +1558,13 @@
        How badly each thing is wanted, 0 to about 1.4. Food is allowed past 1
        because nothing competes with starving. Every term is read off the person
        or the village in front of them; nothing here is on a timer. */
+    /* How much the household's water presses: a day's left is nothing, none left is everything. */
+    function waterNeed(p) {
+      if (p.dry > 0) return 1.6;
+      const h = homes[p.dwelling]; if (!h) return 0;
+      const days = h.water / (Math.max(1, h.n || 1) * USE);   // h.n: who lives there, counted once an hour (`countHouses`)
+      return clamp((2.4 - days) * 0.6, 0, 1.4);   // fetching starts with about two days left
+    }
     function urgency(p) {
       const v = villages[p.home];
       const days = p.food / Math.max(1e-6, dailyNeed(p));
@@ -1518,6 +1585,7 @@
         /* Squared, so an ordinary evening does not outrank a day's work but a
            second night awake outranks everything except hunger. */
         rest: p.rest * p.rest * 1.2,
+        water: THIRST ? waterNeed(p) : 0,
         safety: clamp(p.fear, 0, 1.2),
         company: clamp(p.alone / 30, 0, 1) * (0.2 + S.talk * 0.9),
         /* Wanting more than today's meal. Money and a full store take the edge
@@ -1601,8 +1669,14 @@
         if (s > bestScore) { bestScore = s; chosen = start; chosenTask = task; }
       };
 
-      /* A child keeps near whoever feeds it, and sleeps at night. */
+      /* A child keeps near whoever feeds it, and sleeps at night. From six a child fetches
+         water too, as children did; with no grown-up at home that is how a house is kept in
+         water at all (TODO 6a: measured, every early death of thirst was a child alone). */
       if (!adult(p)) {
+        if (THIRST && p.age >= 6 && p.dwelling >= 0) {
+          const src = sourceOf(homes[p.dwelling]);
+          if (src) weigh("water", n.water * 1.4 - away(dist(p, src)) * 0.6 - dark * 0.3, () => { go(p, src.x, src.y, "water"); p.wait = 0; });
+        }
         weigh("sleep", n.rest + dark * 0.8, () => {
           const [ix, iy] = inHouse(p); go(p, ix, iy, "sleep"); p.wait = sleepTicks();
         });
@@ -1614,6 +1688,16 @@
         chosen(); p.chose = chosenTask; return;
       }
 
+      /* Water (TODO 6a): fetch it when the house runs low; and where it is far and there is no
+         well, dig one. */
+      if (THIRST && p.dwelling >= 0) {
+        const h = homes[p.dwelling], src = sourceOf(h);
+        if (src) weigh("water", n.water * 1.4 - away(dist(p, src)) * 0.6 - dark * 0.3, () => { go(p, src.x, src.y, "water"); p.wait = 0; });
+        if (!v.well && (!src || src.d > FAR)) {
+          const spot = v.wellAt || (v.wellAt = { x: v.x + 0.15, y: v.y + 0.15 });
+          weigh("well", 0.35 + n.water * 0.5 - away(dist(p, spot)) - n.food * 0.4 - dark * 0.6, () => { go(p, spot.x, spot.y, "well"); p.wait = 0; });
+        }
+      }
       /* Sleep, in their own house. The one thing a night is for. */
       const far = Math.hypot(p.hx - p.x, p.hy - p.y);
       weigh("sleep", n.rest + dark * 0.6 - 0.22 - away(far) * 0.4, () => {
@@ -1837,6 +1921,27 @@
       if (p.task === "eat") { p.at = v.id; shop(p, v); p.task = "idle"; p.wait = spell("meal"); return; }
       if (p.task === "gear") { outfit(p, v); shop(p, v); p.task = "idle"; p.wait = spell("market"); return; }
       if (p.task === "sleep") { p.rest = 0; p.task = "idle"; p.wait = 0; return; }
+      if (p.task === "water") {                        // TODO 6a: fill up and carry it home
+        const h = homes[p.dwelling];
+        p.carry = BUCKETS; p.wait = 0;
+        if (h) go(p, h.x, h.y, "waterhome"); else p.task = "idle";
+        return;
+      }
+      if (p.task === "waterhome") {
+        const h = homes[p.dwelling];
+        if (h) h.water = Math.min(JAR, h.water + (p.carry || 0));
+        p.carry = 0; p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "well") {                         // four hours' digging at a time
+        if (!v.well) {
+          v.wellWork = (v.wellWork || 0) + 4;
+          if (v.wellWork >= WELL_HOURS) {
+            v.well = { x: v.wellAt.x, y: v.wellAt.y };
+            for (const h of homes) if (h.v === v.id) h.src = null;   // fetch from it now, where it is nearer
+          }
+        }
+        p.task = "idle"; p.wait = TK(240); return;
+      }
       if (p.task === "rest") { p.rest = Math.max(0, p.rest - 0.25); p.task = "idle"; p.wait = 0; return; }
       if (p.task === "ask") {
         const q = byId.get(p.askOf);
@@ -2491,6 +2596,22 @@
       const near0 = villages[p.home], f0 = factions[p.f];
       p.fear = clamp(p.fear + (near0.siege > 0 ? 0.3 : 0) + (atWarAnywhere(f0) ? 0.06 : 0) + (p.hit > 0 ? 0.35 : 0) - 0.05, 0, 1);
 
+      /* Drinking (TODO 6a): at a river or lake shore, there; else from the house's water. */
+      if (THIRST) {
+        const here = freshNear[tileAt(p.x, p.y)], h = homes[p.dwelling];
+        const atWater = here >= 0 && Math.hypot(here % cols + 0.5 - p.x, ((here / cols) | 0) + 0.5 - p.y) < 0.6 ||
+                        villages[p.home].well && Math.hypot(villages[p.home].well.x - p.x, villages[p.home].well.y - p.y) < 0.3;
+        if (atWater) p.dry = 0;
+        else if (h && h.water >= USE / DAY_HOURS) { h.water -= USE / DAY_HOURS; p.dry = 0; }
+        else if (!adult(p) && (shareWater(p))) p.dry = 0;   // a small child is given water by the neighbours, as it is fed
+        else {
+          p.dry = (p.dry || 0) + 1;
+          /* About three days, sooner in summer heat: up to half as fast again on the warmest days. */
+          const heat = 1 + Math.max(0, warmth()) * 0.5, days = THIRST === 1 ? 3 : 14;
+          p.hp -= heat / (days * DAY_HOURS);
+          if (p.hp <= 0) { die(p, "thirst"); return; }
+        }
+      }
       /* Eating. A child eats from whichever parent has food before it goes hungry. */
       p.food -= EAT * dailyNeed(p);
       if (p.food < 0) {
@@ -2524,7 +2645,7 @@
         if (!fed) { p.hungry++; p.hp -= STARVE * S.hunger; }
       } else {
         if (p.hungry > 0) p.hungry = Math.max(0, p.hungry - 4);
-        if (p.hp < 1) p.hp = Math.min(1, p.hp + 0.004);
+        if (p.hp < 1 && !(p.dry > 0)) p.hp = Math.min(1, p.hp + 0.004);   // no healing without water (TODO 6a)
       }
       if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
       if (p.sick > 0) {
@@ -2547,6 +2668,9 @@
       if (p.task === "eat") return walking ? "Going to eat" : "Buying food";
       if (p.task === "make") return walking ? "Walking to workshop" : "Making goods";
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
+      if (p.task === "water") return "Fetching water";
+      if (p.task === "waterhome") return "Carrying water home";
+      if (p.task === "well") return walking ? "Going to dig the well" : "Digging a well";
       if (p.task === "rest") return walking ? "Going home" : p.sick > 0 ? "Ill at home" : "Resting at home";
       if (p.task === "visit") return walking ? "Going to see somebody" : "Visiting";
       if (p.task === "ask") return walking ? "Going to ask for food" : "Asking for food";
@@ -3742,6 +3866,8 @@
         let s = 0;
         for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) s += fert[tileAt(x + dx, y + dy)];
         s /= 25;
+        /* And water: a place a long walk from any is worth less to those who would carry it (TODO 6a). */
+        if (THIRST) { const d = freshDist[tileAt(x, y)]; s *= d <= FAR ? 1 : d <= 2 * FAR ? 0.85 : 0.6; }
         if (s > bs) { bs = s; best = { x: x, y: y }; }
       }
       const f = factions[v.f];
@@ -4019,6 +4145,7 @@
 
     /* ── the tick ──────────────────────────────────────────────────────── */
     function hour() {
+      if (THIRST) countHouses();
       if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
       t++;
       const grow = growth();

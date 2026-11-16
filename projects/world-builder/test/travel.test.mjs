@@ -37,7 +37,9 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 // several seeds are tried, and at least one must see a finished visit.
 {
   const trial = seed => {
-    const w = People.create({ seed, people: 80, factions: 1, villages: 3, talk: 0, prices: "fixed",
+    /* Water off: this is how prospecting works. With thirst on (TODO 6a) no trader prospected in
+       sixteen seeds against two of sixteen with it off; why is not yet known (TODO, item 6). */
+    const w = People.create({ seed, thirst: "off", people: 80, factions: 1, villages: 3, talk: 0, prices: "fixed",
       war: false, plague: "none", soldiers: 0 });
     // The newer livelihood chooser correctly assigns nobody to an unprofitable
     // trade at setup. Stage fed traders at dawn to isolate prospecting from

@@ -143,6 +143,8 @@ const SUITES = [
   ['world-builder land from the seed', ['projects/world-builder/test/land.test.mjs']],
   /* Houses as buildings and people at their real size (TODO 7a). */
   ['world-builder houses', ['projects/world-builder/test/houses.test.mjs']],
+  /* Water to drink (TODO 6a): off is off, fetching, wells, three days without. */
+  ['world-builder water', ['projects/world-builder/test/water.test.mjs']],
   /* TODO.md item 2 (2026-11-15): people with nothing to do are passed over
      until their wait is up or somebody makes room beside them, and the lists
      of who stands where and who lives where are kept up, not made again. The

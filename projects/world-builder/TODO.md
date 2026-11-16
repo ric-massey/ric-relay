@@ -666,7 +666,7 @@ Research notes:
   moves; what changes (harvest, who holds it) as a see-through wash a pixel a square on top. Only
   blocks on screen are drawn or kept (40 at most).
 
-### [ ] 6. Water people need and use
+### [ ] 6. Water people need and use (6a done)
 
 **Now:** people need only food.
 **Do:** drinking water as a need, met from river, lake or well. Settlements start near water.
@@ -679,7 +679,42 @@ carried water; fishing yields; how rivers shaped where settlements stood.
 without being told to, a dry year shows in the harvest, and a year-long default world survives.
 **Budget:** default.
 
+Ric's answer (2026-11-16): thirst **"Real, on by default"**: without water a person dies in about
+three days, faster in heat; a setting, and with it off a world is exactly as before.
+**Order (Ric, 2026-11-16): "Do 6"**, before the rest of item 7.
+**Split** (2026-11-16): **6a** drinking water as a need: a household keeps water at home and
+fetches it from a river or lake (the sea is salt), digs a well when water is far, and villages
+start near fresh water; **6b** crops and rain: rain by place and by year, a dry year in the
+harvest, river flats spared; **6c** fishing as a way to live; **6d** water as a road and a wall:
+fords, boats, bridges, an army stopped at a river.
+
+**6a done 2026-11-16.** Thirst setting (real by default, gentler, off); households keep and
+fetch water, children from six too; wells dug where fresh water is over a kilometre off; villages
+start near fresh water; off is exactly as before. A year holds on six seeds (372 alive against
+382 off). **Not met:** the speed budget, 11 to 21% slower on three bench rows, the cost of a new
+daily task. **Open:** traders stopped prospecting with water on (0 of 16 seeds against 2 of 16);
+cause not found; the travel test runs water off. Comes with later parts: rain and dry years
+(6b), fishing (6c), boats and bridges (6d).
+
 Research notes:
+- **How much water.** About 20 litres a person a day is basic access, the quantity WHO ties to a
+  source within 1 km or a 30-minute round trip; 50 to 100 litres is the UN's range for all
+  domestic use; drinking alone is 2 to 4.5 litres ([UN, water](https://www.un.org/global-issues/water);
+  Sphere's emergency minimum 15 litres, [Sphere](https://interactive.spherestandards.org/)). Chosen:
+  a household uses 20 litres a person a day from what it keeps at home.
+- **How long without it.** Roughly three to five days for an adult, one to two in heat above about
+  32 °C, longer in cool damp weather (secondary sources agree on the range; none is a clinical
+  study, which cannot ethically be done:
+  [Discover](https://www.discovermagazine.com/how-dehydration-can-kill-you-in-a-matter-of-days-42297)).
+  Chosen: about three days, faster in warm weather, as Ric chose.
+- **Wells.** Hand-dug to the water table, lined as they go; medieval wells went past 8 m
+  ([Evesham excavation](https://explorethepast.co.uk/2018/03/a-tale-of-two-structures-ovens-and-wells-in-medieval-evesham));
+  a deep dry hole was "several months of lost time and labor"
+  ([CUNY, wells](https://pressbooks.cuny.edu/gorokhovich/chapter/wells/)). No clean medieval figure for
+  the work was found; chosen: about thirty person-days of digging, said as a guess.
+- **Fish (for 6c).** Natural waters yield roughly 20 to 50 kg a hectare a year (FAO,
+  [inland fisheries](https://www.fao.org/4/x5744E/x5744e0q.htm)); medieval fish ponds were kept by
+  monasteries for Lent; no medieval yield a hectare was found.
 
 **Order changed (Ric, 2026-11-16):** "Move houses up: do item 7 (houses) and item 20 (people drawn
 their real size) next, so zooming to a single house works sooner. Item 6 (water) waits." Item 20
@@ -988,4 +1023,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-15 | 4a | AMD Ryzen 5 3600, 24 GB | 2.92 s a day, 103× | *not run* | 1.6 MB, 0.31 KB | a **different world** from here on (the land). `--quick`: 400 people 0.31 → 0.29 s, 2,000 3.17 → 3.73 s, 5,000 2.50 → 2.92 s; five seeds of 2,000 on 17 km: 3.87 s old, 4.37 s new, 3.76 s new with no sea (the sea packs people closer; the engine is not slower). 1,000 km starts in 4.5 s (2,000 people) |
 | 2026-11-16 | 4b | AMD Ryzen 5 3600, 24 GB | 2.45 s a day, 122× | *not run* | 2.5 MB, 0.48 KB | a different world from 4a's (pace and water change who goes where). `--quick` against 4a: 400 people 0.30 → 0.33 s, 2,000 3.68 → 3.30 s, 5,000 2.62 → 2.45 s. 1,000 km starts in 4.3 s, 785 MB after a day |
 | 2026-11-16 | 7a | AMD Ryzen 5 3600, 24 GB | 1.89 s a day, 159× | 10.78 s a day, 28× | 3.3 MB, 0.64 KB | **people at real size by default**, a different world. 400 people 0.34 → 0.12 s, 2,000 on 17 km 3.23 → 0.55 s, 400 on 500 km 0.15 → 0.05 s; 20,000 on 80 km 7.40 → 10.78 s, slower (busier people, emptier stores); a default year 115 → 40 s |
+| 2026-11-16 | 6a | AMD Ryzen 5 3600, 24 GB | 1.77 s a day, 168× | 12.6 s a day, 23× | 3.2 MB, 0.63 KB | **thirst on by default**, a different world. Against 7a: 400 people 0.12 → 0.14 s, 2,000 0.55 → 0.62 s, 5,000 1.72 → 1.77 s, 20,000 10.5 → 12.6 s (fetching is a new daily task) |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

@@ -1682,6 +1682,15 @@
     if ((housesFor !== vs || homesFor !== homesArr) && world) updateHouses();
     if (land) drawLand(W, H, s, ox, oy);
     if (land) drawFieldsAndHouses(W, H, s, ox, oy);
+    /* Wells (TODO 6a): a ring of stone with water in it, from close enough to see houses. */
+    if (s >= 6) for (const v of vs) {
+      if (!v.alive || !v.well) continue;
+      const x = ox + v.well[0] * s, y = oy + v.well[1] * s, r = Math.max(3, s * 1.2 / 250);
+      if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+      ctx.fillStyle = "#8a8580"; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "#3c78b0"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = "#1c1710"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 6.2832); ctx.stroke();
+    }
     if (land && borders && borders.length) {
       ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath();
       for (let i = 0; i < borders.length; i += 4) {

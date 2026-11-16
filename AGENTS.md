@@ -681,6 +681,8 @@ nobody had linked was a page nobody could find.
   villages are symbols until item 7. Since 7a (2026-11-16) people are half a metre wide by
   default (Ric: "Real size by default"), a house is a building with a real size by wealth, a
   family sleeps inside it, and the page zooms to 4,096 pixels a square to see one house.
+  **Thirst** (TODO 6a, 2026-11-16, Ric: "Real, on by default"): households keep and fetch
+  water, wells are dug where fresh water is over a kilometre off; "off" is exactly as before.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

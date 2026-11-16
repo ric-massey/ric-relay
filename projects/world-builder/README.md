@@ -1755,6 +1755,41 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Water to drink (2026-11-16)
+
+TODO item 6a. People needed only food. Now, with "Thirst" on (the default, Ric: "Real, on by
+default"):
+
+- **A household keeps water at home**, up to 300 litres in a few large pots, and every one of them
+  uses 20 litres a day from it (about WHO's basic access). Anybody at a river or a lake shore
+  drinks there instead. (160 litres was tried first: a big family ran dry every night, 13,000
+  dry person-hours a year in one world.)
+- **Without water** a person weakens and does not heal, and dies in about three days, up to half
+  as fast again on the warmest days (three to five days is the usual range, one to two in heat);
+  "Gentler" is about two weeks.
+- **Fetching.** With about two days left, somebody goes to the nearest river or lake shore (the
+  sea is salt; `freshNear`, a map made once a world) and carries 40 litres home. Children from
+  six fetch too, as children did: measured, every early death of thirst was a child alone in a
+  house; and a younger child whose house is dry is given water from the village's fullest house,
+  as it is fed from the village's store.
+- **Wells.** A village whose fresh water is more than a kilometre off (WHO's line) digs a well in
+  its middle, about thirty person-days of work, four hours at a time; then its houses fetch from
+  it where it is nearer. Wells are drawn as a ring of stone with water in it.
+- **Where villages are.** At the start villages are put within 2 km of fresh water where the land
+  allows, and people founding a new village weigh how far the water is.
+- **Off is off**: nothing of it runs and nothing is drawn from the dice; checked against the
+  engine before this item on three worlds after eight days, identical.
+
+Measured. Six seeds, a year each, water on against off: 372 alive on average against 382, 82 dead
+of hunger in all against 25, 14 of thirst; wells dug in 8 to 12 villages of every world. Villages
+start 1.2 km from fresh water on average against 2.2 km with it off; villages founded during the
+year 2.1 km against 2.3, a weak pull once a world runs. Fetching takes under 1% of grown-ups'
+hours. Speed (`test/bench.mjs`, against 7a): 400 people 0.12 → 0.14 s a day, 2,000 0.55 → 0.62,
+5,000 1.72 → 1.77, 20,000 10.5 → 12.6 s: **over the 5% budget** on three rows, the cost of a new
+daily task (counting who lives where at every decision had made it 28 s; that is now done once an
+hour). **Not explained yet:** with water on, no trader went prospecting in sixteen seeds in the
+travel test, against two of sixteen with it off; the cause was not found.
+
 ### War has to be fed (2026-11-14)
 
 Ric: military reach should depend on *"food carried and access to resupply, distance from

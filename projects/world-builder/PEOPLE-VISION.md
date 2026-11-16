@@ -776,7 +776,8 @@ when it is built.
 
 **2. Water**
 - Now: none. People need only food.
-- [ ] Drinking water as a need, and where it comes from: river, lake, well, rain.
+- [x] Drinking water as a need, and where it comes from: river, lake, well, rain.
+  (2026-11-16, TODO 6a: rivers, lakes and wells; rain comes with 6b.)
 - [ ] Water as the reason places are where they are: villages by rivers, towns at crossings and
   harbours.
 - [ ] Water for crops: rain, dry years, irrigation.
