@@ -872,7 +872,7 @@ when it is built.
 - [ ] Saving a world and coming back to it.
 
 **12. The engine**
-- Now: measured above. 20,000 people is the slider's top and runs at 2×.
+- Now: measured above. 20,000 people was the slider's top and ran at 2×.
 - [x] Make the walking check cheap, with the same world coming out. (2026-11-15, `TODO.md` item 1:
   5,000 people 13× → 68×, 20,000 people 2× → 14×, identical worlds.)
 - [x] Stop visiting people who have nothing to do. (2026-11-15, `TODO.md` item 2: asleep, at work
@@ -884,10 +884,17 @@ when it is built.
   village is a kept list, so nothing a person chooses goes through the whole world; with bodies
   at real size 20,000 people 70 → 17 s a day. Asking a neighbour still grows with the village:
   now part of `TODO.md` item 11.)
-- [ ] Run the engine off the page's own thread.
+- [x] Run the engine off the page's own thread. (2026-11-15, `TODO.md` item 3: a worker, kept by
+  `people-host.js`, sent only what the page draws; the same keeper on the page's thread where a
+  worker cannot be had. 20,000 people flat out: 7 frames a second → every frame.)
 - [x] Starting a big world in seconds, not half a minute. (2026-11-15: 20,000 people, 25.7 → 2.6 s.)
-- [ ] No fixed top on the number of people.
-- [ ] The readout: what this computer can carry, shown on the setup page, never a block.
+- [x] No fixed top on the number of people. (2026-11-15, item 3: the slider sweeps to 20,000 and a
+  typed number or a link goes past it. A very big world is still slow to *start* — four times
+  the wait for twice the people — which is `TODO.md` item 3b.)
+- [x] The readout: what this computer can carry, shown on the setup page, never a block.
+  (2026-11-15, item 3: the world as set is made out of sight and run for three seconds, and one
+  line under "How many people" says how fast it went — Ric's choice of three mock-ups. Right to
+  about a third for a world's first days and not after: item 3b.)
 
 **13. Being right**
 - [ ] Where each real number comes from (yields, walking, weapons, sickness), written down

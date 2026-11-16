@@ -144,6 +144,14 @@ const SUITES = [
      engine run the long way round has to give the identical world, hour by
      hour, and the short cuts check themselves on every step (`audit`). */
   ['world-builder passing people over is the same world', ['projects/world-builder/test/dozing.test.mjs']],
+  /* TODO.md item 3 (2026-11-15): the People engine runs in a worker, kept by
+     people-host.js, and the page is sent only what it draws. A world run
+     through the keeper — any speed, time in any pieces, frames and panels
+     read all the while — has to be the engine's own world; a frame has to
+     say what the world says; the two files have to come out whole when
+     written out again as a worker's text (how the page starts one, and why
+     it still works opened as a file); and people has no top. */
+  ['world-builder keeper, worker text and no top on people', ['projects/world-builder/test/keeper.test.mjs']],
   /* Physics settings/conservation and seven actual days per People preset.
      The shared daily clock superseded the compressed headless century in
      2026-11-12. Generation-scale experiments remain explicit --generations

@@ -636,6 +636,37 @@ nobody had linked was a page nobody could find.
   outside calls `openUp()` first**, as `rule`, `order` and `set` do. `{ audit: true }` now checks
   what each memory claims (every body where it was) and searches again whatever is remembered.
   Two things 2b could not do are written into items 7 and 11 of `TODO.md`.
+  **Item 3 is done (2026-11-15): the People engine is not on the page.** It runs in a worker,
+  kept by `projects/world-builder/people-host.js`, and the page is sent only what it draws: a
+  frame (who is in view, as typed arrays handed across), the panel being shown, who is under a
+  tap, and the answer to a decision. Six rules it leaves. **The page never reads a person or the
+  world** — `world` in `index.html`'s People half is only the land as it was made; anything new
+  the page needs is added to what the keeper sends (`frame` or `pane` in `people-host.js`), not
+  read off the engine, or it works on the page's thread and breaks in the worker. **The keeper has
+  no timer and no thread of its own** (`receive`, `run`): the worker's loop, the page's fallback
+  (no worker, or `?nothread`) and the tests all drive the same two doors, so do not put a
+  `setTimeout` or a DOM call in it. **The worker is started from text**, the two files written
+  out again from the functions they keep (`factory`; `keeperText` in the page), because a page
+  opened from a folder may not load a worker from a file — so both files must stay whole inside
+  their one function, with nothing they need outside it, and `test/keeper.test.mjs` writes them
+  out and runs the result. **The keeper only reads, and hands time over as
+  `advance(seconds, true)`**; the same test holds a world run through it, and read all the while,
+  equal to the engine alone — it is how a read that left a mark was found (`urgency` from outside
+  used to fix a village's hourly put-by figure early; the door puts it back — do not take that
+  out). **A frame says what it cost and the page waits six times that before asking again**, and a
+  frame asked for with nothing changed is answered "same": reading 20,000 people is 10 ms of the
+  worker's time, so do not make the page ask every frame regardless. **People has no top**: the
+  slider's `max` is only its sweep, `inputMax` (none) is the limit `clean()` uses, and the setup
+  page's line under "How many people" is the world as set, made out of sight and run for three
+  seconds — advice, never a block, and it says "at first" because a world's cost drifts two to
+  five times over its first ten days (measured; README, "What this computer can run"). Do not
+  replace it with a table of machines or a guess from `navigator.hardwareConcurrency`. The land is
+  painted a pixel a square with the faction borders drawn over it as a list of edges; the old
+  painter, a square at a time, was 60–280 ms a frame and is what kept a big world from being
+  smooth once the engine had moved. Two things item 3 could not do are item 3b of `TODO.md`: a
+  very big world is slow to *start* (the wait grows with the square of the head count), and the
+  line knows only a world's first days. Which speed its second sentence means (16×, `STEADY`) was
+  this session's choice, not Ric's — he was asked and was not sure what was being asked.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

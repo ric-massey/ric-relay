@@ -1,0 +1,434 @@
+/* WORLD BUILDER — THE PEOPLE ENGINE'S KEEPER
+   ────────────────────────────────────────────────────────────────────────
+   TODO item 3 (2026-11-15): "run the engine in a worker and send the page
+   only what it draws."
+
+   This file holds one world, runs its clock, and answers the page. The page
+   never touches a person: it asks for a frame (who is on screen, where, what
+   colour), for the panel it is showing, for who is under a tap, or for a
+   decision to be carried out, and gets back plain numbers and words. So the
+   engine can sit on another thread — a Web Worker — and a big world no
+   longer stops the page from answering a finger.
+
+   It is written without a timer or a thread of its own. `create()` gives a
+   keeper with two doors: `receive(message)` and `run(seconds, budget)`.
+     · In a worker, `worker()` below feeds it messages and calls `run` in a
+       loop of its own.
+     · Where a worker cannot be had, the page keeps the very same keeper on
+       its own thread and calls `run` once a frame, as it always did.
+     · In node, the tests call both by hand.
+   One code path, three places.
+
+   Nothing here decides anything about the world. It reads, and it passes
+   the page's own orders (`rule`, `order`, `declare`, `set`) to the doors the
+   engine already had. Time is handed over as `advance(seconds, true)` — the
+   word that nobody was changed between steps — and the engine's doors drop
+   that word themselves when the page does change something.
+
+   No dependencies; the same in a browser, a worker and node. */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  /* `factory` is kept so the page can write this file out again as the text
+     of a worker (index.html, `keeperText`): a page opened straight from a
+     folder may not load a worker from a file, but may from text it holds. */
+  else { root.WBPeopleHost = factory(); root.WBPeopleHost.factory = factory; }
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  /* What one byte says about a person on screen, and what they carry. */
+  const FLAG = { child: 1, hit: 2, sick: 4, leader: 8, speaking: 16, harvesting: 32 };
+  const GEAR = { tool: 1, weapon: 2, shield: 4, pack: 8, food: 16, load: 32 };
+  /* The longest stretch of the world's time handed to the engine in one go
+     when running flat out: a little over one step, so the keeper looks up to
+     answer the page between steps however big the world is. (Handing time
+     over in small pieces costs nothing since TODO 2b.) */
+  const SLICE = 0.25;
+  const now = () => performance.now();
+
+  function create(People, send) {
+    let world = null, rate = 1, paused = false;
+    let simAcc = 0, wallAcc = 0, speed = 0;          // how fast it is really going, over the last half second
+    let vsSig = "", fsSig = "";                      // what the page was last told of villages and factions
+    let frameKey = "";                               // the last frame asked for, and the step it was made at
+    let sorted = null, sortedSig = "";               // everybody by name, for the People list
+    let trial = null;                                // the quiet test of a world (see `tryOut`)
+    /* Scratch the frames are filled into; what is sent is a copy cut to size,
+       so a buffer handed across to the page is never one this still holds. */
+    let cap = 0, X = null, Y = null, T = null, F = null, G = null, L = null;
+    function room(n) {
+      if (n <= cap) return;
+      cap = Math.max(1024, Math.ceil(n * 1.25));
+      X = new Float32Array(cap); Y = new Float32Array(cap); T = new Uint16Array(cap);
+      F = new Uint8Array(cap); G = new Uint8Array(cap); L = new Float32Array(cap * 2);
+    }
+
+    function receive(m) {
+      if (!m || typeof m !== "object") return;
+      if (m.t === "start") return start(m);
+      if (m.t === "try") return tryOut(m);
+      if (m.t === "hello") return send({ t: "hello" });
+      if (m.t === "clock") {
+        if ("rate" in m) rate = +m.rate || 1;
+        if ("paused" in m) paused = !!m.paused;
+        simAcc = wallAcc = 0; speed = 0;
+        return;
+      }
+      if (!world) return;
+      if (m.t === "frame") return frame(m);
+      if (m.t === "pane") return pane(m);
+      if (m.t === "at") return at(m);
+      if (m.t === "do") return act(m);
+    }
+
+    function start(m) {
+      world = null; trial = null; vsSig = fsSig = ""; sorted = null; sortedSig = ""; frameKey = "";
+      const t0 = now();
+      let w;
+      try { w = People.create(m.values); }
+      catch (e) { send({ t: "failed", why: String((e && e.message) || e) }); return; }
+      world = w;
+      rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0;
+      const fert = w.fert.slice(), ore = w.ore.slice();
+      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore,
+             settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer]);
+    }
+
+    /* ── the clock ──────────────────────────────────────────────────────────
+       `real` is the time since this was last called, in seconds; `budget` is
+       how many milliseconds it may take before looking up. Returns true when
+       it has more to do at once (running flat out), false when it can wait.
+
+       Up to 16× the world is given exactly the time that passed. Above that
+       it is given as much of the asked-for time as fits in the budget and the
+       rest is dropped: the world goes slower than asked, never differently
+       (README, "How fast a world can run"). At most a tenth of a second of
+       real time is owed at once, so a slow machine runs slower instead of
+       falling further and further behind. */
+    function run(real, budget) {
+      if (trial) return tryMore(budget);
+      if (!world || paused || !(real > 0)) return false;
+      const t0 = now(), owed = Math.min(0.1, real);
+      let done = 0, more = false;
+      if (rate <= 16) { done = owed * rate; world.advance(done, true); }
+      else {
+        const want = rate >= 1000 ? Infinity : owed * rate;
+        while (done < want) {
+          const take = Math.min(SLICE, want - done);
+          world.advance(take, true); done += take;
+          if (now() - t0 >= budget) { more = done < want; break; }
+        }
+      }
+      simAcc += done; wallAcc += real;
+      if (wallAcc >= 0.5) { speed = simAcc / wallAcc; simAcc = wallAcc = 0; }
+      return more;
+    }
+
+    /* ── a frame: only what is drawn ───────────────────────────────────────
+       The page says where it is looking and how closely. People outside that
+       (and half a screen round it, so a drag does not outrun the answer) are
+       not sent at all. Things that only show close in — what somebody
+       carries, who is reaping, what is being said — are worked out only then
+       and only for the people in view, exactly as the page did it.
+
+       Reading twenty thousand people is not free — about 10 ms, most of it
+       waiting on memory — so two things keep frames from eating the world's
+       time. A frame asked for again with nothing changed (the same view, and
+       the world on the same step: every frame but five a second at 1×) is
+       answered with "same" and no more. And every frame says what it cost,
+       so the page can leave that many times as long before asking again. */
+    function tint(p, view) {
+      if (view === "faction") return p.f;
+      if (view === "mood") return Math.min(23, Math.max(0, Math.round(p.mood * 23)));
+      if (view === "views") return p.views > 0.25 ? 2 : p.views < -0.25 ? 1 : 0;
+      return Math.min(23, Math.round(Math.sqrt(Math.min(1, p.coins / 40)) * 23));
+    }
+    function gearOf(w, p) {
+      let g = 0;
+      for (const it of w.equipment(p)) if (it.equipped && GEAR[it.key]) g |= GEAR[it.key];
+      if (p.cargo && p.cargo.amount > 0) g |= p.cargo.what === "food" ? GEAR.food : GEAR.load;
+      return g;
+    }
+    function frame(m) {
+      const w = world, P = w.people, n = P.length, cam = m.cam, s = cam.s, began = now();
+      const wantLand = !!m.land && (m.land.force || w.sceneTick - m.land.at >= 5);
+      const key = [cam.x, cam.y, s, cam.w, cam.h, m.view, m.picked || 0, m.follow ? 1 : 0, m.pair ? m.pair.join("+") : "", w.sceneTick].join("|");
+      if (key === frameKey && !m.fresh && !wantLand) { send({ t: "frame", same: true, speed: speed, rate: rate, paused: paused }); return; }
+      frameKey = key;
+      const hw = cam.w / 2 / s, hh = cam.h / 2 / s, edge = 20 / s;
+      /* On screen (and the 20 pixels round it the page always allowed)… */
+      const sx0 = cam.x - hw - edge, sx1 = cam.x + hw + edge, sy0 = cam.y - hh - edge, sy1 = cam.y + hh + edge;
+      /* …and half a screen further, for a view that has moved since it asked. */
+      const x0 = sx0 - hw * 0.5, x1 = sx1 + hw * 0.5, y0 = sy0 - hh * 0.5, y1 = sy1 + hh * 0.5;
+      room(n);
+      const fs = w.factions, byId = w.byId, view = m.view, close = s >= 14, closer = s >= 20, pickedId = m.picked || 0;
+      const focused = m.follow && pickedId ? byId.get(pickedId) : null;
+      const labels = [], talking = [];
+      let k = 0, links = 0, pickedLabel = null;
+      for (let i = 0; i < n; i++) {
+        const p = P[i], px = p.x, py = p.y;
+        if (px < x0 || px > x1 || py < y0 || py > y1) continue;
+        let fl = 0;
+        if (p.job === "child") fl |= FLAG.child;
+        if (p.hit > 0) fl |= FLAG.hit;
+        if (p.sick > 0) fl |= FLAG.sick;
+        if (fs[p.f].leader === p.id) fl |= FLAG.leader;
+        if (p.sayT > 0) {
+          if (p.say) fl |= FLAG.speaking;
+          /* A gold line between two people speaking to each other, once a pair. */
+          const q = byId.get(p.talkingTo);
+          if (q && q.sayT > 0 && q.talkingTo === p.id && p.id < q.id) { L[links++] = px; L[links++] = py; L[links++] = q.x; L[links++] = q.y; }
+        }
+        const seen = px >= sx0 && px <= sx1 && py >= sy0 && py <= sy1;
+        if (close && w.activity(p) === "Harvesting") fl |= FLAG.harvesting;
+        X[k] = px; Y[k] = py; T[k] = tint(p, view); F[k] = fl; G[k] = closer ? gearOf(w, p) : 0;
+        if (seen) {
+          if (p.id === pickedId) pickedLabel = { k: k, p: p };
+          else if (s >= 28 && (focused ? focused.sayT > 0 && p.id === focused.talkingTo : labels.length < 12)) labels.push({ k: k, p: p });
+          if (closer && (fl & FLAG.speaking)) talking.push({ k: k, p: p });
+        }
+        k++;
+      }
+      if (pickedLabel) labels.unshift(pickedLabel);
+      const out = { t: "frame", n: n, k: k, x: X.slice(0, k), y: Y.slice(0, k), tint: T.slice(0, k), flags: F.slice(0, k), gear: G.slice(0, k),
+                    links: L.slice(0, links), view: view,
+                    labels: labels.slice(0, focused ? 2 : 12).map(r => ({ k: r.k, text: r.p.job + " · " + w.activity(r.p) })),
+                    speech: null, picked: null, pair: null, moves: null, marks: null, vs: null, fs: null, land: null,
+                    days: w.days, season: w.season().name || "", sceneTick: w.sceneTick, speed: speed, rate: rate, paused: paused, cost: 0 };
+      /* What is being said, nearest the middle first; the page shows four. */
+      if (closer) {
+        if (focused) out.speech = talking.filter(r => r.p.id === focused.id || (focused.sayT > 0 && r.p.id === focused.talkingTo));
+        else { talking.sort((a, b) => Math.hypot(a.p.x - cam.x, a.p.y - cam.y) - Math.hypot(b.p.x - cam.x, b.p.y - cam.y)); out.speech = talking.slice(0, 4); }
+        out.speech = out.speech.map(r => { const q = byId.get(r.p.talkingTo); return { k: r.k, text: r.p.name + (q ? " → " + q.name : "") + ": " + r.p.say }; });
+      }
+      if (pickedId) { const p = byId.get(pickedId); out.picked = p ? { id: p.id, x: p.x, y: p.y, name: p.name } : { id: pickedId, gone: true }; }
+      if (m.pair) out.pair = m.pair.map(id => { const p = byId.get(id); return p ? [p.x, p.y] : null; });
+      /* Households that moved, while their trail has not faded, and the big
+         news of the last fortnight, where it happened. */
+      const t = w.tick, FADE = 20 * 24;
+      out.moves = w.moves.filter(v => t - v.t <= FADE).map(v => ({ age: (t - v.t) / FADE, from: v.from, to: v.to, f: v.f, why: v.why }));
+      out.marks = [];
+      for (let i = w.events.length - 1; i >= 0; i--) {
+        const e = w.events[i], age = t - e.t;
+        if (age > 14 * 24) break;
+        if (e.x || e.y) out.marks.push({ kind: e.kind, x: e.x, y: e.y, age: age });
+      }
+      /* Villages and factions are sent whole, but only when something the map
+         shows of them has changed. */
+      let sig = w.villages.length + "|";
+      for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "");
+      if (m.fresh || sig !== vsSig) { vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0 })); }
+      sig = fs.length + "|";
+      for (const f of fs) sig += f.leader + (f.alive ? "a" : "d");
+      if (m.fresh || sig !== fsSig) { fsSig = sig; out.fs = fs.map(f => ({ id: f.id, name: f.name, colour: f.colour, alive: f.alive })); }
+      /* The land: how much of each square's crop is standing, and whose it
+         is. A small land is sent every few steps of the scene; a big one when
+         the page asks, because it is a big thing to send. */
+      const transfer = [out.x.buffer, out.y.buffer, out.tint.buffer, out.flags.buffer, out.gear.buffer, out.links.buffer];
+      if (wantLand) {
+        const tiles = w.cols * w.rows, full = new Uint8Array(tiles), fert = w.fert, stock = w.stock, capOf = w.tileCapacity;
+        for (let i = 0; i < tiles; i++) { const f = fert[i]; full[i] = f > 0 ? Math.round(Math.min(1, stock[i] / (f * capOf)) * 255) : 255; }
+        const owner = w.owner.slice();
+        out.land = { full: full, owner: owner, at: w.sceneTick };
+        transfer.push(full.buffer, owner.buffer);
+      }
+      out.cost = now() - began;
+      send(out, transfer);
+    }
+
+    /* ── the side panel ────────────────────────────────────────────────────
+       What the tab being shown needs, as plain values. The page keeps the
+       wording; this keeps the reading. */
+    const collate = (typeof Intl !== "undefined" && Intl.Collator) ? new Intl.Collator().compare : (a, b) => a.localeCompare(b);
+    function byName() {
+      const P = world.people, sig = P.length + ":" + (P.length ? P[P.length - 1].id : 0);
+      /* Names never change and ids only climb, so the order is good until
+         somebody is born or dies. */
+      if (sig !== sortedSig) { sorted = P.slice().sort((a, b) => collate(a.name, b.name) || a.id - b.id); sortedSig = sig; }
+      return sorted;
+    }
+    const gearNames = (w, p) => w.equipment(p).filter(g => g.equipped).map(g => g.name).join(" · ");
+    function pane(m) {
+      const w = world, S = w.settings, tab = m.tab, byId = w.byId;
+      const out = { t: "pane", tab: tab, seq: m.seq, key: m.key, idle: !!m.idle, money: S.money, war: S.war, total: w.people.length };
+      const named = {};
+      const name = id => { const p = id && byId.get(id); if (p) named[id] = p.name; return !!p; };
+      if (m.exchange) { name(m.exchange.a); name(m.exchange.b); }
+      if (tab === "people") {
+        const q = m.q || {}, query = String(q.search || "").trim().toLocaleLowerCase(), settlement = q.settlement, faction = q.faction, job = q.job;
+        out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive }));
+        out.factions = w.factions.map(f => ({ id: f.id, name: f.name, alive: f.alive }));
+        const SIZE = q.size || 60, list = byName().filter(p => byId.get(p.id) === p && p.name.toLocaleLowerCase().includes(query) &&
+          (settlement === "" || settlement == null || p.home === +settlement) && (faction === "" || faction == null || p.f === +faction) && (!job || p.job === job));
+        out.count = list.length; out.pages = Math.max(1, Math.ceil(list.length / SIZE));
+        out.page = Math.min(Math.max(0, q.page | 0), out.pages - 1);
+        out.rows = list.slice(out.page * SIZE, out.page * SIZE + SIZE).map(p => ({ id: p.id, name: p.name, age: p.age, job: p.job, home: w.villages[p.home].name,
+          faction: w.factions[p.f].name, activity: w.activity(p), gear: gearNames(w, p) }));
+      } else if (tab === "factions") {
+        out.factions = w.factions.map(f => {
+          const lead = byId.get(f.leader), rel = {};
+          for (const o of w.factions) if (o !== f && f.rel[o.id]) rel[o.id] = { war: !!f.rel[o.id].war };
+          return { id: f.id, name: f.name, colour: f.colour, alive: f.alive, pop: f.pop, soldiers: f.soldiers, rule: f.rule, tax: f.tax, loyal: f.loyal,
+                   treasury: f.treasury, yours: f.yours ? { tax: f.yours.tax, army: f.yours.army, relief: f.yours.relief } : null,
+                   lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
+        });
+        out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive, f: v.f, x: v.x, y: v.y, pop: v.pop, tax: v.tax == null ? null : v.tax,
+                                             relief: v.relief == null ? null : v.relief, taxNow: w.taxOf(v) }));
+        out.history = w.history.map(r => ({ pop: r.pop }));
+      } else if (tab === "news") {
+        out.events = w.events.slice(-80).reverse().map(e => ({ weight: e.weight, x: e.x, y: e.y, year: e.year, text: e.text }));
+      } else if (tab === "talk") {
+        out.chatter = w.chatter.slice(-40).reverse();
+        for (const c of out.chatter) { name(c.a); name(c.b); }
+      } else if (tab === "look") {
+        const pick = m.picked || {};
+        if (pick.village != null && w.villages[pick.village]) {
+          const v = w.villages[pick.village], f = w.factions[v.f];
+          out.village = { id: v.id, name: v.name, f: v.f, alive: v.alive, pop: v.pop, hungry: v.hungry, sick: v.sick, food: v.food, goods: v.goods,
+                          priceFood: v.priceFood, till: v.till, loyal: v.loyal, founded: v.founded, siege: v.siege, storeDays: w.storeDays(v),
+                          faction: { name: f.name, colour: f.colour } };
+        } else {
+          const p = pick.person ? byId.get(pick.person) : null;
+          if (p) {
+            const f = w.factions[p.f], home = w.villages[p.home];
+            const children = [];
+            for (const q of w.people) if (q.mum === p.id || q.dad === p.id) { children.push(q.id); named[q.id] = q.name; }
+            const friends = [...p.friends].filter(x => name(x[0]));
+            name(p.partner); name(p.mum); name(p.dad);
+            const other = p.sayT > 0 && byId.get(p.talkingTo);
+            out.person = {
+              id: p.id, name: p.name, age: p.age, job: p.job, f: p.f, from: p.from, partner: p.partner, mum: p.mum, dad: p.dad, kids: p.kids,
+              food: p.food, coins: p.coins, goods: p.goods, mood: p.mood, loyal: p.loyal, bold: p.bold, warm: p.warm, stub: p.stub, greed: p.greed,
+              rest: p.rest, alone: p.alone, fear: p.fear, hungry: p.hungry, sick: p.sick, say: p.say,
+              cargo: p.cargo ? { what: p.cargo.what, amount: p.cargo.amount } : null,
+              friends: friends, children: children, listener: other && other.sayT > 0 && other.talkingTo === p.id ? other.id : 0,
+              activity: w.activity(p), adult: w.adult(p), leans: w.leans(p), dailyNeed: w.dailyNeed(p), urgency: w.urgency(p),
+              equipment: w.equipment(p), tradeCapacity: w.tradeCapacity(p), leads: f.leader === p.id,
+              home: { id: home.id, name: home.name }, faction: { name: f.name, colour: f.colour }, bornUnder: w.factions[p.from].name,
+            };
+            if (other) named[other.id] = other.name;
+          }
+        }
+      } else if (tab === "world") {
+        let need = 0, stores = 0;
+        for (const p of w.people) need += w.dailyNeed(p);
+        for (const v of w.villages) stores += v.food;
+        out.stats = w.stats(); out.need = need; out.stores = stores;
+        out.history = w.history.slice(); out.settings = Object.assign({}, S);
+      }
+      out.named = named;
+      send(out);
+    }
+
+    /* Who or what is under a tap. */
+    function at(m) {
+      const hit = world.at(m.x, m.y, m.r);
+      send({ t: "at", seq: m.seq, person: hit && hit.person ? { id: hit.person.id, name: hit.person.name } : null,
+             village: hit && hit.village ? { id: hit.village.id } : null });
+    }
+
+    /* The watcher's own decisions, passed to the doors the engine has for
+       them. Each reads what stands now and moves it one notch, here, so the
+       page's picture being a moment old can never set a stale value. */
+    function act(m) {
+      const w = world, a = m.a || [], what = m.what;
+      let msg = "";
+      frameKey = "";                                 // whatever is done, the next frame is a new one
+      const f = w.factions[a[0]], v = w.villages[a[0]];
+      if (what === "rule" && f) w.rule(f.id, !f.yours);
+      else if (what === "ftax" && f && f.yours) w.order(f.id, { tax: f.yours.tax + 0.02 * a[1] });
+      else if (what === "army" && f && f.yours) w.order(f.id, { army: f.yours.army + 0.02 * a[1] });
+      else if (what === "relief" && f && f.yours) w.order(f.id, { relief: !f.yours.relief });
+      else if (what === "vtax" && v) w.orderVillage(v.id, { tax: w.taxOf(v) + 0.02 * a[1] });
+      else if (what === "vrelief" && v) w.orderVillage(v.id, { relief: v.relief == null ? true : v.relief ? false : null });
+      else if (what === "vreset" && v) w.orderVillage(v.id, { tax: null, relief: null });
+      else if ((what === "war" || what === "peace") && f && w.factions[a[1]]) {
+        const r = w.declare(a[0], a[1], what), o = w.factions[a[1]];
+        msg = r === "refused" ? o.name + " refused. Peace takes two: they want it once the war has cost them, or when they are badly outmatched."
+            : r === "peace" ? "Peace with " + o.name + "." : r === "war" ? "At war with " + o.name + "." : r;
+      } else if (what === "set") w.set(a[0], a[1]);
+      send({ t: "did", seq: m.seq, what: what, msg: msg });
+    }
+
+    /* ── "what can this computer run" ──────────────────────────────────────
+       Not a table of machines and not a guess from how many cores there are:
+       the world the visitor has set up is made, quietly, and run for a few
+       seconds, and how fast it went is what is reported. It is the same
+       engine, the same seed and the same first hours the real world will
+       have, so the figure is that world's own. Whole days are measured where
+       there is time, because a night costs far less than a day and a part of
+       a day would flatter it. And where the first day is over in under a
+       second it is not counted: a browser runs fresh code slowly for its
+       first moments, which is a large share of so short a run and no part of
+       what a world watched for minutes does (measured 2026-11-15: 400 people
+       tried over their first three days said 820×, and then ran at 1,100× to
+       1,700×).
+
+       `box` is the most seconds to spend running; making the world is timed
+       and reported apart ("made"), since a very big one is slow to start
+       before it is slow to run. */
+    function tryOut(m) {
+      world = null; trial = null;
+      const t0 = now();
+      let w;
+      try { w = People.create(m.values); }
+      catch (e) { send({ t: "tried", id: m.id, failed: String((e && e.message) || e) }); return; }
+      trial = { id: m.id, w: w, sim: 0, wall: 0, sim0: 0, wall0: 0, box: m.box || 3, made: (now() - t0) / 1000, people: w.people.length };
+      send({ t: "tried", id: m.id, made: trial.made, people: trial.people });
+    }
+    function tryMore(budget) {
+      const T = trial, DAY = People.DAY_SECONDS, t0 = now();
+      let spent = 0;
+      for (;;) {
+        /* Never across midnight in one piece, so a day's end is seen exactly. */
+        const left = DAY - (T.sim % DAY), take = Math.min(SLICE, left > 1e-9 ? left : DAY);
+        T.w.advance(take, true); T.sim += take;
+        spent = (now() - t0) / 1000;
+        const wall = T.wall + spent, whole = T.sim % DAY < 1e-9 || DAY - (T.sim % DAY) < 1e-9;
+        /* The first day, when it was a short one, is the warming-up. */
+        if (whole && !T.sim0 && T.sim < DAY * 1.5 && wall < 1) { T.sim0 = T.sim; T.wall0 = wall; }
+        if (wall >= T.box || (whole && wall - T.wall0 >= 1)) {
+          trial = null;
+          const counted = wall - T.wall0 >= 0.05;
+          send({ t: "tried", id: T.id, done: true, made: T.made, people: T.people, days: T.sim / DAY, wall: wall,
+                 speed: counted ? (T.sim - T.sim0) / (wall - T.wall0) : T.sim / Math.max(wall, 1e-6) });
+          return false;
+        }
+        if (spent * 1000 >= budget) break;
+      }
+      T.wall += spent;
+      return true;
+    }
+
+    return { receive: receive, run: run, get idle() { return !trial && (!world || paused); },
+             /* For the tests, which hold this world equal to the engine's own. */
+             get world() { return world; } };
+  }
+
+  /* Inside a worker: messages in, and a loop of its own. While the world is
+     running flat out the loop comes round again at once, through a message
+     to itself rather than a timer (a timer waits four milliseconds a turn,
+     which at these speeds is a quarter of the time); otherwise it looks in a
+     hundred and twenty times a second, and five times a second when there is
+     nothing to run at all. The page's messages are taken between turns. */
+  function worker(scope, People) {
+    const host = create(People, (m, transfer) => scope.postMessage(m, transfer || []));
+    const again = new MessageChannel();
+    let last = now(), timer = 0, queued = false;
+    function turn() {
+      queued = false; timer = 0;
+      const t = now(), real = (t - last) / 1000; last = t;
+      if (host.run(real, 10)) { queued = true; again.port2.postMessage(0); }
+      else timer = setTimeout(turn, host.idle ? 200 : 8);
+    }
+    again.port1.onmessage = turn;
+    scope.onmessage = e => {
+      const was = host.idle;
+      host.receive(e.data);
+      /* Something to run where there was nothing: start now, from now. */
+      if (was && !host.idle && !queued) { clearTimeout(timer); last = now(); queued = true; again.port2.postMessage(0); }
+    };
+    turn();
+  }
+
+  return { create: create, worker: worker, FLAG: FLAG, GEAR: GEAR };
+});

@@ -20,7 +20,7 @@ One item per session. Do not start an item whose earlier items are unticked unle
 3. `README.md` in this folder, for the part of the engine the item touches.
 4. This file's **Rules for every item** and **Speed log**.
 
-A lettered item (2b) is what a finished item measured and left. It does not stand in the way of
+A lettered item (2b, 3b) is what a finished item measured and left. It does not stand in the way of
 the numbered items after it: "work on 3" means item 3 even while 2b is unticked. Ric asks for a
 lettered one by name ("work on 2b").
 
@@ -288,7 +288,31 @@ Research notes (2026-11-15):
   Reading a village's larders is also not something a person could do. Moved to item 11.
 - Sources read as search summaries only; the session's network would not open the pages.
 
-### [ ] 3. Off the page's thread, no top on people, and "what can this computer run"
+### [x] 3. Off the page's thread, no top on people, and "what can this computer run"
+
+**Done 2026-11-15.** The engine runs in a worker, kept by a new file, `people-host.js`, and the
+page is sent only what it draws; where a worker cannot be had the same keeper runs on the page's
+thread as the engine always did. The number of people has no top (the slider still sweeps to
+20,000; a typed number or a link goes past it). The setup page quietly makes the world as set, runs
+it for up to three seconds and says under "How many people" how fast it went. Same world, step for
+step, through the keeper or not (`test/keeper.test.mjs`; a year of the default world is the
+identical state on the engine before and after). Measured in a real browser on the machine in the
+speed log, 20,000 people flat out: pressing Run froze the page 4.4 s and it then drew 7 frames a
+second; now it does not freeze (14 ms) and draws every frame (worst gap 25 ms of 8 s), and the
+world gets through about twice as much in the same stretch. README, "Off the page's thread".
+**Met:** smooth at 20,000 flat out; works opened as a file (checked in a real browser from a
+`file:` address: the worker starts and answers); the engine is exactly as fast on one thread.
+**Not met, and moved on — now item 3b:** "the readout's guess is within about 30% of what the
+world then does" holds for a world's first days and not after them, because a world's own cost
+drifts by a factor of two to five over its first ten days, either way (measured below); and a very
+big world is slow to *start*, which the worker hides from the page but does not shorten.
+Found on the way, and fixed: (1) painting the land was 60 to 280 ms a time for an 80 km land, on
+every frame at speed — with the engine gone that was what still held the page up; it is a pixel a
+square now, about 1 ms. (2) The old page's "Running at N×" overstated a world too big to keep up
+(it counted at most a tenth of a second a frame: it said 22× where the clock moved at 15×); the
+keeper counts the time that really passed. (3) Looking at a person fixed a village's hourly
+"how much to put by" figure at a moment of the panel's choosing, so a watched world could differ
+from an unwatched one; the engine's `urgency` door puts the figure back.
 
 **Now:** the engine runs inside the page's drawing loop, so a big world freezes the page. The
 people slider stops at 20,000. Nothing tells the visitor what their machine can carry.
@@ -304,6 +328,114 @@ briefly without lying (warm-up, variance).
 **Done when:** the page stays smooth while a 20,000-person world runs flat out; the readout's
 guess is within about 30% of what the world then does; the page still works opened as a file.
 **Budget:** no slower than before on one thread.
+
+Ric's answers (2026-11-15), from three mock-ups — a line under the slider, a mark on the slider, a
+small table:
+- **How it is shown: "A line under the slider".** One sentence under "How many people" that
+  follows the settings; nothing blocks going past it.
+- **Which speed "the limit" means: not decided.** Asked whether the rough head count should mean
+  16×, a year an hour or 1×, he said: "if your talking about top speed then that needs to have a
+  max button like it works now... idk what a rough head count is..... like running a year in 20
+  sec is kinda needed as well sometimes... so im not sure what this is". So: the Max button and
+  every speed are untouched; the second sentence was reworded to plain words ("It should stay
+  above 16× up to roughly N people"); and 16× — the fastest clock that runs exactly as asked — is
+  *this session's choice, not his*. It is one constant, `STEADY` in `index.html`. Ask him again
+  with the line in front of him before building on it.
+
+Research notes (2026-11-15):
+- **Measured first.** (a) Where the page's time went at 20,000 people: 186 ms a frame on the old
+  page — the engine's 40 ms, and then the land, repainted a square at a time. (b) What a day costs,
+  one seed, 34 worlds from 400 to 20,000 people on 17 to 300 km: 0.5 to 2.8 ms a person-day, *not*
+  rising with the head count — 2,000 people in eight villages cost more each than 20,000 (who
+  mostly stand jammed and are passed over) — and a world's second and third days differing by up
+  to three times. So no table of machines and no rule of so-many-people-a-core could be honest;
+  the only figure that is the world's own is that world, run. (c) Starting a world grows with the
+  square of the head count: 10,000 in 0.9 s, 20,000 in 3.7 s, 40,000 in 16 s, 91% of it in the
+  ring search that finds each person a place to stand.
+- **Workers and handing buffers over.** A typed array's buffer can be *transferred* in
+  `postMessage`: the memory moves, nothing is copied, and the sender's copy is emptied
+  ([MDN, Transferable objects](https://developer.mozilla.org/docs/Web/API/Web_Workers_API/Transferable_objects);
+  [Chrome, "Transferable objects: lightning fast"](https://developer.chrome.com/blog/transferable-objects-lightning-fast)
+  — a 32 MB buffer cloned took hundreds of milliseconds). Chosen: every frame is five small typed
+  arrays (where, colour, marks, gear, talk lines), cut to who is in view and transferred. Cost
+  measured: 0.7 ms to read 5,000 people, 10.6 ms to read 20,000 (it is waiting on memory, a
+  person being a large object: item 20), so a frame also says what it cost and the page waits six
+  times that before asking again, and a frame asked for with nothing changed is answered "same".
+- **`SharedArrayBuffer` on GitHub Pages: no.** It needs the page to be cross-origin isolated, which
+  needs two response headers (COOP and COEP), and Pages does not let a site set headers
+  ([GitHub community discussion 13309](https://github.com/orgs/community/discussions/13309), still
+  open). The known way round is a service worker that adds them and reloads the page
+  ([coi-serviceworker, described here](https://dev.to/stefnotch/enabling-coop-coep-without-touching-the-server-2d3n)):
+  not chosen — it is somebody else's script, it reloads the visitor's first visit, and service
+  workers do not run from a `file:` address at all. Nothing here needs shared memory.
+- **A worker when the page is opened as a file.** A page opened from a folder may not start a
+  worker from a file beside it (Chrome: "cannot be accessed from origin 'null'"); the usual answer
+  is a worker made from text the page already holds, through a Blob
+  ([collected answers](https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/37718656/why-does-not-chrome-allow-web-workers-to-be-run-in-javascript)).
+  The sources disagreed on whether that still works from `file:`, so it was tried rather than
+  believed: it does (headless Edge, `file:` address, a 3,000-person world tried and run). Chosen
+  for every case, served or not, so there is one path: `people.js` and `people-host.js` each keep
+  the function they were built from (`factory`), and the page writes the two out again as the
+  worker's text. If a worker never answers, the same keeper is made on the page's thread.
+- **`hardwareConcurrency` and `deviceMemory`: not used.** The first is how many threads, which
+  says nothing of how fast one is, and browsers cap it against fingerprinting (Safari to 8 or
+  fewer); the second is rounded to 0.25–8 GB, capped at 8, and missing from Safari and Firefox
+  ([MDN, deviceMemory](https://developer.mozilla.org/docs/Web/API/Navigator/deviceMemory);
+  [MDN, hardwareConcurrency](https://developer.mozilla.org/docs/Web/API/Navigator/hardwareConcurrency)).
+  The engine is one thread and memory is not its limit below about a million people.
+- **Timing briefly without lying.** Fresh code runs slowly until the browser has optimised it, so
+  a short test must throw its first runs away
+  ([one account of the usual pitfalls](https://hackernoon.com/why-is-javascript-benchmarking-a-mess));
+  and the browser's clock is coarsened (to about 0.1 ms without cross-origin isolation), so time
+  whole stretches, never single steps. Chosen: whole days; a first day over in under a second is
+  the warming-up and is not counted. Measured before that rule: 400 people said 820× and ran at
+  1,100× to 1,700×.
+- **How good the readout is** (headless Edge, the machine in the speed log; "said" is the line on
+  the setup page, "ran" is the running world's own figure):
+
+  | World | Said | Ran, first days | Ran, later |
+  |---|---|---|---|
+  | 400 people, 17 km | 1,200× | 1,600× | 2,300–2,900× by day 30 on |
+  | 2,000 people, 17 km | 89× | 92×, 83×, 75× | 120–200× from day 4 |
+  | 5,000 people, 40 km | 230× | 340× (days 1–2) | 100× from day 4, 65–75× by day 9 |
+  | 20,000 people, 80 km | 38× | 34×, 25×, 22×, 18×, 49×, 46×, 37× | — |
+
+  Within about a third at the start; out by two or three times once a world has settled or
+  jammed. That is the world changing, not the timing, and three seconds cannot know it. So the
+  line says "at first", and the rest is item 3b.
+- **Not done because it would change the world:** placing a crowd faster (the start-up above).
+  Everybody must stand exactly where the ring search puts them. Item 3b.
+- The linked pages were read as search summaries; where two disagreed the thing was tried here.
+  Every figure is one measured on this engine.
+
+### [ ] 3b. What item 3 measured and left
+
+**Now** (measured 2026-11-15, the machine in the speed log):
+- **A big world is slow to start.** 10,000 people 0.9 s, 20,000 3.7 s, 40,000 16 s: four times the
+  time for twice the people. 91% is `actionTick`'s ring search (`people.js`, "Initial residents"),
+  which for each newcomer walks every ring out from their spot and tries every point on any ring
+  not wholly taken. The page no longer freezes while it happens ("Making the world… 12 seconds so
+  far", and ← Settings gets out), but 100,000 people would take minutes and a million, hours. So
+  "no top on people" is true of the rule and not yet of the wait.
+- **The readout knows a world's first days only.** See the table in item 3's notes.
+- **The readout's second sentence** ("stay above 16× up to roughly N people") is plain
+  proportion from one measurement, and the per-person cost is not constant, so it is rough; and
+  what speed it should mean was never settled with Ric.
+- **Reading a frame of a very big crowd costs the worker 10 ms at 20,000 people** (0.5 µs a
+  person, against 0.2 for a step of the engine), because a person is a big object. Frames are
+  spaced out to keep that to about a seventh of the worker's time, so at 20,000 people the map
+  moves about fifteen times a second rather than sixty. Item 20 (making a person small) is the fix.
+**Do:** (a) place a crowd in time that grows with the crowd, not its square, with everybody
+standing exactly where they stand now — or show Ric, measured, what a different placing changes;
+(b) let the running world correct the readout: remember, for the settings last run, the speed it
+really held, and say that on the setup page next time; (c) ask Ric what "the limit" should mean
+now that he can see the line; (d) nothing for the frame cost unless item 20 is reached.
+**Research first:** exact nearest-free-spot searches on a grid (distance transforms, bucketed
+rings); how other simulators start a large crowd.
+**Ric decides:** (c).
+**Done when:** 100,000 people start in under 20 s as the same world; the readout, on a world run
+before, is within about 30% of what that world did.
+**Budget:** faster only.
 
 Research notes:
 
@@ -615,4 +747,6 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-15 | 2 | Intel Xeon 2.1 GHz (cloud), 16 GB | 3.5 s a day, 86× | 15.5 s a day, 19× | 0.3 and 1.1 KB at the start | same world; a person is looked at on 52% and 30% of steps; real-size bodies 10.9 → 3.4 s and 70 → 17 s; a year of the default world 368 → 173 s |
 | 2026-11-15 | 2 | Intel Xeon 2.3 GHz (another cloud machine), 16 GB | 2.4 s a day, 127× | 8.6 s a day, 35× | 0.3 and 1.1 KB at the start | item 2 again, on the machine 2b was built on (nearly twice as fast as the row above's) |
 | 2026-11-15 | 2b | Intel Xeon 2.3 GHz, 16 GB | 2.6 s a day, 117× | 5.7 s a day, 52× | 0.15 and 1.2 KB at the start | a person looked at on 22% and 9% of steps; **a seed is a different world from this row on** (the 5,000 row is one world against another; five seeds average the same either way); handed over in frames with the page's word costs no more than in one piece |
+| 2026-11-15 | 2b | AMD Ryzen 5 3600 (the Windows desktop item 3 was built on), 24 GB | 2.6 s a day, 116× | 5.7 s a day, 53× | 0.20 and 1.15 KB at the start | the engine as item 3 found it, on the machine item 3 was built on; a 20,000 start 3.7 s |
+| 2026-11-15 | 3 | AMD Ryzen 5 3600, 24 GB | 2.8 s a day, 106× | 6.0 s a day, 50× | 0.20 and 1.18 KB at the start | same world, and the same speed: run turn about with the row above three times, 20,000 people took 6.43, 6.43, 6.37 s before and 6.39, 6.45, 6.36 s after (this machine wanders 10% from one run to the next, which is all the two rows differ by); a year of the default world 123 s before, 124 s after, identical state. **In a browser, 20,000 people flat out:** the page 7 frames a second → every frame; the clock about 15× → about 37× in the same stretch |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

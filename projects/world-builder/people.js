@@ -25,7 +25,9 @@
    One file, no dependencies, the same in a browser and in node. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
-  else root.WBPeople = factory();
+  /* `factory` is kept so the page can write this file out again as the text
+     of a worker (TODO item 3; index.html, `keeperText`). */
+  else { root.WBPeople = factory(); root.WBPeople.factory = factory; }
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
@@ -101,9 +103,13 @@
         help: "How many start in couples, and how many friends — and so who they will ask for food or follow — they already have." },
     ]},
     { title: "The people", items: [
-      { key: "people", label: "How many people", type: "range", min: 20, max: 20000, step: 10, def: 400, curve: 3,
+      /* No top (TODO item 3; Ric: "the number of people should be infinite
+         just based on can your computer run it"). `max` is only how far the
+         slider sweeps; a typed number, or a link, may be any size, and the
+         setup page says what this computer makes of it. */
+      { key: "people", label: "How many people", type: "range", min: 20, max: 20000, inputMax: Infinity, integer: true, step: 10, def: 400, curve: 3,
         say: v => v.toLocaleString("en-US"),
-        help: "How many are alive when it starts. For scale, farming country held about 10 to 50 people a square kilometre; the land setting above says how many square kilometres there are." },
+        help: "How many are alive when it starts. The slider stops at 20,000; type a number to go past it. For scale, farming country held about 10 to 50 people a square kilometre; the land setting above says how many square kilometres there are." },
       { key: "factions", label: "How many factions", type: "range", min: 1, max: 8, step: 1, def: 4,
         say: v => (v === 1 ? "one people" : v + " factions"), help: "They may not stay this many." },
       { key: "villages", label: "Villages each", type: "range", min: 1, max: 4, step: 1, def: 2,
@@ -257,7 +263,7 @@
       if (it.type === "range") {
         v = Number(v);
         if (!isFinite(v)) v = it.def;
-        v = Math.min(it.max, Math.max(it.min, v));
+        v = Math.min(it.inputMax == null ? it.max : it.inputMax, Math.max(it.min, v));
       } else if (it.type === "toggle") {
         v = v === true || v === "true" || v === 1 || v === "1";
       } else if (!it.options.some(o => o[0] === v)) v = it.def;
@@ -408,7 +414,10 @@
     const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
-    const owner = new Int16Array(tiles).fill(-1);
+    /* Which village holds each square. Thirty-two bits since TODO item 3:
+       with no top on people there is none on villages either, and sixteen
+       would have run out, silently, at the 32,768th. */
+    const owner = new Int32Array(tiles).fill(-1);
     const reachBest = new Float32Array(tiles).fill(1e9);   // territory(): the best claim on each square
     let ownedList = [];
     const WILD = cols > 160, inReach = WILD ? new Uint8Array(tiles) : null;   // worked(): land over 40 km
@@ -3672,7 +3681,18 @@
       events: events, chatter: chatter, history: history,
       step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity,
       /* Asked from outside, perhaps just after somebody was given another home. */
-      urgency: p => { changedHomes(); return urgency(p); },
+      /* And it must leave no mark. How much a village still has to put by is
+         worked out once an hour, from its store at the moment it is first
+         asked — so asking from outside, as the Person panel does several
+         times a second, used to fix that figure at a moment of the panel's
+         choosing, and a watched world could differ from an unwatched one.
+         Found 2026-11-15 by test/keeper.test.mjs; the figure is put back. */
+      urgency: p => {
+        changedHomes();
+        const v = villages[p.home], at = v.putByAt, was = v.putBy, u = urgency(p);
+        v.putByAt = at; v.putBy = was;
+        return u;
+      },
       /* After `advance(seconds, true)`: put passed-over people's counts right before reading them. */
       settle: openUp,
       dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,

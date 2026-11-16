@@ -37,11 +37,13 @@ what has shipped from future direction, including the shared daily clock and rem
 | `lab-core.js` | The Lab's core — building a world from a setup, its control, and judging an experiment. No DOM; the page and node both use it. |
 | `test/lab.test.mjs` | Quick checks: typed-in kinds obeyed, setups built exactly, the control is the same hexagons loose, loaded setups checked, experiments report what they say. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
+| `people-host.js` | The People engine's keeper (TODO item 3): holds a world, runs its clock and answers the page with only what it draws, so the engine can sit in a worker. No DOM and no timer of its own; the same in a worker, on the page's thread and in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
-| `TODO.md` | The People simulator's work in order, twenty numbered items (and 2b, what item 2 measured and left, done). "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
+| `TODO.md` | The People simulator's work in order, twenty numbered items (and 2b, done, and 3b: what items 2 and 3 measured and left). "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
 | `test/bench.mjs` | Not a check — the People engine's speed, measured the same way every time: `node --expose-gc test/bench.mjs`. Its numbers are one machine's and go in `TODO.md`'s speed log. "visited" is the share of person-steps on which anybody was looked at. |
 | `test/walking.test.mjs` | Quick check that the walking short cuts only make the engine faster: the same engine with them off (`create(options, { plainWalking: true })`) must give the identical world — packed villages, deaths, people moved or killed from outside, a crowd placed at once. |
 | `test/dozing.test.mjs` | Quick check that passing over people with nothing to do (TODO item 2) only makes the engine faster: against the engine run the long way round, hour by hour, with `{ audit: true }` making the short cuts check themselves — an ordinary country, a packed village, war, a hungry winter, a shared store, real-size bodies, nobody talking, people changed from outside, a fight at night, moving house, time handed over in frames (with and without the page's word that it touched nobody), and a dense small country. |
+| `test/keeper.test.mjs` | Quick check on the keeper and on people having no top: a world run through the keeper at any speed, read all the while, is the engine's own world; a frame says what the world says; panels, a tap and orders go through; the quiet try-out reports a speed and leaves nothing running; the slider's sweep is what it was and a typed number goes past it; and the two files come out whole when written out again as a worker's text. |
 | `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
 | `test/travel.test.mjs` | Quick travel checks: a detour out of a U-shaped crowd without teleporting/overlap, real equal-price market visits, conserved coins and closed borders. |
 | `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
@@ -1050,7 +1052,7 @@ world at a different day length.
 
 Ric: *"16x is pretty slow ... a year every minute should be the fastest probably"*. The clock now
 goes to 50×, 100×, 250× and **Max**. Above 16× the page runs as much simulation as fits in 40 ms a
-frame and drops the rest — the world goes slower than asked, never differently — and says what it
+frame (since 2026-11-15 the keeper does, on its own thread, ten milliseconds at a time: see "Off the page's thread") and drops the rest — the world goes slower than asked, never differently — and says what it
 reached: *"Running at 900× — a year every 8 minutes"*. **Max has no ceiling** (Ric: *"someone with a better computer can run faster"*): it asks for as much as fits in each 40 ms, so a faster machine simply goes faster. Ric chose to keep the engine exact at about a year every 8 minutes rather than coarsen it for speed.
 
 A year a minute is about 7,300×, and the engine does not reach it. Everybody acts 250 times a game
@@ -1383,6 +1385,133 @@ was looked at and not used: it keeps other things' dice still when talking chang
 would still have to roll every step. Read as search summaries, as above. None of their code is
 used.
 
+### Off the page's thread, no top on people, and what this computer can run (2026-11-15)
+
+`TODO.md` item 3. Ric: *"the number of people should be infinite just based on can your computer
+run it"*, and *"i want there to be a way that i can see what my limit will be because of my
+computer. but if a friend has a better one i want them to be able to push those limits."*
+
+**1. The engine has a keeper, and the keeper has its own thread.** Until now the engine ran inside
+the page's drawing loop: forty milliseconds of world, then a frame. With 20,000 people that was
+seven frames a second, and pressing Run froze the page for four seconds while the world was made.
+`people-host.js` now holds the world, runs its clock and answers the page, and the page never
+touches a person. It asks for four things and gets back plain numbers and words:
+
+| The page asks for | and is sent |
+|---|---|
+| a frame — where it is looking, how closely, which colouring | who is in view (and half a screen round it): where, what colour, a byte of marks (child, hurt, sick, leader, speaking, reaping), what they carry; the lines between people talking; the few labels and sentences that are drawn; villages and factions, only when what the map shows of them has changed; the fields, every few steps and at most five times a second |
+| the panel it is showing | what that tab needs: sixty rows of the People list already searched and sorted, one person, one village, the factions, the news, the talk, the world's counts |
+| who is under a tap | a person or a village |
+| a decision — rule, tax, arms, relief, war, peace, a live setting | that it was done, and what the other side answered |
+
+The keeper is written with no timer and no thread of its own: it has two doors, `receive(message)`
+and `run(seconds, budget)`. In a worker a small loop feeds them; where a worker cannot be had the
+page keeps the very same keeper and calls `run` once a frame, in at most 40 ms, exactly as the
+engine was always run; the tests call both by hand. One code path in three places. `?nothread` on
+the address asks for the page's own thread, to compare.
+
+*The same world.* The keeper hands time to the engine as `advance(seconds, true)`, in pieces of a
+quarter of a second, and only reads. `test/keeper.test.mjs` runs a world through it at 1×, 16×,
+250× and flat out, reading frames, every panel and a tap all the while, and holds it equal to the
+engine walked to the same step alone. That test found one thing the page had always done wrong:
+how much a village still has to put by for winter is worked out once an hour from its store *at
+the moment it is first asked*, and the Person panel asks several times a second — so a watched
+world could differ from an unwatched one. The engine's `urgency` door now puts the figure back.
+
+*Opened as a file.* A page opened from a folder may not start a worker from a file beside it. So
+the worker is started from text: `people.js` and `people-host.js` each keep the function they were
+built from (`factory`), and the page writes both out again and hands that to the worker
+(`keeperText` in `index.html`). Nothing is fetched, so it is the same whether the page is served
+or opened from a folder; it was tried from a `file:` address in a real browser rather than assumed.
+If a worker never answers, everything it was sent is given to a keeper on the page's thread.
+
+*What it costs.* Reading 5,000 people for a frame takes the worker 0.7 ms; reading 20,000 takes
+10.6 ms — most of it waiting on memory, a person being a large object. So every frame says what it
+cost and the page leaves six times that before asking again (about a seventh of the worker's time
+at most), and a frame asked for with nothing changed — the same view, the world on the same step,
+which at 1× is every frame but five a second — is answered "same". The page draws at its own rate
+whatever the world is doing: moving and zooming use the last frame with the view as it is now.
+
+*A world never ran behind a hidden tab, and still does not:* the keeper is told to wait while the
+page is hidden or paused. Leaving a world ends its thread.
+
+**2. The land is painted a pixel a square.** With the engine gone, the page was still held up, by
+its own painting: a land under about 500 squares across was drawn a square at a time, eight pixels
+each, a colour spelled out as words for every one — 60 to 280 ms for an 80 km land, on every frame
+at speed. It is now one small picture written straight into its pixels (about 1 ms) and stretched
+onto the map as it is drawn, with the line where two factions' land meets kept as a list of edges
+and drawn over it, a quarter of a square wide as it was. People are drawn a path a colour, not two
+calls a person, with the dark line round each box a dark box a pixel bigger laid under it. Far
+out, where a box is two or three pixels, there is no dark line: it used to swallow the colour, and
+a full village showed as a black disc.
+
+Measured in a real browser (headless Edge) on an AMD Ryzen 5 3600, 20,000 people on 80 km, clock
+at Max, over the same eight seconds of each:
+
+| | Before | After |
+|---|---|---|
+| Pressing Run holds the page for | 4.4 s | 14 ms (the world is there 5.4 s later; the page answers meanwhile and says "Making the world…") |
+| Frames drawn a second | 7 | every one the browser offers (150 with nothing capping it) |
+| Longest wait between frames | 229 ms | 25 ms |
+| The world's clock moved | 0.41 of a day, about 15× | 0.99 of a day, about 37× |
+| The page said it was running at | 22× | 54× at the end, having averaged 37× |
+
+The last row is its own correction. The page used to work out "Running at N×" from what it asked
+for in a frame, counting at most a tenth of a second per frame, so a world too big to keep up was
+overstated. The keeper counts the time that really passed.
+
+**3. No top on people.** The slider still sweeps to 20,000 — a convenient sweep, as the physics
+sliders are — and beside it is a box where any whole number of 20 or more can be typed; a link
+carries one too. `clean()` reads the top from `inputMax` (for people, none) and every other range
+keeps its ends. Which village holds each square was a sixteen-bit table and is a thirty-two-bit
+one, because with no top on people there is none on villages, and the old table would have run
+out, silently, at the 32,768th. A world past what the computer can hold fails in its worker and
+the page says so; it does not take the page with it.
+
+What is *not* true yet: a big world is slow to start. Finding everybody a place to stand grows
+with the square of the head count — 10,000 people 0.9 s, 20,000 3.7 s, 40,000 16 s — and it cannot
+be done another way without people standing somewhere else, which is a different world. The page
+no longer freezes while it happens, counts the seconds, and ← Settings gets out at once. `TODO.md`
+item 3b.
+
+**4. What this computer can run.** Not a table of machines, and not a guess from how many cores a
+browser admits to (it caps the number, and it says nothing of how fast one is). When the settings
+have been left alone for a moment, the world they describe is made on a thread of its own, out of
+sight, and run for up to three seconds, and how fast it went is written under "How many people":
+
+> On this computer: about 210× at first with these 5,000 people (a year every 9 minutes). It
+> should stay above 16× up to roughly 65,000 people.
+
+Ric chose that — a line under the slider — over a mark on the slider and a small table. It is the
+same engine, seed and first hours the real world will have, so the first figure is that world's
+own on this computer. Whole days are measured where there is time, because a night costs far less
+than a day; and a first day that is over in under a second is not counted, because a browser runs
+fresh code slowly for its first moments (before that rule, 400 people were said to run at 820× and
+ran at 1,100× and more). The second sentence is plain proportion from the first. It is advice: the
+box takes any number. A world not even made in twelve seconds is given up as "more than this page
+can try out in a few seconds". Without a worker only worlds up to 2,000 people are tried, since
+the try-out would hold the page up.
+
+Why it could not be a rule of thumb, measured on 34 worlds of one seed: a day costs from 0.5 to
+2.8 ms a person, and not more for more people — 2,000 people in eight villages cost more *each*
+than 20,000, most of whom stand jammed and are passed over — and one world's second and third days
+differ by up to three times.
+
+How good it is:
+
+| World | The line said | It ran, first days | Later |
+|---|---|---|---|
+| 400 people, 17 km | 1,200× | 1,600× | 2,300–2,900× from day 30 |
+| 2,000 people, 17 km | 89× | 92×, 83×, 75× | 120–200× from day 4 |
+| 5,000 people, 40 km | 230× | 340× | 100× from day 4, 65–75× by day 9 |
+| 20,000 people, 80 km | 38× | between 18× and 49×, about 30× on the whole | |
+
+Within about a third at the start, and out by two or three times once a world has settled or
+jammed — which is the world changing, and nothing three seconds can know. So the line says "at
+first", and the running world says what it is doing now. Not settled: which speed the second
+sentence should mean. It is 16×, the fastest clock that runs exactly as asked, by this session's
+choice; Ric was asked and was not sure what the question was (`TODO.md`, item 3).
+
 ### War has to be fed (2026-11-14)
 
 Ric: military reach should depend on *"food carried and access to resupply, distance from
@@ -1488,7 +1617,17 @@ player equipment choices and the larger production system remain future work.
 - **"Surprise me" draws every setting from its own range.** Most of those are bad worlds. That is
   the point.
 - **A frame advances at most a tenth of a second of real time** rather than owing a growing
-  backlog, so a slow phone runs slower instead of freezing; a note says when it is behind.
+  backlog, so a slow phone runs slower instead of freezing; a note says when it is behind. For
+  People that is the keeper's rule now (`people-host.js`, `run`), and "behind" means the world is
+  getting less than nine tenths of the time that passed.
+- **The People world is not on the page** (2026-11-15, `TODO.md` item 3; "Off the page's thread"
+  above). The page holds the land as it was made, the last frame, the villages and factions as
+  last sent and what the open panel needs; it asks for one frame and one panel at a time. A panel's
+  answer for a tab, person or search that has since been left is not drawn, and the routine
+  refresh is not drawn over a finger that has come down on the panel. Tapping a name takes the view
+  to them when the next frame says where they are.
+- **"How many people" has a box as well as a slider**, and under it one line saying how fast this
+  computer runs the world as set ("What this computer can run" above).
 - **People opens on a searchable population list** (2026-11-12, Ric: "Build the next features
   from the vision"). Name search combines with settlement, faction and occupation filters.
   Each row shows age, job, settlement, faction and current activity; selecting it locates and
