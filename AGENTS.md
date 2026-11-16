@@ -669,6 +669,11 @@ nobody had linked was a page nobody could find.
   World Builder items check only what they change (`TODO.md`, "Running the sim only as much as
   needed"). The speed its second sentence means is 16× (`STEADY`),
   which Ric chose ("Keep 16×") over a year an hour and over keeping up at 1×.
+  **The land comes from the seed** (TODO 4a, 2026-11-15): height in metres, sea, lakes, rivers
+  that run downhill, eleven kinds of ground (Ric added snow and ice), fertility and ore from the
+  kind, settings for sea, rivers, forest and hills, land up to 1,000 km. Stored at 250 m a square;
+  Ric wants to zoom down to a house, so finer detail is to be worked out from the seed for the
+  part on screen (item 5), never stored. Walking still ignores the ground until 4b.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

@@ -379,7 +379,9 @@ if (!physicsOnly) {
     if (Math.hypot(crowded.people[i].x - crowded.people[j].x, crowded.people[i].y - crowded.people[j].y) < 0.42 - 1e-8) overlap = true;
   }
   check(!overlap, "people: the most crowded starting village has overlapping bodies");
-  const farmer = w.people.find(p => p.job === "farmer");
+  /* Since TODO 4a a small world may have no farmer after a day (crafting can pay better on the
+     new land), so one is made: what is checked is how a farmer in a field reads. */
+  const farmer = w.people.find(p => p.job === "farmer") || Object.assign(w.people.find(p => w.adult(p)), { job: "farmer" });
   farmer.task = "field"; farmer.tx = farmer.x; farmer.ty = farmer.y; farmer.sayT = 0;
   check(w.activity(farmer) === "Harvesting", "people: a farmer in their field is not identified as harvesting");
   const social = People.create({ people: 80, map: "small", talk: 1, seed: 7 });

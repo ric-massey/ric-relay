@@ -93,9 +93,9 @@
       catch (e) { send({ t: "failed", why: String((e && e.message) || e) }); return; }
       world = w;
       rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0; maxSim = maxWall = 0;
-      const fert = w.fert.slice(), ore = w.ore.slice();
-      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore,
-             settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer]);
+      const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice();
+      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore, ground: ground,
+             settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer, ground.buffer]);
     }
 
     /* ── the clock ──────────────────────────────────────────────────────────

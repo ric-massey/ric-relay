@@ -756,16 +756,17 @@ when it is built.
 **1. The land**
 - Now: each square has two numbers, how well it grows and how much ore. It is drawn as one
   brown-to-green wash. There is no water, no height, no forest, no coast.
-- [ ] What kinds of ground there are: sea, lake, river, beach, marsh, grassland, forest, hills,
-  mountain, desert, and which of them people can live on.
-- [ ] The seed decides all of it (Ric: "seeds should decide all that"): height first, water runs
-  downhill into rivers and lakes, forest and grass follow from water and warmth.
+- [x] What kinds of ground there are: sea, lake, river, beach, marsh, grassland, forest, hills,
+  mountain, desert, and which of them people can live on. (2026-11-15, TODO 4a: eleven, with snow
+  and ice, Ric's choice; dry land stands for desert.)
+- [x] The seed decides all of it (Ric: "seeds should decide all that"): height first, water runs
+  downhill into rivers and lakes, forest and grass follow from water and warmth. (2026-11-15, 4a.)
 - [ ] What each kind gives: wood from forest, fish from water, stone from hills, game, grazing.
 - [ ] What each kind costs: slow to cross, can't be farmed, can't be crossed without a boat or
   a bridge.
 - [ ] How it is drawn so anybody can tell at a glance what is livable, forest, beach and water.
-- [ ] How much of each the visitor chooses (mostly sea, one big river, all forest) and how much
-  is left to the seed.
+- [x] How much of each the visitor chooses (mostly sea, one big river, all forest) and how much
+  is left to the seed. (2026-11-15, 4a: how much sea, rivers, forest and hills; the seed the rest.)
 - [ ] Size. The smallest is 5 km across now; Ric wants about 2 km². The largest is 500 km across;
   a state is roughly 500 to 1,200 km. A square is 250 m, which is too coarse for a 2 km² world:
   a house and its field would be one square. The square has to get smaller as the land does.

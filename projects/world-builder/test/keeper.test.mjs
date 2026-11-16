@@ -253,7 +253,7 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   assert.equal(People.clean({ people: "Infinity" }).people, 400);
   assert.equal(People.clean({ people: "lots" }).people, 400);
   assert.equal(People.clean({ people: 1234.6 }).people, 1235);
-  assert.equal(People.clean({ map: 9999 }).map, 500, "every other range keeps its ends");
+  assert.equal(People.clean({ map: 9999 }).map, 1000, "every other range keeps its ends (1,000 km since TODO 4a)");
   const w = People.create({ people: 20500, map: 60, seed: 3, plague: "none", bodies: "real" });
   assert.equal(w.people.length, 20500);
   w.advance(People.HOUR_SECONDS);
@@ -287,7 +287,7 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   for (let n = 0; n < 6 && timers.length; n++) timers.shift()();          // let its own loop turn
   scope.onmessage({ data: { t: "frame", cam: { x: started.cols / 2, y: started.rows / 2, s: 4, w: 400, h: 300 }, view: "faction", fresh: true } });
   const f = posted.pop();
-  assert.equal(f.t, "frame"); assert.equal(f.k, 60);
+  assert.equal(f.t, "frame"); assert.equal(f.k, f.n, "everybody in a view of the whole land is drawn (somebody may have died: TODO 4a changed the draws)");
   assert.ok(f.days > 0, "and its world is running");
 }
 

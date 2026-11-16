@@ -1574,6 +1574,69 @@ computer, these 400 people ran at about 2,100× on Max, to day 70 …", with the
 worked from it. In a headless Edge the default world's try-out said 1,100×; on Max it held
 2,100× to day 70, and the setup page then said so. With nothing kept, the try-out speaks as before.
 
+### Land from the seed (2026-11-15)
+
+TODO item 4a. Until now each square had two numbers from smooth noise, fertility and ore. Now the
+seed makes the land the way land is made, and fertility and ore follow from it (`land()` in
+`people.js`). It has its own random draws, so the same seed gives the same land whatever the
+other settings.
+
+1. **Height**, in metres: smooth noise in lumps from 300 km down to 1 km across, each as tall as
+   its size (1,400 m for the biggest, 18 m for the smallest), the same method as Red Blob Games'
+   [terrain from noise](https://www.redblobgames.com/maps/terrain-from-noise/). A lump wider than
+   the land is only a tilt, so a 17 km land is a valley with hills, and only a land hundreds of
+   kilometres across has ranges and snow. "How hilly" makes the middle sizes taller. The ground
+   drops toward the edges, so a sea is a coast.
+2. **Water runs downhill.** Priority-Flood (Barnes, Lehman and Mulla 2014,
+   [arXiv 1511.04463](https://arxiv.org/pdf/1511.04463)) floods in from the edges, lowest first,
+   with a queue of 65,536 height buckets so it takes time in step with the land. The square that
+   reaches another first is where that one drains, so water always has a way out and never runs
+   uphill. The **sea** is the ground a rising sea would reach from the edge, its level chosen so
+   "How much sea" of the map is sea. A hollow filled more than 15 m deep (more on a land with
+   thousands of metres of height in it) is a **lake**; a shallower one drains over its lip.
+   **Rivers**: rain on every square, added up downstream, and a square is river where the
+   ground draining through it passes an area (O'Callaghan and Mark 1984, as in
+   [SAGA's flow accumulation](https://saga-gis.sourceforge.io/saga_tool_doc/9.4.1/ta_hydrology_0.html)):
+   about 5 km² at the usual setting, from about 60 km² at the fewest to half a square kilometre
+   at the most.
+3. **Kinds of ground**, eleven, as Ric chose ("Ten plus snow and ice"): sea, lake, river,
+   beach (a strip by the sea), marsh (wet, flat, low, by water), grassland, forest (wet ground,
+   more with "How much forest"), hills (rising 40 m or more a kilometre), mountain (90 m a
+   kilometre and high, or anything just under the snow line), dry land, and snow and ice above a
+   snow line that comes down with "Distance from the equator" and "How cold winter gets": about
+   2,400 m at 45° with a real winter, 900 m at 70° with a hard one (the Alps' is near 2,800 m,
+   Norway's 900 to 1,500 m). Warmth and wetness stand in for Whittaker's temperature and rain;
+   his biome lines are drawn by hand and differ book to book, so the kinds are set by these few
+   plain rules instead.
+4. **Fertility and ore from the kind**: grassland 0.8, forest 0.55, hills 0.42, dry land 0.22,
+   beach 0.18, nothing on water, marsh, mountain or snow, all times 1.15; ground within a
+   kilometre of a river or lake grows up to 0.2 better, most at the bank (river flats are laid
+   down by floods, which is why villages sit by rivers); "How uneven it is" still spreads each
+   kind's fertility either way. The 1.15 is measured, not felt: with it the ground within 2 km
+   of a village grows what it did on the old land, 0.568 against 0.566 over ten seeds (0.49
+   without it and the flats). Ore: mountains 0.8, hills 0.45, little elsewhere.
+
+What people do with it, for now: villages start only on ground that can be lived on (beach,
+grassland, forest, hills, dry land), spaced by that ground and not by the whole map; nobody is
+placed standing in the sea or a lake (the crowd placing of item 3b treats them as full ground);
+fields are only where something grows. Walking still goes straight, so people can wade a lake
+on the way somewhere: going round water, and slower ground, is item 4b.
+
+Measured: a year of the default world on seeds 11, 3, 5 and 7: 25 starved in all against 86 on
+the old land, and more people alive on every seed (384, 388, 388, 403 against 383, 329, 353,
+382). What the new settings move (`test/behaviour.mjs`, four days, three seeds; short and noisy,
+the same settings read 3 to 10% from one run to the next): "How hilly" 7.6% of adults' hours,
+"How much sea" 4.6%, "How much forest" 3.2%, "How many rivers" 2.7%.
+
+The largest land is now 1,000 km across ("a state", Ric's choice), 4,000 squares by 2,480,
+about ten million. A world on it starts in 4.5 s with 2,000 people
+and 5.7 s with 20,000, and holds 640 to 750 MB. A day there costs what it does on a smaller land
+(2,000 people: 2.9 s at 1,000 km, 2.4 s at 500): nothing is done for squares nobody uses.
+
+Speed, per person, is unchanged: 2,000 people on 17 km take 3.87 s a day on the old land and
+3.76 s on the new with no sea (five seeds each). With the usual 15% sea it is 4.37 s, because
+the same people stand on less land and crowds cost more to walk through.
+
 ### War has to be fed (2026-11-14)
 
 Ric: military reach should depend on *"food carried and access to resupply, distance from

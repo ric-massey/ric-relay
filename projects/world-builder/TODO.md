@@ -486,7 +486,7 @@ Research notes:
 - **Tried and taken out:** remembering per starting square how far round it is all full. Packed
   ground keeps slivers between bodies, so it never reached past a square or two.
 
-### [ ] 4. Land from the seed: height, water, kinds of ground, any size
+### [x] 4a. Land from the seed: height, water, kinds of ground, any size
 
 **Now:** each square has two numbers (`fert`, `ore`) from smooth noise. No height, water, forest
 or coast. Land is 5 to 500 km across in 250 m squares.
@@ -506,6 +506,30 @@ square may get.
 never run uphill; a default world still feeds itself for a year; the largest land starts in a
 few seconds and fits in memory on an 8 GB machine.
 **Budget:** no slower per person; start-up may grow with the land, not with empty squares.
+
+**4a done 2026-11-15.** Height in metres, sea from the edge, lakes, rivers that run downhill to
+the sea, a lake or off the edge, eleven kinds of ground, fertility and ore from the kind, four
+settings (sea, rivers, forest, hills), land up to 1,000 km (starts in 4.5–5.7 s, 640–750 MB),
+villages only on livable ground, nobody placed in the sea or a lake. A default world feeds
+itself (four seeds: 25 starved against 86 before). Left: crossing (4b, next); drawing it well and
+the zoom down to a house (item 5); a land under 5 km across (with item 5's finer detail).
+Tests: the trader test now tries several seeds (a visit within 1,000 steps was luck before too);
+the keeper's frame test no longer assumes nobody dies in the first day.
+
+### [ ] 4b. Crossing the land
+
+**Now:** people walk straight at where they are going, through lakes, the sea and over mountains.
+**Do:** walking goes round the sea and lakes; forest, marsh, hills and rivers are slower to
+cross, mountains and snow very slow; the way round is found with the search for a way round
+crowds (`routeAround`) or a coarse route over the land, whichever is cheaper. Villages whose
+people cannot reach each other by land do not trade or fight by land.
+**Research first:** pathfinding on big weighted grids (A* with a coarse grid above it,
+hierarchical pathfinding, flow fields for many walkers to one place); walking speeds over
+rough ground (Tobler's hiking function; Naismith's rule).
+**Ric decides:** nothing unless rivers need bridges or fords to be crossed at all.
+**Done when:** nobody walks on water; a default world still feeds itself for a year; no slower
+per person than 4a.
+**Budget:** no slower per person.
 
 Ric's answers (2026-11-15), shown a working preview of the land (height, sea, lakes, rivers,
 the ten kinds, sliders for sea, rivers, forest and hills):
@@ -850,4 +874,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-15 | 2b | AMD Ryzen 5 3600 (the Windows desktop item 3 was built on), 24 GB | 2.6 s a day, 116× | 5.7 s a day, 53× | 0.20 and 1.15 KB at the start | the engine as item 3 found it, on the machine item 3 was built on; a 20,000 start 3.7 s |
 | 2026-11-15 | 3 | AMD Ryzen 5 3600, 24 GB | 2.8 s a day, 106× | 6.0 s a day, 50× | 0.20 and 1.18 KB at the start | same world, and the same speed: run turn about with the row above three times, 20,000 people took 6.43, 6.43, 6.37 s before and 6.39, 6.45, 6.36 s after (this machine wanders 10% from one run to the next, which is all the two rows differ by); a year of the default world 123 s before, 124 s after, identical state. **In a browser, 20,000 people flat out:** the page 7 frames a second → every frame; the clock about 15× → about 37× in the same stretch |
 | 2026-11-15 | 3b | AMD Ryzen 5 3600, 24 GB | *not run: the running world is unchanged* | *not run* | | starts only (`bench.mjs --start`), same world: 10,000 0.86 → 0.56 s, 20,000 3.55 → 1.52 s, 40,000 14.1 → 3.8 s, 100,000 102.6 → 14.9 s |
+| 2026-11-15 | 4a | AMD Ryzen 5 3600, 24 GB | 2.92 s a day, 103× | *not run* | 1.6 MB, 0.31 KB | a **different world** from here on (the land). `--quick`: 400 people 0.31 → 0.29 s, 2,000 3.17 → 3.73 s, 5,000 2.50 → 2.92 s; five seeds of 2,000 on 17 km: 3.87 s old, 4.37 s new, 3.76 s new with no sea (the sea packs people closer; the engine is not slower). 1,000 km starts in 4.5 s (2,000 people) |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

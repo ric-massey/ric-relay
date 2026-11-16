@@ -62,8 +62,8 @@
 
   const SCHEMA = [
     { title: "The land", items: [
-      { key: "map", label: "How much land", type: "range", min: 5, max: 500, step: 1, def: 17, curve: 2.5,   // 5: below it the default eight villages do not fit
-        say: v => v + " by " + Math.round(landHigh(v)) + " km — " + (v <= 12 ? "a valley" : v <= 20 ? "a district" : v <= 30 ? "a region" : "a small country"),
+      { key: "map", label: "How much land", type: "range", min: 5, max: 1000, step: 1, def: 17, curve: 2.5,   // 5: below it the default eight villages do not fit
+        say: v => v + " by " + Math.round(landHigh(v)) + " km — " + (v <= 12 ? "a valley" : v <= 20 ? "a district" : v <= 30 ? "a region" : v <= 300 ? "a small country" : "a state"),
         help: "Measured in kilometres, east to west. A square of the map is 250 metres: a village's fields reach about two kilometres, as farming villages' did, and people walk four and a half kilometres an hour. Bigger land is slower to run." },
       { key: "rich", label: "How much it grows", type: "range", min: 0.2, max: 2, step: 0.05, def: 1,
         say: v => (v < 0.6 ? "thin soil" : v < 1.3 ? "decent land" : "it grows anything"),
@@ -71,6 +71,18 @@
       { key: "uneven", label: "How uneven it is", type: "range", min: 0, max: 1, step: 0.05, def: 0.6,
         say: scale(["the same everywhere", "gentle", "good valleys and bad hills", "rich pockets in a waste"]),
         help: "Uneven land gives some villages more than others." },
+      { key: "sea", label: "How much sea", type: "range", min: 0, max: 0.7, step: 0.05, def: 0.15,
+        say: v => v === 0 ? "no sea — the land runs off the edge" : pct(v) + " of the map",
+        help: "The sea comes in from the edges over the lowest ground. Nobody lives or farms on it." },
+      { key: "rivers", label: "How many rivers", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["none", "a few big ones", "plenty", "a stream in every valley"]),
+        help: "Rain runs downhill to the sea or a lake. Where enough has gathered it is a river." },
+      { key: "forest", label: "How much forest", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
+        say: scale(["open country", "woods here and there", "well wooded", "forest everywhere"]),
+        help: "Forest grows where it is wet. Its ground farms poorly until it is cleared." },
+      { key: "hills", label: "How hilly", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
+        say: scale(["flat", "rolling", "hilly", "rugged"]),
+        help: "Steep ground is hills; steep and high is mountain. Hills farm worse than flat land, mountains not at all." },
       { key: "seed", label: "Seed", type: "range", min: 1, max: 9999, step: 1, def: 11,
         say: v => "#" + v, help: "The same seed and settings start the same world." },
     ]},
@@ -284,6 +296,14 @@
   }
 
   const SQUARES_PER_KM = 4;   // a square is 250 m
+  /* The kinds of ground (TODO 4a): whether people can live on it and farm it. Crossing is item
+     4b; for now only the sea and lakes keep people off. */
+  const G_SEA = 0, G_LAKE = 1, G_RIVER = 2, G_BEACH = 3, G_MARSH = 4, G_GRASS = 5, G_FOREST = 6, G_HILLS = 7, G_MOUNTAIN = 8, G_DRY = 9, G_SNOW = 10;
+  const GROUND = [
+    { name: "sea", live: false, farm: false }, { name: "lake", live: false, farm: false }, { name: "river", live: false, farm: false },
+    { name: "beach", live: true, farm: true }, { name: "marsh", live: false, farm: false }, { name: "grassland", live: true, farm: true },
+    { name: "forest", live: true, farm: true }, { name: "hills", live: true, farm: true }, { name: "mountain", live: false, farm: false },
+    { name: "dry land", live: true, farm: true }, { name: "snow and ice", live: false, farm: false }];
   const COLOURS = ["#e0a340", "#5aa9e6", "#d9605a", "#7fc87a", "#b58be0", "#e58fb6", "#4fc3b0", "#c9c36a",
                    "#f08a4b", "#8fa3ff", "#b7d36b", "#e4dccb"];
   const ONSETS = ["b", "d", "f", "g", "h", "k", "l", "m", "n", "p", "r", "s", "t", "v", "w", "y", "br", "dr", "th", "sh", "st", "el", "or", "an", ""];
@@ -414,6 +434,9 @@
     const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
+    const ground = new Uint8Array(tiles), height = new Float32Array(tiles);   // the kind of ground, and metres (TODO 4a)
+    const deep = k => k === G_SEA || k === G_LAKE;
+    const wet = (x, y) => { const fx = Math.floor(x), fy = Math.floor(y); return fx >= 0 && fy >= 0 && fx < cols && fy < rows && deep(ground[fy * cols + fx]); };
     /* Which village holds each square. Thirty-two bits since TODO item 3:
        with no top on people there is none on villages either, and sixteen
        would have run out, silently, at the 32,768th. */
@@ -593,29 +616,144 @@
       const n = make() + " " + (usedNames.size + 1); usedNames.add(n); return n;
     }
 
-    /* ── the land ──────────────────────────────────────────────────────────
-       Smooth noise, three sizes of lump added together. Fertility is how much
-       a field holds and how fast it grows back; ore is what the crafters use. */
+    /* ── the land (TODO item 4a, 2026-11-15) ──────────────────────────────
+       Height first, in metres, from smooth noise in lumps 300 km to 1 km
+       across (a lump wider than the land is only a tilt, so a small land is
+       a valley and only a big one has ranges); then the sea, lakes and
+       rivers, water always running downhill; then the kind of ground from
+       height, steepness, wetness and warmth; then fertility and ore from
+       the kind. Its own random draws, so the land is the seed's alone.
+       README, "Land from the seed". */
     (function land() {
-      const layer = (cell) => {
-        const gw = Math.ceil(cols / cell) + 2, gh = Math.ceil(rows / cell) + 2;
-        const g = new Float32Array(gw * gh);
-        for (let i = 0; i < g.length; i++) g[i] = R();
-        return (x, y) => {
-          const fx = x / cell, fy = y / cell, ix = Math.floor(fx), iy = Math.floor(fy);
-          const ux = fx - ix, uy = fy - iy, sx = ux * ux * (3 - 2 * ux), sy = uy * uy * (3 - 2 * uy);
-          const a = g[iy * gw + ix], b = g[iy * gw + ix + 1], c = g[(iy + 1) * gw + ix], d = g[(iy + 1) * gw + ix + 1];
-          return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
-        };
+      const n = tiles, R = rng((S.seed | 0) * 2654435761 + 97);   // its own draws: the land is the seed's alone
+      const PER_KM = 4;
+      /* smooth noise whose lumps are `km` across, whatever the size of a square */
+      const layer = km => {
+        const cell = Math.max(1, km * PER_KM), gw = Math.ceil(cols / cell) + 2, gh = Math.ceil(rows / cell) + 2;
+        const g = new Float32Array(gw * gh); for (let i = 0; i < g.length; i++) g[i] = R();
+        return { cell, gw, g };
       };
-      const f1 = layer(14), f2 = layer(6), f3 = layer(3), o1 = layer(9), o2 = layer(4);
+      const at = (L, x, y) => {
+        const fx = x / L.cell, fy = y / L.cell, ix = fx | 0, iy = fy | 0, ux = fx - ix, uy = fy - iy;
+        const sx = ux * ux * (3 - 2 * ux), sy = uy * uy * (3 - 2 * uy), g = L.g, w = L.gw, k = iy * w + ix;
+        const a = g[k], b = g[k + 1], c = g[k + w], d = g[k + w + 1];
+        return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+      };
+      /* Height in metres: lumps from 300 km down to 1.5 km, each as tall as its size allows (a lump
+         wider than the land is only a tilt, so a small land is a valley, not a range). "Hills" makes
+         the middle sizes taller. Lower toward the edges, so a sea, if any, is a coast. */
+      const sizes = [300, 120, 45, 16, 6, 2.5, 1], tall = [1400, 900, 550, 260, 110, 45, 18];
+      const across = Math.max(cols, rows) / PER_KM, hilly = 0.35 + 1.3 * S.hills;
+      const amp = sizes.map((km, i) => tall[i] * Math.min(1, across / km) * (km <= 45 && km >= 2.5 ? hilly : 1));
+      const H = sizes.map(layer), wet1 = layer(Math.min(80, across * 0.5)), wet2 = layer(6), rich = layer(2), stone = layer(5);
+      const h = height, edge = Math.min(cols, rows) * 0.3, drop = amp.reduce((a, b) => a + b, 0) * 0.35;
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-        const n = f1(x, y) * 0.55 + f2(x, y) * 0.3 + f3(x, y) * 0.15;
-        const i = y * cols + x;
-        fert[i] = clamp(0.55 + (n - 0.5) * 2.4 * S.uneven, 0.04, 1);
-        ore[i] = clamp((o1(x, y) * 0.7 + o2(x, y) * 0.3 - 0.45) * 3, 0, 1);
-        stock[i] = fert[i] * TILE_CAP * 1.6 * S.standing;   // "Crops in the fields"; 0.5 is what it always was
+        let v = 0; for (let k = 0; k < H.length; k++) v += (at(H[k], x, y) - 0.5) * 2 * amp[k];
+        const e = Math.min(1, Math.min(x, y, cols - 1 - x, rows - 1 - y) / edge);
+        h[y * cols + x] = v - drop * (1 - e) * (1 - e);
       }
+      /* Sea level: the height below which `S.sea` of the land lies, by a histogram (no sort of millions). */
+      const BINS = 4096, hist = new Int32Array(BINS);
+      let lo = Infinity, hi = -Infinity; for (let i = 0; i < n; i++) { if (h[i] < lo) lo = h[i]; if (h[i] > hi) hi = h[i]; }
+      const bin = v => Math.min(BINS - 1, ((v - lo) / (hi - lo + 1e-9) * BINS) | 0);
+      for (let i = 0; i < n; i++) hist[bin(h[i])]++;
+      const level = q => { let c = 0, k = 0; for (; k < BINS; k++) { c += hist[k]; if (c >= q * n) break; } return lo + (k + 1) / BINS * (hi - lo); };
+      /* Priority-Flood (Barnes, Lehman and Mulla 2014) with a bucket queue: in from the edges, lowest
+         first. The square that reaches another first is where that one drains to (`down`), so water
+         always has a way out: to the sea, off the edge, or over the lip of a hollow (which, filled
+         deep enough, is a lake). `order` is the order squares were reached; read backwards it is
+         upstream before downstream, which is how the water is added up. */
+      /* A hollow holds a lake when it is deep for its land: 15 m in a valley, more where the land
+         has thousands of metres of height in it (big hollows in noise are deeper than real ones,
+         which rivers cut through). */
+      const LAKE_DEEP = 15 + amp.reduce((a, b) => a + b, 0) * 0.02;
+      const Q = 1 << 16, q = v => Math.min(Q - 1, Math.max(0, ((v - lo) / (hi - lo + 1e-9) * (Q - 1)) | 0));
+      const head = new Int32Array(Q).fill(-1), tail = new Int32Array(Q).fill(-1), next = new Int32Array(n);
+      const fill = new Float32Array(n), down = new Int32Array(n).fill(-1), order = new Int32Array(n), seen = new Uint8Array(n);
+      let count = 0, lowest = Q;
+      const add = (i, v) => { const b = q(v); next[i] = -1; if (tail[b] < 0) head[b] = i; else next[tail[b]] = i; tail[b] = i; if (b < lowest) lowest = b; };
+      for (let x = 0; x < cols; x++) for (const y of [0, rows - 1]) { const i = y * cols + x; if (!seen[i]) { seen[i] = 1; fill[i] = h[i]; add(i, fill[i]); } }
+      for (let y = 1; y < rows - 1; y++) for (const x of [0, cols - 1]) { const i = y * cols + x; if (!seen[i]) { seen[i] = 1; fill[i] = h[i]; add(i, fill[i]); } }
+      const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
+      while (count < n) {
+        while (lowest < Q && head[lowest] < 0) lowest++;
+        const i = head[lowest]; head[lowest] = next[i]; if (head[lowest] < 0) tail[lowest] = -1;
+        order[count++] = i;
+        const x = i % cols, y = (i / cols) | 0, v = fill[i];
+        for (let d = 0; d < 8; d++) {
+          const nx = x + DX[d], ny = y + DY[d];
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const j = ny * cols + nx; if (seen[j]) continue;
+          seen[j] = 1; fill[j] = h[j] > v ? h[j] : v; down[j] = i; add(j, fill[j]);
+        }
+      }
+      /* The sea: the ground a rising sea would reach from the edge. `fill` is the lowest height water
+         must rise to before it gets from the edge to a square, so the sea at level L is every square
+         with `fill` at most L; L is chosen so that `S.sea` of the land is sea. */
+      hist.fill(0); for (let i = 0; i < n; i++) hist[bin(fill[i])]++;
+      const sl = S.sea > 0 ? level(S.sea) : -Infinity;
+      ground.fill(255);
+      for (let i = 0; i < n; i++) {
+        if (fill[i] <= sl) ground[i] = G_SEA;
+        else if (fill[i] - h[i] > LAKE_DEEP) ground[i] = G_LAKE;   // a hollow deep enough to hold standing water
+      }
+      /* Rain, then how much ground drains through each square; a river where that passes a
+         drainage area (O'Callaghan and Mark 1984): about 60 km² of ground at the fewest rivers,
+         5 km² at the usual setting, half a square kilometre at the most. */
+      const acc = new Float32Array(n);
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const i = y * cols + x; acc[i] = 0.4 + at(wet1, x, y) * 0.9 + at(wet2, x, y) * 0.3; }
+      for (let k = n - 1; k >= 0; k--) { const i = order[k], d = down[i]; if (d >= 0) acc[d] += acc[i]; }
+      const thr = S.rivers > 0 ? PER_KM * PER_KM * 60 * Math.pow(0.008, S.rivers) : Infinity;
+      for (let i = 0; i < n; i++) if (ground[i] === 255 && acc[i] > thr) ground[i] = G_RIVER;
+      /* Nearness to water, out to 2 km, for wetness. */
+      const near = new Uint8Array(n).fill(255), qq = new Int32Array(n); let qh = 0, qt = 0;
+      for (let i = 0; i < n; i++) if (ground[i] <= G_RIVER) { near[i] = 0; qq[qt++] = i; }
+      while (qh < qt) { const i = qq[qh++], x = i % cols, y = (i / cols) | 0, d = near[i] + 1; if (d > 8) continue;
+        for (let k = 0; k < 4; k++) { const nx = x + DX[k], ny = y + DY[k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue; const j = ny * cols + nx; if (near[j] > d) { near[j] = d; qq[qt++] = j; } } }
+      let edgeLow = Infinity;
+      for (let x = 0; x < cols; x++) edgeLow = Math.min(edgeLow, h[x], h[(rows - 1) * cols + x]);
+      for (let y = 0; y < rows; y++) edgeLow = Math.min(edgeLow, h[y * cols], h[y * cols + cols - 1]);
+      const base = S.sea > 0 ? sl : edgeLow;               // sea level, or where the land runs off its edge
+      /* Hills are steep ground, mountains steep and high: the rise over half a kilometre either way. */
+      const steep = i => { const x = i % cols, y = (i / cols) | 0, a = Math.max(0, x - 2), b = Math.min(cols - 1, x + 2), c = Math.max(0, y - 2), d = Math.min(rows - 1, y + 2);
+        return Math.max(Math.abs(h[y * cols + b] - h[y * cols + a]) / (b - a || 1), Math.abs(h[d * cols + x] - h[c * cols + x]) / (d - c || 1)) * PER_KM; };   // metres a kilometre
+      const HILL = 40, MOUNT = 90;
+      /* Warmth: the equator and mild winters warm, height cold. Snow and ice above a line that
+         comes down as the world gets colder: about 2,400 m at 45° with a real winter, 900 m at 70°
+         with a hard one (the Alps' snow line is near 2,800 m, Norway's 900 to 1,500 m). */
+      const cold = clamp((S.latitude ?? 45) / 70 * 0.65 + (S.winter ?? 0.5) * 0.35, 0, 1);
+      const snowAt = base + 4500 - cold * 3600;
+      /* How well each kind grows, against each other: grassland best, cleared forest and
+         hills less, dry land and beach poorly, nothing on water, marsh, mountain or snow. The
+         whole table is scaled by 1.15, measured: with the river flats (below), the ground
+         within 2 km of a village grows what it did on the land before, 0.568 against 0.566 on
+         average over ten seeds (0.49 unscaled and without the flats), so a default world eats
+         as it did. */
+      const FERT = [0, 0, 0, 0.18, 0, 0.8, 0.55, 0.42, 0, 0.22, 0].map(f => f * 1.15);
+      const ORE = [0, 0, 0, 0.02, 0.02, 0.1, 0.12, 0.45, 0.8, 0.15, 0.3];
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        const i = y * cols + x;
+        if (ground[i] === 255) {
+          const wet = at(wet1, x, y) * 0.75 + at(wet2, x, y) * 0.25 + Math.max(0, 1 - near[i] / 8) * 0.3;
+          let byS = false; for (let d = 0; d < 8 && !byS; d++) { const nx = x + DX[d], ny = y + DY[d]; byS = nx >= 0 && ny >= 0 && nx < cols && ny < rows && ground[ny * cols + nx] === G_SEA; }
+          const leaf = 1.02 - S.forest * 0.6; let sp;
+          ground[i] = h[i] >= snowAt ? G_SNOW
+            : byS && h[i] < sl + 6 ? G_BEACH
+            : (sp = steep(i)) >= MOUNT && h[i] > base + 700 || h[i] > snowAt - 600 ? G_MOUNTAIN
+            : sp >= HILL ? (wet > leaf + 0.15 ? G_FOREST : G_HILLS)
+            : wet > 0.9 && near[i] <= 2 && fill[i] - h[i] < 0.5 && h[i] < base + 40 ? G_MARSH
+            : wet > leaf ? G_FOREST
+            : wet < 0.4 ? G_DRY : G_GRASS;
+        }
+        const k = ground[i];
+        /* Ground within a kilometre of a river or lake grows better, most at the bank: river
+           flats are laid down by floods (the Nile's, the Euphrates'), and why villages sit there. */
+        const flat = near[i] <= 4 ? 0.2 * (1 - near[i] / 5) : 0;
+        fert[i] = FERT[k] ? clamp(FERT[k] + flat + (at(rich, x, y) - 0.5) * 1.2 * (S.uneven ?? 0.6), 0.04, 1) : 0;
+        ore[i] = ORE[k] ? clamp(ORE[k] + (at(stone, x, y) - 0.5) * 0.6, 0, 1) : 0;
+      }
+      if (check && check.land) Object.assign(check.land, { down: down, fill: fill });   // tests only (test/land.test.mjs): how the water drains
+      for (let i = 0; i < n; i++) stock[i] = fert[i] * TILE_CAP * 1.6 * S.standing;   // "Crops in the fields"; 0.5 is what it always was
     })();
 
     /* ── who and what there is ─────────────────────────────────────────── */
@@ -759,10 +897,14 @@
     (function settle() {
       const want = S.factions * S.villages;
       const spots = [];
-      for (let tries = 0; tries < 6000 && spots.length < want; tries++) {
+      /* Spaced by the ground people can live on, not the whole map: a land that is half sea
+         holds its villages twice as close (TODO 4a). Past 6,000 tries any livable spot will do. */
+      let livable = 0; for (let i = 0; i < tiles; i++) if (GROUND[ground[i]].live) livable++;
+      for (let tries = 0; tries < 9000 && spots.length < want; tries++) {
         const x = 3 + R() * (cols - 6), y = 3 + R() * (rows - 6);
+        if (!GROUND[ground[tileAt(x, y)]].live) continue;            // never in the sea, on a mountain or in a marsh
         if (fert[tileAt(x, y)] < 0.35 && tries < 4000) continue;
-        const gap = Math.max(5, Math.sqrt(tiles / want) * 0.62) * (tries > 3000 ? 0.6 : 1);
+        const gap = tries > 6000 ? 1 : Math.max(5, Math.sqrt(Math.max(livable, 1) / want) * 0.62) * (tries > 3000 ? 0.6 : 1);
         if (spots.some(s => Math.hypot(s.x - x, s.y - y) < gap)) continue;
         spots.push({ x: x, y: y });
       }
@@ -2757,6 +2899,7 @@
     }
     function lookOver(x, y, tx, ty, from) {
       if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return;      // off the land: never a place to stand
+      if (deep(ground[ty * cols + tx])) return;                          // nor the sea or a lake
       const e = taken[takenSlot[ty * cols + tx]];
       if (!e || e.n < NEARLY) { ringsOver(x, y, tx, ty, tx + 1, ty + 1, from); return; }
       if (e.n === SUB * SUB) return;
@@ -2775,13 +2918,19 @@
        there either), and a square only fills while a crowd is placed, never
        empties, so a count only goes up. */
     const BLK = 8;
-    let blockFull = null, fullCols = 0;
-    function filled(e) { if (e.n === SUB * SUB) blockFull[(e.ty >> 3) * fullCols + (e.tx >> 3)]++; }
+    let blockFull = null, fullCols = 0, waterBlocks = null;
+    function filled(e) { if (e.n === SUB * SUB && !deep(ground[e.ty * cols + e.tx])) blockFull[(e.ty >> 3) * fullCols + (e.tx >> 3)]++; }
     function newBlocks() {
       fullCols = Math.ceil(cols / BLK); const brows = Math.ceil(rows / BLK);
       blockFull = new Int32Array(fullCols * brows);
       for (let by = 0; by < brows; by++) for (let bx = 0; bx < fullCols; bx++)
         blockFull[by * fullCols + bx] = BLK * BLK - (Math.min(cols, bx * BLK + BLK) - bx * BLK) * (Math.min(rows, by * BLK + BLK) - by * BLK);
+      /* The sea and lakes count as full: nobody may stand there (TODO 4a). Counted once a world. */
+      if (!waterBlocks) {
+        waterBlocks = new Int32Array(blockFull.length);
+        for (let i = 0; i < tiles; i++) if (deep(ground[i])) waterBlocks[((i / cols | 0) >> 3) * fullCols + ((i % cols) >> 3)]++;
+      }
+      for (let b = 0; b < blockFull.length; b++) blockFull[b] += waterBlocks[b];
     }
     /* The squares exactly j squares off (as a king moves) from the one stood on. */
     function lookShell(x, y, fx, fy, j, from) {
@@ -3075,7 +3224,7 @@
         for (const q of people) if (q.on && q.hp !== -99) markTaken(q);
       }
       if (fresh) for (const p of fresh) {
-        if (!free(p, p.x, p.y)) {
+        if (wet(p.x, p.y) || !free(p, p.x, p.y)) {          // nobody stands in the sea or a lake (TODO 4a)
           const x = p.x, y = p.y, fx = Math.floor(x), fy = Math.floor(y), widest = Math.max(cols, rows);
           let shell = -1;
           search: for (let ring = 1; ring < Math.max(cols, rows) * 4; ring++) {
@@ -3084,7 +3233,7 @@
               for (let k = 0; k < n; k++) {
                 const a = k / n * Math.PI * 2 + p.id;
                 const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
-                if (free(p, nx, ny)) { p.x = nx; p.y = ny; break search; }
+                if (!wet(nx, ny) && free(p, nx, ny)) { p.x = nx; p.y = ny; break search; }
               }
               continue;
             }
@@ -3108,7 +3257,7 @@
             for (let c = 0; c < cands.length; c++) {
               const k = cands[c], a = k / n * Math.PI * 2 + p.id;
               const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
-              if (takenAt(nx, ny)) continue;
+              if (takenAt(nx, ny) || wet(nx, ny)) continue;
               if (free(p, nx, ny)) { p.x = nx; p.y = ny; stood = true; break; }
             }
             for (let c = 0; c < cands.length; c++) candAt[cands[c]] = 0;
@@ -3888,7 +4037,7 @@
     if (!PLAIN) settle();
     return {
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
-      fert: fert, ore: ore, stock: stock, owner: owner,
+      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
       step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity,

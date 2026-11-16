@@ -758,7 +758,7 @@
   function hear(m, from) {
     if (from !== keeper) return;
     if (m.t === "started") {
-      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
+      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
       making = 0; $("slow").hidden = true; runTook = m.took;
       sizeCanvas();
       if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
@@ -1238,13 +1238,29 @@
      lightened in the picture instead, as it always did: a list of edges for
      millions of squares would be the cost this is here to avoid. */
   let tilesPic = null, soil = null, borders = null;
+  /* The colour of a square from its kind of ground (TODO 4a): water blue, snow white, bare
+     mountain grey; ground that grows things goes from dry tan to green by how well it grows,
+     forest darker. Item 5 is the real drawing of the land; this is so it can be seen. */
+  const WATER = [[38, 70, 98], [52, 92, 124], [70, 118, 150]];
+  function groundColour(k, f) {
+    if (k <= 2) return WATER[k].slice();
+    if (k === 10) return [214, 220, 226];
+    if (k === 8) return [112, 108, 104];
+    if (k === 4) return [70, 92, 72];
+    let c = mix([92, 80, 58], [52, 104, 62], f);
+    if (k === 6) c = mix(c, [32, 64, 40], 0.45);
+    else if (k === 7) c = mix(c, [118, 104, 76], 0.35);
+    else if (k === 3) c = mix(c, [176, 160, 112], 0.6);
+    else if (k === 9) c = mix(c, [146, 126, 86], 0.4);
+    return c;
+  }
   function paintLand() {
     const w = world, cols = w.cols, rows = w.rows, n = cols * rows, px = 8, big = cols * px > 4096;
     if (!tilesPic || !land || tilesPic.width !== cols || tilesPic.height !== rows) {
       tilesPic = document.createElement("canvas"); tilesPic.width = cols; tilesPic.height = rows;
       soil = new Uint8ClampedArray(n * 3);
       for (let i = 0; i < n; i++) {
-        let c = mix([92, 80, 58], [52, 104, 62], w.fert[i]);
+        let c = w.ground ? groundColour(w.ground[i], w.fert[i]) : mix([92, 80, 58], [52, 104, 62], w.fert[i]);
         /* Dry tan to green by how well it grows. A big land has its ore under
            the harvest's paleness and a small one over it; each as it was. */
         if (big && w.ore[i] > 0.55) c = mix(c, [96, 96, 104], (w.ore[i] - 0.55) * 1.2);
@@ -1948,7 +1964,7 @@
           w.advance(1 / 60, true);
           const s = Math.max(W / w.cols, H / w.rows), ox = (W - w.cols * s) / 2, oy = (H - w.rows * s) / 2;
           for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
-            const i = y * w.cols + x; let c = mix(mix([92, 80, 58], [52, 104, 62], w.fert[i]), [10, 14, 16], 0.45);
+            const i = y * w.cols + x; let c = mix(w.ground ? groundColour(w.ground[i], w.fert[i]) : mix([92, 80, 58], [52, 104, 62], w.fert[i]), [10, 14, 16], 0.45);
             if (w.owner[i] >= 0) c = mix(c, rgb(w.factions[w.villages[w.owner[i]].f].colour), 0.3);
             g.fillStyle = "rgb(" + c.join(",") + ")"; g.fillRect(ox + x * s, oy + y * s, s + 0.5, s + 0.5);
           }
