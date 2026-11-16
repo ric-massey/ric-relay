@@ -46,17 +46,22 @@ Do these in order. Do not skip one because the item looks small.
 4. **Ask Ric** the item's "Ric decides" questions, all at once, with your recommendation for
    each. Wait for his answers. Write them into the item with the date and his words. If the item
    has none, tell him the approach in a few lines and carry on.
-5. **Measure before.** Run `node --expose-gc test/bench.mjs` from this folder (`--quick` for the
-   three small rows) and note the numbers.
+5. **Measure before** — only what the item changes (see **Running the sim only as much as
+   needed**, below). For the engine's steps that is `node --expose-gc test/bench.mjs` from this
+   folder (`--quick` for the three small rows); for making a world, `--start`.
 6. **Build it**, following the rules below.
-7. **Test it.** Add tests for the new thing and list them in `/.github/checks.mjs`. Run
-   `node .github/checks.mjs` from the repo root, and `--slow` if the engine changed.
-8. **Measure after.** Run the bench again, and a year-long run of the default world. Add a row to
-   the Speed log. If the item made the world slower than its budget allows, fix that before going on.
+7. **Test it.** Add tests for the new thing and list them in `/.github/checks.mjs`. While
+   working, run `node .github/checks.mjs --only world-builder` from the repo root (add `--slow`
+   if the engine changed). Run the whole set, `node .github/checks.mjs` (and `--slow` if the
+   engine changed), once, just before pushing.
+8. **Measure after**, the same things as step 5. A year-long run of the default world only if
+   the item changed what happens once the world is running. Add a row to the Speed log. If the
+   item made the world slower than its budget allows, fix that before going on.
 9. **Look for bugs in the new code.** Read your own diff from the top as if somebody else wrote
-   it. Then try to break it: the smallest and largest land, 20 people and the most the machine
-   carries, every new setting at both ends, a year at top speed, a shared link, a phone-width
-   window. Open the page in a browser and watch it; a green test is not the same as it working.
+   it. Then try to break it, in the places the change reaches: the smallest and largest land,
+   20 people and the most the machine carries, every new setting at both ends, a year at top
+   speed (if the running world changed), a shared link, a phone-width window. If the page
+   changed, open it in a browser and watch it; a green test is not the same as it working.
    Fix what you find and say what you found.
 10. **Write it down.** README (what it does, why, the sources), `/AGENTS.md` if a rule changed,
     `PEOPLE-VISION.md` (tick the matching lines in its list), `EASTER_EGGS.md` if relevant.
@@ -69,6 +74,27 @@ Do these in order. Do not skip one because the item looks small.
 
 If an item turns out too big for one session, split it in this file into Na, Nb, … first, and
 finish Na properly rather than half-finishing N.
+
+## Running the sim only as much as needed
+
+Ric, 2026-11-15: "we are running the sim all the time. do we really need to run it that much?"
+No. Long runs are for proving something they can prove; check against what the item touched.
+
+- **Check what changed, not everything.** A change to how a world is made (who stands where,
+  what they own) is proved the same world by comparing every person right after `create()`
+  against the old code: the engine is fixed by its seed, so the same start is the same year.
+  Run a year, or step-for-step tests, only when the change reaches the running world.
+- **Time only what the item is meant to speed up.** `bench.mjs --start` times making worlds
+  and runs no days; the full bench is for changes to the steps.
+- **One run each way is enough for a big difference.** This machine drifts about 10% from run to
+  run; take turns old, new, several times only when the answer is within that (the 5% budget
+  checks). A 16 s → 2 s change shows in one run.
+- **Keep the old answer instead of running the old code again.** Where a test compares against
+  the old engine, save what the old engine gave once (a short fingerprint in `test/`) and
+  compare against that.
+- **Only World Builder's checks while working** (`--only world-builder`); the whole site's set
+  once before the push.
+- **A browser only when the page changed.**
 
 ## Rules for every item
 
@@ -409,7 +435,7 @@ Research notes (2026-11-15):
 - The linked pages were read as search summaries; where two disagreed the thing was tried here.
   Every figure is one measured on this engine.
 
-### [ ] 3b. What item 3 measured and left
+### [x] 3b. What item 3 measured and left
 
 **Now** (measured 2026-11-15, the machine in the speed log):
 - **A big world is slow to start.** 10,000 people 0.9 s, 20,000 3.7 s, 40,000 16 s: four times the
@@ -439,7 +465,26 @@ the difference, measured, before going on.
 before, is within about 30% of what that world did.
 **Budget:** faster only.
 
+**Done 2026-11-15.** (a) A big world starts about 4 to 7 times sooner as the same world:
+100,000 people 102.6 s → 13–15 s, 40,000 14.1 → 3.4–3.8 s (README, "A big world starts in time").
+(b) A world run on Max for ten seconds is remembered in the browser, and the setup page then says
+what it really held. Left out: start-up still grows faster than the crowd (a million is still a
+long wait), and the frame cost (c) waits for item 20, as planned.
+
 Research notes:
+- **Nearest free spot.** Exact distance transforms ([Felzenszwalb and Huttenlocher](https://cs.brown.edu/people/pfelzens/papers/dt.pdf),
+  linear in the grid; the binary-image case is "distance to the nearest set pixel") find the
+  *nearest* free spot. The engine puts a newcomer at the first free point of its own rings, which
+  is not always the nearest, so a transform would make a different world. Chosen instead: keep the
+  ring search point for point and cut only work that cannot change an answer (only points over
+  ground that could be free; gaps covered by several bodies marked; full 8 × 8 blocks skipped;
+  each piece filed once under the first ring that reaches it). Cost: a list of bodies per square
+  while a crowd is placed, thrown away after.
+- **Parents for the first children** was a seventh of a 100,000 start (children × couples). Sorted
+  couples, a binary search, the same random draws, and a Fenwick tree's "k-th" descent
+  ([Grey_Matter, Codeforces](https://codeforces.com/blog/entry/77616)) give the same parents.
+- **Tried and taken out:** remembering per starting square how far round it is all full. Packed
+  ground keeps slivers between bodies, so it never reached past a square or two.
 
 ### [ ] 4. Land from the seed: height, water, kinds of ground, any size
 
@@ -462,7 +507,60 @@ never run uphill; a default world still feeds itself for a year; the largest lan
 few seconds and fits in memory on an 8 GB machine.
 **Budget:** no slower per person; start-up may grow with the land, not with empty squares.
 
+Ric's answers (2026-11-15), shown a working preview of the land (height, sea, lakes, rivers,
+the ten kinds, sliders for sea, rivers, forest and hills):
+- **Kinds of ground: "Ten plus snow and ice".** Sea, lake, river, beach, marsh, grassland, forest,
+  hills, mountain, dry land, and snow/ice on high mountains and in cold worlds (the latitude
+  setting), which nobody can farm.
+- **How big "a state" is: 1,000 km across** (the recommendation: about Texas or France).
+- **How small a square may get:** "big lands need to keep the size of a house at least........ the
+  land doesnt change very much compared to the people. but a single square i should be able to
+  zoom in and pick out their house which they should be able to go in. there will be different
+  size of houses depending on how rich they are....". Read as: at any size of land, zooming in
+  shows detail down to a single house; the land itself changes little, so it need not be stored
+  that finely. Houses that people go into, sized by wealth, are item 7.
+  Asked whether that means 250 m stored squares with finer detail worked out from the seed only
+  for what is on screen: "im confused 6 billion swuares each square is less then a bite right? it
+  shouldnt be more than one.... 6 billion bites is that too large? if so then yes the 250m if its
+  not possible. the squares of the land should not take much space at all i want to be able to
+  zoom as far that i can for my computer if that makes sense...". It is too large: one byte a
+  square at house size (10 m) over 1,000 km is 6 GB for the kind of ground alone, more than a
+  browser tab may hold, and minutes to make. So the land is stored at 250 m (about 10 bytes a
+  square: 1,000 km is about 100 MB) and zooming in works out finer detail from the seed for the
+  part on screen only, as far in as anybody wants, at the cost of the screen and not the land.
+  That zoom is drawing, so it goes with item 5; houses with item 7.
+- **Split** (2026-11-15), so each part is finished properly: **4a** the land itself at 250 m
+  squares, up to 1,000 km: height, sea, lakes, rivers, the eleven kinds, fertility and ore from
+  the kind, the settings, villages on ground that can be lived on, nobody standing in deep water,
+  fields only on ground that can be farmed. **4b** crossing: walking round sea and lakes, slower
+  through forest, marsh, hills and over rivers, mountains nearly closed.
+
 Research notes:
+- **Height.** Smooth noise in several sizes is the usual start (Red Blob Games,
+  [terrain from noise](https://www.redblobgames.com/maps/terrain-from-noise/)); the engine already
+  has a smooth-noise layer (`land()` in `people.js`). Real erosion (the stream-power law, E = K·A^m·S^n,
+  solved implicitly by Braun and Willett's Fastscape: [Landlab](https://landlab.readthedocs.io/en/latest/reference/components/stream_power.html);
+  a worked hobby version: [Frozen Fractal](https://frozenfractal.com/blog/2025/6/6/around-the-world-23-hydraulic-erosion/))
+  carves believable valleys but runs many passes over every square, which a 500 km land (2.5
+  million squares) cannot afford at start-up. Chosen: noise for height, no erosion pass; rivers
+  come from the water step below.
+- **Water runs downhill.** Fill the hollows first, then give each square one downhill neighbour of
+  eight (D8) and count how much ground drains through it; a square is river where that count
+  passes a threshold (O'Callaghan and Mark 1984, as summarised in [Tarboton's slides](https://brezak.irpi.cnr.it/images/slides/tarboton_low.pdf)
+  and [SAGA's flow accumulation](https://saga-gis.sourceforge.io/saga_tool_doc/9.4.1/ta_hydrology_0.html)).
+  Hollows: Priority-Flood (Barnes, Lehman and Mulla 2014, [arXiv 1511.04463](https://arxiv.org/pdf/1511.04463)):
+  flood in from the edges with a priority queue, O(n log n), twenty lines of pseudocode; a hollow
+  deep and wide enough becomes a lake, the rest drain over their lip. Filled ground always has a
+  way down, so a river reaches the sea or a lake and never runs uphill by construction. Red Blob's
+  [mapgen4](https://www.redblobgames.com/maps/mapgen4) does the same in spirit: rain everywhere,
+  only the bigger flows drawn as rivers ([rivers](https://www.redblobgames.com/maps/rivers/)).
+- **Kinds of ground.** Whittaker's diagram places biomes by yearly warmth and rain; its lines are
+  drawn by hand and differ from book to book ([Wikipedia, Biome](https://Wikipedia.com/wiki/Biome)).
+  Red Blob uses height for warmth and distance to water for wetness. Chosen: warmth from the
+  existing "latitude" setting less height; wetness from rain noise and nearness to water; the kind
+  from those two plus height and slope. Fertility and ore then follow from the kind.
+- **Holding a big land.** Every square in typed arrays (as now) is about 4 bytes a number: 500 km
+  × 310 km is 2.5 million squares, ~10 MB a number. A land twice as wide is four times that.
 
 ### [ ] 5. Drawing the land so it can be read, at three zooms
 
@@ -751,4 +849,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-15 | 2b | Intel Xeon 2.3 GHz, 16 GB | 2.6 s a day, 117× | 5.7 s a day, 52× | 0.15 and 1.2 KB at the start | a person looked at on 22% and 9% of steps; **a seed is a different world from this row on** (the 5,000 row is one world against another; five seeds average the same either way); handed over in frames with the page's word costs no more than in one piece |
 | 2026-11-15 | 2b | AMD Ryzen 5 3600 (the Windows desktop item 3 was built on), 24 GB | 2.6 s a day, 116× | 5.7 s a day, 53× | 0.20 and 1.15 KB at the start | the engine as item 3 found it, on the machine item 3 was built on; a 20,000 start 3.7 s |
 | 2026-11-15 | 3 | AMD Ryzen 5 3600, 24 GB | 2.8 s a day, 106× | 6.0 s a day, 50× | 0.20 and 1.18 KB at the start | same world, and the same speed: run turn about with the row above three times, 20,000 people took 6.43, 6.43, 6.37 s before and 6.39, 6.45, 6.36 s after (this machine wanders 10% from one run to the next, which is all the two rows differ by); a year of the default world 123 s before, 124 s after, identical state. **In a browser, 20,000 people flat out:** the page 7 frames a second → every frame; the clock about 15× → about 37× in the same stretch |
+| 2026-11-15 | 3b | AMD Ryzen 5 3600, 24 GB | *not run: the running world is unchanged* | *not run* | | starts only (`bench.mjs --start`), same world: 10,000 0.86 → 0.56 s, 20,000 3.55 → 1.52 s, 40,000 14.1 → 3.8 s, 100,000 102.6 → 14.9 s |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

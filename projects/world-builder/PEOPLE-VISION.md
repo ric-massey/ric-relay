@@ -890,11 +890,13 @@ when it is built.
 - [x] Starting a big world in seconds, not half a minute. (2026-11-15: 20,000 people, 25.7 → 2.6 s.)
 - [x] No fixed top on the number of people. (2026-11-15, item 3: the slider sweeps to 20,000 and a
   typed number or a link goes past it. A very big world is still slow to *start* — four times
-  the wait for twice the people — which is `TODO.md` item 3b.)
+  the wait for twice the people. Item 3b, 2026-11-15: the same world starts 4 to 7 times sooner,
+  100,000 people 102.6 → about 14 s.)
 - [x] The readout: what this computer can carry, shown on the setup page, never a block.
   (2026-11-15, item 3: the world as set is made out of sight and run for three seconds, and one
   line under "How many people" says how fast it went — Ric's choice of three mock-ups. Right to
-  about a third for a world's first days and not after: item 3b.)
+  about a third for a world's first days and not after. Item 3b, 2026-11-15: a world run on Max is
+  remembered in the browser, and the line then says what it really held.)
 
 **13. Being right**
 - [ ] Where each real number comes from (yields, walking, weapons, sickness), written down

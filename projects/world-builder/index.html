@@ -559,11 +559,40 @@
   const figures = v => (v >= 100 ? Number(v.toPrecision(2)).toLocaleString("en-US") : v >= 10 ? String(Math.round(v)) : v.toFixed(1));
   const yearTakes = x => { const m = 365 * window.WBPeople.DAY_SECONDS / x / 60; return m < 1.5 ? Math.round(m * 60) + " seconds" : m < 90 ? Math.round(m) + " minutes" : m < 36 * 60 ? figures(m / 60) + " hours" : figures(m / 1440) + " days"; };
   function trialSettings() { const v = Object.assign({}, values); delete v.rate; return v; }
+  /* What a world really did (TODO 3b). A try-out sees a world's first days,
+     and a world gets cheaper or dearer by two to five times over its first
+     ten. So when a world has run on Max for ten seconds or more, the speed
+     it held there, frames and all, is kept in this browser against its
+     settings (the newest twenty), and the next time those settings are
+     chosen that is what is said, with no try-out. Only this browser keeps
+     it; with nothing kept, the try-out speaks as before. */
+  const HELD = "wb-people-held";
+  let runKey = "", runTook = 0, heldSaved = 0;
+  function heldBook() { try { const b = JSON.parse(localStorage.getItem(HELD) || "{}"); return b && typeof b === "object" ? b : {}; } catch (e) { return {}; } }
+  function heldFor(key) { const r = heldBook()[key]; return r && r.x > 0 && r.people > 0 ? r : null; }
+  function keepHeld(key, r) {
+    try {
+      const b = heldBook(); b[key] = r;
+      const keys = Object.keys(b).sort((a, c) => (b[c].at || 0) - (b[a].at || 0));
+      for (const k of keys.slice(20)) delete b[k];
+      localStorage.setItem(HELD, JSON.stringify(b));
+    } catch (e) { /* no storage here: the try-out still speaks */ }
+  }
+  function heldText(r) {
+    const x = r.x, limit = Math.max(20, Number((r.people * x / STEADY).toPrecision(2))).toLocaleString("en-US");
+    return "Last time on this computer, these " + r.people.toLocaleString("en-US") + " people ran at about " + figures(x) + "× on Max" +
+      (r.days >= 1 ? ", to day " + Math.floor(r.days).toLocaleString("en-US") : "") +
+      (x < 1 ? ", slower than the clock’s 1×." : " (a year every " + yearTakes(x) + ").") +
+      (x >= STEADY ? " It should stay above " + STEADY + "× up to roughly " + limit + " people." : " For " + STEADY + "× or better, roughly " + limit + " people.") +
+      (r.took >= 2 ? " It took about " + Math.round(r.took) + " seconds to start." : "");
+  }
   function stopTrial() { clearTimeout(trialTimer); trialTimer = 0; if (trial) { trial.stop(); trial = null; } }
   function tryOut() {
     const el = $("canrun");
     if (mode !== "people" || !el) return;
     const key = JSON.stringify(trialSettings());
+    const was = heldFor(key);
+    if (was) { stopTrial(); triedKey = key; said(heldText(was), was.x < 1); return; }
     if (key === triedKey && (tried || trial || trialTimer)) {
       /* Already tried, or being tried. The form may have been built again since, so say it again. */
       if (tried && el.textContent !== triedText) { el.textContent = triedText; el.classList.toggle("slow", triedSlow); }
@@ -730,7 +759,7 @@
     if (from !== keeper) return;
     if (m.t === "started") {
       world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
-      making = 0; $("slow").hidden = true;
+      making = 0; $("slow").hidden = true; runTook = m.took;
       sizeCanvas();
       if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
       keeper.send({ t: "clock", rate: rate, paused: paused || document.hidden });
@@ -741,6 +770,10 @@
       $("slow").textContent = "This world could not be made on this computer (" + m.why + "). Fewer people, or less land, will.";
     } else if (m.t === "frame") {
       asked = false;
+      if (m.heldFor >= 10 && runKey && performance.now() - heldSaved > 5000) {
+        heldSaved = performance.now();
+        keepHeld(runKey, { x: m.held, days: m.days, people: values.people, took: runTook, at: Date.now() });
+      }
       /* Nothing has changed since the last one: only how fast it is going. */
       if (m.same) { if (snap) { snap.speed = m.speed; snap.rate = m.rate; snap.paused = m.paused; } return; }
       /* A frame of a very big world takes the keeper a while to read off;
@@ -790,6 +823,7 @@
     sizeCanvas();
     if (mode === "people") {
       making = performance.now();
+      runKey = JSON.stringify(trialSettings()); runTook = 0; heldSaved = 0;
       keeper = connect(hear);
       keeper.send({ t: "start", values: values });
     } else if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });

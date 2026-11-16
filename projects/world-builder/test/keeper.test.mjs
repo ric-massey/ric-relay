@@ -15,7 +15,10 @@
 //      leaves nothing running;
 //   5. people has no top, and the slider's sweep is what it was;
 //   6. the two files can be written out again as the text of a worker, which
-//      is how the page starts one (and how it still works opened as a file).
+//      is how the page starts one (and how it still works opened as a file);
+//   7. what a world held on Max (TODO 3b): counted only on Max and not while
+//      paused, from the time owed rather than a back tab's long sleep, and
+//      started afresh with each world.
 //
 // node projects/world-builder/test/keeper.test.mjs
 import assert from "node:assert/strict";
@@ -286,6 +289,31 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   const f = posted.pop();
   assert.equal(f.t, "frame"); assert.equal(f.k, 60);
   assert.ok(f.days > 0, "and its world is running");
+}
+
+// 7. What a world held on Max.
+{
+  const k = keeper();
+  k.ask({ t: "start", values: { people: 120, seed: 2, map: 10 } });
+  const frame = () => k.ask(whole({ cols: 10, rows: 10 }, { fresh: false }));
+  k.host.receive({ t: "clock", rate: 16 });
+  for (let n = 0; n < 20; n++) k.host.run(0.05, 5);
+  assert.equal(frame().heldFor, 0, "nothing is counted below Max");
+  k.host.receive({ t: "clock", rate: 1000 });
+  for (let n = 0; n < 20; n++) k.host.run(0.05, 5);
+  let f = frame();
+  assert.ok(Math.abs(f.heldFor - 1) < 1e-9, "a second on Max is a second: " + f.heldFor);
+  assert.ok(f.held > 16, "and it went faster than 16×: " + f.held);
+  const before = f.heldFor;
+  k.host.run(30, 5);                                        // a back tab woken after half a minute
+  assert.ok(frame().heldFor - before <= 0.1 + 1e-9, "a long sleep counts a tenth of a second at most");
+  k.host.receive({ t: "clock", paused: true });
+  k.host.run(0.05, 5);
+  f = frame();
+  assert.ok(f.heldFor - before <= 0.1 + 1e-9, "nothing is counted while paused");
+  assert.ok(f.days >= 0, "and the day is told with it");
+  k.ask({ t: "start", values: { people: 120, seed: 3, map: 10 } });
+  assert.equal(frame().heldFor, 0, "a new world starts its count again");
 }
 
 console.log("world-builder keeper: ok");

@@ -832,11 +832,37 @@
         /* And the children who are here on the first day belong to somebody,
            or nobody would feed them. */
         const grown = people.filter(p => p.home === v.id && adult(p));
+        /* Each child picks among the couples both older than the child by a
+           grown-up's age, in the order they paired. That list was made afresh
+           for each child: children times couples, a seventh of making a
+           100,000-person world (TODO 3b). Now the couples are sorted by their
+           younger partner, so how many qualify is a search; the same random
+           draws are made in the same order, and the couple a draw names, the
+           one at that place in pairing order, is read off afterwards (a
+           Fenwick tree, the children with the fewest couples first). Same
+           parents as before. */
+        const younger = couples.map((k, i) => [Math.min(k[0].age, k[1].age), i]).sort((a, b) => b[0] - a[0]);
+        const asks = [];
         for (const c of people) {
           if (c.home !== v.id || adult(c)) continue;
-          const old = couples.filter(k => k[0].age > c.age + S.grown && k[1].age > c.age + S.grown);
-          if (old.length) { const k = pick(old); c.mum = k[0].id; c.dad = k[1].id; k[0].kids++; k[1].kids++; }
+          const t = c.age + S.grown;
+          let lo = 0, hi = younger.length;                       // how many couples' younger partner is older than t
+          while (lo < hi) { const m = (lo + hi) >> 1; if (younger[m][0] > t) lo = m + 1; else hi = m; }
+          if (lo) asks.push([c, lo, Math.floor(R() * lo)]);       // what pick() drew from a list `lo` long
           else if (grown.length) { const g = pick(grown); c.mum = g.id; g.kids++; }
+        }
+        if (asks.length) {
+          const N = couples.length, tree = new Int32Array(N + 1);
+          let top = 1; while (top * 2 <= N) top *= 2;
+          let added = 0;
+          asks.sort((a, b) => a[1] - b[1]);
+          for (const [c, n, at] of asks) {
+            for (; added < n; added++) for (let i = younger[added][1] + 1; i <= N; i += i & -i) tree[i]++;
+            let pos = 0, want = at + 1;                            // the (at+1)th, in pairing order, of those added
+            for (let step = top; step; step >>= 1) if (pos + step <= N && tree[pos + step] < want) { pos += step; want -= tree[pos]; }
+            const k = couples[pos];
+            c.mum = k[0].id; c.dad = k[1].id; k[0].kids++; k[1].kids++;
+          }
         }
         /* Past the middle of "How settled they are", people already have
            friends among their neighbours — up to six each. */
@@ -2586,8 +2612,18 @@
        together, thrown away after. */
     const SUB = 16;
     let taken = null, takenSlot = null;   // the marked squares, and which of them each square of the land is (0: none yet)
+    function takenSquare(tx, ty) {
+      const key = ty * cols + tx;
+      let e = taken[takenSlot[key]];
+      if (!e) { takenSlot[key] = taken.length; taken.push(e = { a: new Uint8Array(SUB * SUB), n: 0, gaps: null, gapsAt: -1, tx, ty, b: [] }); }
+      return e;
+    }
     function markTaken(q) {
       const s = 1 / SUB, lim = (BODY - 1e-6) ** 2;
+      /* Each square a body could reach keeps the body's name, so a gap left
+         between bodies can be looked at again with them (`gapsOf`). */
+      for (let ty = Math.max(0, Math.floor(q.y - BODY)), ty1 = Math.min(rows - 1, Math.floor(q.y + BODY)); ty <= ty1; ty++)
+        for (let tx = Math.max(0, Math.floor(q.x - BODY)), tx1 = Math.min(cols - 1, Math.floor(q.x + BODY)); tx <= tx1; tx++) takenSquare(tx, ty).b.push(q);
       const gx1 = Math.floor((q.x + BODY) * SUB), gy1 = Math.floor((q.y + BODY) * SUB);
       for (let gy = Math.floor((q.y - BODY) * SUB); gy <= gy1; gy++) for (let gx = Math.floor((q.x - BODY) * SUB); gx <= gx1; gx++) {
         // the corner of this small square furthest from the body
@@ -2595,10 +2631,9 @@
         if (ax * ax + ay * ay >= lim) continue;
         const tx = Math.floor(gx / SUB), ty = Math.floor(gy / SUB);
         if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) continue;
-        const key = ty * cols + tx;
-        let e = taken[takenSlot[key]]; if (!e) { takenSlot[key] = taken.length; taken.push(e = { a: new Uint8Array(SUB * SUB), n: 0 }); }
+        const e = takenSquare(tx, ty);
         const i = (gy - ty * SUB) * SUB + gx - tx * SUB;
-        if (!e.a[i]) { e.a[i] = 1; e.n++; }
+        if (!e.a[i]) { e.a[i] = 1; e.n++; filled(e); }
       }
     }
     function takenAt(x, y) {
@@ -2608,21 +2643,167 @@
       if (!e) return false;
       return e.a[Math.min(SUB - 1, Math.floor((y - fy) * SUB)) * SUB + Math.min(SUB - 1, Math.floor((x - fx) * SUB))] === 1;
     }
-    /* Is every square the circle of radius r round (x, y) crosses marked all
-       over (or off the land)? Row by row: within a row of squares the circle
-       lies between two distances either side of x. */
-    function ringTaken(x, y, r) {
-      const full = (tx, ty) => { if (tx < 0 || tx >= cols) return true; const e = taken[takenSlot[ty * cols + tx]]; return !!e && e.n === SUB * SUB; };
-      const ty1 = Math.floor(y + r);
-      for (let ty = Math.floor(y - r); ty <= ty1; ty++) {
-        if (ty < 0 || ty >= rows) continue;
-        const near = y < ty ? ty - y : y > ty + 1 ? y - ty - 1 : 0, far = Math.max(Math.abs(ty - y), Math.abs(ty + 1 - y));
-        if (near > r) continue;
-        const hi = Math.sqrt(r * r - near * near) + 1e-9, lo = far >= r ? 0 : Math.max(0, Math.sqrt(r * r - far * far) - 1e-9);
-        for (let tx = Math.floor(x + lo), e = Math.floor(x + hi); tx <= e; tx++) if (!full(tx, ty)) return false;
-        for (let tx = Math.floor(x - hi), e = Math.floor(x - lo); tx <= e; tx++) if (!full(tx, ty)) return false;
+    /* ── only the points of a ring that could be free (2026-11-15, TODO 3b) ──
+       Until then (`ringTaken`) a ring was skipped only when every square it
+       crossed was marked all over. But in a
+       packed crowd one square in five is not quite — a sliver between two
+       bodies that neither covers alone, or a real gap too small to matter —
+       so nearly every ring was walked point by point after all, each point a
+       sine, a cosine and a look at the finer map: 91% of making a big world,
+       and four times the wait for twice the people (40,000: 16 s).
+
+       So the points of a ring that could be anything but taken are written
+       down first: the points over a square with no marks or few, and, in a
+       square marked nearly all over, the points over its few unmarked small
+       squares (`gaps`, kept with the square and made again when its marks
+       change). Every other point lies
+       on a small square that is marked, where the finer map would have said
+       "taken" — so leaving it out changes nothing, and the points written
+       down are then tried in the order and by the tests they always were.
+       Everybody stands exactly where they stood (test/walking.test.mjs holds
+       it against the engine with no finer map at all).
+
+       Which points lie over a piece of ground is worked out from the angles
+       its corners are seen at from the middle, and a point is written down
+       if it is within a ten-thousandth of a step of that — far more than
+       arithmetic can be out by, so a point is never wrongly left out; one
+       wrongly put in is only tried and found taken. */
+    const NEARLY = SUB * SUB - 40, EDGE = 1e-6, TAU = Math.PI * 2, byNumber = (a, b) => a - b;
+    let candAt = new Uint8Array(512);
+    const candRoom = n => { if (candAt.length < n) candAt = new Uint8Array(n * 2); };
+    const cands = [];
+    /* A gap no one body covers may still be covered by two or three of them
+       together, and then no point in it is free (`free` turns down anywhere
+       nearer than a body's width to anybody, and every marked body is on
+       the land's lists). Such a gap was looked over again for each newcomer
+       who came near: most of a big start, and the reason a packed square is
+       almost never marked all over (100,000 people: 23 s). So a gap is cut
+       in sixteen and, if each piece is wholly within a body's width of one
+       of the bodies the square knows (marked the way `markTaken` marks),
+       it is marked too. Only points `free` would have turned down are left
+       out, so everybody still stands exactly where they did. */
+    const PIECE = 4;
+    function coveredGap(e, i) {
+      const s = 1 / SUB, t = s / PIECE, lim = (BODY - 1e-6) ** 2;
+      const gx0 = e.tx + (i % SUB) * s, gy0 = e.ty + Math.floor(i / SUB) * s, b = e.b;
+      for (let py = 0; py < PIECE; py++) for (let px = 0; px < PIECE; px++) {
+        const x0 = gx0 + px * t, y0 = gy0 + py * t, x1 = x0 + t, y1 = y0 + t;
+        let covered = false;
+        for (let k = 0; k < b.length && !covered; k++) {
+          const q = b[k];
+          const ax = Math.max(Math.abs(x0 - q.x), Math.abs(x1 - q.x)), ay = Math.max(Math.abs(y0 - q.y), Math.abs(y1 - q.y));
+          covered = ax * ax + ay * ay < lim;
+        }
+        if (!covered) return false;
       }
       return true;
+    }
+    function gapsOf(e) {
+      if (e.gapsAt !== e.n) {
+        for (let i = 0; i < SUB * SUB; i++) if (!e.a[i] && coveredGap(e, i)) { e.a[i] = 1; e.n++; filled(e); }
+        const g = e.gaps || (e.gaps = []);
+        g.length = 0;
+        for (let i = 0; i < SUB * SUB; i++) if (!e.a[i]) g.push(i);
+        e.gapsAt = e.n;
+      }
+      return e.gaps;
+    }
+    /* Write down every point k of the ring (n of them, the first at the angle
+       `turn`) that may lie over the ground x0..x1, y0..y1, seen from (x, y). */
+    function overGround(x, y, n, turn, x0, y0, x1, y1) {
+      let lo, hi;
+      if (x > x0 - EDGE && x < x1 + EDGE && y > y0 - EDGE && y < y1 + EDGE) { lo = 0; hi = n - 1; }   // standing on it: any point may be
+      else {
+        const mid = Math.atan2((y0 + y1) / 2 - y, (x0 + x1) / 2 - x);
+        let least = 0, most = 0;
+        for (let c = 0; c < 4; c++) {
+          let d = Math.atan2((c < 2 ? y0 : y1) - y, (c & 1 ? x1 : x0) - x) - mid;
+          if (d > Math.PI) d -= TAU; else if (d < -Math.PI) d += TAU;
+          if (d < least) least = d; if (d > most) most = d;
+        }
+        const per = n / TAU, u = (mid - turn) * per;
+        lo = Math.ceil(u + least * per - 1e-4); hi = Math.floor(u + most * per + 1e-4);
+        if (hi - lo >= n - 1) { lo = 0; hi = n - 1; }
+      }
+      for (let k = lo; k <= hi; k++) {
+        const m = ((k % n) + n) % n;
+        if (!candAt[m]) { candAt[m] = 1; cands.push(m); }
+      }
+    }
+    /* Which rings come over which ground. Walking the squares each ring
+       crosses was still most of a start, because the same squares are
+       crossed again by the next ring and the next. So the ground round a
+       newcomer is looked over once instead, a square shell of squares at a
+       time as the rings reach it, and every piece that is not wholly taken —
+       a square with few marks, or a gap in one nearly full — is written down
+       once, under the first ring that reaches it (`startsAt`), with the last
+       one, which its nearest and furthest corners give. As the rings go out,
+       the pieces they reach join a running list (`reached`) and leave it once
+       passed. (Writing each piece against every ring it would meet was a
+       seventh of a big start, mostly for rings the search never got to.) A
+       ring with no piece reached has no point that could be free, and is passed
+       without a look. */
+    const HALF = BODY * 0.5;
+    const startsAt = [], startRings = [], reached = [];
+    function ringsOver(x, y, x0, y0, x1, y1, from) {
+      const nx = x < x0 ? x0 - x : x > x1 ? x - x1 : 0, ny = y < y0 ? y0 - y : y > y1 ? y - y1 : 0;
+      const fx = Math.max(Math.abs(x0 - x), Math.abs(x1 - x)), fy = Math.max(Math.abs(y0 - y), Math.abs(y1 - y));
+      const last = Math.floor((Math.sqrt(fx * fx + fy * fy) + EDGE) / HALF);
+      const first = Math.max(from, Math.ceil((Math.sqrt(nx * nx + ny * ny) - EDGE) / HALF));
+      if (first > last) return;
+      let h = startsAt[first]; if (!h) h = startsAt[first] = [];
+      if (!h.length) startRings.push(first);
+      h.push(x0, y0, x1, y1, last);
+    }
+    function lookOver(x, y, tx, ty, from) {
+      if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return;      // off the land: never a place to stand
+      const e = taken[takenSlot[ty * cols + tx]];
+      if (!e || e.n < NEARLY) { ringsOver(x, y, tx, ty, tx + 1, ty + 1, from); return; }
+      if (e.n === SUB * SUB) return;
+      const g = gapsOf(e), s = 1 / SUB;
+      for (let k = 0; k < g.length; k++) {
+        const i = g[k], gx0 = tx + (i % SUB) * s, gy0 = ty + Math.floor(i / SUB) * s;
+        ringsOver(x, y, gx0, gy0, gx0 + s, gy0 + s, from);
+      }
+    }
+    /* Squares full all over, counted by blocks of 8 × 8 (`blockFull`).
+       A newcomer's search goes out over squares (`lookShell`), and in a
+       big crowd two in three of them are full, so nothing on them could be
+       free — but they were each looked at, by every newcomer who came near:
+       the wait grew with the square of the crowd. A block all full is now
+       passed in one look. Off the land counts as full (nobody may stand
+       there either), and a square only fills while a crowd is placed, never
+       empties, so a count only goes up. */
+    const BLK = 8;
+    let blockFull = null, fullCols = 0;
+    function filled(e) { if (e.n === SUB * SUB) blockFull[(e.ty >> 3) * fullCols + (e.tx >> 3)]++; }
+    function newBlocks() {
+      fullCols = Math.ceil(cols / BLK); const brows = Math.ceil(rows / BLK);
+      blockFull = new Int32Array(fullCols * brows);
+      for (let by = 0; by < brows; by++) for (let bx = 0; bx < fullCols; bx++)
+        blockFull[by * fullCols + bx] = BLK * BLK - (Math.min(cols, bx * BLK + BLK) - bx * BLK) * (Math.min(rows, by * BLK + BLK) - by * BLK);
+    }
+    /* The squares exactly j squares off (as a king moves) from the one stood on. */
+    function lookShell(x, y, fx, fy, j, from) {
+      if (j === 0) { lookOver(x, y, fx, fy, from); return; }
+      lookRow(x, y, fy - j, fx - j, fx + j, from); lookRow(x, y, fy + j, fx - j, fx + j, from);
+      lookColumn(x, y, fx - j, fy - j + 1, fy + j - 1, from); lookColumn(x, y, fx + j, fy - j + 1, fy + j - 1, from);
+    }
+    function lookRow(x, y, ty, a, b, from) {
+      if (ty < 0 || ty >= rows) return;
+      const row = (ty >> 3) * fullCols;
+      for (let tx = Math.max(0, a), last = Math.min(cols - 1, b); tx <= last;) {
+        if (blockFull[row + (tx >> 3)] === BLK * BLK) { tx = (tx | 7) + 1; continue; }
+        lookOver(x, y, tx, ty, from); tx++;
+      }
+    }
+    function lookColumn(x, y, tx, a, b, from) {
+      if (tx < 0 || tx >= cols) return;
+      const col = tx >> 3;
+      for (let ty = Math.max(0, a), last = Math.min(rows - 1, b); ty <= last;) {
+        if (blockFull[(ty >> 3) * fullCols + col] === BLK * BLK) { ty = (ty | 7) + 1; continue; }
+        lookOver(x, y, tx, ty, from); ty++;
+      }
     }
     /* ── not visiting people with nothing to do (2026-11-15, TODO item 2) ──
        Until now every person was visited on every step, 1,440 times a day,
@@ -2890,21 +3071,52 @@
       } else if (freshList.length) { fresh = freshList.slice(); freshList.length = 0; }
       if (fresh && fresh.length >= 64 && MEMO) {
         taken = [null]; takenSlot = new Int32Array(cols * rows);
+        newBlocks();
         for (const q of people) if (q.on && q.hp !== -99) markTaken(q);
       }
       if (fresh) for (const p of fresh) {
         if (!free(p, p.x, p.y)) {
-          const x = p.x, y = p.y;
+          const x = p.x, y = p.y, fx = Math.floor(x), fy = Math.floor(y), widest = Math.max(cols, rows);
+          let shell = -1;
           search: for (let ring = 1; ring < Math.max(cols, rows) * 4; ring++) {
             const r = ring * BODY * 0.5, n = Math.ceil(6.3 * r / BODY) + 1;
-            if (taken && ringTaken(x, y, r)) continue;
-            for (let k = 0; k < n; k++) {
-              const a = k / n * Math.PI * 2 + p.id;
-              const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
-              if (taken && takenAt(nx, ny)) continue;
-              if (free(p, nx, ny)) { p.x = nx; p.y = ny; break search; }
+            if (!taken) {
+              for (let k = 0; k < n; k++) {
+                const a = k / n * Math.PI * 2 + p.id;
+                const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
+                if (free(p, nx, ny)) { p.x = nx; p.y = ny; break search; }
+              }
+              continue;
             }
+            /* A crowd arriving together: only the points that could be free
+               ("only the points of a ring that could be free", above), in the
+               order they were always tried. */
+            for (const reach = Math.floor(r + EDGE) + 1; shell < reach && shell < widest;) lookShell(x, y, fx, fy, ++shell, ring);
+            const join = startsAt[ring];
+            if (join && join.length) { for (let i = 0; i < join.length; i++) reached.push(join[i]); join.length = 0; }
+            let kept = 0;                                          // the pieces this ring has gone past leave the list
+            for (let i = 0; i < reached.length; i += 5) if (reached[i + 4] >= ring) {
+              if (kept !== i) for (let j = 0; j < 5; j++) reached[kept + j] = reached[i + j];
+              kept += 5;
+            }
+            reached.length = kept;
+            if (!kept) continue;
+            candRoom(n);
+            for (let i = 0; i < kept; i += 5) overGround(x, y, n, p.id, reached[i], reached[i + 1], reached[i + 2], reached[i + 3]);
+            if (cands.length > 1) cands.sort(byNumber);
+            let stood = false;
+            for (let c = 0; c < cands.length; c++) {
+              const k = cands[c], a = k / n * Math.PI * 2 + p.id;
+              const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
+              if (takenAt(nx, ny)) continue;
+              if (free(p, nx, ny)) { p.x = nx; p.y = ny; stood = true; break; }
+            }
+            for (let c = 0; c < cands.length; c++) candAt[cands[c]] = 0;
+            cands.length = 0;
+            if (stood) break search;
           }
+          for (let i = 0; i < startRings.length; i++) startsAt[startRings[i]].length = 0;
+          startRings.length = 0; reached.length = 0;
         }
         if (taken) markTaken(p);
         // Initial residents and newborns wait where they actually fit. Sending
@@ -2914,7 +3126,7 @@
         put(p); p.on = true;
         if (!PLAIN) { shifted.push(p); came(p.x, p.y); }
       }
-      taken = null; takenSlot = null;
+      taken = null; takenSlot = null; blockFull = null;
       rebucket();
       if (PLAIN) { visits += people.length; for (const p of people) if (p.hp !== -99) act(p); return; }
       if (AUDIT && activityTicks % 12 === 0) audit();   // the lists, five times an hour; the people, every step (below)

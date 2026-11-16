@@ -663,9 +663,11 @@ nobody had linked was a page nobody could find.
   replace it with a table of machines or a guess from `navigator.hardwareConcurrency`. The land is
   painted a pixel a square with the faction borders drawn over it as a list of edges; the old
   painter, a square at a time, was 60–280 ms a frame and is what kept a big world from being
-  smooth once the engine had moved. Two things item 3 could not do are item 3b of `TODO.md`: a
-  very big world is slow to *start* (the wait grows with the square of the head count), and the
-  line knows only a world's first days. The speed its second sentence means is 16× (`STEADY`),
+  smooth once the engine had moved. Item 3b of `TODO.md` (2026-11-15) made a
+  big world start 4 to 7 times sooner as the same world (100,000 people 102.6 → about 14 s), and
+  a world run on Max is remembered in the browser so the line then says what it really held.
+  World Builder items check only what they change (`TODO.md`, "Running the sim only as much as
+  needed"). The speed its second sentence means is 16× (`STEADY`),
   which Ric chose ("Keep 16×") over a year an hour and over keeping up at 1×.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,

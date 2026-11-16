@@ -1090,7 +1090,7 @@ ran 892,000 times a day and found a way 123 times.
   the squares the search actually looked at.
 - **"Is anybody in the way" reads one, two or four squares, not always nine** (`free`): only the
   squares a body's width from the spot can touch.
-- **A crowd is placed with a finer map** (`markTaken`, `takenAt`, `ringTaken`): sixteen small
+- **A crowd is placed with a finer map** (`markTaken`, `takenAt`; `ringTaken` until item 3b): sixteen small
   squares to a square's side, each marked when it lies wholly inside one body's reach. A spot on a
   marked square is taken without looking; a ring crossing only fully marked squares is skipped.
 - **Who takes an orphan in** is found in one pass over the population (`findCarers` in `census`),
@@ -1511,6 +1511,68 @@ jammed — which is the world changing, and nothing three seconds can know. So t
 first", and the running world says what it is doing now. The second sentence means 16×, the
 fastest clock that runs exactly as asked: Ric's choice ("Keep 16×"), over a year an hour and over
 keeping up at 1× (`TODO.md`, item 3). It is one constant, `STEADY` in `index.html`.
+
+### A big world starts in time, and the readout learns from the world (2026-11-15)
+
+TODO item 3b. Two things: making a big world took a time that grew with the square of the crowd,
+and the setup page's line only knew a world's first days.
+
+**Making a world.** Nearly all of a big start is placing people who arrive where somebody already
+stands: each searches rings outward from their spot (`actionTick`, "Initial residents") until a
+point is free. Everybody must stand exactly where they stood before, so the search itself is kept,
+point for point, and only work that could not change an answer is cut:
+
+- **Only the points of a ring that could be free** (`overGround`, `lookShell`, `ringsOver`).
+  The ground round a newcomer is looked over once, a shell of squares at a time as the rings reach
+  it. Each piece not wholly taken (a square with few marks, or a small gap in one nearly full) is
+  filed once under the first ring that reaches it and kept on a running list until the rings pass
+  it. A ring with nothing on the list is passed without a look; on the others only the points
+  over a listed piece are tried, in their old order.
+- **Gaps that two bodies cover between them are marked** (`coveredGap`). The finer map marks a
+  small square only when one body covers it all. A gap covered by two or three bodies together
+  was looked over again by every newcomer near it. Each square now keeps the bodies that reach
+  it, and a gap whose sixteen pieces are each within a body's width of one of them is marked:
+  `free` would have turned down every point in it.
+- **Full blocks are passed in one look** (`blockFull`, `lookRow`, `lookColumn`): squares
+  full all over are counted by blocks of 8 × 8, and a block all full is skipped.
+- **Parents for the first children** (`settle`): each child chose among the couples old enough,
+  a list made afresh per child (children × couples). The couples are now sorted by the younger
+  partner, so how many qualify is a binary search. The random draws are made in the same order,
+  and the couple a draw names is read off a Fenwick tree (binary indexed tree, the "find the
+  k-th" descent: [Grey_Matter's tutorial](https://codeforces.com/blog/entry/77616)).
+
+Considered and not used: an exact distance transform of the free ground (Felzenszwalb and
+Huttenlocher, [Distance Transforms of Sampled Functions](https://cs.brown.edu/people/pfelzens/papers/dt.pdf),
+linear in the grid) gives the *nearest* free spot, but the world has always put a newcomer at the
+first free point of its own rings of points, which is not always the nearest one, so a transform
+would make a different world. Remembering, for each starting square, how far round it is all full
+was tried and did nothing: packed ground keeps slivers between bodies, so few rings are wholly full.
+
+Same world: whole starting worlds (every person, the villages, the stats) compared against the
+engine before this change on eleven settings from 400 to 100,000 people (including one village,
+three, and "settled" at 0, 0.9 and 1), all identical; and `test/walking.test.mjs` still holds a
+crowd's places against the plain search. Measured with `test/bench.mjs --start` (Ryzen 5 3600):
+
+| People, land | Before | After |
+|---|---|---|
+| 10,000, 56 km | 0.86 s | 0.56 s |
+| 20,000, 80 km | 3.55 s | 1.52 s |
+| 40,000, 113 km | 14.1 s | 3.4–3.8 s |
+| 100,000, 179 km | 102.6 s | 13.3–14.9 s |
+
+Still more than twice the time for twice the people: a newcomer starts inside the packed crowd and
+the real holes between bodies have to be tried to keep the same world. A million is still a long
+wait.
+
+**What a world really did.** While a world runs on Max, the keeper (`people-host.js`) adds up the
+world's time and the real time (the time owed, at most a tenth of a second a turn, so a back tab
+asleep does not count as slowness; nothing while paused). After ten seconds on Max the page keeps
+that speed in this browser, with the day it reached and how long the world took to start, against
+the world's settings (`localStorage`, `wb-people-held`, the newest twenty). The next time those
+settings are chosen the setup page says that instead of trying the world out: "Last time on this
+computer, these 400 people ran at about 2,100× on Max, to day 70 …", with the 16× head count
+worked from it. In a headless Edge the default world's try-out said 1,100×; on Max it held
+2,100× to day 70, and the setup page then said so. With nothing kept, the try-out speaks as before.
 
 ### War has to be fed (2026-11-14)
 

@@ -3,6 +3,10 @@
 //   node --expose-gc projects/world-builder/test/bench.mjs          the standard table
 //   node --expose-gc projects/world-builder/test/bench.mjs --quick  the three small rows only
 //   node --expose-gc projects/world-builder/test/bench.mjs 3000 30  one world: people, km across
+//   node --expose-gc projects/world-builder/test/bench.mjs --start  making big worlds only, no days
+//     run (10,000 to 100,000 people, a few minutes at most): for a change to how a
+//     world is made, which runs no differently once made (TODO.md, "Running the
+//     sim only as much as needed")
 //
 // Not a test and not in checks.mjs: its numbers are one machine's, so they go in
 // TODO.md's speed log with the machine named. Run it before and after any change
@@ -24,6 +28,17 @@ const cases = args.length >= 2 && !args[0].startsWith("-") ? [[+args[0], +args[1
 const gc = () => { if (global.gc) { global.gc(); global.gc(); } };
 const used = () => { gc(); const m = process.memoryUsage(); return m.heapUsed + m.arrayBuffers; };
 const pad = (v, n) => String(v).padEnd(n);
+if (args.includes("--start")) {
+  console.log(os.cpus()[0].model + ", node " + process.version);
+  console.log(pad("people", 8) + pad("land km", 9) + "start s");
+  for (const [n, map] of [[10000, 56], [20000, 80], [40000, 113], [100000, 179]]) {
+    const t = performance.now();
+    People.create({ people: n, map: map, seed: 7, plague: "none" });
+    console.log(pad(n, 8) + pad(map, 9) + ((performance.now() - t) / 1000).toFixed(2));
+    gc();
+  }
+  process.exit(0);
+}
 
 console.log(os.cpus()[0].model + ", " + Math.round(os.totalmem() / 2 ** 30) + " GB, node " + process.version + (global.gc ? "" : "  (no --expose-gc: memory is rough)"));
 console.log(pad("people", 8) + pad("land km", 9) + pad("start s", 9) + pad("s per day", 11) + pad("top speed", 11) + pad("µs/person-step", 16) + pad("visited", 9) + pad("MB", 8) + "KB per person");

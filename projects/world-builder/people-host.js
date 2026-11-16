@@ -48,6 +48,11 @@
   function create(People, send) {
     let world = null, rate = 1, paused = false;
     let simAcc = 0, wallAcc = 0, speed = 0;          // how fast it is really going, over the last half second
+    /* How fast it went on Max, over the whole run so far (TODO 3b): world time
+       and real time while the clock was on Max and not paused. The setup page
+       remembers it, so the next time these settings are chosen it can say
+       what the world really held rather than what its first days promised. */
+    let maxSim = 0, maxWall = 0;
     let vsSig = "", fsSig = "";                      // what the page was last told of villages and factions
     let frameKey = "";                               // the last frame asked for, and the step it was made at
     let sorted = null, sortedSig = "";               // everybody by name, for the People list
@@ -87,7 +92,7 @@
       try { w = People.create(m.values); }
       catch (e) { send({ t: "failed", why: String((e && e.message) || e) }); return; }
       world = w;
-      rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0;
+      rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0; maxSim = maxWall = 0;
       const fert = w.fert.slice(), ore = w.ore.slice();
       send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore,
              settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer]);
@@ -119,9 +124,12 @@
         }
       }
       simAcc += done; wallAcc += real;
+      if (rate >= 1000) { maxSim += done; maxWall += owed; }   // owed, not real: a page asleep in a back tab is not the world being slow
       if (wallAcc >= 0.5) { speed = simAcc / wallAcc; simAcc = wallAcc = 0; }
       return more;
     }
+
+    const held = () => maxWall > 0 ? maxSim / maxWall : 0;
 
     /* ── a frame: only what is drawn ───────────────────────────────────────
        The page says where it is looking and how closely. People outside that
@@ -152,7 +160,7 @@
       const w = world, P = w.people, n = P.length, cam = m.cam, s = cam.s, began = now();
       const wantLand = !!m.land && (m.land.force || w.sceneTick - m.land.at >= 5);
       const key = [cam.x, cam.y, s, cam.w, cam.h, m.view, m.picked || 0, m.follow ? 1 : 0, m.pair ? m.pair.join("+") : "", w.sceneTick].join("|");
-      if (key === frameKey && !m.fresh && !wantLand) { send({ t: "frame", same: true, speed: speed, rate: rate, paused: paused }); return; }
+      if (key === frameKey && !m.fresh && !wantLand) { send({ t: "frame", same: true, speed: speed, rate: rate, paused: paused, held: held(), heldFor: maxWall, days: world.days }); return; }
       frameKey = key;
       const hw = cam.w / 2 / s, hh = cam.h / 2 / s, edge = 20 / s;
       /* On screen (and the 20 pixels round it the page always allowed)… */
@@ -193,7 +201,8 @@
                     links: L.slice(0, links), view: view,
                     labels: labels.slice(0, focused ? 2 : 12).map(r => ({ k: r.k, text: r.p.job + " · " + w.activity(r.p) })),
                     speech: null, picked: null, pair: null, moves: null, marks: null, vs: null, fs: null, land: null,
-                    days: w.days, season: w.season().name || "", sceneTick: w.sceneTick, speed: speed, rate: rate, paused: paused, cost: 0 };
+                    days: w.days, season: w.season().name || "", sceneTick: w.sceneTick, speed: speed, rate: rate, paused: paused, cost: 0,
+                    held: held(), heldFor: maxWall };
       /* What is being said, nearest the middle first; the page shows four. */
       if (closer) {
         if (focused) out.speech = talking.filter(r => r.p.id === focused.id || (focused.sayT > 0 && r.p.id === focused.talkingTo));
