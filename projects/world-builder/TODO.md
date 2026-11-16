@@ -778,6 +778,13 @@ Ric's answers (2026-11-16):
   laid out in plots, and zooming in to a single house; **7b** building new houses, by the family
   or a builder, with work and goods; **7c** fields as land a household works, owned by the
   faction's own rule; **7d** paths that form where people walk and make walking faster.
+- **Added to 7d (Ric, 2026-11-16: "Write them in", after asking whether people get boats, cars,
+  bridges and roads, "probably same time as roads").** With roads come the things that run on
+  them and on water: **carts and wagons** as real things a household or trader owns, built from
+  goods, faster and carrying more on a road than off it (today a trader's "cart of grain" is only
+  a number, `grainLoad`); and **better boats**, which 6d made as one rowing boat a village uses
+  only to ferry people: boats that carry goods, trade along rivers and coasts, and are counted
+  and lost like any other thing. Cars wait for item 15 (eras).
 
 **7a done 2026-11-16.** People are half a metre wide by default; a house is a building with a
 real size by the household's wealth, in plots round the village's middle; a family sleeps inside
@@ -939,7 +946,9 @@ Research notes:
 buildings are made of and hold, weapons' reach and deadliness, how fast people and news travel,
 medicine. Modern things exist as things in the world, never as a switch — a phone works only
 within reach of a cell tower, and a tower can be built or destroyed (Ric: "cell towers must be a
-thing too"). Money and shops stay simple.
+thing too"). Money and shops stay simple. **Cars** (added 2026-11-16, Ric: "Write them in")
+belong here, the same way as the tower: a car exists only in an era that makes them, is built
+and owned, needs a road to drive on (7d) and fuel to run, and is fast only where those are.
 **Research first:** real figures for each era and each number; how far a tower reaches; how eras
 were handled in other history simulations and where that went wrong.
 **Ric decides:** which eras; whether a world can move from one era to the next by itself.
