@@ -673,7 +673,9 @@ nobody had linked was a page nobody could find.
   that run downhill, eleven kinds of ground (Ric added snow and ice), fertility and ore from the
   kind, settings for sea, rivers, forest and hills, land up to 1,000 km. Stored at 250 m a square;
   Ric wants to zoom down to a house, so finer detail is to be worked out from the seed for the
-  part on screen (item 5), never stored. Walking still ignores the ground until 4b.
+  part on screen (item 5), never stored. Since 4b (2026-11-16) nobody walks into the sea or a
+  lake, rough ground is slower outside village land, a way round water is planned over the
+  squares, and a journey to another piece of land is refused.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

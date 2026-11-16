@@ -762,8 +762,9 @@ when it is built.
 - [x] The seed decides all of it (Ric: "seeds should decide all that"): height first, water runs
   downhill into rivers and lakes, forest and grass follow from water and warmth. (2026-11-15, 4a.)
 - [ ] What each kind gives: wood from forest, fish from water, stone from hills, game, grazing.
-- [ ] What each kind costs: slow to cross, can't be farmed, can't be crossed without a boat or
-  a bridge.
+- [x] What each kind costs: slow to cross, can't be farmed, can't be crossed without a boat or
+  a bridge. (2026-11-16, TODO 4a and 4b: paces by kind, nothing farmed on water, marsh, mountain
+  or snow, the sea and lakes not walked; boats and bridges still to come.)
 - [ ] How it is drawn so anybody can tell at a glance what is livable, forest, beach and water.
 - [x] How much of each the visitor chooses (mostly sea, one big river, all forest) and how much
   is left to the seed. (2026-11-15, 4a: how much sea, rivers, forest and hills; the seed the rest.)

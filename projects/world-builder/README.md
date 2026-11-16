@@ -1637,6 +1637,43 @@ Speed, per person, is unchanged: 2,000 people on 17 km take 3.87 s a day on the 
 3.76 s on the new with no sea (five seeds each). With the usual 15% sea it is 4.37 s, because
 the same people stand on less land and crowds cost more to walk through.
 
+### Crossing the land (2026-11-16)
+
+TODO item 4b. Until now people walked straight at where they were going, through lakes and the
+sea and over mountains.
+
+- **Nobody walks into the sea or a lake.** `free`, the one test of whether somebody may stand
+  somewhere, says no to deep water, so walking, the crowd search and placing all keep off it.
+  Somebody put in the water from outside may still walk out.
+- **Rough ground is slower**, as a share of the pace on open ground (`PACE`): forest 0.6 (three
+  fifths off a path: Tobler's hiking function, from Imhof's data,
+  [Wikipedia](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function)), hills 0.7 (Tobler at a
+  10% slope), marsh 0.5 (bog is worse than brush: Soule and Goldman 1972, J. Appl. Physiol.), a
+  river 0.4 (wading a ford), mountain 0.25 (Tobler at 25%, off a path), snow and ice 0.3;
+  grassland, dry land and beach 1. **Except on ground a village holds**, which has paths: with a
+  whole village walking its own streets at the pace of open hills, crowds round its middle
+  jammed for hours (43 people stuck over 200 steps against 1, measured on the default world).
+- **The way round water** (`landWay`). When the next square ahead is water, the walker plans a
+  way over the 250 m squares: A* with each square costing its length over its pace, so it also
+  goes round a mountain where that is quicker. The answer is kept for that pair of squares (the
+  land never changes, so it is never stale), and its corners are cut where a straight line stays
+  dry. This is the coarse level of hierarchical path-finding (HPA*, Botea, Müller and Schaeffer
+  2004, [paper](https://webdocs.cs.ualberta.ca/%7emmueller/ps/hpastar.pdf)); the crowd search
+  still does the last few metres.
+- **Which ground joins which** (`landPiece`): one flood a world numbers every piece of land.
+  A journey to another piece, an island or over the sea, is refused when it is set (`go`): the
+  walker stays and idles instead of searching a whole land for a way that is not there. So
+  villages that cannot reach each other by land neither trade nor fight by land; boats are later
+  (PEOPLE-VISION, "Water as road and wall").
+
+Measured. A year of the default world on seeds 11, 3, 5 and 7: 10 starved in all, 376 to 399
+alive. Two days of 600 people on a land 60% sea: nobody in the water (on 4a's land 85 of them
+were standing in it); 34 stood jammed for over 200 steps, crowds pressed against the shore, the
+cost of water taking room. The quick bench against 4a: 400 people 0.30 → 0.33 s a day, 2,000
+3.68 → 3.30 s, 5,000 2.62 → 2.45 s. The 1,000 km land starts in 4.3 s and holds 785 MB after a
+day (the way-finding arrays are made when first needed). `test/land.test.mjs` walks somebody to
+the far shore of a lake and sees them go round and arrive.
+
 ### War has to be fed (2026-11-14)
 
 Ric: military reach should depend on *"food carried and access to resupply, distance from

@@ -297,8 +297,12 @@
 
   const SQUARES_PER_KM = 4;   // a square is 250 m
   /* The kinds of ground (TODO 4a): whether people can live on it and farm it. Crossing is item
-     4b; for now only the sea and lakes keep people off. */
+     4b: the sea and lakes cannot be walked, and the rest is walked at its `PACE`. */
   const G_SEA = 0, G_LAKE = 1, G_RIVER = 2, G_BEACH = 3, G_MARSH = 4, G_GRASS = 5, G_FOREST = 6, G_HILLS = 7, G_MOUNTAIN = 8, G_DRY = 9, G_SNOW = 10;
+  /* How fast people walk over each kind of ground, as a share of open ground (TODO 4b): Tobler's
+     hiking function and its three fifths off a path, Soule and Goldman's brush and bog (README,
+     "Crossing the land"). The sea and lakes are not walked at all. */
+  const PACE = [1, 1, 0.4, 1, 0.5, 1, 0.6, 0.7, 0.25, 1, 0.3];
   const GROUND = [
     { name: "sea", live: false, farm: false }, { name: "lake", live: false, farm: false }, { name: "river", live: false, farm: false },
     { name: "beach", live: true, farm: true }, { name: "marsh", live: false, farm: false }, { name: "grassland", live: true, farm: true },
@@ -756,6 +760,29 @@
       for (let i = 0; i < n; i++) stock[i] = fert[i] * TILE_CAP * 1.6 * S.standing;   // "Crops in the fields"; 0.5 is what it always was
     })();
 
+    /* ── which ground joins which (TODO 4b) ──────────────────────────────
+       Every square that is not sea or lake gets the number of the piece of
+       land it is on, by one flood a world: two places with different numbers
+       cannot be walked between, so a journey there is refused at once
+       instead of searched for over the whole land. Corners count: a walker
+       slips between two lakes that only touch at a corner. */
+    const landPiece = new Int32Array(tiles);
+    (function pieces() {
+      const q = new Int32Array(tiles); let id = 0;
+      for (let s0 = 0; s0 < tiles; s0++) {
+        if (landPiece[s0] || ground[s0] <= G_LAKE) continue;
+        id++; let qh = 0, qt = 0; q[qt++] = s0; landPiece[s0] = id;
+        while (qh < qt) {
+          const i = q[qh++], x = i % cols, y = (i / cols) | 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+            const j = ny * cols + nx; if (!landPiece[j] && ground[j] > G_LAKE) { landPiece[j] = id; q[qt++] = j; }
+          }
+        }
+      }
+    })();
+    const pieceAt = (x, y) => landPiece[clamp(Math.floor(y), 0, rows - 1) * cols + clamp(Math.floor(x), 0, cols - 1)];
+
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
@@ -821,7 +848,7 @@
                      where they last were seen standing, their last blocked step, the last
                      way round that could not be found, and whether they have been
                      given a place to stand yet. */
-                  ox: NaN, oy: NaN, mc: -1, mx: NaN, my: NaN, mdx: 0, mdy: 0, rm: null, on: false,
+                  ox: NaN, oy: NaN, mc: -1, mx: NaN, my: NaN, mdx: 0, mdy: 0, rm: null, on: false, way: null, wx: 0, wy: 0,
                   /* And the engine's (TODO item 2): their place in the people
                      array, which square's list they are on (-1: none yet), and
                      when and for which ground they last asked to be told of
@@ -1256,7 +1283,20 @@
           if (free(p, nx, ny)) { p.tx = nx; p.ty = ny; break search; }
         }
       }
-      p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0; p.route = null; p.routeRetry = 0;
+      /* Still in the water: the nearest dry ground to it, ring by ring of
+         squares (TODO 4b). */
+      if (wet(p.tx, p.ty)) {
+        const fx = Math.floor(p.tx), fy = Math.floor(p.ty);
+        shore: for (let r = 1; r < 40; r++) for (let yy = fy - r; yy <= fy + r; yy++) for (let xx = fx - r; xx <= fx + r; xx++) {
+          if (Math.max(Math.abs(xx - fx), Math.abs(yy - fy)) !== r || xx < 0 || yy < 0 || xx >= cols || yy >= rows) continue;
+          if (ground[yy * cols + xx] > G_LAKE) { p.tx = xx + 0.5; p.ty = yy + 0.5; break shore; }
+        }
+      }
+      /* Over the sea or a lake from here: nobody can walk there, so they do
+         not set off (TODO 4b). */
+      const from = pieceAt(p.x, p.y), to = pieceAt(p.tx, p.ty);
+      if (from && to && from !== to) { p.tx = p.x; p.ty = p.y; p.task = "idle"; }
+      p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0; p.route = null; p.routeRetry = 0; p.way = null;
     }
     function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = TK(10) + Math.floor(R() * 30 * STEP_SCALE); }
 
@@ -2532,6 +2572,9 @@
     function unput(p) { unputAt(p, cell(p.x, p.y)); }
     function free(p, x, y) {
       if (x < 0.25 || y < 0.25 || x > cols - 0.25 || y > rows - 0.25) return false;
+      /* Not into the sea or a lake (TODO 4b). Somebody already in it, put
+         there from outside, may still walk out. */
+      if (ground[(y | 0) * cols + (x | 0)] <= G_LAKE && !wet(p.x, p.y)) return false;
       if (REAL_BODIES) return true;
       /* Only the squares a body's width from (x, y) can touch: one, two or
          four of them, not always nine. Until 2026-11-15 it read all nine, and
@@ -2634,6 +2677,66 @@
       const m = p.rm;
       if (!m || m.c < 0 || m.x !== p.x || m.y !== p.y || m.tx !== p.tx || m.ty !== p.ty) return false;
       for (let y = m.y0; y <= m.y1; y++) { const row = y * cols; for (let x = m.x0; x <= m.x1; x++) if (roomAt[row + x] > m.c || (m.any && cameAt[row + x] > m.c)) return false; }
+      return true;
+    }
+    /* ── the way over the land (TODO 4b) ─────────────────────────────────
+       A* over the 250 m squares, each costing its length over its pace, from
+       the square somebody stands on to the one they are going to; the sea
+       and lakes are not squares to it. The answer is kept for that pair of
+       squares, since people walk the same ways day after day; the land does
+       not change, so it never goes stale. Then the corners are cut: a point
+       of the way is skipped when the straight line past it stays on land.
+       The crowd search (`routeAround`) still does the last few metres. */
+    let wayG = null, wayFrom = null, wayAt = null, wayStamp = 0;
+    const ways = new Map();
+    function landWay(p) {
+      const s0 = tileAt(p.x, p.y), g0 = tileAt(p.tx, p.ty);
+      if (s0 === g0 || landPiece[s0] !== landPiece[g0] || !landPiece[g0]) return null;   // already there, or no way by land
+      let tiles_ = ways.get(s0 * tiles + g0);
+      if (!tiles_) {
+        if (!wayG) { wayG = new Float32Array(tiles); wayFrom = new Int32Array(tiles); wayAt = new Int32Array(tiles); }
+        if (++wayStamp > 2e9) { wayAt.fill(0); wayStamp = 1; }
+        const gx = g0 % cols, gy = (g0 / cols) | 0, est = i => Math.hypot(i % cols - gx, ((i / cols) | 0) - gy);
+        const heap = [], hf = [];
+        const push = (i, fv) => { let k = heap.length; heap.push(i); hf.push(fv); while (k > 0) { const j = (k - 1) >> 1; if (hf[j] <= fv) break; heap[k] = heap[j]; hf[k] = hf[j]; k = j; } heap[k] = i; hf[k] = fv; };
+        const pop = () => { const top = heap[0], li = heap.pop(), lf = hf.pop(); if (heap.length) { let k = 0; for (;;) { let c = k * 2 + 1; if (c >= heap.length) break; if (c + 1 < heap.length && hf[c + 1] < hf[c]) c++; if (hf[c] >= lf) break; heap[k] = heap[c]; hf[k] = hf[c]; k = c; } heap[k] = li; hf[k] = lf; } return top; };
+        wayAt[s0] = wayStamp; wayG[s0] = 0; wayFrom[s0] = -1; push(s0, est(s0));
+        let found = false;
+        for (let looks = 0; heap.length && looks < 4e6; looks++) {
+          const i = pop(); if (i === g0) { found = true; break; }
+          const x = i % cols, y = (i / cols) | 0, gi = wayG[i];
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            if (!dx && !dy) continue;
+            const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+            const j = ny * cols + nx, k = ground[j]; if (k <= G_LAKE) continue;
+            const g = gi + (dx && dy ? Math.SQRT2 : 1) / PACE[k];
+            if (wayAt[j] === wayStamp && g >= wayG[j]) continue;
+            wayAt[j] = wayStamp; wayG[j] = g; wayFrom[j] = i; push(j, g + est(j));
+          }
+        }
+        if (!found) return null;
+        const path = []; for (let i = g0; i >= 0; i = wayFrom[i]) path.push(i);
+        path.reverse();
+        /* Cut the corners: from each kept point, the furthest later one in a dry straight line. */
+        const kept = [s0];
+        for (let a = 0; a < path.length - 1;) {
+          let b = Math.min(path.length - 1, a + 40);
+          while (b > a + 1 && !dryLine(path[a], path[b])) b--;
+          kept.push(path[b]); a = b;
+        }
+        tiles_ = kept.slice(1);
+        if (ways.size > 20000) ways.clear();
+        ways.set(s0 * tiles + g0, tiles_);
+      }
+      if (!tiles_.length) return null;
+      const out = tiles_.map(i => ({ x: i % cols + 0.5, y: ((i / cols) | 0) + 0.5 }));
+      out[out.length - 1] = { x: p.tx, y: p.ty };
+      return out;
+    }
+    function dryLine(a, b) {
+      const ax = a % cols + 0.5, ay = ((a / cols) | 0) + 0.5, bx = b % cols + 0.5, by = ((b / cols) | 0) + 0.5;
+      const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 3);
+      for (let k = 1; k < n; k++) if (wet(ax + (bx - ax) * k / n, ay + (by - ay) * k / n)) return false;
       return true;
     }
     const DIAGONAL = Math.hypot(1, 1) * 0.5;
@@ -3302,7 +3405,12 @@
       if (p.talk > 0) p.talk--;
       /* Moving. */
       const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
-      const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1);
+      /* TODO 4b: slower through forest, marsh, hills, fords, mountains and snow, but not on ground
+         a village holds: it has paths, and a whole village walking its streets at the pace of
+         open hills jammed round its middle for hours (measured: 43 people stuck over 200 steps
+         against 1). */
+      const here = tileAt(p.x, p.y), footing = owner[here] >= 0 ? 1 : PACE[ground[here]];
+      const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1) * footing;
       const partner = p.sayT > 0 && byId.get(p.talkingTo);
       if (partner && partner.sayT > 0 && partner.talkingTo === p.id) {
         /* 3: in conversation. They stand and listen until one of the two
@@ -3319,7 +3427,7 @@
         return;
       }
       if (d > Math.max(pace, 0.5)) {
-        if (d < (p.lastDistance ?? Infinity) - 0.1) { p.lastDistance = d; p.stuck = 0; }
+        if (d < (p.lastDistance ?? Infinity) - 0.1 * footing) { p.lastDistance = d; p.stuck = 0; }
         else p.stuck = (p.stuck || 0) + 1;
         // Preserve the daily engine's nearby arrival rule for local work.
         // Long journeys and all inter-village tasks must physically arrive.
@@ -3351,7 +3459,15 @@
             else p.route = null; // The crowd changed; replan after the cooldown.
           } else {
             p.route = null;
-            move(p, dx / d * pace, dy / d * pace);
+            /* Water ahead: the way over the land, square by square (TODO 4b). */
+            if (p.way && (p.wx !== p.tx || p.wy !== p.ty)) p.way = null;
+            if (!p.way && wet(p.x + dx / d * Math.min(d, 1), p.y + dy / d * Math.min(d, 1))) { p.way = landWay(p); p.wx = p.tx; p.wy = p.ty; }
+            if (p.way) {
+              while (p.way.length > 1 && Math.hypot(p.way[0].x - p.x, p.way[0].y - p.y) < 0.75) p.way.shift();
+              const w0 = p.way[0], wd = Math.hypot(w0.x - p.x, w0.y - p.y);
+              if (p.way.length === 1 && wd < 0.75) p.way = null;
+              if (wd > 1e-9) move(p, (w0.x - p.x) / wd * pace, (w0.y - p.y) / wd * pace);
+            } else move(p, dx / d * pace, dy / d * pace);
           }
         }
       }

@@ -516,7 +516,7 @@ the zoom down to a house (item 5); a land under 5 km across (with item 5's finer
 Tests: the trader test now tries several seeds (a visit within 1,000 steps was luck before too);
 the keeper's frame test no longer assumes nobody dies in the first day.
 
-### [ ] 4b. Crossing the land
+### [x] 4b. Crossing the land
 
 **Now:** people walk straight at where they are going, through lakes, the sea and over mountains.
 **Do:** walking goes round the sea and lakes; forest, marsh, hills and rivers are slower to
@@ -530,6 +530,34 @@ rough ground (Tobler's hiking function; Naismith's rule).
 **Done when:** nobody walks on water; a default world still feeds itself for a year; no slower
 per person than 4a.
 **Budget:** no slower per person.
+
+**Done 2026-11-16.** Nobody walks into the sea or a lake; rough ground is slower except on ground
+a village holds (it has paths); a way round water is planned over the squares when water is
+ahead, and kept; a journey to another piece of land is refused. Rivers are fords (0.4 of the
+pace); no question for Ric needed. Measured: four seeds' default year, 10 starved in all;
+bench 2,000 and 5,000 people a little faster than 4a, 400 within this machine's drift. Left:
+boats and bridges (vision, "Water as road and wall"); crowds pressed against a shore jam more.
+
+Research notes:
+- **How fast over what.** Tobler's hiking function (from Imhof's data): 6·e^(−3.5·|slope + 0.05|)
+  km/h, 5 km/h on the flat, and three fifths of that off a path
+  ([Wikipedia](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function)). Soule and Goldman (1972,
+  J. Appl. Physiol.) measured the cost of walking through light and heavy brush and bog against a
+  road; secondary tables put forest at about 1.3 times a road's effort and mud 1.8
+  ([review](https://jhp-ojs-tamucc.tdl.org/jhp/article/view/67)); a UK hiking study keeps Tobler's
+  0.6 for all off-road ground ([arXiv 2303.16065](https://arxiv.org/pdf/2303.16065v6)). Chosen, as a
+  share of walking pace on open ground: forest 0.6 (off a path), hills 0.7 (Tobler at a 10%
+  slope), marsh 0.5 (bog, worse than brush), a river 0.4 (wading a ford), mountain 0.25 (Tobler at
+  25%, off a path), snow and ice 0.3; grassland, dry land and beach 1.
+- **Finding the way round.** A* over the whole fine lattice is what `routeAround` does for crowds,
+  but it stops at 800 looks, a few squares. Hierarchical A* (HPA*: Botea, Müller and Schaeffer
+  2004, [paper](https://webdocs.cs.ualberta.ca/%7emmueller/ps/hpastar.pdf)) plans on a coarse
+  grid first and is up to ten times faster than plain A* within 1% of the best path. Chosen: the
+  250 m squares are the coarse grid (A* over them, each costing its length over its pace),
+  run only when the next step would go into deep water, and the answer kept for the same pair of
+  squares; the crowd search still does the last few metres. Which ground joins which (a flood
+  fill once a world) says at once when a place cannot be reached by land, so nobody searches a
+  whole land for an island.
 
 Ric's answers (2026-11-15), shown a working preview of the land (height, sea, lakes, rivers,
 the ten kinds, sliders for sea, rivers, forest and hills):
@@ -875,4 +903,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-15 | 3 | AMD Ryzen 5 3600, 24 GB | 2.8 s a day, 106× | 6.0 s a day, 50× | 0.20 and 1.18 KB at the start | same world, and the same speed: run turn about with the row above three times, 20,000 people took 6.43, 6.43, 6.37 s before and 6.39, 6.45, 6.36 s after (this machine wanders 10% from one run to the next, which is all the two rows differ by); a year of the default world 123 s before, 124 s after, identical state. **In a browser, 20,000 people flat out:** the page 7 frames a second → every frame; the clock about 15× → about 37× in the same stretch |
 | 2026-11-15 | 3b | AMD Ryzen 5 3600, 24 GB | *not run: the running world is unchanged* | *not run* | | starts only (`bench.mjs --start`), same world: 10,000 0.86 → 0.56 s, 20,000 3.55 → 1.52 s, 40,000 14.1 → 3.8 s, 100,000 102.6 → 14.9 s |
 | 2026-11-15 | 4a | AMD Ryzen 5 3600, 24 GB | 2.92 s a day, 103× | *not run* | 1.6 MB, 0.31 KB | a **different world** from here on (the land). `--quick`: 400 people 0.31 → 0.29 s, 2,000 3.17 → 3.73 s, 5,000 2.50 → 2.92 s; five seeds of 2,000 on 17 km: 3.87 s old, 4.37 s new, 3.76 s new with no sea (the sea packs people closer; the engine is not slower). 1,000 km starts in 4.5 s (2,000 people) |
+| 2026-11-16 | 4b | AMD Ryzen 5 3600, 24 GB | 2.45 s a day, 122× | *not run* | 2.5 MB, 0.48 KB | a different world from 4a's (pace and water change who goes where). `--quick` against 4a: 400 people 0.30 → 0.33 s, 2,000 3.68 → 3.30 s, 5,000 2.62 → 2.45 s. 1,000 km starts in 4.3 s, 785 MB after a day |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

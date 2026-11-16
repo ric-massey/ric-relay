@@ -72,4 +72,45 @@ for (const set of [{ seed: 11 }, { seed: 2, sea: 0.7 }, { seed: 9, latitude: 70,
   for (let i = 0; i < w.ground.length; i++) if ([0, 1, 2, 4, 8, 10].includes(w.ground[i])) assert.equal(w.fert[i], 0, "nothing grows on water, marsh, mountain or snow");
 }
 
-console.log("world-builder land: the seed's own, downhill, settings that mean it, nobody in the water");
+// 7. Crossing (TODO 4b): nobody walks into the sea or a lake, two days of a crowded wet world.
+for (const set of [{ seed: 11 }, { seed: 2, sea: 0.6 }]) {
+  const w = People.create(Object.assign({ people: 600 }, set));
+  for (let h = 0; h < 48; h++) {
+    w.step(1);
+    for (const p of w.people) { const g = w.ground[Math.floor(p.y) * w.cols + Math.floor(p.x)]; assert.ok(g !== G.sea && g !== G.lake, "nobody walks into the water " + JSON.stringify(set)); }
+  }
+}
+
+// 8. A walker sent to the far shore of a lake goes round it, on land, and gets there.
+{
+  let done = false;
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+    const w = People.create({ seed, map: 120, people: 20, rivers: 0.3 });
+    const C = w.cols, at = (x, y) => w.ground[y * C + x];
+    /* A row with dry land, then at least four squares of lake, then dry land again. */
+    let from = null, to = null;
+    for (let y = 5; y < w.rows - 5 && !from; y++) for (let x = 5; x < C - 20 && !from; x++) {
+      if (at(x, y) <= 1 || at(x + 1, y) !== 1) continue;
+      let e = x + 1; while (e < C - 5 && at(e, y) === 1) e++;
+      if (e - x - 1 >= 4 && e - x - 1 <= 12 && at(e, y) > 1 && at(e + 1, y) > 1) { from = [x + 0.5, y + 0.5]; to = [e + 1.5, y + 0.5]; }
+    }
+    if (!from) continue;
+    const p = w.people.find(q => w.adult(q));
+    for (const q of w.people) if (q !== p) { q.wait = 1e6; }
+    p.x = from[0]; p.y = from[1]; p.tx = to[0]; p.ty = to[1]; p.task = "trade"; p.wait = 0; p.food = 50; p.rest = 0; p.lastDistance = Infinity; p.stuck = 0; p.route = null; p.way = null;
+    let arrived = false;
+    for (let i = 0; i < 6000 && !arrived; i++) {
+      w.advance(People.STEP);
+      const g = w.ground[Math.floor(p.y) * C + Math.floor(p.x)];
+      assert.ok(g !== G.sea && g !== G.lake, "the walker never steps into the lake");
+      if (p.task !== "trade") break;
+      arrived = Math.hypot(p.x - to[0], p.y - to[1]) < 1;
+    }
+    if (p.task !== "trade") continue;   // something else called them away: try another lake
+    assert.ok(arrived, "the walker gets round the lake to the far shore (seed " + seed + ")");
+    done = true; break;
+  }
+  assert.ok(done, "a lake with two shores was found and walked round");
+}
+
+console.log("world-builder land: the seed's own, downhill, settings that mean it, nobody in the water, the way round a lake");
