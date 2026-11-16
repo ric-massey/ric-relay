@@ -333,14 +333,15 @@ Ric's answers (2026-11-15), from three mock-ups — a line under the slider, a m
 small table:
 - **How it is shown: "A line under the slider".** One sentence under "How many people" that
   follows the settings; nothing blocks going past it.
-- **Which speed "the limit" means: not decided.** Asked whether the rough head count should mean
+- **Which speed "the limit" means: 16×.** Settled the second time of asking (below). Asked first whether the rough head count should mean
   16×, a year an hour or 1×, he said: "if your talking about top speed then that needs to have a
   max button like it works now... idk what a rough head count is..... like running a year in 20
   sec is kinda needed as well sometimes... so im not sure what this is". So: the Max button and
   every speed are untouched; the second sentence was reworded to plain words ("It should stay
   above 16× up to roughly N people"); and 16× — the fastest clock that runs exactly as asked — is
-  *this session's choice, not his*. It is one constant, `STEADY` in `index.html`. Ask him again
-  with the line in front of him before building on it.
+  this session's choice at the time. It is one constant, `STEADY` in `index.html`. Asked again
+  the same day, with the line and its screenshot in front of him and the three meanings spelled
+  out (16×, a year an hour, keeping up at 1×), he answered: "Keep 16×". So 16× is his.
 
 Research notes (2026-11-15):
 - **Measured first.** (a) Where the page's time went at 20,000 people: 186 ms a frame on the old
@@ -420,7 +421,7 @@ Research notes (2026-11-15):
 - **The readout knows a world's first days only.** See the table in item 3's notes.
 - **The readout's second sentence** ("stay above 16× up to roughly N people") is plain
   proportion from one measurement, and the per-person cost is not constant, so it is rough; and
-  what speed it should mean was never settled with Ric.
+  it means 16× (Ric, 2026-11-15: "Keep 16×").
 - **Reading a frame of a very big crowd costs the worker 10 ms at 20,000 people** (0.5 µs a
   person, against 0.2 for a step of the engine), because a person is a big object. Frames are
   spaced out to keep that to about a seventh of the worker's time, so at 20,000 people the map
@@ -428,11 +429,12 @@ Research notes (2026-11-15):
 **Do:** (a) place a crowd in time that grows with the crowd, not its square, with everybody
 standing exactly where they stand now — or show Ric, measured, what a different placing changes;
 (b) let the running world correct the readout: remember, for the settings last run, the speed it
-really held, and say that on the setup page next time; (c) ask Ric what "the limit" should mean
-now that he can see the line; (d) nothing for the frame cost unless item 20 is reached.
+really held, and say that on the setup page next time; (c) nothing for the frame cost unless
+item 20 is reached.
 **Research first:** exact nearest-free-spot searches on a grid (distance transforms, bucketed
 rings); how other simulators start a large crowd.
-**Ric decides:** (c).
+**Ric decides:** nothing, unless a faster placing cannot give the same world — then show him
+the difference, measured, before going on.
 **Done when:** 100,000 people start in under 20 s as the same world; the readout, on a world run
 before, is within about 30% of what that world did.
 **Budget:** faster only.

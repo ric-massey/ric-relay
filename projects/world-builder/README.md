@@ -1508,9 +1508,9 @@ How good it is:
 
 Within about a third at the start, and out by two or three times once a world has settled or
 jammed — which is the world changing, and nothing three seconds can know. So the line says "at
-first", and the running world says what it is doing now. Not settled: which speed the second
-sentence should mean. It is 16×, the fastest clock that runs exactly as asked, by this session's
-choice; Ric was asked and was not sure what the question was (`TODO.md`, item 3).
+first", and the running world says what it is doing now. The second sentence means 16×, the
+fastest clock that runs exactly as asked: Ric's choice ("Keep 16×"), over a year an hour and over
+keeping up at 1× (`TODO.md`, item 3). It is one constant, `STEADY` in `index.html`.
 
 ### War has to be fed (2026-11-14)
 

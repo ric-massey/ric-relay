@@ -665,8 +665,8 @@ nobody had linked was a page nobody could find.
   painter, a square at a time, was 60–280 ms a frame and is what kept a big world from being
   smooth once the engine had moved. Two things item 3 could not do are item 3b of `TODO.md`: a
   very big world is slow to *start* (the wait grows with the square of the head count), and the
-  line knows only a world's first days. Which speed its second sentence means (16×, `STEADY`) was
-  this session's choice, not Ric's — he was asked and was not sure what was being asked.
+  line knows only a world's first days. The speed its second sentence means is 16× (`STEADY`),
+  which Ric chose ("Keep 16×") over a year an hour and over keeping up at 1×.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer
