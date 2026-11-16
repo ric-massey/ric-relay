@@ -99,6 +99,9 @@
       { key: "weather", label: "Year to year", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["every year the same", "a little different", "good years and bad", "droughts and killing frosts"]),
         help: "Each year draws its own spring, warmth and harvest — early or late, warm or cold, plenty or want. Drawn from the seed, so the same seed gives the same years." },
+      { key: "rain", label: "Rain", type: "select", def: "real",   // TODO 6b, 2026-11-16
+        options: [["real", "By place and year — dry years thin the harvest"], ["off", "The same everywhere, every year"]],
+        help: "Each year's rain differs from place to place, more on dry land than wet, by as much as Year to year says. A dry year thins the crops; fields beside a river or lake are spared, as river flats were. Rain also fills the water pots at home." },
     ]},
     { title: "How it starts", items: [
       { key: "stored", label: "Food put by", type: "range", min: 0, max: 1, step: 0.05, def: 0,
@@ -144,6 +147,12 @@
       { key: "thirst", label: "Thirst", type: "select", def: "real",   // TODO 6a; Ric, 2026-11-16: "Real, on by default"
         options: [["real", "Real — about three days without water"], ["gentle", "Gentler — about two weeks"], ["off", "Off — nobody needs water"]],
         help: "A household keeps water at home and fetches it from a river or lake (the sea is salt), or digs a well when fresh water is far. Without any, people die in about three days, sooner in summer heat, as in life; gentler gives them about two weeks." },
+      { key: "fishing", label: "Fishing", type: "select", def: "on",   // TODO 6c, 2026-11-16
+        options: [["on", "On — villages by water fish"], ["off", "Off"]],
+        help: "A village within two kilometres of a river, lake or the sea can fish it. The water gives what real waters give, a few dozen kilograms a hectare a year, and fished hard it takes time to come back. A fisher is a living like a farmer." },
+      { key: "crossing", label: "Crossing water", type: "select", def: "real",   // TODO 6d, 2026-11-16
+        options: [["real", "Big rivers need a ford, bridge or boat"], ["wade", "Every river can be waded; no boats"]],
+        help: "A big river can only be crossed at a ford, or where a village has built a bridge; a village by a lake or the sea builds a boat once its people keep wanting to cross, and ferries them over. An army does not go by boat: water it cannot walk round stops it." },
       { key: "plague", label: "Sickness", type: "select", def: "rare",
         options: [["none", "None"], ["rare", "Now and then"], ["common", "Often"]],
         help: "A sickness starts in one person and passes to whoever they talk to." },
@@ -445,8 +454,23 @@
     /* Which way a river runs from each river square: 0 to 7 for the eight
        neighbours, 255 elsewhere. For drawing it as a line (TODO 5). */
     const riverTo = new Uint8Array(tiles).fill(255);
+    /* Rain (TODO 6b): how wet each square's place is (0 to 255), how near water it is (squares, up
+       to 8), and this year's crops for the rain, a hundredth a step (100 an ordinary year). Only
+       with Rain on. */
+    const RAIN = S.rain !== "off";
+    const wetQ = RAIN ? new Uint8Array(tiles) : null, nearW = RAIN ? new Uint8Array(tiles) : null, rainK = RAIN ? new Uint8Array(tiles).fill(100) : null;
+    let rainYear = -1;
     const deep = k => k === G_SEA || k === G_LAKE;
-    const wet = (x, y) => { const fx = Math.floor(x), fy = Math.floor(y); return fx >= 0 && fy >= 0 && fx < cols && fy < rows && deep(ground[fy * cols + fx]); };
+    /* Crossing water (TODO 6d): on a big river, 1 where it cannot be waded, 2 a ford, 3 a bridge;
+       0 elsewhere. Null with Crossing at "wade", and then nothing below differs from before. */
+    const CROSS = S.crossing !== "wade";
+    const cross = CROSS ? new Uint8Array(tiles) : null;
+    const stopAt = i => ground[i] <= G_LAKE || (cross !== null && cross[i] === 1);
+    /* A step from corner to corner between two squares of a big river is through it. (Refusing one
+       past any square of a big river was tried: fewer walkers stuck at banks on a 500 km land, but
+       20,000 people on 80 km 15% slower a day; not kept.) */
+    const shut = (x, y, dx, dy) => cross !== null && dx !== 0 && dy !== 0 && cross[y * cols + x + dx] === 1 && cross[(y + dy) * cols + x] === 1;
+    const wet = (x, y) => { const fx = Math.floor(x), fy = Math.floor(y); if (!(fx >= 0 && fy >= 0 && fx < cols && fy < rows)) return false; const i = fy * cols + fx; return deep(ground[i]) || (cross !== null && cross[i] === 1); };
     /* Which village holds each square. Thirty-two bits since TODO item 3:
        with no top on people there is none on villages either, and sixteen
        would have run out, silently, at the 32,768th. */
@@ -719,6 +743,14 @@
         const d = down[i];
         if (d >= 0) { const ddx = d % cols - i % cols, ddy = ((d / cols) | 0) - ((i / cols) | 0); for (let k = 0; k < 8; k++) if (DX[k] === ddx && DY[k] === ddy) riverTo[i] = k; }
       }
+      /* Big rivers (TODO 6d): draining over about 300 km², a river tens of metres wide and too deep
+         to wade (the Thames at Oxford drains about 1,600 km²; fords were where it ran shallow over
+         gravel). A ford about every 2.5 km on such a river, every 7.5 km past 3,000 km², from the
+         seed. */
+      if (cross) for (let i = 0; i < n; i++) if (ground[i] === G_RIVER && acc[i] > PER_KM * PER_KM * 300) {
+        let hsh = (S.seed * 2654435761 + i * 2246822519) >>> 0; hsh = Math.imul(hsh ^ (hsh >>> 15), 2246822507) >>> 0; hsh = (hsh ^ (hsh >>> 13)) >>> 0;
+        cross[i] = hsh / 4294967296 < (acc[i] > PER_KM * PER_KM * 3000 ? 1 / 30 : 1 / 10) ? 2 : 1;
+      }
       /* Nearness to water, out to 2 km, for wetness. */
       const near = new Uint8Array(n).fill(255), qq = new Int32Array(n); let qh = 0, qt = 0;
       for (let i = 0; i < n; i++) if (ground[i] <= G_RIVER) { near[i] = 0; qq[qt++] = i; }
@@ -768,6 +800,10 @@
       }
       if (check && check.land) Object.assign(check.land, { down: down, fill: fill });   // tests only (test/land.test.mjs): how the water drains
       for (let i = 0; i < n; i++) stock[i] = fert[i] * TILE_CAP * 1.6 * S.standing;   // "Crops in the fields"; 0.5 is what it always was
+      if (RAIN) {
+        nearW.set(near);
+        for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) wetQ[y * cols + x] = clamp(Math.round((at(wet1, x, y) * 0.75 + at(wet2, x, y) * 0.25) * 255), 0, 255);
+      }
     })();
 
     /* ── which ground joins which (TODO 4b) ──────────────────────────────
@@ -776,17 +812,23 @@
        cannot be walked between, so a journey there is refused at once
        instead of searched for over the whole land. Corners count: a walker
        slips between two lakes that only touch at a corner. */
+    /* Squares beside a big river, where a straight line is checked closely (`dryLine`, TODO 6d). */
+    const byBig = cross !== null ? new Uint8Array(tiles) : null;
+    if (byBig) for (let i = 0; i < tiles; i++) if (cross[i] === 1) {
+      const x = i % cols, y = (i / cols) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < cols && ny < rows) byBig[ny * cols + nx] = 1; }
+    }
     const landPiece = new Int32Array(tiles);
     (function pieces() {
       const q = new Int32Array(tiles); let id = 0;
       for (let s0 = 0; s0 < tiles; s0++) {
-        if (landPiece[s0] || ground[s0] <= G_LAKE) continue;
+        if (landPiece[s0] || stopAt(s0)) continue;
         id++; let qh = 0, qt = 0; q[qt++] = s0; landPiece[s0] = id;
         while (qh < qt) {
           const i = q[qh++], x = i % cols, y = (i / cols) | 0;
           for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
             const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-            const j = ny * cols + nx; if (!landPiece[j] && ground[j] > G_LAKE) { landPiece[j] = id; q[qt++] = j; }
+            const j = ny * cols + nx; if (!landPiece[j] && !stopAt(j) && !shut(x, y, dx, dy)) { landPiece[j] = id; q[qt++] = j; }
           }
         }
       }
@@ -812,18 +854,61 @@
     if (THIRST) {
       const q = new Int32Array(tiles); let qh = 0, qt = 0;
       for (let i = 0; i < tiles; i++) {
-        if (ground[i] <= G_LAKE) continue;
+        if (stopAt(i)) continue;
         let fresh = ground[i] === G_RIVER;
-        if (!fresh) { const x = i % cols, y = (i / cols) | 0; for (let dy = -1; dy <= 1 && !fresh; dy++) for (let dx = -1; dx <= 1 && !fresh; dx++) { const nx = x + dx, ny = y + dy; fresh = nx >= 0 && ny >= 0 && nx < cols && ny < rows && ground[ny * cols + nx] === G_LAKE; } }
+        if (!fresh) { const x = i % cols, y = (i / cols) | 0; for (let dy = -1; dy <= 1 && !fresh; dy++) for (let dx = -1; dx <= 1 && !fresh; dx++) { const nx = x + dx, ny = y + dy; fresh = nx >= 0 && ny >= 0 && nx < cols && ny < rows && (ground[ny * cols + nx] === G_LAKE || (cross !== null && cross[ny * cols + nx] === 1)); } }
         if (fresh) { freshNear[i] = i; freshDist[i] = 0; q[qt++] = i; }
       }
       while (qh < qt) {
         const i = q[qh++], x = i % cols, y = (i / cols) | 0, d = freshDist[i] + 1; if (d > 48) continue;
         for (let k = 0; k < 4; k++) { const nx = x + [1, -1, 0, 0][k], ny = y + [0, 0, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-          const j = ny * cols + nx; if (ground[j] > G_LAKE && freshDist[j] > d) { freshDist[j] = d; freshNear[j] = freshNear[i]; q[qt++] = j; } }
+          const j = ny * cols + nx; if (!stopAt(j) && freshDist[j] > d) { freshDist[j] = d; freshNear[j] = freshNear[i]; q[qt++] = j; } }
       }
     }
     if (THIRST) count.thirst = 0;
+
+    /* ── fishing (TODO 6c, 2026-11-16) ─────────────────────────────────────
+       Natural waters give about 20 to 50 kg of fish a hectare a year (FAO,
+       inland fisheries), more in rivers and shallow lakes; a square of water
+       is 6.25 ha. A kilogram of fish is about a third of a grown-up's day of
+       food. What a square holds is at most a year of that, and it comes back
+       at that rate when fished down, kept only for squares somebody has
+       fished. A village's fishing ground is the water nearest its middle,
+       within 2 km, and every water square within 750 m of that. A day's
+       fishing brings in up to about 6 kg, less in the cold. README, "Fishing". */
+    const FISH = S.fishing !== "off";
+    const FISH_KG = [30, 40, 60];                                   // a hectare a year: sea, lake, river
+    const fishYear = i => FISH_KG[ground[i]] * 6.25 * 0.35;        // days of food a square gives a year
+    const fishStock = new Map();                                   // square -> [days of food, hour last reckoned]
+    function fishIn(i) {
+      const cap = fishYear(i), e = fishStock.get(i);
+      if (!e) return cap;
+      return Math.min(cap, e[0] + cap * (t - e[1]) / (365 * DAY_HOURS));
+    }
+    function fishGround(v) {
+      if (v.fishing !== undefined) return v.fishing;
+      const cx = Math.floor(v.x), cy = Math.floor(v.y);
+      let best = -1, bd = 1e9;
+      for (let y = cy - 8; y <= cy + 8; y++) for (let x = cx - 8; x <= cx + 8; x++) {
+        if (x < 0 || y < 0 || x >= cols || y >= rows || ground[y * cols + x] > G_RIVER) continue;
+        const d = Math.hypot(x - cx, y - cy); if (d <= 8 && d < bd) { bd = d; best = y * cols + x; }
+      }
+      if (best < 0) return v.fishing = null;
+      const bx = best % cols, by = (best / cols) | 0, list = [];
+      for (let y = by - 3; y <= by + 3; y++) for (let x = bx - 3; x <= bx + 3; x++)
+        if (x >= 0 && y >= 0 && x < cols && y < rows && ground[y * cols + x] <= G_RIVER && Math.hypot(x - bx, y - by) <= 3) list.push(y * cols + x);
+      return v.fishing = { x: bx + 0.5, y: by + 0.5, tiles: list };
+    }
+    const fishDay = () => 2.1 * (0.45 + 0.55 * clamp((warmth() + 0.6) / 1.2, 0, 1));   // about 6 kg on a warm day
+    /* What a day's fishing would bring, against a full day's: 0 to 1. */
+    function fishWorth(v) {
+      const g = fishGround(v); if (!g) return 0;
+      if (v.fishAt === t) return v.fishW;                          // worked out once an hour
+      const day = fishDay();
+      let have = 0; for (const i of g.tiles) { have += fishIn(i); if (have > day * 3) break; }
+      v.fishAt = t; return v.fishW = Math.min(1, have / (day * 3)) * (day / 2.1);
+    }
+    if (FISH) count.fish = 0;
 
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
@@ -969,7 +1054,10 @@
                      `undefined` reads exactly as a missing field did. */
                   feeds: undefined, wards: undefined, route: undefined, stuck: undefined, lastDistance: undefined,
                   blocked: undefined, routeRetry: undefined, askOf: undefined, carer: undefined,
-                  harvesting: undefined, harvestShare: undefined, markets: undefined };
+                  harvesting: undefined, harvestShare: undefined, markets: undefined, supplyRun: undefined,
+                  /* Water (TODO 6a), fishing (6c) and boats (6d): hours without water, what they carry home, at
+                     the water, and a crossing under way. Missing here they made 6a and 6 measurably slower. */
+                  dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined };
       house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
@@ -1389,8 +1477,9 @@
          the paid trades more tempting; nobody becomes a trader with nowhere to
          trade with, and nobody works land that has nothing on it. */
       const score = { farmer: w.land, crafter: w.bench * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) };
+      if (FISH && fishGround(v)) score.fisher = fishWorth(v) * 0.9;   // TODO 6c
       let job = "farmer", bs = -Infinity;
-      for (const k of ["farmer", "crafter", "trader"]) {
+      for (const k of FISH && score.fisher !== undefined ? ["farmer", "crafter", "trader", "fisher"] : ["farmer", "crafter", "trader"]) {
         const s = score[k] + (R() - 0.5) * 0.15;
         if (s > bs) { bs = s; job = k; }
       }
@@ -1412,14 +1501,90 @@
         const fx = Math.floor(p.tx), fy = Math.floor(p.ty);
         shore: for (let r = 1; r < 40; r++) for (let yy = fy - r; yy <= fy + r; yy++) for (let xx = fx - r; xx <= fx + r; xx++) {
           if (Math.max(Math.abs(xx - fx), Math.abs(yy - fy)) !== r || xx < 0 || yy < 0 || xx >= cols || yy >= rows) continue;
-          if (ground[yy * cols + xx] > G_LAKE) { p.tx = xx + 0.5; p.ty = yy + 0.5; break shore; }
+          if (!stopAt(yy * cols + xx)) { p.tx = xx + 0.5; p.ty = yy + 0.5; break shore; }
         }
       }
       /* Over the sea or a lake from here: nobody can walk there, so they do
          not set off (TODO 4b). */
       const from = pieceAt(p.x, p.y), to = pieceAt(p.tx, p.ty);
-      if (from && to && from !== to) { p.tx = p.x; p.ty = p.y; p.task = "idle"; }
+      if (from && to && from !== to) {
+        /* By boat, where their village has one on this shore (TODO 6d). An army does not. */
+        const army = task === "march" || task === "fight" || task === "patrol";
+        const ferry = CROSS && !army ? ferryFor(p, from, to) : null;
+        if (ferry) { p.over = { x: p.tx, y: p.ty, task: task, bx: ferry.bx, by: ferry.by, hours: ferry.hours }; p.tx = ferry.ax; p.ty = ferry.ay; p.task = "boat"; p.rowing = false; }
+        else {
+          if (CROSS) {
+            const v = villages[p.home];
+            if (v && !army) v.wantBoat = (v.wantBoat || 0) + 1;
+            if (army) { const f = factions[p.f]; if (t - (f.stoppedAt ?? -1e9) > 30 * DAY_HOURS) { f.stoppedAt = t; note("war", f.name + "'s soldiers are stopped by water they cannot cross on foot.", 2, p.x, p.y, f.id); } }
+          }
+          p.tx = p.x; p.ty = p.y; p.task = "idle";
+        }
+      }
       p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0; p.route = null; p.routeRetry = 0; p.way = null;
+    }
+    /* ── bridges and boats (TODO 6d) ───────────────────────────────────────
+       A village within 2 km of a big river that has no ford or bridge within
+       1.5 km of it builds a bridge, about 75 person-days of timber work. A
+       village within 2 km of a lake or the sea whose people have wanted to
+       cross it builds a boat, about 15 person-days, and its people are
+       rowed over from its landing at 4 km an hour. */
+    const BRIDGE_HOURS = 600, BOAT_HOURS = 120;
+    function crossings(v) {
+      if (v.crossings) return v.crossings;
+      const cx = Math.floor(v.x), cy = Math.floor(v.y);
+      let river = -1, rd = 1e9, shore = -1, sd = 1e9;
+      for (let y = cy - 8; y <= cy + 8; y++) for (let x = cx - 8; x <= cx + 8; x++) {
+        if (x < 1 || y < 1 || x >= cols - 1 || y >= rows - 1) continue;
+        const i = y * cols + x, d = Math.hypot(x - cx, y - cy); if (d > 8) continue;
+        if (cross[i] === 1 && d < rd) { rd = d; river = i; }
+        if (ground[i] <= G_LAKE && d < sd) {
+          /* the land beside it, on the village's own piece */
+          for (let k = 0; k < 8; k++) { const nx = x + [1, -1, 0, 0, 1, 1, -1, -1][k], ny = y + [0, 0, 1, -1, 1, -1, 1, -1][k], j = ny * cols + nx;
+            if (landPiece[j] && landPiece[j] === pieceAt(v.x, v.y)) { sd = d; shore = j; break; } }
+        }
+      }
+      let bridge = null;
+      if (river >= 0) {
+        let ford = false; const rx = river % cols, ry = (river / cols) | 0;
+        for (let y = ry - 6; y <= ry + 6 && !ford; y++) for (let x = rx - 6; x <= rx + 6 && !ford; x++)
+          ford = x >= 0 && y >= 0 && x < cols && y < rows && cross[y * cols + x] >= 2;
+        if (!ford) bridge = { i: river, x: rx + 0.5, y: ry + 0.5 };
+      }
+      return v.crossings = { bridge: bridge, landing: shore >= 0 ? { i: shore, x: shore % cols + 0.5, y: ((shore / cols) | 0) + 0.5 } : null };
+    }
+    /* A bridge is built: walk over it at full pace, and two pieces of land it joins are one. */
+    function bridgeBuilt(v) {
+      const c = crossings(v).bridge, i = c.i; cross[i] = 3; v.bridge = { x: c.x, y: c.y };
+      let id = 0; const x = i % cols, y = (i / cols) | 0, ids = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const j = (y + dy) * cols + x + dx; if (landPiece[j] && !ids.includes(landPiece[j])) ids.push(landPiece[j]); }
+      id = ids.length ? ids[0] : 0; landPiece[i] = id;
+      if (ids.length > 1) for (let k = 0; k < tiles; k++) if (ids.includes(landPiece[k])) landPiece[k] = id;
+      ways.clear();
+      note("build", v.name + " has built a bridge over the river.", 2, c.x, c.y, v.f);
+    }
+    /* Over the water from their village's landing to the nearest shore of the land they are going
+       to: a search over the water out to 50 km, kept for each village and land. */
+    function ferryFor(p, from, to) {
+      const v = villages[p.home]; if (!v || !v.boat || pieceAt(v.boat.x, v.boat.y) !== from) return null;
+      const memo = v.ferries || (v.ferries = new Map());
+      if (memo.has(to)) return memo.get(to);
+      const a = crossings(v).landing; if (!a) return null;
+      const ax = a.i % cols, ay = (a.i / cols) | 0, dist0 = new Map(), q = [];
+      for (let k = 0; k < 8; k++) { const nx = ax + [1, -1, 0, 0, 1, 1, -1, -1][k], ny = ay + [0, 0, 1, -1, 1, -1, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue; const j = ny * cols + nx; if (ground[j] <= G_RIVER && stopAt(j) || ground[j] <= G_LAKE) { dist0.set(j, 1); q.push(j); } }
+      let found = null;
+      for (let h = 0; h < q.length && !found && q.length < 400000; h++) {
+        const i = q[h], x = i % cols, y = (i / cols) | 0, d = dist0.get(i);
+        if (d > 200) break;
+        for (let k = 0; k < 4 && !found; k++) {
+          const nx = x + [1, -1, 0, 0][k], ny = y + [0, 0, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const j = ny * cols + nx;
+          if (landPiece[j] === to) found = { ax: a.x, ay: a.y, bx: nx + 0.5, by: ny + 0.5, hours: (d + 1) / (4 * SQUARES_PER_KM) + 0.5 };
+          else if (stopAt(j) && !dist0.has(j)) { dist0.set(j, d + 1); q.push(j); }
+        }
+      }
+      memo.set(to, found);
+      return found;
     }
     function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = TK(10) + Math.floor(R() * 30 * STEP_SCALE); }
 
@@ -1698,6 +1863,16 @@
           weigh("well", 0.35 + n.water * 0.5 - away(dist(p, spot)) - n.food * 0.4 - dark * 0.6, () => { go(p, spot.x, spot.y, "well"); p.wait = 0; });
         }
       }
+      /* A bridge or a boat for the village (TODO 6d). */
+      if (CROSS && v.alive && p.job !== "soldier") {
+        const c = crossings(v);
+        if (c.bridge && !v.bridge && cross[c.bridge.i] === 1)   // and nobody has bridged it since
+          weigh("bridge", 0.3 - away(Math.hypot(c.bridge.x - p.x, c.bridge.y - p.y)) - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
+            () => { go(p, c.bridge.x, c.bridge.y, "bridge"); p.wait = 0; });
+        if (c.landing && !v.boat && (v.wantBoat || 0) >= 3)
+          weigh("boat", 0.3 + Math.min(0.3, v.wantBoat * 0.01) - away(Math.hypot(c.landing.x - p.x, c.landing.y - p.y)) - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
+            () => { go(p, c.landing.x, c.landing.y, "boatwork"); p.wait = 0; });
+      }
       /* Sleep, in their own house. The one thing a night is for. */
       const far = Math.hypot(p.hx - p.x, p.hy - p.y);
       weigh("sleep", n.rest + dark * 0.6 - 0.22 - away(far) * 0.4, () => {
@@ -1724,6 +1899,14 @@
           weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12 + 0.35 * (season().ripe - 1) / 3) * skilled(p, "farmer") * w.land
                           - away(Math.hypot(w.tx + 0.5 - p.x, w.ty + 0.5 - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, w.tx + 0.2 + R() * 0.6, w.ty + 0.2 + R() * 0.6, "field"); p.wait = 0; });
+
+        /* A day's fishing (TODO 6c), for a village with water near. */
+        if (FISH && fishGround(v)) {
+          const g = v.fishing;
+          weigh("fish", (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, "fisher") * fishWorth(v)
+                         - away(Math.hypot(g.x - p.x, g.y - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
+            () => { go(p, g.x + (R() - 0.5) * 1.5, g.y + (R() - 0.5) * 1.5, "fish"); p.wait = 0; });
+        }
 
         /* A day at the bench. */
         weigh("make", (n.provide * 1.05 + 0.1) * skilled(p, "crafter") * w.bench
@@ -1932,6 +2115,22 @@
         if (h) h.water = Math.min(JAR, h.water + (p.carry || 0));
         p.carry = 0; p.task = "idle"; p.wait = 0; return;
       }
+      if (p.task === "bridge" || p.task === "boatwork") {   // TODO 6d: four hours at a time
+        const bridge = p.task === "bridge";
+        if (bridge ? !v.bridge : !v.boat) {
+          if (bridge) { v.bridgeWork = (v.bridgeWork || 0) + 4; if (v.bridgeWork >= BRIDGE_HOURS) bridgeBuilt(v); }
+          else { v.boatWork = (v.boatWork || 0) + 4; if (v.boatWork >= BOAT_HOURS) { const l = crossings(v).landing; v.boat = { x: l.x, y: l.y }; note("build", v.name + " has built a boat.", 1, l.x, l.y, v.f); } }
+        }
+        p.task = "idle"; p.wait = TK(240); return;
+      }
+      if (p.task === "boat") {                         // rowed over, then on their way
+        const o = p.over;
+        if (!o) { p.task = "idle"; p.wait = 0; return; }
+        if (!p.rowing) { p.rowing = true; p.wait = Math.round(o.hours * ACTIONS_PER_HOUR); return; }
+        p.rowing = false; p.over = null;
+        jump(p, o.bx, o.by);
+        go(p, o.x, o.y, o.task); p.wait = 0; return;
+      }
       if (p.task === "well") {                         // four hours' digging at a time
         if (!v.well) {
           v.wellWork = (v.wellWork || 0) + 4;
@@ -1952,6 +2151,21 @@
         /* Standing next to somebody is the whole point; `act` does the talking
            when they are close enough, and `converse` clears the need. */
         p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "fish") {                         // TODO 6c: a day at the water, then home with the catch
+        if (!p.fishing) { p.fishing = true; p.wait = spell("harvest"); return; }
+        p.fishing = false;
+        const g = fishGround(v);
+        let need = g ? fishDay() * (p.job === "fisher" ? 1 : 0.7) : 0;
+        const want = need;
+        if (g) for (const i of g.tiles) {
+          if (need <= 0.01) break;
+          const have = fishIn(i), got = Math.min(have, need);
+          if (got > 0) { fishStock.set(i, [have - got, t]); need -= got; }
+        }
+        p.food += want - need; count.fish += want - need;
+        p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
+        return;
       }
       if (p.task === "field") {
         if (!p.harvesting) {
@@ -2669,8 +2883,12 @@
       if (p.task === "make") return walking ? "Walking to workshop" : "Making goods";
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
       if (p.task === "water") return "Fetching water";
+      if (p.task === "fish") return walking ? "Going fishing" : "Fishing";
       if (p.task === "waterhome") return "Carrying water home";
       if (p.task === "well") return walking ? "Going to dig the well" : "Digging a well";
+      if (p.task === "bridge") return walking ? "Going to work on the bridge" : "Building a bridge";
+      if (p.task === "boatwork") return walking ? "Going to work on the boat" : "Building a boat";
+      if (p.task === "boat") return p.rowing ? "Crossing by boat" : "Going to the boat";
       if (p.task === "rest") return walking ? "Going home" : p.sick > 0 ? "Ill at home" : "Resting at home";
       if (p.task === "visit") return walking ? "Going to see somebody" : "Visiting";
       if (p.task === "ask") return walking ? "Going to ask for food" : "Asking for food";
@@ -2761,7 +2979,7 @@
       if (x < 0.25 || y < 0.25 || x > cols - 0.25 || y > rows - 0.25) return false;
       /* Not into the sea or a lake (TODO 4b). Somebody already in it, put
          there from outside, may still walk out. */
-      if (ground[(y | 0) * cols + (x | 0)] <= G_LAKE && !wet(p.x, p.y)) return false;
+      if (stopAt((y | 0) * cols + (x | 0)) && !wet(p.x, p.y)) return false;
       if (REAL_BODIES) return true;
       /* Only the squares a body's width from (x, y) can touch: one, two or
          four of them, not always nine. Until 2026-11-15 it read all nine, and
@@ -2777,6 +2995,13 @@
     }
     /* A stride longer than a body is taken in pieces, each checked, so a
        longer step a tick (the five-minute day) never walks through anybody. */
+    /* Set down somewhere else at once: off a boat (TODO 6d). The lists are kept as a step keeps them. */
+    function jump(p, x, y) {
+      const x0 = p.x, y0 = p.y;
+      p.x = x; p.y = y;
+      if (!PLAIN && tileAt(p.x, p.y) !== p.bk) shifted.push(p);
+      if (MEMO) { madeRoom(x0, y0); came(p.x, p.y); p.ox = p.x; p.oy = p.y; p.mc = -1; }
+    }
     function move(p, dx, dy) {
       if (MEMO && p.mc >= 0 && p.mx === p.x && p.my === p.y && p.mdx === dx && p.mdy === dy && quiet(p.x, p.y, p.mc)) return;
       const x0 = p.x, y0 = p.y;
@@ -2895,8 +3120,8 @@
           for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
             if (!dx && !dy) continue;
             const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-            const j = ny * cols + nx, k = ground[j]; if (k <= G_LAKE) continue;
-            const g = gi + (dx && dy ? Math.SQRT2 : 1) / PACE[k];
+            const j = ny * cols + nx, k = ground[j]; if (stopAt(j) || shut(x, y, dx, dy)) continue;
+            const g = gi + (dx && dy ? Math.SQRT2 : 1) / (cross !== null && cross[j] === 3 ? 1 : PACE[k]);
             if (wayAt[j] === wayStamp && g >= wayG[j]) continue;
             wayAt[j] = wayStamp; wayG[j] = g; wayFrom[j] = i; push(j, g + est(j));
           }
@@ -2922,8 +3147,20 @@
     }
     function dryLine(a, b) {
       const ax = a % cols + 0.5, ay = ((a / cols) | 0) + 0.5, bx = b % cols + 0.5, by = ((b / cols) | 0) + 0.5;
-      const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 3);
-      for (let k = 1; k < n; k++) if (wet(ax + (bx - ax) * k / n, ay + (by - ay) * k / n)) return false;
+      const len = Math.hypot(bx - ax, by - ay), n = Math.ceil(len * 3);
+      if (cross === null) { for (let k = 1; k < n; k++) if (wet(ax + (bx - ax) * k / n, ay + (by - ay) * k / n)) return false; return true; }
+      /* With big rivers (TODO 6d): a river runs corner to corner, so a line checked at three points
+         a square slipped through where two river squares touch, and walkers stuck at the bank.
+         Beside a big river (`byBig`), six points a square and a body's breadth either side. */
+      const px = -(by - ay) / (len || 1) * 0.2, py = (bx - ax) / (len || 1) * 0.2;
+      for (let k = 1; k < n; k++) {
+        const x = ax + (bx - ax) * k / n, y = ay + (by - ay) * k / n;
+        if (wet(x, y)) return false;
+        if (byBig[(y | 0) * cols + (x | 0)]) for (let h = -0.5; h <= 0.5; h += 0.5) {
+          const hx = x + (bx - ax) * h / n, hy = y + (by - ay) * h / n;
+          if (wet(hx, hy) || wet(hx + px, hy + py) || wet(hx - px, hy - py)) return false;
+        }
+      }
       return true;
     }
     const DIAGONAL = Math.hypot(1, 1) * 0.5;
@@ -3596,7 +3833,7 @@
          a village holds: it has paths, and a whole village walking its streets at the pace of
          open hills jammed round its middle for hours (measured: 43 people stuck over 200 steps
          against 1). */
-      const here = tileAt(p.x, p.y), footing = owner[here] >= 0 ? 1 : PACE[ground[here]];
+      const here = tileAt(p.x, p.y), footing = owner[here] >= 0 || (cross !== null && cross[here] === 3) ? 1 : PACE[ground[here]];
       const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1) * footing;
       const partner = p.sayT > 0 && byId.get(p.talkingTo);
       if (partner && partner.sayT > 0 && partner.talkingTo === p.id) {
@@ -3650,9 +3887,13 @@
             if (p.way && (p.wx !== p.tx || p.wy !== p.ty)) p.way = null;
             if (!p.way && wet(p.x + dx / d * Math.min(d, 1), p.y + dy / d * Math.min(d, 1))) { p.way = landWay(p); p.wx = p.tx; p.wy = p.ty; }
             if (p.way) {
-              while (p.way.length > 1 && Math.hypot(p.way[0].x - p.x, p.way[0].y - p.y) < 0.75) p.way.shift();
+              /* Beside a big river a waypoint is followed closely, not cut toward the next (TODO 6d). */
+              const reach = byBig !== null && byBig[tileAt(p.x, p.y)] ? 0.25 : 0.75;
+              /* And reaching one is getting somewhere: a way round a river to its ford can lead away
+                 from where they are going for a while, and that is not being stuck. */
+              while (p.way.length > 1 && Math.hypot(p.way[0].x - p.x, p.way[0].y - p.y) < reach) { p.way.shift(); if (cross !== null) { p.stuck = 0; p.lastDistance = Infinity; } }
               const w0 = p.way[0], wd = Math.hypot(w0.x - p.x, w0.y - p.y);
-              if (p.way.length === 1 && wd < 0.75) p.way = null;
+              if (p.way.length === 1 && wd < reach) p.way = null;
               if (wd > 1e-9) move(p, (w0.x - p.x) / wd * pace, (w0.y - p.y) / wd * pace);
             } else move(p, dx / d * pace, dy / d * pace);
           }
@@ -4143,8 +4384,70 @@
       }
     }
 
+    /* ── rain and dry years (TODO 6b, 2026-11-16) ─────────────────────────
+       A year's rain at a place is its usual rain times 1 + cv·z: z is drawn
+       for the whole land and for regions about 100 km across, from the seed
+       and the year (not the world's dice), and cv, how much one year differs
+       from the next, is larger on dry ground than wet (yearly rain varies by
+       about 15 to 20% in wet country and 30% and more in dry), scaled by "Year
+       to year". The crop loses about as much as the rain fell short (FAO's
+       yield response factor for wheat, about 1.05), gains a little in a wet
+       year, and ground within a kilometre of a river or lake is spared,
+       wholly at the bank. Divided by its own average, so an ordinary run of
+       years grows what it did without rain. README, "Rain and dry years". */
+    const KY = 1.05;
+    const z3 = r => r() * 2 + r() * 2 + r() * 2 - 3;
+    const rainMean = (() => { const r = rng(977), m = []; for (let b = 0; b <= 40; b++) { const cv = b / 40; let sum = 0;
+      for (let k = 0; k < 3000; k++) { const R = Math.max(0.05, 1 + cv * (0.8 * z3(r) + 0.6 * z3(r) * 0.75)); sum += 1 - KY * Math.max(0, 1 - R) + 0.15 * Math.min(0.5, Math.max(0, R - 1)); }
+      m.push(sum / 3000); } return m; })();
+    function rainField(year, out) {
+      const r = rng((S.seed * 2246822519 + year * 3266489917 + 11) >>> 0);
+      const zg = z3(r), cell = 100 * SQUARES_PER_KM, gw = Math.ceil(cols / cell) + 2, gh = Math.ceil(rows / cell) + 2;
+      const g = new Float32Array(gw * gh); for (let k = 0; k < g.length; k++) g[k] = z3(r);
+      for (let y = 0; y < rows; y++) {
+        const fy = y / cell, iy = fy | 0, uy = fy - iy;
+        for (let x = 0; x < cols; x++) {
+          const i = y * cols + x; if (!fert[i]) { out[i] = 100; continue; }
+          const fx = x / cell, ix = fx | 0, ux = fx - ix, k = iy * gw + ix;
+          const zr = g[k] * (1 - ux) * (1 - uy) + g[k + 1] * ux * (1 - uy) + g[k + gw] * (1 - ux) * uy + g[k + gw + 1] * ux * uy;
+          const cv = Math.min(1, (S.weather || 0) * (0.25 + 0.6 * (1 - wetQ[i] / 255)));
+          const R = Math.max(0.05, 1 + cv * (0.8 * zg + 0.6 * zr));
+          let short = Math.max(0, 1 - R);
+          if (nearW[i] <= 4) short *= (nearW[i] - 1) / 4;           // river flats: none lost at the bank, a quarter 500 m off, all past a kilometre
+          const crop = (1 - KY * short + 0.15 * Math.min(0.5, Math.max(0, R - 1))) / rainMean[Math.round(cv * 40)];
+          out[i] = clamp(Math.round(crop * 100), 0, 255);
+        }
+      }
+      return out;
+    }
+    /* A new year's rain, and word of a dry one where a faction farms. */
+    function newRainYear(year) {
+      rainYear = year; rainField(year, rainK);
+      for (const f of factions) {
+        if (f.alive === false) continue;
+        let sum = 0, n = 0, worst = null;
+        for (const v of villages) if (v.alive && v.f === f.id) { const k = rainK[tileAt(v.x, v.y)]; sum += k; n++; if (!worst || k < worst.k) worst = { v: v, k: k }; }
+        if (n && sum / n < 80) note("dry", "A dry year for " + f.name + ": the crops are thin, about " + Math.round(sum / n) + "% of a usual harvest.", 3, worst.v.x, worst.v.y, f.id);
+      }
+    }
+    /* Rain fills the pots: on a rainy day every house of a village catches about 40 litres off its
+       roof. A wet place has rain on about half its days, a dry one on a sixth; a dry year fewer. */
+    function rainDay() {
+      const day = Math.floor(t / DAY_HOURS), wetDay = [];
+      for (const v of villages) {
+        if (!v.alive) { wetDay.push(false); continue; }
+        const i = tileAt(v.x, v.y), chance = (0.15 + 0.45 * wetQ[i] / 255) * clamp(rainK[i] / 100, 0.3, 1.4);
+        let hsh = (S.seed * 374761393 + day * 668265263 + v.id * 2246822519) >>> 0;
+        hsh = Math.imul(hsh ^ (hsh >>> 13), 1274126177) >>> 0; hsh = (hsh ^ (hsh >>> 16)) >>> 0;
+        wetDay.push(hsh / 4294967296 < chance);
+      }
+      for (const h of homes) if (wetDay[h.v]) h.water = Math.min(JAR, h.water + 40);
+    }
+
     /* ── the tick ──────────────────────────────────────────────────────── */
     function hour() {
+      if (RAIN) { const y = season().year; if (y !== rainYear) newRainYear(y); }
+      if (RAIN && THIRST && t % DAY_HOURS === 0 && t > 0) rainDay();
       if (THIRST) countHouses();
       if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
       t++;
@@ -4154,7 +4457,7 @@
       for (let k = 0; k < n; k++) {
         const i = WILD && workedList ? workedList[k] : k;
         const cap = fert[i] * FIELD_CAP;
-        if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich * grow);
+        if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich * (RAIN ? grow * rainK[i] * 0.01 : grow));
         /* What is still standing when the frost comes is lost a little at a time. */
         if (frost > 0 && stock[i] > 0) stock[i] -= stock[i] * frost;
       }
@@ -4350,6 +4653,12 @@
     return {
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
       fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, homes: homes,
+      /* Rain (TODO 6b): this year's crops for the rain on each square, 100 an ordinary year (null with
+         Rain off), and any year's, worked out fresh without touching the world. */
+      /* Send somebody somewhere, as a decision would: for tests (crossing water, TODO 6d). */
+      send: (p, x, y, task) => go(p, x, y, task || "idle"),
+      cross: cross,   // TODO 6d: 1 a big river, 2 a ford, 3 a bridge (null with Crossing at "wade")
+      rainK: rainK, rainField: y => RAIN ? rainField(y, new Uint8Array(tiles)) : null,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
       step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity,

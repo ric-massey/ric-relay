@@ -764,7 +764,7 @@ when it is built.
 - [ ] What each kind gives: wood from forest, fish from water, stone from hills, game, grazing.
 - [x] What each kind costs: slow to cross, can't be farmed, can't be crossed without a boat or
   a bridge. (2026-11-16, TODO 4a and 4b: paces by kind, nothing farmed on water, marsh, mountain
-  or snow, the sea and lakes not walked; boats and bridges still to come.)
+  or snow, the sea and lakes not walked; 6d: big rivers at fords and bridges, boats.)
 - [x] How it is drawn so anybody can tell at a glance what is livable, forest, beach and water.
   (2026-11-16, TODO 5: colour, marks and relief; Ric named all eleven kinds on a new seed.)
 - [x] How much of each the visitor chooses (mostly sea, one big river, all forest) and how much
@@ -777,12 +777,15 @@ when it is built.
 **2. Water**
 - Now: none. People need only food.
 - [x] Drinking water as a need, and where it comes from: river, lake, well, rain.
-  (2026-11-16, TODO 6a: rivers, lakes and wells; rain comes with 6b.)
+  (2026-11-16, TODO 6a: rivers, lakes and wells; 6b: rain fills the pots.)
 - [ ] Water as the reason places are where they are: villages by rivers, towns at crossings and
   harbours.
-- [ ] Water for crops: rain, dry years, irrigation.
-- [ ] Water as road and wall: boats, fords, bridges, an army stopped by a river.
-- [ ] Fishing as a way to live.
+- [x] Water for crops: rain, dry years, irrigation.
+  (2026-11-16, TODO 6b: rain by place and year, dry years, river flats spared; irrigation is not
+  built by anybody yet.)
+- [x] Water as road and wall: boats, fords, bridges, an army stopped by a river.
+  (2026-11-16, TODO 6d.)
+- [x] Fishing as a way to live. (2026-11-16, TODO 6c.)
 
 **3. Places and buildings**
 - Now: a village is a point with a store. A house is a spot where a family sleeps. There are no

@@ -666,7 +666,7 @@ Research notes:
   moves; what changes (harvest, who holds it) as a see-through wash a pixel a square on top. Only
   blocks on screen are drawn or kept (40 at most).
 
-### [ ] 6. Water people need and use (6a done)
+### [x] 6. Water people need and use
 
 **Now:** people need only food.
 **Do:** drinking water as a need, met from river, lake or well. Settlements start near water.
@@ -696,6 +696,15 @@ daily task. **Open:** traders stopped prospecting with water on (0 of 16 seeds a
 cause not found; the travel test runs water off. Comes with later parts: rain and dry years
 (6b), fishing (6c), boats and bridges (6d).
 
+**6b, 6c, 6d done 2026-11-16** (Ric: "6 just needs to finish"). **6b:** a year's rain by place
+and year, more varied on dry ground, a dry year thinning the crop by about what the rain fell
+short, river flats spared, rain filling the water pots; a dry year about one in five. **6c:**
+villages by water fish, fish come back as real waters do, a fisher is a living. **6d:** big rivers
+only at fords and bridges, villages build bridges and boats, people are rowed over, an army is
+stopped by water. Each has a setting, and off is exactly as before. **The trader puzzle from 6a
+was chance**: over sixty seeds a trader set off to look at another market in 7 with water against
+4 without; the travel test runs with water on again. **Item 6 is done.** **Not met:** the speed budget on two rows: 20,000 people on 80 km 7% slower a day, 400 on 500 km 0.09 → 0.16 s; a walker at a bend in a big river sometimes falls back on the slow way-round search (README, "Fords, bridges and boats"). 6a's speed miss is mostly gone: the fields it added are now declared at birth. **Open:** a default 17 km land has no big river, so fords, bridges and armies stopped by a river show only on lands of about 100 km and up; a boat is built only where people keep wanting to cross, which on these lands is rare.
+
 Research notes:
 - **How much water.** About 20 litres a person a day is basic access, the quantity WHO ties to a
   source within 1 km or a 30-minute round trip; 50 to 100 litres is the UN's range for all
@@ -712,6 +721,15 @@ Research notes:
   a deep dry hole was "several months of lost time and labor"
   ([CUNY, wells](https://pressbooks.cuny.edu/gorokhovich/chapter/wells/)). No clean medieval figure for
   the work was found; chosen: about thirty person-days of digging, said as a guess.
+- **Rain (6b).** Yearly rain varies by about 15 to 20% in wet temperate country and 30% and more
+  in dry (the coefficient of variation rises as rain falls); a crop loses about as much as its
+  water fell short, FAO's yield response factor for wheat about 1.0 to 1.15
+  ([FAO Irrigation and Drainage Paper 66](https://www.fao.org/4/i2800e/i2800e.pdf)). River flats
+  were farmed because floods water and enrich them. Chosen: as in the README, "Rain and dry years".
+- **Fords and bridges (6d).** Fords were where a river ran shallow over gravel, and towns grew at
+  them (Oxford, Frankfurt); a river draining a few hundred square kilometres is tens of metres
+  wide. A timber bridge was weeks of a crew's work; no clean figure found, chosen 75 person-days,
+  said as a guess, and 15 for a boat.
 - **Fish (for 6c).** Natural waters yield roughly 20 to 50 kg a hectare a year (FAO,
   [inland fisheries](https://www.fao.org/4/x5744E/x5744e0q.htm)); medieval fish ponds were kept by
   monasteries for Lent; no medieval yield a hectare was found.
@@ -1024,4 +1042,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-16 | 4b | AMD Ryzen 5 3600, 24 GB | 2.45 s a day, 122× | *not run* | 2.5 MB, 0.48 KB | a different world from 4a's (pace and water change who goes where). `--quick` against 4a: 400 people 0.30 → 0.33 s, 2,000 3.68 → 3.30 s, 5,000 2.62 → 2.45 s. 1,000 km starts in 4.3 s, 785 MB after a day |
 | 2026-11-16 | 7a | AMD Ryzen 5 3600, 24 GB | 1.89 s a day, 159× | 10.78 s a day, 28× | 3.3 MB, 0.64 KB | **people at real size by default**, a different world. 400 people 0.34 → 0.12 s, 2,000 on 17 km 3.23 → 0.55 s, 400 on 500 km 0.15 → 0.05 s; 20,000 on 80 km 7.40 → 10.78 s, slower (busier people, emptier stores); a default year 115 → 40 s |
 | 2026-11-16 | 6a | AMD Ryzen 5 3600, 24 GB | 1.77 s a day, 168× | 12.6 s a day, 23× | 3.2 MB, 0.63 KB | **thirst on by default**, a different world. Against 7a: 400 people 0.12 → 0.14 s, 2,000 0.55 → 0.62 s, 5,000 1.72 → 1.77 s, 20,000 10.5 → 12.6 s (fetching is a new daily task) |
+| 2026-11-16 | 6 | AMD Ryzen 5 3600, 24 GB | 1.75 s a day, 172× | 13.5 s a day, 22× | 3.4 MB, 0.67 KB | **rain, fishing and crossing water on by default**, a different world. Against 6a: 400 people 0.14 → 0.13 s, 2,000 0.62 → 0.60 s, 5,000 1.80 → 1.75 s, 20,000 12.6 → 13.5 s, 400 on 500 km 0.09 → 0.16 s (walking round big rivers); person fields declared at birth |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

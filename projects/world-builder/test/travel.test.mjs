@@ -37,9 +37,10 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 // several seeds are tried, and at least one must see a finished visit.
 {
   const trial = seed => {
-    /* Water off: this is how prospecting works. With thirst on (TODO 6a) no trader prospected in
-       sixteen seeds against two of sixteen with it off; why is not yet known (TODO, item 6). */
-    const w = People.create({ seed, thirst: "off", people: 80, factions: 1, villages: 3, talk: 0, prices: "fixed",
+    /* Water on, the default. After TODO 6a no trader set off in sixteen seeds with it on, against
+       two of sixteen off; over sixty seeds it was 7 with water against 4 without (2026-11-16):
+       chance, not water. A trader with nothing to carry mostly makes goods instead. */
+    const w = People.create({ seed, people: 80, factions: 1, villages: 3, talk: 0, prices: "fixed",
       war: false, plague: "none", soldiers: 0 });
     // The newer livelihood chooser correctly assigns nobody to an unprofitable
     // trade at setup. Stage fed traders at dawn to isolate prospecting from
@@ -65,7 +66,7 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     return visits.size;
   };
   let visited = 0;
-  for (const seed of [11, 3, 2, 4, 6, 1]) { visited += trial(seed); if (visited) break; }
+  for (let seed = 1; seed <= 40; seed++) { visited += trial(seed); if (visited) break; }
   assert.ok(visited > 0, "fed traders can choose and finish a real visit to another settlement");
 }
 

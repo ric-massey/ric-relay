@@ -1755,6 +1755,68 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Rain and dry years (2026-11-16)
+
+TODO item 6b. Every year grew the same everywhere but for one number for the whole land. With
+"Rain" on (the default):
+
+- **A year's rain differs by place.** Each square's usual rain is how wet its place is (the same
+  map that makes forest or dry land); a year's rain there is that times 1 + cv·z, with z drawn
+  from the seed and the year for the whole land and for regions about 100 km across (not the
+  world's dice, so asking about a year changes nothing). cv is how much one year differs from the
+  next: larger on dry ground than wet, as in life (yearly rain varies by about 15 to 20% in wet
+  country, 30% and more in dry), and scaled by "Year to year"; at "every year the same" there are
+  no dry years.
+- **A dry year thins the crop** by about as much as the rain fell short (FAO's yield response
+  factor for wheat, about 1.05; FAO Irrigation and Drainage Paper 66), and a wet year adds a
+  little. Divided by its own average, so a run of years grows what it did without rain: 100% on
+  average over thirty years, with a land-wide dry year (under 85%) about one year in five at the
+  usual setting.
+- **River flats are spared**: ground beside a river or lake loses nothing in a dry year, ground
+  500 m off a quarter of what it would, a kilometre off three quarters, which is why villages sat
+  there.
+- **Word of a dry year** comes in the news when a faction's villages get under 80% of a usual
+  crop.
+- **Rain fills the pots**: with thirst on, on a rainy day every house of a village catches about
+  40 litres off its roof; a wet place has rain on about half its days, a dry one on a sixth, a dry
+  year fewer.
+
+### Fishing (2026-11-16)
+
+TODO item 6c. With "Fishing" on (the default), a village within 2 km of a river, lake or the sea
+fishes the water nearest its middle and every water square within 750 m of it. A square of water
+(6.25 ha) gives what natural waters give, 30 kg a hectare a year in the sea, 40 in a lake, 60 in a
+river (FAO puts natural waters at about 20 to 50), a kilogram being about a third of a day's food;
+it holds at most a year of that, fished down it comes back at that rate. A day's fishing brings
+in up to about 6 kg, under half that in the cold. A fisher is a living like a farmer, chosen the
+same way: by what a day there would bring. Measured: over a year on six seeds a 400-person world caught about 6,800 days of food, roughly 6% of what it ate.
+
+### Fords, bridges and boats (2026-11-16)
+
+TODO item 6d. Every river could be waded, and nobody could cross the sea or a lake at all. With
+"Crossing water" at "real" (the default):
+
+- **Big rivers** (draining over about 300 km², tens of metres wide) cannot be waded, except at a
+  **ford**, about every 2.5 km (every 7.5 km on the biggest), from the seed. Nobody steps from
+  corner to corner across one either. A default 17 km land has none; 100 km lands have a few, 200
+  km lands hundreds of squares of them.
+- **A bridge**: a village within 2 km of a big river with no ford within 1.5 km builds one, about
+  75 person-days of timber work, four hours at a time; it is walked at full pace, and land it
+  joins is one. On a 200 km land the first took about three weeks.
+- **A boat**: a village within 2 km of a lake or the sea whose people keep wanting to cross it
+  builds one, about 15 person-days; then its people walk to its landing, are rowed over at 4 km an
+  hour to the nearest shore of the land they are going to, and walk on.
+- **An army does not go by boat**: soldiers sent over water they cannot walk round stay where
+  they are, and the news says so.
+- **Drawn** from close enough to see houses: a big river wider, a ford as a pale shallow with
+  stepping stones, a bridge as timber across, a boat at its landing.
+
+Each part has its own setting, and with each off ("off", "off", "wade") the world is exactly as
+before: checked against the engine before that part on three seeds after eight days, identical.
+
+Measured, the three together (six seeds, a year each, against 6a): 365 alive on average against 352, 110 dead of hunger in all against 162, 4 of thirst against 26 (rain fills the pots); seed 3 had a dry year, its villages' crops at 63% of usual, and 15 starved there against 1. Speed
+(`test/bench.mjs`, against 6a): 400 people 0.14 → 0.13 s a day, 2,000 0.62 → 0.60, 5,000 1.80 → 1.75, 20,000 on 80 km 12.6 → 13.5 (**7% slower**: walking round a big river to its ford), 400 on 500 km 0.09 → 0.16 (**slower**: a land that size has hundreds of squares of big river, and a walker at a bend in one still sometimes falls back on the slow search for a way round). Part of what made 6a slow was found on the way: fields first set during a life (hours without water, what is carried home) gave people different shapes in memory, which the engine's notes already warned of; declared at birth, 20,000 people with all three parts off run 11.2 s a day against 6a's 12.6.
+
 ### Water to drink (2026-11-16)
 
 TODO item 6a. People needed only food. Now, with "Thirst" on (the default, Ric: "Real, on by

@@ -683,6 +683,9 @@ nobody had linked was a page nobody could find.
   family sleeps inside it, and the page zooms to 4,096 pixels a square to see one house.
   **Thirst** (TODO 6a, 2026-11-16, Ric: "Real, on by default"): households keep and fetch
   water, wells are dug where fresh water is over a kilometre off; "off" is exactly as before.
+  **Rain, fishing, crossing** (TODO 6b to 6d, 2026-11-16): a year's rain by place, dry years,
+  river flats spared; villages by water fish; big rivers only at fords and bridges, villages
+  build bridges and boats, armies are stopped by water. Each its own setting; off is as before.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

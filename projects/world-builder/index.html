@@ -365,7 +365,7 @@
       <details id="people-filter-details"><summary>Filter people</summary><div class="population-filters">
         <label for="people-settlement">Settlement<select id="people-settlement"><option value="">All settlements</option></select></label>
         <label for="people-faction">Faction<select id="people-faction"><option value="">All factions</option></select></label>
-        <label for="people-job">Occupation<select id="people-job"><option value="">All occupations</option><option value="child">Child</option><option value="farmer">Farmer</option><option value="crafter">Crafter</option><option value="trader">Trader</option><option value="soldier">Soldier</option></select></label>
+        <label for="people-job">Occupation<select id="people-job"><option value="">All occupations</option><option value="child">Child</option><option value="farmer">Farmer</option><option value="crafter">Crafter</option><option value="trader">Trader</option><option value="fisher">Fisher</option><option value="soldier">Soldier</option></select></label>
       </div></details>
     </div>
     <div id="panes"></div>
@@ -758,7 +758,7 @@
   function hear(m, from) {
     if (from !== keeper) return;
     if (m.t === "started") {
-      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, shade: m.shade, riverTo: m.riverTo, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
+      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, shade: m.shade, riverTo: m.riverTo, cross: m.cross, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
       making = 0; $("slow").hidden = true; runTook = m.took;
       sizeCanvas();
       if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
@@ -1690,6 +1690,44 @@
       ctx.fillStyle = "#8a8580"; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 6.2832); ctx.fill();
       ctx.fillStyle = "#3c78b0"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
       ctx.strokeStyle = "#1c1710"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 6.2832); ctx.stroke();
+    }
+    /* Big rivers, fords, bridges and boats (TODO 6d), from close enough to see houses: a big river
+       is drawn wider, a ford as a row of pale stones across it, a bridge as timber across it, a
+       boat at its village's landing. */
+    if (s >= 6 && world && world.cross) {
+      const x0 = Math.max(0, Math.floor(-ox / s)), y0 = Math.max(0, Math.floor(-oy / s));
+      const x1 = Math.min(world.cols - 1, Math.ceil((W - ox) / s)), y1 = Math.min(world.rows - 1, Math.ceil((H - oy) / s));
+      const DXs = [1, -1, 0, 0, 1, 1, -1, -1], DYs = [0, 0, 1, -1, 1, -1, 1, -1], big = new Path2D(), stones = new Path2D(), shallow = new Path2D();
+      const rw = Math.max(3, s * 40 / 250);                  // a big river about 40 m wide
+      for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+        const i = ty * world.cols + tx, c = world.cross[i]; if (!c) continue;
+        const o = world.riverTo ? world.riverTo[i] : 255, cx = ox + (tx + 0.5) * s, cy = oy + (ty + 0.5) * s;
+        if (o < 8) { big.moveTo(cx, cy); big.lineTo(cx + DXs[o] * s, cy + DYs[o] * s); }
+        if (c === 2) {                                         // shallow water over gravel, and stepping stones across
+          const f = o < 8 ? Math.atan2(DYs[o], DXs[o]) : 0, a = f + Math.PI / 2, r = Math.max(1.2, rw * 0.11);
+          shallow.moveTo(cx - Math.cos(f) * s * 0.22, cy - Math.sin(f) * s * 0.22); shallow.lineTo(cx + Math.cos(f) * s * 0.22, cy + Math.sin(f) * s * 0.22);
+          for (let k = -3; k <= 3; k++) { const px = cx + Math.cos(a) * k * rw * 0.24, py = cy + Math.sin(a) * k * rw * 0.24; stones.moveTo(px + r, py); stones.arc(px, py, r, 0, 6.2832); }
+        }
+      }
+      ctx.lineCap = "round"; ctx.strokeStyle = "rgb(" + LOOKS[look].ground[2].join(",") + ")"; ctx.lineWidth = rw; ctx.stroke(big);
+      ctx.strokeStyle = "#a9cbd9"; ctx.lineWidth = rw * 1.5; ctx.stroke(shallow);
+      ctx.fillStyle = "#d8cfb8"; ctx.fill(stones);
+    }
+    if (s >= 6) for (const v of vs) {
+      if (!v.alive) continue;
+      if (v.bridge) {
+        const x = ox + v.bridge[0] * s, y = oy + v.bridge[1] * s, i = Math.floor(v.bridge[1]) * world.cols + Math.floor(v.bridge[0]);
+        const o = world.riverTo ? world.riverTo[i] : 255, a = o < 8 ? Math.atan2([0, 0, 1, -1, 1, -1, 1, -1][o], [1, -1, 0, 0, 1, 1, -1, -1][o]) + Math.PI / 2 : 0;
+        const len = Math.max(10, s * 70 / 250), wid = Math.max(3, s * 6 / 250);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+        ctx.fillStyle = "#7a5a36"; ctx.fillRect(-len / 2, -wid / 2, len, wid);
+        ctx.strokeStyle = "#3b2a16"; ctx.lineWidth = 1; ctx.strokeRect(-len / 2, -wid / 2, len, wid);
+        ctx.restore();
+      }
+      if (v.boat) {
+        const x = ox + v.boat[0] * s, y = oy + v.boat[1] * s, l = Math.max(8, s * 8 / 250), b = l * 0.3;
+        ctx.fillStyle = "#6b4a2a"; ctx.beginPath(); ctx.moveTo(x - l / 2, y); ctx.quadraticCurveTo(x, y + b * 2, x + l / 2, y); ctx.quadraticCurveTo(x, y + b * 0.4, x - l / 2, y); ctx.fill();
+      }
     }
     if (land && borders && borders.length) {
       ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath();
