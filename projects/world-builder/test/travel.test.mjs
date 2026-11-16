@@ -7,7 +7,7 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 // sidesteps alone oscillated here forever. Park everyone else out of the way.
 {
   const w = People.create({ people: 60, factions: 1, villages: 2, map: "small", talk: 0,
-    plague: "none", births: 0, war: false, soldiers: 0 });
+    plague: "none", births: 0, war: false, soldiers: 0, bodies: "drawn" });   // a crowd you must walk round: spaced-out bodies
   for (const [i, p] of w.people.entries()) {
     p.x = 20 + i % 12 * 0.6; p.y = 18 + Math.floor(i / 12) * 0.6;
     p.tx = p.x; p.ty = p.y; p.wait = 100000; p.food = 20; p.job = "farmer"; p.sayT = 0;
@@ -70,7 +70,7 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 // A crowded local food stop must not make someone starve beside a store.
 // The same nearby-arrival allowance must never finish a distant delivery.
 for (const distant of [false, true]) {
-  const w = People.create({ people: 20, factions: 1, villages: 2, talk: 0, plague: "none", soldiers: 0 });
+  const w = People.create({ people: 20, factions: 1, villages: 2, talk: 0, plague: "none", soldiers: 0, bodies: "drawn" });   // enclosed by bodies: spaced-out bodies
   for (const [i, q] of w.people.entries()) {
     q.x = q.tx = 25 + i % 5 * 0.6; q.y = q.ty = 25 + Math.floor(i / 5) * 0.6;
     q.wait = 100000; q.sayT = 0;

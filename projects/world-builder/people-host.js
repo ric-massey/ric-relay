@@ -248,7 +248,14 @@
       let sig = w.villages.length + "|";
       /* How many live there, to the nearest five: the houses drawn round a village follow it (TODO 5). */
       for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "") + Math.round((v.pop || 0) / 5);
-      if (m.fresh || sig !== vsSig) { vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0, pop: v.pop || 0 })); }
+      sig += "|" + w.homes.length;
+      if (m.fresh || sig !== vsSig) {
+        vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0, pop: v.pop || 0 }));
+        /* The houses, with the villages (TODO 7a): where, how long and wide, which way, and whose. */
+        const H = new Float32Array(w.homes.length * 6);
+        w.homes.forEach((h, k) => { H[k * 6] = h.x; H[k * 6 + 1] = h.y; H[k * 6 + 2] = h.len; H[k * 6 + 3] = h.wid; H[k * 6 + 4] = h.ang; H[k * 6 + 5] = h.v; });
+        out.homes = H;
+      }
       sig = fs.length + "|";
       for (const f of fs) sig += f.leader + (f.alive ? "a" : "d");
       if (m.fresh || sig !== fsSig) { fsSig = sig; out.fs = fs.map(f => ({ id: f.id, name: f.name, colour: f.colour, alive: f.alive })); }

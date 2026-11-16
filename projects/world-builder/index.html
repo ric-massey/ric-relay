@@ -781,6 +781,7 @@
          than about a seventh of the time the world has to run in. */
       snap = m; askGap = Math.max(15, m.cost * 6);
       if (m.vs) { vs = m.vs; landStale = true; }
+      if (m.homes) homesArr = m.homes;
       if (m.fs) { fs = m.fs; landStale = true; }
       if (m.land) { landNow = m.land; landStale = true; bigAt = performance.now(); }
       if (picked && picked.person && m.picked && m.picked.id === picked.person && !m.picked.gone) picked.name = m.picked.name;
@@ -1256,7 +1257,8 @@
       ground: [[52, 104, 150], [70, 128, 178], [96, 158, 206], [226, 208, 150], [104, 140, 112], [146, 186, 98], [56, 112, 62], [172, 150, 100], [146, 138, 132], [214, 186, 120], [236, 240, 244]] },
   };
   let look = "map";
-  const MAX_ZOOM = 128;
+  /* Down to a single house (TODO 7a): 4,096 pixels a 250 m square, a 15 m house 245 pixels long. */
+  const MAX_ZOOM = 4096;
   function groundColour(k, f, sh) {
     const L = LOOKS[look], c = L.ground[k];
     let r = c[0], g = c[1], b = c[2];
@@ -1470,6 +1472,7 @@
   /* The land, as much of it as the view shows. */
   function drawLand(W, H, s, ox, oy) {
     const w = world;
+    if (s >= 128) { drawClose(W, H, s, ox, oy); return; }
     if (s < 3) {
       /* Far out: the one picture, smoothed, as a map is. */
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "low";
@@ -1507,7 +1510,7 @@
      villages are. Making them every frame was a third of a frame at the
      usual size. */
   const FIELD_BLOCK = 64, fieldBlocks = new Map();
-  let fieldsFor = null, housesFor = null, houses = null;   // houses: where they stand, baked into the blocks
+  let fieldsFor = null, housesFor = null, houses = null, homesArr = null;   // houses: where they stand, baked into the blocks
   function fieldBlock(bx, by) {
     const w = world, own = landNow.owner, key = bx + ":" + by;
     let p = fieldBlocks.get(key); if (p) return p;
@@ -1522,62 +1525,111 @@
     fieldBlocks.set(key, p);
     return p;
   }
-  /* Where the houses stand, from the villages: a list, drawn into the land blocks. */
+  /* The houses, as the engine has them (TODO 7a): where each stands, how long and wide in
+     squares, which way it faces, and whose village. Seen from above, a house is its roof:
+     the colour of its people's faction over thatch, with the ridge along its length. */
   function makeHouses() {
-    const w = world, out = [];
-    for (const v of vs) {
-      if (!v.alive) continue;
-      const n = Math.max(2, Math.min(80, Math.ceil((v.pop || 8) / 4)));
-      for (let j = 0; j < n; j++) {
-        const a = j * 2.39996 + v.id, rr = 0.6 + Math.sqrt(j) * 0.55 + hash(v.id, j, 7) * 0.3;
-        const hx = v.x + Math.cos(a) * rr, hy = v.y + Math.sin(a) * rr;
-        if (hx < 0 || hy < 0 || hx >= w.cols || hy >= w.rows || w.ground[Math.floor(hy) * w.cols + Math.floor(hx)] <= 2) continue;
-        out.push({ x: hx, y: hy, col: factionColour(v.f) });
-      }
+    const out = [], H = homesArr;
+    if (!H) return out;
+    for (let k = 0; k < H.length; k += 6) {
+      const v = vs[H[k + 5]];
+      out.push({ x: H[k], y: H[k + 1], len: H[k + 2], wid: H[k + 3], ang: H[k + 4], col: v ? factionColour(v.f) : "#b9c4c1" });
     }
     return out;
   }
   /* The houses changed: only the blocks round the ones that came, went or changed colour are drawn again. */
   function updateHouses() {
-    const next = makeHouses(), key = h => h.x.toFixed(3) + "," + h.y.toFixed(3) + "," + h.col;
+    const next = makeHouses(), key = h => h.x.toFixed(4) + "," + h.y.toFixed(4) + "," + h.len.toFixed(5) + "," + h.col;
     const before = new Set((houses || []).map(key)), after = new Set(next.map(key));
     const moved = (houses || []).filter(h => !after.has(key(h))).concat(next.filter(h => !before.has(key(h))));
     if (moved.length) for (const k of [...chunks.keys()]) {
       const [, P, bx, by] = k.split(":").map(Number), N = blockSquares(P);
       if (moved.some(h => h.x >= bx * N - 1 && h.x < (bx + 1) * N + 1 && h.y >= by * N - 1 && h.y < (by + 1) * N + 1)) chunks.delete(k);
     }
-    houses = next; housesFor = vs;
+    houses = next; housesFor = vs; homesFor = homesArr;
   }
-  function drawHouses(g, x0, y0, cw, ch, P) {
-    if (!houses || P < 8) return;
-    const hs = 0.42 * P, walls = new Path2D(), roofs = new Map();
+  let homesFor = null;
+  /* Houses onto a canvas `g`, `P` pixels a square, the square (x0, y0) at the canvas's
+     corner; only those between x0..x1, y0..y1. Never smaller than about three pixels, so a
+     village can be seen as houses before they are big enough to be drawn as they are. */
+  function paintHouses(g, P, x0, y0, x1, y1) {
+    if (!houses || !houses.length) return;
+    const roofs = new Map(), ridges = new Path2D(), lines = new Path2D(), grow = Math.max(1, 3 / (0.016 * P));
     for (const h of houses) {
-      if (h.x < x0 - 1 || h.y < y0 - 1 || h.x > x0 + cw + 1 || h.y > y0 + ch + 1) continue;
-      const X = (h.x - x0) * P, Y = (h.y - y0) * P;
-      walls.rect(X - hs * 0.5, Y - hs * 0.2, hs, hs * 0.75);
+      if (h.x < x0 - 0.2 || h.y < y0 - 0.2 || h.x > x1 + 0.2 || h.y > y1 + 0.2) continue;
+      const X = (h.x - x0) * P, Y = (h.y - y0) * P, L = h.len * P * grow / 2, Wd = h.wid * P * grow / 2;
+      const c = Math.cos(h.ang), sn = Math.sin(h.ang);
       let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
-      r.moveTo(X - hs * 0.66, Y - hs * 0.15); r.lineTo(X, Y - hs * 0.7); r.lineTo(X + hs * 0.66, Y - hs * 0.15); r.closePath();
+      const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
+      r.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) r.lineTo(pts[k][0], pts[k][1]); r.closePath();
+      lines.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) lines.lineTo(pts[k][0], pts[k][1]); lines.closePath();
+      if (L > 6) { ridges.moveTo(X - c * L * 0.92, Y - sn * L * 0.92); ridges.lineTo(X + c * L * 0.92, Y + sn * L * 0.92); }
     }
-    g.lineWidth = 1; g.strokeStyle = "#2a2318";
-    g.fillStyle = "#d9c9a4"; g.fill(walls); g.stroke(walls);
-    for (const [col, r] of roofs) { g.fillStyle = col; g.fill(r); g.stroke(r); }
+    for (const [col, r] of roofs) { g.fillStyle = col; g.fill(r); g.fillStyle = "rgba(120,92,52,.3)"; g.fill(r); }
+    g.lineWidth = Math.max(1, Math.min(2.5, P * 0.002)); g.strokeStyle = "#1c1710"; g.stroke(lines);
+    g.strokeStyle = "rgba(42,35,24,.7)"; g.lineWidth = Math.max(1, P * 0.0025); g.stroke(ridges);
   }
+  function drawHouses(g, x0, y0, cw, ch, P) { if (P >= 8) paintHouses(g, P, x0, y0, x0 + cw, y0 + ch); }
   function drawFieldsAndHouses(W, H, s, ox, oy) {
     const w = world;
     if (s < 6) return;
     const T = ctx.getTransform();
     ctx.setTransform(T.a * s, 0, 0, T.d * s, T.e + T.a * ox, T.f + T.d * oy);
-    if (landNow && landNow.owner && s >= 20) {   // furrows from 20 pixels a square: the usual view of a small land is about 16, and costs what it did
+    if (landNow && landNow.owner && s >= 20 && s < 128) {   // furrows from 20 pixels a square: the usual view of a small land is about 16, and costs what it did
       if (fieldsFor !== landNow) { fieldBlocks.clear(); fieldsFor = landNow; }
       const bx0 = Math.max(0, Math.floor(-ox / s / FIELD_BLOCK)), by0 = Math.max(0, Math.floor(-oy / s / FIELD_BLOCK));
       const bx1 = Math.min(Math.ceil(w.cols / FIELD_BLOCK) - 1, Math.floor((W - ox) / s / FIELD_BLOCK)), by1 = Math.min(Math.ceil(w.rows / FIELD_BLOCK) - 1, Math.floor((H - oy) / s / FIELD_BLOCK));
-      ctx.strokeStyle = "rgba(60,48,30,.35)"; ctx.lineWidth = Math.max(1, s * 0.03) / s;
+      ctx.strokeStyle = "rgba(60,48,30,.35)"; ctx.lineWidth = Math.min(2, Math.max(1, s * 0.03)) / s;
       for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) ctx.stroke(fieldBlock(bx, by));
     }
     ctx.setTransform(T);
   }
 
+  /* ── closer than the blocks go (TODO 7a) ──────────────────────────────
+     Past 128 pixels a square the ground is its colour, smoothed between
+     squares, with marks worked out from the seed at the size of metres for
+     only what is on screen: trees as crowns a few metres across, tufts,
+     pebbles, reeds, ripples. Rivers as a line 15 m wide along their flow,
+     and the houses at their true size. Nothing of it is kept: the screen
+     holds a few hundred marks at most. */
+  function drawClose(W, H, s, ox, oy) {
+    const w = world, L = LOOKS[look];
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(land, ox, oy, w.cols * s, w.rows * s);
+    ctx.imageSmoothingEnabled = false;
+    const x0 = -ox / s, y0 = -oy / s, x1 = (W - ox) / s, y1 = (H - oy) / s;
+    /* A cell about a fortieth of the screen across, a power of two of a square. */
+    let c = 1; while (c > (x1 - x0) / 40) c /= 2;
+    const paths = new Map(), path = (style, kind) => { const k = style + "|" + kind; let p = paths.get(k); if (!p) { p = { p: new Path2D(), style, kind }; paths.set(k, p); } return p.p; };
+    const shift = (col, k) => "rgb(" + col.map(v => Math.max(0, Math.min(255, v * k)) | 0).join(",") + ")";
+    const cs = c * s;
+    for (let cy = Math.floor(y0 / c); cy * c < y1; cy++) for (let cx = Math.floor(x0 / c); cx * c < x1; cx++) {
+      const gx = cx * c, gy = cy * c, tx = Math.floor(gx), ty = Math.floor(gy);
+      if (tx < 0 || ty < 0 || tx >= w.cols || ty >= w.rows) continue;
+      const k = w.ground[ty * w.cols + tx], base = L.ground[k], X = ox + gx * s, Y = oy + gy * s;
+      const r = j => hash(cx, cy, 1000 + j);
+      if (k === 6) { const d = path(shift(base, 0.7), "fill"), l = path(shift(base, 1.3), "fill"); for (let j = 0; j < 2; j++) { const px = X + r(j) * cs, py = Y + r(j + 5) * cs, rr = cs * (0.25 + r(j + 9) * 0.15); d.moveTo(px + rr, py); d.arc(px, py, rr, 0, 6.2832); l.moveTo(px, py - rr * 0.3); l.arc(px - rr * 0.3, py - rr * 0.3, rr * 0.4, 0, 6.2832); } }
+      else if (k === 5 || k === 7) { const p = path(shift(base, 1.18), "stroke"); for (let j = 0; j < 2; j++) { const px = X + r(j) * cs, py = Y + r(j + 5) * cs, q = cs * 0.08; p.moveTo(px - q, py - q); p.lineTo(px, py); p.lineTo(px + q, py - q); } }
+      else if (k === 3 || k === 9) { const p = path(shift(base, 0.8), "fill"); for (let j = 0; j < 3; j++) p.rect(X + r(j) * cs, Y + r(j + 5) * cs, Math.max(1, cs * 0.05), Math.max(1, cs * 0.05)); }
+      else if (k === 4) { const p = path(shift(base, 0.6), "stroke"); for (let j = 0; j < 3; j++) { const px = X + r(j) * cs, py = Y + r(j + 5) * cs; p.moveTo(px, py); p.lineTo(px + cs * 0.03, py - cs * 0.25); } }
+      else if (k === 8) { if (r(3) < 0.5) { const p = path(shift(base, 0.7), "fill"), px = X + r(1) * cs, py = Y + r(2) * cs, q = cs * (0.15 + r(4) * 0.2); p.moveTo(px - q, py + q * 0.5); p.lineTo(px, py - q * 0.6); p.lineTo(px + q, py + q * 0.5); p.closePath(); } }
+      else if (k <= 1) { const p = path(shift(base, 1.3), "stroke"), px = X + r(1) * cs * 0.7, py = Y + r(2) * cs, q = cs * 0.12; p.moveTo(px, py); p.quadraticCurveTo(px + q, py - q * 0.6, px + q * 2, py); }
+      else if (k === 10) { const p = path("rgb(150,168,184)", "stroke"), px = X + r(1) * cs * 0.6, py = Y + r(2) * cs; p.moveTo(px, py); p.quadraticCurveTo(px + cs * 0.2, py - cs * 0.1, px + cs * 0.4, py); }
+    }
+    ctx.lineWidth = Math.max(1, cs * 0.03); ctx.lineCap = "round";
+    for (const { p, style, kind } of paths.values()) { if (kind === "fill") { ctx.fillStyle = style; ctx.fill(p); } else { ctx.strokeStyle = style; ctx.stroke(p); } }
+    /* Rivers along their flow, 15 m wide. */
+    const DXs = [1, -1, 0, 0, 1, 1, -1, -1], DYs = [0, 0, 1, -1, 1, -1, 1, -1], rp = new Path2D();
+    for (let ty = Math.max(0, Math.floor(y0) - 1); ty <= Math.min(w.rows - 1, Math.ceil(y1)); ty++) for (let tx = Math.max(0, Math.floor(x0) - 1); tx <= Math.min(w.cols - 1, Math.ceil(x1)); tx++) {
+      const i = ty * w.cols + tx, o = w.riverTo ? w.riverTo[i] : 255;
+      if (w.ground[i] !== 2 || o > 7) continue;
+      rp.moveTo(ox + (tx + 0.5) * s, oy + (ty + 0.5) * s); rp.lineTo(ox + (tx + 0.5 + DXs[o]) * s, oy + (ty + 0.5 + DYs[o]) * s);
+    }
+    ctx.strokeStyle = "rgb(" + L.ground[2].join(",") + ")"; ctx.lineWidth = Math.max(2, s * 15 / 250); ctx.stroke(rp);
+    ctx.save(); ctx.translate(ox + x0 * s, oy + y0 * s); paintHouses(ctx, s, x0, y0, x1, y1); ctx.restore();
+  }
   /* For checking the page from a test (headless browser): set the zoom and where to look. */
+  window.__wbHouse = k => homesArr && homesArr.length > k * 6 ? [homesArr[k * 6], homesArr[k * 6 + 1]] : [0, 0];
   window.__wbZoom = (z, x, y) => { cam.s = z; if (x != null) { cam.x = x; cam.y = y; } else if (vs[0]) { cam.x = vs[0].x; cam.y = vs[0].y; window.__px0 = cam.x; window.__py0 = cam.y; } cam.held = true; follow = false; return true; };
   /* A person's colour, from the number the keeper sent for the view it was
      asked for: a faction, or a place on one of the ramps. */
@@ -1627,7 +1679,7 @@
     ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
     const s = cam.s, ox = W / 2 - cam.x * s, oy = H / 2 - cam.y * s;
     ctx.imageSmoothingEnabled = false;
-    if (housesFor !== vs && world) updateHouses();
+    if ((housesFor !== vs || homesFor !== homesArr) && world) updateHouses();
     if (land) drawLand(W, H, s, ox, oy);
     if (land) drawFieldsAndHouses(W, H, s, ox, oy);
     if (land && borders && borders.length) {
@@ -1643,8 +1695,8 @@
     /* Villages. */
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const v of vs) {
-      if (!v.alive) continue;
-      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? Math.max(3, s * 0.18) : Math.max(4, s * 0.55);
+      if (!v.alive || s >= 128) continue;     // close in, the houses are the village
+      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? 4 : Math.max(4, s * 0.55);
       ctx.fillStyle = "#0c1113"; ctx.fillRect(x - k - 1, y - k - 1, k * 2 + 2, k * 2 + 2);
       ctx.fillStyle = factionColour(v.f); ctx.fillRect(x - k, y - k, k * 2, k * 2);
       if (v.siege) { ctx.strokeStyle = "#ef8a7c"; ctx.lineWidth = 2; ctx.strokeRect(x - k - 4, y - k - 4, k * 2 + 8, k * 2 + 8); }
@@ -1666,7 +1718,9 @@
     ctx.setLineDash([]); ctx.globalAlpha = 1;
     /* Ric, 2026-11-13: people can be boxes. Keep colour, child size and real gear. */
     // The square diagonal fits inside the 0.42-tile body clearance.
-    const rad = Math.max(1, s * 0.145), small = rad * 0.68;
+    /* Far out as before; from 20 pixels a square a person shrinks toward their real size,
+       half a metre (TODO 7a), but never under three pixels across, so they can be seen. */
+    const rad = s < 20 ? Math.max(1, s * 0.145) : Math.max(2.9, s * 0.25 / 250), small = Math.max(s < 20 ? 0 : 2, rad * 0.68);
     /* Gold lines join the pairs who are speaking to each other. */
     if (f.links.length) {
       ctx.strokeStyle = "#ffe39b"; ctx.lineWidth = 2; ctx.beginPath();
@@ -1724,7 +1778,7 @@
     const named = [];
     for (const v of vs) {
       if (!v.alive) continue;
-      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? Math.max(3, s * 0.18) : Math.max(4, s * 0.55);
+      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? 4 : Math.max(4, s * 0.55);
       if (x < -200 || y < -60 || x > W + 200 || y > H + 60) continue;
       ctx.font = "600 12px system-ui, sans-serif";
       const tw = ctx.measureText(v.name).width;

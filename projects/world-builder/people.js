@@ -214,9 +214,9 @@
        other's way and the bookkeeping of who stands where, not anybody's
        decisions; these turn that off, each saying what it costs. */
     { title: "Detail", items: [
-      { key: "bodies", label: "Bodies", type: "select", def: "drawn",
-        options: [["drawn", "As drawn — nobody overlaps on screen"], ["real", "Real size — faster; boxes may overlap on screen"]],
-        help: "As drawn, every person keeps as far from the next as their box is wide, so crowds queue and walk round each other. At real size a person is half a metre wide on 250-metre squares: nobody is ever in anybody's way, which is true to life and much faster, but the boxes drawn larger than life can overlap." },
+      { key: "bodies", label: "Bodies", type: "select", def: "real",   // "real" since TODO 7a (Ric, 2026-11-16: "Real size by default")
+        options: [["real", "Real size — half a metre, nobody in the way"], ["drawn", "Spaced out — everyone keeps 100 m apart"]],
+        help: "At real size a person is half a metre wide, so nobody is ever in anybody's way, as in life, and zoomed right in they stand beside their house at its true size. Spaced out, every person keeps about a hundred metres from the next, so crowds queue and walk round each other: what this simulator did before." },
       { key: "records", label: "Conversations", type: "select", def: "full",
         options: [["full", "Every one written down"], ["light", "Only what happens — faster"]],
         help: "Written down, the Talk tab shows each exchange, word for word, and what it changed. Otherwise conversations still pass on news, friendship, opinions and sickness, but are not kept." },
@@ -817,11 +817,48 @@
        cannot overlap, so a village gridlocked and nobody ever arrived anywhere.
        Houses are spread over the village's own ground by area, so a village
        has room for its people. A couple and their children share a house. */
+    /* ── houses as buildings (TODO 7a, 2026-11-16) ─────────────────────
+       A house now has a place, a size in metres and a facing, and a family
+       sleeps inside it. A village is laid out in plots spiralling out from
+       its middle about 19 m apart (a peasant house on its toft: 14 to 23 m
+       long, 4 to 6 m wide, Houndtor's 14.2 by 4.3), never on water; a
+       richer household's house is bigger (Ric). Sizes are in squares
+       (250 m): `len` along the facing, `wid` across it. README, "Houses". */
+    const homes = [];
+    const M = 1 / 250;                                   // a metre, in squares
+    function newHome(v, wealth) {
+      let x = v.x, y = v.y, a = 0;
+      for (let tries = 0; tries < 60; tries++) {
+        const k = v.plots = (v.plots || 0) + 1;
+        a = k * 2.39996 + v.id * 0.7;
+        const r = 0.08 + 0.076 * Math.sqrt(k);
+        x = clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6); y = clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6);
+        if (!wet(x, y)) break;
+      }
+      const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0 };
+      sizeHome(h, wealth);
+      homes.push(h);
+      return h;
+    }
+    /* 12 m by 4.5 for the poorest, up to 24 by 7 for the richest. */
+    function sizeHome(h, wealth) { const w = clamp(wealth, 0, 1); h.len = (12 + 12 * w) * M; h.wid = (4.5 + 2.5 * w) * M; }
+    let starting = true;   // the first residents are housed once couples and children are known
     function house(p, v, from) {
-      if (from && from.home === v.id) { p.hx = from.hx; p.hy = from.hy; return; }
-      const a = R() * 6.2832, r = v.radius * (0.2 + Math.sqrt(R()) * 1.05);
-      p.hx = clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6);
-      p.hy = clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6);
+      R(); R();                                           // the two draws the old scattered house took, so what follows draws as before
+      if (starting) return;
+      houseNow(p, v, from);
+    }
+    function houseNow(p, v, from) {
+      if (from && from.home === v.id && from.dwelling >= 0) { p.hx = from.hx; p.hy = from.hy; p.dwelling = from.dwelling; return; }
+      const h = newHome(v, 0.5);
+      p.hx = h.x; p.hy = h.y; p.dwelling = h.id;
+    }
+    /* Somewhere inside one's own house, for sleeping. */
+    function inHouse(p) {
+      const h = homes[p.dwelling], u = (R() - 0.5) * 0.6, w = (R() - 0.5) * 0.5;
+      if (!h) return [p.hx + u * 0.04, p.hy + w * 0.04];
+      const c = Math.cos(h.ang), s = Math.sin(h.ang);
+      return [h.x + c * u * h.len - s * w * h.wid, h.y + s * u * h.len + c * w * h.wid];
     }
 
     /* Somewhere in the village to stand, spread over its ground rather than on
@@ -850,7 +887,7 @@
                      from war, a siege and fighting they can see. All three are
                      read by `urgency` and nothing else sets them. */
                   rest: R() * 0.3, alone: Math.floor(R() * 20), fear: 0, chose: "", until: 0, making: false, settled: -1e9,
-                  hx: v.x, hy: v.y,
+                  hx: v.x, hy: v.y, dwelling: -1,
                   /* Walking's own book-keeping (2026-11-15), nothing a person is:
                      where they last were seen standing, their last blocked step, the last
                      way round that could not be found, and whether they have been
@@ -1050,6 +1087,25 @@
             if (q !== p) befriend(p, q, 0.25 + R() * 0.35);
           }
         }
+      }
+      /* Households, now couples and children are known: a couple shares a house, a child lives
+         with a parent in the same village, everybody else has their own (TODO 7a). */
+      starting = false;
+      /* Grown-ups first, so a child listed before its parent finds the parent housed. */
+      for (const p of [...people.filter(q => adult(q)), ...people.filter(q => !adult(q))]) {
+        if (p.dwelling >= 0) continue;
+        const mate = p.partner && byId.get(p.partner), parent = byId.get(p.mum) || byId.get(p.dad);
+        const from = mate && mate.dwelling >= 0 ? mate : parent && parent.home === p.home && parent.dwelling >= 0 && !adult(p) ? parent : null;
+        houseNow(p, villages[p.home], from);
+      }
+      for (const p of people) if (p.dwelling >= 0) { const h = homes[p.dwelling]; p.x = h.x; p.y = h.y; p.tx = h.x; p.ty = h.y; }
+      /* Each house as big as its household is rich, against the others: by rank, so the
+         biggest is the richest whatever "How unequal" is (TODO 7a). */
+      {
+        const worth = new Float64Array(homes.length);
+        for (const p of people) if (p.dwelling >= 0) worth[p.dwelling] += p.coins;
+        const order = homes.map(h => h.id).sort((a, b) => worth[a] - worth[b] || a - b);
+        order.forEach((id, k) => sizeHome(homes[id], order.length > 1 ? k / (order.length - 1) : 0.5));
       }
       sample();
     })();
@@ -1548,7 +1604,7 @@
       /* A child keeps near whoever feeds it, and sleeps at night. */
       if (!adult(p)) {
         weigh("sleep", n.rest + dark * 0.8, () => {
-          go(p, p.hx + (R() - 0.5) * 0.5, p.hy + (R() - 0.5) * 0.5, "sleep"); p.wait = sleepTicks();
+          const [ix, iy] = inHouse(p); go(p, ix, iy, "sleep"); p.wait = sleepTicks();
         });
         weigh("idle", 0.3 + n.company * 0.5, () => {
           const mum = byId.get(p.mum) || byId.get(p.dad);
@@ -1561,7 +1617,7 @@
       /* Sleep, in their own house. The one thing a night is for. */
       const far = Math.hypot(p.hx - p.x, p.hy - p.y);
       weigh("sleep", n.rest + dark * 0.6 - 0.22 - away(far) * 0.4, () => {
-        go(p, p.hx + (R() - 0.5) * 0.4, p.hy + (R() - 0.5) * 0.4, "sleep");
+        const [ix, iy] = inHouse(p); go(p, ix, iy, "sleep");   // inside their own house (TODO 7a)
         p.wait = sleepTicks();
       });
 
@@ -2296,8 +2352,8 @@
           const mover = villages[a.home].pop <= villages[b.home].pop ? a : b, stay = mover === a ? b : a;
           said(a, b, "pair", "Come and live with me in " + villages[stay.home].name + ".", "I will.");
           rehome(mover, villages[stay.home], "married");
-          mover.hx = stay.hx; mover.hy = stay.hy;
-        } else { said(a, b, "pair", "Stay with me.", "I will."); b.hx = a.hx; b.hy = a.hy; }
+          mover.hx = stay.hx; mover.hy = stay.hy; mover.dwelling = stay.dwelling;
+        } else { said(a, b, "pair", "Stay with me.", "I will."); b.hx = a.hx; b.hy = a.hy; b.dwelling = a.dwelling; }
         return;
       }
       /* 3 — news travels. Whoever has heard the newer thing passes it on. */
@@ -3482,6 +3538,9 @@
         // Shared destinations (markets, fields) are reached from beside a neighbour.
         // Do not require everyone to occupy the exact same target point.
         p.route = null; p.stuck = 0;
+        /* Going to bed means into the house, not within 125 m of it: the last
+           stretch is walked at the usual pace (TODO 7a). */
+        if (p.task === "sleep" && REAL_BODIES && d > 0.006) { const k = Math.min(pace, d) / d; move(p, dx * k, dy * k); return; }
         if (p.wait > 0) { p.wait--; counted = true; } else work(p);
       }
 
@@ -3881,7 +3940,10 @@
            not conjured whole the day a war starts; and rebuilt as slowly
            after it is broken. */
         let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 / 7)));
-        for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === "farmer" && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
+        /* Farmers first, as levies were; then crafters. With real-size bodies (TODO 7a) farming
+           stopped queuing in crowds, fields went further, fewer farmed, and an army raised from
+           farmers alone stalled short of what its leader asked (4 of 23 wanted 6). */
+        for (const job of ["farmer", "crafter"]) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
@@ -4160,7 +4222,7 @@
     if (!PLAIN) settle();
     return {
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
-      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo,
+      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, homes: homes,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
       step: step, advance: advance, season: season, rule: rule, order: order, orderVillage: orderVillage, declare: declare, set: set, moves: moves, taxOf: taxOf, activity: activity,

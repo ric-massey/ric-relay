@@ -1718,6 +1718,43 @@ frame fell from about 150 ms (the repaint every two seconds, 119 ms before this 
 20 ms; a jump to a new zoom on a 200 km land holds at most 30 ms for a frame or three, instead of
 570 ms.
 
+### Houses, and people at their real size (2026-11-16)
+
+TODO item 7a. Ric wanted to zoom in and pick out a family's house. A house was a point people
+slept near, and a person kept about a hundred metres of room round them, so a person was bigger
+than any house could be.
+
+- **People are half a metre wide by default** (Ric: "Real size by default"): the "Bodies" setting
+  now starts at "Real size", and the old spacing is "Spaced out". Nobody is in anybody's way.
+- **A house is a building** (`homes`, `newHome`): a place, a length and width in metres and a
+  facing. A village is laid out in plots spiralling out from its middle about 19 m apart, never
+  on water. A house is 12 to 24 m long and 4.5 to 7 m wide, after excavated medieval peasant
+  houses (Houndtor, Dartmoor: 14.2 by 4.3 m; England, France and Germany: about 15 to 23 by 4 to
+  6 m); the richest household of a world gets the biggest, by rank of what it owns at the start
+  (Ric: "different size of houses depending on how rich they are"). A couple shares a house and
+  children live with a parent; a partner who marries in moves in. 400 people make about 275
+  houses.
+- **Asleep inside.** Going to bed means into the house: the last stretch inside is walked at the
+  usual pace, where before anybody within 125 m of their bed had arrived.
+- **Zoom down to a house**, to 4,096 pixels a square (a 15 m house about 245 pixels long). Past
+  128 pixels a square the ground is drawn smooth with marks a few metres across worked out from
+  the seed for the screen only (tree crowns, tufts, pebbles, reeds, ripples), rivers as a line
+  15 m wide, and the houses at their true size: a roof in the faction's colour over thatch, its
+  ridge along its length. From 20 pixels a square a person shrinks toward their real size, never
+  under three pixels. The village's marker goes once its houses can be seen.
+- **Soldiers from crafters too.** With real-size bodies farmers no longer queue in crowds, a
+  field is worked faster, and fewer people farm; an army raised from farmers alone stalled short
+  of what its leader asked (4 of 23 wanted 6). A leader now raises farmers first, then crafters.
+
+Measured. A year of the default world, seeds 11, 3, 5 and 7: 16 starved in all against 10 before,
+alive 376 to 392 against 376 to 399, village stores lower at the year's end (fewer farm); and a
+year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12 s a day, 2,000 on
+17 km 3.23 → 0.55 s (item 7's target, no dearer a person than 5,000 on 40 km, is met: 0.19 against
+0.26 µs a person-step), 5,000 2.37 → 1.89 s, 400 on 500 km 0.15 → 0.05 s; **20,000 on 80 km 7.40 →
+10.78 s, slower**: with nobody jammed twice as many people are doing something each step (27%
+against 14%), and when a village store is empty every hungry person looks through all their
+neighbours for one with grain to spare (`choose`, a quarter of the time).
+
 ### War has to be fed (2026-11-14)
 
 Ric: military reach should depend on *"food carried and access to resupply, distance from

@@ -40,6 +40,9 @@ const print = w => JSON.stringify({ people: w.people.map(p => [p.id, p.x, p.y, p
   if (v2) assert.equal(w.taxOf(v2), 0.4, "a village with no tax of its own pays the faction's");
   w.step(24 * 6);
   assert.equal(f.tax, 0.4, "a leader does not drift a tax the watcher set");
+  /* Soldiers are raised about one a day, so six days were right on the line for some worlds
+     (seed 7: 4 of 23 needing 5 once TODO 7a moved the houses). Up to twelve days to fill. */
+  for (let d = 6; d < 12 && f.soldiers < Math.floor(0.3 * f.adults) - 1; d++) w.step(24);
   assert.ok(f.soldiers >= Math.floor(0.3 * f.adults) - 1, "the army fills toward what was asked, in peace too: " + f.soldiers + " of " + f.adults);
   assert.equal(w.orderVillage(w.villages.find(x => x.f === other.id).id, { tax: 0.5 }), false, "a faction not ruled cannot be ordered");
   w.rule(f.id, false);

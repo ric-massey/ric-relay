@@ -787,6 +787,8 @@ when it is built.
 - Now: a village is a point with a store. A house is a spot where a family sleeps. There are no
   fields as things, no roads, no walls, and a village never becomes anything else.
 - [ ] Houses and fields as real things on the map, the brown box and the green land Ric described.
+  (2026-11-16, TODO 7a: houses are buildings with a real size, by wealth, and a family sleeps
+  inside; fields as land is 7c.)
 - [ ] Other buildings: store, workshop, market, wall, well, bridge, harbour, and in modern times
   the cell tower.
 - [ ] Roads and paths: built, or worn in by people walking.

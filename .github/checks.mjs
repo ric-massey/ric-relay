@@ -141,6 +141,8 @@ const SUITES = [
   /* Land from the seed (TODO 4a): the seed's alone, water downhill to the sea,
      a lake or the edge, settings that mean what they say, nobody in the water. */
   ['world-builder land from the seed', ['projects/world-builder/test/land.test.mjs']],
+  /* Houses as buildings and people at their real size (TODO 7a). */
+  ['world-builder houses', ['projects/world-builder/test/houses.test.mjs']],
   /* TODO.md item 2 (2026-11-15): people with nothing to do are passed over
      until their wait is up or somebody makes room beside them, and the lists
      of who stands where and who lives where are kept up, not made again. The

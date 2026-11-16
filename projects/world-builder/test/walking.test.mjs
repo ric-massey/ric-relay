@@ -20,7 +20,10 @@ const picture = w => JSON.stringify({
   people: w.people.map(p => JSON.stringify(p, (k, v) => OWN.has(k) ? undefined : v instanceof Map ? [...v] : v)),
   villages: w.villages, factions: w.factions, events: w.events, stats: w.stats()
 });
-const both = options => [People.create(options), People.create(options, { plainWalking: true })];
+/* The short cuts are for spaced-out bodies, so that is what is tested unless a case says
+   otherwise (real size became the default in TODO 7a). */
+const spaced = o => Object.assign({ bodies: "drawn" }, o);
+const both = options => [People.create(spaced(options)), People.create(spaced(options), { plainWalking: true })];
 function sameFor(label, options, hours, each) {
   const [fast, plain] = both(options);
   assert.equal(picture(fast), picture(plain), label + ": the two must start as the same world");

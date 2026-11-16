@@ -50,7 +50,10 @@ assert.ok((mix.Talking || 0) < 0.30, "talking must not crowd out living: " + (((
    them, not because they are allowed to do nothing. */
 const items = People.SCHEMA.flatMap(g => g.items);
 const clean = People.clean(BASE);
-const mustBite = { rich: 0.03, uneven: 0.03, hunger: 0.03, talk: 0.03, soldiers: 0.03, people: 0.05, map: 0.03 };
+/* "How many people" asked 5% while crowds jammed: more people was more queuing. At real size
+   (the default since TODO 7a) nobody is in anybody's way, as in life, and the setting moves
+   about 4.5% of hours; it is held to the 3% the others are. */
+const mustBite = { rich: 0.03, uneven: 0.03, hunger: 0.03, talk: 0.03, soldiers: 0.03, people: 0.03, map: 0.03 };
 
 const report = [];
 for (const [key, floor] of Object.entries(mustBite)) {

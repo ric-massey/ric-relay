@@ -338,7 +338,9 @@ if (!physicsOnly && process.argv.includes("--generations")) {
 
 /* The watchable clock, crowded spawns, and crossing paths use the page's actual API. */
 if (!physicsOnly) {
-  const w = People.create({ people: 80, map: "small", talk: 0, seed: 17 });
+  /* Spaced-out bodies: what is checked here is that they keep their spacing (real size,
+     the default since TODO 7a, has nobody in anybody's way). */
+  const w = People.create({ people: 80, map: "small", talk: 0, seed: 17, bodies: "drawn" });
   const coins = w.stats().money;
   const separated = () => w.people.every((p, i) => w.people.slice(i + 1).every(q => Math.hypot(p.x - q.x, p.y - q.y) >= 0.42 - 1e-8));
   check(separated(), "people: initial bodies overlap");
@@ -373,7 +375,7 @@ if (!physicsOnly) {
   check(w.people.length === 80 && w.stats().starved === 0, "people: the first watchable day lost people");
   check(Math.abs(w.stats().money - coins) < 1e-6, "people: the watchable clock created or lost money");
   check(walking, "people: the activity clock never started walking");
-  const crowded = People.create({ people: 2000, map: "small", villages: 1, factions: 1 });
+  const crowded = People.create({ people: 2000, map: "small", villages: 1, factions: 1, bodies: "drawn" });
   let overlap = false;
   for (let i = 0; i < crowded.people.length; i++) for (let j = i + 1; j < crowded.people.length; j++) {
     if (Math.hypot(crowded.people[i].x - crowded.people[j].x, crowded.people[i].y - crowded.people[j].y) < 0.42 - 1e-8) overlap = true;

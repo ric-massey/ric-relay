@@ -678,7 +678,9 @@ nobody had linked was a page nobody could find.
   squares, and a journey to another piece of land is refused. **The land is drawn to be read**
   (TODO 5, 2026-11-16): Ric chose "Map colours"; each kind its own colour and marks, relief
   shading, three ranges of zoom, blocks kept and one new block a frame; houses drawn round
-  villages are symbols until item 7.
+  villages are symbols until item 7. Since 7a (2026-11-16) people are half a metre wide by
+  default (Ric: "Real size by default"), a house is a building with a real size by wealth, a
+  family sleeps inside it, and the page zooms to 4,096 pixels a square to see one house.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

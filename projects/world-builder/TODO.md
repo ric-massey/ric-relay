@@ -681,7 +681,13 @@ without being told to, a dry year shows in the harvest, and a year-long default 
 
 Research notes:
 
-### [ ] 7. Houses, fields and roads as real things
+**Order changed (Ric, 2026-11-16):** "Move houses up: do item 7 (houses) and item 20 (people drawn
+their real size) next, so zooming to a single house works sooner. Item 6 (water) waits." Item 20
+in this list is in fact about memory (a person in plain number arrays); how big people are on
+screen comes from the engine's body size (the "Bodies" setting), so showing people at their real
+size when zoomed in is done here, with the houses.
+
+### [ ] 7. Houses, fields and roads as real things (7a done)
 
 **Now:** a house is a spot where a family sleeps; fields are squares people happen to harvest;
 there are no roads. Measured 2026-11-15 (item 1): houses are scattered over a village's ground
@@ -706,7 +712,49 @@ setting.
 places people go and nobody draws them by rule; the year-long run holds.
 **Budget:** default.
 
+Ric's answers (2026-11-16):
+- **People at their real size by default: "Real size by default".** Half a metre wide, so nobody
+  is in anybody's way and crowds stop jamming (the "Bodies" setting, default "real" from now).
+- **Who owns the land:** "I think that this should differ. It should be a setting for each tribe.
+  And the leader decides that or sometimes the people. Like different governments". So each
+  faction has its own rule for land (the family, the village, the leader), chosen by its leader,
+  or by its people where they rule themselves, and it can change.
+- **Who builds a new house:** "Depends. Sometimes a family sometimes a builder."
+- **Split** (2026-11-16), so the zoom to a house comes first: **7a** real-size people by default,
+  houses as buildings with a real size that follows wealth, people asleep inside them, a village
+  laid out in plots, and zooming in to a single house; **7b** building new houses, by the family
+  or a builder, with work and goods; **7c** fields as land a household works, owned by the
+  faction's own rule; **7d** paths that form where people walk and make walking faster.
+
+**7a done 2026-11-16.** People are half a metre wide by default; a house is a building with a
+real size by the household's wealth, in plots round the village's middle; a family sleeps inside
+it; the page zooms to 4,096 pixels a square with the ground's fine marks and the houses at their
+true size; armies are raised from crafters when farmers run short. A default year holds (four
+seeds, 16 starved against 10); 2,000 on 17 km now costs less a person than 5,000 on 40 km.
+**Not met:** 20,000 on 80 km is 46% slower a day (7.40 → 10.78 s): nobody is jammed, so more are
+busy, and with village stores emptier the search for a neighbour with grain looks through
+everybody (README, "Houses"). That search is the first thing 7b looks at.
+Comes with later parts: building new houses (7b), fields as land (7c), paths (7d).
+
 Research notes:
+- **A house and its plot.** Excavated medieval peasant houses: Houndtor (Dartmoor), 13th century,
+  14.2 by 4.3 m with a living end about 6 by 4 m ([Legendary Dartmoor](https://www.legendarydartmoor.co.uk/2016/03/21/long_house/));
+  across England, France and Germany rectangular, about 15 to 23 m long by 4 to 6 m wide; each on
+  a toft with a garden and whatever outbuildings the family could afford
+  ([encyclopedia.com](https://encyclopedia.com/history/news-wires-white-papers-and-books/farmers-and-peasants-building-peasant-communities)).
+  A bigger house is not always a richer one (Ede, early medieval: the byre grew with the herd,
+  [Leiden medievalists](https://www.leidenmedievalistsblog.nl/articles/bigger-isnt-better-why-a-large-house-doesnt-mean-more-wealth-an-early-medieval-example-from-the-central-netherlands)),
+  but Ric wants size to follow wealth, and it broadly did.
+- **A household's land.** The virgate (yardland), a common peasant holding: nominally 30 acres
+  (about 12 ha), 24 in later court rolls, often half that; many held a ferling, 7.5 to 8.75 acres
+  ([Wikipedia, Virgate](https://en.wikipedia.org/wiki/Virgate); [Milton Abbas](https://miltonabbashistorygroup.com/medieval-peasant-life-in-milton-abbas-landholding/)).
+  A 250 m square is 6.25 ha: a holding is one to two squares.
+- **Paths from use.** Helbing, Keltsch and Molnár, *Modelling the evolution of human trail systems*
+  (Nature 388, 1997) and the active walker model (Phys. Rev. E 56, 1997,
+  [arXiv](https://arxiv.org/abs/cond-mat/9806097)): walkers wear the ground where they go, worn
+  ground is pleasanter and attracts walkers, wear fades without use; pedestrians, steering to a
+  destination, make a minimal-detour system. Chosen when paths are built: wear a square for each
+  footstep, fade it daily, a path where wear passes a line, faster walking on it.
 
 ### [ ] 8. Villages that become towns and cities
 
@@ -939,4 +987,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-15 | 3b | AMD Ryzen 5 3600, 24 GB | *not run: the running world is unchanged* | *not run* | | starts only (`bench.mjs --start`), same world: 10,000 0.86 → 0.56 s, 20,000 3.55 → 1.52 s, 40,000 14.1 → 3.8 s, 100,000 102.6 → 14.9 s |
 | 2026-11-15 | 4a | AMD Ryzen 5 3600, 24 GB | 2.92 s a day, 103× | *not run* | 1.6 MB, 0.31 KB | a **different world** from here on (the land). `--quick`: 400 people 0.31 → 0.29 s, 2,000 3.17 → 3.73 s, 5,000 2.50 → 2.92 s; five seeds of 2,000 on 17 km: 3.87 s old, 4.37 s new, 3.76 s new with no sea (the sea packs people closer; the engine is not slower). 1,000 km starts in 4.5 s (2,000 people) |
 | 2026-11-16 | 4b | AMD Ryzen 5 3600, 24 GB | 2.45 s a day, 122× | *not run* | 2.5 MB, 0.48 KB | a different world from 4a's (pace and water change who goes where). `--quick` against 4a: 400 people 0.30 → 0.33 s, 2,000 3.68 → 3.30 s, 5,000 2.62 → 2.45 s. 1,000 km starts in 4.3 s, 785 MB after a day |
+| 2026-11-16 | 7a | AMD Ryzen 5 3600, 24 GB | 1.89 s a day, 159× | 10.78 s a day, 28× | 3.3 MB, 0.64 KB | **people at real size by default**, a different world. 400 people 0.34 → 0.12 s, 2,000 on 17 km 3.23 → 0.55 s, 400 on 500 km 0.15 → 0.05 s; 20,000 on 80 km 7.40 → 10.78 s, slower (busier people, emptier stores); a default year 115 → 40 s |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |
