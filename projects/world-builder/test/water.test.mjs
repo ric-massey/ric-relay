@@ -40,13 +40,16 @@ const fetching = a => /water|well/i.test(a);
 
 // 3. Three days, or about two weeks: one person, kept from fetching, in a house with nothing.
 for (const [thirst, lo, hi] of [["real", 2, 4.5], ["gentle", 9, 16]]) {
-  const w = People.create({ seed: 4, people: 60, thirst, plague: "none" });
+  /* Without rain, which would fill the pot (TODO 6b); and alone, so nobody they live with takes them
+     off to another house (TODO 7b). */
+  const w = People.create({ seed: 4, people: 60, thirst, rain: "off", plague: "none" });
   const p = w.people.find(q => w.adult(q));
   for (const q of w.people) if (q.dwelling === p.dwelling && q !== p) q.dwelling = -1;
+  const mate = w.byId.get(p.partner); if (mate) mate.partner = 0; p.partner = 0;
   const h = w.homes[p.dwelling];
   p.food = 1e3; p.task = "idle"; p.wait = 1e9; p.x = p.tx = h.x; p.y = p.ty = h.y;
   let hours = 0;
-  while (p.hp !== -99 && hours < 24 * 20) { h.water = 0; p.wait = 1e9; w.step(1); hours++; }
+  while (p.hp !== -99 && hours < 24 * 20) { for (let s = 0; s < People.ACTIONS_PER_HOUR; s++) { h.water = 0; p.wait = 1e9; w.advance(People.STEP); } hours++; }   // emptied every step: a lodger fetches for the house (TODO 7b)
   const days = hours / 24;
   assert.ok(days >= lo && days <= hi, thirst + " thirst killed in " + days.toFixed(1) + " days, expected " + lo + " to " + hi);
 }

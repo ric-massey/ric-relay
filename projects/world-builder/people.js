@@ -866,6 +866,7 @@
       }
     }
     if (THIRST) count.thirst = 0;
+    count.sites = 0; count.houses = 0;   // houses started and finished (TODO 7b)
 
     /* ── fishing (TODO 6c, 2026-11-16) ─────────────────────────────────────
        Natural waters give about 20 to 50 kg of fish a hectare a year (FAO,
@@ -955,14 +956,96 @@
         x = clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6); y = clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6);
         if (!wet(x, y)) break;
       }
-      const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null };
+      const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
+                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false };
       sizeHome(h, wealth);
       homes.push(h);
       return h;
     }
+    /* ── building houses (TODO 7b, 2026-11-16) ─────────────────────────────
+       A household that needs a house and finds no empty one in its village
+       starts one: a plot like any other, its size by what the household has.
+       It takes work, about two hours a square metre of floor (a 54 m²
+       cottage about 14 person-days, a 168 m² house 42), and materials: goods
+       bought from the village, one for every 20 m² and six besides, or, where
+       there are none or no coin for them, gathered by hand, eight hours for
+       each (timber, wattle and thatch, as most peasants did). The family
+       builds it themselves, or pays a builder, a crafter of the village, a
+       wage and a half for the work (Ric: "Sometimes a family sometimes a
+       builder"). Until it is built they live where they were. README,
+       "Building houses". */
+    const BUILD_SHIFT = 5, GATHER_HOURS = 8, BUILDER_PAY = 1.5 * WAGE * BUILD_SHIFT / 8;
+    const floor = h => h.len * h.wid / (M * M);                        // square metres
+    const roomFor = h => Math.max(4, Math.round(floor(h) / 10));       // about 10 m² a person
+    function startHouse(owner, v) {
+      /* An empty house first: one whose household died out or moved away. */
+      let empty = null;
+      for (const h of homes) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { empty = h; break; }
+      if (empty) { empty.taken = true; moveIn(owner, empty); return empty; }
+      /* Or a site somebody gave up on. */
+      for (const h of homes) if (h.v === v.id && !h.built && !byId.get(h.owner)) { h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood; owner.waitHouse = h.id; return h; }
+      const h = newHome(v, clamp(funds(owner) / 40, 0, 1));
+      h.built = false; h.owner = owner.id; h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
+      h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood;
+      owner.waitHouse = h.id; count.sites++;
+      return h;
+    }
+    /* Into a house: the one who asked, their partner, and their children who live with them. */
+    function moveIn(owner, h) {
+      const mate = owner.partner && byId.get(owner.partner), was = owner.dwelling;
+      for (const q of PLAIN ? people : residents(owner.home)) {
+        if (q.hp === -99 || q.home !== owner.home) continue;
+        const kid = !adult(q) && (q.mum === owner.id || q.dad === owner.id || q.carer === owner.id || mate && (q.mum === mate.id || q.dad === mate.id)) && q.dwelling === was;
+        if (q === owner || q === mate || kid) { q.dwelling = h.id; q.hx = h.x; q.hy = h.y; q.waitHouse = -1; }
+      }
+      h.taken = false;
+    }
+    /* Once a day: a household too many for its house, or a couple living with other grown-ups,
+       looks for a house of its own. */
+    function housing() {
+      const by = new Map();
+      for (const p of people) if (p.hp !== -99 && p.dwelling >= 0 && adult(p)) { const l = by.get(p.dwelling); if (l) l.push(p); else by.set(p.dwelling, [p]); }
+      for (const [id, list] of by) {
+        const h = homes[id], v = villages[h.v];
+        if (!v || !v.alive) continue;
+        /* Too many for the house, or a married couple living with other grown-ups: a couple set
+           up a household of its own when it married (Hajnal, north-west Europe), so the youngest
+           couple goes, a son or daughter and the one they married. */
+        if (h.n <= roomFor(h) && list.length < 3) continue;
+        let leave = null;
+        for (const p of list) if (p.partner && p.waitHouse < 0 && p.home === h.v && list.some(q => q.id === p.partner) && (!leave || p.age < leave.age)) leave = p;
+        if (leave && list.length > 2 && !list.some(q => q.waitHouse >= 0)) startHouse(leave, v);
+      }
+    }
+    /* A shift of building: the work, the materials it can get, and the builder's pay. */
+    function buildShift(p, h) {
+      const v = villages[h.v], owner = byId.get(h.owner);
+      if (h.built) return;
+      const builder = p.job === "crafter" && owner !== p && !(owner && owner.partner === p.id);
+      /* What the household keeps back: coin for a winter of bread at what it costs here now.
+         Measured: spending it on a house starved half as many again in a year (six seeds). */
+      const keep = owner ? reserve(owner) * v.priceFood : 0;
+      if (builder) {
+        if (!owner || !h.paid || funds(owner) - BUILDER_PAY < keep) { h.paid = false; return; }
+        pay(owner, BUILDER_PAY); p.coins += BUILDER_PAY;
+      }
+      h.work += BUILD_SHIFT * (p.job === "crafter" ? 1.3 : 1);
+      if (h.goodsIn < h.goodsNeed && v.goods >= 1) {
+        if (shared) { v.goods -= 1; h.goodsIn++; }
+        else if (owner && funds(owner) - v.priceGoods >= keep) {
+          const cost = v.priceGoods, tax = cost * taxOf(v);
+          pay(owner, cost); v.till += cost - tax; factions[v.f].treasury += tax; v.goods -= 1; h.goodsIn++;
+        }
+      }
+      if (h.work + h.goodsIn * GATHER_HOURS >= h.need + h.goodsNeed * GATHER_HOURS) {
+        h.built = true; count.houses++;
+        if (owner && owner.hp !== -99 && owner.home === h.v) moveIn(owner, h);
+      }
+    }
     /* 12 m by 4.5 for the poorest, up to 24 by 7 for the richest. */
     function sizeHome(h, wealth) { const w = clamp(wealth, 0, 1); h.len = (12 + 12 * w) * M; h.wid = (4.5 + 2.5 * w) * M; }
     let starting = true;   // the first residents are housed once couples and children are known
+    let founding = true;   // and each gets a house as they are (TODO 7b: after that, newcomers lodge and build)
     function house(p, v, from) {
       R(); R();                                           // the two draws the old scattered house took, so what follows draws as before
       if (starting) return;
@@ -970,8 +1053,14 @@
     }
     function houseNow(p, v, from) {
       if (from && from.home === v.id && from.dwelling >= 0) { p.hx = from.hx; p.hy = from.hy; p.dwelling = from.dwelling; return; }
-      const h = newHome(v, 0.5);
-      p.hx = h.x; p.hy = h.y; p.dwelling = h.id;
+      if (founding) { const h = newHome(v, 0.5); p.hx = h.x; p.hy = h.y; p.dwelling = h.id; return; }
+      /* Somebody new to a village (TODO 7b): an empty house if there is one, else a hut put up at
+         once, the smallest house there is, as a cottar's was. (Lodging them in a neighbour's house
+         while they built was tried: hungry newcomers spent their days building, not farming, and
+         a year starved more than half as many again.) */
+      for (const h of homes) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { h.n = 1; p.hx = h.x; p.hy = h.y; p.dwelling = h.id; p.waitHouse = -1; return; }
+      const h = newHome(v, 0);
+      h.n = 1; p.hx = h.x; p.hy = h.y; p.dwelling = h.id;
     }
     /* Where a house fetches water from: its village's well if it has one and it is nearer, else
        the nearest river or lake shore. Kept on the house; forgotten when a well is dug. */
@@ -996,6 +1085,18 @@
       for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) homes[p.dwelling].n++;
       for (const v of villages) v.fullest = null;
       for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
+    }
+    /* Who in a village has grain to spare (two days or more), most first, made once an hour
+       when first asked for; ties in the order of the people list, so a world is the same
+       whichever way it is walked. */
+    const spares = new Map();                                        // village id -> [hour, list]; kept off the village
+    function spareIn(v) {
+      const e = spares.get(v.id);
+      if (e && e[0] === t) return e[1];
+      const list = [];
+      for (const q of PLAIN ? people : residents(v.id)) if (q.home === v.id && q.food >= 2 && adult(q) && q.hp > 0) { q.spareFood = q.food; list.push(q); }
+      list.sort((a, b) => b.spareFood - a.spareFood);              // a stable sort: ties stay in the list's order
+      spares.set(v.id, [t, list]); return list;
     }
     /* Somewhere inside one's own house, for sleeping. */
     function inHouse(p) {
@@ -1057,7 +1158,9 @@
                   harvesting: undefined, harvestShare: undefined, markets: undefined, supplyRun: undefined,
                   /* Water (TODO 6a), fishing (6c) and boats (6d): hours without water, what they carry home, at
                      the water, and a crossing under way. Missing here they made 6a and 6 measurably slower. */
-                  dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined };
+                  dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined, spareFood: undefined,
+                  /* Building (TODO 7b): the house they are waiting for, which they are working on, and whether a shift is under way. */
+                  waitHouse: -1, buildAt: -1, shift: false };
       house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
@@ -1247,6 +1350,7 @@
         houseNow(p, villages[p.home], from);
       }
       for (const p of people) if (p.dwelling >= 0) { const h = homes[p.dwelling]; p.x = h.x; p.y = h.y; p.tx = h.x; p.ty = h.y; }
+      founding = false;
       /* Each house as big as its household is rich, against the others: by rank, so the
          biggest is the richest whatever "How unequal" is (TODO 7a). */
       {
@@ -1521,7 +1625,7 @@
           p.tx = p.x; p.ty = p.y; p.task = "idle";
         }
       }
-      p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0; p.route = null; p.routeRetry = 0; p.way = null;
+      p.lastDistance = Infinity; p.stuck = 0; p.blocked = 0; p.route = null; p.routeRetry = 0; p.way = null; p.shift = false;
     }
     /* ── bridges and boats (TODO 6d) ───────────────────────────────────────
        A village within 2 km of a big river that has no ford or bridge within
@@ -1530,6 +1634,12 @@
        cross it builds a boat, about 15 person-days, and its people are
        rowed over from its landing at 4 km an hour. */
     const BRIDGE_HOURS = 600, BOAT_HOURS = 120;
+    /* A house in the village whose household pays a builder, the nearest to its middle. */
+    function paidSite(v) {
+      let best = null, bd = Infinity;
+      for (const h of homes) if (h.v === v.id && !h.built && h.paid) { const d = Math.hypot(h.x - v.x, h.y - v.y); if (d < bd) { bd = d; best = h; } }
+      return best;
+    }
     function crossings(v) {
       if (v.crossings) return v.crossings;
       const cx = Math.floor(v.x), cy = Math.floor(v.y);
@@ -1863,14 +1973,32 @@
           weigh("well", 0.35 + n.water * 0.5 - away(dist(p, spot)) - n.food * 0.4 - dark * 0.6, () => { go(p, spot.x, spot.y, "well"); p.wait = 0; });
         }
       }
+      /* Building a house (TODO 7b): their own, or somebody else's for pay. */
+      const mine = p.waitHouse >= 0 ? p.waitHouse : (byId.get(p.partner) || { waitHouse: -1 }).waitHouse;   // theirs or their partner's
+      if (mine >= 0 && !homes[mine].built && (p.job !== "soldier" || !atWarAnywhere(f))) {   // a soldier too, in peace
+        /* A house of their own is worth a day as much as any work; less pressing when a builder is paid. */
+        /* But food first: building waits on hunger, on the harvest, and on a larder with less than
+           half of what the household wants put by, as peasants built in the slack of the year.
+           Measured: without this a year starved half as many again (six seeds, 170 against 109). */
+        const h = homes[mine], crowd = h.paid ? 0 : 0.2, larder = p.food < reserve(p) * 0.5 ? 0.3 : 0;
+        weigh("build", 0.6 + crowd + (p.dwelling >= 0 && homes[p.dwelling].n > roomFor(homes[p.dwelling]) ? 0.35 : 0.1)
+                         - away(Math.hypot(h.x - p.x, h.y - p.y)) - n.food * 1.1 - (season().ripe - 1) * 0.25 - larder - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
+          () => { p.buildAt = h.id; go(p, h.x, h.y, "build"); p.wait = 0; });
+      }
+      if (p.job === "crafter" && !p.cargo) {
+        const h = paidSite(v);
+        /* A wage and a half: worth more than a batch at the bench to most. */
+        if (h) weigh("build", (n.provide * 1.05 + 0.3) * 1.35 * 1.15 - away(Math.hypot(h.x - p.x, h.y - p.y)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
+          () => { p.buildAt = h.id; go(p, h.x, h.y, "build"); p.wait = 0; });
+      }
       /* A bridge or a boat for the village (TODO 6d). */
       if (CROSS && v.alive && p.job !== "soldier") {
         const c = crossings(v);
         if (c.bridge && !v.bridge && cross[c.bridge.i] === 1)   // and nobody has bridged it since
-          weigh("bridge", 0.3 - away(Math.hypot(c.bridge.x - p.x, c.bridge.y - p.y)) - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
+          weigh("bridge", 0.4 - away(Math.hypot(c.bridge.x - p.x, c.bridge.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, c.bridge.x, c.bridge.y, "bridge"); p.wait = 0; });
         if (c.landing && !v.boat && (v.wantBoat || 0) >= 3)
-          weigh("boat", 0.3 + Math.min(0.3, v.wantBoat * 0.01) - away(Math.hypot(c.landing.x - p.x, c.landing.y - p.y)) - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
+          weigh("boat", 0.4 + Math.min(0.3, v.wantBoat * 0.01) - away(Math.hypot(c.landing.x - p.x, c.landing.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, c.landing.x, c.landing.y, "boatwork"); p.wait = 0; });
       }
       /* Sleep, in their own house. The one thing a night is for. */
@@ -1994,7 +2122,15 @@
          meet, and in winter nobody is out. */
       if (n.food > 0.35 && p.food < 1 && v.food <= 0.05) {
         let giver = null, gs = 0;
-        for (const q of PLAIN ? people : residents(p.home)) {
+        /* Whom to ask: who in the village had grain to spare at the hour's start, most first
+           (TODO 7, 2026-11-16). Looking through every neighbour at every decision, even with
+           the cut below, was a fifth of a 20,000-person world's time; asking runs down this
+           list and stops where nobody further down had enough to beat the best so far. Grain
+           somebody brought home within the hour is known of the next hour. */
+        const spare = spareIn(v);
+        for (let k = 0; k < spare.length; k++) {
+          const q = spare[k];
+          if (q.spareFood * 3 <= gs) break;
           /* What they have is looked at first, and somebody who could not beat
              the best so far even as kin and a friend (three times their food
              at most) is passed by before either is looked up: measured at
@@ -2101,6 +2237,12 @@
        finished the person goes back to `choose`. */
     function work(p) {
       const v = villages[p.home];
+      /* A shift of building or digging is spent at the work, and shows as that work; what it
+         did is counted when it ends (TODO 7b: before, the hours showed as resting). */
+      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork") && !p.shift) {
+        p.shift = true; p.wait = p.task === "build" ? Math.round(BUILD_SHIFT * ACTIONS_PER_HOUR) : TK(240); return;
+      }
+      p.shift = false;
       if (p.task === "eat") { p.at = v.id; shop(p, v); p.task = "idle"; p.wait = spell("meal"); return; }
       if (p.task === "gear") { outfit(p, v); shop(p, v); p.task = "idle"; p.wait = spell("market"); return; }
       if (p.task === "sleep") { p.rest = 0; p.task = "idle"; p.wait = 0; return; }
@@ -2115,13 +2257,18 @@
         if (h) h.water = Math.min(JAR, h.water + (p.carry || 0));
         p.carry = 0; p.task = "idle"; p.wait = 0; return;
       }
+      if (p.task === "build") {                        // TODO 7b: five hours on a house
+        const h = homes[p.buildAt];
+        if (h && !h.built) buildShift(p, h);
+        p.task = "idle"; p.wait = 0; return;
+      }
       if (p.task === "bridge" || p.task === "boatwork") {   // TODO 6d: four hours at a time
         const bridge = p.task === "bridge";
         if (bridge ? !v.bridge : !v.boat) {
           if (bridge) { v.bridgeWork = (v.bridgeWork || 0) + 4; if (v.bridgeWork >= BRIDGE_HOURS) bridgeBuilt(v); }
           else { v.boatWork = (v.boatWork || 0) + 4; if (v.boatWork >= BOAT_HOURS) { const l = crossings(v).landing; v.boat = { x: l.x, y: l.y }; note("build", v.name + " has built a boat.", 1, l.x, l.y, v.f); } }
         }
-        p.task = "idle"; p.wait = TK(240); return;
+        p.task = "idle"; p.wait = 0; return;
       }
       if (p.task === "boat") {                         // rowed over, then on their way
         const o = p.over;
@@ -2139,7 +2286,7 @@
             for (const h of homes) if (h.v === v.id) h.src = null;   // fetch from it now, where it is nearer
           }
         }
-        p.task = "idle"; p.wait = TK(240); return;
+        p.task = "idle"; p.wait = 0; return;
       }
       if (p.task === "rest") { p.rest = Math.max(0, p.rest - 0.25); p.task = "idle"; p.wait = 0; return; }
       if (p.task === "ask") {
@@ -2780,7 +2927,10 @@
         p.f = v.f; p.loyal = why === "married" ? 0.6 : 0.5; count.switched++;
       }
       count.moved++;
-      house(p, v, byId.get(p.partner));
+      /* A child goes with the parent who moved them (TODO 7b: each had been given a house of its own). */
+      const parent = !adult(p) ? [byId.get(p.mum), byId.get(p.dad), byId.get(p.carer)].find(q => q && q.home === v.id && q.dwelling >= 0) : null;
+      p.waitHouse = -1;
+      house(p, v, parent || byId.get(p.partner));
       p.cargo = null; go(p, v.x + (R() - 0.5) * 2, v.y + (R() - 0.5) * 2, adult(p) ? "eat" : "idle"); p.wait = 0;
     }
 
@@ -2887,6 +3037,7 @@
       if (p.task === "waterhome") return "Carrying water home";
       if (p.task === "well") return walking ? "Going to dig the well" : "Digging a well";
       if (p.task === "bridge") return walking ? "Going to work on the bridge" : "Building a bridge";
+      if (p.task === "build") { const h = homes[p.buildAt], own = h && (h.owner === p.id || h.owner === p.partner); return walking ? (own ? "Going to build their house" : "Going to build a house") : own ? "Building their house" : "Building a house for pay"; }
       if (p.task === "boatwork") return walking ? "Going to work on the boat" : "Building a boat";
       if (p.task === "boat") return p.rowing ? "Crossing by boat" : "Going to the boat";
       if (p.task === "rest") return walking ? "Going home" : p.sick > 0 ? "Ill at home" : "Resting at home";
@@ -4448,6 +4599,7 @@
     function hour() {
       if (RAIN) { const y = season().year; if (y !== rainYear) newRainYear(y); }
       if (RAIN && THIRST && t % DAY_HOURS === 0 && t > 0) rainDay();
+      if (t % DAY_HOURS === 1) { if (!THIRST) countHouses(); housing(); }   // TODO 7b
       if (THIRST) countHouses();
       if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
       t++;
