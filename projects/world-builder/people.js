@@ -50,6 +50,7 @@
   const TK = n => Math.max(1, Math.round(n * STEP_SCALE));
   const REFLECT_HOURS = 6;
   const TOWN_AT = 400, CITY_AT = 5000;     // people: a town, a city (TODO 8)
+  const MARKET_PRICE = 1.2;                // coins a day's food fetches door to door on market day
   const ILLNESS_HOURS = 7 * DAY_HOURS;
   /* The sickness kills about one healthy adult in thirty-three who catch it —
      the order of a bad village fever, not of smallpox — and far more of the
@@ -558,7 +559,7 @@
     let wake = new Float64Array(1024), kind = new Uint8Array(1024), since = new Float64Array(1024), cur = Infinity;
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
-    const count = { infected: 0, grain: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0 };
     let t = 0, activityTicks = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
 
@@ -2255,11 +2256,18 @@
         if (m && m.alive && season().ripe < 1.5) {
           const spare = p.food - reserve(p) - 2;
           if (spare > 2) {
-            const load = Math.min(spare, equipped(p, "cart") ? grainLoad(p) : 5);
-            /* Worth more the better it sells there than at home. */
-            const gain = clamp((m.priceFood * 0.85 - v.priceFood) / Math.max(0.3, v.priceFood), 0, 2);
-            weigh("market", (0.3 + n.provide * 0.6 + gain * 0.3) * Math.min(1, load / 5) - away(dist(p, m)) * 0.35 - n.food * 0.5 - n.rest * 0.4 - n.safety * 0.8 - dark * 0.5,
-              () => { p.food -= load; p.cargo = { what: "food", amount: load }; p.at = m.id; go(p, m.x, m.y, "carry"); p.wait = 0; });
+            /* By handcart or packhorse, as a grain trader carries: a pack of five days a trip could
+               never feed a town. */
+            const load = Math.min(spare, grainLoad(p));
+            /* Worth more the shorter the town's households are: sold door to door to them (in
+               `trade`), not to a store price that an empty store pins at its top everywhere. */
+            const want = clamp((m.short || 0) / (m.pop * 7 + 1), 0, 1);
+            /* A war anywhere frightens a whole faction (p.fear), and at full weight that stopped every
+               market day from the harvest to spring in a world at war (2026-11-17), with the
+               fighting nowhere near: the road to one's own town, not under siege, at half. */
+            const risk = m.f === p.f && !m.siege ? 0.4 : 0.8;
+            weigh("market", (0.3 + n.provide * 0.6 + want * 0.5) * Math.min(1, load / 5) - away(dist(p, m)) * 0.35 - n.food * 0.5 - n.rest * 0.4 - n.safety * risk - dark * 0.5,
+              () => { p.food -= load; p.cargo = { what: "food", amount: load, grain: !shared, paid: load * MARKET_PRICE / 1.4 }; p.at = m.id; go(p, m.x, m.y, "carry"); p.wait = 0; });
           }
         }
 
@@ -2716,7 +2724,11 @@
           const rest = p.cargo.amount - sold, intoStore = rest > 0.01 ? sell(p, here, "food", rest) : 0;
           p.food += rest - intoStore;
           if (here.id !== p.home) here.inFood = (here.inFood || 0) + sold + intoStore;   // grain brought in (TODO 8)
-          if (sold + intoStore > 0.5) { count.grain = (count.grain || 0) + sold + intoStore; p.say = "Grain from away — " + Math.round(sold + intoStore) + " days of it."; p.sayT = TK(60); }
+          if (sold + intoStore > 0.5) {
+            if (p.job === "trader") { count.grain = (count.grain || 0) + sold + intoStore; p.say = "Grain from away — " + Math.round(sold + intoStore) + " days of it."; }
+            else { count.market = (count.market || 0) + sold + intoStore; p.say = "Sold " + Math.round(sold + intoStore) + " days of food at market."; }
+            p.sayT = TK(60);
+          }
           if (here.f !== p.f && sold > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
           p.cargo = null; wear(p, "pack");
         } else if (p.cargo) {
@@ -4464,10 +4476,13 @@
       v.importAvg = (v.importAvg || 0) * (179 / 180) + (v.inFood || 0) / 180; v.inFood = 0;   // over about half a year: a town lives on a harvest
       placeOf(v);
       /* Where its people take food to sell (TODO 8): the biggest place within 10 km, at peace,
-         at least half as big again as this one and with under three days' food a head in store. */
+         at least half as big again as this one, with under three days' food a head in store and its
+         households going short (on 2026-11-17 a starting city's store was empty all year, and so
+         were its villages', so a price read from the store said nothing; its households were short
+         10,000 days with 7,000 coins to pay). */
       v.marketTo = -1; let mb = 0;
       for (const o of villages) {
-        if (!o.alive || o === v || o.pop < v.pop * 1.5 || o.food > o.pop * 3 || (o.f !== v.f && atWar(o.f, v.f))) continue;
+        if (!o.alive || o === v || o.pop < v.pop * 1.5 || o.food > o.pop * 3 || (o.short || 0) < o.pop * 2 || (o.f !== v.f && atWar(o.f, v.f))) continue;
         const d = Math.hypot(o.x - v.x, o.y - v.y); if (d > 40) continue;
         const sc = o.pop / (1 + d * 0.05); if (sc > mb) { mb = sc; v.marketTo = o.id; }
       }

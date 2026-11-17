@@ -1783,7 +1783,35 @@ TODO item 8. A village was a village for ever, split when it passed "A full vill
   small to tell apart, a town or city is one block, the outline round its houses, edged in its
   faction's colour, with a bigger marker and "town" or "city" by its name.
 
-Measured: a year of 5,000 people on 40 km, from villages: on rich land ("How much it grows" 1.7) the biggest place reached 444 people by the year's end and was a town, 21 starved; on poor land (0.7) the biggest held 53 and the world starved by more than half; with a city of 2,500 at the start on rich land, its villages could not feed it, it shrank to 416 and 532 starved. Almost no food was carried into any place in these runs: after the harvest every place has food and prices barely differ, and households keep their harvest at home; towns grew by keeping their people, not by imports. The default world, six seeds, a year: 372 alive on average and 101 starved, against 364 and 138 at item 7. Speed (`test/bench.mjs`, against item 7): 400 people 0.12 → 0.12 s a day, 2,000 0.62 → 0.57, 5,000 2.12 → 1.72, 20,000 15.1 → 14.2, 400 on 500 km 0.10 → 0.12. A crafter looking for a paid building job had looked through every house in the world at each decision, a tenth of a 20,000-person world's time since 7b; now only the open sites.
+Measured: a year of 5,000 people on 40 km, from villages: on rich land ("How much it grows" 1.7) the biggest place reached 444 people by the year's end and was a town, 21 starved; on poor land (0.7) the biggest held 53 and the world starved by more than half; with a city of 2,500 at the start on rich land, its villages could not feed it, it shrank to 416 and 532 starved. Almost no food was carried into any place in these runs: after the harvest every place has food and prices barely differ, and households keep their harvest at home; towns grew by keeping their people, not by imports. The default world, six seeds, a year: 372 alive on average and 101 starved in all six (17 a world), against 364 and 138 (23) at item 7. Speed (`test/bench.mjs`, against item 7): 400 people 0.12 → 0.12 s a day, 2,000 0.62 → 0.57, 5,000 2.12 → 1.72, 20,000 15.1 → 14.2, 400 on 500 km 0.10 → 0.12. A crafter looking for a paid building job had looked through every house in the world at each decision, a tenth of a 20,000-person world's time since 7b; now only the open sites.
+
+**Feeding a town (2026-11-17, Ric: "Fix food supply").** Measured first, on a city of 2,500 at the
+start on rich land: after the harvest the villages round it held about 36,000 days of food beyond
+their own winter, while the city's households were 10,000 days short with 7,000 to 12,000 coins to
+pay. Yet over 300 days no grain was carried in and three households went to market. Three things
+stopped it, and are changed:
+
+- **Every price was the same.** A price reads a village's store, and every store was empty, so
+  every price sat at its top (7) and the city looked no dearer than home. Market day now goes by
+  how short the town's households are, and only to a town whose households are going short.
+- **Nobody to sell to.** A load brought to market could only be sold to the town's store, whose
+  till was empty. It is now sold door to door to the households going short, at 1.2 coins a day's
+  food, the most short first; what nobody buys goes to the store if it can pay, and the rest home.
+- **Too small, and too frightened.** A household carried five days in a pack; now a handcart or
+  packhorse load, as a grain trader carries (fifteen days). And a war anywhere frightens a whole
+  faction, which stopped every market day from the harvest to spring though the fighting was
+  nowhere near; on the road to one's own town, not under siege, fear now counts half.
+
+This world had no grain traders at all, so market day is the town's supply. Measured, a year each
+way, 5,000 people on 40 km, rich land: with a city at the start, 15,000 days of food were sold into
+places (none before), 363 starved against 511, and the city held 524 against 479. From villages, 12,200
+days were sold, 57 starved against 122, and the biggest place was a town of 415 at the year's end
+against a village of 251 (the same seed under item 8 had once grown a town of 444; one run each
+way). The default world, six seeds: 367 alive and 16 starved a world, against 372 and 17. **Still
+open:** a city of half the people cannot be fed. After keeping their own winter the villages
+round it had about 40,000 days to spare and the city needed about 150,000, and at a coin a day its
+households' money would buy about 10,000. Historically a town of that share of a people lived on
+grain from far away by water.
 
 ### Building houses (2026-11-16)
 

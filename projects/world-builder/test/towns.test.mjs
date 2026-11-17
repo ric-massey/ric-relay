@@ -47,7 +47,17 @@ const placeFor = n => n >= 5000 ? "city" : n >= 400 ? "town" : "village";
   let going = 0;
   for (let h = 0; h < 24 * 6; h++) { w.step(1); for (const p of w.people) if (p.cargo && p.cargo.what === "food" && p.at === town.id) going++; }
   assert.ok(going > 0, "households take food to the town's market");
+  assert.ok(w.stats().market > 0, "and sell it door to door to the town's households (" + Math.round(w.stats().market) + " days)");
   assert.ok(town.importAvg > before * Math.pow(179 / 180, 6), "and it is counted as brought in: " + before.toFixed(1) + " to " + town.importAvg.toFixed(1));
+}
+
+// 4. No market day for a town whose households are fed (2026-11-17: the pull is their hunger).
+{
+  const w = People.create({ seed: 7, people: 3000, map: 40, places: "city", start: "winter" });
+  const town = w.villages.reduce((a, b) => (b.pop > a.pop ? b : a));
+  for (const p of w.people) if (p.home === town.id) p.food = 400;
+  w.step(25);
+  assert.ok(w.villages.every(v => v.marketTo !== town.id), "a fed town draws no market day");
 }
 
 console.log("world-builder towns: sizes, where they live at first, market day");

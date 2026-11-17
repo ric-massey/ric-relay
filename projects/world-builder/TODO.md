@@ -856,6 +856,16 @@ they can be told apart, then one block the size of its built-up area.
 
 **Done 2026-11-17** (Ric: "Yes, item 8"). A place is a village, a town (400) or a city (5,000) by its size; it has room for as many as the food brought into it feeds besides its own rule; market day takes spare food to the biggest place near that is short; towns and cities lose more to sickness; "Where they live at first" chooses hamlets, villages, market towns or a city; far out a town is one block (Ric: "Houses, then a block"). On rich land a village grew into a town in a year without being told to, on poor land none did; a city at the start was not fed and shrank. **Not met / open:** food is hardly ever carried into a town (prices differ little between places after a harvest, and the loads people carry are small), so towns grow by keeping people rather than by drawing grain from round them; a city of half the people cannot be fed; the 400-people-on-500-km row is 0.02 s a day slower.
 
+**Food supply fixed 2026-11-17** (Ric: "Fix food supply"). Prices were the same everywhere (every
+store empty, so every price at its top), a market load could only be sold to an empty till, loads
+were five days, and a war anywhere kept everyone from market all winter. Now market day goes to a
+town whose households are going short, sells door to door to them at 1.2 coins a day's food, carries
+a handcart load, and counts fear at half on the road to one's own town. Rich land, a year each way:
+a starting city 363 starved against 511 with 15,000 days sold in; from villages 57 against 122, a town
+of 415 at the year's end, 12,200 days sold. Default world unchanged (16 starved a world against 17).
+Still open: a city of half the people (the land round has a quarter of what it needs to spare, and
+its money buys less). Item 8's "101 starved" was the total of six worlds, 17 a world.
+
 Research notes:
 - **How many lived in towns.** Before modern farming rarely more than a tenth to a fifth of a
   people: Europe about 1500 about 10% in towns of 5,000 or more, the Low Countries and Italy more
