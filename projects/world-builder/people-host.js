@@ -53,7 +53,7 @@
        remembers it, so the next time these settings are chosen it can say
        what the world really held rather than what its first days promised. */
     let maxSim = 0, maxWall = 0;
-    let vsSig = "", fsSig = "";                      // what the page was last told of villages and factions
+    let vsSig = "", fsSig = "", heldSent = -1;       // what the page was last told of villages, factions and held fields
     let frameKey = "";                               // the last frame asked for, and the step it was made at
     let sorted = null, sortedSig = "";               // everybody by name, for the People list
     let trial = null;                                // the quiet test of a world (see `tryOut`)
@@ -263,6 +263,13 @@
           H[k * 7 + 6] = h.built ? 1 : Math.min(0.95, (h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8)); });
         out.homes = H;
       }
+      /* Fields households hold (TODO 7c): square and house, in pairs, when they change. */
+      if (m.fresh || w.heldStamp !== heldSent) {
+        heldSent = w.heldStamp;
+        const F = new Int32Array(w.held.size * 2); let k = 0;
+        for (const [i, hid] of w.held) { F[k++] = i; F[k++] = hid; }
+        out.fields = F;
+      }
       sig = fs.length + "|";
       for (const f of fs) sig += f.leader + (f.alive ? "a" : "d");
       if (m.fresh || sig !== fsSig) { fsSig = sig; out.fs = fs.map(f => ({ id: f.id, name: f.name, colour: f.colour, alive: f.alive })); }
@@ -313,8 +320,8 @@
         out.factions = w.factions.map(f => {
           const lead = byId.get(f.leader), rel = {};
           for (const o of w.factions) if (o !== f && f.rel[o.id]) rel[o.id] = { war: !!f.rel[o.id].war };
-          return { id: f.id, name: f.name, colour: f.colour, alive: f.alive, pop: f.pop, soldiers: f.soldiers, rule: f.rule, tax: f.tax, loyal: f.loyal,
-                   treasury: f.treasury, yours: f.yours ? { tax: f.yours.tax, army: f.yours.army, relief: f.yours.relief } : null,
+          return { id: f.id, name: f.name, colour: f.colour, alive: f.alive, pop: f.pop, soldiers: f.soldiers, rule: f.rule, tax: f.tax, loyal: f.loyal, land: f.land,
+                   treasury: f.treasury, yours: f.yours ? { tax: f.yours.tax, army: f.yours.army, relief: f.yours.relief, land: f.yours.land } : null,
                    lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
         });
         out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive, f: v.f, x: v.x, y: v.y, pop: v.pop, tax: v.tax == null ? null : v.tax,
@@ -384,6 +391,7 @@
       else if (what === "ftax" && f && f.yours) w.order(f.id, { tax: f.yours.tax + 0.02 * a[1] });
       else if (what === "army" && f && f.yours) w.order(f.id, { army: f.yours.army + 0.02 * a[1] });
       else if (what === "relief" && f && f.yours) w.order(f.id, { relief: !f.yours.relief });
+      else if (what === "land" && f && f.yours) w.order(f.id, { land: { family: "village", village: "leader", leader: "family" }[f.yours.land] || "family" });
       else if (what === "vtax" && v) w.orderVillage(v.id, { tax: w.taxOf(v) + 0.02 * a[1] });
       else if (what === "vrelief" && v) w.orderVillage(v.id, { relief: v.relief == null ? true : v.relief ? false : null });
       else if (what === "vreset" && v) w.orderVillage(v.id, { tax: null, relief: null });

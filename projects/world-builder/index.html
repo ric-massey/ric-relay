@@ -782,6 +782,7 @@
       snap = m; askGap = Math.max(15, m.cost * 6);
       if (m.vs) { vs = m.vs; landStale = true; }
       if (m.homes) homesArr = m.homes;
+      if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
       if (m.fs) { fs = m.fs; landStale = true; }
       if (m.land) { landNow = m.land; landStale = true; bigAt = performance.now(); }
       if (picked && picked.person && m.picked && m.picked.id === picked.person && !m.picked.gone) picked.name = m.picked.name;
@@ -1510,7 +1511,7 @@
      villages are. Making them every frame was a third of a frame at the
      usual size. */
   const FIELD_BLOCK = 64, fieldBlocks = new Map();
-  let fieldsFor = null, housesFor = null, houses = null, homesArr = null;   // houses: where they stand, baked into the blocks
+  let fieldsFor = null, housesFor = null, houses = null, homesArr = null, heldMap = null;   // heldMap: square -> house holding it (TODO 7c)   // houses: where they stand, baked into the blocks
   function fieldBlock(bx, by) {
     const w = world, own = landNow.owner, key = bx + ":" + by;
     let p = fieldBlocks.get(key); if (p) return p;
@@ -1583,6 +1584,20 @@
     g.strokeStyle = "rgba(42,35,24,.7)"; g.lineWidth = Math.max(1, P * 0.0025); g.stroke(ridges);
     g.strokeStyle = "#8a6a40"; g.lineWidth = Math.max(1, Math.min(3, P * 0.003)); g.stroke(frames);
   }
+  /* Hedges round the fields a household holds (TODO 7c): every side of a held square whose
+     neighbour is not the same household's, from (x0, y0) to (x1, y1) in squares, scaled by k and
+     moved by (ox, oy). */
+  function hedges(x0, y0, x1, y1, k, ox, oy) {
+    const p = new Path2D(), cols = world.cols, e = 0.03;
+    for (const [i, hid] of heldMap) {
+      const x = i % cols, y = (i / cols) | 0;
+      if (x < x0 - 1 || y < y0 - 1 || x > x1 || y > y1) continue;
+      const side = (j, ax, ay, bx, by) => { if (heldMap.get(j) !== hid) { p.moveTo(ox + ax * k, oy + ay * k); p.lineTo(ox + bx * k, oy + by * k); } };
+      side(i - cols, x + e, y + e, x + 1 - e, y + e); side(i + cols, x + e, y + 1 - e, x + 1 - e, y + 1 - e);
+      side(x > 0 ? i - 1 : -1, x + e, y + e, x + e, y + 1 - e); side(x < cols - 1 ? i + 1 : -1, x + 1 - e, y + e, x + 1 - e, y + 1 - e);
+    }
+    return p;
+  }
   function drawHouses(g, x0, y0, cw, ch, P) { if (P >= 8) paintHouses(g, P, x0, y0, x0 + cw, y0 + ch); }
   function drawFieldsAndHouses(W, H, s, ox, oy) {
     const w = world;
@@ -1595,6 +1610,10 @@
       const bx1 = Math.min(Math.ceil(w.cols / FIELD_BLOCK) - 1, Math.floor((W - ox) / s / FIELD_BLOCK)), by1 = Math.min(Math.ceil(w.rows / FIELD_BLOCK) - 1, Math.floor((H - oy) / s / FIELD_BLOCK));
       ctx.strokeStyle = "rgba(60,48,30,.35)"; ctx.lineWidth = Math.min(2, Math.max(1, s * 0.03)) / s;
       for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) ctx.stroke(fieldBlock(bx, by));
+    }
+    if (heldMap && heldMap.size && s >= 20 && s < 128) {
+      ctx.strokeStyle = "rgba(38,66,30,.85)"; ctx.lineWidth = Math.max(2, s * 0.025) / s;
+      ctx.stroke(hedges(-ox / s, -oy / s, (W - ox) / s, (H - oy) / s, 1, 0, 0));
     }
     ctx.setTransform(T);
   }
@@ -1640,6 +1659,7 @@
       rp.moveTo(ox + (tx + 0.5) * s, oy + (ty + 0.5) * s); rp.lineTo(ox + (tx + 0.5 + DXs[o]) * s, oy + (ty + 0.5 + DYs[o]) * s);
     }
     ctx.strokeStyle = "rgb(" + L.ground[2].join(",") + ")"; ctx.lineWidth = Math.max(2, s * 15 / 250); ctx.stroke(rp);
+    if (heldMap && heldMap.size) { ctx.strokeStyle = "rgba(38,66,30,.9)"; ctx.lineWidth = Math.max(3, s * 2 / 250); ctx.stroke(hedges(x0, y0, x1, y1, s, ox, oy)); }
     ctx.save(); ctx.translate(ox + x0 * s, oy + y0 * s); paintHouses(ctx, s, x0, y0, x1, y1); ctx.restore();
   }
   /* For checking the page from a test (headless browser): set the zoom and where to look. */
@@ -1984,7 +2004,7 @@
     }
     if (a[0] === "village") { const v = vs[+a[1]]; if (!v) return; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
-    if (mode === "people" && ["rule", "ftax", "army", "relief", "vtax", "vrelief", "vreset", "war", "peace", "live"].includes(a[0])) {
+    if (mode === "people" && ["rule", "ftax", "army", "relief", "land", "vtax", "vrelief", "vreset", "war", "peace", "live"].includes(a[0])) {
       /* A decision is the keeper's to carry out, from what stands in the
          world at that moment; the panel is drawn again when it says it has
          (`hear`, "did"), with whatever the other side answered. */
@@ -2158,6 +2178,8 @@
   const stepRow = (label, value, go, extra) => "<div class='row'><span class='lbl'>" + label + "</span>" +
     "<span class='step'><button class='btn' data-go='" + go + ":-1' aria-label='Less " + esc(label.replace(/<[^>]*>/g, "")) + "'>\u2212</button><span class='val'>" + value + "</span>" +
     "<button class='btn' data-go='" + go + ":1' aria-label='More " + esc(label.replace(/<[^>]*>/g, "")) + "'>+</button></span>" + (extra || "") + "</div>";
+  /* Who holds the land (TODO 7c), as the faction list and the ruling panel say it. */
+  const LAND = { family: "Each family its own fields", village: "The village, in common", leader: "The leader, worked for a share" };
   function rulePane(f, d) {
     const coins = d.money === "coins";
     if (!f.yours) return "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Rule " + esc(f.name) + " yourself</button></div>";
@@ -2168,6 +2190,7 @@
       (ruleMsg ? "<p class='small rule-msg'>" + esc(ruleMsg) + "</p>" : "") +
       (coins ? stepRow("Tax on every sale", pctOf(f.yours.tax), "ftax:" + f.id) : "") +
       stepRow("Under arms", pctOf(f.yours.army) + " (" + f.soldiers + ")", "army:" + f.id) +
+      "<div class='row'><span class='lbl'>Who holds the land</span><button class='btn' data-go='land:" + f.id + "'>" + (LAND[f.yours.land] || LAND.family) + "</button></div>" +
       (coins ? "<div class='row'><span class='lbl'>Treasury buys bread for the hungry</span><button class='btn' data-go='relief:" + f.id + "' aria-pressed='" + f.yours.relief + "'>" + (f.yours.relief ? "Yes" : "No") + "</button></div>" : "") +
       (coins && own.length ? "<h4>Each village</h4>" + own.map(v => {
         const set = v.tax != null, rel = v.relief == null ? "as " + esc(f.name) : v.relief ? "feeds its hungry" : "no relief";
@@ -2245,6 +2268,7 @@
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
+            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");

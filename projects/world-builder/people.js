@@ -200,6 +200,9 @@
       { key: "rule", label: "Who leads, at first", type: "select", def: "elected",
         options: [["elected", "Whoever they vote for"], ["chief", "A chief for life, then their child"], ["rich", "Whoever is richest"]],
         help: "Each faction starts this way. A people who have turned on a chief or on the rich, and who outnumber the soldiers still loyal, can overthrow them and choose their own way." },
+      { key: "land", label: "Who holds the land", type: "select", def: "decide",   // TODO 7c; Ric, 2026-11-16
+        options: [["decide", "Each faction decides"], ["family", "Families, each its own fields"], ["village", "The village, in common"], ["leader", "The leader, worked for a share"]],
+        help: "Each faction's own rule, as Ric asked: a chief or the richest chooses by their own lights, a people who vote choose by what most of them want, and you choose for a faction you rule. Or set one rule for everybody here. Families hold one or two fields each near the house; common fields are worked by anybody of the village; a leader's land is worked by all, and a third of every harvest goes to the leader's barn, the village store." },
       { key: "term", label: "A vote every", type: "range", min: 1, max: 20, step: 1, def: 6,
         say: v => v + (v === 1 ? " year" : " years"), help: "Wherever leaders are voted for — from the start, or after a revolution brings in votes." },
       { key: "loyalty", label: "How loyal they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
@@ -867,6 +870,85 @@
     }
     if (THIRST) count.thirst = 0;
     count.sites = 0; count.houses = 0;   // houses started and finished (TODO 7b)
+    count.rent = 0; count.shares = 0;      // days of food that went to a leader's barn, and to a household whose field somebody else worked (TODO 7c)
+
+    /* ── who holds the land (TODO 7c, 2026-11-16) ───────────────────────────
+       Ric: "It should be a setting for each tribe. And the leader decides
+       that or sometimes the people. Like different governments". Each
+       faction has a rule:
+       - "family": every household that farms holds fields of its own near
+         its house, a square (6.25 ha) for every two or three of them, so a
+         family of five two squares, about a virgate (nominally 30 acres,
+         12 ha); they work their own first, and anybody may work another
+         household's for half of what it gives, the other half going to
+         that household, as harvest work was paid in sheaves (holdings
+         nobody else could touch starved half as many again in a year);
+       - "village": the fields are the village's in common, anybody works
+         any (as it was before);
+       - "leader": the land is the leader's; everybody works it and a third
+         of what they bring in goes to the leader's barn, the village store
+         (rent in kind, as on a manor).
+       A chief or the richest chooses by their leanings (who believes in
+       sharing chooses common fields, a greedy one their own land, anybody
+       else families); a faction that votes chooses what most of its
+       grown-ups lean to, and changes only when a clear majority (55%) wants
+       it; the visitor chooses for a faction they rule; or the world's
+       setting fixes one rule for all. README, "Who holds the land". */
+    const held = new Map();                // square -> house holding it
+    let heldStamp = 0;                      // changed whenever any holding is
+    let allotted = false;                   // land has been shared out once (at the start)
+    const landOf = v => factions[v.f] ? factions[v.f].land : "village";
+    function landLean(p, isLeader) { return p.views > 0.3 ? "village" : isLeader && p.greed > 0.6 ? "leader" : "family"; }
+    function landWant(f) {
+      if (S.land && S.land !== "decide") return S.land;
+      if (f.yours && f.yours.land) return f.yours.land;
+      const lead = byId.get(f.leader);
+      if (f.rule !== "elected") return lead ? landLean(lead, true) : f.land || "village";
+      const n = { family: 0, village: 0 }; let all = 0;
+      for (const p of people) if (p.f === f.id && adult(p) && p.hp !== -99) { n[landLean(p, false)]++; all++; }
+      if (!all) return f.land || "village";
+      const top = n.family >= n.village ? "family" : "village";
+      return !f.land || f.land === "leader" || n[top] / all >= 0.55 ? top : f.land;
+    }
+    function setLand(f, rule) {
+      const was = f.land; f.land = rule;
+      for (const v of villages) if (v.f === f.id && v.alive) allot(v);
+      if (was) {
+        const v = villages.find(o => o.alive && o.f === f.id) || { x: 0, y: 0 };
+        note("rule", f.name + (rule === "family" ? ": every family now holds its own fields." : rule === "village" ? ": the fields are now the village's, in common." : ": the land is now the leader's, worked for a share."), 2, v.x, v.y, f.id);
+      }
+    }
+    /* A village's holdings, made up to date: under "family" each household its share of the
+       village's own land, the nearest to its house, keeping what it held; otherwise none. */
+    function allot(v) {
+      const family = landOf(v) === "family";
+      /* Only a household that farms holds land: one whose people worked the fields twice or more
+         in the month before (every lived-in house, at the start). Land held by a household that
+         did not would lie idle, as nobody works another family's field: measured, holding it
+         anyway starved twice as many in a year. */
+      const farms = new Set();
+      if (family) for (const h of homes) if (h.v === v.id && (allotted ? h.farmed >= 2 : h.n > 0)) farms.add(h.id);
+      for (const h of homes) if (h.v === v.id) h.farmed = 0;
+      for (const h of homes) if (h.v === v.id && h.fields) {
+        const keep = family && h.built && farms.has(h.id) ? h.fields.filter(i => owner[i] === v.id) : [];
+        for (const i of h.fields) if (!keep.includes(i)) held.delete(i);
+        h.fields = keep.length ? keep : null;
+      }
+      if (family) for (const h of homes) {
+        if (h.v !== v.id || !h.built || !farms.has(h.id)) continue;
+        const want = Math.max(1, Math.ceil(h.n / 2.5));           // about 6.25 ha for every two or three of them
+        if (h.fields && h.fields.length >= want) continue;
+        const cx = Math.floor(h.x), cy = Math.floor(h.y), cand = [];
+        for (let r = 0; r <= 10 && cand.length < 24; r++) for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
+          if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r || x < 0 || y < 0 || x >= cols || y >= rows) continue;
+          const i = y * cols + x;
+          if (owner[i] === v.id && fert[i] > 0.05 && !held.has(i)) cand.push(i);
+        }
+        cand.sort((a, b) => Math.hypot(a % cols + 0.5 - h.x, ((a / cols) | 0) + 0.5 - h.y) - Math.hypot(b % cols + 0.5 - h.x, ((b / cols) | 0) + 0.5 - h.y) || a - b);
+        for (const i of cand) { if ((h.fields ? h.fields.length : 0) >= want) break; (h.fields || (h.fields = [])).push(i); held.set(i, h.id); }
+      }
+      heldStamp++;
+    }
 
     /* ── fishing (TODO 6c, 2026-11-16) ─────────────────────────────────────
        Natural waters give about 20 to 50 kg of fish a hectare a year (FAO,
@@ -914,7 +996,7 @@
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
-                  leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9,
+                  leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6 };
       factions.push(f);
@@ -957,7 +1039,7 @@
         if (!wet(x, y)) break;
       }
       const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
-                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false };
+                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, head: 0 };
       sizeHome(h, wealth);
       homes.push(h);
       return h;
@@ -1082,7 +1164,7 @@
        them at every decision was a quarter of a 20,000-person world's time. */
     function countHouses() {
       for (const h of homes) h.n = 0;
-      for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) homes[p.dwelling].n++;
+      for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) { const h = homes[p.dwelling]; h.n++; if (adult(p)) h.head = p.id; }   // and a grown-up of it, for its share (TODO 7c)
       for (const v of villages) v.fullest = null;
       for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
     }
@@ -1700,14 +1782,24 @@
 
     function pickField(p, v) {
       let best = -1, bs = 0.25;
+      /* Their household's own fields, where families hold the land (TODO 7c): first, unless picked
+         so bare that other land would give them much more (below). Going back to a bare field of
+         their own every day starved twice as many in a year (six seeds, 260 against 119). */
+      const mine = held.size && p.dwelling >= 0 && p.home === v.id ? homes[p.dwelling].fields : null;
+      let own = -1, ownBs = 0;
+      if (mine) for (const i of mine) if (stock[i] > ownBs) { ownBs = stock[i]; own = i; }
       for (let i = 0; i < 7; i++) {
         const a = R() * 6.2832, d = Math.sqrt(R()) * v.radius;
         const x = v.x + Math.cos(a) * d, y = v.y + Math.sin(a) * d;
         if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
         const ti = tileAt(x, y);
         if (owner[ti] !== v.id && owner[ti] !== -1) continue;
-        if (stock[ti] > bs) { bs = stock[ti]; best = ti; }
+        /* Another household's field may be worked for half of what it gives, the other half
+           theirs, as harvest work was paid in sheaves (TODO 7c): worth half as much to the worker. */
+        const val = held.size && held.has(ti) && held.get(ti) !== p.dwelling ? stock[ti] * 0.5 : stock[ti];
+        if (val > bs) { bs = val; best = ti; }
       }
+      if (own >= 0 && ownBs > 0.25 && ownBs >= bs * 0.6) return own;
       return best;
     }
 
@@ -2340,6 +2432,17 @@
           stock[ti] -= got; need -= got;
         }
         p.food += capacity - need;
+        if (p.dwelling >= 0) homes[p.dwelling].farmed++;          // the household farms (TODO 7c)
+        /* Another household's field: half of it is theirs. */
+        const holder = held.size ? held.get(fy * cols + fx) : undefined;
+        if (holder !== undefined && holder !== p.dwelling) {
+          const q = byId.get(homes[holder].head), half = (capacity - need) / 2;
+          if (q && q.hp !== -99 && q !== p && half > 0) { p.food -= half; q.food += half; count.shares += half; }
+        }
+        /* On a leader's land a third goes to the leader's barn, the village store (TODO 7c). */
+        if (landOf(v) === "leader" && p.id !== factions[v.f].leader && p.partner !== factions[v.f].leader) {
+          const rent = (capacity - need) / 3; p.food -= rent; v.food += rent; count.rent += rent;
+        }
         if (capacity > need) wear(p, "tool");
         /* The load goes to their own house, not to one point in the middle of
            the village: measured 2026-11-13, every farmer converging on the
@@ -4427,6 +4530,8 @@
         const top = people.filter(q => q.f === f.id && adult(q)).sort((a, b) => b.coins - a.coins)[0];
         if (top && top !== lead && top.coins > lead.coins * 1.5 + 5) { f.leader = top.id; f.views = top.views; note("leader", top.name + ", now the richest in " + f.name + ", has taken it over from " + lead.name + ".", 2.5, villages[top.home].x, villages[top.home].y, f.id); }
       }
+      /* Who holds the land (TODO 7c). */
+      { const want = landWant(f); if (want !== f.land) setLand(f, want); }
       const hungry = f.pop ? f.hungry / f.pop : 0;
       let wars = 0;
       for (const o of factions) if (o.alive && o !== f && f.rel[o.id].war) wars++;
@@ -4600,6 +4705,7 @@
       if (RAIN) { const y = season().year; if (y !== rainYear) newRainYear(y); }
       if (RAIN && THIRST && t % DAY_HOURS === 0 && t > 0) rainDay();
       if (t % DAY_HOURS === 1) { if (!THIRST) countHouses(); housing(); }   // TODO 7b
+      if (t % (DAY_HOURS * 30) === 2 && t > DAY_HOURS * 30) for (const v of villages) if (v.alive && landOf(v) === "family") allot(v);   // new households, and empty houses' land back (TODO 7c)
       if (THIRST) countHouses();
       if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
       t++;
@@ -4707,7 +4813,7 @@
       const f = factions[fid]; if (!f || !f.alive) return false;
       const at = villages.find(v => v.alive && v.f === f.id) || { x: 0, y: 0 };
       if (on && !f.yours) {
-        f.yours = { tax: f.tax, army: f.army, relief: !!f.relief };
+        f.yours = { tax: f.tax, army: f.army, relief: !!f.relief, land: f.land };
         note("rule", "You have taken the decisions of " + f.name + " into your own hands.", 2, at.x, at.y, f.id);
       } else if (!on && f.yours) {
         f.yours = null;
@@ -4722,6 +4828,7 @@
       if ("tax" in o) f.yours.tax = f.tax = clamp(+o.tax || 0, 0, 0.6);
       if ("army" in o) f.yours.army = f.army = clamp(+o.army || 0, 0, 0.6);
       if ("relief" in o) f.yours.relief = f.relief = !!o.relief;
+      if ("land" in o && ["family", "village", "leader"].includes(o.land)) { f.yours.land = o.land; if (o.land !== f.land) setLand(f, o.land); }
       return true;
     }
     function orderVillage(vid, o) {
@@ -4800,6 +4907,10 @@
       return null;
     }
 
+    /* Who holds the land, from the first hour (TODO 7c). */
+    countHouses();
+    for (const f of factions) if (f.alive) setLand(f, landWant(f));
+    allotted = true;
     actionTick();
     if (!PLAIN) settle();
     return {
@@ -4809,6 +4920,8 @@
          Rain off), and any year's, worked out fresh without touching the world. */
       /* Send somebody somewhere, as a decision would: for tests (crossing water, TODO 6d). */
       send: (p, x, y, task) => go(p, x, y, task || "idle"),
+      /* Fields held by households (TODO 7c): square -> house, and a number that changes when they do. */
+      held: held, get heldStamp() { return heldStamp; },
       cross: cross,   // TODO 6d: 1 a big river, 2 a ford, 3 a bridge (null with Crossing at "wade")
       rainK: rainK, rainField: y => RAIN ? rainField(y, new Uint8Array(tiles)) : null,
       people: people, byId: byId, villages: villages, factions: factions,
