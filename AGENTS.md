@@ -681,6 +681,9 @@ nobody had linked was a page nobody could find.
   villages are symbols until item 7. Since 7a (2026-11-16) people are half a metre wide by
   default (Ric: "Real size by default"), a house is a building with a real size by wealth, a
   family sleeps inside it, and the page zooms to 4,096 pixels a square to see one house.
+  **Item 7 done** (2026-11-16): houses built by the family or a paid builder; each faction's own
+  land rule (families, the village, the leader; Ric: "a setting for each tribe"); paths and roads
+  worn in by walking; carts owned by traders; goods by boat; boats lost.
   **Thirst** (TODO 6a, 2026-11-16, Ric: "Real, on by default"): households keep and fetch
   water, wells are dug where fresh water is over a kilometre off; "off" is exactly as before.
   **Rain, fishing, crossing** (TODO 6b to 6d, 2026-11-16): a year's rain by place, dry years,

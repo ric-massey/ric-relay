@@ -1755,6 +1755,90 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Building houses (2026-11-16)
+
+TODO item 7b. A house stood from the start or appeared at once for somebody who moved. Now:
+
+- **Who needs one.** A married couple living with other grown-ups sets up a house of its own, as
+  north-west European couples did at marriage (Hajnal's household pattern); so does a household
+  too many for its house (about 10 m² a person). The youngest couple goes. An empty house in the
+  village is taken first, one whose household died out or moved away.
+- **What it takes.** About two hours' work a square metre of floor (a 54 m² cottage 14
+  person-days, a 168 m² house 42), and goods for timber and thatch, one for every 20 m² and six
+  besides, bought from the village; where there are none, or no coin for them, gathered by hand,
+  eight hours each, as most peasants did. No clean medieval figure for the work was found (Dyer's
+  peasant buildings were put up by carpenters in weeks); these are said as a guess.
+- **Who builds.** The family itself, five hours at a time, or a builder they pay, a crafter of the
+  village, at a wage and a half (Ric: "Sometimes a family sometimes a builder"). A household pays
+  for a builder or goods only out of what is left after a winter's bread. Building gives way to
+  hunger, the harvest and an empty larder, as building waited for the slack of the year.
+- **Newcomers** take an empty house, or put up a hut at once, the smallest house there is.
+  (Lodging them with a neighbour while they built was tried: hungry newcomers built instead of
+  farming and a year starved half as many again.) A child that moves goes with its parent; until
+  now each had been given a house of its own.
+- **Drawn** as a timber frame, its roof thatched by quarters as the work goes on.
+- In a first year few couples marry into a crowded house, so few houses are built; they come
+  with the generations.
+
+### Who holds the land (2026-11-16)
+
+TODO item 7c. Ric: "It should be a setting for each tribe. And the leader decides that or
+sometimes the people. Like different governments". Every faction has a land rule:
+
+- **Families**: every household that farms holds fields of its own near its house, a square
+  (6.25 ha) for every two or three of them, so a family of five about a virgate (nominally 30
+  acres, 12 ha). It works its own first, unless picked so bare that other land would give it much
+  more; anybody may work another household's field for half of what it gives, the other half going
+  to that household, as harvest work was paid in sheaves. A household that has not farmed for three
+  months running gives its fields back.
+- **The village**: the fields are common; anybody of the village works any (as before).
+- **The leader**: everybody works the leader's land and a third of every harvest goes to the
+  leader's barn, the village store.
+- **Who chooses.** A chief or the richest by their own leanings (who believes in sharing chooses
+  common fields, a greedy one their own land, anybody else families); a faction that votes by what
+  most of its grown-ups lean to, changing only when 55% want it; you, for a faction you rule (the
+  ruling panel has a button for it); or the world setting "Who holds the land" fixes one rule for
+  everybody. A change is in the news.
+- **Drawn**: hedges round each household's fields from 20 pixels a square.
+- Measured, a year on six seeds: families' holdings starve as many as common fields (124 against
+  119). The first tries starved twice as many: holdings nobody else could touch, holdings for
+  households that did not farm, and families going back every day to a bare field of their own.
+
+### Paths and roads, carts and boats (2026-11-16)
+
+TODO item 7d, with what Ric added to it ("Write them in"): carts and better boats come with roads;
+cars wait for eras (item 15).
+
+- **Paths are worn in, not laid down.** Every time somebody walks onto a square it is trodden once
+  more; under 1% of that wears off a day, so a path outlasts a winter. A square trodden about 25
+  times a day for weeks becomes a path, about 95 a road; one nobody uses goes back to grass. This
+  is the active walker model (Helbing, Keltsch and Molnár, 1997): walkers wear the ground, worn
+  ground is easier and draws them, wear fades. A path is walked at least at the pace of open
+  ground, a road 15% faster, and the way-finding prefers them. In a default world about 150 squares
+  of path and 30 of road wear in over a year, mostly the lanes of villages, as trips between
+  villages are few on a 17 km land. Drawn as lines from square to square, roads wider and paler.
+- **Carts** are owned: a trader starts with one, and buys or mends one (three goods) out of what is
+  left after a winter's bread. Grain goes eight packs to a cartload, five by handcart and packhorse
+  without. Laden, a cart goes at a walk on a road, 85% on a path or a village's lanes, 60% over
+  open ground. Drawn behind a laden trader. (Farmers' carts for the harvest were tried: dragged
+  home over the fields they starved more than twice as many in a year; not kept.)
+- **Boats carry goods**: a load for a village along the same coast or a big river goes by boat
+  when that is at least a tenth quicker than the road, at about 6 km an hour under sail and oar.
+- **Boats are lost**: about one crossing hour in 500 at sea and one in 1,500 on a lake or river;
+  the load goes down with it and half of those aboard drown; the village is without a boat until
+  it builds another. Built, lost and afloat are counted (`boatsBuilt`, `boatsLost`, `boats`).
+
+### Asking a neighbour, made cheap (2026-11-16)
+
+Left by 7a: when a village store was empty every hungry person looked through all their neighbours
+for grain, a fifth of a 20,000-person world's time. Now they run down a list, made once an hour,
+of who in the village has grain, most first, and stop where nobody further down could do better;
+grain somebody brought home within the hour is known of the next hour. The same world plain or
+fast (`test/walking.test.mjs`, `dozing.test.mjs`). 20,000 people 13.4 → 10.8 s a day.
+
+Measured, item 7 as a whole (six seeds, a year each, against item 6): 364.5 alive on average against 365.5, 138 dead of hunger in all against 110 (within what six seeds vary by run to run: 119 to 138 between runs of the same engine with small changes), and about 150 squares of path and 30 of road a world by the year's end. Speed
+(`test/bench.mjs`, against item 6): 400 people 0.125 → 0.125 s a day, 2,000 0.62 → 0.62, 5,000 1.96 → 2.05 (5% slower), 20,000 on 80 km 14.3 → 14.9 (4% slower), 400 on 500 km 0.145 → 0.10 (31% faster); the cheaper neighbour search pays for most of what houses, land and paths cost.
+
 ### Rain and dry years (2026-11-16)
 
 TODO item 6b. Every year grew the same everywhere but for one number for the whole land. With

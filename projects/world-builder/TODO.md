@@ -740,7 +740,7 @@ in this list is in fact about memory (a person in plain number arrays); how big 
 screen comes from the engine's body size (the "Bodies" setting), so showing people at their real
 size when zoomed in is done here, with the houses.
 
-### [ ] 7. Houses, fields and roads as real things (7a done)
+### [x] 7. Houses, fields and roads as real things
 
 **Now:** a house is a spot where a family sleeps; fields are squares people happen to harvest;
 there are no roads. Measured 2026-11-15 (item 1): houses are scattered over a village's ground
@@ -796,6 +796,16 @@ busy, and with village stores emptier the search for a neighbour with grain look
 everybody (README, "Houses"). That search is the first thing 7b looks at.
 Comes with later parts: building new houses (7b), fields as land (7c), paths (7d).
 
+**7b, 7c, 7d done 2026-11-16** (Ric: "Jump on 7. All of it plz"). **7b:** couples who marry into a
+house with other grown-ups, or households too many for it, take an empty house or build one, by
+floor area, with goods or gathered materials, themselves or with a paid builder; newcomers take an
+empty house or a hut. **7c:** every faction's own land rule (families, the village, the leader),
+chosen by its chief, its voters or you, or set for the world; families work their own fields first
+and others' for half. **7d:** paths and roads worn in by walking and fading without it; carts owned
+by traders; goods by boat along coasts and rivers; boats lost. And asking a neighbour for grain
+made cheap (20,000 people 13.4 → 10.8 s a day). Ric's carts note: carts by traders only, farmers'
+carts starved more. **Item 7 is done.** **Not met / open:** in a first year few houses are built (few couples marry into a crowded house that soon); boats carry goods only where two villages both have landings on the same water and the water is quicker, which on the default lands is rare; nobody builds a road on purpose, roads only wear in; 5,000 people are at the edge of the speed budget (5%).
+
 Research notes:
 - **A house and its plot.** Excavated medieval peasant houses: Houndtor (Dartmoor), 13th century,
   14.2 by 4.3 m with a living end about 6 by 4 m ([Legendary Dartmoor](https://www.legendarydartmoor.co.uk/2016/03/21/long_house/));
@@ -809,6 +819,16 @@ Research notes:
   (about 12 ha), 24 in later court rolls, often half that; many held a ferling, 7.5 to 8.75 acres
   ([Wikipedia, Virgate](https://en.wikipedia.org/wiki/Virgate); [Milton Abbas](https://miltonabbashistorygroup.com/medieval-peasant-life-in-milton-abbas-landholding/)).
   A 250 m square is 6.25 ha: a holding is one to two squares.
+- **Building (7b).** Peasant houses in later medieval England were mostly put up by carpenters,
+  in weeks, for a few pounds (Dyer, *English peasant buildings in the later middle ages*, 1986); no
+  clean figure in person-days was found, so the work by floor area here is a guess. Couples in
+  north-west Europe set up their own household at marriage (Hajnal, 1982), the reason a married
+  couple living with others builds.
+- **Who works whose land (7c).** Open-field villages held land by household in strips, with
+  commons besides; harvest workers were paid in sheaves; on a manor, labour and rent in kind went to
+  the lord.
+- **Carts and boats (7d).** An ox cart about 3 km an hour on a good road and much slower off one; a
+  small sailing and rowing boat about 6 km an hour along a coast.
 - **Paths from use.** Helbing, Keltsch and Molnár, *Modelling the evolution of human trail systems*
   (Nature 388, 1997) and the active walker model (Phys. Rev. E 56, 1997,
   [arXiv](https://arxiv.org/abs/cond-mat/9806097)): walkers wear the ground where they go, worn
@@ -1052,4 +1072,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-16 | 7a | AMD Ryzen 5 3600, 24 GB | 1.89 s a day, 159× | 10.78 s a day, 28× | 3.3 MB, 0.64 KB | **people at real size by default**, a different world. 400 people 0.34 → 0.12 s, 2,000 on 17 km 3.23 → 0.55 s, 400 on 500 km 0.15 → 0.05 s; 20,000 on 80 km 7.40 → 10.78 s, slower (busier people, emptier stores); a default year 115 → 40 s |
 | 2026-11-16 | 6a | AMD Ryzen 5 3600, 24 GB | 1.77 s a day, 168× | 12.6 s a day, 23× | 3.2 MB, 0.63 KB | **thirst on by default**, a different world. Against 7a: 400 people 0.12 → 0.14 s, 2,000 0.55 → 0.62 s, 5,000 1.72 → 1.77 s, 20,000 10.5 → 12.6 s (fetching is a new daily task) |
 | 2026-11-16 | 6 | AMD Ryzen 5 3600, 24 GB | 1.75 s a day, 172× | 13.5 s a day, 22× | 3.4 MB, 0.67 KB | **rain, fishing and crossing water on by default**, a different world. Against 6a: 400 people 0.14 → 0.13 s, 2,000 0.62 → 0.60 s, 5,000 1.80 → 1.75 s, 20,000 12.6 → 13.5 s, 400 on 500 km 0.09 → 0.16 s (walking round big rivers); person fields declared at birth |
+| 2026-11-16 | 7 | AMD Ryzen 5 3600, 24 GB | 2.05 s a day, 146× | 14.9 s a day, 20× | 3.5 MB, 0.68 KB | **houses built, land held by each faction's rule, paths worn in, carts, boats**, a different world. Against item 6: 400 people 0.125 → 0.125 s, 2,000 0.62 → 0.62 s, 5,000 1.96 → 2.05 s, 20,000 14.3 → 14.9 s, 400 on 500 km 0.145 → 0.10 s; asking a neighbour made cheap |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

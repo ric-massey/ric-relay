@@ -435,7 +435,13 @@
     tool: { name: "Work tool", cost: 0.6, jobs: ["farmer", "crafter"], wear: 0.003, benefit: "+25% harvest capacity; +20% goods per batch" },
     pack: { name: "Trade pack", cost: 0.8, jobs: ["trader"], wear: 0.004, benefit: "Carry up to 5 trade goods instead of 3" },
     weapon: { name: "Weapon", cost: 1, jobs: ["soldier"], wear: 0.01, benefit: "+25% damage on a successful hit" },
-    shield: { name: "Shield", cost: 1, jobs: ["soldier"], wear: 0.01, benefit: "25% less damage from a successful hit" }
+    shield: { name: "Shield", cost: 1, jobs: ["soldier"], wear: 0.01, benefit: "25% less damage from a successful hit" },
+    /* TODO 7d: a cart is a thing a trader owns, built from goods. Grain goes by cart, eight packs'
+       worth, five by handcart and packhorse without one. Laden, it goes at a walk on a road, a
+       little slower on a path or a village's lanes, and much slower over open ground, where a cart
+       sticks and jolts. (Farmers' carts were tried, for bringing in the harvest: dragged home over
+       the fields they starved more than twice as many in a year, six seeds; not kept.) */
+    cart: { name: "Cart", cost: 3, jobs: ["trader"], wear: 0.002, benefit: "Grain by the cartload (eight packs, not five); slow off roads" }
   };
   const PATCH = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
 
@@ -464,6 +470,20 @@
     const wetQ = RAIN ? new Uint8Array(tiles) : null, nearW = RAIN ? new Uint8Array(tiles) : null, rainK = RAIN ? new Uint8Array(tiles).fill(100) : null;
     let rainYear = -1;
     const deep = k => k === G_SEA || k === G_LAKE;
+    /* Paths and roads worn in by walking (TODO 7d, 2026-11-16). Every time somebody walks onto a
+       square it is trodden once more (`trod`); every day under 1% of that wears off, so a path
+       outlasts a winter's disuse (at 3% they were gone by midwinter); a square trodden
+       about 25 times a day for weeks is a path (`track` 1), about 95 a road (2), and one
+       that falls out of use goes back to grass. The active walker model (Helbing, Keltsch and
+       Molnar 1997): walkers wear the ground, worn ground is easier and draws them, and wear fades;
+       nobody lays a path down. A path is walked at the pace of open ground at least, a road a
+       little faster, and a cart goes best on a road. README, "Paths and roads". */
+    const trod = new Uint16Array(tiles), track = new Uint8Array(tiles), trodList = [];
+    let trackStamp = 0;
+    const PATH_ON = 3200, PATH_OFF = 2000, ROAD_ON = 12000, ROAD_OFF = 8000;   // about 25 and 95 crossings a day, held
+    function tread(i) { if (trod[i] === 0) trodList.push(i); if (trod[i] < 65535) trod[i]++; }
+    /* How fast this square is walked, against open ground. */
+    const paceAt = i => track[i] === 2 ? 1.15 : track[i] === 1 ? Math.max(PACE[ground[i]], 0.9) : PACE[ground[i]];
     /* Crossing water (TODO 6d): on a big river, 1 where it cannot be waded, 2 a ford, 3 a bridge;
        0 elsewhere. Null with Crossing at "wade", and then nothing below differs from before. */
     const CROSS = S.crossing !== "wade";
@@ -870,6 +890,7 @@
     }
     if (THIRST) count.thirst = 0;
     count.sites = 0; count.houses = 0;   // houses started and finished (TODO 7b)
+    count.boatsBuilt = 0; count.boatsLost = 0; count.drowned = 0;   // boats built and lost, and who went down with them (TODO 7d)
     count.rent = 0; count.shares = 0;      // days of food that went to a leader's barn, and to a household whose field somebody else worked (TODO 7c)
 
     /* ── who holds the land (TODO 7c, 2026-11-16) ───────────────────────────
@@ -926,9 +947,14 @@
          in the month before (every lived-in house, at the start). Land held by a household that
          did not would lie idle, as nobody works another family's field: measured, holding it
          anyway starved twice as many in a year. */
+      /* A household keeps its fields through a winter: they go back only after three months running
+         without farming them (measured: taken back each month, every winter emptied the holdings). */
       const farms = new Set();
-      if (family) for (const h of homes) if (h.v === v.id && (allotted ? h.farmed >= 2 : h.n > 0)) farms.add(h.id);
-      for (const h of homes) if (h.v === v.id) h.farmed = 0;
+      for (const h of homes) if (h.v === v.id) {
+        h.idle = h.farmed >= 2 ? 0 : (h.idle || 0) + 1;
+        if (family && (allotted ? h.n > 0 && (h.farmed >= 2 || h.fields && h.idle < 3) : h.n > 0)) farms.add(h.id);
+        h.farmed = 0;
+      }
       for (const h of homes) if (h.v === v.id && h.fields) {
         const keep = family && h.built && farms.has(h.id) ? h.fields.filter(i => owner[i] === v.id) : [];
         for (const i of h.fields) if (!keep.includes(i)) held.delete(i);
@@ -1039,7 +1065,7 @@
         if (!wet(x, y)) break;
       }
       const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
-                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, head: 0 };
+                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0 };
       sizeHome(h, wealth);
       homes.push(h);
       return h;
@@ -1098,6 +1124,19 @@
         for (const p of list) if (p.partner && p.waitHouse < 0 && p.home === h.v && list.some(q => q.id === p.partner) && (!leave || p.age < leave.age)) leave = p;
         if (leave && list.length > 2 && !list.some(q => q.waitHouse >= 0)) startHouse(leave, v);
       }
+    }
+    /* Once a day: under 1% of every square's treading wears off, and paths and roads follow it. */
+    function wearOff() {
+      let w = 0, changed = false;
+      for (let k = 0; k < trodList.length; k++) {
+        const i = trodList[k];
+        trod[i] = Math.max(0, trod[i] - Math.max(1, trod[i] >> 7));   // under 1% a day: a path outlasts a winter
+        const was = track[i], now = trod[i] >= ROAD_ON || (was === 2 && trod[i] >= ROAD_OFF) ? 2 : trod[i] >= PATH_ON || (was >= 1 && trod[i] >= PATH_OFF) ? 1 : 0;
+        if (now !== was) { track[i] = now; changed = true; }
+        if (trod[i] > 0) trodList[w++] = i;
+      }
+      trodList.length = w;
+      if (changed) { trackStamp++; ways.clear(); }
     }
     /* A shift of building: the work, the materials it can get, and the builder's pay. */
     function buildShift(p, h) {
@@ -1366,6 +1405,7 @@
       census();
       for (const f of factions) succeed(f, "first");
       for (const p of people) if (adult(p)) p.job = chooseJob(p);
+      for (const p of people) if (p.job === "trader") p.gear.cart = 1;   // a trader starts with a cart (TODO 7d)
       /* A quarter of the grown-ups start paired, so the first children are not
          fourteen years away. */
       for (const v of villages) {
@@ -1693,11 +1733,14 @@
       /* Over the sea or a lake from here: nobody can walk there, so they do
          not set off (TODO 4b). */
       const from = pieceAt(p.x, p.y), to = pieceAt(p.tx, p.ty);
-      if (from && to && from !== to) {
+      /* A load for another village by water, where that is quicker (TODO 7d). */
+      const ship = CROSS && p.cargo && task === "carry" && from && from === to ? shipFor(p, p.tx, p.ty) : null;
+      if (ship) { p.over = { x: p.tx, y: p.ty, task: task, bx: ship.bx, by: ship.by, hours: ship.hours, sea: ship.sea }; p.tx = ship.ax; p.ty = ship.ay; p.task = "boat"; p.rowing = false; }
+      else if (from && to && from !== to) {
         /* By boat, where their village has one on this shore (TODO 6d). An army does not. */
         const army = task === "march" || task === "fight" || task === "patrol";
         const ferry = CROSS && !army ? ferryFor(p, from, to) : null;
-        if (ferry) { p.over = { x: p.tx, y: p.ty, task: task, bx: ferry.bx, by: ferry.by, hours: ferry.hours }; p.tx = ferry.ax; p.ty = ferry.ay; p.task = "boat"; p.rowing = false; }
+        if (ferry) { p.over = { x: p.tx, y: p.ty, task: task, bx: ferry.bx, by: ferry.by, hours: ferry.hours, sea: ferry.sea }; p.tx = ferry.ax; p.ty = ferry.ay; p.task = "boat"; p.rowing = false; }
         else {
           if (CROSS) {
             const v = villages[p.home];
@@ -1762,20 +1805,40 @@
       const memo = v.ferries || (v.ferries = new Map());
       if (memo.has(to)) return memo.get(to);
       const a = crossings(v).landing; if (!a) return null;
+      const found = waterRoute(a, j => landPiece[j] === to, 4);
+      memo.set(to, found);
+      return found;
+    }
+    /* A boatload of goods along a coast or a big river to another village's landing, when that is
+       quicker than the road by a tenth (TODO 7d): a small boat under sail and oar makes about 6 km an hour along a coast, against a laden walk. */
+    function shipFor(p, x, y) {
+      const v = villages[p.home]; if (!v || !v.boat || !crossings(v).landing) return null;
+      let o = null; for (const u of villages) if (u.alive && u !== v && Math.hypot(u.x - x, u.y - y) < 2.5) { o = u; break; }
+      if (!o || !crossings(o).landing || Math.hypot(o.x - p.x, o.y - p.y) < 12) return null;
+      const memo = v.ships || (v.ships = new Map());
+      if (!memo.has(o.id)) { const b = crossings(o).landing.i; memo.set(o.id, waterRoute(crossings(v).landing, j => j === b, 6)); }
+      const r = memo.get(o.id);
+      if (!r) return null;
+      const byLand = Math.hypot(o.x - p.x, o.y - p.y) * 1.4 / (WALK * ACTIONS_PER_HOUR * (equipped(p, "cart") ? 0.6 : 1));
+      return r.hours < byLand * 0.9 ? r : null;
+    }
+    /* The way over water from landing `a` to the first land square `goal` accepts, out to 50 km,
+       at `kmh`; and whether any of it is the open sea. */
+    function waterRoute(a, goal, kmh) {
       const ax = a.i % cols, ay = (a.i / cols) | 0, dist0 = new Map(), q = [];
       for (let k = 0; k < 8; k++) { const nx = ax + [1, -1, 0, 0, 1, 1, -1, -1][k], ny = ay + [0, 0, 1, -1, 1, -1, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue; const j = ny * cols + nx; if (ground[j] <= G_RIVER && stopAt(j) || ground[j] <= G_LAKE) { dist0.set(j, 1); q.push(j); } }
-      let found = null;
+      let found = null, sea = false;
       for (let h = 0; h < q.length && !found && q.length < 400000; h++) {
         const i = q[h], x = i % cols, y = (i / cols) | 0, d = dist0.get(i);
         if (d > 200) break;
+        if (ground[i] === G_SEA) sea = true;
         for (let k = 0; k < 4 && !found; k++) {
           const nx = x + [1, -1, 0, 0][k], ny = y + [0, 0, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
           const j = ny * cols + nx;
-          if (landPiece[j] === to) found = { ax: a.x, ay: a.y, bx: nx + 0.5, by: ny + 0.5, hours: (d + 1) / (4 * SQUARES_PER_KM) + 0.5 };
+          if (!stopAt(j) && goal(j)) found = { ax: a.x, ay: a.y, bx: nx + 0.5, by: ny + 0.5, hours: (d + 1) / (kmh * SQUARES_PER_KM) + 0.5, sea: sea };
           else if (stopAt(j) && !dist0.has(j)) { dist0.set(j, d + 1); q.push(j); }
         }
       }
-      memo.set(to, found);
       return found;
     }
     function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = TK(10) + Math.floor(R() * 30 * STEP_SCALE); }
@@ -1891,6 +1954,8 @@
       if (!adult(p) || p.hp <= 0 || p.food < 0.6 || dist(p, v) > 2.5 || atWar(p.f, v.f)) return;
       for (const [key, spec] of Object.entries(GEAR)) {
         if (!spec.jobs.includes(p.job) || (p.gear[key] || 0) > 0.25) continue;
+        /* A cart only out of what is left after a winter's bread, or from a shared store with three carts' worth in it (TODO 7d). */
+        if (key === "cart" && (shared ? v.goods < spec.cost * 3 : funds(p) - spec.cost * v.priceGoods < reserve(p) * v.priceFood)) continue;
         const condition = p.gear[key] || 0, needed = spec.cost * (1 - condition);
         if (p.goods < needed) buy(p, v, "goods", needed - p.goods);
         if (p.goods + 1e-10 < needed) continue;
@@ -1913,7 +1978,12 @@
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
     /* Grain goes by cart, not on a back: eight packs' worth. */
-    function grainLoad(p) { return tradeCapacity(p) * 8; }
+    function grainLoad(p) { return tradeCapacity(p) * (equipped(p, "cart") ? 8 : 5); }   // TODO 7d: by cart, or by handcart and packhorse
+    /* How fast somebody laden with a cart goes on this square (TODO 7d). */
+    function cartPace(p, i) {
+      if (!equipped(p, "cart")) return 1;
+      return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.85 : 0.6;
+    }
     function craftOutput(p, v) { return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1); }
     function strike(p, foe, base) {
       const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1);
@@ -2358,7 +2428,7 @@
         const bridge = p.task === "bridge";
         if (bridge ? !v.bridge : !v.boat) {
           if (bridge) { v.bridgeWork = (v.bridgeWork || 0) + 4; if (v.bridgeWork >= BRIDGE_HOURS) bridgeBuilt(v); }
-          else { v.boatWork = (v.boatWork || 0) + 4; if (v.boatWork >= BOAT_HOURS) { const l = crossings(v).landing; v.boat = { x: l.x, y: l.y }; note("build", v.name + " has built a boat.", 1, l.x, l.y, v.f); } }
+          else { v.boatWork = (v.boatWork || 0) + 4; if (v.boatWork >= BOAT_HOURS) { const l = crossings(v).landing; v.boat = { x: l.x, y: l.y }; count.boatsBuilt++; note("build", v.name + " has built a boat.", 1, l.x, l.y, v.f); } }
         }
         p.task = "idle"; p.wait = 0; return;
       }
@@ -2367,6 +2437,15 @@
         if (!o) { p.task = "idle"; p.wait = 0; return; }
         if (!p.rowing) { p.rowing = true; p.wait = Math.round(o.hours * ACTIONS_PER_HOUR); return; }
         p.rowing = false; p.over = null;
+        /* Boats are lost (TODO 7d): about one crossing hour in 500 at sea, one in 1,500 on a lake or
+           river, a storm or a capsize; the load goes down with it, and half of those aboard. */
+        if (R() < 1 - Math.pow(1 - (o.sea ? 0.002 : 0.0007), o.hours)) {
+          const home = villages[p.home];
+          if (home && home.boat) { home.boat = null; home.boatWork = 0; home.wantBoat = Math.max(home.wantBoat || 0, 3); count.boatsLost++;
+            note("loss", home.name + "'s boat was lost on the water" + (p.cargo ? ", and its load with it." : "."), 2, o.bx, o.by, home.f); }
+          p.cargo = null;
+          if (R() < 0.5) { die(p, "drowned"); return; }
+        }
         jump(p, o.bx, o.by);
         go(p, o.x, o.y, o.task); p.wait = 0; return;
       }
@@ -3267,6 +3346,8 @@
       }
       /* On another square now: their name moves to its list at the next refill. */
       if (!PLAIN && (p.x !== x0 || p.y !== y0) && tileAt(p.x, p.y) !== p.bk) shifted.push(p);
+      /* And the ground is trodden (TODO 7d). */
+      if (p.x !== x0 || p.y !== y0) { const a = tileAt(p.x, p.y); if (a !== tileAt(x0, y0)) tread(a); }
       if (MEMO) {
         /* Standing where they started counts as blocked even if they stepped
            aside and straight back, which is what a packed crowd mostly does:
@@ -3375,7 +3456,7 @@
             if (!dx && !dy) continue;
             const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
             const j = ny * cols + nx, k = ground[j]; if (stopAt(j) || shut(x, y, dx, dy)) continue;
-            const g = gi + (dx && dy ? Math.SQRT2 : 1) / (cross !== null && cross[j] === 3 ? 1 : PACE[k]);
+            const g = gi + (dx && dy ? Math.SQRT2 : 1) / (cross !== null && cross[j] === 3 ? 1 : paceAt(j));
             if (wayAt[j] === wayStamp && g >= wayG[j]) continue;
             wayAt[j] = wayStamp; wayG[j] = g; wayFrom[j] = i; push(j, g + est(j));
           }
@@ -4087,8 +4168,8 @@
          a village holds: it has paths, and a whole village walking its streets at the pace of
          open hills jammed round its middle for hours (measured: 43 people stuck over 200 steps
          against 1). */
-      const here = tileAt(p.x, p.y), footing = owner[here] >= 0 || (cross !== null && cross[here] === 3) ? 1 : PACE[ground[here]];
-      const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1) * footing;
+      const here = tileAt(p.x, p.y), footing = track[here] === 2 ? 1.15 : owner[here] >= 0 || (cross !== null && cross[here] === 3) ? 1 : paceAt(here);
+      const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1) * footing * (p.cargo ? cartPace(p, here) : 1);
       const partner = p.sayT > 0 && byId.get(p.talkingTo);
       if (partner && partner.sayT > 0 && partner.talkingTo === p.id) {
         /* 3: in conversation. They stand and listen until one of the two
@@ -4705,6 +4786,7 @@
       if (RAIN) { const y = season().year; if (y !== rainYear) newRainYear(y); }
       if (RAIN && THIRST && t % DAY_HOURS === 0 && t > 0) rainDay();
       if (t % DAY_HOURS === 1) { if (!THIRST) countHouses(); housing(); }   // TODO 7b
+      if (t % DAY_HOURS === 3) wearOff();                                       // TODO 7d
       if (t % (DAY_HOURS * 30) === 2 && t > DAY_HOURS * 30) for (const v of villages) if (v.alive && landOf(v) === "family") allot(v);   // new households, and empty houses' land back (TODO 7c)
       if (THIRST) countHouses();
       if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
@@ -4895,6 +4977,8 @@
         tick: t, year: year(), people: people.length, factions: factions.filter(f => f.alive).length,
         villages: villages.filter(v => v.alive).length, atWar: wars, meanAge: people.length ? age / people.length : 0,
         money: money(), topShare: topShare,
+        boats: villages.filter(v => v.alive && v.boat).length,   // afloat now (TODO 7d)
+        paths: trodList.reduce((n, i) => n + (track[i] === 1 ? 1 : 0), 0), roads: trodList.reduce((n, i) => n + (track[i] === 2 ? 1 : 0), 0),
       }, count);
     }
 
@@ -4922,6 +5006,9 @@
       send: (p, x, y, task) => go(p, x, y, task || "idle"),
       /* Fields held by households (TODO 7c): square -> house, and a number that changes when they do. */
       held: held, get heldStamp() { return heldStamp; },
+      /* Paths and roads (TODO 7d): how trodden each square is, 1 a path and 2 a road, and a number
+         that changes when they do. */
+      trod: trod, track: track, get trackStamp() { return trackStamp; },
       cross: cross,   // TODO 6d: 1 a big river, 2 a ford, 3 a bridge (null with Crossing at "wade")
       rainK: rainK, rainField: y => RAIN ? rainField(y, new Uint8Array(tiles)) : null,
       people: people, byId: byId, villages: villages, factions: factions,

@@ -37,7 +37,7 @@
 
   /* What one byte says about a person on screen, and what they carry. */
   const FLAG = { child: 1, hit: 2, sick: 4, leader: 8, speaking: 16, harvesting: 32 };
-  const GEAR = { tool: 1, weapon: 2, shield: 4, pack: 8, food: 16, load: 32 };
+  const GEAR = { tool: 1, weapon: 2, shield: 4, pack: 8, food: 16, load: 32, cart: 64 };
   /* The longest stretch of the world's time handed to the engine in one go
      when running flat out: a little over one step, so the keeper looks up to
      answer the page between steps however big the world is. (Handing time
@@ -53,7 +53,7 @@
        remembers it, so the next time these settings are chosen it can say
        what the world really held rather than what its first days promised. */
     let maxSim = 0, maxWall = 0;
-    let vsSig = "", fsSig = "", heldSent = -1;       // what the page was last told of villages, factions and held fields
+    let vsSig = "", fsSig = "", heldSent = -1, trackSent = -1;       // what the page was last told of villages, factions and held fields
     let frameKey = "";                               // the last frame asked for, and the step it was made at
     let sorted = null, sortedSig = "";               // everybody by name, for the People list
     let trial = null;                                // the quiet test of a world (see `tryOut`)
@@ -264,6 +264,12 @@
         out.homes = H;
       }
       /* Fields households hold (TODO 7c): square and house, in pairs, when they change. */
+      /* Paths and roads (TODO 7d): square and kind, in pairs, when they change. */
+      if (m.fresh || w.trackStamp !== trackSent) {
+        trackSent = w.trackStamp;
+        const T = []; for (let i = 0; i < w.track.length; i++) if (w.track[i]) T.push(i, w.track[i]);
+        out.tracks = Int32Array.from(T);
+      }
       if (m.fresh || w.heldStamp !== heldSent) {
         heldSent = w.heldStamp;
         const F = new Int32Array(w.held.size * 2); let k = 0;

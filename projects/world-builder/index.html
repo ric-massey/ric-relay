@@ -782,6 +782,7 @@
       snap = m; askGap = Math.max(15, m.cost * 6);
       if (m.vs) { vs = m.vs; landStale = true; }
       if (m.homes) homesArr = m.homes;
+      if (m.tracks) { trackMap = new Map(); for (let k = 0; k < m.tracks.length; k += 2) trackMap.set(m.tracks[k], m.tracks[k + 1]); }
       if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
       if (m.fs) { fs = m.fs; landStale = true; }
       if (m.land) { landNow = m.land; landStale = true; bigAt = performance.now(); }
@@ -1511,7 +1512,7 @@
      villages are. Making them every frame was a third of a frame at the
      usual size. */
   const FIELD_BLOCK = 64, fieldBlocks = new Map();
-  let fieldsFor = null, housesFor = null, houses = null, homesArr = null, heldMap = null;   // heldMap: square -> house holding it (TODO 7c)   // houses: where they stand, baked into the blocks
+  let fieldsFor = null, housesFor = null, houses = null, homesArr = null, heldMap = null, trackMap = null;   // trackMap: square -> 1 a path, 2 a road (TODO 7d)   // heldMap: square -> house holding it (TODO 7c)   // houses: where they stand, baked into the blocks
   function fieldBlock(bx, by) {
     const w = world, own = landNow.owner, key = bx + ":" + by;
     let p = fieldBlocks.get(key); if (p) return p;
@@ -1587,6 +1588,25 @@
   /* Hedges round the fields a household holds (TODO 7c): every side of a held square whose
      neighbour is not the same household's, from (x0, y0) to (x1, y1) in squares, scaled by k and
      moved by (ox, oy). */
+  /* Paths and roads (TODO 7d): a line from each trodden square's middle to each next to it that
+     is trodden too, the corners only where no side does; paths and roads apart. */
+  function tracks(x0, y0, x1, y1, k, ox, oy) {
+    const pp = new Path2D(), rr = new Path2D(), cols = world.cols;
+    for (const [i, kind] of trackMap) {
+      const x = i % cols, y = (i / cols) | 0;
+      if (x < x0 - 1 || y < y0 - 1 || x > x1 + 1 || y > y1 + 1) continue;
+      let any = false;
+      for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
+        const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols) continue;
+        const o = trackMap.get(ny * cols + nx); if (!o) continue;
+        if (dx && dy && (trackMap.get(y * cols + nx) || trackMap.get(ny * cols + x))) continue;
+        const p = Math.min(kind, o) === 2 ? rr : pp;
+        p.moveTo(ox + (x + 0.5) * k, oy + (y + 0.5) * k); p.lineTo(ox + (nx + 0.5) * k, oy + (ny + 0.5) * k); any = true;
+      }
+      if (!any) { const p = kind === 2 ? rr : pp; p.moveTo(ox + (x + 0.35) * k, oy + (y + 0.5) * k); p.lineTo(ox + (x + 0.65) * k, oy + (y + 0.5) * k); }
+    }
+    return [pp, rr];
+  }
   function hedges(x0, y0, x1, y1, k, ox, oy) {
     const p = new Path2D(), cols = world.cols, e = 0.03;
     for (const [i, hid] of heldMap) {
@@ -1610,6 +1630,13 @@
       const bx1 = Math.min(Math.ceil(w.cols / FIELD_BLOCK) - 1, Math.floor((W - ox) / s / FIELD_BLOCK)), by1 = Math.min(Math.ceil(w.rows / FIELD_BLOCK) - 1, Math.floor((H - oy) / s / FIELD_BLOCK));
       ctx.strokeStyle = "rgba(60,48,30,.35)"; ctx.lineWidth = Math.min(2, Math.max(1, s * 0.03)) / s;
       for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) ctx.stroke(fieldBlock(bx, by));
+    }
+    if (trackMap && trackMap.size && s < 128) {
+      const [pp, rr] = tracks(-ox / s, -oy / s, (W - ox) / s, (H - oy) / s, 1, 0, 0);
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#9c7f52"; ctx.lineWidth = Math.max(2, s * 3 / 250) / s; ctx.stroke(pp);
+      ctx.strokeStyle = "#5f4c30"; ctx.lineWidth = Math.max(4.5, s * 8 / 250) / s; ctx.stroke(rr);
+      ctx.strokeStyle = "#e0cc9c"; ctx.lineWidth = Math.max(3, s * 6 / 250) / s; ctx.stroke(rr);
     }
     if (heldMap && heldMap.size && s >= 20 && s < 128) {
       ctx.strokeStyle = "rgba(38,66,30,.85)"; ctx.lineWidth = Math.max(2, s * 0.025) / s;
@@ -1659,6 +1686,12 @@
       rp.moveTo(ox + (tx + 0.5) * s, oy + (ty + 0.5) * s); rp.lineTo(ox + (tx + 0.5 + DXs[o]) * s, oy + (ty + 0.5 + DYs[o]) * s);
     }
     ctx.strokeStyle = "rgb(" + L.ground[2].join(",") + ")"; ctx.lineWidth = Math.max(2, s * 15 / 250); ctx.stroke(rp);
+    if (trackMap && trackMap.size) {
+      const [pp, rr] = tracks(x0, y0, x1, y1, s, ox, oy);
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#b8a079"; ctx.lineWidth = Math.max(2, s * 3 / 250); ctx.stroke(pp);
+      ctx.strokeStyle = "#d8c69c"; ctx.lineWidth = Math.max(3, s * 6 / 250); ctx.stroke(rr);
+    }
     if (heldMap && heldMap.size) { ctx.strokeStyle = "rgba(38,66,30,.9)"; ctx.lineWidth = Math.max(3, s * 2 / 250); ctx.stroke(hedges(x0, y0, x1, y1, s, ox, oy)); }
     ctx.save(); ctx.translate(ox + x0 * s, oy + y0 * s); paintHouses(ctx, s, x0, y0, x1, y1); ctx.restore();
   }
@@ -1688,6 +1721,11 @@
     if (gear & GEAR.pack) {
       ctx.fillStyle = "#a87b47"; ctx.strokeStyle = "#f0d2a0";
       ctx.fillRect(x - r * 1.12, y - r * 0.25, r * 0.75, r * 1.1); ctx.strokeRect(x - r * 1.12, y - r * 0.25, r * 0.75, r * 1.1);
+    }
+    if (GEAR.cart && gear & GEAR.cart && gear & (GEAR.food | GEAR.load)) {   // a cart behind, with its wheels (TODO 7d)
+      ctx.fillStyle = "#7a5a36"; ctx.strokeStyle = "#111918";
+      ctx.fillRect(x + r * 0.35, y - r * 0.15, r * 1.5, r * 1.15); ctx.strokeRect(x + r * 0.35, y - r * 0.15, r * 1.5, r * 1.15);
+      ctx.fillStyle = "#2a2118"; ctx.beginPath(); ctx.arc(x + r * 0.7, y + r * 1.05, r * 0.28, 0, 6.2832); ctx.arc(x + r * 1.5, y + r * 1.05, r * 0.28, 0, 6.2832); ctx.fill();
     }
     if (gear & (GEAR.food | GEAR.load)) {
       ctx.fillStyle = gear & GEAR.food ? "#e8d890" : "#d9ad83"; ctx.strokeStyle = "#111918";
