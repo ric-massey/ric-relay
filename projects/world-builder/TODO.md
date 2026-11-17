@@ -836,7 +836,7 @@ Research notes:
   destination, make a minimal-detour system. Chosen when paths are built: wear a square for each
   footstep, fade it daily, a path where wear passes a line, faster walking on it.
 
-### [ ] 8. Villages that become towns and cities
+### [x] 8. Villages that become towns and cities
 
 **Now:** a village is a point with a store and never becomes anything else. Factions × villages
 is fixed at the start.
@@ -851,7 +851,28 @@ disease.
 land it does not; a world can start with a city and feed it or fail to.
 **Budget:** default.
 
+Ric's answer (2026-11-17): a city far out is **"Houses, then a block"**: every house as far out as
+they can be told apart, then one block the size of its built-up area.
+
+**Done 2026-11-17** (Ric: "Yes, item 8"). A place is a village, a town (400) or a city (5,000) by its size; it has room for as many as the food brought into it feeds besides its own rule; market day takes spare food to the biggest place near that is short; towns and cities lose more to sickness; "Where they live at first" chooses hamlets, villages, market towns or a city; far out a town is one block (Ric: "Houses, then a block"). On rich land a village grew into a town in a year without being told to, on poor land none did; a city at the start was not fed and shrank. **Not met / open:** food is hardly ever carried into a town (prices differ little between places after a harvest, and the loads people carry are small), so towns grow by keeping people rather than by drawing grain from round them; a city of half the people cannot be fed; the 400-people-on-500-km row is 0.02 s a day slower.
+
 Research notes:
+- **How many lived in towns.** Before modern farming rarely more than a tenth to a fifth of a
+  people: Europe about 1500 about 10% in towns of 5,000 or more, the Low Countries and Italy more
+  (de Vries, *European Urbanization 1500–1800*, 1984; Bairoch, *Cities and Economic Development*,
+  1988). England's small towns held about 300 to 2,000 (Dyer). Chosen: a town from 400, a city from
+  5,000.
+- **How city sizes are spread.** Roughly by rank, the second about half the first, the third a
+  third (Zipf's rank-size rule), with a capital often above it (a "primate city"). Not imposed here:
+  sizes come from the food that reaches each place.
+- **What a town needed from its countryside.** Its grain: by land a bulk load went little more than
+  20 to 30 km before carting cost more than it was worth, by water much further; London about 1300
+  drew from some 60 km round (Campbell, Galloway, Keene and Murphy, *A Medieval Capital and its Grain
+  Supply*, 1993); a market town from the villages a day's walk round, on market day.
+- **Why cities lost people to disease.** Crowding, foul water and imported infections: burials in
+  London exceeded baptisms through the 17th and 18th centuries and it grew by migration, about 8,000
+  a year by 1700 (Wrigley, "A simple model of London's importance", 1967). Chosen: one death more a
+  hundred a year in a town, a little over two in a city.
 
 ### [ ] 9. Materials and other ways to live
 
@@ -1073,4 +1094,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-16 | 6a | AMD Ryzen 5 3600, 24 GB | 1.77 s a day, 168× | 12.6 s a day, 23× | 3.2 MB, 0.63 KB | **thirst on by default**, a different world. Against 7a: 400 people 0.12 → 0.14 s, 2,000 0.55 → 0.62 s, 5,000 1.72 → 1.77 s, 20,000 10.5 → 12.6 s (fetching is a new daily task) |
 | 2026-11-16 | 6 | AMD Ryzen 5 3600, 24 GB | 1.75 s a day, 172× | 13.5 s a day, 22× | 3.4 MB, 0.67 KB | **rain, fishing and crossing water on by default**, a different world. Against 6a: 400 people 0.14 → 0.13 s, 2,000 0.62 → 0.60 s, 5,000 1.80 → 1.75 s, 20,000 12.6 → 13.5 s, 400 on 500 km 0.09 → 0.16 s (walking round big rivers); person fields declared at birth |
 | 2026-11-16 | 7 | AMD Ryzen 5 3600, 24 GB | 2.05 s a day, 146× | 14.9 s a day, 20× | 3.5 MB, 0.68 KB | **houses built, land held by each faction's rule, paths worn in, carts, boats**, a different world. Against item 6: 400 people 0.125 → 0.125 s, 2,000 0.62 → 0.62 s, 5,000 1.96 → 2.05 s, 20,000 14.3 → 14.9 s, 400 on 500 km 0.145 → 0.10 s; asking a neighbour made cheap |
+| 2026-11-17 | 8 | AMD Ryzen 5 3600, 24 GB | 1.72 s a day, 174× | 14.2 s a day, 21× | 3.6 MB, 0.71 KB | **towns and cities**; a paid-building search made cheap. Against item 7: 2,000 0.62 → 0.57 s, 5,000 2.12 → 1.72 s, 20,000 15.1 → 14.2 s, 400 on 500 km 0.10 → 0.12 s |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

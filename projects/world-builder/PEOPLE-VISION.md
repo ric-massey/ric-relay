@@ -798,9 +798,10 @@ when it is built.
   the cell tower.
 - [x] Roads and paths: built, or worn in by people walking. (2026-11-16, TODO 7d: worn in;
   nobody builds a road on purpose yet.)
-- [ ] How a village grows into a town and a city, and what a city needs from the land round it.
-- [ ] The start: empty land, villages, towns, or cities already standing (Ric: "all of this
-  being choices").
+- [x] How a village grows into a town and a city, and what a city needs from the land round it.
+  (2026-11-17, TODO 8: by the food brought into it.)
+- [x] The start: empty land, villages, towns, or cities already standing (Ric: "all of this
+  being choices"). (2026-11-17, TODO 8: hamlets, villages, market towns, a city.)
 - [ ] Ruins: what a dead or destroyed place leaves behind. Ric, 2026-11-14: "ruins... seems like it
   needs to be viable for scavengers as well". So a ruin still holds real things — food that keeps,
   tools, weapons, materials, shelter — and they run out as they are taken. Nothing is made up

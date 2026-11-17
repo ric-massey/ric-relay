@@ -1536,7 +1536,7 @@
     for (let k = 0; k < H.length; k += 7) {
       const v = vs[H[k + 5]];
       /* And how far built (TODO 7b): a site shows as its timber frame, its roof thatched by quarters. */
-      out.push({ x: H[k], y: H[k + 1], len: H[k + 2], wid: H[k + 3], ang: H[k + 4], col: v ? factionColour(v.f) : "#b9c4c1", built: H[k + 6] >= 1 ? 1 : Math.floor(H[k + 6] * 4) / 4 });
+      out.push({ x: H[k], y: H[k + 1], len: H[k + 2], wid: H[k + 3], ang: H[k + 4], col: v ? factionColour(v.f) : "#b9c4c1", v: H[k + 5], built: H[k + 6] >= 1 ? 1 : Math.floor(H[k + 6] * 4) / 4 });
     }
     return out;
   }
@@ -1550,7 +1550,23 @@
       if (moved.some(h => h.x >= bx * N - 1 && h.x < (bx + 1) * N + 1 && h.y >= by * N - 1 && h.y < (by + 1) * N + 1)) chunks.delete(k);
     }
     houses = next; housesFor = vs; homesFor = homesArr;
+    /* The built-up area of each place (TODO 8): the outline round its houses, for drawing a town
+       or a city as one block when its houses are too small to tell apart (Ric: "Houses, then a block"). */
+    hulls = new Map();
+    const by = new Map(); for (const h of next) { const l = by.get(h.v); if (l) l.push(h); else by.set(h.v, [h]); }
+    for (const [vid, list] of by) {
+      if (list.length < 3) continue;
+      const pts = list.map(h => [h.x, h.y]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+      const lower = [], upper = [];
+      for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+      for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+      const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+      let cx = 0, cy = 0; for (const p of hull) { cx += p[0]; cy += p[1]; } cx /= hull.length; cy /= hull.length;
+      hulls.set(vid, hull.map(([x, y]) => { const d = Math.hypot(x - cx, y - cy) || 1; return [x + (x - cx) / d * 0.05, y + (y - cy) / d * 0.05]; }));
+    }
   }
+  let hulls = new Map();
   let homesFor = null;
   /* Houses onto a canvas `g`, `P` pixels a square, the square (x0, y0) at the canvas's
      corner; only those between x0..x1, y0..y1. Never smaller than about three pixels, so a
@@ -1812,11 +1828,22 @@
       ctx.fill();
     }
 
+    /* Towns and cities, as one block the size of their built-up area, out where the houses are too
+       small to see (TODO 8). */
+    if (s < 8) for (const v of vs) {
+      if (!v.alive || !v.place || v.place === "village") continue;
+      const hull = hulls.get(v.id); if (!hull) continue;
+      ctx.beginPath(); ctx.moveTo(ox + hull[0][0] * s, oy + hull[0][1] * s);
+      for (let k = 1; k < hull.length; k++) ctx.lineTo(ox + hull[k][0] * s, oy + hull[k][1] * s);
+      ctx.closePath();
+      ctx.globalAlpha = 0.8; ctx.fillStyle = "#6b5a46"; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = factionColour(v.f); ctx.lineWidth = 2; ctx.stroke();
+    }
     /* Villages. */
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const v of vs) {
       if (!v.alive || s >= 128) continue;     // close in, the houses are the village
-      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? 4 : Math.max(4, s * 0.55);
+      const x = ox + v.x * s, y = oy + v.y * s, k = (s >= 6 ? 4 : Math.max(4, s * 0.55)) * (v.place === "city" ? 1.8 : v.place === "town" ? 1.4 : 1);
       ctx.fillStyle = "#0c1113"; ctx.fillRect(x - k - 1, y - k - 1, k * 2 + 2, k * 2 + 2);
       ctx.fillStyle = factionColour(v.f); ctx.fillRect(x - k, y - k, k * 2, k * 2);
       if (v.siege) { ctx.strokeStyle = "#ef8a7c"; ctx.lineWidth = 2; ctx.strokeRect(x - k - 4, y - k - 4, k * 2 + 8, k * 2 + 8); }
@@ -1901,12 +1928,13 @@
       const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? 4 : Math.max(4, s * 0.55);
       if (x < -200 || y < -60 || x > W + 200 || y > H + 60) continue;
       ctx.font = "600 12px system-ui, sans-serif";
-      const tw = ctx.measureText(v.name).width;
+      const label = v.name + (v.place === "city" ? " · city" : v.place === "town" ? " · town" : "");   // TODO 8
+      const tw = ctx.measureText(label).width;
       const box = [x - tw / 2 - 3, y + k + 3, tw + 6, 16];
       if (named.some(o => box[0] < o[0] + o[2] && o[0] < box[0] + box[2] && box[1] < o[1] + o[3] && o[1] < box[1] + box[3])) continue;
       named.push(box);
       ctx.fillStyle = "rgba(7,10,11,.82)"; ctx.fillRect(x - tw / 2 - 3, y + k + 3, tw + 6, 16);
-      ctx.fillStyle = "#e3e9e6"; ctx.fillText(v.name, x, y + k + 5);
+      ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
                    peace: ["Peace", "#8fd39a"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], gone: ["Abandoned", "#98a8a5"] };

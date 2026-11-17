@@ -49,6 +49,7 @@
   const STEP_SCALE = ACTIONS_PER_HOUR / 250;
   const TK = n => Math.max(1, Math.round(n * STEP_SCALE));
   const REFLECT_HOURS = 6;
+  const TOWN_AT = 400, CITY_AT = 5000;     // people: a town, a city (TODO 8)
   const ILLNESS_HOURS = 7 * DAY_HOURS;
   /* The sickness kills about one healthy adult in thirty-three who catch it —
      the order of a bad village fever, not of smallpox — and far more of the
@@ -113,6 +114,9 @@
       { key: "ages", label: "How old they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["mostly children", "a young people", "all ages", "an ageing people", "mostly old"]),
         help: "A young world has many mouths and few hands for years; an old one works now and dies off." },
+      { key: "places", label: "Where they live at first", type: "select", def: "villages",   // TODO 8; Ric: "all of this being choices"
+        options: [["hamlets", "Hamlets — a few families each, scattered"], ["villages", "Villages"], ["towns", "Villages, and a market town for each faction"], ["city", "A city, and villages round it"]],
+        help: "A town takes two-fifths of its faction's people and a city half of everybody; whether it is a town or a city by size depends on how many people there are (400 for a town, 5,000 for a city). A big place lives on grain brought in from the villages round it: if that does not come, it shrinks." },
       { key: "settled", label: "How settled they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["strangers just arrived", "a few couples", "couples, but few friends yet", "neighbours who know each other", "old families — everybody knows everybody"]),
         help: "How many start in couples, and how many friends — and so who they will ask for food or follow — they already have." },
@@ -1033,7 +1037,7 @@
     function newVillage(x, y, f) {
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
-                  alive: true, founded: t, radius: 4, sick: 0 };
+                  alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1 };
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
       v.ore = o / c;
@@ -1082,6 +1086,7 @@
        wage and a half for the work (Ric: "Sometimes a family sometimes a
        builder"). Until it is built they live where they were. README,
        "Building houses". */
+    const sites = [];                     // houses still being built
     const BUILD_SHIFT = 5, GATHER_HOURS = 8, BUILDER_PAY = 1.5 * WAGE * BUILD_SHIFT / 8;
     const floor = h => h.len * h.wid / (M * M);                        // square metres
     const roomFor = h => Math.max(4, Math.round(floor(h) / 10));       // about 10 m² a person
@@ -1093,7 +1098,7 @@
       /* Or a site somebody gave up on. */
       for (const h of homes) if (h.v === v.id && !h.built && !byId.get(h.owner)) { h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood; owner.waitHouse = h.id; return h; }
       const h = newHome(v, clamp(funds(owner) / 40, 0, 1));
-      h.built = false; h.owner = owner.id; h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
+      h.built = false; h.owner = owner.id; sites.push(h); h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
       h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood;
       owner.waitHouse = h.id; count.sites++;
       return h;
@@ -1337,7 +1342,9 @@
 
     /* ── the start ─────────────────────────────────────────────────────── */
     (function settle() {
-      const want = S.factions * S.villages;
+      /* Hamlets: a place for every fifteen or so (TODO 8). */
+      const perFaction = S.places === "hamlets" ? Math.max(S.villages, Math.round(S.people / S.factions / 15)) : S.villages;
+      const want = S.factions * perFaction;
       const spots = [];
       /* Spaced by the ground people can live on, not the whole map: a land that is half sea
          holds its villages twice as close (TODO 4a). Past 6,000 tries any livable spot will do. */
@@ -1365,7 +1372,7 @@
         }
         taken.add(first); groups.push([spots[first]]);
       }
-      for (let round = 1; round < S.villages; round++) for (const g of groups) {
+      for (let round = 1; round < perFaction; round++) for (const g of groups) {
         let best = -1, bd = 1e9;
         for (let i = 0; i < spots.length; i++) {
           if (taken.has(i)) continue;
@@ -1381,8 +1388,22 @@
         const f = newFaction(name, (R() - 0.5) * 2 * S.divided);
         for (const s of g) newVillage(s.x, s.y, f.id);
       }
+      /* Who lives where (TODO 8): evenly, as always; or a market town takes two-fifths of each
+         faction, or a city half of everybody. */
+      const home = [];
+      if (S.places === "towns" || S.places === "city") {
+        const big = new Set(S.places === "city" ? [villages[0].id] : factions.map(f => villages.find(v => v.f === f.id).id));
+        const share = S.places === "city" ? 0.5 : 0.4;
+        for (const f of factions) {
+          const mine = villages.filter(v => v.f === f.id), n = Math.round(S.people / factions.length);
+          for (const v of mine) if (big.has(v.id)) for (let k = 0; k < Math.round((S.places === "city" ? S.people : n) * share); k++) home.push(v);
+        }
+        const rest = villages.filter(v => !big.has(v.id));
+        for (let k = 0; home.length < S.people; k++) home.push(rest.length ? rest[k % rest.length] : villages[0]);
+        home.length = S.people;
+      }
       for (let i = 0; i < S.people; i++) {
-        const v = villages[i % villages.length];
+        const v = home.length ? home[i] : villages[i % villages.length];
         /* "How old they are": skews the ages, all of them under three-quarters
            of a life as before; 0.5 is the even spread it always was. */
         const p = newPerson(v, Math.pow(R(), Math.pow(4, 0.5 - S.ages) * (S.ages < 0.5 ? 1.6 : 1)) * S.life * 0.75, null, null);
@@ -1398,6 +1419,11 @@
         v.food = n * (0.8 + putByDays(S.stored) * 0.25); v.goods = n * 0.1; v.till = shared ? 0 : n * 2 + 5;
       }
       for (const f of factions) f.treasury = shared ? 0 : 10;
+      /* A town or city made big at the start starts trusted to be fed (only it: ordinary villages
+         given the same stayed overfull and starved a fifth of a 5,000-person world in its first winter): as if grain had been coming in for those
+         its own rule would not hold. If it does not keep coming, the month's average falls. */
+      for (const v of villages) { let n = 0; for (const p of people) if (p.home === v.id) n++; v.pop = n; placeOf(v); }
+      if (S.places === "towns" || S.places === "city") for (const v of villages) if (home.length && home.filter(x => x === v).length > S.people / villages.length * 1.5) v.importAvg = Math.max(0, v.pop - (S.crowd >= 205 ? 70 : S.crowd)) * 0.85;
       /* "Food put by": days of each person's own need, in the house. */
       if (S.stored > 0) for (const p of people) p.food += putByDays(S.stored) * baseNeed(p);
       count.minted = money();
@@ -1497,7 +1523,27 @@
        village" — as many as the fields within a day's work of it grow in a
        year's average day, a ration a head. Worked out each day with its
        territory, so a village that loses land, or a drought, makes it full. */
-    function crowdOf(v) { return S.crowd >= 205 ? Math.max(8, v.feeds || 0) : S.crowd; }
+    /* ── villages, towns and cities (TODO 8, 2026-11-17) ──────────────────────
+       A place is a village, a town or a city by its size, not by being made
+       one: a town from 400 people (England's small medieval towns held about
+       300 to 2,000, Dyer), a city from 5,000; it falls back below four-fifths of
+       that. A place has room for as many as its rule for a full village
+       allows, and besides for as many as the grain brought into it feeds (a
+       running average over about half a year, `importAvg`: a town lives on a whole harvest): so a place grows where the land
+       round it has a surplus that traders carry in, and stays a village where
+       it has not. Towns and cities lose more of their people to sickness
+       than the country, as crowded places did until clean water. README,
+       "Villages, towns and cities". */
+    function crowdOf(v) { return (S.crowd >= 205 ? Math.max(8, v.feeds || 0) : S.crowd) + (v.importAvg || 0) / 0.85; }
+    function placeOf(v) {
+      const was = v.place || "village", n = v.pop || 0;
+      const now = n >= CITY_AT || (was === "city" && n >= CITY_AT * 0.8) ? "city" : n >= TOWN_AT || (was !== "village" && n >= TOWN_AT * 0.8) ? "town" : "village";
+      if (now !== was) {
+        v.place = now;
+        if (v.placed) note("grow", v.name + (now === "city" ? " has grown into a city." : now === "town" ? (was === "city" ? " has shrunk to a town." : " has grown into a town.") : " is a village again."), now === "village" ? 1.5 : 3, v.x, v.y, v.f);
+      }
+      v.placed = true;
+    }
     function landFeeds() {
       for (const v of villages) {
         if (!v.alive) { v.feeds = 0; continue; }
@@ -1762,7 +1808,10 @@
     /* A house in the village whose household pays a builder, the nearest to its middle. */
     function paidSite(v) {
       let best = null, bd = Infinity;
-      for (const h of homes) if (h.v === v.id && !h.built && h.paid) { const d = Math.hypot(h.x - v.x, h.y - v.y); if (d < bd) { bd = d; best = h; } }
+      /* Only the sites still open, not every house in the world: looking through all of them at
+         every crafter's decision was a tenth of a 20,000-person world's time (2026-11-17). */
+      if (sites.length && sites.some(h => h.built)) { let w = 0; for (const h of sites) if (!h.built) sites[w++] = h; sites.length = w; }
+      for (const h of sites) if (h.v === v.id && h.paid) { const d = Math.hypot(h.x - v.x, h.y - v.y); if (d < bd) { bd = d; best = h; } }
       return best;
     }
     function crossings(v) {
@@ -2196,6 +2245,22 @@
           weigh("fish", (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, "fisher") * fishWorth(v)
                          - away(Math.hypot(g.x - p.x, g.y - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, g.x + (R() - 0.5) * 1.5, g.y + (R() - 0.5) * 1.5, "fish"); p.wait = 0; });
+        }
+
+        /* Market day (TODO 8): food beyond what the household keeps for the winter, taken to the
+           market of the biggest place near that is short of it, and sold there. How towns were fed:
+           London about 1300 drew its grain from 60 km round by land and further by water (Campbell
+           et al. 1993); a market town from the villages a day's walk round. */
+        const m = v.marketTo >= 0 ? villages[v.marketTo] : null;
+        if (m && m.alive && season().ripe < 1.5) {
+          const spare = p.food - reserve(p) - 2;
+          if (spare > 2) {
+            const load = Math.min(spare, equipped(p, "cart") ? grainLoad(p) : 5);
+            /* Worth more the better it sells there than at home. */
+            const gain = clamp((m.priceFood * 0.85 - v.priceFood) / Math.max(0.3, v.priceFood), 0, 2);
+            weigh("market", (0.3 + n.provide * 0.6 + gain * 0.3) * Math.min(1, load / 5) - away(dist(p, m)) * 0.35 - n.food * 0.5 - n.rest * 0.4 - n.safety * 0.8 - dark * 0.5,
+              () => { p.food -= load; p.cargo = { what: "food", amount: load }; p.at = m.id; go(p, m.x, m.y, "carry"); p.wait = 0; });
+          }
         }
 
         /* A day at the bench. */
@@ -2650,11 +2715,13 @@
           }
           const rest = p.cargo.amount - sold, intoStore = rest > 0.01 ? sell(p, here, "food", rest) : 0;
           p.food += rest - intoStore;
+          if (here.id !== p.home) here.inFood = (here.inFood || 0) + sold + intoStore;   // grain brought in (TODO 8)
           if (sold + intoStore > 0.5) { count.grain = (count.grain || 0) + sold + intoStore; p.say = "Grain from away — " + Math.round(sold + intoStore) + " days of it."; p.sayT = TK(60); }
           if (here.f !== p.f && sold > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
           p.cargo = null; wear(p, "pack");
         } else if (p.cargo) {
           const got = sell(p, here, p.cargo.what, p.cargo.amount);
+          if (p.cargo.what === "food" && here.id !== p.home) here.inFood = (here.inFood || 0) + got;   // food brought in (TODO 8)
           if (p.cargo.what === "food") p.food += p.cargo.amount - got; else p.goods += p.cargo.amount - got;
           if (here.f !== p.f && got > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
           p.cargo = null; wear(p, "pack");
@@ -3201,6 +3268,11 @@
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
       if (p.age >= p.dieAt) { die(p, "old"); return; }
+      /* Crowded places were graveyards: London's burials outran its baptisms for two centuries and it
+         grew only by those who came in (Wrigley 1967). About one more death a hundred a year in a town
+         than in the country, a little over two in a city (TODO 8). */
+      const place = villages[p.home].place;
+      if (place && place !== "village" && R() < (place === "city" ? 0.022 : 0.01) / (365 * DAY_HOURS)) { die(p, "sick"); return; }
       if (p.job === "child" && adult(p)) p.job = chooseJob(p);
 
     }
@@ -4388,6 +4460,17 @@
         return;
       }
       v.empty = 0;
+      /* What was brought in today, into a month's average; and what the place is by its size (TODO 8). */
+      v.importAvg = (v.importAvg || 0) * (179 / 180) + (v.inFood || 0) / 180; v.inFood = 0;   // over about half a year: a town lives on a harvest
+      placeOf(v);
+      /* Where its people take food to sell (TODO 8): the biggest place within 10 km, at peace,
+         at least half as big again as this one and with under three days' food a head in store. */
+      v.marketTo = -1; let mb = 0;
+      for (const o of villages) {
+        if (!o.alive || o === v || o.pop < v.pop * 1.5 || o.food > o.pop * 3 || (o.f !== v.f && atWar(o.f, v.f))) continue;
+        const d = Math.hypot(o.x - v.x, o.y - v.y); if (d > 40) continue;
+        const sc = o.pop / (1 + d * 0.05); if (sc > mb) { mb = sc; v.marketTo = o.id; }
+      }
       /* Sickness starts in one person. */
       const odds = S.plague === "none" ? 0 : S.plague === "rare" ? 0.004 : 0.02;
       if (v.sick === 0 && R() < odds) {
@@ -4978,6 +5061,9 @@
         villages: villages.filter(v => v.alive).length, atWar: wars, meanAge: people.length ? age / people.length : 0,
         money: money(), topShare: topShare,
         boats: villages.filter(v => v.alive && v.boat).length,   // afloat now (TODO 7d)
+        /* Towns, cities, and how many live in them (TODO 8). */
+        towns: villages.filter(v => v.alive && v.place === "town").length, cities: villages.filter(v => v.alive && v.place === "city").length,
+        urban: people.length ? villages.reduce((n, v) => n + (v.alive && v.place && v.place !== "village" ? v.pop || 0 : 0), 0) / people.length : 0,
         paths: trodList.reduce((n, i) => n + (track[i] === 1 ? 1 : 0), 0), roads: trodList.reduce((n, i) => n + (track[i] === 2 ? 1 : 0), 0),
       }, count);
     }

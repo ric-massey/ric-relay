@@ -1755,6 +1755,36 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Villages, towns and cities (2026-11-17)
+
+TODO item 8. A village was a village for ever, split when it passed "A full village".
+
+- **A size, not a type.** A place is a town from 400 people (England's small medieval towns held
+  about 300 to 2,000, Dyer) and a city from 5,000; it falls back below four-fifths of that. Each change
+  is in the news.
+- **A place lives on what is brought into it.** Beside what its rule for a full village allows, a
+  place has room for as many as the food brought into it feeds, a running average over about half a
+  year (a town lives on a whole harvest). Food comes in by the carrying already in the world, from
+  a store where it is cheap to one where it is dear, by grain traders, and on market day:
+  households with more than their winter's food take it to the biggest place within 10 km that is
+  short of it. So a place grows where the land round it has a surplus, and stays a village where it
+  has not. Pre-industrial towns rarely held more than a tenth to a fifth of a people (Bairoch; de
+  Vries), and a capital drew its grain from far round (London about 1300 from some 60 km by land and
+  further by water, Campbell and others, 1993).
+- **Crowded places were graveyards.** About one more death a hundred a year in a town than in the
+  country and a little over two in a city: London's burials outran its baptisms for two centuries
+  and it grew only by those who came in (Wrigley, 1967).
+- **Where they live at first** (a setting; Ric: "all of this being choices"): hamlets of about
+  fifteen, villages as before, villages and a market town with two-fifths of each faction, or a city
+  with half of everybody. A town or city made at the start is trusted to be fed by its villages for
+  those its own rule would not hold; if the food does not come, the trust runs out and it shrinks,
+  or starves.
+- **Drawn** (Ric: "Houses, then a block"): every house close in; further out, where houses are too
+  small to tell apart, a town or city is one block, the outline round its houses, edged in its
+  faction's colour, with a bigger marker and "town" or "city" by its name.
+
+Measured: a year of 5,000 people on 40 km, from villages: on rich land ("How much it grows" 1.7) the biggest place reached 444 people by the year's end and was a town, 21 starved; on poor land (0.7) the biggest held 53 and the world starved by more than half; with a city of 2,500 at the start on rich land, its villages could not feed it, it shrank to 416 and 532 starved. Almost no food was carried into any place in these runs: after the harvest every place has food and prices barely differ, and households keep their harvest at home; towns grew by keeping their people, not by imports. The default world, six seeds, a year: 372 alive on average and 101 starved, against 364 and 138 at item 7. Speed (`test/bench.mjs`, against item 7): 400 people 0.12 → 0.12 s a day, 2,000 0.62 → 0.57, 5,000 2.12 → 1.72, 20,000 15.1 → 14.2, 400 on 500 km 0.10 → 0.12. A crafter looking for a paid building job had looked through every house in the world at each decision, a tenth of a 20,000-person world's time since 7b; now only the open sites.
+
 ### Building houses (2026-11-16)
 
 TODO item 7b. A house stood from the start or appeared at once for somebody who moved. Now:
