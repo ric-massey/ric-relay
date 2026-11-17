@@ -1755,6 +1755,42 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Wood, stone, ore, herds and game (2026-11-17)
+
+TODO item 9. There was farming, fishing, one kind of "goods" and a figure for the ore under a
+village. Ric chose materials "Few and clear", and firewood "Yes, as a setting".
+
+- **Wood, stone and ore** (9a). Cutting wood in a forest, quarrying in hills or mountains and mining
+  where the ground has ore, within 4 km, are ways to spend a day weighed beside the fields and the
+  bench. A day at good ground is a load: about a cord of wood (a woodcutter cut and split a cord a
+  day), a cubic metre or so of rough stone, some hundreds of kilograms of ore, less where the ore is
+  poor. A forest square holds sixty loads and grows twenty back a year (managed woodland, 3 to 5 m³ a
+  hectare a year); stone and ore do not run out. The load is sold to the village store at what the
+  store pays, which is dear when the village wants more than it holds: houses being built, what
+  crafters work, gear. Houses take loads of wood or stone where they took goods; a crafter's batch is
+  bigger with wood and ore in the store, and uses them; a tool or a weapon takes ore, a cart wood.
+  Traders carry each from where it is cheap to where it is dear. Woodcutter and miner are trades
+  people take up as they take up any other.
+- **Herds and game** (9b). Herding on grassland, dry land and hills that no household holds: about
+  forty days of food a square a year in milk, cheese and meat (herders lived some 2 to 10 to the km²
+  where farmers lived 20 to 60), a day with the herd up to two days' food, with wool and a hide now
+  and then. Hunting in the forest: about eight days of meat a square a year (a tenth of a person to
+  the km² for hunters alone), a good day two and a half days' food and a hide, and hunted hard the
+  game is gone for years. Both less in the cold. Wool goes into what crafters make and into packs,
+  hides into shields where wood is short.
+- **Firewood** (9c, a setting). In the cold a village burns wood from its store, about
+  three-quarters of a load a person over a winter, more in a hard one; the store wants a winter's
+  worth before the cold, so wood is dear in autumn. A village with none is cold, and the very young
+  and the old die of it first: over a hard winter unwarmed about one grown-up in twenty, more of
+  them. On treeless land people burned dung, turf and peat: a village with no forest within reach
+  burns no wood.
+- **"Materials"** (a setting): "Wood, stone, ore, herds and game", or "One kind of goods (as
+  before)", which leaves a world exactly as it was. Firewood needs materials on.
+- **The village panel** shows wood, stone, ore, wool and hides in the store; woodcutter, miner,
+  herder and hunter are in the occupation filter.
+
+Measured: the default world, six seeds, a year: 356 alive a world and 12 starved, against 367 and 16 before item 9; about 7 a world died of cold, which is what Firewood is for, and 137 died in battle in all six against 124. Over twenty days a forest village (282 forest squares within 4 km) spent its hours cutting wood and hunting where one with hardly any forest did not; villages by water fish and those without do not; wood cost up to 6 in villages with no forest near, about 1 in those with it. Over sixty days grown-ups' hours went field 10.7%, the bench 9.5%, cutting wood 7.9%, mining 5.9%, fishing 4.3%, herding 4.2%, hunting 3.2% (with one kind of goods: field 12.7%, the bench 16.7%, fishing 9.8%). `test/behaviour.mjs`: Materials moves 24.9% of an adult's hours, nearly twice what rerolling the world does (13.0%); Firewood 2.4% in a short spring probe, since nothing burns until the cold. Found on the way: seed 4's land has no forest at all, and with wood only within 2 km, and shields only of wood, its soldiers went without and died five times as often in battle: now wood, stone and ore within 4 km, shields of hide where wood is short, hides from herds as well as game, and turf and dung on treeless land. Speed (`test/bench.mjs`, against the engine before item 9, two runs each): 2,000 people 0.60 → 0.68 s a day, 5,000 1.80 → 1.96, 20,000 14.95 → 14.55 (within noise), 400 on 500 km 0.13 → 0.19: people walk out to forests, hills and grazing up to 4 km and back, and moving people is the cost (the step that moves people went from 13% to 23% of that world's time).
+
 ### Villages, towns and cities (2026-11-17)
 
 TODO item 8. A village was a village for ever, split when it passed "A full village".

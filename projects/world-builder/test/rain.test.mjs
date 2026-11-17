@@ -74,9 +74,9 @@ const People = createRequire(import.meta.url)("../people.js");
   }
 }
 
-// 5. Fishing.
+// 5. Fishing, as the one living besides the fields (with herds, game and wood, item 9, fewer take it up as their trade).
 {
-  const w = People.create({ seed: 11 });
+  const w = People.create({ seed: 11, materials: "goods" });
   let fishing = 0;
   for (let h = 0; h < 24 * 20; h++) { w.step(1); if (h % 6 === 0) for (const p of w.people) if (w.activity(p) === "Fishing") fishing++; }
   assert.ok(fishing > 0, "people of a village by water go fishing");

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const make = extra => People.create({ people: 20, map: "small", factions: 1, villages: 2, war: false, talk: 0, seed: 7, ...extra });
+// The goods economy as it was; real materials are held at the end (TODO 9a).
+const make = extra => People.create({ people: 20, map: "small", factions: 1, villages: 2, war: false, talk: 0, seed: 7, materials: "goods", ...extra });
 const ready = w => {
   for (const p of w.people) { p.wait = 9999; p.task = "idle"; p.tx = p.x; p.ty = p.y; }
   const p = w.people[0], v = w.villages[p.home];
@@ -71,3 +72,11 @@ for (const pack of [false,true]) {
   assert.deepEqual(p.gear,{});
 }
 console.log("Equipment: paid supply, repairs, real harvest/cargo effects, combat, wear, stored/broken states and salvage pass.");
+
+// With real materials (TODO 9a, 2026-11-17) a tool takes ore from the store besides the crafter's goods.
+{
+  const w = make({ materials: "real" }), [p, v] = ready(w);
+  v.goods = 5; v.iron = 0; w.outfit(p, v); assert.equal(p.gear.tool, undefined, "no ore in the store, no tool");
+  v.iron = 2; w.outfit(p, v); assert.equal(p.gear.tool, 1, "with ore, a tool");
+  assert.ok(Math.abs(v.iron - 1.4) < 1e-10, "and the ore it took");
+}

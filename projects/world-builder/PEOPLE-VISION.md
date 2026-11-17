@@ -761,7 +761,8 @@ when it is built.
   and ice, Ric's choice; dry land stands for desert.)
 - [x] The seed decides all of it (Ric: "seeds should decide all that"): height first, water runs
   downhill into rivers and lakes, forest and grass follow from water and warmth. (2026-11-15, 4a.)
-- [ ] What each kind gives: wood from forest, fish from water, stone from hills, game, grazing.
+- [x] What each kind gives: wood from forest, fish from water, stone from hills, game, grazing.
+  (2026-11-17, TODO 9.)
 - [x] What each kind costs: slow to cross, can't be farmed, can't be crossed without a boat or
   a bridge. (2026-11-16, TODO 4a and 4b: paces by kind, nothing farmed on water, marsh, mountain
   or snow, the sea and lakes not walked; 6d: big rivers at fords and bridges, boats.)
@@ -835,7 +836,8 @@ when it is built.
 **6. Making a living**
 - Now: farming, one kind of "goods", ore, trade, coins or sharing, tools and packs made from
   goods.
-- [ ] Real materials: wood, stone, ore, cloth, and what is made from each.
+- [x] Real materials: wood, stone, ore, cloth, and what is made from each. (2026-11-17, TODO 9:
+  wood, stone, ore, wool and hides; Ric: "Few and clear".)
 - [ ] Ways to live other than farming: fishing, herding, hunting, cutting wood, mining, and
   scavenging ruins — a living that lasts only as long as the ruins do.
 - [ ] Money kept simple (decided). What "almost no money" means for how people trade.

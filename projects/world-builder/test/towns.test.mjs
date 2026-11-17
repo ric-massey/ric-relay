@@ -36,7 +36,7 @@ const placeFor = n => n >= 5000 ? "city" : n >= 400 ? "town" : "village";
 
 // 3. Market day.
 {
-  const w = People.create({ seed: 7, people: 3000, map: 40, places: "city", start: "winter" });
+  const w = People.create({ seed: 7, people: 3000, map: 40, places: "city", start: "winter", materials: "goods" });   // market day alone, without wood and herds to tend
   w.step(26);                                                      // a day, so every place knows where its market is
   const town = w.villages.reduce((a, b) => (b.pop > a.pop ? b : a));
   const before = town.importAvg;

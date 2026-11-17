@@ -176,6 +176,7 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   const v = w.villages[1];
   const vl = k.ask({ t: "pane", tab: "look", seq: 6, picked: { village: 1 } });
   assert.equal(vl.village.name, v.name); assert.equal(vl.village.storeDays, w.storeDays(v));
+  assert.equal(vl.village.wood, v.wood); assert.equal(vl.village.hide, v.hide); assert.equal(vl.village.mats, true, "the store's materials (TODO 9)");
   const fa = k.ask({ t: "pane", tab: "factions", seq: 7 });
   assert.equal(fa.factions.length, w.factions.length); assert.equal(fa.factions[0].pop, w.factions[0].pop);
   assert.equal(fa.villages[1].taxNow, w.taxOf(v)); assert.equal(fa.history.length, w.history.length);

@@ -365,7 +365,7 @@
       <details id="people-filter-details"><summary>Filter people</summary><div class="population-filters">
         <label for="people-settlement">Settlement<select id="people-settlement"><option value="">All settlements</option></select></label>
         <label for="people-faction">Faction<select id="people-faction"><option value="">All factions</option></select></label>
-        <label for="people-job">Occupation<select id="people-job"><option value="">All occupations</option><option value="child">Child</option><option value="farmer">Farmer</option><option value="crafter">Crafter</option><option value="trader">Trader</option><option value="fisher">Fisher</option><option value="soldier">Soldier</option></select></label>
+        <label for="people-job">Occupation<select id="people-job"><option value="">All occupations</option><option value="child">Child</option><option value="farmer">Farmer</option><option value="crafter">Crafter</option><option value="trader">Trader</option><option value="fisher">Fisher</option><option value="woodcutter">Woodcutter</option><option value="miner">Miner</option><option value="herder">Herder</option><option value="hunter">Hunter</option><option value="soldier">Soldier</option></select></label>
       </div></details>
     </div>
     <div id="panes"></div>
@@ -2359,7 +2359,7 @@
         if (!v) return "";
         return "<h3>" + esc(v.name) + "</h3><p>" + fname(v.faction) + (v.alive ? "" : " — abandoned") + "</p><dl class='kv'>" +
           "<dt>People</dt><dd>" + v.pop + "</dd><dt>Going hungry</dt><dd>" + v.hungry + "</dd><dt>Sick</dt><dd>" + v.sick + "</dd>" +
-          "<dt>Food in the store</dt><dd>" + num(v.food, 1) + " rations</dd><dt>Store covers</dt><dd>" + num(v.storeDays, 1) + " days</dd><dt>Goods</dt><dd>" + num(v.goods, 0) + "</dd>" +
+          "<dt>Food in the store</dt><dd>" + num(v.food, 1) + " rations</dd><dt>Store covers</dt><dd>" + num(v.storeDays, 1) + " days</dd><dt>Goods</dt><dd>" + num(v.goods, 0) + "</dd>" + (v.mats ? "<dt>Wood</dt><dd>" + num(v.wood, 0) + " loads</dd><dt>Stone</dt><dd>" + num(v.stone, 0) + " loads</dd><dt>Ore</dt><dd>" + num(v.iron, 0) + " loads</dd>" : "") +
           (coins ? "<dt>Price per ration</dt><dd>" + num(v.priceFood, 2) + "</dd><dt>Coins in the till</dt><dd>" + num(v.till, 0) + "</dd>" : "") +
           "<dt>Loyalty</dt><dd>" + Math.round(v.loyal * 100) + "%</dd><dt>Founded</dt><dd>year " + (Math.floor(v.founded / Y) + 1) + "</dd></dl><p class='small'>A ration supplies one adult for one day. Store coverage uses residents’ current needs; carried food and future harvests are separate.</p>" +
           (v.siege > 0 ? "<p class='fac'><span class='war'>Enemy soldiers are at the walls and nobody is defending it.</span></p>" : "");

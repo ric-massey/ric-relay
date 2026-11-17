@@ -686,6 +686,8 @@ nobody had linked was a page nobody could find.
   worn in by walking; carts owned by traders; goods by boat; boats lost.
   **Towns and cities** (TODO 8, 2026-11-17): a size a place grows into by the food brought into it;
   a setting for how settled the land starts; far out a town is one block (Ric: "Houses, then a block").
+  **Materials and livings** (TODO 9, 2026-11-17): wood, stone, ore, wool, hides; cutting, quarrying,
+  mining, herding, hunting weighed like fishing; firewood in the cold (settings "Materials", "Firewood").
   **Thirst** (TODO 6a, 2026-11-16, Ric: "Real, on by default"): households keep and fetch
   water, wells are dug where fresh water is over a kilometre off; "off" is exactly as before.
   **Rain, fishing, crossing** (TODO 6b to 6d, 2026-11-16): a year's rain by place, dry years,

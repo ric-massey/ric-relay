@@ -155,6 +155,12 @@
       { key: "fishing", label: "Fishing", type: "select", def: "on",   // TODO 6c, 2026-11-16
         options: [["on", "On — villages by water fish"], ["off", "Off"]],
         help: "A village within two kilometres of a river, lake or the sea can fish it. The water gives what real waters give, a few dozen kilograms a hectare a year, and fished hard it takes time to come back. A fisher is a living like a farmer." },
+      { key: "materials", label: "Materials", type: "select", def: "real",   // TODO 9a, 2026-11-17
+        options: [["real", "Wood, stone, ore, herds and game"], ["goods", "One kind of goods (as before)"]],
+        help: "Wood is cut in the forest, stone quarried in the hills and ore mined where the ground has it, a day's work a load, and sold to the village store. Herds graze grassland, dry land and hills for milk, meat and wool; hunters take game in the forest for meat and hides, and game runs out when hunted hard. Houses are built of wood or stone, crafters work wood, ore and wool into what they make, tools and weapons need ore, carts wood, packs wool, shields wood or hide, and traders carry each where it is dear. Off, there is one kind of goods, as before." },
+      { key: "firewood", label: "Firewood", type: "select", def: "real",   // TODO 9c, 2026-11-17
+        options: [["real", "Needed in the cold"], ["off", "Off"]],
+        help: "In the cold a village burns wood from its store, about three-quarters of a load a person over a winter (a household in a cold land burned some tonnes a year), more in a hard one; the store wants it before the winter, so wood is dearer in autumn. A village with none left is cold: the very young and the old die of it first. Needs Materials on wood, stone and ore. Off, no wood is burned." },
       { key: "crossing", label: "Crossing water", type: "select", def: "real",   // TODO 6d, 2026-11-16
         options: [["real", "Big rivers need a ford, bridge or boat"], ["wade", "Every river can be waded; no boats"]],
         help: "A big river can only be crossed at a ford, or where a village has built a bridge; a village by a lake or the sea builds a boat once its people keep wanting to cross, and ferries them over. An army does not go by boat: water it cannot walk round stops it." },
@@ -437,7 +443,7 @@
   // Equipment uses the existing goods economy. Costs are goods converted into
   // the item, not coins minted or a second resource appearing from nowhere.
   const GEAR = {
-    tool: { name: "Work tool", cost: 0.6, jobs: ["farmer", "crafter"], wear: 0.003, benefit: "+25% harvest capacity; +20% goods per batch" },
+    tool: { name: "Work tool", cost: 0.6, jobs: ["farmer", "crafter", "woodcutter", "miner"], wear: 0.003, benefit: "+25% harvest capacity; +20% goods per batch" },
     pack: { name: "Trade pack", cost: 0.8, jobs: ["trader"], wear: 0.004, benefit: "Carry up to 5 trade goods instead of 3" },
     weapon: { name: "Weapon", cost: 1, jobs: ["soldier"], wear: 0.01, benefit: "+25% damage on a successful hit" },
     shield: { name: "Shield", cost: 1, jobs: ["soldier"], wear: 0.01, benefit: "25% less damage from a successful hit" },
@@ -448,6 +454,8 @@
        the fields they starved more than twice as many in a year, six seeds; not kept.) */
     cart: { name: "Cart", cost: 3, jobs: ["trader"], wear: 0.002, benefit: "Grain by the cartload (eight packs, not five); slow off roads" }
   };
+  /* With real materials (TODO 9a): what each piece of gear is made of, besides the crafter's work. */
+  const GEAR_MAT = { tool: "iron", weapon: "iron", shield: "wood", cart: "wood", pack: "wool" };
   const PATCH = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
 
   /* `check` is for tests only: { plainWalking: true } turns off the two
@@ -1024,6 +1032,118 @@
     }
     if (FISH) count.fish = 0;
 
+    /* ── wood, stone and ore (TODO 9a, 2026-11-17) ─────────────────────────
+       Ric: "Few and clear". A day's work at good ground is a load: about a
+       cord of wood (a woodcutter cut and split a cord a day), a cubic metre or
+       so of rough stone, some hundreds of kilograms of ore, less where the ore
+       is poor. A forest square holds sixty loads and grows back twenty a year
+       (managed woodland, some 3 to 5 m³ a hectare a year); stone and ore do not
+       run out. Each goes to the village store at what the store pays, which
+       is dear when the village wants more than it holds: houses being built,
+       what crafters work, tools, weapons and carts. README, "Wood, stone and ore". */
+    const MATS = S.materials !== "goods";
+    const MAT = ["wood", "stone", "iron"];
+    const MAT_TASK = { wood: "cut", stone: "quarry", iron: "mine" };
+    const MAT_JOB = { wood: "woodcutter", stone: "miner", iron: "miner" };
+    const WOOD_CAP = 60, WOOD_YEAR = 20;
+    const woodStock = new Map();                                   // square -> [loads, hour last reckoned]
+    function woodIn(i) {
+      const e = woodStock.get(i);
+      return e ? Math.min(WOOD_CAP, e[0] + WOOD_YEAR * (t - e[1]) / (365 * DAY_HOURS)) : WOOD_CAP;
+    }
+    /* Forest within 4 km of the middle, nearest first; the nearest hills or mountain; the best ore for the walk.
+       Further than the fields reach: at 2 km a world with no forest that near cut no wood at all, made
+       no shields, and lost five times as many in battle (seed 4, 2026-11-17). */
+    function matGround(v) {
+      if (v.mats) return v.mats;
+      const cx = Math.floor(v.x), cy = Math.floor(v.y), wood = [], grass = [];
+      let stone = -1, sd = 1e9, iron = -1, ib = 0;
+      for (let y = cy - 16; y <= cy + 16; y++) for (let x = cx - 16; x <= cx + 16; x++) {
+        if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+        const d = Math.hypot(x - cx, y - cy); if (d > 16) continue;
+        const i = y * cols + x, g = ground[i];
+        if (g === G_FOREST) wood.push(i);
+        if (g === G_GRASS || g === G_DRY || g === G_HILLS) grass.push(i);   // grazing (TODO 9b)
+        if ((g === G_HILLS || g === G_MOUNTAIN) && d < sd) { sd = d; stone = i; }
+        const r = ore[i] / (1 + d * 0.08); if (ore[i] >= 0.25 && r > ib) { ib = r; iron = i; }
+      }
+      const dd = i => Math.hypot(i % cols - cx, ((i / cols) | 0) - cy);
+      wood.sort((a, b) => dd(a) - dd(b) || a - b);
+      grass.sort((a, b) => dd(a) - dd(b) || a - b);
+      return v.mats = { wood: wood, stone: stone, iron: iron, grass: grass };
+    }
+    function matSpot(v, k) {
+      const g = matGround(v);
+      if (k === "wood") { for (const i of g.wood) if (woodIn(i) >= 1) return i; return -1; }
+      return k === "stone" ? g.stone : g.iron;
+    }
+    const matYield = (k, i) => k === "wood" ? 1 : k === "stone" ? (ground[i] === G_MOUNTAIN ? 1 : 0.8) : Math.min(1.2, ore[i] * 1.6);
+    const matPrice = (v, k) => k === "wood" ? v.priceWood : k === "stone" ? v.priceStone : k === "iron" ? v.priceIron : k === "wool" ? v.priceWool : k === "hide" ? v.priceHide : k === "food" ? v.priceFood : v.priceGoods;
+    const matWant = (v, k) => k === "wood" ? v.wantWood : k === "stone" ? v.wantStone : k === "iron" ? v.wantIron : k === "wool" ? v.wantWool : v.wantHide;
+    const TRADED = ["wood", "stone", "iron", "wool", "hide"];
+    /* What a day's work would be worth here, 0 to 1.4, as the bench is: little once the store holds plenty. */
+    function matWorth(v, k, i) {
+      const full = v[k] < matWant(v, k) * 1.5 ? 1 : 0.25;
+      return clamp(matYield(k, i) * (shared ? 1.2 : matPrice(v, k) * 0.8) * full, 0, 1.4);
+    }
+    /* Into the store, paid what the till can pay. */
+    function sellMat(p, v, k, amount) {
+      if (!shared) {
+        const paid = Math.min(amount * matPrice(v, k) * 0.85, Math.max(0, v.till)), tax = paid * taxOf(v);
+        v.till -= paid; p.coins += paid - tax; factions[v.f].treasury += tax;
+      }
+      v[k] += amount;
+    }
+    if (MATS) { count.wood = 0; count.stone = 0; count.iron = 0; }
+
+    /* ── herds and game (TODO 9b, 2026-11-17) ──────────────────────────────
+       Herding: sheep and cattle on grassland, dry land and hills, unfarmed or
+       fallow, within 4 km. Herders lived some 2 to 10 to the km² where farmers
+       lived 20 to 60: a square (6.25 ha, about a dozen sheep) gives forty days
+       of food a year in milk, cheese and meat, grows back over a year, and a
+       day with the herd (a flock of a hundred or more to one shepherd) brings
+       in up to two days' food and a little over, and wool, a load in about
+       four days. Hunting: game in the forest, a tenth of a person
+       to the km² for hunters alone, so a forest square holds about eight days of
+       meat a year; a good day's hunt is two and a half days of food and a hide,
+       and hunted hard the game is gone for years. Both less in the cold. */
+    const GRAZE_YEAR = 40, GAME_YEAR = 8;
+    const grazeStock = new Map(), gameStock = new Map();
+    const stockIn = (m, i, cap) => { const e = m.get(i); return e ? Math.min(cap, e[0] + cap * (t - e[1]) / (365 * DAY_HOURS)) : cap; };
+    const herdDay = () => 2.2 * (0.6 + 0.4 * clamp((warmth() + 0.6) / 1.2, 0, 1));
+    const huntDay = () => 2.5 * (0.6 + 0.4 * clamp((warmth() + 0.6) / 1.2, 0, 1));
+    /* The nearest grazing or forest with something on it, never a field a household holds: its place
+       in the village's list (a square's number is wildList(v, k)[j]). */
+    const wildList = (v, k) => k === "herd" ? matGround(v).grass : matGround(v).wood;
+    function wildSpot(v, k) {
+      const list = wildList(v, k);
+      if (k === "herd") { for (let j = 0; j < list.length; j++) if (!held.has(list[j]) && stockIn(grazeStock, list[j], GRAZE_YEAR) >= 2) return j; return -1; }
+      for (let j = 0; j < list.length; j++) if (stockIn(gameStock, list[j], GAME_YEAR) >= 1) return j;
+      return -1;
+    }
+    /* What a day with the herd or the bow would bring, against a full day's fishing: 0 to about 1.2. */
+    function wildWorth(v, k, j0) {
+      if (j0 < 0) return 0;
+      const day = k === "herd" ? herdDay() : huntDay();
+      let have = 0, n = 0;
+      const list = wildList(v, k);
+      for (let j = j0; j < list.length && n < 6; j++, n++) have += stockIn(k === "herd" ? grazeStock : gameStock, list[j], k === "herd" ? GRAZE_YEAR : GAME_YEAR);
+      return Math.min(1, have / (day * 3)) * (day / 2.1);
+    }
+    if (MATS) { count.meat = 0; count.wool = 0; count.hide = 0; }
+
+    /* ── firewood (TODO 9c, 2026-11-17) ────────────────────────────────────
+       Ric: "Yes, as a setting". A person burns about three-quarters of a load
+       (a cord, near two tonnes) over a cold winter, a household some tonnes a
+       year in a cold land (England about 1600, Hatcher), more in a hard winter
+       and none in summer. It comes from the village store each day; the store
+       wants a winter's worth before the cold, so wood is dear in autumn. With
+       none, the village is cold: the very young and the old die of it first. */
+    const FIRE = MATS && S.firewood !== "off";
+    const chill = () => Math.max(0, 0.15 - warmth());                 // 0 in summer, about 1 in a hard winter
+    const BURN = 0.006;                                                // loads a person a day at a chill of 1
+    if (FIRE) count.cold = 0;
+
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
@@ -1038,7 +1158,11 @@
     function newVillage(x, y, f) {
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
-                  alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1 };
+                  alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
+                  /* Wood, stone and ore in store, what each fetches and how much the village wants (TODO 9a). */
+                  wood: 0, stone: 0, iron: 0, priceWood: 1, priceStone: 1, priceIron: 2, wantWood: 1, wantStone: 1, wantIron: 1, mats: undefined,
+                  wool: 0, hide: 0, priceWool: 1.5, priceHide: 1.5, wantWool: 1, wantHide: 1,   // TODO 9b
+                  cold: 0 };   // TODO 9c: the share of the village unwarmed today
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
       v.ore = o / c;
@@ -1157,11 +1281,14 @@
         pay(owner, BUILDER_PAY); p.coins += BUILDER_PAY;
       }
       h.work += BUILD_SHIFT * (p.job === "crafter" ? 1.3 : 1);
-      if (h.goodsIn < h.goodsNeed && v.goods >= 1) {
-        if (shared) { v.goods -= 1; h.goodsIn++; }
-        else if (owner && funds(owner) - v.priceGoods >= keep) {
-          const cost = v.priceGoods, tax = cost * taxOf(v);
-          pay(owner, cost); v.till += cost - tax; factions[v.f].treasury += tax; v.goods -= 1; h.goodsIn++;
+      /* With real materials (TODO 9a), a load of wood or of stone, whichever the store holds more of. */
+      const k = MATS ? (v.stone > v.wood ? "stone" : "wood") : "goods";
+      if (h.goodsIn < h.goodsNeed && v[k] >= 1) {
+        const price = MATS ? matPrice(v, k) : v.priceGoods;
+        if (shared) { v[k] -= 1; h.goodsIn++; }
+        else if (owner && funds(owner) - price >= keep) {
+          const cost = price, tax = cost * taxOf(v);
+          pay(owner, cost); v.till += cost - tax; factions[v.f].treasury += tax; v[k] -= 1; h.goodsIn++;
         }
       }
       if (h.work + h.goodsIn * GATHER_HOURS >= h.need + h.goodsNeed * GATHER_HOURS) {
@@ -1287,7 +1414,8 @@
                      the water, and a crossing under way. Missing here they made 6a and 6 measurably slower. */
                   dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined, spareFood: undefined,
                   /* Building (TODO 7b): the house they are waiting for, which they are working on, and whether a shift is under way. */
-                  waitHouse: -1, buildAt: -1, shift: false };
+                  waitHouse: -1, buildAt: -1, shift: false,
+                  gathering: undefined };   // TODO 9a: at the day's cutting, quarrying or mining
       house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
@@ -1418,6 +1546,7 @@
         v.food = 0; let n = 0;
         for (const p of people) if (p.home === v.id) n++;
         v.food = n * (0.8 + putByDays(S.stored) * 0.25); v.goods = n * 0.1; v.till = shared ? 0 : n * 2 + 5;
+        if (MATS) { v.wood = n * 0.3; v.stone = n * 0.1; v.iron = n * 0.05; v.wool = n * 0.05; v.hide = n * 0.03; }
       }
       for (const f of factions) f.treasury = shared ? 0 : 10;
       /* A town or city made big at the start starts trusted to be fed (only it: ordinary villages
@@ -1751,8 +1880,17 @@
          trade with, and nobody works land that has nothing on it. */
       const score = { farmer: w.land, crafter: w.bench * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) };
       if (FISH && fishGround(v)) score.fisher = fishWorth(v) * 0.9;   // TODO 6c
+      if (MATS) {                                                       // TODO 9a
+        const iw = matSpot(v, "wood"), is = matSpot(v, "stone"), io = matSpot(v, "iron");
+        if (iw >= 0) score.woodcutter = matWorth(v, "wood", iw) * 0.9;
+        if (is >= 0 || io >= 0) score.miner = Math.max(is >= 0 ? matWorth(v, "stone", is) : 0, io >= 0 ? matWorth(v, "iron", io) : 0) * 0.9;
+        const ih = wildSpot(v, "herd"), it = wildSpot(v, "hunt");                                       // TODO 9b
+        if (ih >= 0) score.herder = wildWorth(v, "herd", ih) * 0.9;
+        if (it >= 0) score.hunter = wildWorth(v, "hunt", it) * 0.9;
+      }
       let job = "farmer", bs = -Infinity;
-      for (const k of FISH && score.fisher !== undefined ? ["farmer", "crafter", "trader", "fisher"] : ["farmer", "crafter", "trader"]) {
+      for (const k of ["farmer", "crafter", "trader", "fisher", "woodcutter", "miner", "herder", "hunter"]) {
+        if (score[k] === undefined) continue;
         const s = score[k] + (R() - 0.5) * 0.15;
         if (s > bs) { bs = s; job = k; }
       }
@@ -1944,23 +2082,23 @@
     /* A village's tax: its own, if whoever rules it has set one, else its faction's. */
     function taxOf(v) { return v.tax != null ? v.tax : factions[v.f].tax; }
     function buy(p, v, what, amount) {
-      const have = what === "food" ? v.food : v.goods;
+      const have = what === "food" ? v.food : what === "goods" ? v.goods : v[what];
       amount = Math.min(amount, have);
       if (amount <= 0.01) return 0;
       if (!shared) {
-        const price = what === "food" ? v.priceFood : v.priceGoods;
+        const price = what === "food" ? v.priceFood : what === "goods" ? v.priceGoods : matPrice(v, what);
         amount = Math.min(amount, funds(p) / price);
         if (amount <= 0.01) return 0;
         const cost = amount * price, tax = cost * taxOf(v);
         pay(p, cost); v.till += cost - tax; factions[v.f].treasury += tax;
       }
-      if (what === "food") { v.food -= amount; p.food += amount; } else { v.goods -= amount; p.goods += amount; }
+      if (what === "food") { v.food -= amount; p.food += amount; } else if (what === "goods") { v.goods -= amount; p.goods += amount; } else v[what] -= amount;   // a load of wood, stone or ore goes on the cart
       return amount;
     }
     function sell(p, v, what, amount) {
       if (amount <= 0.01) return 0;
       if (!shared) {
-        const price = (what === "food" ? v.priceFood : v.priceGoods) * 0.85;
+        const price = (what === "food" ? v.priceFood : what === "goods" ? v.priceGoods : matPrice(v, what)) * 0.85;
         amount = Math.min(amount, v.till / price);
         if (amount <= 0.01) return 0;
         /* Tax is taken on a sale as well as a purchase: most of what moves in
@@ -1968,7 +2106,7 @@
         const pay = amount * price, tax = pay * taxOf(v);
         v.till -= pay; p.coins += pay - tax; factions[v.f].treasury += tax;
       }
-      if (what === "food") v.food += amount; else v.goods += amount;
+      if (what === "food") v.food += amount; else if (what === "goods") v.goods += amount; else v[what] += amount;
       return amount;
     }
     /* What somebody does on reaching their own village: put in, take out. */
@@ -2007,9 +2145,18 @@
         /* A cart only out of what is left after a winter's bread, or from a shared store with three carts' worth in it (TODO 7d). */
         if (key === "cart" && (shared ? v.goods < spec.cost * 3 : funds(p) - spec.cost * v.priceGoods < reserve(p) * v.priceFood)) continue;
         const condition = p.gear[key] || 0, needed = spec.cost * (1 - condition);
+        /* TODO 9a: ore for a tool, wood for a cart. A shield where there is no forest to be had is hide
+           and wicker, as on treeless land (seed 4 has none: its soldiers went without and died five times
+           as often in battle). */
+        let mat = MATS ? GEAR_MAT[key] : undefined;
+        if (mat && key === "shield" && v.wood < needed && v.hide >= needed) mat = "hide";     // TODO 9b: hide where wood is short
+        if (mat && key === "shield" && !matGround(v).wood.length && !matGround(v).grass.length && v.hide < needed) mat = undefined;
+        if (mat === "wool" && !matGround(v).grass.length && v.wool < needed) mat = undefined;  // a pack of whatever there is, with no grazing near
+        if (mat && v[mat] < needed) continue;
         if (p.goods < needed) buy(p, v, "goods", needed - p.goods);
         if (p.goods + 1e-10 < needed) continue;
         p.goods = Math.max(0, p.goods - needed); p.gear[key] = 1;
+        if (mat) v[mat] -= needed;
       }
     }
     function wear(p, key) { if (equipped(p, key)) p.gear[key] = Math.max(0, p.gear[key] - GEAR[key].wear); }
@@ -2034,7 +2181,12 @@
       if (!equipped(p, "cart")) return 1;
       return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.85 : 0.6;
     }
-    function craftOutput(p, v) { return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1); }
+    function craftOutput(p, v) {
+      /* With real materials (TODO 9a) what a batch comes to is what is in the store to work: wood, and
+         ore for the metal in it; without either, a little by hand. */
+      if (MATS) return (0.35 + (v.wood >= 0.5 ? 0.3 : 0) + (v.iron >= 0.3 ? 0.45 : 0) + (v.wool >= 0.3 ? 0.2 : 0)) * (equipped(p, "tool") ? 1.2 : 1);
+      return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1);
+    }
     function strike(p, foe, base) {
       const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1);
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
@@ -2246,6 +2398,23 @@
           weigh("fish", (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, "fisher") * fishWorth(v)
                          - away(Math.hypot(g.x - p.x, g.y - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, g.x + (R() - 0.5) * 1.5, g.y + (R() - 0.5) * 1.5, "fish"); p.wait = 0; });
+        }
+
+        /* A day's cutting, quarrying or mining (TODO 9a), where the village has the ground for it. */
+        if (MATS) for (const k of MAT) {
+          const i = matSpot(v, k); if (i < 0) continue;
+          const sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5;
+          weigh(MAT_TASK[k], (n.provide * 0.95 + 0.1) * skilled(p, MAT_JOB[k]) * matWorth(v, k, i)
+                             - away(Math.hypot(sx - p.x, sy - p.y)) - n.food * 0.55 - n.rest * 0.45 - n.safety * 0.6 - dark * 0.5,
+            () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, MAT_TASK[k]); p.wait = 0; });
+        }
+        /* A day with the herd or hunting (TODO 9b): food, as fishing is, with wool or a hide besides. */
+        if (MATS) for (const k of ["herd", "hunt"]) {
+          const j = wildSpot(v, k); if (j < 0) continue;
+          const i = wildList(v, k)[j], sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5;
+          weigh(k, (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, k === "herd" ? "herder" : "hunter") * wildWorth(v, k, j)
+                   - away(Math.hypot(sx - p.x, sy - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
+            () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, k); p.wait = 0; });
         }
 
         /* Market day (TODO 8): food beyond what the household keeps for the winter, taken to the
@@ -2558,6 +2727,39 @@
         p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
         return;
       }
+      if (p.task === "herd" || p.task === "hunt") {    // TODO 9b: a day out, then home with the food, the wool or hide to the store
+        if (!p.gathering) { p.gathering = true; p.wait = spell("harvest"); return; }
+        p.gathering = false;
+        const herd = p.task === "herd", m = herd ? grazeStock : gameStock, cap = herd ? GRAZE_YEAR : GAME_YEAR;
+        const list = wildList(v, p.task), j0 = wildSpot(v, p.task);
+        let need = (herd ? herdDay() : huntDay()) * (p.job === (herd ? "herder" : "hunter") ? 1 : 0.7);
+        const want = need;
+        if (j0 >= 0) for (let j = j0; j < list.length && need > 0.01; j++) {
+          const i = list[j]; if (herd && held.has(i)) continue;
+          const have = stockIn(m, i, cap), got = Math.min(have, need);
+          if (got > 0) { m.set(i, [have - got, t]); need -= got; }
+          if (j - j0 > 8) break;
+        }
+        const food = want - need;
+        p.food += food; count.meat += food;
+        if (herd) { sellMat(p, v, "wool", food * 0.12); sellMat(p, v, "hide", food * 0.03); count.wool += food * 0.12; count.hide += food * 0.03; }   // and hides from the beasts killed
+        else if (food > 1) { sellMat(p, v, "hide", 0.3); count.hide += 0.3; }
+        p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
+        return;
+      }
+      if (p.task === "cut" || p.task === "quarry" || p.task === "mine") {   // TODO 9a: a day's work, then the load to the store
+        if (!p.gathering) { p.gathering = true; p.wait = spell("harvest"); return; }
+        p.gathering = false;
+        const k = p.task === "cut" ? "wood" : p.task === "quarry" ? "stone" : "iron", i = matSpot(v, k);
+        let got = 0;
+        if (i >= 0) {
+          got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1);
+          if (k === "wood") { const have = woodIn(i); got = Math.min(got, have); woodStock.set(i, [have - got, t]); }
+          sellMat(p, v, k, got); count[k] += got; wear(p, "tool");
+        }
+        p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
+        return;
+      }
       if (p.task === "field") {
         if (!p.harvesting) {
           /* And the ground under them: a good patch is quicker to work than a
@@ -2618,6 +2820,12 @@
         p.making = false;
         const made = craftOutput(p, v);
         wear(p, "tool");
+        if (MATS) {
+          /* The wood and ore it took, bought from the store (TODO 9a). */
+          const w = v.wood >= 0.5 ? Math.min(v.wood, made * 0.4) : 0, o = v.iron >= 0.3 ? Math.min(v.iron, made * 0.25) : 0, l = v.wool >= 0.3 ? Math.min(v.wool, made * 0.2) : 0;
+          v.wood -= w; v.iron -= o; v.wool -= l;
+          if (!shared) { const c = Math.min(funds(p), w * v.priceWood + o * v.priceIron + l * v.priceWool); pay(p, c); v.till += c; }
+        }
         p.goods += made;
         if (p.goods > 1) { const sold = sell(p, v, "goods", p.goods - 1); p.goods -= sold; }
         shop(p, v);
@@ -2675,6 +2883,11 @@
           for (const w of ["food", "goods"]) {
             const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02);
             if (g > gain && (w === "food" ? here.food : here.goods) > 1) { gain = g; best = o; what = w; }
+          }
+          /* Wood, stone and ore from where they are cheap (TODO 9a): an ore village sells to a forest one. */
+          if (MATS) for (const w of TRADED) {
+            const g = (matPrice(o, w) * 0.85 - matPrice(here, w)) / (1 + d * 0.02);
+            if (g > gain && here[w] > 1) { gain = g; best = o; what = w; }
           }
           /* Grain from houses with more than their winter to houses going
              short — the trade that keeps a village on poor land alive. */
@@ -2734,7 +2947,7 @@
         } else if (p.cargo) {
           const got = sell(p, here, p.cargo.what, p.cargo.amount);
           if (p.cargo.what === "food" && here.id !== p.home) here.inFood = (here.inFood || 0) + got;   // food brought in (TODO 8)
-          if (p.cargo.what === "food") p.food += p.cargo.amount - got; else p.goods += p.cargo.amount - got;
+          if (p.cargo.what === "food") p.food += p.cargo.amount - got; else if (p.cargo.what === "goods") p.goods += p.cargo.amount - got; else here[p.cargo.what] += p.cargo.amount - got;   // unsold wood, stone or ore is left in the store
           if (here.f !== p.f && got > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
           p.cargo = null; wear(p, "pack");
         }
@@ -2899,7 +3112,7 @@
       if (p.on) { madeRoom(p.x, p.y); p.on = 2; }   // the dead are in nobody's way: see `move`. 2: counted
       count[why]++;
       const v = villages[p.home], f = factions[p.f];
-      if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else v.goods += p.cargo.amount; }
+      if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else if (p.cargo.what === "goods") v.goods += p.cargo.amount; else v[p.cargo.what] += p.cargo.amount; }
       v.food += p.food; v.goods += p.goods;
       p.food = 0; p.goods = 0; p.cargo = null;
       // Remaining usable material returns to the village; worn material is gone.
@@ -3280,6 +3493,12 @@
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
       if (p.age >= p.dieAt) { die(p, "old"); return; }
+      /* Cold at home (TODO 9c): over a hard winter unwarmed, about one in twenty grown-ups, more of
+         the very young and the old. */
+      if (FIRE && villages[p.home].cold > 0 && p.task !== "march" && p.task !== "fight") {
+        const c = chill();
+        if (c > 0 && R() < villages[p.home].cold * c * 0.05 * frailty(p) / (120 * DAY_HOURS)) { die(p, "cold"); return; }
+      }
       /* Crowded places were graveyards: London's burials outran its baptisms for two centuries and it
          grew only by those who came in (Wrigley 1967). About one more death a hundred a year in a town
          than in the country, a little over two in a city (TODO 8). */
@@ -3300,6 +3519,11 @@
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
       if (p.task === "water") return "Fetching water";
       if (p.task === "fish") return walking ? "Going fishing" : "Fishing";
+      if (p.task === "cut") return walking ? "Going to cut wood" : "Cutting wood";
+      if (p.task === "quarry") return walking ? "Going to the quarry" : "Quarrying stone";
+      if (p.task === "mine") return walking ? "Going to the mine" : "Mining ore";
+      if (p.task === "herd") return walking ? "Taking the herd out" : "Herding";
+      if (p.task === "hunt") return walking ? "Going hunting" : "Hunting";
       if (p.task === "waterhome") return "Carrying water home";
       if (p.task === "well") return walking ? "Going to dig the well" : "Digging a well";
       if (p.task === "bridge") return walking ? "Going to work on the bridge" : "Building a bridge";
@@ -4459,6 +4683,20 @@
         v.priceFood = clamp(Math.pow((v.pop * 0.5 + 1) / Math.max(v.food, 0.4), 0.6), 0.3, 7);
         v.priceGoods = clamp(2 * Math.pow((v.pop * 0.12 + 1) / Math.max(v.goods, 0.3), 0.5), 0.6, 9);
       } else { v.priceFood = 1; v.priceGoods = 2; }
+      if (MATS) {
+        /* What the village wants of each (TODO 9a): its houses being built, what its crafters work, its gear. */
+        let need = 0; for (const h of sites) if (h.v === v.id && !h.built) need += Math.max(0, h.goodsNeed - h.goodsIn);
+        v.wantWood = need * 0.8 + v.pop * 0.3 + 2; v.wantStone = need * 0.2 + v.pop * 0.08 + 1; v.wantIron = v.pop * 0.1 + 1;
+        v.wantWool = v.pop * 0.08 + 1; v.wantHide = v.pop * 0.04 + 1;   // TODO 9b: clothes, packs, shields
+        if (FIRE && matGround(v).wood.length) v.wantWood += v.pop * BURN * (chill() * 30 + winterAhead());   // TODO 9c: the winter's fires
+        if (S.prices === "float" && !shared) {
+          v.priceWood = clamp(Math.pow(v.wantWood / Math.max(v.wood, 0.3), 0.5), 0.3, 6);
+          v.priceStone = clamp(Math.pow(v.wantStone / Math.max(v.stone, 0.3), 0.5), 0.3, 6);
+          v.priceIron = clamp(2 * Math.pow(v.wantIron / Math.max(v.iron, 0.3), 0.5), 0.6, 9);
+          v.priceWool = clamp(1.5 * Math.pow(v.wantWool / Math.max(v.wool, 0.3), 0.5), 0.4, 7);
+          v.priceHide = clamp(1.5 * Math.pow(v.wantHide / Math.max(v.hide, 0.3), 0.5), 0.4, 7);
+        } else { v.priceWood = 1; v.priceStone = 1; v.priceIron = 2; v.priceWool = 1.5; v.priceHide = 1.5; }
+      }
     }
     function villageTurn(v) {
       if (v.pop === 0) {
@@ -4472,6 +4710,12 @@
         return;
       }
       v.empty = 0;
+      if (FIRE) {
+        /* A day's fires (TODO 9c). */
+        /* Where there is no forest within reach, dung, turf and peat, as on treeless land: no wood burned. */
+        const burn = matGround(v).wood.length ? v.pop * BURN * chill() : 0;
+        if (burn > 0) { const got = Math.min(v.wood, burn); v.wood -= got; v.cold = 1 - got / burn; } else v.cold = 0;
+      }
       /* What was brought in today, into a month's average; and what the place is by its size (TODO 8). */
       v.importAvg = (v.importAvg || 0) * (179 / 180) + (v.inFood || 0) / 180; v.inFood = 0;   // over about half a year: a town lives on a harvest
       placeOf(v);

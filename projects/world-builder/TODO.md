@@ -884,7 +884,7 @@ Research notes:
   a year by 1700 (Wrigley, "A simple model of London's importance", 1967). Chosen: one death more a
   hundred a year in a town, a little over two in a city.
 
-### [ ] 9. Materials and other ways to live
+### [x] 9. Materials and other ways to live
 
 **Now:** farming, one kind of "goods", ore, trade.
 **Do:** wood, stone, ore and cloth as real materials from the kinds of ground in item 4, and
@@ -897,7 +897,40 @@ supported; what `PEOPLE-VISION.md`, "Ric's next list", item 2 says about product
 told to; `test/behaviour.mjs` shows each new setting moving people's hours.
 **Budget:** default.
 
+Ric's answers (2026-11-17, "Start item 9"): materials **"Few and clear"**: wood, stone, ore, cloth
+(from wool), and food as grain, fish and meat; forest gives wood (houses, carts, boats, fuel), hills
+stone (walls, wells, bigger houses) and ore (tools, weapons), grass wool (cloth, clothes, packs),
+water fish, forest meat by hunting, grass meat and milk by herding. Firewood **"Yes, as a setting"**:
+cold makes people burn wood, without it they sicken or die in a hard winter; a setting turns it
+off and leaves the world as it was.
+
+Split, as items 6 and 7 were:
+- **9a. Wood, stone and ore.** Cutting wood, quarrying and mining as livings weighed in `choose`
+  like fishing; each village's store holds them at a price; houses are built of wood or stone, and
+  what crafters make uses them; tools and weapons need ore, carts wood. A setting, "Materials",
+  real or one kind of goods as before (identical world).
+- **9b. Herding and hunting.** Meat and milk from grazing on grass, meat from game in forest that
+  runs out when overhunted; wool, spun into cloth for clothes and packs.
+- **9c. Firewood.** A household burns wood in the cold, fetched or bought; without it, sickness and
+  death in a hard winter. Its own setting.
+
+**Done 2026-11-17** (Ric: "Start item 9"; "Few and clear"; firewood "Yes, as a setting"). 9a wood, stone and ore cut, quarried and mined within 4 km, weighed like any work, sold to the store at what it is short of; houses of wood or stone; crafters work wood, ore and wool; tools and weapons take ore, carts wood, packs wool, shields wood or hide; traders carry them. 9b herding on grass, dry land and hills (food, wool, hides) and hunting in forest (meat, hides; game runs out). 9c firewood burned in the cold from the store, dear in autumn, the cold killing the young and old where there is none; turf and dung on treeless land. Settings "Materials" (off: one kind of goods, the world identical) and "Firewood". A forest village and a village by water live differently without being told to (`test/materials.test.mjs`). **Not met / open:** a year costs about 11 alive a world against before (about 7 to the cold, the rest within the run-to-run spread); battle deaths 137 against 124 in six worlds, from wars falling differently; the 2,000 and 5,000 rows are about a tenth slower and the 500 km row half again (more walking); the store still piles up hundreds of goods, as it did before; a household's firewood is the village's, not its own; stone is used only for houses (walls are item 14).
+
 Research notes:
+- **What a day of each work gave.** A woodcutter cut and split about a cord (3.6 m³ stacked, near
+  two tonnes) a day with an axe; managed woodland regrows some 3 to 5 m³ a hectare a year (coppice),
+  so a 6.25 ha square gives about twenty cords a year and a forest is a slow stock, not endless.
+  A quarryman broke a cubic metre or two of rough stone a day; a medieval miner some hundreds of
+  kilograms of ore. Chosen: a day's work at good ground is one "load" of each; wood comes back at
+  a square's yearly growth, stone and ore do not run out (an ore square gives as rich as it is).
+- **How many each worker supported.** Before modern farming four out of five worked the land, one
+  farmer feeding about one and a quarter (item 8 notes); a forest or a quarry fed nobody directly,
+  so those livings live by selling to the store, as the bench does, at what the village is short of.
+- **What a house took.** A timber-framed cottage some 10 to 20 m³ of timber, a hall many times that;
+  stone where wood was scarce or for the rich. Item 7b's "goods" for a house become loads of wood,
+  or stone where the village has it.
+- **Item 2 of "Ric's next list" in PEOPLE-VISION**: "materials become goods, goods become
+  equipment", demand tied to household needs and gear replacement, a ledger of production and stock.
 
 ### [ ] 10. The ten traits, and events that move them
 
@@ -1121,4 +1154,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-16 | 6 | AMD Ryzen 5 3600, 24 GB | 1.75 s a day, 172× | 13.5 s a day, 22× | 3.4 MB, 0.67 KB | **rain, fishing and crossing water on by default**, a different world. Against 6a: 400 people 0.14 → 0.13 s, 2,000 0.62 → 0.60 s, 5,000 1.80 → 1.75 s, 20,000 12.6 → 13.5 s, 400 on 500 km 0.09 → 0.16 s (walking round big rivers); person fields declared at birth |
 | 2026-11-16 | 7 | AMD Ryzen 5 3600, 24 GB | 2.05 s a day, 146× | 14.9 s a day, 20× | 3.5 MB, 0.68 KB | **houses built, land held by each faction's rule, paths worn in, carts, boats**, a different world. Against item 6: 400 people 0.125 → 0.125 s, 2,000 0.62 → 0.62 s, 5,000 1.96 → 2.05 s, 20,000 14.3 → 14.9 s, 400 on 500 km 0.145 → 0.10 s; asking a neighbour made cheap |
 | 2026-11-17 | 8 | AMD Ryzen 5 3600, 24 GB | 1.72 s a day, 174× | 14.2 s a day, 21× | 3.6 MB, 0.71 KB | **towns and cities**; a paid-building search made cheap. Against item 7: 2,000 0.62 → 0.57 s, 5,000 2.12 → 1.72 s, 20,000 15.1 → 14.2 s, 400 on 500 km 0.10 → 0.12 s |
+| 2026-11-17 | 9 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 152× | 14.55 s a day, 21× | 3.8 MB, 0.74 KB | **materials and livings**: wood, stone, ore, herds, game, firewood. Against before: 2,000 0.60 → 0.68 s, 5,000 1.80 → 1.96 s, 20,000 14.95 → 14.55 s, 400 on 500 km 0.13 → 0.19 s (more walking) |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |
