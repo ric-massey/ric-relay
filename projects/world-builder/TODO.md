@@ -981,6 +981,22 @@ and raids. Afterwards: the dead missing from their households, widows and orphan
 buildings, lost harvests, people fleeing, land changing hands, grudges that last and fade. A new
 leader can end a war their predecessor began. Ric: "i want war to be accurate to the time and i
 want the aftermath of war to be accurate too."
+**Wartime effort, not only fear** (added 2026-11-17; Ric: "wartime fear should be bad but that
+should also make people do stuff as well like try harder for more supplies and stuff… civilizations
+have more inginuit and push to accomplish things nduiring wartime", and "fold into 14"). Now
+`p.fear` rises for everybody in a faction at war anywhere, however far off, until it is full, and
+it only ever counts against work (fields 0.7, fishing 0.7, the bench 0.5, carrying 0.8, market 0.4
+to 0.8) — so a faction at war sits at home and grows poorer. Found while feeding towns: it stopped
+every market day from harvest to spring. Split it in two:
+- **Danger near** (a siege on one's own place, enemies seen, being hit): hide, flee, leave the
+  fields, markets close — as now, but only where the fighting is.
+- **A war on** (anywhere): people push — put more by for the winter, rest a little less, keep
+  farming, carting and going to market, crafters turn to gear for the soldiers, more join up,
+  walls go up, the leader taxes harder. Its cost is hands away and what is taken, not idleness.
+Research: how far from the front work went on as before; what war economies stored and built
+(town walls raised in wartime, siege stores; "Dig for Victory").
+Done when, besides the below: a faction at war away from the fighting stores and works more, not
+less, while a place under siege still empties its fields.
 **Research first:** how many died in battles and how many from hunger and sickness around them;
 how far an army could go from its food; how long places took to recover; what refugees did.
 **Ric decides:** nothing up front.
