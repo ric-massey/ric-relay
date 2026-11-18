@@ -111,6 +111,14 @@ once per play session (a sync by hand always toasts); it never steals focus from
 the game. `CS_NO_TOAST=1` silences it, and
 `projects/cs/.cs-venv/Scripts/python projects/cs/notify.py` sends a test one.
 
+**A CS2 update can leave the demo parser behind.** When `demoparser2` can't read
+a demo at all, `parse-demos.py` says so ("demoparser2 X can't read this demo (CS2
+patch N …) — update it"), exits non-zero so the toast fires, and leaves the demo in
+`failed` in `.cs-state.json`, which every sync retries. Run the `pip install -U
+demoparser2` it names and the next sync parses it. (2026-11-18: 0.42.0 couldn't
+read patch 14197 and used to report this as "no rounds after warmup", so an
+Inferno game sat a week with live-feed stats only; 0.42.2 reads it.)
+
 ## Setup (once)
 
 ```

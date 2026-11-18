@@ -129,6 +129,18 @@ def sid(v):
         return None
 
 
+class Unreadable(Exception):
+    """demoparser2 can't read this demo at all — usually a CS2 update it doesn't know yet."""
+
+
+def parser_version():
+    try:
+        from importlib.metadata import version
+        return version("demoparser2")
+    except Exception:
+        return "?"
+
+
 def parse(path, me):
     from demoparser2 import DemoParser  # in .cs-venv; only this script needs it
 
@@ -136,10 +148,29 @@ def parse(path, me):
     header = p.parse_header()
     mapname = header.get("map_name")
 
+    def unreadable(why):
+        return Unreadable(
+            f"demoparser2 {parser_version()} can't read this demo (CS2 patch "
+            f"{header.get('patch_version', '?')}: {why}) — update it: "
+            f"projects/cs/.cs-venv/Scripts/python -m pip install -U demoparser2")
+
+    try:
+        in_demo = set(p.list_game_events())
+    except Exception as e:
+        raise unreadable(e) from e
+
     def ev(name, **kw):
         try:
             return rows(p.parse_event(name, **kw))
-        except Exception:  # an event the demo never fired
+        except Exception as e:
+            # An event the demo never fired is simply empty. One it did fire that
+            # still won't read means the parser can't read this demo: say so,
+            # instead of carrying on as if the match had no rounds (2026-11-18,
+            # demoparser2 0.42.0 on patch 14197 failed every event this way).
+            # Calls with extra player props may fail on the prop alone; their
+            # plain fallback call does the check.
+            if name in in_demo and not kw:
+                raise unreadable(e) from e
             return []
 
     # ── where the match itself starts: warmup rounds are not rounds ──
@@ -715,6 +746,7 @@ def main():
         print("demos: nothing new")
         return
     data = csdata.load()
+    unreadable = False
     for path in paths:
         key = path.name.removesuffix(".bz2")
         try:
@@ -727,8 +759,11 @@ def main():
         except Exception as e:  # one bad demo must not stop the rest
             st.setdefault("failed", {})[key] = str(e)   # retried next run
             print(f"demos: {key} failed — {e}")
+            unreadable = unreadable or isinstance(e, Unreadable)
     csdata.save(data)
     csdata.write_state(st)
+    if unreadable:   # non-zero so sync.py's toast says so; other demos were still saved
+        sys.exit(1)
 
 
 if __name__ == "__main__":
