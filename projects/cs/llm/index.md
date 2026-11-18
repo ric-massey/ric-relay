@@ -8,12 +8,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Stat | Value |
 |---|---|
-| Matches | 51 |
-| Won / lost / drawn | 17 / 30 / 4 |
+| Matches | 52 |
+| Won / lost / drawn | 17 / 31 / 4 |
 | Win rate | 33% |
-| Kills / deaths | 527 / 717 |
-| K/D | 0.74 |
-| Headshot % | 39% |
+| Kills / deaths | 539 / 734 |
+| K/D | 0.73 |
+| Headshot % | 38% |
 | Matches with full demo data | 48 |
 
 **Leetify skill ratings** (read 2026-11-18): aim 50/100, positioning 33/100, utility 21/100.
@@ -24,6 +24,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-18 06:09 UTC | Mirage | Competitive | 7–13 | loss | 12-17-1 | — | — | — | no | [gsi-20261118T060932.md](gsi-20261118T060932.md) |
 | 2026-11-12 03:19 UTC | Inferno | Competitive | 8–13 | loss | 9-16-3 | — | — | — | no | [gsi-20261112T031924.md](gsi-20261112T031924.md) |
 | 2026-11-10 04:31 UTC | Cache | Premier | 13–10 | win | 8-22-4 | 55.0 | 0.33 | -7.42 | yes | [gsi-20261110T043131.md](gsi-20261110T043131.md) |
 | 2026-11-08 22:16 UTC | Inferno | Premier | 13–8 | win | 12-14-8 | 71.9 | 0.92 | +2.39 | yes | [gsi-20261108T221621.md](gsi-20261108T221621.md) |
@@ -81,7 +82,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Map | Played | W-L-D | K/D |
 |---|---|---|---|
-| Mirage | 17 | 3-11-3 | 0.76 |
+| Mirage | 18 | 3-12-3 | 0.76 |
 | Train | 9 | 3-6-0 | 0.60 |
 | Dust II | 8 | 3-5-0 | 0.86 |
 | Inferno | 7 | 3-4-0 | 0.84 |
@@ -157,15 +158,15 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Middle | 5 | 12% | 1 | 3% | 0.20 |
 | Side Hall | 4 | 10% | 3 | 9% | 0.75 |
 | Side Entrance | 3 | 7% | 5 | 15% | 1.67 |
-| Main Hall | 2 | 5% | 2 | 6% | 1.00 |
-| House | 2 | 5% | 2 | 6% | 1.00 |
 | T Side Lower | 2 | 5% | 2 | 6% | 1.00 |
+| House | 2 | 5% | 2 | 6% | 1.00 |
+| Main Hall | 2 | 5% | 2 | 6% | 1.00 |
 | CT Spawn | 1 | 2% | 2 | 6% | 2.00 |
 | Outside | 1 | 2% | 2 | 6% | 2.00 |
 | T Side Upper | 1 | 2% | 2 | 6% | 2.00 |
 | Ramp | 1 | 2% | 1 | 3% | 1.00 |
-| Top of Mid | 0 | 0% | 1 | 3% | — |
 | T Spawn | 0 | 0% | 1 | 3% | — |
+| Top of Mid | 0 | 0% | 1 | 3% | — |
 
 ### Anubis: where Ric dies and kills
 
@@ -177,11 +178,11 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Canal | 6 | 11% | 4 | 10% | 0.67 |
 | Bombsite B | 4 | 7% | 2 | 5% | 0.50 |
 | Bombsite A | 3 | 5% | 6 | 15% | 2.00 |
-| Mid Doors | 3 | 5% | 2 | 5% | 0.67 |
 | Bridge | 3 | 5% | 2 | 5% | 0.67 |
+| Mid Doors | 3 | 5% | 2 | 5% | 0.67 |
 | Heaven | 3 | 5% | 1 | 3% | 0.33 |
-| Main | 2 | 4% | 1 | 3% | 0.50 |
 | Palace Interior | 2 | 4% | 1 | 3% | 0.50 |
+| Main | 2 | 4% | 1 | 3% | 0.50 |
 | Bricks | 2 | 4% | 0 | 0% | 0.00 |
 | Fountain | 2 | 4% | 0 | 0% | 0.00 |
 | Ruins | 1 | 2% | 4 | 10% | 4.00 |
@@ -196,19 +197,19 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite B | 4 | 12% | 2 | 10% | 0.50 |
 | Mid | 4 | 12% | 0 | 0% | 0.00 |
 | Highway | 3 | 9% | 1 | 5% | 0.33 |
-| B Halls | 2 | 6% | 2 | 10% | 1.00 |
 | Fork Lift | 2 | 6% | 2 | 10% | 1.00 |
+| B Halls | 2 | 6% | 2 | 10% | 1.00 |
 | Corner | 2 | 6% | 1 | 5% | 0.50 |
-| Heaven | 2 | 6% | 0 | 0% | 0.00 |
 | CT Lane | 2 | 6% | 0 | 0% | 0.00 |
+| Heaven | 2 | 6% | 0 | 0% | 0.00 |
 | Outside A | 1 | 3% | 3 | 15% | 3.00 |
 | A Main | 1 | 3% | 1 | 5% | 1.00 |
 | B Main | 1 | 3% | 1 | 5% | 1.00 |
 | Squeaky | 1 | 3% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 3% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 10% | — |
-| Vents | 0 | 0% | 1 | 5% | — |
 | A Stairs | 0 | 0% | 1 | 5% | — |
+| Vents | 0 | 0% | 1 | 5% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -231,8 +232,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Lower Tunnel | 2 | 2% | 4 | 5% | 2.00 |
 | Mid Doors | 2 | 2% | 2 | 2% | 1.00 |
 | Hole | 2 | 2% | 0 | 0% | 0.00 |
-| T Spawn | 1 | 1% | 0 | 0% | 0.00 |
 | Pit | 1 | 1% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 1% | 0 | 0% | 0.00 |
 | Short Stairs | 0 | 0% | 4 | 5% | — |
 | CT Spawn | 0 | 0% | 1 | 1% | — |
 | Outside Tunnel | 0 | 0% | 1 | 1% | — |
@@ -280,8 +281,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | House | 3 | 1% | 1 | 1% | 0.33 |
 | Snipers Nest | 2 | 1% | 1 | 1% | 0.50 |
 | Ladder | 1 | 0% | 3 | 2% | 3.00 |
-| T Spawn | 1 | 0% | 2 | 1% | 2.00 |
 | Back Alley | 1 | 0% | 2 | 1% | 2.00 |
+| T Spawn | 1 | 0% | 2 | 1% | 2.00 |
 | Side Alley | 1 | 0% | 0 | 0% | 0.00 |
 
 ### Train: where Ric dies and kills
@@ -298,10 +299,10 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | T Side Upper | 5 | 4% | 2 | 3% | 0.40 |
 | Connector | 4 | 3% | 5 | 6% | 1.25 |
 | Alley | 4 | 3% | 1 | 1% | 0.25 |
-| Entrance | 1 | 1% | 2 | 3% | 2.00 |
 | Electrical Box | 1 | 1% | 2 | 3% | 2.00 |
-| Dumpster | 1 | 1% | 0 | 0% | 0.00 |
+| Entrance | 1 | 1% | 2 | 3% | 2.00 |
 | T Spawn | 1 | 1% | 0 | 0% | 0.00 |
+| Dumpster | 1 | 1% | 0 | 0% | 0.00 |
 
 ### Vertigo: where Ric dies and kills
 
@@ -311,15 +312,15 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
 | Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
 | Crane | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
-| Connector | 0 | 0% | 1 | 12% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
+| Connector | 0 | 0% | 1 | 12% | — |
 
 
 ## Model check
