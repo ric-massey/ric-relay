@@ -56,10 +56,13 @@ const People = createRequire(import.meta.url)("../people.js");
 // 3. A leader's land.
 {
   const w = People.create({ seed: 11, land: "leader" }), c = People.create({ seed: 11, land: "village" });
-  w.step(24 * 20); c.step(24 * 20);
+  /* What the store holds on average over the second ten days: at any one hour it is a few
+     rations either way, eaten as fast as it comes (one world read 3 against 10 at day 20, 2026-11-17). */
   const store = x => x.villages.reduce((a, v) => a + v.food, 0);
+  let sw = 0, sc = 0;
+  for (let h = 0; h < 24 * 20; h++) { w.step(1); c.step(1); if (h >= 24 * 10) { sw += store(w); sc += store(c); } }
   assert.ok(w.stats().rent > 0, "a third of the harvest goes to the leader's barn");
-  assert.ok(store(w) > store(c), "the store holds more than with common fields: " + Math.round(store(w)) + " against " + Math.round(store(c)));
+  assert.ok(sw > sc, "the store holds more than with common fields: " + Math.round(sw / 240) + " against " + Math.round(sc / 240) + " on average");
 }
 
 // 4. Each faction decides; you can decide for one you rule.
@@ -72,7 +75,7 @@ const People = createRequire(import.meta.url)("../people.js");
   v.step(48);
   for (const f of v.factions) {
     let fam = 0, com = 0;
-    for (const p of v.people) if (p.f === f.id && v.adult(p) && p.hp !== -99) { if (p.views > 0.3) com++; else fam++; }
+    for (const p of v.people) if (p.f === f.id && v.adult(p) && p.hp !== -99) { if (v.viewOf(p) > 0.3) com++; else fam++; }
     assert.equal(f.land, fam >= com ? "family" : "village", f.name + " votes for what most lean to");
   }
   const f = v.factions[0];

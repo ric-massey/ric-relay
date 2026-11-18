@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People=createRequire(import.meta.url)("../people.js");
 const options={people:40,map:"small",talk:0.8,seed:11,plague:"none"};
-const print=w=>JSON.stringify({ people:w.people, friends:w.people.map(p=>[...p.friends]), factions:w.factions,villages:w.villages,stock:[...w.stock],events:w.events,chatter:w.chatter,stats:w.stats() });
+const print=w=>JSON.stringify({ people:w.people, minds:w.people.map(p=>w.inMind(p)), factions:w.factions,villages:w.villages,stock:[...w.stock],events:w.events,chatter:w.chatter,stats:w.stats() });
 const batched=People.create(options), hourly=People.create(options), framed=People.create(options);
 batched.advance(People.DAY_SECONDS);   // one day at 1×: five minutes since 2026-11-14
 for(let i=0;i<24;i++)hourly.step(1);

@@ -48,7 +48,8 @@ function hours(o, days, seed) {
   return { rest: c.rest / c.all, work: c.work / c.all, off: c.off / c.work, quarrels: s.quarrels, fights: s.fights, pilfered: s.pilfered };
 }
 {
-  const idle = hours({ hardwork: 0.1 }, 20), keen = hours({ hardwork: 0.9 }, 20);
+  /* Sickness off: an outbreak in one run and not the other fills the beds whatever anybody is like. */
+  const idle = hours({ hardwork: 0.1, plague: "none" }, 20), keen = hours({ hardwork: 0.9, plague: "none" }, 20);
   assert.ok(keen.rest < idle.rest * 0.5 && keen.work > idle.work + 0.05,
     "the hardworking work: resting and visiting " + (idle.rest * 100).toFixed(1) + "% → " + (keen.rest * 100).toFixed(1) + "%, at work " + (idle.work * 100).toFixed(1) + "% → " + (keen.work * 100).toFixed(1) + "%");
 
@@ -62,11 +63,12 @@ function hours(o, days, seed) {
   const now = hours({ patient: 0.1, start: "autumn", plague: "none" }, 20), later = hours({ patient: 0.9, start: "autumn", plague: "none" }, 20);
   assert.ok(later.work > now.work + 0.02, "the patient lay in for the winter: at work " + (now.work * 100).toFixed(1) + "% → " + (later.work * 100).toFixed(1) + "%");
 
-  /* A winter with little put by: hungry households, and some with plenty. Two worlds, since in
+  /* A winter with little put by: hungry households, and some with plenty. Three worlds, since in
      any one it comes down to a few households. */
   const robbed = (honest, seed) => hours({ honest, start: "winter", stored: 0.2 }, 30, seed).pilfered;
-  const crooks = { pilfered: robbed(0.1, 11) + robbed(0.1, 3) }, straight = { pilfered: robbed(0.9, 11) + robbed(0.9, 3) };
-  assert.ok(crooks.pilfered > straight.pilfered * 3 + 5, "the dishonest steal when hungry: " + straight.pilfered + " → " + crooks.pilfered + " larders robbed");
+  /* Three worlds: since item 11 a thief knows only some of the houses (2026-11-17: 8 against 0). */
+  const crooks = { pilfered: robbed(0.1, 11) + robbed(0.1, 3) + robbed(0.1, 7) }, straight = { pilfered: robbed(0.9, 11) + robbed(0.9, 3) + robbed(0.9, 7) };
+  assert.ok(crooks.pilfered >= straight.pilfered * 3 + 4, "the dishonest steal when hungry: " + straight.pilfered + " → " + crooks.pilfered + " larders robbed");
 }
 
 // 3. A raid. The same world twice; in one, enemies struck in a village on its first day.

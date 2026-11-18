@@ -61,6 +61,11 @@
     robbed: life({ warm: -0.02 }),
     good:   life({ warm: 0.01, temper: -0.01, greed: -0.01, curious: 0.01 }),
   };
+  /* The mind (TODO 11): what one slot can hold, and how long each lasts unrefreshed (Ric,
+     2026-11-17: "Grudges last longest"). Half-lives in hours. */
+  const M_FRIEND = 1, M_KIN = 2, M_NEWS = 3, M_FOOD = 4, M_DEBT = 5, M_BELIEF = 6;
+  const M_HALF = [0, 365 * DAY_HOURS, 5 * 365 * DAY_HOURS, 90 * DAY_HOURS, 30 * DAY_HOURS, 5 * 365 * DAY_HOURS, Infinity];
+  const M_GRUDGE_HALF = 5 * 365 * DAY_HOURS;
   const TOWN_AT = 400, CITY_AT = 5000;     // people: a town, a city (TODO 8)
   const MARKET_PRICE = 1.2;                // coins a day's food fetches door to door on market day
   const ILLNESS_HOURS = 7 * DAY_HOURS;
@@ -207,8 +212,8 @@
       { key: "divided", label: "How far apart they start", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["everybody agrees", "some difference", "divided", "two camps"]),
         help: "The one thing they argue about: should what is grown be shared out, or does each keep their own?" },
-      { key: "memory", label: "How many people they remember", type: "range", min: 2, max: 30, step: 1, def: 10,
-        say: v => v + " people", help: "Friends and grudges both count." },
+      { key: "memory", label: "How much a person can hold", type: "range", min: 6, max: 60, step: 1, def: 20,   // TODO 11; Ric, 2026-11-17: "20"
+        say: v => v + " things", help: "Each friend, grudge, debt, piece of news, who has food to spare, and what they think about sharing takes one. When a mind is full the weakest thing goes. People differ a little: a quarter either way, taken after their parents." },
       { key: "switch", label: "Changing sides", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["never", "almost never", "if life is better there", "easily"]),
         help: "How readily an unhappy person joins the faction of somebody who is doing better." },
@@ -515,6 +520,15 @@
        bold, warm, greedy and stubborn come out as they did before item 10. Who they become does
        not: hot temper now counts in who takes up soldiering on the first day, and from there on. */
     const RT = rng((S.seed | 0) * 2246822519 + 7);
+    /* The minds (TODO 11). Everybody's slots in four flat arrays, a block of MB a person, so a
+       mind is no object of its own and is never copied: slot 0 is what they think about sharing
+       (what was `views`), the rest whatever they hold. A dead person's block goes to the next
+       born. How much each holds (`p.mcap`) is drawn from a stream of its own. */
+    const RM = rng((S.seed | 0) * 3266489917 + 11);
+    const MB = Math.ceil(S.memory * 1.25) + 1;
+    const M0 = MB * (Math.ceil(S.people * 1.1) + 16);   // room for the first people and a few born; grows by half after
+    let mKind = new Uint8Array(M0), mAbout = new Int32Array(M0), mStr = new Float32Array(M0), mAt = new Float32Array(M0);
+    const mFree = []; let mTop = 0;
     const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
@@ -979,7 +993,7 @@
     let heldStamp = 0;                      // changed whenever any holding is
     let allotted = false;                   // land has been shared out once (at the start)
     const landOf = v => factions[v.f] ? factions[v.f].land : "village";
-    function landLean(p, isLeader) { return p.views > 0.3 ? "village" : isLeader && p.greed > 0.6 ? "leader" : "family"; }
+    function landLean(p, isLeader) { return viewOf(p) > 0.3 ? "village" : isLeader && p.greed > 0.6 ? "leader" : "family"; }
     function landWant(f) {
       if (S.land && S.land !== "decide") return S.land;
       if (f.yours && f.yours.land) return f.yours.land;
@@ -1388,18 +1402,6 @@
       for (const v of villages) v.fullest = null;
       for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
     }
-    /* Who in a village has grain to spare (two days or more), most first, made once an hour
-       when first asked for; ties in the order of the people list, so a world is the same
-       whichever way it is walked. */
-    const spares = new Map();                                        // village id -> [hour, list]; kept off the village
-    function spareIn(v) {
-      const e = spares.get(v.id);
-      if (e && e[0] === t) return e[1];
-      const list = [];
-      for (const q of PLAIN ? people : residents(v.id)) if (q.home === v.id && q.food >= 2 && adult(q) && q.hp > 0) { q.spareFood = q.food; list.push(q); }
-      list.sort((a, b) => b.spareFood - a.spareFood);              // a stable sort: ties stay in the list's order
-      spares.set(v.id, [t, list]); return list;
-    }
     /* Somewhere inside one's own house, for sleeping. */
     function inHouse(p) {
       const h = homes[p.dwelling], u = (R() - 0.5) * 0.6, w = (R() - 0.5) * 0.5;
@@ -1424,9 +1426,9 @@
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
                   tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30 * STEP_SCALE), food: 0.8 + R() * 0.6, coins: 0, goods: 0, gear: {},
-                  hp: 1, bold: nature(R(), S.bold), warm: nature(R(), S.warm), greed: nature(R(), S.greedy), stub: clamp(S.stubborn + (R() - 0.5) * S.differ, 0, 1), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
-                  mood: 0.6, friends: new Map(), partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
-                  talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
+                  hp: 1, bold: nature(R(), S.bold), warm: nature(R(), S.warm), greed: nature(R(), S.greedy), stub: clamp(S.stubborn + (R() - 0.5) * S.differ, 0, 1), loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
+                  mood: 0.6, partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
+                  talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, sick: 0, immune: false,
                   unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id,
                   /* What they need besides food, which `p.food` already holds.
                      Rest rises with the hours awake, falls while asleep; alone
@@ -1460,13 +1462,15 @@
                   harvesting: undefined, harvestShare: undefined, markets: undefined, supplyRun: undefined,
                   /* Water (TODO 6a), fishing (6c) and boats (6d): hours without water, what they carry home, at
                      the water, and a crossing under way. Missing here they made 6a and 6 measurably slower. */
-                  dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined, spareFood: undefined,
+                  dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined,
                   /* Building (TODO 7b): the house they are waiting for, which they are working on, and whether a shift is under way. */
                   waitHouse: -1, buildAt: -1, shift: false,
                   gathering: undefined,   // TODO 9a: at the day's cutting, quarrying or mining
                   /* TODO 10: the other five of the ten, and what of the last hard times has yet to wear off. */
                   patient: nature(RT(), S.patient), temper: nature(RT(), S.temper), hard: nature(RT(), S.hardwork),
-                  curious: nature(RT(), S.curious), honest: nature(RT(), S.honest), fade: null, quarrelAt: undefined, stoleAt: undefined, leanYr: undefined };
+                  curious: nature(RT(), S.curious), honest: nature(RT(), S.honest), fade: null, quarrelAt: undefined, stoleAt: undefined, leanYr: undefined,
+                  mb: -1, mcap: clamp(Math.round(S.memory * (0.75 + RM() * 0.5)), 3, MB - 1) };   // TODO 11: the mind's block and size
+      newMind(p);
       house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
@@ -1480,12 +1484,13 @@
         p.greed = clamp((mum.greed + dad.greed) / 2 + (R() - 0.5) * stray, 0, 1);
         p.stub = clamp(((mum.stub ?? S.stubborn) + (dad.stub ?? S.stubborn)) / 2 + (R() - 0.5) * stray, 0, 1);
         for (const k of NEW_TRAITS) p[k] = clamp((mum[k] + dad[k]) / 2 + (RT() - 0.5) * stray, 0, 1);
-        p.views = clamp((mum.views + dad.views) / 2 + (R() - 0.5) * 0.4, -1, 1);
+        setView(p, clamp((viewOf(mum) + viewOf(dad)) / 2 + (R() - 0.5) * 0.4, -1, 1));
+        p.mcap = clamp(Math.round((mum.mcap + dad.mcap) / 2 + (RM() - 0.5) * S.memory * 0.25), 3, MB - 1);
       } else {
         /* Divided worlds start as two camps, pulled toward wherever their own
            faction leans, so the argument is between places as well as people. */
         const camp = R() < 0.5 ? -1 : 1;
-        p.views = clamp(f.views * 0.5 + camp * S.divided * 0.7 + (R() - 0.5) * (0.3 + S.divided * 0.5), -1, 1);
+        setView(p, clamp(f.views * 0.5 + camp * S.divided * 0.7 + (R() - 0.5) * (0.3 + S.divided * 0.5), -1, 1));
       }
       p.ix = people.length; people.push(p); byId.set(p.id, p);
       if (!PLAIN) {
@@ -1502,6 +1507,122 @@
     /* A founder's nature: spread about the middle by "How much they differ"
        — at its middle, exactly the even spread it always was. */
     function nature(u, mid) { return clamp((mid ?? 0.5) + (u - 0.5) * 2 * S.differ, 0, 1); }
+
+    /* ── the mind (TODO 11) ──────────────────────────────────────────────────
+       Ric: "a person can hold a certain number of bits of information." One slot is one thing:
+       what kind, who or what about, how strong, and when it was last refreshed. Nothing is
+       worked out as time passes: how much is left of a thing is read off its age when it is
+       read, halving over its kind's half-life (`M_HALF`; a grudge as long as a family tie). */
+    function newMind(p) {
+      const b = mFree.length ? mFree.pop() : mTop++;
+      if ((b + 1) * MB > mKind.length) {
+        const n = MB * Math.ceil(mKind.length / MB * 1.5), k = new Uint8Array(n), a = new Int32Array(n), s = new Float32Array(n), at = new Float32Array(n);
+        k.set(mKind); a.set(mAbout); s.set(mStr); at.set(mAt); mKind = k; mAbout = a; mStr = s; mAt = at;
+      }
+      const o = b * MB;
+      mKind.fill(0, o, o + MB);
+      mKind[o] = M_BELIEF; mStr[o] = 0; mAt[o] = 0;
+      p.mb = b;
+    }
+    function freeMind(p) { if (p.mb >= 0) { mFree.push(p.mb); p.mb = -1; } }
+    function viewOf(p) { return p.mb >= 0 ? mStr[p.mb * MB] : 0; }
+    function setView(p, x) { if (p.mb >= 0) mStr[p.mb * MB] = x; }
+    /* What is left of slot o now. */
+    function mNow(o) {
+      const k = mKind[o], s = mStr[o];
+      if (k === M_BELIEF) return s;
+      const half = k === M_FRIEND && s < 0 ? M_GRUDGE_HALF : M_HALF[k];
+      return s * Math.exp(-(t - mAt[o]) * Math.LN2 / half);
+    }
+    /* The slot holding this kind of thing about this one, or -1. */
+    function mFind(p, kind, about) {
+      if (p.mb < 0) return -1;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) if (mKind[o] === kind && mAbout[o] === about) return o;
+      return -1;
+    }
+    /* Somewhere to put a new thing: an empty slot, or the weakest thing held, forgotten. */
+    function mRoom(p) {
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      let drop = -1, weakest = Infinity;
+      for (let o = o0; o < o1; o++) {
+        if (mKind[o] === 0) return o;
+        /* A grudge or a family tie is harder to forget than a friendship as strong (Ric: "Grudges
+           last longest"): measured, a soldier who counted 22 people as close friends forgot the
+           one person he hated first. */
+        const k = mKind[o], x = mNow(o), w = Math.abs(x) * (k === M_KIN || (k === M_FRIEND && x < 0) ? 2 : 1);
+        if (w < weakest) { weakest = w; drop = o; }
+      }
+      return drop;
+    }
+    /* Hold a thing at this strength now, in place of what was held about it. */
+    function hold(p, kind, about, strength) {
+      if (p.mb < 0) return;
+      let o = mFind(p, kind, about);
+      if (o < 0) o = mRoom(p);
+      mKind[o] = kind; mAbout[o] = about; mStr[o] = strength; mAt[o] = t;
+    }
+    function forget(p, kind, about) { const o = mFind(p, kind, about); if (o >= 0) mKind[o] = 0; }
+    /* How p feels about somebody: −1 a bitter grudge, +1 the closest of friends; 0 nobody to them. */
+    function feel(p, id) {
+      if (p.mb < 0) return 0;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) { const k = mKind[o]; if ((k === M_FRIEND || k === M_KIN) && mAbout[o] === id) return mNow(o); }
+      return 0;
+    }
+    /* Everybody p feels anything about, as [id, feeling]. */
+    function tiesOf(p) {
+      const out = [];
+      if (p.mb < 0) return out;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) { const k = mKind[o]; if (k === M_FRIEND || k === M_KIN) out.push([mAbout[o], mNow(o)]); }
+      return out;
+    }
+    /* How many they count as friends. */
+    function circle(p) {
+      if (p.mb < 0) return 0;
+      let n = 0;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) { const k = mKind[o]; if ((k === M_FRIEND || k === M_KIN) && mNow(o) > 0.2) n++; }
+      return n;
+    }
+    /* The newest news they hold and have not forgotten (an event's id), or -1. */
+    function newsOf(p) {
+      let best = -1;
+      if (p.mb < 0) return best;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) if (mKind[o] === M_NEWS && mAbout[o] > best && mNow(o) > 0.1) best = mAbout[o];
+      return best;
+    }
+    /* What somebody has seen of another's larder: days of the other's own need over what they
+       keep back, when last seen. Asking for food goes to those one knows of (TODO 11). */
+    function sawLarder(p, q) {
+      if (q.hp <= 0 || !adult(q) || p.mb < 0) return;
+      const over = (q.food - reserve(q)) / Math.max(1e-6, dailyNeed(q));
+      if (over >= 3) hold(p, M_FOOD, q.id, Math.min(1, over / 30));
+      else forget(p, M_FOOD, q.id);
+    }
+    /* What a person holds, in plain words, for the person panel. */
+    function inMind(p) {
+      const out = [];
+      if (p.mb < 0) return out;
+      const o0 = p.mb * MB, o1 = o0 + 1 + p.mcap;
+      for (let o = o0; o < o1; o++) {
+        const k = mKind[o]; if (!k) continue;
+        const s = mNow(o), ago = Math.floor((t - mAt[o]) / DAY_HOURS), who = byId.get(mAbout[o]);
+        let text = "";
+        if (k === M_BELIEF) text = s > 0.25 ? "Thinks what is grown should be shared" : s < -0.25 ? "Thinks what a person grows is theirs" : "Sees sense on both sides of sharing";
+        else if (k === M_FRIEND || k === M_KIN) {
+          if (!who) continue;
+          const kin = k === M_KIN ? " (family)" : "";
+          text = s > 0.5 ? "Close to " + who.name + kin : s > 0.15 ? "Friends with " + who.name + kin : s < -0.5 ? "Hates " + who.name + kin : s < -0.15 ? "Holds a grudge against " + who.name + kin : "Knows " + who.name + kin;
+        } else if (k === M_NEWS) { const e = events.find(ev => ev.id === mAbout[o]); if (!e) continue; text = "Heard: " + e.text; }
+        else if (k === M_FOOD) { if (!who) continue; text = who.name + " had food to spare"; }
+        else if (k === M_DEBT) { if (!who) continue; text = "Owes " + who.name + " for food"; }
+        out.push({ kind: ["", "friend", "family", "news", "food", "debt", "belief"][k], text: text, strength: s, days: ago });
+      }
+      return out;
+    }
 
     /* ── what happens to a person changes them (TODO 10) ─────────────────────
        Ric, 2026-11-17: "A little". A hard event moves a trait a few hundredths of its range,
@@ -1536,8 +1657,9 @@
        the hot-tempered, blows. A fight is bruises, and now and then a death: about one person
        in 4,000 a year was killed in English villages of the 13th and 14th centuries (Given
        1977; Eisner 2003). LETHAL is set from that: measured over twelve world-years at ordinary
-       tempers, about 83 fights a year among some 350 people, so one in a thousand kills. */
-    const LETHAL = 0.001;
+       tempers, some 220 fights a year among about 355 people since grudges last (item 11; 83
+       before), so about one in 2,500 kills. */
+    const LETHAL = 0.0004;
     function quarrel(a, b) {
       wakeUp(b);
       count.quarrels++;
@@ -1556,7 +1678,7 @@
         }
         for (const q of [a, b]) if (q.hp !== -99 && q.hp < 0.02) q.hp = 0.02;   // hurt, not starved
       } else {
-        befriend(a, b, R() < 0.4 ? 0.15 : -0.1);
+        befriend(a, b, R() < 0.5 ? 0.2 : -0.05);   // said and done with, as often as not
         said(a, b, "quarrel", pick(["We need to talk about what you said.", "You know what you did.", "I won't stand for it."]), pick(["Fine. I was wrong.", "Leave it.", "Not this again."]));
       }
     }
@@ -2393,7 +2515,7 @@
       const mate = byId.get(p.partner);
       if (mate && mate.home === p.home && mate.hp > 0 && mate.task !== "sleep") return mate;
       let best = null, bs = 0.2;
-      for (const [id, score] of p.friends) {
+      for (const [id, score] of tiesOf(p)) {
         const q = byId.get(id);
         if (!q || q.hp <= 0 || q.home !== p.home || q.task === "sleep") continue;
         if (score > bs) { bs = score; best = q; }
@@ -2621,7 +2743,7 @@
         const room = o => clamp(1 - o.pop / crowdOf(o), -1, 1);
         const mate = byId.get(p.partner);
         let ties = 0.25 + (mate && mate.home === p.home && mate.hp > 0 ? 0.55 : 0) + p.kids * 0.12;
-        for (const [id, s] of p.friends) if (s > 0.2) { const q = byId.get(id); if (q && q.home === p.home) ties += 0.05; }
+        for (const [id, s] of tiesOf(p)) if (s > 0.2) { const q = byId.get(id); if (q && q.home === p.home) ties += 0.05; }
         let best = null, bs = 0;
         for (const o of villages) {
           if (!o.alive || o === v || atWar(o.f, p.f)) continue;
@@ -2657,55 +2779,29 @@
          meet, and in winter nobody is out. */
       if (n.food > 0.35 && p.food < 1 && v.food <= 0.05) {
         let giver = null, gs = 0;
-        /* Whom to ask: who in the village had grain to spare at the hour's start, most first
-           (TODO 7, 2026-11-16). Looking through every neighbour at every decision, even with
-           the cut below, was a fifth of a 20,000-person world's time; asking runs down this
-           list and stops where nobody further down had enough to beat the best so far. Grain
-           somebody brought home within the hour is known of the next hour. */
-        const spare = spareIn(v);
-        for (let k = 0; k < spare.length; k++) {
-          const q = spare[k];
-          if (q.spareFood * 3 <= gs) break;
-          /* What they have is looked at first, and somebody who could not beat
-             the best so far even as kin and a friend (three times their food
-             at most) is passed by before either is looked up: measured at
-             20,000 with bodies at real size, this was 43 million neighbours
-             looked through a day. The same giver is found. */
-          if (q.food < 2 || q.food * 3 <= gs) continue;
-          if (q === p || q.home !== p.home || !adult(q) || q.hp <= 0 || q.id === p.partner) continue;
-          const sc = q.food * (kin(p, q) ? 2 : 1) * ((q.friends.get(p.id) || 0) > 0.2 ? 1.5 : 1);
-          if (sc > gs) { gs = sc; giver = q; }
-        }
-        /* Nobody at home has any: the next village might, for coin. A village
-           on poor land otherwise starved beside a full one, because grain
-           crossed between villages only when whole families moved. */
-        if ((!giver || giver.food < 4) && funds(p) > 0.5 && !shared) {
-          if (PLAIN) for (const q of people) {
-            if (q.home === p.home || !adult(q) || q.hp <= 0 || q.food < 6 || atWar(q.f, p.f)) continue;
+        /* Whom to ask (TODO 11): somebody they know of. Whoever they have seen with food to spare,
+           by how much they had; family and friends, whose larders they have not seen, as worth a
+           try. Until item 11 it was whoever in the village had most put by, read off every
+           neighbour's larder, which nobody could know (and at 20,000 people the dearest thing in
+           a decision). Another village's only for coin, and only somebody seen to have plenty. */
+        const coin = funds(p) > 0.5 && !shared, o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+        const consider = (q, sc, known) => {
+          if (!q || q === p || q.hp <= 0 || !adult(q) || q.id === p.partner) return;
+          if (q.home !== p.home) {
+            if (!coin || !known || atWar(q.f, p.f)) return;
             const d = dist(p, villages[q.home]);
-            if (d > 20) continue;
-            const sc = q.food * (q.f === p.f ? 1 : 0.7) / (1 + d * 0.05);
-            if (sc > gs) { gs = sc; giver = q; }
+            if (d > 20) return;
+            sc *= (q.f === p.f ? 1 : 0.7) / (1 + d * 0.05);
           }
-          /* The same search a village at a time, leaving out whole villages
-             that are too far. Going through everybody in order, the first
-             of two equally good is the one kept; so here an equal score
-             wins only from further up the people array. */
-          else {
-            let far = null;
-            for (const o of villages) {
-              if (o.id === p.home) continue;
-              const d = dist(p, o);
-              if (d > 20) continue;
-              for (const q of residents(o.id)) {
-                if (q.food < 6 || !adult(q) || q.hp <= 0 || atWar(q.f, p.f)) continue;
-                const sc = q.food * (q.f === p.f ? 1 : 0.7) / (1 + d * 0.05);
-                if (sc > gs || (sc === gs && far !== null && q.ix < far.ix)) { gs = sc; far = q; }
-              }
-            }
-            if (far) giver = far;
-          }
+          sc *= kin(p, q) ? 2 : 1;
+          if (sc > gs) { gs = sc; giver = q; }
+        };
+        for (let o = o0; o < o1; o++) {
+          const k = mKind[o];
+          if (k === M_FOOD) { const q = byId.get(mAbout[o]); if (q) consider(q, mNow(o) * 30 * dailyNeed(q), true); }
+          else if ((k === M_FRIEND || k === M_KIN) && mNow(o) > 0.2) consider(byId.get(mAbout[o]), dailyNeed(p) * (k === M_FRIEND ? 1.5 : 1), false);
         }
+        for (const id of [p.mum, p.dad]) if (id) consider(byId.get(id), dailyNeed(p), false);
         if (giver) {
           const q = giver;
           weigh("ask", n.food * 1.3 + 0.15 - away(dist(p, q)) - dark * 0.3, () => {
@@ -2723,10 +2819,11 @@
       }
 
       /* Having it out with somebody they cannot stand (TODO 10): the hot-tempered go looking for
-         it, at most once a week at an ordinary patience. */
-      if (p.temper > 0.35 && !(t - (p.quarrelAt ?? -1e9) < (0.5 + p.patient) * 7 * DAY_HOURS)) {   // the patient bide their time
+         it, at most once a month at an ordinary patience (once a week, before grudges lasted, TODO 11:
+         with grudges kept for years, weekly made a feud of every grudge, ten times the fights). */
+      if (p.temper > 0.35 && !(t - (p.quarrelAt ?? -1e9) < (0.5 + p.patient) * 30 * DAY_HOURS)) {   // the patient bide their time
         let foe = null, worst = -0.35;
-        for (const [id, sc] of p.friends) if (sc < worst) { const q = byId.get(id); if (q && q.hp > 0 && q.home === p.home && adult(q)) { worst = sc; foe = q; } }
+        for (const [id, sc] of tiesOf(p)) if (sc < worst) { const q = byId.get(id); if (q && q.hp > 0 && q.home === p.home && adult(q)) { worst = sc; foe = q; } }
         if (foe) weigh("quarrel", (-worst - 0.2) * (p.temper - 0.35) * 2.5 - away(dist(p, foe)) * 0.5 - n.food * 0.5 - n.rest * 0.4 - n.safety * 0.3 - dark * 0.4, () => {
           go(p, foe.x + (R() - 0.5) * 0.6, foe.y + (R() - 0.5) * 0.6, "quarrel"); p.askOf = foe.id; p.quarrelAt = t; p.wait = 0;
         });
@@ -2774,12 +2871,17 @@
         q.food -= amount; p.food += amount; got += amount;
       }
       if (got < want * 0.5) {
-        const tie = (kin(p, q) ? 0.6 : 0) + (q.friends.get(p.id) || 0) + q.warm + (q.views > 0 ? 0.3 : 0);
-        if (q.food > 1 && (q.home === p.home || kin(p, q) || (q.friends.get(p.id) || 0) > 0.2) && tie > 0.6 + R() * 0.7) {
+        /* A debt is paid back: somebody who owes the asker for food gives more readily (TODO 11). */
+        const owed = mFind(q, M_DEBT, p.id), fq = feel(q, p.id);
+        const tie = (kin(p, q) ? 0.6 : 0) + fq + q.warm + (viewOf(q) > 0 ? 0.3 : 0) + (owed >= 0 ? mNow(owed) * 0.8 : 0);
+        if (q.food > 1 && (q.home === p.home || kin(p, q) || fq > 0.2 || owed >= 0) && tie > 0.6 + R() * 0.7) {
           const give = Math.min(want - got, q.food * 0.25);
           q.food -= give; p.food += give; got += give; befriend(p, q, 0.3);
+          if (owed >= 0) mKind[owed] = 0;
+          else owe(p, q, give);
         } else befriend(p, q, -0.1);
       }
+      sawLarder(p, q);   // and now they know what is in it (TODO 11)
       p.say = got > 0.05 ? (got >= want * 0.5 ? "Thank you. That will see us through the week." : "It's something.") : "They had nothing for me.";
       p.sayT = TK(60);
       if (got > 0.05) { q.say = "Take it."; q.sayT = TK(60); }
@@ -3306,9 +3408,9 @@
         const rel = f.rel[by.f];
         if (rel) { rel.dead++; rel.grief = clamp(rel.grief + 0.02, 0, 3); }
         /* Friends of the dead do not forgive the faction that did it. */
-        for (const id of p.friends.keys()) {
+        for (const [id, fl] of tiesOf(p)) {
           const q = byId.get(id);
-          if (q && p.friends.get(id) > 0.2 && q.f !== by.f) { q.loyal = clamp(q.loyal + 0.05, 0, 1); q.mood -= 0.08; }
+          if (q && fl > 0.2 && q.f !== by.f) { q.loyal = clamp(q.loyal + 0.05, 0, 1); q.mood -= 0.08; }
         }
       }
       if (f.leader === p.id) succeed(f, why);
@@ -3320,10 +3422,10 @@
       if (!pool.length) { f.leader = 0; return; }
       let next = null;
       if (f.rule === "chief" && old) next = pool.filter(q => q.mum === old.id || q.dad === old.id).sort((a, b) => b.age - a.age)[0];
-      if (!next && f.rule === "rich") next = pool.slice().sort((a, b) => b.coins - a.coins || b.friends.size - a.friends.size)[0];
+      if (!next && f.rule === "rich") next = pool.slice().sort((a, b) => b.coins - a.coins || circle(b) - circle(a))[0];
       if (!next && f.rule === "elected" && why !== "first") { vote(f, why === "old" || why === "sick" || why === "starved" || why === "battle"); return; }
-      if (!next) next = pool.slice().sort((a, b) => (b.bold + b.friends.size * 0.1) - (a.bold + a.friends.size * 0.1))[0];
-      f.leader = next.id; f.views = next.views;
+      if (!next) next = pool.slice().sort((a, b) => (b.bold + circle(b) * 0.1) - (a.bold + circle(a) * 0.1))[0];
+      f.leader = next.id; f.views = viewOf(next);
       if (why !== "first") note("leader", next.name + " now leads " + f.name + (old ? ", after " + old.name + (why === "old" ? " died of old age" : why === "battle" ? " was killed" : why === "sick" ? " died of the sickness" : why === "starved" ? " starved" : "") : "") + ".", 3, villages[next.home].x, villages[next.home].y, f.id);
     }
 
@@ -3332,16 +3434,16 @@
     function vote(f, vacant) {
       const pool = people.filter(q => q.hp !== -99 && q.f === f.id && adult(q));
       f.voteAt = t + S.term * YEAR;
-      if (pool.length < 3) { if (pool.length) { f.leader = pool[0].id; f.views = pool[0].views; } return; }
+      if (pool.length < 3) { if (pool.length) { f.leader = pool[0].id; f.views = viewOf(pool[0]); } return; }
       const sitting = vacant ? null : byId.get(f.leader);
-      const stand = pool.slice().sort((a, b) => (b.friends.size + b.bold * 3) - (a.friends.size + a.bold * 3)).slice(0, 3);
+      const stand = pool.slice().sort((a, b) => (circle(b) + b.bold * 3) - (circle(a) + a.bold * 3)).slice(0, 3);
       if (sitting && stand.indexOf(sitting) < 0) stand.push(sitting);
       const tally = stand.map(() => 0);
       for (const q of pool) {
         let best = 0, bs = -1e9;
         for (let i = 0; i < stand.length; i++) {
           const c = stand[i];
-          let s = -Math.abs(q.views - c.views) + (q.friends.get(c.id) || 0) * 0.6 + (R() - 0.5) * 0.2;
+          let s = -Math.abs(viewOf(q) - viewOf(c)) + feel(q, c.id) * 0.6 + (R() - 0.5) * 0.2;
           if (c === sitting) s += (q.loyal - 0.5) * 1.2;
           if (c === q) s += 0.3;
           if (s > bs) { bs = s; best = i; }
@@ -3355,26 +3457,27 @@
       const share = Math.round(tally[win] / pool.length * 100);
       if (w === sitting) note("vote", f.name + " kept " + w.name + " as leader, with " + share + "% of the vote.", 1.5, villages[w.home].x, villages[w.home].y, f.id);
       else note("vote", f.name + " voted in " + w.name + " with " + share + "%" + (sitting ? ", turning out " + sitting.name : "") + ".", 3, villages[w.home].x, villages[w.home].y, f.id);
-      f.leader = w.id; f.views = w.views;
+      f.leader = w.id; f.views = viewOf(w);
       /* A new leader is a fresh start for the people who chose them. */
-      if (w !== sitting) for (const q of pool) q.loyal = clamp(q.loyal + 0.12 - Math.abs(q.views - w.views) * 0.1, 0, 1);
+      if (w !== sitting) for (const q of pool) q.loyal = clamp(q.loyal + 0.12 - Math.abs(viewOf(q) - viewOf(w)) * 0.1, 0, 1);
     }
 
     /* ── talking ───────────────────────────────────────────────────────── */
+    /* Feeling for somebody, held in the mind (TODO 11): family as family, everybody else as a
+       friend or, below nothing, a grudge. A full mind forgets its weakest thing to make room. */
     function befriend(a, b, by) {
       const set = (p, q) => {
-        const v = clamp((p.friends.get(q.id) || 0) + by, -1, 1);
-        p.friends.set(q.id, v);
-        if (p.friends.size > S.memory) {
-          /* Somebody has to be forgotten: whoever they feel least about. */
-          let drop = 0, weakest = 9;
-          for (const [id, s] of p.friends) if (id !== q.id && Math.abs(s) < weakest) { weakest = Math.abs(s); drop = id; }
-          p.friends.delete(drop);
-        }
+        const kind = kin(p, q) ? M_KIN : M_FRIEND, o = mFind(p, kind, q.id);
+        hold(p, kind, q.id, clamp((o >= 0 ? mNow(o) : 0) + by, -1, 1));
       };
       set(a, b); set(b, a);
     }
-    const leans = p => (p.views > 0.25 ? "share" : p.views < -0.25 ? "keep" : "middle");
+    /* Food given is owed (TODO 11): as many days of the receiver's need as were given, up to five. */
+    function owe(p, q, amount) {
+      const o = mFind(p, M_DEBT, q.id);
+      hold(p, M_DEBT, q.id, Math.min(1, (o >= 0 ? mNow(o) : 0) + amount / (5 * Math.max(1e-6, dailyNeed(p)))));
+    }
+    const leans = p => (viewOf(p) > 0.25 ? "share" : viewOf(p) < -0.25 ? "keep" : "middle");
     function said(a, b, kind, la, lb) {
       a.say = la; a.sayT = TK(30); b.say = lb || ""; b.sayT = TK(30);
       a.talkingTo = b.id; b.talkingTo = a.id;
@@ -3393,9 +3496,9 @@
     function conversationState(p, other) {
       return { id: p.id, name: p.name, age: Math.floor(p.age), job: p.job,
         home: villages[p.home].name, faction: factions[p.f].name,
-        food: p.food, coins: p.coins, goods: p.goods, views: p.views, loyal: p.loyal,
-        trust: p.friends.get(other.id) || 0, partner: byId.get(p.partner)?.name || "None",
-        news: p.news, sick: p.sick > 0, hungry: p.hungry > 0 };
+        food: p.food, coins: p.coins, goods: p.goods, views: viewOf(p), loyal: p.loyal,
+        trust: feel(p, other.id), partner: byId.get(p.partner)?.name || "None",
+        news: newsOf(p), sick: p.sick > 0, hungry: p.hungry > 0 };
     }
     function converse(a, b) {
       wakeUp(a); wakeUp(b);
@@ -3431,21 +3534,30 @@
       a.talk = TK(25) + Math.floor(R() * 50 * STEP_SCALE * (1.2 - S.talk)); b.talk = TK(25) + Math.floor(R() * 50 * STEP_SCALE * (1.2 - S.talk));
       const same = a.f === b.f, war = atWar(a.f, b.f);
       const fa = factions[a.f], fb = factions[b.f];
-      const fr = a.friends.get(b.id) || 0;
-      const like = 1 - Math.abs(a.views - b.views);          // 1 agree … −1 opposite
+      const fr = feel(a, b.id);
+      /* What each sees of the other's larder (TODO 11): who to ask when short. */
+      sawLarder(a, b); sawLarder(b, a);
+      const like = 1 - Math.abs(viewOf(a) - viewOf(b));          // 1 agree … −1 opposite
       /* How open each of them is: their own nature, not the world's. */
       const open = 1 - ((a.stub ?? S.stubborn) + (b.stub ?? S.stubborn)) / 2, openA = 1 - (a.stub ?? S.stubborn), openB = 1 - (b.stub ?? S.stubborn);
       /* Sickness goes where talk goes. */
       if (a.sick > 0 && !b.immune && b.sick === 0 && R() < CATCH) { b.sick = ILLNESS_HOURS; count.infected++; }
       if (b.sick > 0 && !a.immune && a.sick === 0 && R() < CATCH) { a.sick = ILLNESS_HOURS; count.infected++; }
 
+      /* 0 — somebody holding a grudge has nothing to say to the other (TODO 11): a cold word, and
+         nothing warms between them. Until item 11 every chat warmed any two people, and a
+         grudge in a village of sixty was gone in a year of passing the time of day. */
+      if (fr < -0.35 || feel(b, a.id) < -0.35) {
+        said(a, b, "cold", pick(["Hm.", "You.", "Not you again."]), pick(["", "Hm.", "Keep walking."]));
+        return;
+      }
       /* 1 — somebody is hungry and the other has food. */
       const hungry = a.hungry > 0 ? a : b.hungry > 0 ? b : null;
       if (hungry) {
         const other = hungry === a ? b : a;
         if (other.food > 0.9 && !war) {
-          if (other.warm + (other.friends.get(hungry.id) || 0) + (other.views > 0 ? 0.3 : 0) > 0.6 + R() * 0.7) {
-            other.food -= 0.4; hungry.food += 0.4; befriend(hungry, other, 0.3);
+          if (other.warm + feel(other, hungry.id) + (viewOf(other) > 0 ? 0.3 : 0) > 0.6 + R() * 0.7) {
+            other.food -= 0.4; hungry.food += 0.4; befriend(hungry, other, 0.3); owe(hungry, other, 0.4);
             said(hungry, other, "help", "Can you spare some grain?", "Take this. Eat.");
           } else {
             befriend(hungry, other, -0.15);
@@ -3468,11 +3580,12 @@
         return;
       }
       /* 3 — news travels. Whoever has heard the newer thing passes it on. */
-      if (a.news !== b.news && R() < 0.5) {
-        const teller = a.news > b.news ? a : b, hearer = teller === a ? b : a;
-        const e = events.find(ev => ev.id === teller.news);
+      const na = newsOf(a), nb = newsOf(b);
+      if (na !== nb && R() < 0.5) {
+        const teller = na > nb ? a : b, hearer = teller === a ? b : a, id = Math.max(na, nb);
+        const e = events.find(ev => ev.id === id);
         if (e) {
-          hearer.news = teller.news;
+          hold(hearer, M_NEWS, id, 1);
           /* Hearing of a killing or a lost village is a grievance of your own. */
           if ((e.kind === "taken" || e.kind === "war") && e.f === hearer.f) hearer.loyal = clamp(hearer.loyal + 0.02, 0, 1);
           said(teller, hearer, "news", "Did you hear? " + e.text, pick(["No. When?", "I had not heard.", "So it's true.", "That will mean trouble."]));
@@ -3523,20 +3636,21 @@
         return;
       }
       if (R() < 0.6) {
-        const speaker = Math.abs(a.views) >= Math.abs(b.views) ? a : b, other = speaker === a ? b : a;
+        const speaker = Math.abs(viewOf(a)) >= Math.abs(viewOf(b)) ? a : b, other = speaker === a ? b : a;
         const line = leans(speaker) === "share" ? "Nobody should go hungry while the stores are full."
                    : leans(speaker) === "keep" ? "What a person grows is theirs."
                    : "There's sense on both sides.";
         if (like > 0.2 || fr > 0.3) {
-          const mid = (a.views + b.views) / 2;
-          a.views += (mid - a.views) * openA * 0.3; b.views += (mid - b.views) * openB * 0.3;
+          const mid = (viewOf(a) + viewOf(b)) / 2;
+          setView(a, viewOf(a) + (mid - viewOf(a)) * openA * 0.3); setView(b, viewOf(b) + (mid - viewOf(b)) * openB * 0.3);
           befriend(a, b, 0.12);
           if (!same) { fa.rel[b.f].op = clamp(fa.rel[b.f].op + 0.006, -1, 1); fb.rel[a.f].op = clamp(fb.rel[a.f].op + 0.006, -1, 1); }
           said(speaker, other, "agree", line, pick(["You're right.", "I've come round to that.", "My mother said the same."]));
         } else {
           /* Too far apart: each digs in, and they like each other less. */
-          a.views = clamp(a.views + Math.sign(a.views - b.views) * openA * 0.04, -1, 1);
-          b.views = clamp(b.views + Math.sign(b.views - a.views) * openB * 0.04, -1, 1);
+          const va = viewOf(a), vb = viewOf(b);
+          setView(a, clamp(va + Math.sign(va - vb) * openA * 0.04, -1, 1));
+          setView(b, clamp(vb + Math.sign(vb - va) * openB * 0.04, -1, 1));
           befriend(a, b, -0.2 - (war ? 0.2 : 0));
           if (!same) { fa.rel[b.f].op = clamp(fa.rel[b.f].op - 0.008, -1, 1); fb.rel[a.f].op = clamp(fb.rel[a.f].op - 0.008, -1, 1); }
           said(speaker, other, "argue", line, war ? "Tell that to the ones your soldiers killed." : pick(["That's a fool's talk.", "Easy to say with a full belly.", "You'd ruin us."]));
@@ -4779,8 +4893,7 @@
       if (p.fade !== null) settle(p);   // TODO 10: hard times wearing off (a plain check first: calling it for everybody cost 8% of a 5,000-person world)
       const v = villages[p.home], f = factions[p.f];
       const anyWar = Object.keys(f.rel).some(k => f.rel[k].war);
-      let friendsHere = 0;
-      for (const s of p.friends.values()) if (s > 0.2) friendsHere++;
+      const friendsHere = circle(p);
       const want = (p.hungry > 0 ? 0 : 0.45) + (p.goods > 0.1 ? 0.12 : 0) + Math.min(0.15, friendsHere * 0.03) +
                    (anyWar ? 0 : 0.1) + (p.partner ? 0.08 : 0) + (0.1 - taxOf(v) * 0.25) - (p.sick > 0 ? 0.2 : 0);
       p.mood += (clamp(want, 0, 1) - p.mood) * 0.15;
@@ -4788,7 +4901,7 @@
       /* Loyalty follows how life is going, how far the leader's mind is from
          theirs, and whether this flag was ever theirs. */
       const lead = byId.get(f.leader);
-      const far = lead ? Math.abs(p.views - lead.views) : 0.5;
+      const far = lead ? Math.abs(viewOf(p) - viewOf(lead)) : 0.5;
       const wantLoyal = p.mood * 0.85 + (S.loyalty - 0.5) * 0.7 + 0.2 - far * 0.22 - taxOf(v) * 0.4 -
                         (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06);
       p.loyal += (clamp(wantLoyal, 0, 1) - p.loyal) * 0.05;
@@ -5017,21 +5130,21 @@
         const old = byId.get(f.leader);
         if (f.rule === "elected") vote(f, false);
         else {
-          const next = here.filter(p => p !== old).sort((a, b) => (b.bold + b.friends.size * 0.1) - (a.bold + a.friends.size * 0.1))[0];
+          const next = here.filter(p => p !== old).sort((a, b) => (b.bold + circle(b) * 0.1) - (a.bold + circle(a) * 0.1))[0];
           if (!next) return;
-          f.leader = next.id; f.views = next.views;
+          f.leader = next.id; f.views = viewOf(next);
           note("coup", next.name + " has thrown " + (old ? old.name : "the old leader") + " out and taken " + f.name + ".", 3.5, v.x, v.y, f.id);
-          for (const p of people) if (p.f === f.id) p.loyal = clamp(p.loyal + 0.2 - Math.abs(p.views - next.views) * 0.15, 0, 1);
+          for (const p of people) if (p.f === f.id) p.loyal = clamp(p.loyal + 0.2 - Math.abs(viewOf(p) - viewOf(next)) * 0.15, 0, 1);
         }
         return;
       }
       if (!villages.some(o => o.alive && o.f === v.f && o !== v)) return;
       const rebels = here.filter(p => p.loyal < 0.5);
       if (rebels.length < 6) return;
-      const head = rebels.slice().sort((a, b) => (b.bold + b.friends.size * 0.1) - (a.bold + a.friends.size * 0.1))[0];
+      const head = rebels.slice().sort((a, b) => (b.bold + circle(b) * 0.1) - (a.bold + circle(a) * 0.1))[0];
       const names = new Set(factions.map(o => o.name));
       let name; do { name = R() < 0.5 ? "Free " + v.name : pick(F_FIRST) + " " + pick(F_LAST); } while (names.has(name) && names.size < 150);
-      const nf = newFaction(name, head.views);
+      const nf = newFaction(name, viewOf(head));
       nf.treasury = 0; nf.tax = Math.min(f.tax, S.tax); nf.leader = head.id; nf.rule = f.rule === "elected" ? "elected" : "chief";
       v.f = nf.id; v.broke = t; v.siege = 0;
       const refuge = villages.filter(o => o.alive && o.f === f.id).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
@@ -5122,14 +5235,14 @@
       guard.sort(order).slice(0, fall).forEach(p => die(p, "battle"));
       angry.sort(order).slice(0, Math.ceil(fall * 0.7)).forEach(p => die(p, "battle"));
       const alive = angry.filter(p => p.hp !== -99);
-      const head = alive.sort((a, b) => (b.bold + b.friends.size * 0.1) - (a.bold + a.friends.size * 0.1))[0];
+      const head = alive.sort((a, b) => (b.bold + circle(b) * 0.1) - (a.bold + circle(a) * 0.1))[0];
       if (!head) return false;
       const was = f.rule, wasLead = byId.get(f.leader);
       /* What they replace it with is their own leaning: a people who believe
          in sharing vote; one that does not follows the one who led them. */
-      const lean = alive.reduce((s, p) => s + p.views, 0) / alive.length;
+      const lean = alive.reduce((s, p) => s + viewOf(p), 0) / alive.length;
       f.rule = lean > -0.15 ? "elected" : "chief";
-      f.leader = head.id; f.views = head.views; f.voteAt = t + S.term * YEAR;
+      f.leader = head.id; f.views = viewOf(head); f.voteAt = t + S.term * YEAR;
       for (const p of people) if (p.f === f.id) p.loyal = clamp(p.loyal + (p.loyal < 0.3 ? 0.35 : -0.1), 0, 1);
       const v = villages[head.home];
       count.revolutions = (count.revolutions || 0) + 1;
@@ -5145,7 +5258,7 @@
       if (revolution(f)) return;
       if (f.rule === "rich") {
         const top = people.filter(q => q.f === f.id && adult(q)).sort((a, b) => b.coins - a.coins)[0];
-        if (top && top !== lead && top.coins > lead.coins * 1.5 + 5) { f.leader = top.id; f.views = top.views; note("leader", top.name + ", now the richest in " + f.name + ", has taken it over from " + lead.name + ".", 2.5, villages[top.home].x, villages[top.home].y, f.id); }
+        if (top && top !== lead && top.coins > lead.coins * 1.5 + 5) { f.leader = top.id; f.views = viewOf(top); note("leader", top.name + ", now the richest in " + f.name + ", has taken it over from " + lead.name + ".", 2.5, villages[top.home].x, villages[top.home].y, f.id); }
       }
       /* Who holds the land (TODO 7c). */
       { const want = landWant(f); if (want !== f.land) setLand(f, want); }
@@ -5197,7 +5310,7 @@
           else if (f.treasury > wages * 3 + f.pop * 0.5 && f.tax > S.tax * 0.5) f.tax = Math.max(S.tax * 0.5, f.tax - 0.02);
           /* A leader who believes in sharing feeds anybody who cannot pay; one
              who does not waits until the treasury is overflowing. */
-          f.relief = lead.views > 0.1 || f.treasury > wages * 2 + f.pop * 1.5;
+          f.relief = viewOf(lead) > 0.1 || f.treasury > wages * 2 + f.pop * 1.5;
         }
         /* Coins a treasury has no use for go back into the tills of its
            villages — it buys from them — or every coin in the world would end
@@ -5353,6 +5466,7 @@
           const p = people[i];
           if (p.hp !== -99) { p.ix = w; people[w++] = p; continue; }
           p.ix = -1;
+          freeMind(p);   // TODO 11: the next born takes the block
           if (PLAIN) continue;
           /* Off the lists that are no longer refilled: where they stood at
              once (nobody could be blocked by the dead anyway), the square's
@@ -5370,7 +5484,7 @@
         /* The newest thing that happened is known first where it happened. */
         if (events.length) {
           const e = events[events.length - 1];
-          if (e.t > t - REFLECT_HOURS) for (const p of people) if (p.news < e.id && (p.f === e.f || Math.hypot(p.x - e.x, p.y - e.y) < 6)) { if (R() < 0.3) p.news = e.id; }
+          if (e.t > t - REFLECT_HOURS) for (const p of people) if ((p.f === e.f || Math.hypot(p.x - e.x, p.y - e.y) < 6) && newsOf(p) < e.id) { if (R() < 0.3) hold(p, M_NEWS, e.id, 1); }
         }
       }
       if (t % DAY_HOURS === 0) {
@@ -5545,6 +5659,8 @@
       send: (p, x, y, task) => go(p, x, y, task || "idle"),
       /* Fields held by households (TODO 7c): square -> house, and a number that changes when they do. */
       held: held, get heldStamp() { return heldStamp; },
+      inMind: inMind, tiesOf: tiesOf, viewOf: viewOf, feel: feel, newsOf: newsOf,   // TODO 11
+      setView: setView, befriend: befriend,   // for the tests
       /* Paths and roads (TODO 7d): how trodden each square is, 1 a path and 2 a road, and a number
          that changes when they do. */
       trod: trod, track: track, get trackStamp() { return trackStamp; },

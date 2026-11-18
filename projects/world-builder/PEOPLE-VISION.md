@@ -816,7 +816,7 @@ when it is built.
 - [x] Add patient, hot-tempered, hardworking, curious, honest, and what each changes. (2026-11-17, TODO item 10)
 - [x] How events move traits, and how fast (2026-11-17, TODO item 10: Ric, "A little") (Ric: "those numbers can change based on
   cercumstances").
-- [ ] The mind: how many slots, what kinds of thing a slot holds, how the weakest is forgotten.
+- [x] The mind: how many slots, what kinds of thing a slot holds, how the weakest is forgotten. (2026-11-17, TODO item 11: Ric, 20, "A little", "Grudges last longest")
 - [ ] Skills: learned by doing, taught, lost when the people who had them die.
 - [ ] Health: wounds, sickness, old age, what a person can no longer do.
 - [ ] What the visitor sets about people at the start ("what the people are kinda like").

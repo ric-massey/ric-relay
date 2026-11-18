@@ -984,7 +984,7 @@ Research notes:
 - **Killing.** 13th- and 14th-century England, about 20 to 25 homicides a year in 100,000 (Given
   1977; Eisner 2003): one in about 4,000.
 
-### [ ] 11. The mind: a fixed number of things a person holds
+### [x] 11. The mind: a fixed number of things a person holds
 
 **Now:** a list of friends, one piece of news, one number for belief. Ric: "a person can hold a
 certain number of bits of information."
@@ -1004,7 +1004,31 @@ memories fade; fixed-size ways to store this that cost nothing to copy or scan.
 holds in plain words; a grudge formed in year 1 still changes a choice in year 3.
 **Budget:** default; memory per person must not rise.
 
+Ric's answers (2026-11-17, "Start item 11"): **20** things by default; people differ **"A
+little"** (a quarter either way, from birth, taken after the parents); **"Grudges last longest"**
+(a friendship not kept up halves in about a year, family and grudges in about five, news in a
+season).
+
+**Done 2026-11-17.** Each person's mind is a fixed number of slots in four flat arrays shared by
+the world: friends and grudges, family, news, larders seen with food to spare, debts for food,
+and what they think about sharing. A full mind forgets its weakest (grudges and family counting
+double); things fade by their age when read. Asking for food goes to those one knows of; a debt
+is paid back; a grudge turns a chat cold. The person panel lists what somebody holds in plain
+words. **Not met / open:** right after a world is made a person takes more (the bench: 0.80 → 1.29
+KB; the minds are there from the start); once it has run a few days, 0.7 KB less. People move house more (248
+moves a world-year against 168). Friendships still saturate: somebody who chats daily calls
+twenty people close, where the studies find five; the layers are not built. News held is only
+the newest; who has food is only seen, never told — passing what one holds is item 12.
+
 Research notes:
+- **How many, and in layers.** About 5 closest, 15, 50 and 150 (Dunbar 1993; Zhou et al. 2005).
+  Twenty slots: the inner two layers and a handful of things known.
+- **How memories and ties fade.** Closeness falls without contact, friends much faster than
+  family (Roberts and Dunbar 2011); forgetting falls off with age (Ebbinghaus; Wixted 2004). Bad
+  is remembered longer than good (Baumeister et al. 2001).
+- **Fixed-size storage that costs nothing to copy or scan.** One block per person in flat typed
+  arrays (struct of arrays); the dead's blocks reused; fading read off the age, so nothing is
+  touched as time passes.
 
 ### [ ] 12. Talking as passing what you hold
 
@@ -1191,4 +1215,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-17 | 8 | AMD Ryzen 5 3600, 24 GB | 1.72 s a day, 174× | 14.2 s a day, 21× | 3.6 MB, 0.71 KB | **towns and cities**; a paid-building search made cheap. Against item 7: 2,000 0.62 → 0.57 s, 5,000 2.12 → 1.72 s, 20,000 15.1 → 14.2 s, 400 on 500 km 0.10 → 0.12 s |
 | 2026-11-17 | 9 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 152× | 14.55 s a day, 21× | 3.8 MB, 0.74 KB | **materials and livings**: wood, stone, ore, herds, game, firewood. Against before: 2,000 0.60 → 0.68 s, 5,000 1.80 → 1.96 s, 20,000 14.95 → 14.55 s, 400 on 500 km 0.13 → 0.19 s (more walking) |
 | 2026-11-17 | 10 | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | 15.96 s a day, 19× | 4.1 MB, 0.80 KB | **the ten traits**: quarrels, fights, theft, raids and hard years moving people. Against item 9: 2,000 0.66 → 0.66 s, 5,000 1.98 → 2.06 s, 20,000 14.6 → 16.0 s (+9%: the old ask-a-neighbour search, with more people short), 400 on 500 km 0.19 → 0.14 s; memory 0.67 → 0.80 KB a person (five traits, four fields) |
+| 2026-11-17 | 11 | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 155× | 16.30 s a day, 18× | 6.6 MB, 1.29 KB, measured right after making the world (0.80 before: the minds are there from the start) | **the mind**: twenty slots a person in flat arrays. Against item 10: 2,000 0.67 → 0.68 s, 5,000 2.08 → 1.92 s, 20,000 16.2 → 16.3 s, 400 on 500 km 0.14 → 0.14 s; a running world 0.7 KB a person lighter |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

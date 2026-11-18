@@ -171,7 +171,7 @@
     function tint(p, view) {
       if (view === "faction") return p.f;
       if (view === "mood") return Math.min(23, Math.max(0, Math.round(p.mood * 23)));
-      if (view === "views") return p.views > 0.25 ? 2 : p.views < -0.25 ? 1 : 0;
+      if (view === "views") { const x = w.viewOf(p); return x > 0.25 ? 2 : x < -0.25 ? 1 : 0; }
       return Math.min(23, Math.round(Math.sqrt(Math.min(1, p.coins / 40)) * 23));
     }
     function gearOf(w, p) {
@@ -351,7 +351,7 @@
             const f = w.factions[p.f], home = w.villages[p.home];
             const children = [];
             for (const q of w.people) if (q.mum === p.id || q.dad === p.id) { children.push(q.id); named[q.id] = q.name; }
-            const friends = [...p.friends].filter(x => name(x[0]));
+            const friends = w.tiesOf(p).filter(x => name(x[0]));
             name(p.partner); name(p.mum); name(p.dad);
             const other = p.sayT > 0 && byId.get(p.talkingTo);
             out.person = {
@@ -359,7 +359,7 @@
               food: p.food, coins: p.coins, goods: p.goods, mood: p.mood, loyal: p.loyal, bold: p.bold, warm: p.warm, stub: p.stub, greed: p.greed, patient: p.patient, temper: p.temper, hard: p.hard, curious: p.curious, honest: p.honest,
               rest: p.rest, alone: p.alone, fear: p.fear, hungry: p.hungry, sick: p.sick, say: p.say,
               cargo: p.cargo ? { what: p.cargo.what, amount: p.cargo.amount } : null,
-              friends: friends, children: children, listener: other && other.sayT > 0 && other.talkingTo === p.id ? other.id : 0,
+              friends: friends, mind: w.inMind(p), mcap: p.mcap, children: children, listener: other && other.sayT > 0 && other.talkingTo === p.id ? other.id : 0,
               activity: w.activity(p), adult: w.adult(p), leans: w.leans(p), dailyNeed: w.dailyNeed(p), urgency: w.urgency(p),
               equipment: w.equipment(p), tradeCapacity: w.tradeCapacity(p), leads: f.leader === p.id,
               home: { id: home.id, name: home.name }, faction: { name: f.name, colour: f.colour }, bornUnder: w.factions[p.from].name,

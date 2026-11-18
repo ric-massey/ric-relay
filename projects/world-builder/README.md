@@ -53,6 +53,7 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/behaviour.mjs` | Not a check — a measurement. Reports what share of an adult's hours each setting actually moves, against rerolling the seed as the null. Run it before and after changing how people decide. A short probe cannot see a slow mechanism; use `--days`. |
 | `test/decisions.test.mjs` | Quick decision checks: a day slept, worked and walked in human proportions, and seven settings that must move at least 3–5% of an adult's hours. Guards against the hash check passing while a setting does nothing. |
 | `test/traits.test.mjs` | The ten traits (TODO item 10): the first four drawn as before, each slider sets what people are like, each new trait changes a choice, and a raided village ends up quicker to anger, warmer to its own and less patient than the same village not raided. |
+| `test/mind.test.mjs` | The mind (TODO item 11): no mind ever holds more than its size, sizes differ a little about 20, what is held reads in plain words, and a grudge from year 1 is acted on in year 3. |
 
 No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1`, then open
 `/projects/world-builder/`.
@@ -1756,6 +1757,78 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### The mind: a fixed number of things a person holds (2026-11-17)
+
+TODO item 11. A person had a list of up to ten friends and grudges, one piece of news and one
+number for what they think about sharing. Ric: "a person can hold a certain number of bits of
+information". He chose **20** things by default; people differing **"A little"**; and **"Grudges
+last longest"**.
+
+- **Slots.** Each person holds a fixed number of things (the "How much a person can hold" slider,
+  6 to 60, 20 by default; it was "How many people they remember", 10). Each is one of: a feeling
+  about somebody (a friend, or below nothing a grudge), the same about family, a piece of news, a
+  larder they have seen with food to spare, a debt for food given them, and what they think about
+  sharing (always held: what was `views`). A slot is a kind, who or what it is about, how strong,
+  and when it was last refreshed. A full mind forgets its weakest thing to make room; a grudge or
+  a family tie counts double there, so a soldier who calls twenty people close friends does not
+  forget first the one man he hates.
+- **People differ a little.** Each holds the number set, a quarter either way, taken after the
+  parents (`p.mcap`), drawn from a random stream of its own.
+- **Fading.** Nothing is worked out as time passes: how much is left of a thing is read off its
+  age whenever it is read, halving over its kind's half-life. A friendship not kept up, a year;
+  family and grudges, five years; a debt, five; news, a season; a larder seen, a month.
+- **Decisions read the mind.**
+  - *Asking for food* goes to somebody they know of: a larder they have seen with food to spare,
+    by how much, or family and friends whose larders they have not seen, as worth a try; another
+    village only for coin and only somebody seen to have plenty. Before, it was whoever in the
+    village had most put by, read off every neighbour's larder, which nobody could know. Larders
+    are seen by talking with somebody and by asking at the door.
+  - *A debt is paid back*: somebody who owes the asker for food gives more readily, and the debt
+    is then gone. Food given, in a hungry chat or at the door, is owed.
+  - *A grudge* turns a chat cold: a cold word, and nothing warms between them. Until now every
+    chat warmed any two people, and a grudge in a village of sixty was gone in a year of passing
+    the time of day. The hot-tempered still go to have it out, now at most once a month at an
+    ordinary patience (weekly, while grudges did not last, made a feud of every grudge: ten times
+    the fights); half the quarrels that stay words leave things better.
+  - Friends, family, news and belief are read from the mind wherever they were read before:
+    visiting, moving house, voting, leaders, the friends of the battle dead, mood.
+- **Storage.** Every mind is a block in four flat arrays shared by the world (kind, about,
+  strength, when), not an object of its own; the dead give their block to the next born.
+- **The person panel** lists what somebody holds, strongest first, in plain words, with how long
+  ago: "Holds a grudge against Corl — 2 years ago", "Hesk had food to spare", "Heard: …".
+
+Sources.
+- How many people a person keeps track of, and in layers: about 5 closest, 15, 50 and 150
+  (Dunbar 1993; Zhou et al. 2005). Twenty slots hold the inner two layers and a few things known.
+- How ties fade: emotional closeness falls without contact, friendships much faster than family
+  (Roberts and Dunbar 2011). Forgetting follows a falling curve with age (Ebbinghaus; Wixted
+  2004); halving at a fixed rate is the simplest such curve.
+- Bad things weigh more and are remembered longer than good ones (Baumeister et al. 2001), hence
+  a grudge counting double when something must be forgotten.
+- Fixed-size storage: struct of arrays, as data-oriented engines lay out many small records, so
+  nothing is allocated per person and nothing need be copied or scanned beyond one person's block.
+
+Measured.
+- *A year, twelve worlds* (the same twelve seeds as item 10), against item 10: 356 alive a world
+  against 359, 18 starved against 19: asking only those one knows of fed people no worse. People
+  move house more, 248 moves a world against 168, with friendships fading when not kept up. With
+  grudges lasting, about 360 quarrels and 220 fights a world-year (140 and 87 before), and the
+  chance a fight kills set again from the medieval rate: one killing in about 4,400 people a year.
+- *First tries, and what they taught*: with every chat warming any two people, a grudge of −0.9
+  was a friendship of +1 two years later; then a soldier with twenty-two "close" friends forgot
+  the one man he hated first, as the weakest thing he held; then, with grudges kept for years and
+  the hot-tempered having it out weekly, ten times item 10's quarrels.
+- *Hours* (`test/behaviour.mjs`, "How much a person can hold" 20 against 40): 2.0% of an adult's
+  hours over four days, 2.8% over sixty.
+- *Speed* (`test/bench.mjs`, two runs each, against item 10): 400 people 0.13 → 0.13 s a day,
+  2,000 0.67 → 0.68, 5,000 2.08 → 1.92 (asking no longer reads every neighbour's larder), 20,000
+  16.2 → 16.3, 400 on 500 km 0.14 → 0.14.
+- *Memory*: in a world that has run a few days, less than before (5,000 people, the whole world:
+  3.42 against 4.13 KB a person on day 3, 4.00 against 4.69 on day 30), the friends lists having
+  grown and the minds not. Right after a world is made, which is what the bench's column reads,
+  more: 0.80 → 1.29 KB a person by the bench (2.61 against 2.44 KB for the whole world), since the
+  minds are there from the start.
+
 ### The ten traits, and what happens moving them (2026-11-17)
 
 TODO item 10. People had five traits (bold, warm, greedy, stubborn, loyal), set at birth and never
@@ -1776,9 +1849,10 @@ the start is **"Ten sliders"**; and a fight between neighbours kills **"Rarely, 
     the fields, fishing, herding and hunting up to 0.25 higher and the impatient lower. They wait
     longer before having it out with somebody.
   - *Hot-tempered*: somebody who cannot stand a neighbour (feeling below −0.35) goes to have it
-    out with them, at most once a week at an ordinary patience. Words, or between two tempers
+    out with them, at most once a week at an ordinary patience (once a month since item 11). Words, or between two tempers
     blows (a chance of 1.2 × their mean temper squared): bruises, both thinking worse of each
-    other, and one fight in a thousand kills. The family of somebody killed holds it against the
+    other, and one fight in a thousand kills (one in 2,500 since item 11, when grudges began to
+    last and fights grew to some 220 a world-year). The family of somebody killed holds it against the
     killer. Hot temper also counts toward soldiering and patrolling.
   - *Honest*: somebody hungry with nothing to pay with may steal from a neighbour's house with a
     fortnight put by, best by night, a third of what is over ten days (at most three days' food),

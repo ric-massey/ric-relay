@@ -2208,7 +2208,7 @@
         "<button class='item person-row' data-go='person:" + p.id + "'" + (picked?.person === p.id ? " aria-current='true'" : "") + "><strong>" + esc(p.name) + "</strong><span class='small'>" + Math.floor(p.age) + (Math.floor(p.age) === 1 ? " year · " : " years · ") + esc(p.job) + " · " + esc(p.home) + "</span><span class='small'>" + esc(p.faction) + "</span><span>" + esc(p.activity) + "</span><span class='small'>" + esc(p.gear || "No equipment in use") + "</span></button>").join("") + pager);
   }
 
-  const TALK_TOPICS = { help: "Asking for food", refuse: "Help refused", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
+  const TALK_TOPICS = { cold: "A cold word", fight: "A fight", quarrel: "A quarrel", help: "Asking for food", refuse: "Help refused", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
   function exchangeTime(c) {
     const day = c.day || 0, minute = Math.floor(day % 1 * 1440);
     return "Year " + (Math.floor(day / 365) + 1) + " · day " + (Math.floor(day % 365) + 1) + " · " + String(Math.floor(minute / 60)).padStart(2, "0") + ":" + String(minute % 60).padStart(2, "0");
@@ -2397,6 +2397,9 @@
         "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 2) + " rations</dd><dt>Daily need</dt><dd>" + num(p.dailyNeed, 2) + " rations</dd><dt>Carried food covers</dt><dd>" + num(p.food / p.dailyNeed, 1) + " days</dd>" + (coins ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
         "<dt>Loose goods</dt><dd>" + num(p.goods, 2) + "</dd><dt>Children</dt><dd>" + p.kids + "</dd></dl>" + equipmentPane(p) +
         (listener ? "<p>Talking to " + familyLink(listener) + "</p>" : "") +
+        /* What they hold (TODO 11): every thing in their mind, in plain words, strongest first. */
+        (p.mind ? "<h3>On their mind</h3><p class='small'>" + p.mind.length + " things of the " + (p.mcap + 1) + " they can hold.</p><ul class='mind'>" +
+          p.mind.slice().sort((a, b) => Math.abs(b.strength) - Math.abs(a.strength)).map(m => "<li>" + esc(m.text) + (m.kind !== "belief" && m.days > 0 ? " <span class='small'>— " + (m.days >= 365 ? Math.floor(m.days / 365) + (m.days >= 730 ? " years" : " year") : m.days + (m.days === 1 ? " day" : " days")) + " ago</span>" : "") + "</li>").join("") + "</ul>" : "") +
         "<h3>Family</h3>" +
         (mate ? "<p>Partner: " + familyLink(mate) + "</p>" : "<p class='small'>No living partner.</p>") +
         "<p>Parents: " + (parents.length ? parents.map(familyLink).join(" ") : "<span class='small'>No living parents recorded.</span>") + "</p>" +

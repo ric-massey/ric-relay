@@ -132,7 +132,7 @@ sameFor("changed from outside", { people: 300, factions: 2, villages: 2, map: 8,
 //    count a person carries. (A frame is where a wait put right late would show.)
 {
   const options = { people: 250, factions: 1, villages: 1, map: 6, seed: 12, plague: "none" };
-  const whole = w => JSON.stringify({ people: w.people, friends: w.people.map(p => [...p.friends]), stats: w.stats() });
+  const whole = w => JSON.stringify({ people: w.people, minds: w.people.map(p => w.inMind(p)), stats: w.stats() });
   const batch = People.create(options), hourly = People.create(options), framed = People.create(options);
   batch.advance(People.DAY_SECONDS / 3);
   for (let i = 0; i < 8; i++) hourly.step(1);
@@ -154,7 +154,7 @@ sameFor("changed from outside", { people: 300, factions: 2, villages: 2, map: 8,
 //     the world a single batch gives, to the last count.
 {
   const options = { people: 250, factions: 1, villages: 1, map: 6, seed: 12, plague: "none" };
-  const whole = w => JSON.stringify({ people: w.people, friends: w.people.map(p => [...p.friends]), stats: w.stats() });
+  const whole = w => JSON.stringify({ people: w.people, minds: w.people.map(p => w.inMind(p)), stats: w.stats() });
   const batch = People.create(options), framed = People.create(options, { audit: true });
   const third = People.DAY_SECONDS / 6 + People.HOUR_SECONDS * 0.4;   // not on the hour, when everybody has just been woken
   batch.advance(third); batch.set("talk", 0.2); batch.advance(third);

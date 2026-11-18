@@ -233,7 +233,7 @@ if (!physicsOnly && process.argv.includes("--generations")) {
   const Y = People.YEAR;
   const print = w => {
     let h = w.people.length * 1000 + w.events.length * 31 + w.stats().talks;
-    for (const p of w.people) h += p.x * 1.1 + p.y * 1.3 + p.coins * 0.7 + p.age + p.loyal * 3 + p.views + p.f * 5 + p.food;
+    for (const p of w.people) h += p.x * 1.1 + p.y * 1.3 + p.coins * 0.7 + p.age + p.loyal * 3 + w.viewOf(p) + p.f * 5 + p.food;
     for (const f of w.factions) h += f.tax * 100 + f.treasury;
     return h;
   };
@@ -276,7 +276,7 @@ if (!physicsOnly && process.argv.includes("--generations")) {
     let bad = 0;
     for (const q of w.people) {
       const ok = isFinite(q.x) && isFinite(q.y) && q.x >= 0 && q.y >= 0 && q.x <= w.cols && q.y <= w.rows &&
-                 q.loyal >= 0 && q.loyal <= 1 && q.mood >= 0 && q.mood <= 1 && q.views >= -1 && q.views <= 1 &&
+                 q.loyal >= 0 && q.loyal <= 1 && q.mood >= 0 && q.mood <= 1 && w.viewOf(q) >= -1 && w.viewOf(q) <= 1 &&
                  q.coins > -1e-9 && q.food >= 0 && w.factions[q.f] && w.factions[q.f].alive && w.villages[q.home];
       if (!ok) bad++;
       if (q.partner) check(!w.byId.get(q.partner) || w.byId.get(q.partner).partner === q.id, `people preset "${p.name}": ${q.name}'s partner is paired with somebody else`);
