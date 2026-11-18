@@ -223,6 +223,8 @@
         help: "The one thing they argue about: should what is grown be shared out, or does each keep their own?" },
       { key: "memory", label: "How much a person can hold", type: "range", min: 6, max: 60, step: 1, def: 20,   // TODO 11; Ric, 2026-11-17: "20"
         say: v => v + " things", help: "Each friend, grudge, debt, piece of news, who has food to spare, and what they think about sharing takes one. When a mind is full the weakest thing goes. People differ a little: a quarter either way, taken after their parents." },
+      { key: "wrong", label: "How often a tale changes in the telling", type: "range", min: 0, max: 0.3, step: 0.01, def: 0.05,   // TODO 12; Ric, 2026-11-18: "1 in 20"
+        say: v => v <= 0 ? "never" : "1 telling in " + Math.round(1 / v), help: "Each time something is passed on, the chance it comes out changed: a number grows, the wrong village, the wrong side. Field studies of real rumours find them mostly right." },
       { key: "switch", label: "Changing sides", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["never", "almost never", "if life is better there", "easily"]),
         help: "How readily an unhappy person joins the faction of somebody who is doing better." },
@@ -537,6 +539,9 @@
     const MB = Math.ceil(S.memory * 1.25) + 1;
     const M0 = MB * (Math.ceil(S.people * 1.1) + 16);   // room for the first people and a few born; grows by half after
     let mKind = new Uint8Array(M0), mAbout = new Int32Array(M0), mStr = new Float32Array(M0), mAt = new Float32Array(M0);
+    /* Who told them (a person's id; -1 saw it, or worked it out, themselves) and which telling of
+       an event they hold (0 what happened; see `retold`). TODO 12. */
+    let mFrom = new Int32Array(M0), mVar = new Uint8Array(M0);
     const mFree = []; let mTop = 0;
     const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
@@ -636,7 +641,7 @@
     let wake = new Float64Array(1024), kind = new Uint8Array(1024), since = new Float64Array(1024), cur = Infinity;
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
-    const count = { infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0 };   // TODO 10
     let t = 0, activityTicks = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
@@ -1495,6 +1500,7 @@
         for (const k of NEW_TRAITS) p[k] = clamp((mum[k] + dad[k]) / 2 + (RT() - 0.5) * stray, 0, 1);
         setView(p, clamp((viewOf(mum) + viewOf(dad)) / 2 + (R() - 0.5) * 0.4, -1, 1));
         p.mcap = clamp(Math.round((mum.mcap + dad.mcap) / 2 + (RM() - 0.5) * S.memory * 0.25), 3, MB - 1);
+        inherit(p, mum); inherit(p, dad);   // TODO 12
       } else {
         /* Divided worlds start as two camps, pulled toward wherever their own
            faction leans, so the argument is between places as well as people. */
@@ -1527,6 +1533,7 @@
       if ((b + 1) * MB > mKind.length) {
         const n = MB * Math.ceil(mKind.length / MB * 1.5), k = new Uint8Array(n), a = new Int32Array(n), s = new Float32Array(n), at = new Float32Array(n);
         k.set(mKind); a.set(mAbout); s.set(mStr); at.set(mAt); mKind = k; mAbout = a; mStr = s; mAt = at;
+        const fr = new Int32Array(n), vr = new Uint8Array(n); fr.set(mFrom); vr.set(mVar); mFrom = fr; mVar = vr;
       }
       const o = b * MB;
       mKind.fill(0, o, o + MB);
@@ -1559,17 +1566,27 @@
         /* A grudge or a family tie is harder to forget than a friendship as strong (Ric: "Grudges
            last longest"): measured, a soldier who counted 22 people as close friends forgot the
            one person he hated first. */
+        /* Nor is what was taken in this very hour (TODO 12): somebody told the news and then
+           greeted was otherwise left forgetting the news they had just heard. */
+        if (mAt[o] === t) continue;
         const k = mKind[o], x = mNow(o), w = Math.abs(x) * (k === M_KIN || (k === M_FRIEND && x < 0) ? 2 : 1);
         if (w < weakest) { weakest = w; drop = o; }
       }
-      return drop;
+      return drop >= 0 ? drop : o0;
     }
     /* Hold a thing at this strength now, in place of what was held about it. */
     function hold(p, kind, about, strength) {
-      if (p.mb < 0) return;
+      if (p.mb < 0) return undefined;
       let o = mFind(p, kind, about);
       if (o < 0) o = mRoom(p);
-      mKind[o] = kind; mAbout[o] = about; mStr[o] = strength; mAt[o] = t;
+      mKind[o] = kind; mAbout[o] = about; mStr[o] = strength; mAt[o] = t; mFrom[o] = -1; mVar[o] = 0;
+      return o;
+    }
+    /* Hold what somebody told them (TODO 12): who it came from, and which telling. */
+    function heard(p, kind, about, strength, from, v) {
+      const o = hold(p, kind, about, strength);
+      if (o !== undefined) { mFrom[o] = from; mVar[o] = v || 0; }
+      return o;
     }
     function forget(p, kind, about) { const o = mFind(p, kind, about); if (o >= 0) mKind[o] = 0; }
     /* How p feels about somebody: −1 a bitter grudge, +1 the closest of friends; 0 nobody to them. */
@@ -1603,6 +1620,152 @@
       for (let o = o0; o < o1; o++) if (mKind[o] === M_NEWS && mAbout[o] > best && mNow(o) > 0.1) best = mAbout[o];
       return best;
     }
+    /* ── passing on what one holds (TODO 12) ──────────────────────────────
+       A piece of news is an event and a telling of it. Telling 0 is what happened; each time it
+       is passed on there is a chance (`S.wrong`; Ric, 2026-11-18: "1 in 20") it comes out
+       changed, as rumours do (Allport and Postman 1947): a number grows or a harvest shrinks
+       (sharpening), or a village or a side is swapped for another (assimilation). The tellings
+       of an event are kept on it (`e.vars`, the text of each), and who told whom on
+       `e.hops`, so a piece of news can be followed back to where it began. */
+    const TELLINGS = 12, HOPS = 400, WITNESS = 3;
+    /* Every hearing of an event, by who heard it, in order of time (a person who forgot it and
+       was told again has two). At most HOPS an event. */
+    function logHop(e, p, from, fromName, v) {
+      if (!e.hops) { e.hops = new Map(); e.nh = 0; }
+      if (e.nh >= HOPS) return;
+      e.nh++;
+      const h = { from: from, fromName: fromName, name: p.name, home: p.home, t: t, v: v };
+      const l = e.hops.get(p.id);
+      if (l) l.push(h); else e.hops.set(p.id, [h]);
+    }
+    function telling(e, v) { return v && e.vars && e.vars[v] ? e.vars[v] : e.text; }
+    function retold(e, v) {
+      const was = telling(e, v), ways = [];
+      const num = /(\d+)(%?)/.exec(was);
+      if (num) ways.push(() => {
+        const n = +num[1], to = num[2] ? Math.max(0, Math.round(n * (0.4 + R() * 0.4))) : n + Math.max(1, Math.round(n * (0.4 + R())));
+        return was.slice(0, num.index) + to + was.slice(num.index + num[1].length);
+      });
+      const vil = villages.filter(x => x.alive && x.name && was.includes(x.name));
+      if (vil.length) ways.push(() => {
+        const from = pick(vil), others = villages.filter(x => x.alive && x !== from && !was.includes(x.name));
+        return others.length ? was.split(from.name).join(pick(others).name) : was;
+      });
+      const fac = factions.filter(x => x.alive && x.name && was.includes(x.name));
+      if (fac.length && factions.filter(x => x.alive).length > fac.length) ways.push(() => {
+        const from = pick(fac), others = factions.filter(x => x.alive && !was.includes(x.name));
+        return others.length ? was.split(from.name).join(pick(others).name) : was;
+      });
+      if (!ways.length) return v;
+      const text = pick(ways)();
+      if (text === was) return v;
+      if (!e.vars) e.vars = [e.text];
+      const at = e.vars.indexOf(text);
+      if (at >= 0) return at;
+      if (e.vars.length >= TELLINGS) return v;
+      e.vars.push(text); count.toldWrong++;
+      return e.vars.length - 1;
+    }
+    /* The slot holding p's newest news, or -1. */
+    function newsSlot(p) {
+      let best = -1, at = -1;
+      if (p.mb < 0) return -1;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) if (mKind[o] === M_NEWS && mAbout[o] > best && mNow(o) > 0.1) { best = mAbout[o]; at = o; }
+      return at;
+    }
+    /* The words p holds about their newest news, or "". */
+    function newsText(p) {
+      const o = newsSlot(p); if (o < 0) return "";
+      const e = eventById(mAbout[o]);
+      return e ? telling(e, mVar[o]) : "";
+    }
+    function eventById(id) {
+      let lo = 0, hi = events.length - 1;   // events are kept in order of id
+      while (lo <= hi) { const m = (lo + hi) >> 1, x = events[m].id; if (x === id) return events[m]; if (x < id) lo = m + 1; else hi = m - 1; }
+      return null;
+    }
+    /* Where p's news came from, from p back to whoever saw it: [{name, place, day, from, text,
+       changed}], the last {saw: true}, or {saw: false} where the trail is lost. Walked back in
+       time: each teller's step is the hearing they had before they told it. */
+    function traceNews(p, id) {
+      const e = eventById(id), out = [];
+      if (!e) return out;
+      let cur = p.id, before = Infinity;
+      for (let n = 0; n < 80; n++) {
+        const l = e.hops && e.hops.get(cur), q = byId.get(cur);
+        let h = null;
+        /* The first step is what they hold now: past HOPS hearings an event's later ones are not
+           kept, and the newest kept may not be the one they hold. */
+        const o = n === 0 ? mFind(p, M_NEWS, id) : -1;
+        if (o >= 0) h = { from: mFrom[o], fromName: mFrom[o] >= 0 ? (byId.get(mFrom[o]) || {}).name || "somebody now gone" : "", name: p.name, home: p.home, t: mAt[o], v: mVar[o] };
+        else if (l) for (let i = l.length - 1; i >= 0; i--) if (l[i].t <= before) { h = l[i]; break; }
+        if (!h) { out.push({ name: q ? q.name : "somebody now gone", place: q ? villages[q.home].name : "", day: null, text: null, saw: false }); break; }
+        const place = villages[h.home] ? villages[h.home].name : "";
+        if (h.from === -1) { out.push({ name: h.name, place: place, day: null, text: null, saw: true }); break; }
+        out.push({ name: h.name, place: place, day: Math.floor(h.t / DAY_HOURS), from: h.fromName, text: telling(e, h.v) });
+        cur = h.from; before = h.t;
+      }
+      /* Changed in the telling: what this person heard is not what their teller held. */
+      for (let i = 0; i < out.length; i++) if (out[i].text !== null) {
+        const next = out[i + 1], was = next && next.text !== null ? next.text : next && next.saw ? e.text : out[i].text;
+        out[i].changed = out[i].text !== was;
+      }
+      return out;
+    }
+    /* Pass the news from teller to hearer, if the hearer believes them. Returns what was said. */
+    function tellNews(teller, hearer, o) {
+      const id = mAbout[o], e = eventById(id);
+      if (!e) return null;
+      const trust = feel(hearer, teller.id) + (kin(hearer, teller) ? 0.2 : 0);
+      let v = mVar[o], changed = false;
+      if (S.wrong > 0 && R() < S.wrong) { const w = retold(e, v); changed = w !== v; v = w; }
+      const said = telling(e, v);
+      count.passed++;
+      if (R() > clamp(0.6 + trust * 0.4, 0.3, 1)) return { said: said, believed: false };
+      heard(hearer, M_NEWS, id, Math.min(1, mNow(o) * 0.95), teller.id, v);
+      logHop(e, hearer, teller.id, teller.name, v);
+      actOn(hearer, e, said);
+      return { said: said, believed: true };
+    }
+    /* People act on what they hold, right or wrong: news that names their own side and another,
+       of a war or a village taken, is a grievance against the other side as told. */
+    function actOn(p, e, said) {
+      if (e.kind !== "war" && e.kind !== "taken") return;
+      const mine = factions[p.f];
+      if (!mine || !said.includes(mine.name)) return;
+      p.loyal = clamp(p.loyal + 0.02, 0, 1);
+      for (const x of factions) if (x.alive && x !== mine && said.includes(x.name) && mine.rel[x.id]) mine.rel[x.id].op = clamp(mine.rel[x.id].op - 0.002, -1, 1);
+    }
+    /* A tip about somebody else's larder, from what the teller has seen or been told. */
+    function tipFor(p, hungry) {
+      if (p.mb < 0) return -1;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      let best = -1, bs = 0.05;
+      for (let o = o0; o < o1; o++) if (mKind[o] === M_FOOD && mAbout[o] !== hungry.id) { const x = mNow(o); if (x > bs) { bs = x; best = o; } }
+      return best;
+    }
+    /* Children start with a weaker copy of some of what a parent holds (Ric: "a mix of both"):
+       the parent's newest news, a larder they know of, and their strongest feelings about
+       others, grudges included but no deeper than a snub. */
+    function inherit(p, par) {
+      if (par.mb < 0 || p.mb < 0) return;
+      const o0 = par.mb * MB + 1, o1 = o0 + par.mcap, pick4 = [];
+      for (let o = o0; o < o1; o++) {
+        const k = mKind[o];
+        if (k === M_FRIEND || k === M_FOOD || k === M_NEWS) { const x = mNow(o); if (Math.abs(x) > 0.2 && mAbout[o] !== p.id) pick4.push([Math.abs(x), o, x]); }
+      }
+      pick4.sort((a, b) => b[0] - a[0]);
+      for (const [, o, x] of pick4.slice(0, 4)) {
+        const k = mKind[o];
+        if (k === M_FRIEND) { const q = byId.get(mAbout[o]); if (q && !kin(p, q)) heard(p, M_FRIEND, q.id, x > 0 ? x * 0.3 : Math.max(x * 0.5, SNUB), par.id, 0); }
+        else {
+          heard(p, k, mAbout[o], x * 0.5, par.id, mVar[o]);
+          const e = k === M_NEWS ? eventById(mAbout[o]) : null;
+          if (e) logHop(e, p, par.id, par.name, mVar[o]);
+        }
+      }
+    }
     /* What somebody has seen of another's larder: days of the other's own need over what they
        keep back, when last seen. Asking for food goes to those one knows of (TODO 11). */
     function sawLarder(p, q) {
@@ -1625,10 +1788,17 @@
           if (!who) continue;
           const kin = k === M_KIN ? " (family)" : "";
           text = s > 0.5 ? "Close to " + who.name + kin : s > 0.15 ? "Friends with " + who.name + kin : s < -0.5 ? "Hates " + who.name + kin : s < -0.15 ? "Holds a grudge against " + who.name + kin : "Knows " + who.name + kin;
-        } else if (k === M_NEWS) { const e = events.find(ev => ev.id === mAbout[o]); if (!e) continue; text = "Heard: " + e.text; }
-        else if (k === M_FOOD) { if (!who) continue; text = who.name + " had food to spare"; }
+        } else if (k === M_NEWS) {
+          const e = eventById(mAbout[o]); if (!e) continue;
+          const from = mFrom[o] >= 0 ? byId.get(mFrom[o]) : null;
+          text = (mFrom[o] >= 0 ? "Heard: " : "Saw: ") + telling(e, mVar[o]);
+          out.push({ kind: "news", text: text, strength: s, days: ago, from: mFrom[o] >= 0 ? (from ? from.name : "somebody now gone") : null, wrong: mVar[o] > 0, trace: traceNews(p, e.id) });
+          continue;
+        }
+        else if (k === M_FOOD) { if (!who) continue; const by = mFrom[o] >= 0 ? byId.get(mFrom[o]) : null; text = who.name + " had food to spare" + (mFrom[o] >= 0 ? " (told by " + (by ? by.name : "somebody now gone") + ")" : ""); }
         else if (k === M_DEBT) { if (!who) continue; text = "Owes " + who.name + " for food"; }
-        out.push({ kind: ["", "friend", "family", "news", "food", "debt", "belief"][k], text: text, strength: s, days: ago });
+        const by = k !== M_BELIEF && mFrom[o] >= 0 ? byId.get(mFrom[o]) : null;
+        out.push({ kind: ["", "friend", "family", "news", "food", "debt", "belief"][k], text: text, strength: s, days: ago, from: by ? by.name : null });
       }
       return out;
     }
@@ -3478,8 +3648,10 @@
        2026-11-18: "do 5"; the closest layer is about five, Dunbar 1993, Zhou et al. 2005): one
        more, and whoever of them is least close drops back to an ordinary friend, as time spent
        on the new one is time not spent on them. */
-    function befriend(a, b, by, floor) {
-      const set = (p, q) => {
+    function befriend(a, b, by, floor) { feelFor(a, b, by, floor); feelFor(b, a, by, floor); }
+    /* One side of it: how p comes to feel about q (gossip moves only the hearer, TODO 12). */
+    function feelFor(p, q, by, floor) {
+      {
         const kind = kin(p, q) ? M_KIN : M_FRIEND, o = mFind(p, kind, q.id), was = o >= 0 ? mNow(o) : 0;
         let now = clamp(was + by, -1, 1);
         if (floor !== undefined && by < 0) { if (was <= floor) return; now = Math.max(now, floor); }
@@ -3498,8 +3670,7 @@
           }
         }
         hold(p, kind, q.id, now);
-      };
-      set(a, b); set(b, a);
+      }
     }
     /* Food given is owed (TODO 11): as many days of the receiver's need as were given, up to five. */
     function owe(p, q, amount) {
@@ -3550,7 +3721,7 @@
         for (const field of ["food", "coins", "goods", "views", "loyal", "trust", "home", "faction", "job", "partner", "news", "sick"]) {
           if (typeof old[field] === "number" ? Math.abs(now[field] - old[field]) < 1e-12 : now[field] === old[field]) continue;
           c.effects.push({ person: old.id, name: old.name, field, before: old[field], after: now[field],
-            detail: field === "news" ? events.find(e => e.id === now.news)?.text || "News passed on." : "" });
+            detail: field === "news" ? newsText(byId.get(old.id)) || "News passed on." : "" });
         }
       }
       for (const d of diplomacy) if (d.value !== d.faction.rel[d.other].op) {
@@ -3590,7 +3761,12 @@
             said(hungry, other, "help", "Can you spare some grain?", "Take this. Eat.");
           } else {
             befriend(hungry, other, -0.15, SNUB);   // see SNUB
-            said(hungry, other, "refuse", "Can you spare some grain?", "I've none to spare.");
+            /* Somebody who will not give may still say where there is food (TODO 12). */
+            const o = tipFor(other, hungry), q = o >= 0 ? byId.get(mAbout[o]) : null;
+            if (q && q !== hungry) {
+              heard(hungry, M_FOOD, q.id, mNow(o) * 0.8, other.id, 0); count.tips++;
+              said(hungry, other, "refuse", "Can you spare some grain?", "I've none to spare. Try " + q.name + ", they had plenty.");
+            } else said(hungry, other, "refuse", "Can you spare some grain?", "I've none to spare.");
           }
           return;
         }
@@ -3609,17 +3785,18 @@
         return;
       }
       /* 3 — news travels. Whoever has heard the newer thing passes it on. */
-      const na = newsOf(a), nb = newsOf(b);
+      /* TODO 12: what was said is what is held: the teller's own telling, changed now and then
+         in the passing, and believed as far as the hearer trusts the teller. */
+      const sa = newsSlot(a), sb = newsSlot(b), na = sa >= 0 ? mAbout[sa] : -1, nb = sb >= 0 ? mAbout[sb] : -1;
       if (na !== nb && R() < 0.5) {
         const teller = na > nb ? a : b, hearer = teller === a ? b : a, id = Math.max(na, nb);
-        const e = events.find(ev => ev.id === id);
-        if (e) {
-          hold(hearer, M_NEWS, id, 1);
-          /* Hearing of a killing or a lost village is a grievance of your own. */
-          if ((e.kind === "taken" || e.kind === "war") && e.f === hearer.f) hearer.loyal = clamp(hearer.loyal + 0.02, 0, 1);
-          said(teller, hearer, "news", "Did you hear? " + e.text, pick(["No. When?", "I had not heard.", "So it's true.", "That will mean trouble."]));
-          befriend(a, b, 0.05);
-          return;
+        if (mFind(hearer, M_NEWS, id) < 0) {
+          const r = tellNews(teller, hearer, teller === a ? sa : sb);
+          if (r) {
+            said(teller, hearer, "news", "Did you hear? " + r.said, r.believed ? pick(["No. When?", "I had not heard.", "So it's true.", "That will mean trouble."]) : pick(["I don't believe it.", "Who told you that?", "That's just talk."]));
+            befriend(a, b, 0.05);
+            return;
+          }
         }
       }
       /* 4 — across a border: one of them is doing better, and says so. */
@@ -3686,7 +3863,25 @@
         }
         return;
       }
-      /* 7 — and otherwise, what there is to say about the day. */
+      /* 7 — gossip (TODO 12; Ric, 2026-11-18: "Yes, cools only"): what one thinks of somebody
+         else, the thing people pass on best (Mesoudi, Whiten and Dunbar 2006). The hearer moves
+         toward it as far as they trust the teller; hearsay alone never makes an enemy. */
+      if (adult(a) && adult(b) && R() < 0.25) {
+        const teller = R() < 0.5 ? a : b, hearer = teller === a ? b : a;
+        let best = -1, bs = 0.4;
+        const o0 = teller.mb * MB + 1, o1 = o0 + teller.mcap;
+        if (teller.mb >= 0) for (let o = o0; o < o1; o++) if (mKind[o] === M_FRIEND && mAbout[o] !== hearer.id) { const x = Math.abs(mNow(o)); if (x > bs) { bs = x; best = o; } }
+        const q = best >= 0 ? byId.get(mAbout[best]) : null, trust = feel(hearer, teller.id);
+        if (q && q !== hearer && trust > -0.1) {
+          const x = mNow(best), by = x * 0.15 * (0.3 + Math.max(0, trust));
+          /* Good words warm a little, but do not talk anybody out of a grudge of their own. */
+          if (x < 0) feelFor(hearer, q, by, SNUB); else if (feel(hearer, q.id) >= 0) feelFor(hearer, q, Math.min(by, 0.05));
+          count.gossip++;
+          said(teller, hearer, "gossip", x < 0 ? pick(["Keep away from " + q.name + ".", q.name + " is not to be trusted.", "You know what " + q.name + " did?"]) : pick([q.name + " is a good sort.", "You can count on " + q.name + ".", q.name + " helped us when we needed it."]), pick(["Is that so?", "I'll remember that.", "I'd heard something like it.", "Hm."]));
+          return;
+        }
+      }
+      /* 8 — and otherwise, what there is to say about the day. */
       const v = villages[a.home];
       const line = v.hungry > v.pop * 0.2 ? "The stores in " + v.name + " are nearly empty."
                  : !shared && v.priceFood > 1.8 ? "Grain is " + v.priceFood.toFixed(1) + " a measure in " + v.name + " now."
@@ -5511,12 +5706,20 @@
         census();
         for (const v of villages) if (v.alive) { market(v); if (t % DAY_HOURS === 0) villageTurn(v); }
         /* The newest thing that happened is known first where it happened. */
-        if (events.length) {
-          const e = events[events.length - 1];
-          if (e.t > t - REFLECT_HOURS) for (const p of people) if ((p.f === e.f || Math.hypot(p.x - e.x, p.y - e.y) < 6) && newsOf(p) < e.id) { if (R() < 0.3) hold(p, M_NEWS, e.id, 1); }
+        /* TODO 12: only those who were there see it; everybody else hears it from somebody.
+           (Until item 12 a whole side knew within hours.) */
+        for (let i = events.length - 1; i >= 0 && events[i].t > t - REFLECT_HOURS; i--) {
+          const e = events[i];
+          for (const p of people) if (Math.abs(p.x - e.x) < WITNESS && Math.abs(p.y - e.y) < WITNESS && Math.hypot(p.x - e.x, p.y - e.y) < WITNESS && newsOf(p) < e.id && R() < 0.6) {
+            hold(p, M_NEWS, e.id, 1);
+            logHop(e, p, -1, "", 0);
+          }
         }
       }
       if (t % DAY_HOURS === 0) {
+        /* Who told whom is kept while anybody could still hold the news: a year, by when it has
+           faded below what anybody remembers (TODO 12). The tellings themselves stay. */
+        for (const e of events) if (e.hops && e.t < t - 365 * DAY_HOURS) e.hops = null;
         territory();
         for (const f of factions) if (f.alive) {
           if (f.pop === 0) { fall(f, -1); continue; }
@@ -5689,6 +5892,7 @@
       /* Fields held by households (TODO 7c): square -> house, and a number that changes when they do. */
       held: held, get heldStamp() { return heldStamp; },
       inMind: inMind, tiesOf: tiesOf, viewOf: viewOf, feel: feel, newsOf: newsOf,   // TODO 11
+      newsText: newsText, traceNews: traceNews, eventById: eventById, telling: telling,   // TODO 12
       setView: setView, befriend: befriend,   // for the tests
       /* Paths and roads (TODO 7d): how trodden each square is, 1 a path and 2 a road, and a number
          that changes when they do. */

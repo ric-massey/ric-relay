@@ -153,6 +153,7 @@ const SUITES = [
   ['world-builder materials', ['projects/world-builder/test/materials.test.mjs']],
   ['world-builder traits', ['projects/world-builder/test/traits.test.mjs']],
   ['world-builder mind', ['projects/world-builder/test/mind.test.mjs']],
+  ['world-builder talk', ['projects/world-builder/test/talk.test.mjs']],
   /* TODO.md item 2 (2026-11-15): people with nothing to do are passed over
      until their wait is up or somebody makes room beside them, and the lists
      of who stands where and who lives where are kept up, not made again. The

@@ -825,13 +825,13 @@ when it is built.
 **5. Talking and knowing**
 - Now: two people who are close say a line picked from a short list. A person holds one piece
   of news. Friendships are a list.
-- [ ] Talking as passing something one person holds to another.
-- [ ] Trust, and things arriving weaker or wrong.
-- [ ] People acting on what they know, not on what is true.
-- [ ] Children: some inherited, some heard (decided: "a mix of both"). How much of each.
+- [x] Talking as passing something one person holds to another. (2026-11-18, TODO 12.)
+- [x] Trust, and things arriving weaker or wrong. (2026-11-18, TODO 12: Ric, "1 in 20".)
+- [x] People acting on what they know, not on what is true. (2026-11-18, TODO 12: news of war, and where food is; more is TODO 12b.)
+- [x] Children: some inherited, some heard (decided: "a mix of both"). How much of each. (2026-11-18, TODO 12: up to four of each parent's strongest things, weaker.)
 - [ ] News over distance by era: on foot, by rider, by letter, by radio, by phone within reach
   of a tower.
-- [ ] Following it on screen: who told whom, and where a rumour started.
+- [x] Following it on screen: who told whom, and where a rumour started. (2026-11-18, TODO 12: the person panel.)
 
 **6. Making a living**
 - Now: farming, one kind of "goods", ore, trade, coins or sharing, tools and packs made from

@@ -56,10 +56,19 @@ function hours(o, days, seed) {
   const set = hours({ curious: 0.1 }, 20), new_ = hours({ curious: 0.9 }, 20);
   assert.ok(new_.off > set.off + 0.05, "the curious try other trades: " + (set.off * 100).toFixed(1) + "% → " + (new_.off * 100).toFixed(1) + "% of their work");
 
-  /* Forty days: since a refusal no longer makes an enemy (2026-11-18), grudges are fewer and
-     take longer to form. */
-  const calm = hours({ temper: 0.1 }, 40), hot = hours({ temper: 0.9 }, 40);
-  assert.ok(hot.quarrels > calm.quarrels * 4 + 10 && hot.fights > calm.fights, "the hot-tempered quarrel: " + calm.quarrels + " → " + hot.quarrels + ", fights " + calm.fights + " → " + hot.fights);
+  /* The same grudges for both: forty pairs of neighbours set against each other on the first
+     day (since a refusal no longer makes an enemy, 2026-11-18, grudges are too few in a young
+     world to show it in a few weeks). */
+  const feud = o => {
+    const w = People.create({ seed: 11, plague: "none", ...o });
+    w.step(1);
+    const ad = w.people.filter(p => w.adult(p));
+    for (let i = 0, n = 0; i + 1 < ad.length && n < 40; i += 2) if (ad[i].home === ad[i + 1].home) { w.befriend(ad[i], ad[i + 1], -0.7); n++; }
+    w.step(24 * 20);
+    return w.stats();
+  };
+  const calm = feud({ temper: 0.1 }), hot = feud({ temper: 0.9 });
+  assert.ok(hot.quarrels > calm.quarrels * 4 + 3 && hot.fights > calm.fights, "the hot-tempered quarrel: " + calm.quarrels + " → " + hot.quarrels + ", fights " + calm.fights + " → " + hot.fights);
 
   /* In the autumn, with the winter ahead: the patient lay in, the impatient leave it. */
   const now = hours({ patient: 0.1, start: "autumn", plague: "none" }, 20), later = hours({ patient: 0.9, start: "autumn", plague: "none" }, 20);

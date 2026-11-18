@@ -2208,7 +2208,22 @@
         "<button class='item person-row' data-go='person:" + p.id + "'" + (picked?.person === p.id ? " aria-current='true'" : "") + "><strong>" + esc(p.name) + "</strong><span class='small'>" + Math.floor(p.age) + (Math.floor(p.age) === 1 ? " year · " : " years · ") + esc(p.job) + " · " + esc(p.home) + "</span><span class='small'>" + esc(p.faction) + "</span><span>" + esc(p.activity) + "</span><span class='small'>" + esc(p.gear || "No equipment in use") + "</span></button>").join("") + pager);
   }
 
-  const TALK_TOPICS = { cold: "A cold word", fight: "A fight", quarrel: "A quarrel", help: "Asking for food", refuse: "Help refused", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
+  /* How a piece of news reached somebody, back to whoever saw it (TODO 12). Each step says what
+     was told; a step where the telling changed is marked. */
+  /* Which trails are open, by what was heard, so the panel redrawing as the world runs leaves
+     them open. */
+  const openTrails = new Set();
+  document.addEventListener("toggle", e => {
+    const d = e.target; if (!d.classList || !d.classList.contains("trail")) return;
+    if (d.open) openTrails.add(d.dataset.key); else openTrails.delete(d.dataset.key);
+  }, true);
+  function newsTrail(m) {
+    if (!m.trace || m.trace.length < 2) return m.from ? " <span class='small'>(from " + esc(m.from) + ")</span>" : "";
+    return "<details class='trail' data-key='" + esc(m.text) + "'" + (openTrails.has(m.text) ? " open" : "") + "><summary class='small'>From " + esc(m.trace[0].from || m.from || "somebody") + ": how it got here, " + (m.trace.length - 1) + (m.trace.length === 2 ? " telling" : " tellings") + "</summary><ol class='small'>" +
+      m.trace.slice().reverse().map(h => "<li>" + (h.day === null ? esc(h.name) + (h.place ? " in " + esc(h.place) : "") + (h.saw ? " saw it" : " (heard it, but who from is not known)")
+        : esc(h.from) + " told " + esc(h.name) + (h.place ? " in " + esc(h.place) : "") + ", day " + h.day + (h.changed ? ": <b>“" + esc(h.text) + "”</b> (changed in the telling)" : "")) + "</li>").join("") + "</ol></details>";
+  }
+  const TALK_TOPICS = { gossip: "Talking about somebody", cold: "A cold word", fight: "A fight", quarrel: "A quarrel", help: "Asking for food", refuse: "Help refused", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
   function exchangeTime(c) {
     const day = c.day || 0, minute = Math.floor(day % 1 * 1440);
     return "Year " + (Math.floor(day / 365) + 1) + " · day " + (Math.floor(day % 365) + 1) + " · " + String(Math.floor(minute / 60)).padStart(2, "0") + ":" + String(minute % 60).padStart(2, "0");
@@ -2399,7 +2414,7 @@
         (listener ? "<p>Talking to " + familyLink(listener) + "</p>" : "") +
         /* What they hold (TODO 11): every thing in their mind, in plain words, strongest first. */
         (p.mind ? "<h3>On their mind</h3><p class='small'>" + p.mind.length + " things of the " + (p.mcap + 1) + " they can hold.</p><ul class='mind'>" +
-          p.mind.slice().sort((a, b) => Math.abs(b.strength) - Math.abs(a.strength)).map(m => "<li>" + esc(m.text) + (m.kind !== "belief" && m.days > 0 ? " <span class='small'>— " + (m.days >= 365 ? Math.floor(m.days / 365) + (m.days >= 730 ? " years" : " year") : m.days + (m.days === 1 ? " day" : " days")) + " ago</span>" : "") + "</li>").join("") + "</ul>" : "") +
+          p.mind.slice().sort((a, b) => Math.abs(b.strength) - Math.abs(a.strength)).map(m => "<li>" + esc(m.text) + (m.kind !== "belief" && m.days > 0 ? " <span class='small'>— " + (m.days >= 365 ? Math.floor(m.days / 365) + (m.days >= 730 ? " years" : " year") : m.days + (m.days === 1 ? " day" : " days")) + " ago</span>" : "") + (m.kind === "news" ? newsTrail(m) : "") + "</li>").join("") + "</ul>" : "") +
         "<h3>Family</h3>" +
         (mate ? "<p>Partner: " + familyLink(mate) + "</p>" : "<p class='small'>No living partner.</p>") +
         "<p>Parents: " + (parents.length ? parents.map(familyLink).join(" ") : "<span class='small'>No living parents recorded.</span>") + "</p>" +

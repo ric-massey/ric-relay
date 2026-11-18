@@ -1757,6 +1757,75 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Talking as passing what you hold (2026-11-18)
+
+TODO item 12. Until now news was an event's number: everybody on its side, or within 6 km, knew
+it within hours, and chats passed on the newest. Now talking passes what people hold, and what
+they hold can be wrong. Ric chose: a tale changes in the telling **"1 in 20"** times; gossip **"Yes,
+cools only"**; children start with **"a mix of both"** (decided earlier).
+
+- **Seeing and hearing.** Only those within 3 km of where something happened see it. Everybody
+  else hears it from somebody: in a chat, whoever holds the newer news tells it, and the hearer
+  believes it as far as they trust the teller (60% for a stranger, more for a friend or family,
+  as little as 30% for somebody they dislike). What is said is what the hearer then holds, word
+  for word.
+- **Changed in the telling.** Each time it is passed on, there is a 1 in 20 chance (the "How often
+  a tale changes in the telling" slider, never to 1 in 3) that it comes out changed: a number
+  grows, or a harvest's share shrinks (sharpening), or a village or a side is swapped for another
+  (assimilation; Allport and Postman 1947). The changed telling then travels as the true one did,
+  so two villages can believe different things about the same event.
+- **Acting on it, right or wrong.** News of a war or a village taken that names your side and
+  another is a grievance against the other side as told: a wrong telling blames the wrong side.
+  Somebody turned away when hungry is told where there is food ("Try Hesk, they had plenty") and
+  goes to ask, whether or not Hesk still has it.
+- **Gossip** (one chat in four between grown-ups, when nothing else came up). The teller says what
+  they think of somebody they feel strongly about; the hearer moves toward it as far as they
+  trust the teller. Bad words cool, but hearsay never makes an enemy (no lower than the snub of
+  being turned away); good words warm a little and never talk anybody out of a grudge of their
+  own.
+- **Children** start with a weaker copy of up to four of each parent's strongest things: the
+  parent's news, a larder they know of, and their feelings about others (a fifth to a third as
+  strong; a parent's grudge no deeper than a snub).
+- **Following it.** Every hearing is kept on the event, who told whom and when, for a year (up to
+  400 an event). The person panel lists each piece of news with who told them, and opens to the
+  whole trail back to whoever saw it, marking any telling where it changed. In a default world,
+  news of a famine reached a village three away in four days, through nine people.
+- **Also fixed on the way:** a full mind could forget the news it had heard a moment before, when
+  the hearer then greeted the teller; what was taken in this hour is now never the first to go.
+
+Sources.
+- How rumours change as they are retold: leveling, sharpening and assimilation (Allport and
+  Postman, *The Psychology of Rumor*, 1947; summary at
+  [Wikipedia, Rumor](https://en.wikipedia.org/wiki/Rumor)). Field studies find much less
+  distortion than the laboratory chains, and rumours in organisations mostly accurate (DiFonzo
+  and Bordia, *Rumor Psychology*, 2007; [RIT summary](https://www.rit.edu/news/truth-about-rumors-and-why-we-believe-them)),
+  hence 1 in 20.
+- Spreading between people: the Daley–Kendall model of ignorants, spreaders and stiflers (1965;
+  [overview](https://www.emergentmind.com/topics/daley-kendall-rumor-model)). Here a person
+  passes the newest thing they hold to whoever they meet who has not heard it, and stops when
+  they forget it.
+- Gossip is what people pass on best (Mesoudi, Whiten and Dunbar 2006,
+  [abstract](https://research-portal.st-andrews.ac.uk/en/publications/a-bias-for-social-information-in-human-cultural-transmission/)).
+- Children taking on their parents' conflicts: beliefs about conflict correlate strongly between
+  parents and children ([Psihologija 2021](https://doaj.org/article/6f74e2ee67174a7e8b9d2729a97ae7af)).
+
+Measured.
+- *A year, twenty-four worlds, against the world just before item 12*: 362 alive a world
+  against 355, 11 starved against 13: being told where food is fed people no worse. Grudges 1.6
+  an adult against 1.2, and fights 66 a world-year against 55, from children taking on their
+  parents' (no deeper than a snub, but a fight deepens them).
+- *News over distance* (four seeds, 120 days): the farthest village each event reached was 36 to
+  54 km away, 1.5 to 4 days after it happened; in three of the four worlds two villages believed
+  different tellings of the same event.
+- *Speed* (`test/bench.mjs`, two runs each, against the world before item 12): 400 people 0.15 →
+  0.15 s a day, 2,000 0.70 → 0.71, 5,000 2.09 → 2.28, 20,000 16.4 → 15.1, 400 on 500 km 0.20 →
+  0.16. The 5,000 row, alternated four more times alone: 1.92 → 1.84 (the bench drifts 10%).
+- *Memory*: 0.15 KB a person more right after a world is made (who told them, and which telling,
+  for every slot); 0.27 KB more by day 120 (5,000 people: 4.42 against 4.15 KB), the record of
+  who told whom.
+- *Settings felt*: the decisions check now reads six seeds, not four; with four, "How much it
+  grows" read 2.8% where ten other seeds read 4.1%.
+
 ### The mind: a fixed number of things a person holds (2026-11-17)
 
 TODO item 11. A person had a list of up to ten friends and grudges, one piece of news and one

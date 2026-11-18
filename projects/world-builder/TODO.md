@@ -1033,7 +1033,7 @@ Research notes:
   arrays (struct of arrays); the dead's blocks reused; fading read off the age, so nothing is
   touched as time passes.
 
-### [ ] 12. Talking as passing what you hold
+### [x] 12. Talking as passing what you hold
 
 **Now:** two people close together say a line picked from a short list.
 **Do:** talking passes a slot from one person to another. Whether it is believed depends on
@@ -1048,6 +1048,56 @@ stories change as they are retold; how much parents' feuds pass to children.
 two villages can believe different things about the same event; what is said on screen is always
 the thing that was passed.
 **Budget:** default. Talking must cost only for people who are near somebody.
+
+Ric's answers (2026-11-18, "Start item 12"): how often things are passed on wrong, **"1 in 20"**;
+gossip about people, **"Yes, cools only"** (hearsay never makes an enemy).
+
+**Done 2026-11-18.** Only those within 3 km see an event; everybody else hears it in a chat,
+believed as far as they trust the teller, and 1 time in 20 changed in the telling (a number, a
+village or a side swapped); the changed telling travels as the true one. News of a war or a
+village taken blames the side as told. The hungry who are turned away are told where there is
+food. Gossip cools or warms the hearer toward a third person. Children start with a weaker copy
+of some of each parent's mind. The person panel follows each piece of news back to whoever saw
+it. Met: news reached villages 36–54 km away in 1.5–4 days; two villages believed different
+tellings in three of four worlds; what is said is what is held (tested). **Not met / open:**
+people act only on news of wars and villages taken, and on where food is (12b). In a full mind
+news is often the weakest thing, so it is forgotten within days. Past 400 hearings an event's
+trail is kept only for the people who still hold it. Fights rose (66 a world-year against 55),
+from children taking on their parents' grudges.
+
+Research notes:
+- **How rumours change.** Leveling, sharpening, assimilation (Allport and Postman 1947): in
+  laboratory chains much is lost at each telling; field studies find much less, and rumours in
+  organisations mostly accurate (DiFonzo and Bordia 2007). Hence 1 in 20, a slider from never to
+  1 in 3. https://en.wikipedia.org/wiki/Rumor ;
+  https://www.rit.edu/news/truth-about-rumors-and-why-we-believe-them
+- **How they spread.** Daley and Kendall (1965): ignorant, spreader, stifler; spreading by
+  pairwise contact, stopping when the spreader meets those who know. Here: the newest news
+  goes to whoever is met and has not heard it; it stops being told when forgotten.
+  https://www.emergentmind.com/topics/daley-kendall-rumor-model
+- **What is passed on best.** Gossip about people, over facts about things (Mesoudi, Whiten and
+  Dunbar 2006).
+  https://research-portal.st-andrews.ac.uk/en/publications/a-bias-for-social-information-in-human-cultural-transmission/
+- **Parents' feuds.** Beliefs about conflict correlate strongly between parents and children
+  (Psihologija 2021); no figure found for blood feuds as such.
+  https://doaj.org/article/6f74e2ee67174a7e8b9d2729a97ae7af
+- **How fast news went on foot.** No sourced figure for village word of mouth; royal riders
+  covered up to about 100 miles a day. Here it goes as fast as people meet.
+- **Chosen, and its cost.** Two more numbers per slot (who told them, which telling), 5 bytes;
+  the tellings on the event; who told whom on the event for a year. Talking costs only when two
+  people meet, as before.
+
+### [ ] 12b. Acting on more of what is heard
+
+**Now:** people act on news of wars and villages taken (as a grievance) and on being told where
+there is food.
+**Do:** news of a famine sends relatives to help or people away from the place; news of a
+sickness keeps people from the village it is in; news of a good harvest or high prices draws
+traders. Each read from what the person holds, so a wrong telling sends them the wrong way.
+**Ric decides:** which kinds of news people act on.
+**Done when:** a changed telling of where a sickness is moves people measurably differently from
+the true one.
+**Budget:** default.
 
 Research notes:
 
@@ -1219,4 +1269,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-17 | 9 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 152× | 14.55 s a day, 21× | 3.8 MB, 0.74 KB | **materials and livings**: wood, stone, ore, herds, game, firewood. Against before: 2,000 0.60 → 0.68 s, 5,000 1.80 → 1.96 s, 20,000 14.95 → 14.55 s, 400 on 500 km 0.13 → 0.19 s (more walking) |
 | 2026-11-17 | 10 | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | 15.96 s a day, 19× | 4.1 MB, 0.80 KB | **the ten traits**: quarrels, fights, theft, raids and hard years moving people. Against item 9: 2,000 0.66 → 0.66 s, 5,000 1.98 → 2.06 s, 20,000 14.6 → 16.0 s (+9%: the old ask-a-neighbour search, with more people short), 400 on 500 km 0.19 → 0.14 s; memory 0.67 → 0.80 KB a person (five traits, four fields) |
 | 2026-11-17 | 11 | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 155× | 16.30 s a day, 18× | 6.6 MB, 1.29 KB, measured right after making the world (0.80 before: the minds are there from the start) | **the mind**: twenty slots a person in flat arrays. Against item 10: 2,000 0.67 → 0.68 s, 5,000 2.08 → 1.92 s, 20,000 16.2 → 16.3 s, 400 on 500 km 0.14 → 0.14 s; a running world 0.7 KB a person lighter |
+| 2026-11-18 | 12 | AMD Ryzen 5 3600, 24 GB | 1.84 s a day, 163× | 15.1 s a day, 20× | 7.0 MB, 1.36 KB at the start (2.77 against 2.62 KB a person by heap after) | **talking passes what you hold**: who told whom, tellings that change. Against the world before: 400 0.15 → 0.15 s, 2,000 0.70 → 0.71 s, 5,000 1.92 → 1.84 s (alternated four times), 20,000 16.4 → 15.1 s, 400 on 500 km 0.20 → 0.16 s; 0.27 KB a person more by day 120 |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |
