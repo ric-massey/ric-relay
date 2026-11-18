@@ -1168,6 +1168,16 @@ Research: how far from the front work went on as before; what war economies stor
 (town walls raised in wartime, siege stores; "Dig for Victory").
 Done when, besides the below: a faction at war away from the fighting stores and works more, not
 less, while a place under siege still empties its fields.
+**Left over from item 13** (added 2026-11-18; Ric: "Add them"):
+- **Peace by marriage** between leaders' families (PEOPLE-VISION, war: "Peace: a new leader, a
+  treaty, tribute, a marriage, and whether it holds"), and whether it holds.
+- **Trade deals are too easy:** they form between almost every pair of neighbours at peace. Make
+  them need real trade between the two (sales across the border), not just liking.
+- **Tribute is a fixed share** of stores and treasury. Make it an amount the two sides agree,
+  weighed against what a war would cost.
+Done when, for these: peace by marriage happens in some worlds and sometimes fails; under half of
+neighbouring pairs at peace have a trade deal in a default world; tribute differs with how
+lopsided the two sides are.
 **Research first:** how many died in battles and how many from hunger and sickness around them;
 how far an army could go from its food; how long places took to recover; what refugees did.
 **Ric decides:** nothing up front.
