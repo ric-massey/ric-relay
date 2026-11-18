@@ -49,6 +49,18 @@
   const STEP_SCALE = ACTIONS_PER_HOUR / 250;
   const TK = n => Math.max(1, Math.round(n * STEP_SCALE));
   const REFLECT_HOURS = 6;
+  const NEW_TRAITS = ["patient", "temper", "hard", "curious", "honest"];   // TODO 10: the five added to the first five
+  const TRAITS = ["bold", "warm", "greed", "stub", "patient", "temper", "hard", "curious", "honest"];
+  const TRAIT_FADE = Math.LN2 / (2 * 365 * 4);   // a look every six hours; half gone in two years
+  const life = o => TRAITS.map(k => o[k] || 0);
+  const LIFE = {
+    raid:   life({ temper: 0.04, warm: 0.02, patient: -0.02, bold: 0.01 }),
+    famine: life({ greed: 0.03, patient: 0.03, honest: -0.02, warm: -0.02 }),
+    grief:  life({ bold: -0.02, temper: 0.02 }),
+    killed: life({ temper: 0.03 }),
+    robbed: life({ warm: -0.02 }),
+    good:   life({ warm: 0.01, temper: -0.01, greed: -0.01, curious: 0.01 }),
+  };
   const TOWN_AT = 400, CITY_AT = 5000;     // people: a town, a city (TODO 8)
   const MARKET_PRICE = 1.2;                // coins a day's food fetches door to door on market day
   const ILLNESS_HOURS = 7 * DAY_HOURS;
@@ -192,12 +204,6 @@
       { key: "talk", label: "How much they talk", type: "range", min: 0, max: 1, step: 0.05, def: 0.6,
         say: scale(["never", "rarely", "now and then", "often", "to everybody they pass"]),
         help: "News, opinions, friendships and sickness all travel by talking." },
-      { key: "stubborn", label: "How stubborn they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
-        say: scale(["they believe the last person they spoke to", "open", "set in their ways", "nobody changes anybody's mind"]),
-        help: "On average. Each person is their own, and children take after their parents." },
-      { key: "differ", label: "How much they differ", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
-        say: scale(["all alike", "a little", "as people do", "a people of extremes"]),
-        help: "How far one person's nature — stubbornness, boldness, warmth, greed — is from the next, and how far a child strays from its parents." },
       { key: "divided", label: "How far apart they start", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["everybody agrees", "some difference", "divided", "two camps"]),
         help: "The one thing they argue about: should what is grown be shared out, or does each keep their own?" },
@@ -206,6 +212,45 @@
       { key: "switch", label: "Changing sides", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["never", "almost never", "if life is better there", "easily"]),
         help: "How readily an unhappy person joins the faction of somebody who is doing better." },
+    ]},
+    /* Their nature (TODO 10; Ric, 2026-11-17: "Ten sliders"): each of the ten traits' average at
+       the start. At the middle each is an ordinary people, and the five that were here before
+       item 10 give exactly the people they always did. Each person is their own about it,
+       children take after their parents, and what happens to them moves it a little. */
+    { title: "Their nature", items: [
+      { key: "bold", label: "Bold", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["timid","careful","ordinary","daring","reckless"]),
+        help: "Whether to take a risk: fight or run, steal when starving, move to a new place, march as a soldier." },
+      { key: "warm", label: "Warm", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["cold","guarded","ordinary","kind","they would give their last"]),
+        help: "Whether to give, share and help: a neighbour asking for grain, somebody hungry met on the road." },
+      { key: "greedy", label: "Greedy", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["content with little","modest","ordinary","grasping","never enough"]),
+        help: "How much is enough: keep working, trading and putting by until they stand above their neighbours, or stop." },
+      { key: "stubborn", label: "How stubborn they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["they believe the last person they spoke to", "open", "set in their ways", "nobody changes anybody's mind"]),
+        help: "On average. Each person is their own, and children take after their parents." },
+      { key: "loyalty", label: "How loyal they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["they owe nobody anything", "grudging", "ordinary", "devoted", "whatever is done to them"]),
+        help: "How far people stand by their faction: how loyal they start, and how far hard times, taxes and a leader they disagree with wear it down." },
+      { key: "patient", label: "Patient", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["today is all there is","short-sighted","ordinary","they plan for winter","they plan for years"]),
+        help: "Now or later: how much they keep back for the winter rather than sell, whether they fill the larder before the cold or leave it, and how long they bide their time before having it out with somebody." },
+      { key: "temper", label: "Hot-tempered", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["never raise a hand","even-tempered","ordinary","touchy","fists first"]),
+        help: "How fast a quarrel becomes a fight. Most fights are bruises; now and then one kills, about as often as in a medieval village, and the dead person's family remembers." },
+      { key: "hardwork", label: "Hardworking", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["idle","easy-going","ordinary","hard workers","they never stop"]),
+        help: "How much they work when nothing forces them to, against resting and seeing people." },
+      { key: "curious", label: "Curious", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["set in old ways","wary of the new","ordinary","curious","restless"]),
+        help: "Whether to try the new thing: work that is not their trade, a new village, the road to a market they have not seen." },
+      { key: "honest", label: "Honest", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["thieves","not to be trusted","ordinary","honest","they would starve first"]),
+        help: "Whether to steal from a neighbour's larder when short, or from another faction's store when starving." },
+      { key: "differ", label: "How much they differ", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
+        say: scale(["all alike", "a little", "as people do", "a people of extremes"]),
+        help: "How far one person's nature — each of the ten — is from the next, and how far a child strays from its parents." },
     ]},
     { title: "Power", items: [
       { key: "rule", label: "Who leads, at first", type: "select", def: "elected",
@@ -216,9 +261,6 @@
         help: "Each faction's own rule, as Ric asked: a chief or the richest chooses by their own lights, a people who vote choose by what most of them want, and you choose for a faction you rule. Or set one rule for everybody here. Families hold one or two fields each near the house; common fields are worked by anybody of the village; a leader's land is worked by all, and a third of every harvest goes to the leader's barn, the village store." },
       { key: "term", label: "A vote every", type: "range", min: 1, max: 20, step: 1, def: 6,
         say: v => v + (v === 1 ? " year" : " years"), help: "Wherever leaders are voted for — from the start, or after a revolution brings in votes." },
-      { key: "loyalty", label: "How loyal they are", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
-        say: scale(["they owe nobody anything", "grudging", "ordinary", "devoted", "whatever is done to them"]),
-        help: "How far people stand by their faction: how loyal they start, and how far hard times, taxes and a leader they disagree with wear it down." },
       { key: "rebel", label: "Breaking away", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["never", "only in despair", "when a village has had enough", "at the first grievance"]),
         help: "How unhappy a village has to be before it declares itself its own faction." },
@@ -469,6 +511,10 @@
        makes the short cuts check themselves as they go; it is for tests. */
     const PLAIN = !!(check && check.plainWalking), AUDIT = !!(check && check.audit);
     const R = rng(S.seed * 1597334677);
+    /* The five traits item 10 added are drawn from a stream of their own, so each person's
+       bold, warm, greedy and stubborn come out as they did before item 10. Who they become does
+       not: hot temper now counts in who takes up soldiering on the first day, and from there on. */
+    const RT = rng((S.seed | 0) * 2246822519 + 7);
     const cols = Math.round(S.map * SQUARES_PER_KM), rows = Math.round(cols * 0.62);
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
@@ -568,7 +614,8 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const count = { infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
-                    wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0 };
+                    wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
+                    quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0 };   // TODO 10
     let t = 0, activityTicks = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
 
     const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -631,7 +678,7 @@
        still ahead, for themselves and the children they feed. Households
        stored their own grain; a village market can only buy as much as its
        till holds, so a farmer's autumn mostly stays under their own roof. */
-    const reserve = p => (baseNeed(p) + (p.feeds || 0)) * (1.1 + winterAhead() * 1.25);   // a quarter over, for a long winter
+    const reserve = p => (baseNeed(p) + (p.feeds || 0)) * (1.1 + winterAhead() * 1.25 * (0.6 + 0.8 * (p.patient ?? 0.5)));   // a quarter over, for a long winter; more for the patient (TODO 10)
     /* The cold costs food: people eat up to a quarter more in a hard winter. */
     const baseNeed = p => (adult(p) ? 1 : 0.35 + 0.65 * clamp(p.age / S.grown, 0, 1));
     const dailyNeed = p => baseNeed(p) * (1 + 0.25 * S.winter * Math.max(0, -warmth()));
@@ -1162,7 +1209,8 @@
                   /* Wood, stone and ore in store, what each fetches and how much the village wants (TODO 9a). */
                   wood: 0, stone: 0, iron: 0, priceWood: 1, priceStone: 1, priceIron: 2, wantWood: 1, wantStone: 1, wantIron: 1, mats: undefined,
                   wool: 0, hide: 0, priceWool: 1.5, priceHide: 1.5, wantWool: 1, wantHide: 1,   // TODO 9b
-                  cold: 0 };   // TODO 9c: the share of the village unwarmed today
+                  cold: 0,   // TODO 9c: the share of the village unwarmed today
+                  raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined };   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
       v.ore = o / c;
@@ -1376,7 +1424,7 @@
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
                   tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30 * STEP_SCALE), food: 0.8 + R() * 0.6, coins: 0, goods: 0, gear: {},
-                  hp: 1, bold: nature(R()), warm: nature(R()), greed: nature(R()), stub: clamp(S.stubborn + (R() - 0.5) * S.differ, 0, 1), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
+                  hp: 1, bold: nature(R(), S.bold), warm: nature(R(), S.warm), greed: nature(R(), S.greedy), stub: clamp(S.stubborn + (R() - 0.5) * S.differ, 0, 1), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, friends: new Map(), partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
                   unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id,
@@ -1415,7 +1463,10 @@
                   dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined, spareFood: undefined,
                   /* Building (TODO 7b): the house they are waiting for, which they are working on, and whether a shift is under way. */
                   waitHouse: -1, buildAt: -1, shift: false,
-                  gathering: undefined };   // TODO 9a: at the day's cutting, quarrying or mining
+                  gathering: undefined,   // TODO 9a: at the day's cutting, quarrying or mining
+                  /* TODO 10: the other five of the ten, and what of the last hard times has yet to wear off. */
+                  patient: nature(RT(), S.patient), temper: nature(RT(), S.temper), hard: nature(RT(), S.hardwork),
+                  curious: nature(RT(), S.curious), honest: nature(RT(), S.honest), fade: null, quarrelAt: undefined, stoleAt: undefined, leanYr: undefined };
       house(p, v, mum || dad);
       if (mum && dad) {
         // Starting supplies belong to world setup, not to each new birth.
@@ -1428,6 +1479,7 @@
         p.warm = clamp((mum.warm + dad.warm) / 2 + (R() - 0.5) * stray, 0, 1);
         p.greed = clamp((mum.greed + dad.greed) / 2 + (R() - 0.5) * stray, 0, 1);
         p.stub = clamp(((mum.stub ?? S.stubborn) + (dad.stub ?? S.stubborn)) / 2 + (R() - 0.5) * stray, 0, 1);
+        for (const k of NEW_TRAITS) p[k] = clamp((mum[k] + dad[k]) / 2 + (RT() - 0.5) * stray, 0, 1);
         p.views = clamp((mum.views + dad.views) / 2 + (R() - 0.5) * 0.4, -1, 1);
       } else {
         /* Divided worlds start as two camps, pulled toward wherever their own
@@ -1449,7 +1501,80 @@
 
     /* A founder's nature: spread about the middle by "How much they differ"
        — at its middle, exactly the even spread it always was. */
-    function nature(u) { return clamp(0.5 + (u - 0.5) * 2 * S.differ, 0, 1); }
+    function nature(u, mid) { return clamp((mid ?? 0.5) + (u - 0.5) * 2 * S.differ, 0, 1); }
+
+    /* ── what happens to a person changes them (TODO 10) ─────────────────────
+       Ric, 2026-11-17: "A little". A hard event moves a trait a few hundredths of its range,
+       and half of what it moved wears off, half again every two years; the other half stays,
+       and children start from what their parents have become. Loyalty is left out: it already
+       follows how life is going, every six hours (`reflect`).
+       What moves what, from the studies in the README: a raid makes people quicker to anger,
+       closer to their own and less willing to wait (Bauer et al. 2016; Voors et al. 2012);
+       a famine makes the survivors put more by and hold on to it, as people who lived through
+       hard times stay more careful for life (Malmendier and Nagel 2011), and less scrupulous about how; a death in the
+       family leaves them more fearful, and a killing more bitter; a good year softens them. */
+    function shaken(p, d) {
+      if (!p.fade) p.fade = new Float32Array(TRAITS.length);
+      for (let i = 0; i < TRAITS.length; i++) {
+        if (!d[i]) continue;
+        const k = TRAITS[i], was = p[k];
+        p[k] = clamp(was + d[i], 0, 1);
+        p.fade[i] += (p[k] - was) / 2;
+      }
+    }
+    function settle(p) {
+      if (!p.fade) return;
+      let left = 0;
+      for (let i = 0; i < TRAITS.length; i++) {
+        const g = p.fade[i] * TRAIT_FADE, k = TRAITS[i];
+        p[k] = clamp(p[k] - g, 0, 1); p.fade[i] -= g; left += Math.abs(p.fade[i]);
+      }
+      if (left < 1e-4) p.fade = null;
+    }
+
+    /* Two people who cannot stand each other, face to face (TODO 10). Words, mostly; between
+       the hot-tempered, blows. A fight is bruises, and now and then a death: about one person
+       in 4,000 a year was killed in English villages of the 13th and 14th centuries (Given
+       1977; Eisner 2003). LETHAL is set from that: measured over twelve world-years at ordinary
+       tempers, about 83 fights a year among some 350 people, so one in a thousand kills. */
+    const LETHAL = 0.001;
+    function quarrel(a, b) {
+      wakeUp(b);
+      count.quarrels++;
+      const heat = (a.temper + b.temper) / 2;
+      if (R() < heat * heat * 1.2) {
+        count.fights++;
+        b.hp -= 0.05 + R() * 0.15 * (0.5 + a.temper);
+        a.hp -= 0.03 + R() * 0.12 * (0.5 + b.temper);
+        befriend(a, b, -0.25);
+        said(a, b, "fight", pick(["I've had enough of you.", "Say that again.", "You'll answer for it."]), pick(["Get away from me!", "Try it.", "Help! Help!"]));
+        const dead = R() < LETHAL ? (R() < 0.5 + (a.temper - b.temper) * 0.5 ? b : a) : null;
+        if (dead) {
+          const by = dead === a ? b : a;
+          note("killing", by.name + " killed " + dead.name + " in a fight in " + villages[dead.home].name + ".", 1.5, dead.x, dead.y, dead.f);
+          die(dead, "fight", by);
+        }
+        for (const q of [a, b]) if (q.hp !== -99 && q.hp < 0.02) q.hp = 0.02;   // hurt, not starved
+      } else {
+        befriend(a, b, R() < 0.4 ? 0.15 : -0.1);
+        said(a, b, "quarrel", pick(["We need to talk about what you said.", "You know what you did.", "I won't stand for it."]), pick(["Fine. I was wrong.", "Leave it.", "Not this again."]));
+      }
+    }
+    /* Taking from a neighbour's larder (TODO 10). Somebody at home and awake most likely sees it,
+       and somebody out or asleep now and then; whoever sees it holds it against the thief. */
+    function steal(p, q) {
+      const take = Math.min(3 * dailyNeed(p), Math.max(0, q.food - 10 * dailyNeed(q)) * 0.3);
+      if (take < 0.05) return;
+      q.food -= take; p.food += take; count.pilfered++;
+      const home = q.dwelling >= 0 && homes[q.dwelling];
+      const seen = home && q.task !== "sleep" && Math.hypot(q.x - home.x, q.y - home.y) < 1 ? R() < 0.7 : R() < 0.15;
+      if (seen) {
+        wakeUp(q);
+        befriend(q, p, -0.5);
+        shaken(q, LIFE.robbed);
+        q.say = "Thief!"; q.sayT = TK(60); p.say = "I had to. My children are hungry."; p.sayT = TK(60);
+      } else { p.say = "They won't miss it."; p.sayT = TK(40); }
+    }
     const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const adult = p => p.age >= S.grown;
     const atWar = (a, b) => a !== b && factions[a].rel[b] && factions[a].rel[b].war;
@@ -1871,7 +1996,7 @@
 
     function chooseJob(p) {
       const v = villages[p.home], f = factions[p.f];
-      if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold > 0.35 && R() < 0.8) { f.soldiers++; return "soldier"; }
+      if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold + (p.temper - 0.5) * 0.3 > 0.35 && R() < 0.8) { f.soldiers++; return "soldier"; }
       /* A village that cannot feed itself needs food, whatever else pays. */
       if (v.food < v.pop * 0.5) return "farmer";
       const w = livelihood(p, v);
@@ -2190,6 +2315,9 @@
     function strike(p, foe, base) {
       const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1);
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
+      /* Enemies striking in somebody's own village: a raid there (TODO 10). */
+      const hv = villages[foe.home];
+      if (hv && hv.f !== p.f && Math.hypot(foe.x - hv.x, foe.y - hv.y) < hv.radius + 1) hv.raidAt = t;
       return damage;
     }
 
@@ -2235,7 +2363,7 @@
            off the wish to work in October as surely as in May. */
         provide: clamp(0.3 + household - Math.max(0, days - 2 - winterAhead()) * 0.1 +
                        clamp((winterAhead() - days) / (winterAhead() + 1), 0, 1) * 0.5 * S.winter -
-                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v) + ambition * 0.7, 0, 1.3) * (0.5 + p.greed * 0.6),
+                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v) + ambition * 0.7, 0, 1.3) * (0.5 + p.greed * 0.6) * (0.7 + 0.6 * p.hard),   // TODO 10: and the hardworking work
         ambition: ambition,
       };
     }
@@ -2257,7 +2385,7 @@
     /* A job is what somebody is good at and what their village expects of them,
        not a script. It is worth about a third again at the work it names, and
        anybody may still do anybody's work when their circumstances call for it. */
-    const skilled = (p, job) => (p.job === job ? 1.35 : 0.72);
+    const skilled = (p, job) => (p.job === job ? 1.35 : 0.6 + 0.24 * p.curious);   // TODO 10: the curious try other work
     const atWarAnywhere = f => { for (const k in f.rel) if (f.rel[k].war) return true; return false; };
 
     /* Somebody worth walking to see: whoever they are closest to who is here. */
@@ -2384,18 +2512,21 @@
          into other work, other villages, or somebody else's store. */
       if (!p.cargo) {
         const w = livelihood(p, v);
+        /* Laying in for the winter (TODO 10): how far the larder falls short of it, which the
+           patient set about now and the impatient leave for later. Nothing at an ordinary patience. */
+        const keep = reserve(p), lay = clamp((keep - p.food) / keep, 0, 1) * (p.patient - 0.5) * 0.5;
         /* A day in the fields. */
         if (w.tile >= 0)
           /* At harvest everybody helps: ripe grain left standing is lost to the
              frost, so bringing it in is worth a day whatever is in the larder. */
-          weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12 + 0.35 * (season().ripe - 1) / 3) * skilled(p, "farmer") * w.land
+          weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12 + 0.35 * (season().ripe - 1) / 3 + lay) * skilled(p, "farmer") * w.land
                           - away(Math.hypot(w.tx + 0.5 - p.x, w.ty + 0.5 - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, w.tx + 0.2 + R() * 0.6, w.ty + 0.2 + R() * 0.6, "field"); p.wait = 0; });
 
         /* A day's fishing (TODO 6c), for a village with water near. */
         if (FISH && fishGround(v)) {
           const g = v.fishing;
-          weigh("fish", (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, "fisher") * fishWorth(v)
+          weigh("fish", (n.food * 0.8 + n.provide * 0.9 + 0.12 + lay) * skilled(p, "fisher") * fishWorth(v)
                          - away(Math.hypot(g.x - p.x, g.y - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, g.x + (R() - 0.5) * 1.5, g.y + (R() - 0.5) * 1.5, "fish"); p.wait = 0; });
         }
@@ -2412,7 +2543,7 @@
         if (MATS) for (const k of ["herd", "hunt"]) {
           const j = wildSpot(v, k); if (j < 0) continue;
           const i = wildList(v, k)[j], sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5;
-          weigh(k, (n.food * 0.8 + n.provide * 0.9 + 0.12) * skilled(p, k === "herd" ? "herder" : "hunter") * wildWorth(v, k, j)
+          weigh(k, (n.food * 0.8 + n.provide * 0.9 + 0.12 + lay) * skilled(p, k === "herd" ? "herder" : "hunter") * wildWorth(v, k, j)
                    - away(Math.hypot(sx - p.x, sy - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, k); p.wait = 0; });
         }
@@ -2460,7 +2591,7 @@
         else if (p.job === "trader") {
           const next = nextMarket(p, w.here);
           if (next && p.food >= 0.6)
-            weigh("scout", 0.3 + p.greed * 0.2 + n.provide * 0.3 - away(dist(p, next)) * 0.4
+            weigh("scout", 0.3 + p.greed * 0.2 + (p.curious - 0.5) * 0.3 + n.provide * 0.3 - away(dist(p, next)) * 0.4
                             - n.food * 0.6 - n.rest * 0.5 - n.safety * 0.8 - dark * 0.5,
               () => { p.at = next.id; go(p, next.x, next.y, "scout"); p.wait = 0; });
         }
@@ -2468,7 +2599,7 @@
 
       /* Standing guard, and going where the fighting is. */
       if (p.job === "soldier")
-        weigh("patrol", 0.4 + n.safety * 0.9 + p.loyal * 0.35 + (atWarAnywhere(f) ? 0.5 : 0)
+        weigh("patrol", 0.4 + n.safety * 0.9 + p.loyal * 0.35 + (p.temper - 0.5) * 0.3 + (atWarAnywhere(f) ? 0.5 : 0)
                          - n.rest * 0.4 - n.food * 0.5, () => { p.until = t + SPELL.guard; soldier(p); });
 
       /* Moving house. Until 2026-11-14 a person changed village only by
@@ -2504,7 +2635,7 @@
         }
         if (best) {
           const there = best;
-          weigh("move", bs + n.food * 0.5 + (1 - p.mood) * 0.3 - ties + p.bold * 0.15 - dark * 0.5, () => {
+          weigh("move", bs + n.food * 0.5 + (1 - p.mood) * 0.3 - ties + p.bold * 0.15 + (p.curious - 0.5) * 0.3 - dark * 0.5, () => {
             const kids = (PLAIN ? people : residents(p.home)).filter(q => (q.mum === p.id || q.dad === p.id || q.carer === p.id) && !adult(q) && q.hp > 0 && q.home === p.home);
             /* A couple goes together. */
             if (mate && mate.home === p.home && mate.hp > 0 && mate.id !== factions[mate.f].leader) kids.push(mate);
@@ -2580,12 +2711,30 @@
           weigh("ask", n.food * 1.3 + 0.15 - away(dist(p, q)) - dark * 0.3, () => {
             go(p, q.x + (R() - 0.5) * 0.6, q.y + (R() - 0.5) * 0.6, "ask"); p.askOf = q.id; p.wait = 0;
           });
+          /* Or take it, from their house, best by night (TODO 10): somebody hungry with nothing to pay
+             with, from a house with plenty put by. The honest would sooner go hungry. */
+          if (p.hungry > 0 && !(t - (p.stoleAt ?? -1e9) < 3 * DAY_HOURS) && funds(p) < 1 && q.food > 10 * dailyNeed(q) && q.home === p.home && q.dwelling >= 0 && p.honest < 0.7) {
+            const h = homes[q.dwelling], crook = (1 - p.honest) * (1 - p.honest) * 2;   // 0.5 at an ordinary honesty
+            weigh("steal", (n.food * 1.3 + 0.15) * crook - away(Math.hypot(h.x - p.x, h.y - p.y)) + dark * 0.15, () => {
+              go(p, h.x + (R() - 0.5) * 0.4, h.y + (R() - 0.5) * 0.4, "steal"); p.askOf = q.id; p.stoleAt = t; p.wait = 0;
+            });
+          }
         }
+      }
+
+      /* Having it out with somebody they cannot stand (TODO 10): the hot-tempered go looking for
+         it, at most once a week at an ordinary patience. */
+      if (p.temper > 0.35 && !(t - (p.quarrelAt ?? -1e9) < (0.5 + p.patient) * 7 * DAY_HOURS)) {   // the patient bide their time
+        let foe = null, worst = -0.35;
+        for (const [id, sc] of p.friends) if (sc < worst) { const q = byId.get(id); if (q && q.hp > 0 && q.home === p.home && adult(q)) { worst = sc; foe = q; } }
+        if (foe) weigh("quarrel", (-worst - 0.2) * (p.temper - 0.35) * 2.5 - away(dist(p, foe)) * 0.5 - n.food * 0.5 - n.rest * 0.4 - n.safety * 0.3 - dark * 0.4, () => {
+          go(p, foe.x + (R() - 0.5) * 0.6, foe.y + (R() - 0.5) * 0.6, "quarrel"); p.askOf = foe.id; p.quarrelAt = t; p.wait = 0;
+        });
       }
 
       /* Going to find somebody. This is what stops talking being an accident of
          two people happening to stand on the same tile. */
-      weigh("visit", n.company * 1.25 - 0.08 - n.food * 0.4 - n.safety * 0.4 - dark * 0.5, () => {
+      weigh("visit", n.company * 1.25 - 0.08 - (p.hard - 0.5) * 0.2 - n.food * 0.4 - n.safety * 0.4 - dark * 0.5, () => {
         const who = someoneToSee(p);
         if (who) go(p, who.x + (R() - 0.5), who.y + (R() - 0.5), "visit");
         else near(p, v, 3);
@@ -2601,7 +2750,7 @@
         });
 
       /* Sitting out the day: ill, spent, or nothing better on offer. */
-      weigh("rest", n.rest * 0.7 + (p.sick > 0 ? 0.45 : 0) + 0.05 - away(far) * 0.3, () => {
+      weigh("rest", n.rest * 0.7 + (p.sick > 0 ? 0.45 : 0) + 0.05 + (0.5 - p.hard) * 0.2 - away(far) * 0.3, () => {
         go(p, p.hx + (R() - 0.5) * 0.6, p.hy + (R() - 0.5) * 0.6, "rest"); p.wait = spell("rest");
       });
 
@@ -2706,6 +2855,17 @@
         const q = byId.get(p.askOf);
         if (q && q.hp > 0) askFor(p, q);
         p.task = "idle"; p.wait = spell("visit"); return;
+      }
+      if (p.task === "steal") {                        // TODO 10
+        const q = byId.get(p.askOf);
+        if (q && q.hp > 0) steal(p, q);
+        p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "quarrel") {                      // TODO 10
+        const q = byId.get(p.askOf);
+        if (q && q.hp > 0 && dist(p, q) < 3) quarrel(p, q);
+        if (p.hp !== -99) { p.task = "idle"; p.wait = spell("visit"); }
+        return;
       }
       if (p.task === "visit") {
         /* Standing next to somebody is the whole point; `act` does the talking
@@ -3131,6 +3291,17 @@
       }
       const mate = byId.get(p.partner);
       if (mate) { wakeUp(mate); mate.partner = 0; mate.mood -= 0.2; mate.say = "I miss " + p.name + "."; mate.sayT = TK(80); }
+      /* The family is changed by it, and by a killing more (TODO 10). Grief at a death in old
+         age is grief too, but a lesser one, and left out. */
+      if (why !== "old") {
+        const kin = (PLAIN ? people : residents(p.home)).filter(q => q.hp > 0 && (q.mum === p.id || q.dad === p.id));
+        for (const id of [p.partner, p.mum, p.dad]) { const q = id && byId.get(id); if (q && q.hp > 0) kin.push(q); }
+        if (mate && mate.hp > 0 && !kin.includes(mate)) kin.push(mate);
+        for (const q of kin) {
+          shaken(q, LIFE.grief);
+          if ((why === "fight" || why === "battle") && by) { shaken(q, LIFE.killed); if (why === "fight" && by.hp > 0) befriend(q, by, -0.5); }
+        }
+      }
       if (why === "battle" && by) {
         const rel = f.rel[by.f];
         if (rel) { rel.dead++; rel.grief = clamp(rel.grief + 0.02, 0, 3); }
@@ -3480,7 +3651,11 @@
           const v = villages[p.home];
           if ((shared || !adult(p)) && v.food > 0.3 && v.f === p.f) { v.food -= 0.3; p.food += 0.3; fed = true; }
         }
-        if (!fed) { p.hungry++; p.hp -= STARVE * S.hunger; }
+        if (!fed) {
+          p.hungry++; p.hp -= STARVE * S.hunger;
+          p.leanYr = Math.floor(t / YEAR);
+          if (p.hungry === 72) shaken(p, LIFE.famine);   // three days with nothing (TODO 10)
+        }
       } else {
         if (p.hungry > 0) p.hungry = Math.max(0, p.hungry - 4);
         if (p.hp < 1 && !(p.dry > 0)) p.hp = Math.min(1, p.hp + 0.004);   // no healing without water (TODO 6a)
@@ -3533,6 +3708,8 @@
       if (p.task === "rest") return walking ? "Going home" : p.sick > 0 ? "Ill at home" : "Resting at home";
       if (p.task === "visit") return walking ? "Going to see somebody" : "Visiting";
       if (p.task === "ask") return walking ? "Going to ask for food" : "Asking for food";
+      if (p.task === "steal") return walking ? "Creeping to a neighbour's house" : "Taking food";
+      if (p.task === "quarrel") return walking ? "Going to have it out with somebody" : "Quarrelling";
       if (p.task === "gear") return walking ? "Going for tools" : "Fitting tools";
       if (p.task === "fight") return "Fighting";
       if (p.task === "scout") return "Checking the market in " + villages[p.at].name;
@@ -4599,6 +4776,7 @@
 
     /* ── slower things: every six simulated hours per person ─────────────────── */
     function reflect(p) {
+      if (p.fade !== null) settle(p);   // TODO 10: hard times wearing off (a plain check first: calling it for everybody cost 8% of a 5,000-person world)
       const v = villages[p.home], f = factions[p.f];
       const anyWar = Object.keys(f.rel).some(k => f.rel[k].war);
       let friendsHere = 0;
@@ -4627,7 +4805,7 @@
       /* Nobody keeps making pots while they starve. */
       if (p.hungry > 10 && (p.job === "crafter" || (p.job === "trader" && !p.cargo))) { p.job = "farmer"; p.task = "idle"; }
       if (p.hungry > 25) {
-        if (p.bold > 0.6 && R() < 0.3) {
+        if (p.bold > 0.6 && R() < 0.6 * (1 - p.honest)) {   // TODO 10: 0.3 at an ordinary honesty
           let mark = null, md = 9;
           for (const o of villages) if (o.alive && o.f !== p.f && o.food > 2) { const d = dist(p, o); if (d < md) { md = d; mark = o; } }
           if (mark) {
@@ -4710,6 +4888,22 @@
         return;
       }
       v.empty = 0;
+      /* A raid here since yesterday, or a year gone by without want or raids (TODO 10). */
+      const yr = Math.floor(t / YEAR);
+      if (v.raidAt > v.raidSeen || v.yearSeen !== yr) {
+        /* Fighting here after a month of none is a raid; fighting that goes on, day after day of a
+           siege, is the same raid and not thirty of them. `raidSeen` is the last blow looked at. */
+        const raided = v.raidAt > v.raidSeen && v.raidAt - v.raidSeen >= 30 * DAY_HOURS, looked = v.yearSeen;
+        if (v.raidAt > v.raidSeen) v.raidSeen = v.raidAt;
+        if (raided) count.raids++;
+        v.yearSeen = yr;
+        const good = looked !== undefined && looked === yr - 1 && v.raidAt < (yr - 1) * YEAR;
+        if (raided || good) for (const q of (PLAIN ? people : residents(v.id))) {
+          if (q.home !== v.id || q.hp <= 0) continue;
+          if (raided) shaken(q, LIFE.raid);
+          if (good && q.leanYr !== yr - 1) shaken(q, LIFE.good);
+        }
+      }
       if (FIRE) {
         /* A day's fires (TODO 9c). */
         /* Where there is no forest within reach, dung, turf and peat, as on treeless land: no wood burned. */

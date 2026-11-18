@@ -151,6 +151,7 @@ const SUITES = [
   ['world-builder roads', ['projects/world-builder/test/roads.test.mjs']],
   ['world-builder towns', ['projects/world-builder/test/towns.test.mjs']],
   ['world-builder materials', ['projects/world-builder/test/materials.test.mjs']],
+  ['world-builder traits', ['projects/world-builder/test/traits.test.mjs']],
   /* TODO.md item 2 (2026-11-15): people with nothing to do are passed over
      until their wait is up or somebody makes room beside them, and the lists
      of who stands where and who lives where are kept up, not made again. The

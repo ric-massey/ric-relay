@@ -932,7 +932,7 @@ Research notes:
 - **Item 2 of "Ric's next list" in PEOPLE-VISION**: "materials become goods, goods become
   equipment", demand tied to household needs and gear replacement, a ledger of production and stock.
 
-### [ ] 10. The ten traits, and events that move them
+### [x] 10. The ten traits, and events that move them
 
 **Now:** five traits (`bold`, `warm`, `greed`, `stub`, `loyal`), set at birth, never moved by
 what happens.
@@ -947,7 +947,42 @@ inherited; how much hard events change a person and how long it lasts.
 that was raided ends up measurably different from the same village that was not.
 **Budget:** default.
 
+Ric's answers (2026-11-17, "Start item 10"): how fast traits move **"A little"** (a raid or famine
+moves a trait about a twentieth of its range, about half of that fades over some years, children
+start near the parents' new number); setting them **"Ten sliders"**, one per trait's average in a
+"Their nature" group with "How much they differ"; a fight between neighbours kills **"Rarely, as
+in history"** (about 1 in 4,000 people a year, the dead person's family holding a grudge).
+
+**Done 2026-11-17.** Patient, hot-tempered, hardworking, curious and honest added, each changing a
+choice in `choose` (and the old choice at its middle): the hardworking work more against resting
+and visiting; the curious do other trades, move and scout; the patient keep more back for the
+winter and fill the larder before it, and bide their time; the hot-tempered go and have it out
+with those they cannot stand, and sometimes come to blows (one fight in a thousand kills); the
+dishonest steal from a neighbour's larder when hungry with nothing to pay. A raid, three days
+without food, a death in the family, being robbed and a good year each move traits a few
+hundredths; half wears off, half again every two years. Ten sliders; the person panel shows all
+ten. Each person's first four traits are drawn as before. **Not met / open:** 20,000 people on
+80 km is 9% slower (the old ask-a-neighbour search, with more people short; item 11 replaces it);
+memory 0.67 → 0.80 KB a person; Honest moves no hours until people go hungry (0.8% over 200 days); starved 19 a world against 15
+in twelve worlds, within the spread; grudges still live in the friends list (item 11), so a
+feud is only as long as memory holds it; fights are between neighbours of one village only.
+
 Research notes:
+- **Which traits predict which choices.** Honesty-humility (HEXACO, Ashton and Lee) predicts
+  cheating and stealing when it pays (Hilbig and Zettler 2009); conscientiousness effort and
+  hours; openness moving away (Jokela 2009) and changing work; trait anger aggression when
+  provoked (Bettencourt et al. 2006). So each new trait gets the one choice it is known for.
+- **How much is inherited.** About 40% of personality differences (Vukasović and Bratko 2015,
+  twin studies; Polderman et al. 2015, about half for human traits in general). The engine's old
+  rule — the parents' mean and a stray set by "How much they differ" — is kept for all ten.
+- **How much events change a person, and for how long.** Small and partly lasting (Bleidorn,
+  Hopwood and Lucas 2018; Jeronimus et al. 2014: bad events raise neuroticism a little, some of
+  it for years). War: more cooperation within one's own group (Bauer et al. 2016), more
+  impatience and risk-taking (Voors et al. 2012, Burundi). Hard times leave people more careful
+  for life (Malmendier and Nagel 2011). Chosen with Ric's "A little": a few hundredths per event,
+  half fading with a two-year half-life.
+- **Killing.** 13th- and 14th-century England, about 20 to 25 homicides a year in 100,000 (Given
+  1977; Eisner 2003): one in about 4,000.
 
 ### [ ] 11. The mind: a fixed number of things a person holds
 
@@ -1155,4 +1190,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-16 | 7 | AMD Ryzen 5 3600, 24 GB | 2.05 s a day, 146× | 14.9 s a day, 20× | 3.5 MB, 0.68 KB | **houses built, land held by each faction's rule, paths worn in, carts, boats**, a different world. Against item 6: 400 people 0.125 → 0.125 s, 2,000 0.62 → 0.62 s, 5,000 1.96 → 2.05 s, 20,000 14.3 → 14.9 s, 400 on 500 km 0.145 → 0.10 s; asking a neighbour made cheap |
 | 2026-11-17 | 8 | AMD Ryzen 5 3600, 24 GB | 1.72 s a day, 174× | 14.2 s a day, 21× | 3.6 MB, 0.71 KB | **towns and cities**; a paid-building search made cheap. Against item 7: 2,000 0.62 → 0.57 s, 5,000 2.12 → 1.72 s, 20,000 15.1 → 14.2 s, 400 on 500 km 0.10 → 0.12 s |
 | 2026-11-17 | 9 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 152× | 14.55 s a day, 21× | 3.8 MB, 0.74 KB | **materials and livings**: wood, stone, ore, herds, game, firewood. Against before: 2,000 0.60 → 0.68 s, 5,000 1.80 → 1.96 s, 20,000 14.95 → 14.55 s, 400 on 500 km 0.13 → 0.19 s (more walking) |
+| 2026-11-17 | 10 | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | 15.96 s a day, 19× | 4.1 MB, 0.80 KB | **the ten traits**: quarrels, fights, theft, raids and hard years moving people. Against item 9: 2,000 0.66 → 0.66 s, 5,000 1.98 → 2.06 s, 20,000 14.6 → 16.0 s (+9%: the old ask-a-neighbour search, with more people short), 400 on 500 km 0.19 → 0.14 s; memory 0.67 → 0.80 KB a person (five traits, four fields) |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

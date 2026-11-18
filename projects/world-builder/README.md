@@ -52,6 +52,7 @@ what has shipped from future direction, including the shared daily clock and rem
 | `test/day.mjs` | The one definition of "a different day": tallies adult person-hours per activity and measures what share of them two runs spend differently. Shared by the two below so a measurement and a check cannot disagree. |
 | `test/behaviour.mjs` | Not a check — a measurement. Reports what share of an adult's hours each setting actually moves, against rerolling the seed as the null. Run it before and after changing how people decide. A short probe cannot see a slow mechanism; use `--days`. |
 | `test/decisions.test.mjs` | Quick decision checks: a day slept, worked and walked in human proportions, and seven settings that must move at least 3–5% of an adult's hours. Guards against the hash check passing while a setting does nothing. |
+| `test/traits.test.mjs` | The ten traits (TODO item 10): the first four drawn as before, each slider sets what people are like, each new trait changes a choice, and a raided village ends up quicker to anger, warmer to its own and less patient than the same village not raided. |
 
 No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1`, then open
 `/projects/world-builder/`.
@@ -1754,6 +1755,96 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 10.78 s, slower**: with nobody jammed twice as many people are doing something each step (27%
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
+
+### The ten traits, and what happens moving them (2026-11-17)
+
+TODO item 10. People had five traits (bold, warm, greedy, stubborn, loyal), set at birth and never
+moved by anything. Ric chose: a hard event changes a person **"A little"**; what people are like at
+the start is **"Ten sliders"**; and a fight between neighbours kills **"Rarely, as in history"**.
+
+- **Five more traits**: patient, hot-tempered, hardworking, curious and honest, each 0 to 1, drawn
+  like the first five about the slider's middle by "How much they differ", and taken after the
+  parents with the same stray. They are drawn from a random stream of their own, so each person's
+  bold, warm, greedy and stubborn come out exactly as before (`test/traits.test.mjs` holds them).
+- **What each changes**, every one a choice in `choose` and at its middle the old choice:
+  - *Hardworking*: the wish to earn when nothing forces it is ×0.7 to ×1.3, and resting and
+    visiting weigh 0.1 more for the idle and 0.1 less for the keen.
+  - *Curious*: work outside their trade counts ×0.6 to ×0.84 against ×1.35 at their own (0.72 for
+    everybody before); moving to another village and scouting a market weigh up to 0.15 more.
+  - *Patient*: a household keeps back for the winter ×0.6 to ×1.4 of what it did (so sells less
+    to the store and at market), and while the larder is short of the winter the patient weigh
+    the fields, fishing, herding and hunting up to 0.25 higher and the impatient lower. They wait
+    longer before having it out with somebody.
+  - *Hot-tempered*: somebody who cannot stand a neighbour (feeling below −0.35) goes to have it
+    out with them, at most once a week at an ordinary patience. Words, or between two tempers
+    blows (a chance of 1.2 × their mean temper squared): bruises, both thinking worse of each
+    other, and one fight in a thousand kills. The family of somebody killed holds it against the
+    killer. Hot temper also counts toward soldiering and patrolling.
+  - *Honest*: somebody hungry with nothing to pay with may steal from a neighbour's house with a
+    fortnight put by, best by night, a third of what is over ten days (at most three days' food),
+    at most every three days; weighed at (1 − honest)² × 2 of asking, and not at all above 0.7.
+    Seen (most likely if they are home and awake), it is held against the thief. The old theft of
+    another faction's grain by the starving and bold is now 0.6 × (1 − honest), 0.3 as before at
+    the middle.
+- **What happens moves them** (`shaken`), each a few hundredths of the range; half of it wears off,
+  half again every two years (`settle`, every six hours), and half stays. Children start from what
+  their parents have become.
+  - *A raid* (enemies striking in the village, after a month without; a siege is one raid):
+    temper +0.04, warm +0.02, patient −0.02, bold +0.01.
+  - *Three days without food*: greedy +0.03, patient +0.03, honest −0.02, warm −0.02.
+  - *A death in the family* (not of old age): bold −0.02, temper +0.02; a killing in battle or a
+    fight, temper +0.03 more.
+  - *Robbed and seeing it*: warm −0.02.
+  - *A year without want or raids*: warm +0.01, temper −0.01, greedy −0.01, curious +0.01.
+  Loyalty is not moved this way: it already follows how life goes, every six hours.
+- **Settings.** A new group, "Their nature", with a slider for each of the ten (the stubborn and
+  loyal sliders moved there, unchanged) and "How much they differ". The person panel shows all ten.
+
+Sources.
+- How much is inherited: about 40% of the differences between people in personality (Vukasović
+  and Bratko 2015, a meta-analysis of twin studies; Polderman et al. 2015 find about half for
+  human traits in general). The engine keeps its old rule, the parents' mean and a stray.
+- Which traits decide which choices: honesty-humility predicts cheating and stealing when it
+  pays (Hilbig and Zettler 2009; Ashton and Lee's HEXACO); conscientiousness effort at work;
+  openness moving away (Jokela 2009) and changing work; trait anger aggression when provoked
+  (Bettencourt et al. 2006).
+- How events change people: small changes, partly lasting (Bleidorn, Hopwood and Lucas 2018;
+  Jeronimus et al. 2014 on bad events and neuroticism). War: people exposed to violence cooperate
+  more within their own group (Bauer et al. 2016) and in Burundi became more impatient and more
+  ready to take risks (Voors et al. 2012). Hard times make people more careful for life
+  (Malmendier and Nagel 2011).
+- Killing: about 20 to 25 a year in 100,000 in 13th- and 14th-century England, one in about
+  4,000 (Given 1977; Eisner 2003). Measured over twelve world-years at ordinary tempers, about 83
+  fights a year among some 350 people, which with one fight in a thousand killing is one in about
+  4,200.
+
+Measured.
+- *A year, twelve worlds* (seeds 11, 3, 5, 4, 2, 7, 13, 17, 19, 23, 29, 31), against the engine
+  before item 10: 359 alive a world against 352, 19 starved against 15 (a single world swings by
+  more than that from run to run), 16 dead in battle against 24. Each world-year about 140
+  quarrels, 87 fights, 11 raids and 340 larders robbed; no killing in the twelve (about one was
+  to be expected). Tempers rise over a year of war, to about 0.56 on average from 0.5.
+- *First tries, and what they taught*: counting every day of fighting at a village as a raid
+  pushed tempers to 0.97 in a year; letting the hungry steal from anybody with a day's food over,
+  and as readily as they asked, took 13,000 larders a world-year and spread hunger from house to
+  house (39 starved a world); patience first raised the wish to earn in general, which sent the
+  patient to the bench instead of the fields.
+- *Hours* (`test/behaviour.mjs`, four days, three seeds, each slider at 0.25 against 0.5): greedy
+  7.7%, curious 7.3%, hardworking 6.7%, bold 6.1%, warm 5.7%, hot-tempered 5.3%, stubborn 4.6%,
+  loyal 4.5%, patient 4.4%, a reseed 12.6%. Honest 0.0% in four spring days, since nobody is
+  hungry; over 200 days 0.8%, and in a hungry winter 26 larders robbed in two worlds against 2
+  (`test/traits.test.mjs`).
+- *A raid* (`test/traits.test.mjs`): the same village a month on, raided against not, is quicker
+  to anger by about 0.04, warmer to its own by 0.02 and less patient by 0.02, half of it set to
+  wear off.
+- *Speed* (`test/bench.mjs`, two runs each, against before): 400 people 0.13 → 0.13 s a day,
+  2,000 0.66 → 0.66, 5,000 1.98 → 2.06 (+4%), 400 on 500 km 0.19 → 0.14; **20,000 on 80 km 14.6 →
+  16.0 (+9%), over the 5% budget**: the time is the old search for a neighbour with food to spare
+  (`choose`, "ask"), with more people short at that moment in that world, not the new code; item 11
+  replaces that search. Calling `settle` for everybody every six hours had cost 8% at 5,000 by
+  itself, though hardly anybody had anything to wear off; it is now called only for those who do. Memory at 5,000 people 3.4 → 4.1 MB, 0.67 → 0.80 KB a person: five
+  traits, and what of the last hard times is still to wear off, when to look for a quarrel, when last
+  stolen, the last lean year.
 
 ### Wood, stone, ore, herds and game (2026-11-17)
 

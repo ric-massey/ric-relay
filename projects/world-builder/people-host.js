@@ -356,7 +356,7 @@
             const other = p.sayT > 0 && byId.get(p.talkingTo);
             out.person = {
               id: p.id, name: p.name, age: p.age, job: p.job, f: p.f, from: p.from, partner: p.partner, mum: p.mum, dad: p.dad, kids: p.kids,
-              food: p.food, coins: p.coins, goods: p.goods, mood: p.mood, loyal: p.loyal, bold: p.bold, warm: p.warm, stub: p.stub, greed: p.greed,
+              food: p.food, coins: p.coins, goods: p.goods, mood: p.mood, loyal: p.loyal, bold: p.bold, warm: p.warm, stub: p.stub, greed: p.greed, patient: p.patient, temper: p.temper, hard: p.hard, curious: p.curious, honest: p.honest,
               rest: p.rest, alone: p.alone, fear: p.fear, hungry: p.hungry, sick: p.sick, say: p.say,
               cargo: p.cargo ? { what: p.cargo.what, amount: p.cargo.amount } : null,
               friends: friends, children: children, listener: other && other.sayT > 0 && other.talkingTo === p.id ? other.id : 0,

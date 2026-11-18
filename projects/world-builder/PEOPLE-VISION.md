@@ -813,8 +813,8 @@ when it is built.
 **4. A person**
 - Now: five of the ten agreed traits (bold, warm, greedy, stubborn, loyal), set at birth and
   never moved by events. Needs for food, rest, company and safety. 61 fields, about 1.5 KB.
-- [ ] Add patient, hot-tempered, hardworking, curious, honest, and what each changes.
-- [ ] How events move traits, and how fast (Ric: "those numbers can change based on
+- [x] Add patient, hot-tempered, hardworking, curious, honest, and what each changes. (2026-11-17, TODO item 10)
+- [x] How events move traits, and how fast (2026-11-17, TODO item 10: Ric, "A little") (Ric: "those numbers can change based on
   cercumstances").
 - [ ] The mind: how many slots, what kinds of thing a slot holds, how the weakest is forgotten.
 - [ ] Skills: learned by doing, taught, lost when the people who had them die.

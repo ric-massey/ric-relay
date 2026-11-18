@@ -2392,7 +2392,7 @@
         "<p>" + fname(p.faction) + (p.from !== p.f ? " <span class='small'>— born under " + esc(p.bornUnder) + "</span>" : "") + "</p>" +
         "<p class='small'>" + (p.leans === "share" ? "Believes what is grown should be shared out." : p.leans === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
         (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
-        "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + bar("Stubborn", p.stub ?? 0.5) + bar("Greedy", p.greed) + "</div>" +
+        "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + bar("Stubborn", p.stub ?? 0.5) + bar("Greedy", p.greed) + bar("Patient", p.patient ?? 0.5) + bar("Hot-tempered", p.temper ?? 0.5) + bar("Hardworking", p.hard ?? 0.5) + bar("Curious", p.curious ?? 0.5) + bar("Honest", p.honest ?? 0.5) + "</div>" +
         "<p class='small'>One ration supplies an adult for one day. Children’s needs rise as they grow.</p>" +
         "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 2) + " rations</dd><dt>Daily need</dt><dd>" + num(p.dailyNeed, 2) + " rations</dd><dt>Carried food covers</dt><dd>" + num(p.food / p.dailyNeed, 1) + " days</dd>" + (coins ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
         "<dt>Loose goods</dt><dd>" + num(p.goods, 2) + "</dd><dt>Children</dt><dd>" + p.kids + "</dd></dl>" + equipmentPane(p) +
