@@ -1808,6 +1808,16 @@ Sources.
 - Fixed-size storage: struct of arrays, as data-oriented engines lay out many small records, so
   nothing is allocated per person and nothing need be copied or scanned beyond one person's block.
 
+- **Five close at most** (2026-11-18). Ric, on friendships piling up: "do 5". Nobody is close
+  (above half) to more than five people, family and partner among them, the closest layer in the
+  studies. One more, and whoever of them is least close drops back to an ordinary friend.
+  Twelve worlds a year, against the mind without it: 358 alive a world against 356, 15 starved
+  against 18; close ties 3.1 an adult on average against 5.0, the most anybody had 5 against
+  16 to 18. Fights rose, 313 a world-year against 220: the slots friends gave up hold grudges a
+  little longer (5.1 an adult against 4.6). It saves no memory: minds stay full (20.4 slots used
+  of 21), with grudges, news, larders seen and debts in the room. A smaller mind does not help
+  either: at 12 things, people keep under two close ties, crowded out by the rest.
+
 Measured.
 - *A year, twelve worlds* (the same twelve seeds as item 10), against item 10: 356 alive a world
   against 359, 18 starved against 19: asking only those one knows of fed people no worse. People

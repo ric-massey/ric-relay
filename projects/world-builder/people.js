@@ -66,6 +66,7 @@
   const M_FRIEND = 1, M_KIN = 2, M_NEWS = 3, M_FOOD = 4, M_DEBT = 5, M_BELIEF = 6;
   const M_HALF = [0, 365 * DAY_HOURS, 5 * 365 * DAY_HOURS, 90 * DAY_HOURS, 30 * DAY_HOURS, 5 * 365 * DAY_HOURS, Infinity];
   const M_GRUDGE_HALF = 5 * 365 * DAY_HOURS;
+  const CLOSE = 5, CLOSE_AT = 0.5;   // at most five people close (Ric, 2026-11-18: "do 5")
   const TOWN_AT = 400, CITY_AT = 5000;     // people: a town, a city (TODO 8)
   const MARKET_PRICE = 1.2;                // coins a day's food fetches door to door on market day
   const ILLNESS_HOURS = 7 * DAY_HOURS;
@@ -3464,11 +3465,30 @@
 
     /* ── talking ───────────────────────────────────────────────────────── */
     /* Feeling for somebody, held in the mind (TODO 11): family as family, everybody else as a
-       friend or, below nothing, a grudge. A full mind forgets its weakest thing to make room. */
+       friend or, below nothing, a grudge. A full mind forgets its weakest thing to make room.
+       At most CLOSE people are close (above CLOSE_AT), family and partner among them (Ric,
+       2026-11-18: "do 5"; the closest layer is about five, Dunbar 1993, Zhou et al. 2005): one
+       more, and whoever of them is least close drops back to an ordinary friend, as time spent
+       on the new one is time not spent on them. */
     function befriend(a, b, by) {
       const set = (p, q) => {
-        const kind = kin(p, q) ? M_KIN : M_FRIEND, o = mFind(p, kind, q.id);
-        hold(p, kind, q.id, clamp((o >= 0 ? mNow(o) : 0) + by, -1, 1));
+        const kind = kin(p, q) ? M_KIN : M_FRIEND, o = mFind(p, kind, q.id), was = o >= 0 ? mNow(o) : 0;
+        let now = clamp(was + by, -1, 1);
+        if (now > CLOSE_AT && was <= CLOSE_AT && p.mb >= 0) {
+          const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+          let n = 0, least = -1, lv = Infinity;
+          for (let i = o0; i < o1; i++) {
+            const k = mKind[i];
+            if ((k !== M_FRIEND && k !== M_KIN) || i === o) continue;
+            const v = mNow(i);
+            if (v > CLOSE_AT) { n++; if (v < lv) { lv = v; least = i; } }
+          }
+          if (n >= CLOSE) {
+            if (lv < now) { mStr[least] = CLOSE_AT * 0.8; mAt[least] = t; }
+            else now = CLOSE_AT;
+          }
+        }
+        hold(p, kind, q.id, now);
       };
       set(a, b); set(b, a);
     }

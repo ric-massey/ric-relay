@@ -1016,8 +1016,9 @@ double); things fade by their age when read. Asking for food goes to those one k
 is paid back; a grudge turns a chat cold. The person panel lists what somebody holds in plain
 words. **Not met / open:** right after a world is made a person takes more (the bench: 0.80 → 1.29
 KB; the minds are there from the start); once it has run a few days, 0.7 KB less. People move house more (248
-moves a world-year against 168). Friendships still saturate: somebody who chats daily calls
-twenty people close, where the studies find five; the layers are not built. News held is only
+moves a world-year against 168). Friendships saturated (somebody who chatted daily called twenty people close); 2026-11-18,
+Ric "do 5": five close at most, the least close dropping back when a sixth comes (fights up, 313
+a world-year against 220; minds still full, so no memory saved). News held is only
 the newest; who has food is only seen, never told — passing what one holds is item 12.
 
 Research notes:
