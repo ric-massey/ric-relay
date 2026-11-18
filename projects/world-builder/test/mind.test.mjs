@@ -5,7 +5,8 @@
 //   1. nobody's mind ever holds more than its size, sizes differ a little, and every thing held
 //      reads as plain words for the person panel;
 //   2. a grudge formed in year 1 still changes a choice in year 3;
-//   3. nobody is close to more than five people (Ric, 2026-11-18: "do 5").
+//   3. nobody is close to more than five people (Ric, 2026-11-18: "do 5");
+//   4. being turned away when hungry makes nobody an enemy: grudges stay few.
 //
 // node projects/world-builder/test/mind.test.mjs
 import assert from "node:assert/strict";
@@ -30,6 +31,9 @@ const People = createRequire(import.meta.url)("../people.js");
   }
   const all = [...sizes];
   assert.ok(Math.min(...all) >= 14 && Math.max(...all) <= 26 && all.length >= 5, "minds differ a little about 20: " + all.sort((a, b) => a - b).join(", "));
+  const ad = w.people.filter(p => w.adult(p));
+  const grudges = ad.reduce((a, p) => a + w.inMind(p).filter(x => (x.kind === "friend" || x.kind === "family") && x.strength < -0.15).length, 0) / ad.length;
+  assert.ok(grudges < 1.5, "grudges stay few: " + grudges.toFixed(2) + " an adult");
   const full = w.people.filter(p => w.inMind(p).length === p.mcap + 1).length;
   assert.ok(full > 0, "some minds are full, and have forgotten to make room: " + full);
 }
@@ -70,4 +74,4 @@ const People = createRequire(import.meta.url)("../people.js");
   assert.ok(went > 0, "in year 3 they go to have it out over a grudge from year 1");
 }
 
-console.log("world-builder mind: never past its size, sizes differ a little, in plain words, a year-1 grudge acted on in year 3, close to five at most");
+console.log("world-builder mind: never past its size, sizes differ a little, in plain words, a year-1 grudge acted on in year 3, close to five at most, few grudges");

@@ -56,8 +56,10 @@ function hours(o, days, seed) {
   const set = hours({ curious: 0.1 }, 20), new_ = hours({ curious: 0.9 }, 20);
   assert.ok(new_.off > set.off + 0.05, "the curious try other trades: " + (set.off * 100).toFixed(1) + "% → " + (new_.off * 100).toFixed(1) + "% of their work");
 
-  const calm = hours({ temper: 0.1 }, 20), hot = hours({ temper: 0.9 }, 20);
-  assert.ok(hot.quarrels > calm.quarrels * 5 + 20 && hot.fights > calm.fights, "the hot-tempered quarrel: " + calm.quarrels + " → " + hot.quarrels + ", fights " + calm.fights + " → " + hot.fights);
+  /* Forty days: since a refusal no longer makes an enemy (2026-11-18), grudges are fewer and
+     take longer to form. */
+  const calm = hours({ temper: 0.1 }, 40), hot = hours({ temper: 0.9 }, 40);
+  assert.ok(hot.quarrels > calm.quarrels * 4 + 10 && hot.fights > calm.fights, "the hot-tempered quarrel: " + calm.quarrels + " → " + hot.quarrels + ", fights " + calm.fights + " → " + hot.fights);
 
   /* In the autumn, with the winter ahead: the patient lay in, the impatient leave it. */
   const now = hours({ patient: 0.1, start: "autumn", plague: "none" }, 20), later = hours({ patient: 0.9, start: "autumn", plague: "none" }, 20);

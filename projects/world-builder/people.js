@@ -66,6 +66,14 @@
   const M_FRIEND = 1, M_KIN = 2, M_NEWS = 3, M_FOOD = 4, M_DEBT = 5, M_BELIEF = 6;
   const M_HALF = [0, 365 * DAY_HOURS, 5 * 365 * DAY_HOURS, 90 * DAY_HOURS, 30 * DAY_HOURS, 5 * 365 * DAY_HOURS, Infinity];
   const M_GRUDGE_HALF = 5 * 365 * DAY_HOURS;
+  /* Turned away when hungry (2026-11-18): it cools things, so the hungry try somebody else
+     next time, but on its own never makes an enemy (no lower than SNUB, short of the -0.35 at
+     which people have it out or turn a chat cold). Until then every refusal counted and lasted
+     as a grudge: some 100,000 refusals a world-year left most adults holding five grudges or
+     more. Enemies now come from fights, theft, killing and bitter argument. Cooling only when
+     the other had food to spare, or remembering who had none, fed people worse: the hungry kept
+     going back. */
+  const SNUB = -0.3;
   const CLOSE = 5, CLOSE_AT = 0.5;   // at most five people close (Ric, 2026-11-18: "do 5")
   const TOWN_AT = 400, CITY_AT = 5000;     // people: a town, a city (TODO 8)
   const MARKET_PRICE = 1.2;                // coins a day's food fetches door to door on market day
@@ -1658,9 +1666,9 @@
        the hot-tempered, blows. A fight is bruises, and now and then a death: about one person
        in 4,000 a year was killed in English villages of the 13th and 14th centuries (Given
        1977; Eisner 2003). LETHAL is set from that: measured over twelve world-years at ordinary
-       tempers, some 220 fights a year among about 355 people since grudges last (item 11; 83
-       before), so about one in 2,500 kills. */
-    const LETHAL = 0.0004;
+       tempers, some 51 fights a year among about 357 people once a refusal no longer made an
+       enemy (2026-11-18; 220 before, 83 before item 11), so about one fight in 600 kills. */
+    const LETHAL = 0.0017;
     function quarrel(a, b) {
       wakeUp(b);
       count.quarrels++;
@@ -2880,7 +2888,7 @@
           q.food -= give; p.food += give; got += give; befriend(p, q, 0.3);
           if (owed >= 0) mKind[owed] = 0;
           else owe(p, q, give);
-        } else befriend(p, q, -0.1);
+        } else befriend(p, q, -0.1, SNUB);   // see SNUB
       }
       sawLarder(p, q);   // and now they know what is in it (TODO 11)
       p.say = got > 0.05 ? (got >= want * 0.5 ? "Thank you. That will see us through the week." : "It's something.") : "They had nothing for me.";
@@ -3470,10 +3478,11 @@
        2026-11-18: "do 5"; the closest layer is about five, Dunbar 1993, Zhou et al. 2005): one
        more, and whoever of them is least close drops back to an ordinary friend, as time spent
        on the new one is time not spent on them. */
-    function befriend(a, b, by) {
+    function befriend(a, b, by, floor) {
       const set = (p, q) => {
         const kind = kin(p, q) ? M_KIN : M_FRIEND, o = mFind(p, kind, q.id), was = o >= 0 ? mNow(o) : 0;
         let now = clamp(was + by, -1, 1);
+        if (floor !== undefined && by < 0) { if (was <= floor) return; now = Math.max(now, floor); }
         if (now > CLOSE_AT && was <= CLOSE_AT && p.mb >= 0) {
           const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
           let n = 0, least = -1, lv = Infinity;
@@ -3580,7 +3589,7 @@
             other.food -= 0.4; hungry.food += 0.4; befriend(hungry, other, 0.3); owe(hungry, other, 0.4);
             said(hungry, other, "help", "Can you spare some grain?", "Take this. Eat.");
           } else {
-            befriend(hungry, other, -0.15);
+            befriend(hungry, other, -0.15, SNUB);   // see SNUB
             said(hungry, other, "refuse", "Can you spare some grain?", "I've none to spare.");
           }
           return;

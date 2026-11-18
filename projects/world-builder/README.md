@@ -1817,6 +1817,18 @@ Sources.
   little longer (5.1 an adult against 4.6). It saves no memory: minds stay full (20.4 slots used
   of 21), with grudges, news, larders seen and debts in the room. A smaller mind does not help
   either: at 12 things, people keep under two close ties, crowded out by the rest.
+- **Turned away is not an enemy** (2026-11-18). Ric, on five grudges an adult: "fix the
+  grudges". Nearly all of them came from being refused food: some 100,000 refusals a world-year,
+  each a little bad feeling kept as long as a grudge. A refusal still cools things, so the
+  hungry try somebody else next time, but on its own never below −0.3, short of the −0.35 at
+  which people have it out or turn a chat cold. Enemies come from fights, theft, killing and
+  bitter argument. Twelve worlds a year, against five-close alone: 357 alive against 358, 14
+  starved against 15; grudges 1.1 an adult against 5.1 (half of adults hold none; 5% hold five
+  or more, against 50%); 83 quarrels and 51 fights a world-year against 536 and 313. The chance
+  a fight kills set again from the medieval rate (one in about 600 fights; about one killing in
+  4,000 people a year). Tried and dropped: cooling only when the other had food to spare (42
+  starved), and remembering who had none so as not to ask again (40): the hungry did worse
+  without being pushed on to somebody new.
 
 Measured.
 - *A year, twelve worlds* (the same twelve seeds as item 10), against item 10: 356 alive a world

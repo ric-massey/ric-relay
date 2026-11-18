@@ -1018,7 +1018,9 @@ words. **Not met / open:** right after a world is made a person takes more (the 
 KB; the minds are there from the start); once it has run a few days, 0.7 KB less. People move house more (248
 moves a world-year against 168). Friendships saturated (somebody who chatted daily called twenty people close); 2026-11-18,
 Ric "do 5": five close at most, the least close dropping back when a sixth comes (fights up, 313
-a world-year against 220; minds still full, so no memory saved). News held is only
+a world-year against 220; minds still full, so no memory saved). Then
+"fix the grudges": a refusal of food no longer makes an enemy (grudges 1.1 an adult against 5.1,
+fights 51 a world-year against 313, starving unchanged; fight lethality reset to the medieval rate). News held is only
 the newest; who has food is only seen, never told — passing what one holds is item 12.
 
 Research notes:
