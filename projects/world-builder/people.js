@@ -282,6 +282,9 @@
         help: "How unhappy a village has to be before it declares itself its own faction." },
     ]},
     { title: "War", items: [
+      { key: "neighbours", label: "How the factions start", type: "select", def: "strangers",   // TODO 13
+        options: [["friends", "Old friends"], ["strangers", "Strangers"], ["enemies", "Old enemies"]],
+        help: "Old friends start allied, and trading free of tax if there is money. Old enemies start with a feud every grown-up knows and tells their children. Either fades over a generation unless something keeps it alive." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -341,6 +344,8 @@
       set: { life: 25, grown: 8, births: 0.8, people: 500, rate: 2 } },
     { id: "one", name: "One people", note: "A single faction on a continent. Does it stay one?",
       set: { factions: 1, villages: 4, map: "large", people: 600, rebel: 0.7, divided: 0.9, loyalty: 0.3 } },
+    { id: "feud", name: "Two old enemies", note: "Two tribes who hate each other, and almost no money.",
+      set: { factions: 2, neighbours: "enemies", coins: 1, unequal: 0.1, people: 300 } },
     { id: "quiet", name: "A quiet world", note: "No war, no sickness, generous land.",
       set: { war: false, plague: "none", rich: 1.6, aggression: 0, rebel: 0.1 } },
   ];
@@ -641,9 +646,11 @@
     let wake = new Float64Array(1024), kind = new Uint8Array(1024), since = new Float64Array(1024), cur = Infinity;
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
+    const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
     const count = { passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
-                    quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0 };   // TODO 10
+                    quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
+                    alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
     let t = 0, activityTicks = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
 
     const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -1229,7 +1236,11 @@
       for (const o of factions) if (o !== f) { f.rel[o.id] = blankRel(); o.rel[f.id] = blankRel(); }
       return f;
     }
-    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9 }; }
+    /* Between two factions (TODO 13): `op` what one thinks of the other, which drifts toward
+       `bond`, an old friendship or feud that fades over a generation; an alliance, a trade deal
+       (no tax on each other's people), tribute paid (`pays`: this side pays the other), and
+       when this side last made a demand of the other. */
+    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9 }; }
     function newVillage(x, y, f) {
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
@@ -1547,7 +1558,7 @@
     function mNow(o) {
       const k = mKind[o], s = mStr[o];
       if (k === M_BELIEF) return s;
-      const half = k === M_FRIEND && s < 0 ? M_GRUDGE_HALF : M_HALF[k];
+      const half = k === M_FRIEND && s < 0 ? M_GRUDGE_HALF : k === M_NEWS && lasting.size && lasting.has(mAbout[o]) ? M_GRUDGE_HALF : M_HALF[k];
       return s * Math.exp(-(t - mAt[o]) * Math.LN2 / half);
     }
     /* The slot holding this kind of thing about this one, or -1. */
@@ -1569,7 +1580,7 @@
         /* Nor is what was taken in this very hour (TODO 12): somebody told the news and then
            greeted was otherwise left forgetting the news they had just heard. */
         if (mAt[o] === t) continue;
-        const k = mKind[o], x = mNow(o), w = Math.abs(x) * (k === M_KIN || (k === M_FRIEND && x < 0) ? 2 : 1);
+        const k = mKind[o], x = mNow(o), w = Math.abs(x) * (k === M_KIN || (k === M_FRIEND && x < 0) || (k === M_NEWS && lasting.size && lasting.has(mAbout[o])) ? 2 : 1);
         if (w < weakest) { weakest = w; drop = o; }
       }
       return drop >= 0 ? drop : o0;
@@ -1703,6 +1714,7 @@
         if (!h) { out.push({ name: q ? q.name : "somebody now gone", place: q ? villages[q.home].name : "", day: null, text: null, saw: false }); break; }
         const place = villages[h.home] ? villages[h.home].name : "";
         if (h.from === -1) { out.push({ name: h.name, place: place, day: null, text: null, saw: true }); break; }
+        if (h.from === -2) { out.push({ name: h.name, place: place, day: null, text: null, saw: false, old: true }); break; }   // grew up with it (TODO 13)
         out.push({ name: h.name, place: place, day: Math.floor(h.t / DAY_HOURS), from: h.fromName, text: telling(e, h.v) });
         cur = h.from; before = h.t;
       }
@@ -1731,7 +1743,7 @@
     /* People act on what they hold, right or wrong: news that names their own side and another,
        of a war or a village taken, is a grievance against the other side as told. */
     function actOn(p, e, said) {
-      if (e.kind !== "war" && e.kind !== "taken") return;
+      if (e.kind !== "war" && e.kind !== "taken" && e.kind !== "feud") return;
       const mine = factions[p.f];
       if (!mine || !said.includes(mine.name)) return;
       p.loyal = clamp(p.loyal + 0.02, 0, 1);
@@ -1791,7 +1803,7 @@
         } else if (k === M_NEWS) {
           const e = eventById(mAbout[o]); if (!e) continue;
           const from = mFrom[o] >= 0 ? byId.get(mFrom[o]) : null;
-          text = (mFrom[o] >= 0 ? "Heard: " : "Saw: ") + telling(e, mVar[o]);
+          text = (mFrom[o] >= 0 ? "Heard: " : mFrom[o] === -2 ? "Grew up knowing: " : "Saw: ") + telling(e, mVar[o]);
           out.push({ kind: "news", text: text, strength: s, days: ago, from: mFrom[o] >= 0 ? (from ? from.name : "somebody now gone") : null, wrong: mVar[o] > 0, trace: traceNews(p, e.id) });
           continue;
         }
@@ -1986,6 +1998,7 @@
       territory();
       census();
       for (const f of factions) succeed(f, "first");
+      startNeighbours();
       for (const p of people) if (adult(p)) p.job = chooseJob(p);
       for (const p of people) if (p.job === "trader") p.gear.cart = 1;   // a trader starts with a cart (TODO 7d)
       /* A quarter of the grown-ups start paired, so the first children are not
@@ -2507,6 +2520,19 @@
     }
     /* A village's tax: its own, if whoever rules it has set one, else its faction's. */
     function taxOf(v) { return v.tax != null ? v.tax : factions[v.f].tax; }
+    /* What p pays on a sale there: nothing in a village of a faction theirs has a trade deal with (TODO 13). */
+    /* Goodwill from a sale or a friendly word across the border, and ill will from a cross one:
+       an old feud all but deaf to the first and an old friendship to the second, while they
+       last (TODO 13). Thousands of words a day otherwise turned a feud into an alliance within a
+       year. With no old bond either way it is what it always was. */
+    function goodwill(f, oid, by) {
+      const r = f.rel[oid]; if (!r) return;
+      const k = by > 0 ? 1 + Math.min(0, r.bond) : 1 - Math.max(0, r.bond);
+      r.op = clamp(r.op + by * k * k * k, -1, 1);
+    }
+    /* Nobody carries goods to a people theirs is hostile to, or who are hostile to them (TODO 13). */
+    function hostile(a, b) { return a !== b && (factions[a].rel[b].op < -0.3 || factions[b].rel[a].op < -0.3); }
+    function taxFor(v, p) { return v.f !== p.f && factions[v.f].rel[p.f] && factions[v.f].rel[p.f].trade ? 0 : taxOf(v); }
     function buy(p, v, what, amount) {
       const have = what === "food" ? v.food : what === "goods" ? v.goods : v[what];
       amount = Math.min(amount, have);
@@ -2515,7 +2541,7 @@
         const price = what === "food" ? v.priceFood : what === "goods" ? v.priceGoods : matPrice(v, what);
         amount = Math.min(amount, funds(p) / price);
         if (amount <= 0.01) return 0;
-        const cost = amount * price, tax = cost * taxOf(v);
+        const cost = amount * price, tax = cost * taxFor(v, p);
         pay(p, cost); v.till += cost - tax; factions[v.f].treasury += tax;
       }
       if (what === "food") { v.food -= amount; p.food += amount; } else if (what === "goods") { v.goods -= amount; p.goods += amount; } else v[what] -= amount;   // a load of wood, stone or ore goes on the cart
@@ -2529,7 +2555,7 @@
         if (amount <= 0.01) return 0;
         /* Tax is taken on a sale as well as a purchase: most of what moves in
            a farming village is grain going into the store. */
-        const pay = amount * price, tax = pay * taxOf(v);
+        const pay = amount * price, tax = pay * taxFor(v, p);
         v.till -= pay; p.coins += pay - tax; factions[v.f].treasury += tax;
       }
       if (what === "food") v.food += amount; else if (what === "goods") v.goods += amount; else v[what] += amount;
@@ -3302,7 +3328,7 @@
       p.markets[v.id] = sceneTick;
     }
     function nextMarket(p, here) {
-      return villages.filter(o => o.alive && o !== here && !atWar(o.f, p.f) &&
+      return villages.filter(o => o.alive && o !== here && !atWar(o.f, p.f) && !hostile(o.f, p.f) &&
         (!shared || o.f === p.f) && dist(here, o) <= 34)
         .sort((a, b) => (p.markets?.[a.id] || 0) - (p.markets?.[b.id] || 0) || dist(here, a) - dist(here, b))[0];
     }
@@ -3314,7 +3340,7 @@
       let best = null, gain = shared ? 0.25 : 0.3, what = "food";
       for (const o of villages) {
         if (!o.alive || o === here) continue;
-        if (o.f !== p.f && (atWar(o.f, p.f) || shared)) continue;
+        if (o.f !== p.f && (atWar(o.f, p.f) || shared || hostile(o.f, p.f))) continue;
         const d = Math.hypot(o.x - here.x, o.y - here.y);
         if (d > 34) continue;
         if (shared) {
@@ -3383,13 +3409,13 @@
             else { count.market = (count.market || 0) + sold + intoStore; p.say = "Sold " + Math.round(sold + intoStore) + " days of food at market."; }
             p.sayT = TK(60);
           }
-          if (here.f !== p.f && sold > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
+          if (here.f !== p.f && sold > 0) { goodwill(factions[here.f], p.f, 0.012); goodwill(factions[p.f], here.f, 0.012); }
           p.cargo = null; wear(p, "pack");
         } else if (p.cargo) {
           const got = sell(p, here, p.cargo.what, p.cargo.amount);
           if (p.cargo.what === "food" && here.id !== p.home) here.inFood = (here.inFood || 0) + got;   // food brought in (TODO 8)
           if (p.cargo.what === "food") p.food += p.cargo.amount - got; else if (p.cargo.what === "goods") p.goods += p.cargo.amount - got; else here[p.cargo.what] += p.cargo.amount - got;   // unsold wood, stone or ore is left in the store
-          if (here.f !== p.f && got > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
+          if (here.f !== p.f && got > 0) { goodwill(factions[here.f], p.f, 0.012); goodwill(factions[p.f], here.f, 0.012); }
           p.cargo = null; wear(p, "pack");
         }
         shop(p, here);
@@ -3585,7 +3611,7 @@
       }
       if (why === "battle" && by) {
         const rel = f.rel[by.f];
-        if (rel) { rel.dead++; rel.grief = clamp(rel.grief + 0.02, 0, 3); }
+        if (rel) { rel.dead++; rel.grief = clamp(rel.grief + 0.02, 0, 3); rel.bond = clamp(rel.bond - 0.01, -1, 1); }
         /* Friends of the dead do not forgive the faction that did it. */
         for (const [id, fl] of tiesOf(p)) {
           const q = byId.get(id);
@@ -3595,6 +3621,10 @@
       if (f.leader === p.id) succeed(f, why);
     }
 
+    /* Who people follow (TODO 13): in small societies, the bold and the well-supported, and those
+       known for being generous, trustworthy and good at their work: dominance and prestige both
+       (von Rueden et al. 2008, 2014, the Tsimane). */
+    function standing(q) { return q.bold + circle(q) * 0.1 + (q.warm + q.honest + q.hard) * 0.25; }
     function succeed(f, why) {
       const old = byId.get(f.leader);
       const pool = people.filter(q => q.hp !== -99 && q.f === f.id && adult(q));
@@ -3603,7 +3633,7 @@
       if (f.rule === "chief" && old) next = pool.filter(q => q.mum === old.id || q.dad === old.id).sort((a, b) => b.age - a.age)[0];
       if (!next && f.rule === "rich") next = pool.slice().sort((a, b) => b.coins - a.coins || circle(b) - circle(a))[0];
       if (!next && f.rule === "elected" && why !== "first") { vote(f, why === "old" || why === "sick" || why === "starved" || why === "battle"); return; }
-      if (!next) next = pool.slice().sort((a, b) => (b.bold + circle(b) * 0.1) - (a.bold + circle(a) * 0.1))[0];
+      if (!next) next = pool.slice().sort((a, b) => standing(b) - standing(a))[0];
       f.leader = next.id; f.views = viewOf(next);
       if (why !== "first") note("leader", next.name + " now leads " + f.name + (old ? ", after " + old.name + (why === "old" ? " died of old age" : why === "battle" ? " was killed" : why === "sick" ? " died of the sickness" : why === "starved" ? " starved" : "") : "") + ".", 3, villages[next.home].x, villages[next.home].y, f.id);
     }
@@ -3615,14 +3645,17 @@
       f.voteAt = t + S.term * YEAR;
       if (pool.length < 3) { if (pool.length) { f.leader = pool[0].id; f.views = viewOf(pool[0]); } return; }
       const sitting = vacant ? null : byId.get(f.leader);
-      const stand = pool.slice().sort((a, b) => (circle(b) + b.bold * 3) - (circle(a) + a.bold * 3)).slice(0, 3);
+      const stand = pool.slice().sort((a, b) => (circle(b) + standing(b) * 3) - (circle(a) + standing(a) * 3)).slice(0, 3);
+      /* In a war or under threat they want somebody bold; otherwise somebody they can trust. */
+      let danger = false;
+      for (const k in f.rel) if (f.rel[k].war || t - (factions[k].rel[f.id] || {}).askedAt < 180 * DAY_HOURS) danger = true;
       if (sitting && stand.indexOf(sitting) < 0) stand.push(sitting);
       const tally = stand.map(() => 0);
       for (const q of pool) {
         let best = 0, bs = -1e9;
         for (let i = 0; i < stand.length; i++) {
           const c = stand[i];
-          let s = -Math.abs(viewOf(q) - viewOf(c)) + feel(q, c.id) * 0.6 + (R() - 0.5) * 0.2;
+          let s = -Math.abs(viewOf(q) - viewOf(c)) + feel(q, c.id) * 0.6 + (R() - 0.5) * 0.2 + (c.bold - 0.5) * (danger ? 0.5 : 0.1) + (c.honest - 0.5) * 0.2;
           if (c === sitting) s += (q.loyal - 0.5) * 1.2;
           if (c === q) s += 0.3;
           if (s > bs) { bs = s; best = i; }
@@ -3850,7 +3883,7 @@
           const mid = (viewOf(a) + viewOf(b)) / 2;
           setView(a, viewOf(a) + (mid - viewOf(a)) * openA * 0.3); setView(b, viewOf(b) + (mid - viewOf(b)) * openB * 0.3);
           befriend(a, b, 0.12);
-          if (!same) { fa.rel[b.f].op = clamp(fa.rel[b.f].op + 0.006, -1, 1); fb.rel[a.f].op = clamp(fb.rel[a.f].op + 0.006, -1, 1); }
+          if (!same) { goodwill(fa, b.f, 0.006); goodwill(fb, a.f, 0.006); }
           said(speaker, other, "agree", line, pick(["You're right.", "I've come round to that.", "My mother said the same."]));
         } else {
           /* Too far apart: each digs in, and they like each other less. */
@@ -3858,7 +3891,7 @@
           setView(a, clamp(va + Math.sign(va - vb) * openA * 0.04, -1, 1));
           setView(b, clamp(vb + Math.sign(vb - va) * openB * 0.04, -1, 1));
           befriend(a, b, -0.2 - (war ? 0.2 : 0));
-          if (!same) { fa.rel[b.f].op = clamp(fa.rel[b.f].op - 0.008, -1, 1); fb.rel[a.f].op = clamp(fb.rel[a.f].op - 0.008, -1, 1); }
+          if (!same) { goodwill(fa, b.f, -0.008); goodwill(fb, a.f, -0.008); }
           said(speaker, other, "argue", line, war ? "Tell that to the ones your soldiers killed." : pick(["That's a fool's talk.", "Easy to say with a full belly.", "You'd ruin us."]));
         }
         return;
@@ -5475,10 +5508,165 @@
            (f.rule === "elected" ? "they will choose their leaders by vote." : "rules as chief."), 4.5, v.x, v.y, f.id);
       return true;
     }
+    /* ── dealing with each other (TODO 13) ─────────────────────────────────
+       How the factions start: old friends allied and trading free of tax, old enemies with a feud
+       every grown-up grew up knowing. */
+    function startNeighbours() {
+      if (S.neighbours === "strangers" || factions.length < 2) return;
+      for (const f of factions) for (const o of factions) if (f !== o) {
+        const r = f.rel[o.id];
+        if (S.neighbours === "enemies") { r.bond = -1; r.op = -0.6; r.grief = 0.4; }
+        else { r.bond = 0.8; r.op = 0.5; r.ally = true; r.trade = S.money === "coins"; }
+      }
+      if (S.neighbours !== "enemies") return;
+      const WRONGS = [(a, b, v) => a.name + " burned " + v.name + " in their grandparents' time, and " + b.name + " has not forgotten it.",
+                      (a, b, v) => "In the old days " + a.name + " drove " + b.name + " from the fields of " + v.name + " and killed 12 of them.",
+                      (a, b, v) => a.name + " stole " + b.name + "'s herds and women from " + v.name + ", long ago."];
+      for (let i = 0; i < factions.length; i++) for (let j = i + 1; j < factions.length; j++) {
+        const a = R() < 0.5 ? factions[i] : factions[j], b = a === factions[i] ? factions[j] : factions[i];
+        const v = villages.find(x => x.f === b.id) || villages[0];
+        const e = note("feud", pick(WRONGS)(a, b, v), 4.5, v.x, v.y, b.id);   // weighty, so the record keeps it
+        lasting.add(e.id);   // an old feud is held as long as a grudge, and kept before other news
+        for (const p of people) if ((p.f === a.id || p.f === b.id) && adult(p)) heard(p, M_NEWS, e.id, 0.7 + R() * 0.3, -2, 0);
+      }
+    }
+    /* A leader's own nature, as it shows in what the faction does: in full for a chief or the
+       richest, half of it for a leader the people can vote out (a leader's character weighs
+       most where nobody can check it; Horowitz, Stam and Ellis, Why Leaders Fight, 2015). */
+    function ruling(lead, k, f) { return f.rule === "elected" ? 0.5 + (lead[k] - 0.5) * 0.5 : lead[k]; }
+    /* What a leader holds against another faction: grudges against its people, less any close
+       friend there, and news they hold of wars, villages taken and old feuds between the two, as
+       they hold it — a wrong telling names the wrong side. */
+    function heldAgainst(p, o) {
+      if (p.mb < 0) return 0;
+      const mine = factions[p.f];
+      let s = 0;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let k = o0; k < o1; k++) {
+        const kind = mKind[k];
+        if (kind === M_FRIEND || kind === M_KIN) {
+          const x = mNow(k); if (x > -0.2 && x < 0.5) continue;
+          const q = byId.get(mAbout[k]); if (q && q.f === o.id) s += x < 0 ? -x * 0.5 : -x * 0.3;
+        } else if (kind === M_NEWS) {
+          const e = eventById(mAbout[k]);
+          if (!e || (e.kind !== "war" && e.kind !== "taken" && e.kind !== "feud")) continue;
+          const w = telling(e, mVar[k]);
+          if (w.includes(o.name) && w.includes(mine.name)) s += 0.4 * mNow(k);
+        }
+      }
+      return clamp(s, -0.5, 1.5);
+    }
+    /* How strong a faction looks to a neighbour: its soldiers and grown-ups, and half its allies'. */
+    function might(f, not) {
+      let m = f.soldiers + f.adults * 0.15;
+      for (const a of factions) if (a.alive && a !== f && a !== not && f.rel[a.id].ally) m += (a.soldiers + a.adults * 0.15) * 0.5;
+      return m;
+    }
+    function relDeals(r, b) { r.ally = b.ally = false; r.trade = b.trade = false; r.pays = b.pays = false; }
+    /* A war, and the defender's allies called to it: each comes as their leader is bold and as
+       they like the defender, or the alliance is over. */
+    function startWar(f, o, text) {
+      const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o);
+      rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0; relDeals(rel, back);
+      if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
+      count.wars++;
+      note("war", text, 4, b.pair ? b.pair[1].x : 0, b.pair ? b.pair[1].y : 0, f.id);
+      for (const a of factions) {
+        if (!a.alive || a === f || a === o || !a.rel[o.id].ally || a.rel[f.id].war) continue;
+        const al = byId.get(a.leader), r2 = a.rel[f.id], b2 = f.rel[a.id], bb = border(a, f), at = bb.pair ? bb.pair[0] : { x: 0, y: 0 };
+        if (a.yours || (al && R() < 0.35 + al.bold * 0.4 + a.rel[o.id].op * 0.3 - Math.max(0, r2.op) * 0.3)) {
+          if (a.yours) { note("ally", a.name + " is allied to " + o.name + ", now at war with " + f.name + ": it is yours to answer.", 2.5, at.x, at.y, a.id); continue; }
+          r2.war = b2.war = true; r2.since = b2.since = t; r2.dead = b2.dead = 0; relDeals(r2, b2);
+          if (bb.pair) { a.target[f.id] = bb.pair[1].id; f.target[a.id] = bb.pair[0].id; }
+          count.wars++; count.joined++;
+          note("war", a.name + " has joined the war on " + o.name + "'s side, against " + f.name + ".", 3.5, at.x, at.y, a.id);
+        } else {
+          a.rel[o.id].ally = o.rel[a.id].ally = false;
+          o.rel[a.id].op = clamp(o.rel[a.id].op - 0.4, -1, 1); o.rel[a.id].bond = clamp(o.rel[a.id].bond - 0.3, -1, 1);
+          note("ally", a.name + " has left its ally " + o.name + " to fight " + f.name + " alone.", 2.5, at.x, at.y, a.id);
+        }
+      }
+    }
+    /* A demand: pay, or there will be war. The other side pays if it is outmatched and its leader
+       is neither bold nor hot-tempered enough to refuse; a refusal is an insult. */
+    function demand(f, o, why) {
+      const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o), at = b.pair ? b.pair[1] : { x: 0, y: 0 };
+      rel.askedAt = t; count.demands++;
+      const ol = byId.get(o.leader), dare = ol ? (ruling(ol, "temper", o) + ol.bold) / 2 : 0.5;
+      if (might(o, f) < might(f, o) * (1.15 - dare * 0.7)) {
+        back.pays = true; count.tributes++;
+        back.op = clamp(back.op - 0.15, -1, 1);
+        note("tribute", o.name + " has agreed to pay tribute to " + f.name + (why ? ", " + why : "") + ", rather than fight.", 3, at.x, at.y, f.id);
+        return "paid";
+      }
+      count.refusals++;
+      rel.grief = clamp(rel.grief + 0.3, 0, 3); back.op = clamp(back.op - 0.2, -1, 1);
+      note("threat", f.name + " demanded tribute of " + o.name + (why ? ", " + why : "") + "; " + (ol ? ol.name : o.name) + " refused.", 2.5, at.x, at.y, f.id);
+      return "refused";
+    }
+    /* Would o's leader take an alliance or a trade deal f offers? */
+    function wouldAlly(o, f) { const ol = byId.get(o.leader), r = o.rel[f.id]; return !r.war && !r.pays && !f.rel[o.id].pays && r.op > 0.25 - (ol ? ol.warm - 0.5 : 0) * 0.3; }
+    function wouldTrade(o, f) { const ol = byId.get(o.leader), r = o.rel[f.id]; return !shared && !r.war && r.op > 0.1 - (ol ? ol.honest - 0.5 : 0) * 0.2; }
+    /* Each day, one faction's dealings with each of the others. */
+    function deal(f, o, lead, b) {
+      const rel = f.rel[o.id], back = o.rel[f.id], at = b.pair ? b.pair[0] : { x: 0, y: 0 };
+      /* Tribute: a share of the stores and the treasury, every day, carried to the nearest of
+         theirs. The payer resents it; it stops when they feel strong enough, or are led by
+         somebody who dares. */
+      if (rel.pays) {
+        const to = b.pair ? b.pair[1] : villages.find(v => v.alive && v.f === o.id);
+        if (to) {
+          let food = 0;
+          for (const v of villages) if (v.alive && v.f === f.id) { const x = v.food * 0.003; v.food -= x; food += x; }
+          to.food += food; count.tribute += food;
+          if (!shared) { const c = f.treasury * 0.01; f.treasury -= c; o.treasury += c; }
+        }
+        rel.grief = clamp(rel.grief + 0.004, 0, 3); rel.op = clamp(rel.op - 0.002, -1, 1);
+        const dare = (ruling(lead, "temper", f) + lead.bold) / 2;
+        if (!f.yours && might(f, o) > might(o, f) * (1.45 - dare * 0.9)) {
+          rel.pays = false;
+          back.grief = clamp(back.grief + 0.4, 0, 3);
+          note("tribute", f.name + " has stopped paying tribute to " + o.name + ".", 3, at.x, at.y, f.id);
+        }
+      }
+      if (f.yours || rel.war) return;
+      /* Alliances: against a common enemy, or between old friends; warm leaders make them, and
+         they end when the liking does. Liking alone is not enough: everyday trade and talk leave
+         most neighbours liking each other, and with that every faction was allied to every other
+         within a year and nobody fought at all. */
+      if (rel.ally) {
+        if (rel.op < 0.05 || back.op < 0.05) { rel.ally = back.ally = false; note("ally", "The alliance between " + f.name + " and " + o.name + " is over.", 2, at.x, at.y, f.id); }
+      } else if (!o.yours && !rel.pays && !back.pays) {
+        let common = null;
+        for (const x of factions) if (x.alive && x !== f && x !== o && (f.rel[x.id].war || f.rel[x.id].op < -0.4) && (o.rel[x.id].war || o.rel[x.id].op < -0.4)) { common = x; break; }
+        if (((common && rel.op > 0) || (rel.bond > 0.3 && rel.op > 0.3)) && wouldAlly(o, f) && R() < 0.02 * (0.5 + lead.warm)) {
+          rel.ally = back.ally = true; count.alliances++;
+          rel.bond = clamp(rel.bond + 0.1, -1, 1); back.bond = clamp(back.bond + 0.1, -1, 1);
+          note("ally", f.name + " and " + o.name + " have made an alliance" + (common ? ", against " + common.name : "") + ".", 3, at.x, at.y, f.id);
+        }
+      }
+      /* Trade deals: no tax on each other's people, between neighbours who think well enough of
+         each other; honest leaders keep them. */
+      if (rel.trade) {
+        if (rel.op < -0.05 || back.op < -0.05) { rel.trade = back.trade = false; note("trade", f.name + " and " + o.name + " have ended their trade deal.", 1.5, at.x, at.y, f.id); }
+      } else if (!shared && !o.yours && b.d < 34 && rel.op > 0.15 && wouldTrade(o, f) && R() < 0.02 * (0.5 + lead.honest)) {
+        rel.trade = back.trade = true; count.deals++;
+        note("trade", f.name + " and " + o.name + " have agreed to trade free of tax.", 2, at.x, at.y, f.id);
+      }
+      /* Friends of old, kept: an alliance or a trade deal lived in is a bond. */
+      if (rel.ally || rel.trade) rel.bond = clamp(rel.bond + 0.0004, -1, 1);
+    }
     function decide(f) {
       const lead = byId.get(f.leader);
       if (!lead || lead.hp === -99 || lead.f !== f.id) { succeed(f, "left"); return; }
       if (f.rule === "elected" && t >= f.voteAt) vote(f, false);
+      /* Turned against: a people who vote and have mostly turned on their leader do not wait for
+         the next vote (Boehm 1993: the last word of an egalitarian people is to end somebody's
+         leadership). */
+      else if (f.rule === "elected" && !f.yours && f.loyal < 0.3 && t - (f.voteAt - S.term * YEAR) > YEAR) {
+        note("vote", f.name + " has turned against " + lead.name + " and called a vote.", 2.5, villages[lead.home].x, villages[lead.home].y, f.id);
+        vote(f, false);
+      }
       if (revolution(f)) return;
       if (f.rule === "rich") {
         const top = people.filter(q => q.f === f.id && adult(q)).sort((a, b) => b.coins - a.coins)[0];
@@ -5497,7 +5685,7 @@
       if (!f.yours && !wars) {
         let threat = 0;
         for (const o of factions) if (o.alive && o !== f && border(f, o).d < 30) {
-          threat = Math.max(threat, o.adults ? o.soldiers / o.adults : 0) + Math.min(0.06, f.rel[o.id].grief * 0.03);
+          threat = Math.max(threat, o.adults ? o.soldiers / o.adults : 0) + Math.min(0.06, f.rel[o.id].grief * 0.03) + (t - o.rel[f.id].askedAt < 180 * DAY_HOURS ? 0.04 : 0);
         }
         const wages = f.soldiers * WAGE * 7;
         // Half the biggest neighbour's share, plus a base: answering a real threat
@@ -5549,8 +5737,12 @@
       for (const o of factions) {
         if (!o.alive || o === f) continue;
         const rel = f.rel[o.id], back = o.rel[f.id];
-        rel.grief *= 0.985; rel.op *= 0.995;
+        rel.grief *= 0.985;
+        /* What they think of each other drifts toward the old bond, not to nothing; the bond
+           fades over a generation (half in about ten years). */
+        rel.bond *= 0.9998; rel.op += (rel.bond * 0.6 - rel.op) * 0.005;
         const b = border(f, o);
+        deal(f, o, lead, b);
         /* Whoever is ruled from the page makes war and peace from the page. */
         if (f.yours) { if (rel.war && b.pair) f.target[o.id] = b.pair[1].id; continue; }
         if (rel.war) {
@@ -5559,14 +5751,17 @@
              between equals used to end within months and a handful of dead;
              it now lasts until it has cost something. */
           const weary = rel.dead / (f.pop + 1) * 3 + (t - rel.since) / YEAR * 0.3 + hungry * 0.5;
-          if (weary > 0.35 + lead.bold * 0.5 + S.aggression * 0.3) {
+          if (weary > 0.35 + lead.bold * 0.5 + S.aggression * 0.3 + (ruling(lead, "temper", f) - 0.5) * 0.4) {
             const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3;
             const olead = byId.get(o.leader);
             if (theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 || f.soldiers < o.soldiers * 0.35) {
               rel.war = back.war = false; rel.peaceAt = back.peaceAt = t;
               rel.grief *= 0.4; back.grief *= 0.4;
               count.peaces++;
-              note("peace", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead.", 3.5, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
+              /* The side that gave in pays, when the other was winning and is not led by a patient sort. */
+              const gave = theirs <= 0.15 + (olead ? olead.bold : 0.5) * 0.2;
+              if (gave && olead && back.dead < rel.dead && R() > ruling(olead, "patient", o)) { rel.pays = true; count.tributes++; }
+              note("peace", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead" + (rel.pays ? "; " + f.name + " is to pay tribute" : "") + ".", 3.5, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
             }
           }
         /* Rivals may take up arms again eighteen months after a peace, and from
@@ -5581,14 +5776,21 @@
           const short = clamp(1 - feeds / Math.max(1, f.pop) / 2, 0, 1) * 0.5;
           const land = (f.cramped && t - f.cramped < YEAR * 2 ? 0.5 : 0) + hungry * 1.2 + short;
           const covet = clamp((o.wealth || 0) / Math.max(0.1, f.wealth || 0) - 1.1, 0, 1.5) * lead.greed * 0.6;
-          const want = (rel.grief + land + covet + Math.max(0, -rel.op) * 0.6) * (0.35 + lead.bold) * (0.25 + S.aggression * 1.5);
-          const mine = f.soldiers + f.adults * 0.15, theirs = o.soldiers + o.adults * 0.15;
-          if (want > 0.8 && mine > theirs * 0.7 && R() < 0.5) {
-            rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0;
-            if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
-            count.wars++;
-            const why = rel.grief > land && rel.grief > covet && rel.grief > 0.3 ? "over old wrongs" : covet > land && covet > 0.3 ? "for its wealth" : land > 0.3 ? "for land" : "out of plain dislike";
-            note("war", f.name + " has gone to war with " + o.name + ", " + why + ".", 4, b.pair ? b.pair[1].x : 0, b.pair ? b.pair[1].y : 0, f.id);
+          /* The leader's own nature and mind (TODO 13): a hot temper is quicker to it and a
+             patient one slower, and what they hold against the other side counts with the rest.
+             At the middle of both it is what it was. */
+          const hot = ruling(lead, "temper", f), calm = ruling(lead, "patient", f), mind = heldAgainst(lead, o);
+          let want = (rel.grief + land + covet + Math.max(0, -rel.op) * 0.6 + mind) * (0.35 + lead.bold) * (0.25 + S.aggression * 1.5) * (0.6 + hot * 0.8) * (1.2 - calm * 0.4);
+          if (back.pays) want *= 0.3;   // tribute coming in is what a war would have taken
+          if (rel.ally) want = 0;       // allies do not fight; the alliance ends first
+          const mine = might(f, o), theirs = might(o, f);
+          const why = rel.grief > land && rel.grief > covet && rel.grief > 0.3 ? (rel.bond < -0.3 ? "over an old feud" : "over old wrongs") : covet > land && covet > 0.3 ? "for its wealth" : land > 0.3 ? "for land" : mind > 0.3 ? "over what its leader holds against them" : "out of plain dislike";
+          /* Short of war: a leader who wants something of a weaker neighbour may demand tribute
+             first, the more so the more patient they are; a hot temper goes straight to war. */
+          if (want > 0.5 && !back.pays && t - rel.askedAt > 120 * DAY_HOURS && mine > theirs * 1.2 && R() < 0.1 + calm * 0.5 - hot * 0.1) {
+            demand(f, o, why === "out of plain dislike" ? "" : why);
+          } else if (want > 0.8 && mine > theirs * 0.7 && R() < 0.5) {
+            startWar(f, o, f.name + " has gone to war with " + o.name + ", " + why + ".");
           }
         }
       }
@@ -5813,11 +6015,33 @@
       if (what === "war") {
         if (!S.war) return "Wars are switched off in this world.";
         if (rel.war) return "";
-        rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0;
-        if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
-        count.wars++;
-        note("war", f.name + " has gone to war with " + o.name + ", on your word.", 4, at.x, at.y, f.id);
+        startWar(f, o, f.name + " has gone to war with " + o.name + ", on your word.");
         return "war";
+      }
+      /* Short of war (TODO 13): the other side answers as its own leader would. */
+      if (what === "ally" && !rel.war) {
+        if (rel.ally) { rel.ally = back.ally = false; note("ally", f.name + " has ended its alliance with " + o.name + ".", 2, at.x, at.y, f.id); return "unallied"; }
+        if (!wouldAlly(o, f)) return "refused-ally";
+        rel.ally = back.ally = true; count.alliances++;
+        note("ally", f.name + " and " + o.name + " have made an alliance, on your word.", 3, at.x, at.y, f.id);
+        return "ally";
+      }
+      if (what === "trade" && !rel.war) {
+        if (rel.trade) { rel.trade = back.trade = false; note("trade", f.name + " and " + o.name + " have ended their trade deal.", 1.5, at.x, at.y, f.id); return "untraded"; }
+        if (!wouldTrade(o, f)) return "refused-trade";
+        rel.trade = back.trade = true; count.deals++;
+        note("trade", f.name + " and " + o.name + " have agreed to trade free of tax.", 2, at.x, at.y, f.id);
+        return "trade";
+      }
+      if (what === "tribute" && !rel.war && !back.pays) {
+        if (t - rel.askedAt < 30 * DAY_HOURS) return "asked";
+        rel.ally = back.ally = false;
+        return demand(f, o, "on your word");
+      }
+      if (what === "stop" && rel.pays) {
+        rel.pays = false; back.grief = clamp(back.grief + 0.4, 0, 3);
+        note("tribute", f.name + " has stopped paying tribute to " + o.name + ", on your word.", 3, at.x, at.y, f.id);
+        return "stopped";
       }
       if (what === "peace" && rel.war) {
         const olead = byId.get(o.leader);
@@ -5917,7 +6141,7 @@
       },
       /* After `advance(seconds, true)`: put passed-over people's counts right before reading them. */
       settle: openUp,
-      dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar, heldAgainst: heldAgainst, standing: standing,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },

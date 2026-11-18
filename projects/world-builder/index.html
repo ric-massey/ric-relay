@@ -1937,7 +1937,7 @@
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], gone: ["Abandoned", "#98a8a5"] };
+                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], gone: ["Abandoned", "#98a8a5"] };
     ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     for (const e of f.marks) {
       const m = MARK[e.kind]; if (!m) continue;
@@ -2070,7 +2070,7 @@
     }
     if (a[0] === "village") { const v = vs[+a[1]]; if (!v) return; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
-    if (mode === "people" && ["rule", "ftax", "army", "relief", "land", "vtax", "vrelief", "vreset", "war", "peace", "live"].includes(a[0])) {
+    if (mode === "people" && ["rule", "ftax", "army", "relief", "land", "vtax", "vrelief", "vreset", "war", "peace", "ally", "trade", "tribute", "stop", "live"].includes(a[0])) {
       /* A decision is the keeper's to carry out, from what stands in the
          world at that moment; the panel is drawn again when it says it has
          (`hear`, "did"), with whatever the other side answered. */
@@ -2220,7 +2220,7 @@
   function newsTrail(m) {
     if (!m.trace || m.trace.length < 2) return m.from ? " <span class='small'>(from " + esc(m.from) + ")</span>" : "";
     return "<details class='trail' data-key='" + esc(m.text) + "'" + (openTrails.has(m.text) ? " open" : "") + "><summary class='small'>From " + esc(m.trace[0].from || m.from || "somebody") + ": how it got here, " + (m.trace.length - 1) + (m.trace.length === 2 ? " telling" : " tellings") + "</summary><ol class='small'>" +
-      m.trace.slice().reverse().map(h => "<li>" + (h.day === null ? esc(h.name) + (h.place ? " in " + esc(h.place) : "") + (h.saw ? " saw it" : " (heard it, but who from is not known)")
+      m.trace.slice().reverse().map(h => "<li>" + (h.day === null ? esc(h.name) + (h.place ? " in " + esc(h.place) : "") + (h.saw ? " saw it" : h.old ? " grew up knowing it" : " (heard it, but who from is not known)")
         : esc(h.from) + " told " + esc(h.name) + (h.place ? " in " + esc(h.place) : "") + ", day " + h.day + (h.changed ? ": <b>“" + esc(h.text) + "”</b> (changed in the telling)" : "")) + "</li>").join("") + "</ol></details>";
   }
   const TALK_TOPICS = { gossip: "Talking about somebody", cold: "A cold word", fight: "A fight", quarrel: "A quarrel", help: "Asking for food", refuse: "Help refused", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
@@ -2261,6 +2261,26 @@
     "<button class='btn' data-go='" + go + ":1' aria-label='More " + esc(label.replace(/<[^>]*>/g, "")) + "'>+</button></span>" + (extra || "") + "</div>";
   /* Who holds the land (TODO 7c), as the faction list and the ruling panel say it. */
   const LAND = { family: "Each family its own fields", village: "The village, in common", leader: "The leader, worked for a share" };
+  /* Dealings short of war (TODO 13): the other side answers as its own leader would. */
+  function dealButtons(f, o, d) {
+    const r = f.rel[o.id] || {};
+    return "<button class='btn' data-go='ally:" + f.id + ":" + o.id + "'>" + (r.ally ? "End the alliance" : "Offer an alliance") + "</button>" +
+      (d.money === "coins" ? "<button class='btn' data-go='trade:" + f.id + ":" + o.id + "'>" + (r.trade ? "End the trade deal" : "Offer a trade deal") + "</button>" : "") +
+      (r.pays ? "<button class='btn' data-go='stop:" + f.id + ":" + o.id + "'>Stop paying tribute</button>"
+              : r.gets ? "<span class='small'>pays you tribute</span>" : "<button class='btn' data-go='tribute:" + f.id + ":" + o.id + "'>Demand tribute</button>");
+  }
+  /* What one faction thinks of each other one, and what stands between them (TODO 13). */
+  function dealings(f, d) {
+    const out = [];
+    for (const o of d.factions) {
+      const r = f.rel[o.id]; if (!o.alive || o === f || !r || r.war) continue;
+      const how = r.ally ? "allied with" : r.op > 0.4 ? "friendly to" : r.op < -0.4 ? "hostile to" : r.op < -0.15 ? "wary of" : "";
+      const bits = [r.trade ? "trades free of tax with" : "", r.pays ? "pays tribute to" : "", r.gets ? "takes tribute from" : ""].filter(Boolean);
+      if (how) bits.unshift(how);
+      if (bits.length) out.push(bits.join(", ") + " " + esc(o.name));
+    }
+    return out.length ? "<span class='ln'>" + out.join(" · ").replace(/^./, c => c.toUpperCase()) + "</span>" : "";
+  }
   function rulePane(f, d) {
     const coins = d.money === "coins";
     if (!f.yours) return "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Rule " + esc(f.name) + " yourself</button></div>";
@@ -2280,7 +2300,7 @@
       }).join("") + "<p class='small'>* the tax set for the whole faction.</p>" : "") +
       (others.length ? "<h4>Neighbours</h4>" + others.map(o => "<div class='row'><span class='lbl'><span class='sw' style='background:" + o.colour + "'></span>" + esc(o.name) + "</span>" +
         (f.rel[o.id] && f.rel[o.id].war ? "<button class='btn' data-go='peace:" + f.id + ":" + o.id + "'>Offer peace</button>"
-                         : d.war ? "<button class='btn' data-go='war:" + f.id + ":" + o.id + "'>Declare war</button>" : "<span class='small'>at peace \u2014 wars are off</span>") + "</div>").join("") : "") +
+                         : (d.war ? "<button class='btn' data-go='war:" + f.id + ":" + o.id + "'>Declare war</button>" : "<span class='small'>at peace \u2014 wars are off</span>") + dealButtons(f, o, d)) + "</div>").join("") : "") +
       "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Hand " + esc(f.name) + " back to its leaders</button></div></div>";
   }
   /* The rules a running world can still change: only what the engine reads
@@ -2350,7 +2370,7 @@
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
             (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") +
-            (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + "</button>" + rulePane(f, d);
+            (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");
     }

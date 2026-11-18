@@ -1757,6 +1757,80 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Leaders and factions that deal with each other (2026-11-18)
+
+TODO item 13. Ric decided nothing up front. Until now factions either left each other alone or
+went to war, and a leader was the boldest person with the most friends.
+
+- **How the factions start** (a new setting under War: old friends, strangers, old enemies).
+  Old friends start allied, and trading free of tax if there is money. Old enemies start with a
+  feud: an old wrong (a village burned, fields taken, herds stolen) that every grown-up "grew up
+  knowing", held as long as a grudge (half gone in five years) and passed to their children.
+  Between the factions there is now an old **bond** as well as today's opinion: the opinion
+  drifts toward it, and it fades by half in about ten years. A war's dead deepen it.
+- **A new preset, "Two old enemies"**: two factions, old enemies, a coin a head. Ric's "two
+  tribes that hate each other with almost no money", from the setup page alone.
+- **Short of war.** A leader who wants something of a weaker neighbour may demand tribute
+  instead of fighting: the more patient the leader, the likelier. The other side pays if it is
+  outmatched and its leader is neither bold nor hot-tempered enough to refuse. Tribute is a
+  share of its stores and treasury each day, carried to the nearest village of the other side,
+  and resented; it stops when the payer feels strong enough. A refusal is an insult, and the
+  threatened side keeps more soldiers. A war lost can end in tribute.
+  **Alliances** form against a common enemy or between old friends; warm leaders make them.
+  When an ally is attacked, its allies are called: each comes as its leader is bold and as it
+  likes the attacked, or the alliance is over. **Trade deals**: no tax on each other's people,
+  between neighbours who think well enough of each other; honest leaders make them.
+- **What a leader does depends on who they are.** A hot temper makes a leader quicker to war and
+  slower to make peace, a patient one the opposite and readier to demand tribute instead, and
+  what the leader holds in mind counts: grudges against the other side's people (less any close
+  friend there), and news of wars, villages taken and old feuds between the two sides, as the
+  leader holds it. A leader who can be voted out shows half their own nature, a chief or the
+  richest all of it. At the middle of both traits it is what it was before.
+- **Who becomes leader.** The bold and the well supported as before, and now also those known
+  for being generous, honest and hardworking. In a vote, people want somebody bold in a war or
+  under threat, and somebody honest otherwise. A people who vote and have mostly turned on their
+  leader (loyalty under 30%) call a vote early, at most once a year.
+- **On the page.** The faction list says who is allied, friendly, wary or hostile, who trades
+  free of tax and who pays tribute. Ruling a faction, you can offer an alliance or a trade deal,
+  demand tribute and stop paying it; the other side answers as its own leader would. A feud on
+  the person panel reads "Grew up knowing", and its trail ends "grew up knowing it".
+- **Fixed on the way.** A feud did not last: the thousands of sales and friendly words between
+  two neighbouring factions every day lifted what they thought of each other from −0.6 to +1
+  within a year, and old enemies became allies. Now an old feud is all but deaf to everyday
+  goodwill, an old friendship to everyday ill will, and traders do not carry goods to a people
+  theirs is hostile to. And liking alone no longer makes an alliance: everyday talk leaves most
+  neighbours liking each other, and with that every faction in a default world was allied to
+  every other within a year and nobody fought.
+
+Sources.
+- Who leads in small societies: dominance and prestige both: physical strength and kin support,
+  and generosity, skill and trustworthiness (von Rueden et al. 2008, 2014, the Tsimane of
+  Bolivia; [2014 paper](https://www.gurven.anth.ucsb.edu/sites/secure.lsit.ucsb.edu.anth.d7_gurven/files/sitefiles/papers/vonruedenetal2014hn.pdf)).
+- How they are removed: ridicule, disobedience, desertion and in the end the end of their
+  leadership (Boehm 1993, "reverse dominance hierarchy";
+  [paper](https://www.Gwern.net/doc/sociology/intrasexual-aggression/1993-boehm.pdf)).
+- Why neighbours keep the peace: trade, intermarriage and shared ceremonies (the Upper Xingu
+  peace system; Fry and others, [review](https://pmc.ncbi.nlm.nih.gov/articles/PMC4250129));
+  tribute as a cost weighed against the cost of war.
+- A leader's own nature in war: measurable traits of leaders predict how warlike their states
+  are, more so where nobody can check them (Horowitz, Stam and Ellis, *Why Leaders Fight*, 2015;
+  [summary](https://cambridgeblog.org/2016/03/what-motivates-leaders-to-go-to-war/)).
+
+Measured.
+- *Hot-tempered against patient* (two old-enemy factions of 150, chiefs, a year and a half, six
+  seeds each, every leader of both factions set the same): hot-tempered, 5 wars, 1,790 days at
+  war, 32 killed in battle, no tribute demanded; patient, 2 wars, 426 days, 8 killed, 2 demands,
+  one paid.
+- *Old enemies* (the preset): after 150 days every grown-up still held the feud and the factions
+  still thought −0.63 of each other.
+- *Old friends* (three factions, a year): allied and trading free of tax throughout, no war.
+- *A default world* (sixteen seeds, a year, against the world just before): 364 alive against
+  359, 10 starved against 12, 20 killed in battle against 22, 4.4 wars against 5.3; and now each
+  world-year 1.6 alliances, 6 trade deals, 2.4 demands for tribute, 0.7 paid.
+- *Speed* (`test/bench.mjs`, alternated twice): the same, every row (5,000 people 3.10 and 3.06
+  s a day before, 3.16 and 3.09 after; the machine was loaded throughout, so slower than item
+  12's figures).
+
 ### Talking as passing what you hold (2026-11-18)
 
 TODO item 12. Until now news was an event's number: everybody on its side, or within 6 km, knew

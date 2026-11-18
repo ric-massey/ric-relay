@@ -1101,7 +1101,7 @@ the true one.
 
 Research notes:
 
-### [ ] 13. Leaders and factions that deal with each other
+### [x] 13. Leaders and factions that deal with each other
 
 **Now:** chiefs, votes, rule by the rich, tax, relief, breakaways, war and peace, and the visitor
 ruling a faction.
@@ -1116,7 +1116,33 @@ measurably different over many seeds; "two tribes that hate each other with almo
 be set up from the setup page alone.
 **Budget:** default.
 
+**Done 2026-11-18.** A setting, "How the factions start": old friends (allied, trading free of
+tax), strangers, old enemies (a feud every grown-up grew up knowing, held as long as a grudge,
+passed to their children). An old bond between factions that opinion drifts toward and that
+fades over a generation. Demands for tribute, tribute paid and stopped, alliances against a
+common enemy or between old friends, allies called to war, trade deals free of tax; all from
+the page too, when ruling a faction. A leader's temper, patience, warmth, honesty and boldness,
+and what they hold against the other side, decide; half as much for an elected one. Leaders are
+chosen for prestige as well as boldness; a people who have turned on an elected leader vote
+early. A preset, "Two old enemies". Met: hot-tempered leaders spent 1,790 days at war against
+patient leaders' 426, over six seeds, with 32 killed against 8 (`test/dealings.test.mjs`, in
+the slow lane); the preset gives two hostile factions with a coin a head. **Not met / open:**
+peace by marriage between leaders' families (PEOPLE-VISION, war, item 8) is not here; tribute
+is a share of stores, not a number agreed; the leader's choices are rules weighted by their
+traits, not plans; trade deals form between almost every pair of neighbours at peace.
+
 Research notes:
+- **Who leads.** Dominance and prestige both: strength and kin support, generosity, skill,
+  trustworthiness (von Rueden et al. 2008, 2014, Tsimane).
+  https://www.gurven.anth.ucsb.edu/sites/secure.lsit.ucsb.edu.anth.d7_gurven/files/sitefiles/papers/vonruedenetal2014hn.pdf
+- **Removing them.** Ridicule, disobedience, in the end the end of their leadership (Boehm
+  1993). https://www.Gwern.net/doc/sociology/intrasexual-aggression/1993-boehm.pdf
+- **Peace between neighbours.** Trade, intermarriage, shared ceremonies (the Upper Xingu); trade
+  can also cause wars. https://pmc.ncbi.nlm.nih.gov/articles/PMC4250129
+- **Leaders' nature and war.** Leaders' traits predict war, more where nobody checks them
+  (Horowitz, Stam and Ellis 2015). https://cambridgeblog.org/2016/03/what-motivates-leaders-to-go-to-war/
+- **Chosen, and its cost.** Five numbers more per pair of factions; a leader's mind is read only
+  when they weigh a war. No cost per person.
 
 ### [ ] 14. War true to its time, and what it leaves
 
@@ -1270,4 +1296,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-17 | 10 | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | 15.96 s a day, 19× | 4.1 MB, 0.80 KB | **the ten traits**: quarrels, fights, theft, raids and hard years moving people. Against item 9: 2,000 0.66 → 0.66 s, 5,000 1.98 → 2.06 s, 20,000 14.6 → 16.0 s (+9%: the old ask-a-neighbour search, with more people short), 400 on 500 km 0.19 → 0.14 s; memory 0.67 → 0.80 KB a person (five traits, four fields) |
 | 2026-11-17 | 11 | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 155× | 16.30 s a day, 18× | 6.6 MB, 1.29 KB, measured right after making the world (0.80 before: the minds are there from the start) | **the mind**: twenty slots a person in flat arrays. Against item 10: 2,000 0.67 → 0.68 s, 5,000 2.08 → 1.92 s, 20,000 16.2 → 16.3 s, 400 on 500 km 0.14 → 0.14 s; a running world 0.7 KB a person lighter |
 | 2026-11-18 | 12 | AMD Ryzen 5 3600, 24 GB | 1.84 s a day, 163× | 15.1 s a day, 20× | 7.0 MB, 1.36 KB at the start (2.77 against 2.62 KB a person by heap after) | **talking passes what you hold**: who told whom, tellings that change. Against the world before: 400 0.15 → 0.15 s, 2,000 0.70 → 0.71 s, 5,000 1.92 → 1.84 s (alternated four times), 20,000 16.4 → 15.1 s, 400 on 500 km 0.20 → 0.16 s; 0.27 KB a person more by day 120 |
+| 2026-11-18 | 13 | AMD Ryzen 5 3600, 24 GB | 3.09 s a day, 97× (loaded machine) | 19.3 s a day, 16× (loaded) | 6.4 MB, 1.26 KB | **factions dealing with each other**: no change against the world before, alternated twice on the same loaded machine: 400 0.18 → 0.17 s, 2,000 0.98 → 0.98 s, 5,000 3.08 → 3.13 s, 20,000 19.3 → 19.2 s, 400 on 500 km 0.20 → 0.19 s |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

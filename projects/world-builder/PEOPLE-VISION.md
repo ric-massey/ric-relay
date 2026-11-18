@@ -863,9 +863,9 @@ when it is built.
 
 **9. Leaders and factions**
 - Now: chiefs, votes, the rich ruling, tax, relief, breakaways, the visitor ruling a faction.
-- [ ] Factions that hate each other from the start, as a setting.
-- [ ] Dealings between factions short of war: alliance, trade deal, tribute, threat.
-- [ ] Who becomes leader, and how much their own nature decides what the faction does.
+- [x] Factions that hate each other from the start, as a setting. (2026-11-18, TODO 13: "How the factions start".)
+- [x] Dealings between factions short of war: alliance, trade deal, tribute, threat. (2026-11-18, TODO 13.)
+- [x] Who becomes leader, and how much their own nature decides what the faction does. (2026-11-18, TODO 13: prestige as well as boldness; temper and patience, half as much for an elected leader.)
 
 **10. Catastrophes and reaching in**
 - Now: a sickness setting, and ruling a faction. Nothing can be dropped on the land.
