@@ -1758,6 +1758,58 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Why wars start and end (2026-11-19)
+
+TODO item 14c. Ric: "why a war starts and ends comes from what people and leaders hold in mind …
+a new leader can end a war their predecessor began." Before this, a leader went to war on
+grievance, land, hunger, greed and what they held against the other side (item 13), and made peace
+when weariness (the dead a head, the years, the hungry) passed a mark set by their boldness and
+temper. Who had begun the war played no part, and nor did what the people held. A place that was
+taken was easily taken back the next week, because every soldier who took it marched on.
+
+Now:
+
+- **Who is to blame.** Each side of a war remembers whose leader it was when it began
+  (`rel.began`). A leader who began it, or whose parent, child or partner did, keeps the old mark
+  for peace. Any other leader's mark is 0.3 lower, and on the other side the mark for accepting is
+  0.1 lower (`culpable`). This follows Croco's "culpable leader": one in office when the war began,
+  or tied to the one who was, fears punishment for a bad end and fights on, while one who is not
+  can accept the compromise ([APSR 2011](https://www.cambridge.org/core/journals/american-political-science-review/article/deciders-dilemma-leader-culpability-war-outcomes-and-domestic-punishment/509114969EBDD6FAC6DA9323744CDFB4)).
+  A change of leader made the end of interstate wars more likely, 1816–2006
+  ([Quiroz Flores et al.](https://lup.lub.lu.se/search/files/37690562/2017_11_Quiroz_Flores_Ba_ck_von_Hagen_Jamar_Teorell.pdf)).
+  No rule says a new leader ends a war: a leader is replaced by death, a vote or a revolt as before,
+  and only the blame differs.
+- **What they hold.** The leader's own grudges and the news they hold against the other side
+  (`heldAgainst`, item 13) raise the mark for peace by up to 0.15. What their people hold raises it
+  too: thirty grown-ups read evenly through the list (`folk`), at 0.05, or 0.1 under a leader they
+  can vote out. Never more than a leader's temper moves it: at three times that, and with the
+  people's grudges adding to the wish to start a war as well, an old feud everybody held kept
+  patient leaders at war as long as hot-tempered ones (`test/dealings.test.mjs`, 1,194 days against
+  1,787). So what the people hold weighs on how a war ends, not on whether it starts. The dead a head were
+  already in the weariness; casualties are what turn people against a war, through the news of them
+  ([Fetzer et al., AJPS 2025](https://repec.cepr.org/repec/cpr/ceprdp/DP16102.pdf)).
+- **Holding what was taken.** Half of the soldiers who took a place stay as its garrison for a year
+  (`v.heldTo`), as the English held Normandy town by town
+  ([Curry](https://eprints.soton.ac.uk/388591/1/Curry_1906.indd.pdf)).
+
+Measured. Two years each, eight default worlds and six forced wars (600 people, 40 km, three
+factions), before → after:
+
+| | Default worlds | Forced wars |
+|---|---|---|
+| Wars ended | 14 → 26 | 4 → 3 |
+| Places changing hands | 59 → 35 | 131 → 65 |
+| — taken back within 90 days | 23 → 9 | 57 → 20 |
+| Starved | 123 → 89 | 125 → 90 |
+| Killed in battle | 193 → 170 | 101 → 94 |
+| Houses burned | 547 → 469 | 1,334 → 780 |
+
+How often a war ended, per thousand days of it, all fourteen worlds together: under the leaders on
+both sides who began it 0.12 → 0.22; once either side had a new leader 2.2 → 4.9. Wars mostly last
+over a year, so even before this most ended under somebody new (16 of 18); now a new leader ends
+one over twenty times as readily as the one who began it. Cost: thirty minds read once a day for
+each pair of neighbouring factions; the bench is unchanged. Test: `test/war.test.mjs`, "Why wars end".
+
 ### What a war leaves (2026-11-19)
 
 TODO item 14b. Ric: "i want the aftermath of war to be accurate too." Before this the dead already
@@ -1868,7 +1920,7 @@ So a faction at war, away from the fighting, now works as hard as one at peace w
 a bigger army, and stores a third more than it did; a place with enemies at its door still works
 about half as much. A default world is at war about half its first year, so this reaches it too: a
 year, eight seeds, old → new, starved 116 → 47, alive at the end 2,822 → 3,017, killed in battle
-176 → 113, villages taken 19 → 11, births 122 → 147. Cost: whether a faction is at war is worked out once an hour (`f.warOn`) instead
+176 → 113, villages taken 19 → 11, births 122 → 147. Cost: whether a faction is at war is worked out once an hour (`atWarAnywhere`, kept off the faction so reading it changes nothing visible) instead
 of looked up through every faction at every choice; nothing per person.
 Test: `test/war.test.mjs`, "Fear where the danger is".
 

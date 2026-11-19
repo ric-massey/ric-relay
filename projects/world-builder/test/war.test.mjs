@@ -125,4 +125,25 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
   assert.ok(w.stats().cameHome >= away.filter(p => p.hp > 0 && w.adult(p)).length, "the grown-ups who fled came home (" + w.stats().cameHome + ")");
 }
 
+/* Why wars end (TODO 14c): each side remembers whose leader it was when the war began, and a
+   place taken keeps a garrison for a year. */
+{
+  const w = People.create({ people: 600, map: 40, factions: 3, villages: 6, seed: 12, soldiers: 0.12 });
+  w.step(24);
+  const l0 = w.factions[0].leader, l1 = w.factions[1].leader;
+  war(w);
+  assert.equal(w.factions[0].rel[1].began, l0, "the side that began it remembers its leader then");
+  assert.equal(w.factions[1].rel[0].began, l1, "and so does the side attacked");
+  for (let d = 0; d < 365 && !w.stats().garrisons; d++) w.step(24);
+  const s = w.stats();
+  if (s.captures > 0) {
+    assert.ok(s.garrisons > 0, "a place taken by storm is garrisoned");
+    const held = w.villages.filter(v => v.alive && v.heldTo > s.tick);
+    for (const v of held) {
+      const guard = w.people.filter(p => p.hp > 0 && p.job === "soldier" && p.home === v.id && p.f === v.f);
+      assert.ok(guard.length > 0, "a held place has soldiers of its own at home");
+    }
+  }
+}
+
 console.log("War: raised a few at a time, rations drawn and paid for, resupply only at home, the wounded go home; fear only where the fighting is; crops spoiled, houses burned, people fleeing and coming home.");

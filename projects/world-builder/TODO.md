@@ -1191,10 +1191,12 @@ one leader can end under the next without any rule saying so; `test/rule.test.mj
 - **14b What a war leaves.** Burned houses and fields, lost harvests, the dead missing from their
   households, widows and orphans taken in, people fleeing and coming back, land changing hands;
   a war measurably thins the next harvest and the next generation.
-- **14c Why wars start and end, walls, sieges and raids.** Read from what leaders and people hold
-  in mind; a new leader can end a war; walls raised in wartime; raids as well as sieges.
+- **14c Why wars start and end.** Read from what leaders and people hold in mind; a new leader
+  can end a war; a place taken is held, not lost again the next week. (Split again 2026-11-19:
+  walls and raids are 14e.)
 - **14d Peace and dealings left from item 13.** Peace by marriage, trade deals that need real
   trade, tribute as an agreed amount.
+- **14e Walls, sieges and raids.** Walls raised in wartime; raids as well as sieges.
 
 ### [x] 14a. Wartime effort, not only fear
 
@@ -1285,6 +1287,64 @@ Research notes (2026-11-19):
   its houses. Households run, the frightened and the less bold first, to the nearest village of
   their own faction with no enemy at it, and come home a week after the last enemy left. Nothing
   per person; only villages with enemies at them do any work.
+
+### [x] 14c. Why wars start and end
+
+**Done 2026-11-19.** Each side remembers whose leader began the war; that leader, or their parent,
+child or partner, keeps the old mark for peace, and anybody else makes peace sooner (Croco). The
+leader's own grudges and their people's (thirty read a day) keep a war going, no more than temper does. A
+place taken keeps half its takers as a garrison for a year. Fourteen worlds, two years: peace per
+thousand war-days under the leaders who began it 0.12 → 0.22, under a new leader 2.2 → 4.9; places
+changing hands 190 → 100, taken back within 90 days 80 → 29; starved 248 → 179; default worlds' wars
+ended 14 → 26. `test/rule.test.mjs` holds; bench unchanged. **Open:** forced wars between two
+evenly matched sides still mostly outlast two years (3 of 13 ended); the people's grudges were tried
+in starting wars too and taken out (they made patient leaders as warlike as hot ones); walls and raids are 14e.
+
+**Now** (2026-11-19): a leader goes to war on grievance, land, hunger, greed for a richer
+neighbour and what they hold against the other side (item 13); they make peace when weariness (the
+dead a head, the years, the hungry) passes a mark set by their boldness, temper and the
+aggression setting, and the other side accepts if weary or outmatched. Who began the war plays no
+part, and what the people hold plays none. A place taken is easily taken back: 14b measured 131
+captures in six forced-war worlds over two years.
+**Do:** a war's end read from who the leader is and what they and their people hold; a new leader
+can end a war without a rule saying so; a place taken is garrisoned.
+**Done when:** a war begun under one leader can end under the next, measurably more often than
+under the leader who began it; places change hands back and forth less; `test/rule.test.mjs`
+still holds.
+**Budget:** default.
+
+Research notes (2026-11-19):
+- **Who ends wars.** Croco, "The Decider's Dilemma" (APSR 2011) and *Peace at What Price* (2015):
+  a culpable leader — one in office when the war began, or who came to power mid-war with a
+  political tie to one who was — is far less ready to end it, fearing punishment for a bad
+  outcome; a non-culpable leader is more ready to accept the compromise that ends it.
+  https://www.cambridge.org/core/journals/american-political-science-review/article/deciders-dilemma-leader-culpability-war-outcomes-and-domestic-punishment/509114969EBDD6FAC6DA9323744CDFB4
+  Leader turnover made interstate war termination more likely, 1816–2006 (Quiroz Flores et al.):
+  https://lup.lub.lu.se/search/files/37690562/2017_11_Quiroz_Flores_Ba_ck_von_Hagen_Jamar_Teorell.pdf
+- **The people's part.** Fatalities raise public demand for withdrawal, and the effect runs through
+  the news of them (Fetzer, Souza, Vanden Eynde and Wright, AJPS 2025, eight NATO countries in
+  Afghanistan): https://repec.cepr.org/repec/cpr/ceprdp/DP16102.pdf
+- **Holding what was taken.** Lancastrian Normandy, 1415–50, was held by garrisons in its key towns
+  and castles, sized to the state of the war and drawn on for field armies (Curry):
+  https://eprints.soton.ac.uk/388591/1/Curry_1906.indd.pdf
+- **Chosen, and its cost.** Each side of a war remembers whose leader it was when it began
+  (`rel.began`). A leader who began it, or whose parent or partner did, keeps the old mark for peace;
+  any other leader's mark is lower by 0.3. What the leader holds against the other side raises it
+  (up to 0.15); what a sample of thirty of their grown-ups hold against them raises it less, more
+  under an elected leader; neither more than a leader's temper does. A place taken
+  keeps half of the soldiers who took it as its garrison. Cost: thirty minds read once a day per
+  pair of neighbouring factions; nothing per person.
+
+### [ ] 14e. Walls, sieges and raids
+
+**Now:** a village defends itself with a quarter of its grown-ups and any soldiers near; an army
+goes for one place of each enemy at a time.
+**Do:** walls raised in wartime by the people of a place (murage; see 14a's notes); raids by small
+bands on open villages away from the main army, as well as sieges.
+**Done when:** a walled place holds out measurably longer; raids burn and take without a siege.
+**Budget:** default.
+
+Research notes:
 
 ### [ ] 15. Eras, old to modern
 
@@ -1415,4 +1475,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-18 | 13 | AMD Ryzen 5 3600, 24 GB | 3.09 s a day, 97× (loaded machine) | 19.3 s a day, 16× (loaded) | 6.4 MB, 1.26 KB | **factions dealing with each other**: no change against the world before, alternated twice on the same loaded machine: 400 0.18 → 0.17 s, 2,000 0.98 → 0.98 s, 5,000 3.08 → 3.13 s, 20,000 19.3 → 19.2 s, 400 on 500 km 0.20 → 0.19 s |
 | 2026-11-19 | 14a | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 156× | *not run* | 7.0 MB, 1.36 KB | **wartime effort**: fear only where the fighting is, a different world. Against item 13, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.69/0.68 → 0.68/0.71 s, 5,000 1.97/1.95/1.98/1.94 → 1.94/2.20/1.87/1.92 s: the same |
 | 2026-11-19 | 14b | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× | *not run* | 7.0 MB, 1.37 KB | **what a war leaves**: crops spoiled, houses burned, sacks, refugees, a different world in a war. Against 14a, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.67/0.68 → 0.67/0.65 s, 5,000 1.92/1.95 → 1.97/1.96 s: the same |
+| 2026-11-19 | 14c | AMD Ryzen 5 3600, 24 GB | 1.93 s a day, 155× | *not run* | 7.0 MB, 1.37 KB | **why wars end**: blame, grudges, garrisons, a different world in a war. Against 14b, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.66/0.67 → 0.79/0.66 s, 5,000 1.92/1.98 → 2.03/1.93 s: the same within this machine's drift |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

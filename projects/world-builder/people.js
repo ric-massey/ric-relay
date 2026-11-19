@@ -647,7 +647,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1231,8 +1231,7 @@
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
                   leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
-                  views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6,
-                  warOn: false, warAt: -1, warMv: -1 };   // TODO 14a: at war with anybody, worked out once an hour
+                  views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6 };
       factions.push(f);
       for (const o of factions) if (o !== f) { f.rel[o.id] = blankRel(); o.rel[f.id] = blankRel(); }
       return f;
@@ -1241,7 +1240,7 @@
        `bond`, an old friendship or feud that fades over a generation; an alliance, a trade deal
        (no tax on each other's people), tribute paid (`pays`: this side pays the other), and
        when this side last made a demand of the other. */
-    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9 }; }
+    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0 }; }   // began: this side's leader when the war began (TODO 14c)
     function newVillage(x, y, f) {
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
@@ -1252,7 +1251,8 @@
                   cold: 0,   // TODO 9c: the share of the village unwarmed today
                   raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined,   // TODO 10: the last time enemies struck here, and the year last looked back on
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
-                  dangerAt: -1e9, gone: null };   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
+                  dangerAt: -1e9, gone: null,
+                  heldTo: -1e9 };   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
       v.ore = o / c;
@@ -2726,11 +2726,15 @@
        anybody may still do anybody's work when their circumstances call for it. */
     const skilled = (p, job) => (p.job === job ? 1.35 : 0.6 + 0.24 * p.curious);   // TODO 10: the curious try other work
     /* At war with anybody (TODO 14a): read at every choice, so worked out once an hour per faction,
-       and again whenever any war starts or ends (`warMoves`). */
+       and again whenever any war starts or ends (`warMoves`). Kept in the engine's own table, not
+       on the faction: the page reading somebody's needs at an odd hour must change nothing that
+       can be seen (test/keeper.test.mjs caught the cache on the faction, now and then). */
     let warMoves = 0;
+    const warAt = [], warMv = [], warOn = [];
     const atWarAnywhere = f => {
-      if (f.warAt !== t || f.warMv !== warMoves) { f.warAt = t; f.warMv = warMoves; f.warOn = false; for (const k in f.rel) if (f.rel[k].war) { f.warOn = true; break; } }
-      return f.warOn;
+      const i = f.id;
+      if (warAt[i] !== t || warMv[i] !== warMoves) { warAt[i] = t; warMv[i] = warMoves; warOn[i] = false; for (const k in f.rel) if (f.rel[k].war) { warOn[i] = true; break; } }
+      return warOn[i];
     };
 
     /* Somebody worth walking to see: whoever they are closest to who is here. */
@@ -3567,7 +3571,7 @@
       }
       let enemy = -1;
       for (const o of factions) if (o.alive && atWar(f.id, o.id)) { enemy = o.id; break; }
-      if (enemy >= 0 && p.id % 3 !== 0) {
+      if (enemy >= 0 && p.id % 3 !== 0 && !(home.heldTo > t)) {   // a garrison stays (TODO 14c)
         const goal = villages[f.target[enemy]];
         if (goal && goal.alive && goal.f === enemy) {
           /* Before marching: rations drawn at a village of their own, and a
@@ -5360,7 +5364,7 @@
       else if (v.gone && t - v.dangerAt > 7 * DAY_HOURS) comeHome(v);
       if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
-        if (v.siege >= 4 + Math.floor(v.pop / 15)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]]); }
+        if (v.siege >= 4 + Math.floor(v.pop / 15)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
       } else v.siege = Math.max(0, v.siege - 1);
 
       /* Too full: some of them go and start somewhere new, if there is land. */
@@ -5544,7 +5548,7 @@
       }
     }
 
-    function capture(v, by) {
+    function capture(v, by, foes) {
       const old = factions[v.f];
       const refuge = villages.filter(o => o.alive && o.f === old.id && o !== v).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
       v.f = by.id; v.siege = 0; v.broke = t;
@@ -5560,6 +5564,14 @@
           if (p.job === "soldier") p.job = "farmer";
           p.f = by.id; p.loyal = 0.12 + R() * 0.15; p.mood -= 0.2; stayed++; count.switched++;
         }
+      }
+      /* Held (TODO 14c): half of the soldiers who took it stay as its garrison for a year, as the
+         English held Normandy town by town (Curry). Until 2026-11-19 they all marched on, and the
+         place was taken back the next week: 131 times in six worlds' two years of war. */
+      if (foes) {
+        const ours = foes.filter(p => p.f === by.id && p.hp > 0 && p.job === "soldier");
+        for (let k = 0; k < Math.ceil(ours.length / 2); k++) rehome(ours[k], v, "garrison");
+        if (ours.length) { v.heldTo = t + YEAR; count.garrisons++; }
       }
       old.rel[by.id].grief = clamp(old.rel[by.id].grief + 0.6, 0, 3);
       count.captures++;
@@ -5683,6 +5695,29 @@
       }
       return clamp(s, -0.5, 1.5);
     }
+    /* Is this leader to blame for the war with o (TODO 14c)? Whoever led when it began, or their
+       parent, child or partner: the "culpable" leader of Croco's Decider's Dilemma (2011), who fears
+       being punished for a bad end and fights on; anybody else can accept a compromise. */
+    function culpable(lead, rel) {
+      if (!lead || !rel.began) return false;
+      if (lead.id === rel.began || lead.mum === rel.began || lead.dad === rel.began || lead.partner === rel.began) return true;
+      const b = byId.get(rel.began);
+      return !!b && (b.mum === lead.id || b.dad === lead.id);
+    }
+    /* What the people of f hold against o: the mean, over thirty grown-ups spread evenly through
+       the list of people, of what each holds (`heldAgainst`). No dice drawn, so reading it changes
+       nothing. */
+    function folk(f, o) {
+      if (!f.adults) return 0;
+      const step = Math.max(1, Math.floor(f.adults / 30));   // about thirty of theirs in a pass, as f.adults of people.length are theirs
+      let n = 0, sum = 0;
+      for (let i = (f.id * 7) % step; i < people.length && n < 30; i += step) {
+        const p = people[i];
+        if (p.hp <= 0 || p.f !== f.id || !adult(p)) continue;
+        sum += heldAgainst(p, o); n++;
+      }
+      return n ? sum / n : 0;
+    }
     /* How strong a faction looks to a neighbour: its soldiers and grown-ups, and half its allies'. */
     function might(f, not) {
       let m = f.soldiers + f.adults * 0.15;
@@ -5695,6 +5730,7 @@
     function startWar(f, o, text) {
       const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o);
       warMoves++; rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0; relDeals(rel, back);
+      rel.began = f.leader; back.began = o.leader;
       if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
       count.wars++;
       note("war", text, 4, b.pair ? b.pair[1].x : 0, b.pair ? b.pair[1].y : 0, f.id);
@@ -5704,6 +5740,7 @@
         if (a.yours || (al && R() < 0.35 + al.bold * 0.4 + a.rel[o.id].op * 0.3 - Math.max(0, r2.op) * 0.3)) {
           if (a.yours) { note("ally", a.name + " is allied to " + o.name + ", now at war with " + f.name + ": it is yours to answer.", 2.5, at.x, at.y, a.id); continue; }
           warMoves++; r2.war = b2.war = true; r2.since = b2.since = t; r2.dead = b2.dead = 0; relDeals(r2, b2);
+          r2.began = a.leader; b2.began = f.leader;
           if (bb.pair) { a.target[f.id] = bb.pair[1].id; f.target[a.id] = bb.pair[0].id; }
           count.wars++; count.joined++;
           note("war", a.name + " has joined the war on " + o.name + "'s side, against " + f.name + ".", 3.5, at.x, at.y, a.id);
@@ -5878,10 +5915,18 @@
              between equals used to end within months and a handful of dead;
              it now lasts until it has cost something. */
           const weary = rel.dead / (f.pop + 1) * 3 + (t - rel.since) / YEAR * 0.3 + hungry * 0.5;
-          if (weary > 0.35 + lead.bold * 0.5 + S.aggression * 0.3 + (ruling(lead, "temper", f) - 0.5) * 0.4) {
+          /* Who leads, and what they and their people hold (TODO 14c): a leader not to blame for the
+             war stops sooner (Croco); a grudge of their own, or their people's, keeps them at it, the
+             people's twice as much under a leader they can vote out. No more than a leader's temper
+             moves it: at 0.3 for their own and 0.15 or 0.3 for their people's, an old feud everybody
+             held kept patient leaders at war as long as hot-tempered ones (test/dealings.test.mjs). */
+          const mark = 0.35 + lead.bold * 0.5 + S.aggression * 0.3 + (ruling(lead, "temper", f) - 0.5) * 0.4
+                       - (culpable(lead, rel) ? 0 : 0.3) + heldAgainst(lead, o) * 0.1 + Math.max(0, folk(f, o)) * (f.rule === "elected" ? 0.1 : 0.05);
+          if (weary > mark) {
             const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3;
             const olead = byId.get(o.leader);
-            if (theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 || f.soldiers < o.soldiers * 0.35) {
+            if (theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 - (culpable(olead, back) ? 0 : 0.1) || f.soldiers < o.soldiers * 0.35) {
+              if (lead.id !== rel.began || (olead && olead.id !== back.began)) count.peaceNew++;
               warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t;
               rel.grief *= 0.4; back.grief *= 0.4;
               count.peaces++;
@@ -5907,6 +5952,9 @@
              patient one slower, and what they hold against the other side counts with the rest.
              At the middle of both it is what it was. */
           const hot = ruling(lead, "temper", f), calm = ruling(lead, "patient", f), mind = heldAgainst(lead, o);
+          /* (Their people's grudges were tried here too, TODO 14c: where everybody held an old feud they
+             pushed patient leaders into wars as often as hot-tempered ones, test/dealings.test.mjs.
+             What the people hold weighs on how a war ends, not on whether it starts.) */
           let want = (rel.grief + land + covet + Math.max(0, -rel.op) * 0.6 + mind) * (0.35 + lead.bold) * (0.25 + S.aggression * 1.5) * (0.6 + hot * 0.8) * (1.2 - calm * 0.4);
           if (back.pays) want *= 0.3;   // tribute coming in is what a war would have taken
           if (rel.ally) want = 0;       // allies do not fight; the alliance ends first
@@ -6174,7 +6222,7 @@
         const olead = byId.get(o.leader);
         const theirs = back.dead / (o.pop + 1) * 5 + (t - back.since) / YEAR * 0.12 + (o.pop ? o.hungry / o.pop : 0) * 0.5;
         /* Nobody makes peace the week they were attacked unless they are badly outmatched. */
-        if ((t - back.since > 7 * DAY_HOURS && theirs > 0.1 + (olead ? olead.bold : 0.5) * 0.2) || o.soldiers < f.soldiers * 0.3) {
+        if ((t - back.since > 7 * DAY_HOURS && theirs > 0.1 + (olead ? olead.bold : 0.5) * 0.2 - (culpable(olead, back) ? 0 : 0.1)) || o.soldiers < f.soldiers * 0.3) {   // a leader not to blame, sooner (TODO 14c)
           warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t; rel.grief *= 0.4; back.grief *= 0.4;
           count.peaces++;
           note("peace", f.name + " and " + o.name + " have made peace after " + (rel.dead + back.dead) + " dead.", 3.5, at.x, at.y, f.id);
