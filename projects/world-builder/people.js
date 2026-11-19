@@ -1231,7 +1231,8 @@
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
                   leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
-                  views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6 };
+                  views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6,
+                  warOn: false, warAt: -1, warMv: -1 };   // TODO 14a: at war with anybody, worked out once an hour
       factions.push(f);
       for (const o of factions) if (o !== f) { f.rel[o.id] = blankRel(); o.rel[f.id] = blankRel(); }
       return f;
@@ -1249,7 +1250,8 @@
                   wood: 0, stone: 0, iron: 0, priceWood: 1, priceStone: 1, priceIron: 2, wantWood: 1, wantStone: 1, wantIron: 1, mats: undefined,
                   wool: 0, hide: 0, priceWool: 1.5, priceHide: 1.5, wantWool: 1, wantHide: 1,   // TODO 9b
                   cold: 0,   // TODO 9c: the share of the village unwarmed today
-                  raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined };   // TODO 10: the last time enemies struck here, and the year last looked back on
+                  raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined,   // TODO 10: the last time enemies struck here, and the year last looked back on
+                  foes: 0 };   // TODO 14a: enemy soldiers at its edge, counted each day with the siege   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
       v.ore = o / c;
@@ -2674,11 +2676,15 @@
       const worth = p.coins + p.food * 0.8 + p.goods * 2;
       const aim = (v.wealth || 0) * (0.8 + 1.2 * p.greed);
       const ambition = adult(p) && aim > 0 ? clamp((aim - worth) / Math.max(aim, 1), 0, 1) * p.greed : 0;
+      /* A war on, anywhere (TODO 14a; Ric: "civilizations have more inginuit and push to accomplish
+         things nduiring wartime"): away from the fighting people work and put by more and rest a
+         little less, the loyal most. Danger at their own door is fear (in `live`), not this. */
+      const push = adult(p) && atWarAnywhere(factions[p.f]) ? 0.6 + 0.4 * p.loyal : 0;
       return {
         food: clamp((1.7 - days) * 0.5, 0, 1.4) * (0.55 + S.hunger * 0.45),
         /* Squared, so an ordinary evening does not outrank a day's work but a
            second night awake outranks everything except hunger. */
-        rest: p.rest * p.rest * 1.2,
+        rest: p.rest * p.rest * 1.2 * (1 - 0.12 * push),
         water: THIRST ? waterNeed(p) : 0,
         safety: clamp(p.fear, 0, 1.2),
         company: clamp(p.alone / 30, 0, 1) * (0.2 + S.talk * 0.9),
@@ -2690,7 +2696,7 @@
            off the wish to work in October as surely as in May. */
         provide: clamp(0.3 + household - Math.max(0, days - 2 - winterAhead()) * 0.1 +
                        clamp((winterAhead() - days) / (winterAhead() + 1), 0, 1) * 0.5 * S.winter -
-                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v) + ambition * 0.7, 0, 1.3) * (0.5 + p.greed * 0.6) * (0.7 + 0.6 * p.hard),   // TODO 10: and the hardworking work
+                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v) + ambition * 0.7, 0, 1.3) * (0.5 + p.greed * 0.6) * (0.7 + 0.6 * p.hard) * (1 + 0.2 * push),   // TODO 10: and the hardworking work
         ambition: ambition,
       };
     }
@@ -2704,7 +2710,9 @@
       if (v.putByAt !== t) {
         v.putByAt = t;
         const ahead = winterAhead();
-        v.putBy = ahead > 0 ? clamp((ahead - storeDays(v)) / ahead, 0, 1) * 0.5 : 0;
+        /* At war, a store against a siege besides the winter (TODO 14a): a quarter more. */
+        const aim = ahead * (atWarAnywhere(factions[v.f]) ? 1.25 : 1);
+        v.putBy = ahead > 0 ? clamp((aim - storeDays(v)) / aim, 0, 1) * 0.5 : 0;
       }
       return v.putBy;
     }
@@ -2713,7 +2721,13 @@
        not a script. It is worth about a third again at the work it names, and
        anybody may still do anybody's work when their circumstances call for it. */
     const skilled = (p, job) => (p.job === job ? 1.35 : 0.6 + 0.24 * p.curious);   // TODO 10: the curious try other work
-    const atWarAnywhere = f => { for (const k in f.rel) if (f.rel[k].war) return true; return false; };
+    /* At war with anybody (TODO 14a): read at every choice, so worked out once an hour per faction,
+       and again whenever any war starts or ends (`warMoves`). */
+    let warMoves = 0;
+    const atWarAnywhere = f => {
+      if (f.warAt !== t || f.warMv !== warMoves) { f.warAt = t; f.warMv = warMoves; f.warOn = false; for (const k in f.rel) if (f.rel[k].war) { f.warOn = true; break; } }
+      return f.warOn;
+    };
 
     /* Somebody worth walking to see: whoever they are closest to who is here. */
     function someoneToSee(p) {
@@ -3966,15 +3980,19 @@
 
       /* The needs that are not food, once an hour. Rest rises with the hours
          awake and faster at real work; a night in a bed clears it. Being alone
-         is counted in hours since anybody last spoke to them. Fear comes from a
-         siege on the village they live in, a war their faction is in and a blow
-         they have just taken, and drains away when none of that is true. */
+         is counted in hours since anybody last spoke to them. Fear comes from
+         danger at their own door: a siege on the village they live in, enemy
+         soldiers at its edge, a raid on it in the last three days, a blow they
+         have just taken; it drains away when none of that is true. A war
+         fought elsewhere is not fear but effort (`urgency`, TODO 14a): until
+         2026-11-19 it frightened a whole faction, however far off, and a
+         faction at war sat at home. */
       const resting = p.task === "sleep" && Math.hypot(p.tx - p.x, p.ty - p.y) < 0.6;
       if (resting) p.rest = Math.max(0, p.rest - 1 / SPELL.sleep);
       else p.rest = Math.min(1, p.rest + (p.task === "field" || p.task === "make" || p.task === "fight" || p.task === "march" ? 0.075 : 0.05));
       p.alone++;
-      const near0 = villages[p.home], f0 = factions[p.f];
-      p.fear = clamp(p.fear + (near0.siege > 0 ? 0.3 : 0) + (atWarAnywhere(f0) ? 0.06 : 0) + (p.hit > 0 ? 0.35 : 0) - 0.05, 0, 1);
+      const near0 = villages[p.home];
+      p.fear = clamp(p.fear + (near0.siege > 0 ? 0.3 : 0) + (near0.foes > 0 ? 0.15 : 0) + (t - near0.raidAt < 3 * DAY_HOURS ? 0.08 : 0) + (p.hit > 0 ? 0.35 : 0) - 0.05, 0, 1);
 
       /* Drinking (TODO 6a): at a river or lake shore, there; else from the house's water. */
       if (THIRST) {
@@ -5321,6 +5339,7 @@
          four days, and a world's wars were won, lost and over in a month. */
       const sides = Object.keys(theirs);
       const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = ours + v.adults * 0.25;
+      v.foes = attackers;
       if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
         if (v.siege >= 4 + Math.floor(v.pop / 15)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]]); }
@@ -5446,6 +5465,7 @@
       if (!f.alive) return;
       f.alive = false; count.fallen++;
       for (const o of factions) { if (o.rel[f.id]) o.rel[f.id].war = false; if (f.rel[o.id]) f.rel[o.id].war = false; }
+      warMoves++;
       const heir = to >= 0 ? factions[to] : factions.filter(o => o.alive).sort((a, b) => b.pop - a.pop)[0];
       if (heir) heir.treasury += f.treasury;
       f.treasury = 0;
@@ -5567,7 +5587,7 @@
        they like the defender, or the alliance is over. */
     function startWar(f, o, text) {
       const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o);
-      rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0; relDeals(rel, back);
+      warMoves++; rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0; relDeals(rel, back);
       if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
       count.wars++;
       note("war", text, 4, b.pair ? b.pair[1].x : 0, b.pair ? b.pair[1].y : 0, f.id);
@@ -5576,7 +5596,7 @@
         const al = byId.get(a.leader), r2 = a.rel[f.id], b2 = f.rel[a.id], bb = border(a, f), at = bb.pair ? bb.pair[0] : { x: 0, y: 0 };
         if (a.yours || (al && R() < 0.35 + al.bold * 0.4 + a.rel[o.id].op * 0.3 - Math.max(0, r2.op) * 0.3)) {
           if (a.yours) { note("ally", a.name + " is allied to " + o.name + ", now at war with " + f.name + ": it is yours to answer.", 2.5, at.x, at.y, a.id); continue; }
-          r2.war = b2.war = true; r2.since = b2.since = t; r2.dead = b2.dead = 0; relDeals(r2, b2);
+          warMoves++; r2.war = b2.war = true; r2.since = b2.since = t; r2.dead = b2.dead = 0; relDeals(r2, b2);
           if (bb.pair) { a.target[f.id] = bb.pair[1].id; f.target[a.id] = bb.pair[0].id; }
           count.wars++; count.joined++;
           note("war", a.name + " has joined the war on " + o.name + "'s side, against " + f.name + ".", 3.5, at.x, at.y, a.id);
@@ -5755,7 +5775,7 @@
             const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3;
             const olead = byId.get(o.leader);
             if (theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 || f.soldiers < o.soldiers * 0.35) {
-              rel.war = back.war = false; rel.peaceAt = back.peaceAt = t;
+              warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t;
               rel.grief *= 0.4; back.grief *= 0.4;
               count.peaces++;
               /* The side that gave in pays, when the other was winning and is not led by a patient sort. */
@@ -6048,7 +6068,7 @@
         const theirs = back.dead / (o.pop + 1) * 5 + (t - back.since) / YEAR * 0.12 + (o.pop ? o.hungry / o.pop : 0) * 0.5;
         /* Nobody makes peace the week they were attacked unless they are badly outmatched. */
         if ((t - back.since > 7 * DAY_HOURS && theirs > 0.1 + (olead ? olead.bold : 0.5) * 0.2) || o.soldiers < f.soldiers * 0.3) {
-          rel.war = back.war = false; rel.peaceAt = back.peaceAt = t; rel.grief *= 0.4; back.grief *= 0.4;
+          warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t; rel.grief *= 0.4; back.grief *= 0.4;
           count.peaces++;
           note("peace", f.name + " and " + o.name + " have made peace after " + (rel.dead + back.dead) + " dead.", 3.5, at.x, at.y, f.id);
           return "peace";

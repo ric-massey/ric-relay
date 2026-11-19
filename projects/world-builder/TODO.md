@@ -1185,7 +1185,55 @@ how far an army could go from its food; how long places took to recover; what re
 one leader can end under the next without any rule saying so; `test/rule.test.mjs` still holds.
 **Budget:** default.
 
-Research notes:
+**Split** (2026-11-19, "start item 14"), so each part is finished properly:
+- **14a Wartime effort, not only fear.** Fear only where the danger is (a siege on one's own
+  place, enemies at its edge, a raid on it lately, a blow); a war elsewhere makes people push.
+- **14b What a war leaves.** Burned houses and fields, lost harvests, the dead missing from their
+  households, widows and orphans taken in, people fleeing and coming back, land changing hands;
+  a war measurably thins the next harvest and the next generation.
+- **14c Why wars start and end, walls, sieges and raids.** Read from what leaders and people hold
+  in mind; a new leader can end a war; walls raised in wartime; raids as well as sieges.
+- **14d Peace and dealings left from item 13.** Peace by marriage, trade deals that need real
+  trade, tribute as an agreed amount.
+
+### [x] 14a. Wartime effort, not only fear
+
+**Done 2026-11-19.** Fear only from danger at one's own village (a siege, enemy soldiers at its
+edge, a raid on it in the last three days, a blow). A war elsewhere makes people want to provide up
+to a fifth more, rest a little less, and their village aim for a store a quarter bigger. Forced
+wars, six seeds: away from the fighting, hours at work 23% → 51% (the faction at peace: 51%),
+afraid 96% → 5%; with enemies at the door still 28% at work, 92% afraid; the two sides at war held
+28,700 → 39,100 days of food after 60 days. A default year, eight seeds (at war about half the
+year either way): starved 116 → 47, alive 2,822 → 3,017, killed in battle 176 → 113, villages
+taken 19 → 11, births 122 → 147. Bench unchanged. **Not met:** "works more" than a faction at
+peace: it works as much (51% against 51%), with more of its hands in the army. **Left out:**
+crafters turning to gear for the soldiers, and walls raised in wartime (14c).
+
+**Now:** see the paragraph "Wartime effort, not only fear" in item 14.
+**Done when:** a faction at war away from the fighting stores and works more, not less, while a
+place under siege still empties its fields.
+**Budget:** default.
+
+Research notes (2026-11-19):
+- **The damage of a medieval war was a band, not a country.** A chevauchée burned a strip some
+  20–40 km wide along its line of march (John of Gaunt's 1373 column on a 20 km front); people in
+  its path fled to walled towns and castles, and those away from it saw little.
+  https://EN.wikipedia.com/wiki/John_of_Gaunt%27s_chevauch%C3%A9e_of_1373 ;
+  https://historyskills.com/classroom/year-8/chevauchee
+- **Wartime builds.** English towns asked for murage (a toll for building and mending walls) when
+  the enemy was near or had just landed (Winchester; New Winchelsea 1415, "the frontier of the
+  king's enemies"; Canterbury, five grants 1378–1402). Walls are 14c.
+  https://www.wikipedia.org/wiki/Murage ; https://gatehouse-gazetteer.info/murage/mur/441.html
+- **Growing more at home in a war.** Britain 1939–45: vegetables up about 55%, potatoes about 80%,
+  allotments from about 815,000 to 1.4 million (popular histories; official totals not found).
+  https://www.history.co.uk/article/how-brits-utilised-allotments-during-two-world-wars-the-era-of-growing-your-own ;
+  https://trmt.org.uk/local-history/marking-ve-day-80-in-2025/feeding-the-nation-dig-for-victory
+- **Chosen, and its cost.** Fear comes only from what is at one's own village: a siege, enemy
+  soldiers at its edge (counted already, once a day, for the siege), a raid on it in the last
+  three days, a blow. A war anywhere instead adds to wanting to provide, to the winter store a
+  village aims for, and takes a little off rest. The army, the levy and the leader's tax already
+  grow in a war (item 13 and before). No cost per person: whether a faction is at war is
+  worked out once an hour, not looked up through every other faction at each choice.
 
 ### [ ] 15. Eras, old to modern
 
@@ -1203,6 +1251,13 @@ were handled in other history simulations and where that went wrong.
 **Done when:** the same land and people in two eras fight, travel and hear news at measurably
 different speeds; knocking down a tower slows the news in its area and nowhere else.
 **Budget:** default.
+
+**Ric's answers (2026-11-19, asked before a scheduled run):**
+- Which eras: "Ancient, Medieval, Industrial (1800s), Modern" (all four offered; the present
+  farming village stays as it is).
+- Moving from one era to the next by itself: "A setting, on or off" — the visitor chooses.
+- Different groups in different eras in the same world (one side guns, the other spears): "Yes".
+- Order: go straight to 15 although 12b, 14b, 14c and 14d are unticked: "Yes, do 15".
 
 Research notes:
 
@@ -1307,4 +1362,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-17 | 11 | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 155× | 16.30 s a day, 18× | 6.6 MB, 1.29 KB, measured right after making the world (0.80 before: the minds are there from the start) | **the mind**: twenty slots a person in flat arrays. Against item 10: 2,000 0.67 → 0.68 s, 5,000 2.08 → 1.92 s, 20,000 16.2 → 16.3 s, 400 on 500 km 0.14 → 0.14 s; a running world 0.7 KB a person lighter |
 | 2026-11-18 | 12 | AMD Ryzen 5 3600, 24 GB | 1.84 s a day, 163× | 15.1 s a day, 20× | 7.0 MB, 1.36 KB at the start (2.77 against 2.62 KB a person by heap after) | **talking passes what you hold**: who told whom, tellings that change. Against the world before: 400 0.15 → 0.15 s, 2,000 0.70 → 0.71 s, 5,000 1.92 → 1.84 s (alternated four times), 20,000 16.4 → 15.1 s, 400 on 500 km 0.20 → 0.16 s; 0.27 KB a person more by day 120 |
 | 2026-11-18 | 13 | AMD Ryzen 5 3600, 24 GB | 3.09 s a day, 97× (loaded machine) | 19.3 s a day, 16× (loaded) | 6.4 MB, 1.26 KB | **factions dealing with each other**: no change against the world before, alternated twice on the same loaded machine: 400 0.18 → 0.17 s, 2,000 0.98 → 0.98 s, 5,000 3.08 → 3.13 s, 20,000 19.3 → 19.2 s, 400 on 500 km 0.20 → 0.19 s |
+| 2026-11-19 | 14a | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 156× | *not run* | 7.0 MB, 1.36 KB | **wartime effort**: fear only where the fighting is, a different world. Against item 13, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.69/0.68 → 0.68/0.71 s, 5,000 1.97/1.95/1.98/1.94 → 1.94/2.20/1.87/1.92 s: the same |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

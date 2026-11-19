@@ -856,6 +856,8 @@ when it is built.
   need food from home (first version, 2026-11-14).
 - [ ] War "accurate to the time": weapons, reach and deadliness by era, walls and sieges, raids,
   how far an army can go.
+- [x] Wartime effort: fear only where the fighting is, and a war elsewhere makes people work and
+  store more. (2026-11-19, TODO 14a.)
 - [ ] Why a war starts and why it ends, from what the people and the leader hold in mind.
 - [ ] After: the dead missing from households, widows and orphans, burned places, lost
   harvests, people fleeing, land taken, grudges that last.

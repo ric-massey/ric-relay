@@ -750,8 +750,9 @@ and did not. Three causes, all structural:
 **What replaced it.** One place where a person decides, and it is a comparison:
 
 - **Needs.** Besides food: `rest` (rises with the hours awake, faster at real work, cleared by a
-  night in a bed), `alone` (hours since anybody spoke to them), `fear` (a siege, a war, a blow
-  just taken). `urgency(p)` turns them into 0–1.4 wants and is exported, so the person panel shows
+  night in a bed), `alone` (hours since anybody spoke to them), `fear` (danger at their own
+  village — a siege, enemies at its edge, a raid on it lately — or a blow just taken; a war
+  elsewhere is effort, not fear: "Wartime effort", below). `urgency(p)` turns them into 0–1.4 wants and is exported, so the person panel shows
   the same figures the engine decided with.
 - **Options.** Sleep, eat, a day in the fields, a day at the bench, a load to carry, standing
   guard, going to find somebody, fitting tools, sitting the day out. Each is scored against what
@@ -1757,6 +1758,55 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Wartime effort, not only fear (2026-11-19)
+
+TODO item 14a. Ric: "wartime fear should be bad but that should also make people do stuff as well
+like try harder for more supplies and stuff". Until now a war anywhere raised `p.fear` for everybody
+in the faction, however far off, until it was full; fear only ever counted against work, so a
+faction at war sat at home and grew poorer. Measured on forced wars (600 people, 40 km, three
+factions, two at war for 60 days, six seeds): grown-ups of the two sides at war who were nowhere
+near the fighting were afraid 96% of their hours and at work 23% of them, against 51% in the
+faction at peace.
+
+Now the two are apart:
+
+- **Danger near is fear** (`live`). A siege on the village they live in; enemy soldiers at its
+  edge (`v.foes`, counted each day with the siege); a raid on it in the last three days; a blow
+  just taken. It empties the fields, closes the market and keeps people in, as before, but only
+  there.
+- **A war on is effort** (`urgency`). Everybody grown in a faction at war wants to provide up to a
+  fifth more (the loyal most: `0.6 + 0.4 × loyal` of it), wants rest up to 12% less, and their
+  village aims for a store a quarter bigger than the winter alone asks — a store against a siege.
+  The army raised, the levy taken from the farms and the leader's tax to pay it already grow in a
+  war (items before), so its cost is hands away and what is taken, not idleness.
+
+Why: a medieval war burned a band 20–40 km wide along an army's march, and people in its path fled
+to walls while those away from it saw little ([John of Gaunt's chevauchée of 1373](https://EN.wikipedia.com/wiki/John_of_Gaunt%27s_chevauch%C3%A9e_of_1373);
+[the chevauchée](https://historyskills.com/classroom/year-8/chevauchee)); towns asked for murage to
+mend walls when the enemy was near ([murage](https://www.wikipedia.org/wiki/Murage)); and a nation
+at war grew more at home — Britain 1939–45, vegetables up about 55%, potatoes about 80%
+([history.co.uk](https://www.history.co.uk/article/how-brits-utilised-allotments-during-two-world-wars-the-era-of-growing-your-own)).
+Walls raised in wartime are item 14c.
+
+Measured, the same forced wars, old engine and new:
+
+| | Old | New |
+|---|---|---|
+| At war, away from the fighting: hours at work | 23% | 51% |
+| — afraid | 96% | 5% |
+| Enemies at the door: hours at work | 28% | 28% |
+| — afraid | 86% | 92% |
+| The faction at peace: hours at work | 51% | 51% |
+| Food held by the two sides at war after 60 days (six worlds) | 28,700 | 39,100 |
+
+So a faction at war, away from the fighting, now works as hard as one at peace while it also fields
+a bigger army, and stores a third more than it did; a place with enemies at its door still works
+about half as much. A default world is at war about half its first year, so this reaches it too: a
+year, eight seeds, old → new, starved 116 → 47, alive at the end 2,822 → 3,017, killed in battle
+176 → 113, villages taken 19 → 11, births 122 → 147. Cost: whether a faction is at war is worked out once an hour (`f.warOn`) instead
+of looked up through every faction at every choice; nothing per person.
+Test: `test/war.test.mjs`, "Fear where the danger is".
+
 ### Leaders and factions that deal with each other (2026-11-18)
 
 TODO item 13. Ric decided nothing up front. Until now factions either left each other alone or
@@ -2166,7 +2216,8 @@ stopped it, and are changed:
 - **Too small, and too frightened.** A household carried five days in a pack; now a handcart or
   packhorse load, as a grain trader carries (fifteen days). And a war anywhere frightens a whole
   faction, which stopped every market day from the harvest to spring though the fighting was
-  nowhere near; on the road to one's own town, not under siege, fear now counts half.
+  nowhere near; on the road to one's own town, not under siege, fear now counts half. (Since
+  2026-11-19 a war elsewhere does not frighten anybody at all: "Wartime effort".)
 
 This world had no grain traders at all, so market day is the town's supply. Measured, a year each
 way, 5,000 people on 40 km, rich land: with a city at the start, 15,000 days of food were sold into

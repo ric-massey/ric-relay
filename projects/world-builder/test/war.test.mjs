@@ -65,4 +65,30 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
   assert.ok(Math.hypot(home.x - s.tx, home.y - s.ty) < 2, "a badly wounded soldier goes home");
 }
 
-console.log("War: raised a few at a time, rations drawn and paid for, resupply only at home, the wounded go home.");
+/* Fear where the danger is, effort everywhere else (TODO 14a). Until 2026-11-19 a war anywhere
+   frightened a whole faction, so it sat at home however far off the fighting was. */
+{
+  const w = People.create({ ...base, villages: 4 });
+  const peace = w.people.filter(p => w.adult(p) && p.f === 0 && p.job !== "soldier");
+  const calm = peace.map(p => w.urgency(p));
+  war(w);
+  w.step(24 * 4);
+  const quiet = w.villages.filter(v => v.alive && v.f === 0 && v.siege === 0 && v.foes === 0 && w.stats().tick - v.raidAt > 4 * 24);
+  assert.ok(quiet.length, "a village of the side at war with no enemy at its door");
+  const home = w.people.filter(p => p.hp > 0 && w.adult(p) && quiet.some(v => v.id === p.home) && !p.hit && p.job !== "soldier");
+  assert.ok(home.length > 5, "people at home there");
+  const fear = home.reduce((s, p) => s + p.fear, 0) / home.length;
+  assert.ok(fear < 0.2, "a war elsewhere does not frighten people at home (mean fear " + fear.toFixed(2) + ")");
+  /* The same people want to provide more and rest less than before the war. */
+  const i = peace.findIndex(p => home.includes(p));
+  assert.ok(i >= 0, "somebody seen before and during the war");
+  const p = peace[i], was = calm[i], now = w.urgency(p);
+  assert.ok(now.provide > was.provide * 1.05 || now.provide >= 1.3, "at war, they want to provide more (" + was.provide.toFixed(3) + " -> " + now.provide.toFixed(3) + ")");
+  /* A place under siege is frightened. */
+  const v = quiet[0]; v.siege = 6;
+  w.step(6);
+  const there = w.people.filter(q => q.hp > 0 && w.adult(q) && q.home === v.id);
+  assert.ok(there.reduce((s, q) => s + q.fear, 0) / there.length > 0.6, "a village under siege is afraid");
+}
+
+console.log("War: raised a few at a time, rations drawn and paid for, resupply only at home, the wounded go home; fear only where the fighting is.");
