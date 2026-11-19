@@ -1196,7 +1196,8 @@ one leader can end under the next without any rule saying so; `test/rule.test.mj
   walls and raids are 14e.)
 - **14d Peace and dealings left from item 13.** Peace by marriage, trade deals that need real
   trade, tribute as an agreed amount.
-- **14e Walls, sieges and raids.** Walls raised in wartime; raids as well as sieges.
+- **14e Walls, sieges and raids.** Walls raised in wartime; raids as well as sieges; fighting
+  seasons and an army a people can keep; weariness that knows who is winning (added 2026-11-19).
 
 ### [x] 14a. Wartime effort, not only fear
 
@@ -1338,13 +1339,33 @@ Research notes (2026-11-19):
 ### [ ] 14e. Walls, sieges and raids
 
 **Now:** a village defends itself with a quarter of its grown-ups and any soldiers near; an army
-goes for one place of each enemy at a time.
-**Do:** walls raised in wartime by the people of a place (murage; see 14a's notes); raids by small
-bands on open villages away from the main army, as well as sieges.
-**Done when:** a walled place holds out measurably longer; raids burn and take without a siege.
+goes for one place of each enemy at a time. At war, a side triples its soldiers in three months,
+to about a quarter of all its people, and keeps them under arms the whole year round. Weariness
+grows with the dead, the years and the hungry, never with who is winning: losing villages and
+fields does not tire a side, and taking them does not keep the other keen.
+**Do:**
+- walls raised in wartime by the people of a place (murage; see 14a's notes);
+- raids by small bands on open villages away from the main army, as well as sieges;
+- fighting seasons: soldiers go home for the harvest, so a long war is fighting between sowing
+  and harvest with quiet in between, not two years without a break;
+- an army a people can keep up: a few in a hundred for long, more only for a season;
+- weariness that counts who is winning: places and fields lost tire a side, places taken keep the
+  other at it; a stalemate still runs long (evenly matched wars do: Bennett & Stam 1996).
+**Done when:** a walled place holds out measurably longer; raids burn and take without a siege;
+a war's soldiers go home at harvest; a side clearly losing makes peace sooner than one that is
+even, measured over the forced wars below.
 **Budget:** default.
 
 Research notes:
+- Added 2026-11-19 at Ric's word ("Add them to 14e") after asking whether long even wars are
+  realistic. Forced wars (`scratchpad even.cjs`: 600 people, three tribes of 200, 0 against 1,
+  13 seeds, two years): both sides start at 200 people, 4 villages, 16-18 soldiers and stay close
+  (the stronger at most about 1.3 times the other's soldiers); 0-17 a side killed in battle in two
+  years; each side falls to 130-160 people, mostly to hunger and to the third tribe, which stays
+  out and grows to about 270. 7 of 13 wars ended within two years, 5 of them between month 18
+  and 24, so the count tips either way with small changes. Wars end on the clock (weariness about
+  0.3 a year against a mark of 0.9-1.05 for the leader who began it) or with a new leader; the
+  only "losing" test, fewer than a third of the other's soldiers, never comes between equals.
 
 ### [ ] 15. Eras, old to modern
 
