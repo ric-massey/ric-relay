@@ -1351,6 +1351,18 @@ fields does not tire a side, and taking them does not keep the other keen.
 - an army a people can keep up: a few in a hundred for long, more only for a season;
 - weariness that counts who is winning: places and fields lost tire a side, places taken keep the
   other at it; a stalemate still runs long (evenly matched wars do: Bennett & Stam 1996).
+
+Build the season, the army and the walls as numbers, not fixed rules, so item 15 can set them per
+era without undoing anything (Ric, 2026-11-19: "Yes please", after asking whether this covers
+fighting through the different ages): how long the fighting season is (all year = no season), how
+many in a hundred can stay under arms for long and for one season, and how much a wall is worth
+against an attack. 14e sets them for today's farming village; item 15 sets them for each age:
+- Ancient / Medieval: soldiers are farmers and go home for the harvest; a few in a hundred under
+  arms for long, more for one campaign; walls strong, sieges take months.
+- Industrial (1800s): paid standing armies and railways fight all year; call-ups of a whole age
+  group; cannon beat tall walls, low earth forts and trenches take over.
+- Modern: no season; up to about one in five under arms in a big war, only because the rest feed
+  them; walls hardly matter.
 **Done when:** a walled place holds out measurably longer; raids burn and take without a siege;
 a war's soldiers go home at harvest; a side clearly losing makes peace sooner than one that is
 even, measured over the forced wars below.
@@ -1372,7 +1384,8 @@ Research notes:
 **Now:** one era, a farming village with hand weapons.
 **Do:** an era is a set of numbers over the same world: how many one farmer feeds, what
 buildings are made of and hold, weapons' reach and deadliness, how fast people and news travel,
-medicine. Modern things exist as things in the world, never as a switch — a phone works only
+medicine, and from 14e how long the fighting season is, how many can stay under arms and what a
+wall is worth. Modern things exist as things in the world, never as a switch — a phone works only
 within reach of a cell tower, and a tower can be built or destroyed (Ric: "cell towers must be a
 thing too"). Money and shops stay simple. **Cars** (added 2026-11-16, Ric: "Write them in")
 belong here, the same way as the tower: a car exists only in an era that makes them, is built
