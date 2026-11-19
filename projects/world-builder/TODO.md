@@ -1235,6 +1235,57 @@ Research notes (2026-11-19):
   grow in a war (item 13 and before). No cost per person: whether a faction is at war is
   worked out once an hour, not looked up through every other faction at each choice.
 
+### [x] 14b. What a war leaves
+
+**Done 2026-11-19.** Where enemy soldiers stand at a village's edge the standing crop is spoiled
+(10% a day green, up to 60% ripe); while they hold the upper hand by the siege's measure, houses
+burn (a household loses half its food to them, sleeps in the ruin and rebuilds; drawn charred on
+the page); a place taken is sacked; households run from a siege to their own side and come home
+a week after the enemy left. Met: forced wars, six seeds, harvest in year two 212,000 → 167,000
+against wars off, births 175 → 111 (both were already lower before this item: 170,000 and 113).
+Default year, eight seeds: starved 47 → 72, villages taken 11 → 25, harvest and births the same;
+bench unchanged. **Open:** villages change hands back and forth very often in a long war (131 times
+in six worlds over two years, 222 before this item): that is item 14c, why wars end. Most of those
+who flee in a default year are still away at its end, because its wars do not end. Widows do not
+remarry sooner or later for the war; the dead's places in households are filled only by births.
+
+**Now** (2026-11-19): the dead leave heirs, grief and orphans who are taken in; a widowed partner
+grieves; a village taken changes hands with some of its people fleeing for good. Armies do nothing
+to the land they stand on, and nobody runs from one except at the moment a place falls.
+**Do:** crops spoiled and houses burned where an army stands; a place taken sacked; people
+fleeing an army to their own side and coming home when it has gone.
+**Done when:** a war measurably thins the next harvest and the next generation.
+**Budget:** default.
+
+Research notes (2026-11-19):
+- **Who died of a war.** The Thirty Years' War: about 4.5–8 million dead, of whom most were
+  civilians and soldiers dead of disease and hunger, not battle; one critique finds battle deaths
+  cannot explain any substantial part of the loss, and hunger driving disease does
+  (germanhistorydocs.org, "Estimated casualties during the Thirty Years War";
+  https://eprints.whiterose.ac.uk/id/eprint/385/1/outramq1.pdf). Here: no deaths are added by
+  rule; they come from the harvest spoiled, the store taken and the crowding of refugees.
+- **What armies did to the land.** Raiders destroyed crops and houses, stole livestock and fed
+  themselves on it; people fled in masses to walled towns and castles
+  (https://historyskills.com/classroom/year-8/chevauchee ; https://www.wikipedia.org/wiki/Chevauchee).
+  Jean de Venette: villages burned, people plundered; a historian of the period compares the
+  fleeing to today's internally displaced (https://www.medievalists.net/2009/12/the-experience-of-civilian-populations-during-the-hundred-years-war-in-france-1330-1440/).
+- **Grain burns only when ripe.** Grain in the field can be cut, trampled or burned, and burns only
+  in a short window when ripe and dry; green grain will not (Thorne, GRBS,
+  https://grbs.library.duke.edu/index.php/grbs/article/download/1861/3491/0 , on Hanson's
+  *Warfare and Agriculture in Classical Greece*, who argues it rarely caused famine).
+- **How long it lasts.** The Harrying of the North, 1069–70: Domesday (1086) still listed about 60%
+  of Yorkshire holdings as waste; decades to recover (https://EN.wikipedia.com/wiki/Harrying_of_the_North).
+  Here recovery is not a number: burned houses are built again by their households (item 7b), a
+  village everybody fled stands empty for them, and the fields grow back as they always do.
+- **Chosen, and its cost.** Once a day, for each village with enemy soldiers at its edge (already
+  counted for the siege): each soldier spoils a share of the standing crop on its square and the
+  eight round it, 10% a day when green up to 60% when ripe; while they outnumber the village's own
+  soldiers there, a house burns for about every ten of them, the outermost first, its household
+  losing half the food in it to the soldiers; a place taken loses half its store and a quarter of
+  its houses. Households run, the frightened and the less bold first, to the nearest village of
+  their own faction with no enemy at it, and come home a week after the last enemy left. Nothing
+  per person; only villages with enemies at them do any work.
+
 ### [ ] 15. Eras, old to modern
 
 **Now:** one era, a farming village with hand weapons.
@@ -1363,4 +1414,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-18 | 12 | AMD Ryzen 5 3600, 24 GB | 1.84 s a day, 163× | 15.1 s a day, 20× | 7.0 MB, 1.36 KB at the start (2.77 against 2.62 KB a person by heap after) | **talking passes what you hold**: who told whom, tellings that change. Against the world before: 400 0.15 → 0.15 s, 2,000 0.70 → 0.71 s, 5,000 1.92 → 1.84 s (alternated four times), 20,000 16.4 → 15.1 s, 400 on 500 km 0.20 → 0.16 s; 0.27 KB a person more by day 120 |
 | 2026-11-18 | 13 | AMD Ryzen 5 3600, 24 GB | 3.09 s a day, 97× (loaded machine) | 19.3 s a day, 16× (loaded) | 6.4 MB, 1.26 KB | **factions dealing with each other**: no change against the world before, alternated twice on the same loaded machine: 400 0.18 → 0.17 s, 2,000 0.98 → 0.98 s, 5,000 3.08 → 3.13 s, 20,000 19.3 → 19.2 s, 400 on 500 km 0.20 → 0.19 s |
 | 2026-11-19 | 14a | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 156× | *not run* | 7.0 MB, 1.36 KB | **wartime effort**: fear only where the fighting is, a different world. Against item 13, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.69/0.68 → 0.68/0.71 s, 5,000 1.97/1.95/1.98/1.94 → 1.94/2.20/1.87/1.92 s: the same |
+| 2026-11-19 | 14b | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× | *not run* | 7.0 MB, 1.37 KB | **what a war leaves**: crops spoiled, houses burned, sacks, refugees, a different world in a war. Against 14a, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.67/0.68 → 0.67/0.65 s, 5,000 1.92/1.95 → 1.97/1.96 s: the same |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

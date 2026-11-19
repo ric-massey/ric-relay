@@ -859,8 +859,9 @@ when it is built.
 - [x] Wartime effort: fear only where the fighting is, and a war elsewhere makes people work and
   store more. (2026-11-19, TODO 14a.)
 - [ ] Why a war starts and why it ends, from what the people and the leader hold in mind.
-- [ ] After: the dead missing from households, widows and orphans, burned places, lost
-  harvests, people fleeing, land taken, grudges that last.
+- [x] After: the dead missing from households, widows and orphans, burned places, lost
+  harvests, people fleeing, land taken, grudges that last. (2026-11-19, TODO 14b: crops spoiled,
+  houses burned, places sacked, people fleeing a siege and coming home; the rest was there.)
 - [ ] Peace: a new leader, a treaty, tribute, a marriage, and whether it holds.
 
 **9. Leaders and factions**

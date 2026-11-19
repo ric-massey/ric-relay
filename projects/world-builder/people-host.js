@@ -251,7 +251,7 @@
       /* How many live there, to the nearest five: the houses drawn round a village follow it (TODO 5). */
       for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "") + Math.round((v.pop || 0) / 5) + (v.well ? "w" : "") + (v.bridge ? "b" : "") + (v.boat ? "o" : "") + (v.place || "village")[0];
       sig += "|" + w.homes.length;
-      for (const h of w.homes) if (!h.built) sig += "," + h.id + ":" + Math.floor((h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8) * 4);
+      for (const h of w.homes) if (!h.built) sig += "," + h.id + (h.burned > -1e9 && h.work === 0 && h.goodsIn === 0 ? "x" : "") + ":" + Math.floor((h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8) * 4);
       sig += "|" + w.homes.reduce((n, h) => n + (h.built ? 1 : 0), 0);
       if (m.fresh || sig !== vsSig) {
         vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0, pop: v.pop || 0, well: v.well ? [v.well.x, v.well.y] : null,
@@ -260,7 +260,8 @@
         /* And how far built (TODO 7b): 1 a finished house, less a building site. */
         const H = new Float32Array(w.homes.length * 7);
         w.homes.forEach((h, k) => { H[k * 7] = h.x; H[k * 7 + 1] = h.y; H[k * 7 + 2] = h.len; H[k * 7 + 3] = h.wid; H[k * 7 + 4] = h.ang; H[k * 7 + 5] = h.v;
-          H[k * 7 + 6] = h.built ? 1 : Math.min(0.95, (h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8)); });
+          /* -1: burned, and nobody has started on it again yet (TODO 14b). */
+          H[k * 7 + 6] = h.built ? 1 : h.burned > -1e9 && h.work === 0 && h.goodsIn === 0 ? -1 : Math.min(0.95, (h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8)); });
         out.homes = H;
       }
       /* Fields households hold (TODO 7c): square and house, in pairs, when they change. */

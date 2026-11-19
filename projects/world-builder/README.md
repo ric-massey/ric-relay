@@ -1758,6 +1758,71 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### What a war leaves (2026-11-19)
+
+TODO item 14b. Ric: "i want the aftermath of war to be accurate too." Before this the dead already
+left heirs, grief and orphans who were taken in (`die`, the census), a widowed partner grieved, and
+a place taken changed hands with some of its people fleeing for good (`capture`). But an army did
+nothing to the land it stood on, and nobody ran from one until the moment a place fell.
+
+Now, once a day, for each village with enemy soldiers at its edge (counted already for the siege,
+in `villageTurn`):
+
+- **Crops spoiled** (`ravage`). Each enemy soldier spoils a share of the standing crop on its
+  square and the eight round it: 10% a day while it is green (trampled and cut, slowly), up to 60%
+  when it stands ripe (burned). Grain burns only in a short window, ripe and dry (Thorne, on
+  Hanson's *Warfare and Agriculture in Classical Greece*:
+  [GRBS](https://grbs.library.duke.edu/index.php/grbs/article/download/1861/3491/0)).
+- **Houses burned** (`burnHouse`). While the enemy has the upper hand there by the siege's own
+  measure (more of them than its soldiers and the quarter of its grown-ups who take up arms), a
+  house burns for about every ten of them a day, the outermost first. Its household loses half the
+  food it had in it, which goes into the soldiers' packs, as raiders fed themselves on what they
+  took ([the chevauchée](https://historyskills.com/classroom/year-8/chevauchee)). They sleep in the
+  ruin and build it again by item 7b's building, from nothing. The page draws it as a charred floor
+  until somebody starts on it.
+- **A place taken is sacked** (`sack`): half its store taken or spoiled, a quarter of its houses burned.
+- **Running, and coming home** (`flee`, `comeHome`). While a place is under siege, households run,
+  the frightened and the less bold first, about a quarter a day, to the nearest village of their own
+  faction with no enemy at it; soldiers and the leader stay. A week after the last enemy left its
+  edge they come home, if it is still their own side's. A village everybody fled stands empty for
+  them rather than dying out. People fled to walls and towns
+  ([Jean de Venette, and the civilians of the Hundred Years War](https://www.medievalists.net/2009/12/the-experience-of-civilian-populations-during-the-hundred-years-war-in-france-1330-1440/)).
+
+No deaths are added by rule. Most of a war's dead were of hunger and disease, not battle (the
+Thirty Years' War: [germanhistorydocs.org](https://germanhistorydocs.org/en/from-the-reformations-to-the-thirty-years-war-1500-1648/estimated-casualties-during-the-thirty-years-war),
+[Outram](https://eprints.whiterose.ac.uk/id/eprint/385/1/outramq1.pdf)). Here they come from the
+spoiled crop, the store taken and the crowding of refugees. How long the land takes to recover is
+not a number either: the Harrying of the North left about 60% of Yorkshire waste in Domesday twenty
+years on ([Wikipedia](https://EN.wikipedia.com/wiki/Harrying_of_the_North)); here recovery is
+houses rebuilt by their households and fields that grow back as they always do.
+
+Tried first, and changed: houses burned and households ran whenever more enemy soldiers than the
+place's own stood at its edge. In a default year (eight seeds) that starved 89 against 47 and let
+households leave at the first raider. Now it is the siege's measure for both.
+
+Measured. Forced wars (600 people, 40 km, three factions, 0 and 1 at war from day 1; wars on
+everywhere, so the third may fight too), six seeds, two years:
+
+| | Wars off | War, before | War, now |
+|---|---|---|---|
+| Harvest in year two (days of food, a world) | 212,000 | 170,000 | 167,000 |
+| Births in year two (six worlds) | 175 | 113 | 111 |
+| Children under two in factions 0 and 1 at the end | 235 | 117 | 139 |
+| Starved (six worlds, two years) | 3 | 61 | 125 |
+| Villages taken | 0 | 222 | 131 |
+| Houses burned | 0 | 0 | 1,334 |
+
+A war thinned the next harvest by about a fifth and the next year's births by over a third before
+this item too, from the dead and the hands taken; now it also burns, spoils and empties places.
+A default year (eight seeds, at war about half of it), before → now: starved 47 → 72, villages taken
+11 → 25, killed in battle 113 → 122, births 147 → 151, harvest the same (919,000 → 924,000 days of
+food); 395 houses burned, 391 people fled and 38 came home within the year (most wars there do not
+end inside a year). Villages are taken twice as often because a place whose crop is spoiled goes
+hungry and its people leave for food, so it falls: switching off each part in turn (fleeing, the
+sack, the plunder, the spoiling) left 22–31 taken in every case, and switching all off gave the old
+worlds exactly. Cost: only villages with enemies at them do any work; the bench is unchanged.
+Test: `test/war.test.mjs`, "What a war leaves".
+
 ### Wartime effort, not only fear (2026-11-19)
 
 TODO item 14a. Ric: "wartime fear should be bad but that should also make people do stuff as well

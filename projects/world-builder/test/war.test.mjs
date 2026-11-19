@@ -91,4 +91,38 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
   assert.ok(there.reduce((s, q) => s + q.fear, 0) / there.length > 0.6, "a village under siege is afraid");
 }
 
-console.log("War: raised a few at a time, rations drawn and paid for, resupply only at home, the wounded go home; fear only where the fighting is.");
+/* What a war leaves (TODO 14b): where enemy soldiers stand at a village's edge the crops are
+   spoiled; where they outnumber its own soldiers houses burn and households run to a safe village
+   of their own; they come home once the enemy has been gone a week. */
+{
+  const w = People.create({ people: 600, map: 40, factions: 3, villages: 6, seed: 11, soldiers: 0.12 });
+  w.step(24);
+  w.rule(0, true); w.rule(1, true);   // both ruled from the page, so both armies can be stood down after
+  w.declare(0, 1, "war");
+  /* Houses burn and households run only once an army has the upper hand at a place: in this
+     world, a little over two months in. */
+  for (let d = 0; d < 200 && !(w.stats().burned > 0 && w.stats().refugees > 0); d++) w.step(24);
+  const s = w.stats();
+  assert.ok(s.spoiled > 0, "an army at a village's edge spoils its crops");
+  assert.ok(s.burned > 0, "raiders burn houses");
+  assert.ok(s.refugees > 0, "people run from an army");
+  const unbuilt = w.homes.filter(h => !h.built).length;
+  assert.ok(unbuilt > 0, "burned houses stand unbuilt until rebuilt");
+  /* Everybody away from home is in a village of their own faction, and listed where they fled from. */
+  const away = w.people.filter(p => p.hp > 0 && p.fledFrom >= 0);
+  for (const p of away) {
+    const from = w.villages[p.fledFrom], at = w.villages[p.home];
+    assert.ok(at.f === p.f && at !== from, "a refugee is with their own side, elsewhere");
+    assert.ok(from.gone && from.gone.includes(p.id), "their village knows who fled it");
+  }
+  /* Both armies stood down: a week after the last enemy has left, everybody who fled is home,
+     a village that everybody fled included (it stands empty for them meanwhile). */
+  assert.ok(away.length > 0, "people are away from home");
+  w.order(0, { army: 0 }); w.order(1, { army: 0 });
+  w.step(24 * 14);
+  const still = w.people.filter(p => p.hp > 0 && p.fledFrom >= 0).length;
+  assert.equal(still, 0, "everybody who fled has come home, or stopped waiting");
+  assert.ok(w.stats().cameHome >= away.filter(p => p.hp > 0 && w.adult(p)).length, "the grown-ups who fled came home (" + w.stats().cameHome + ")");
+}
+
+console.log("War: raised a few at a time, rations drawn and paid for, resupply only at home, the wounded go home; fear only where the fighting is; crops spoiled, houses burned, people fleeing and coming home.");

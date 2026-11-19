@@ -647,7 +647,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1251,7 +1251,8 @@
                   wool: 0, hide: 0, priceWool: 1.5, priceHide: 1.5, wantWool: 1, wantHide: 1,   // TODO 9b
                   cold: 0,   // TODO 9c: the share of the village unwarmed today
                   raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined,   // TODO 10: the last time enemies struck here, and the year last looked back on
-                  foes: 0 };   // TODO 14a: enemy soldiers at its edge, counted each day with the siege   // TODO 10: the last time enemies struck here, and the year last looked back on
+                  foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
+                  dangerAt: -1e9, gone: null };   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
       v.ore = o / c;
@@ -1283,7 +1284,7 @@
         if (!wet(x, y)) break;
       }
       const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
-                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0 };
+                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9 };   // TODO 14b: when it last burned
       sizeHome(h, wealth);
       homes.push(h);
       return h;
@@ -1310,13 +1311,15 @@
       for (const h of homes) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { empty = h; break; }
       if (empty) { empty.taken = true; moveIn(owner, empty); return empty; }
       /* Or a site somebody gave up on. */
-      for (const h of homes) if (h.v === v.id && !h.built && !byId.get(h.owner)) { h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood; owner.waitHouse = h.id; return h; }
+      /* (Or whose owner no longer waits on it: moved away, or fled and came back, TODO 14b.) */
+      for (const h of homes) if (h.v === v.id && !h.built && !waitsOn(h)) { h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood; owner.waitHouse = h.id; return h; }
       const h = newHome(v, clamp(funds(owner) / 40, 0, 1));
       h.built = false; h.owner = owner.id; sites.push(h); h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
       h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood;
       owner.waitHouse = h.id; count.sites++;
       return h;
     }
+    const waitsOn = h => { const o = byId.get(h.owner), m = o && byId.get(o.partner); return !!o && o.hp !== -99 && (o.waitHouse === h.id || !!m && m.waitHouse === h.id); };
     /* Into a house: the one who asked, their partner, and their children who live with them. */
     function moveIn(owner, h) {
       const mate = owner.partner && byId.get(owner.partner), was = owner.dwelling;
@@ -1492,6 +1495,7 @@
                   dry: undefined, carry: undefined, fishing: undefined, over: undefined, rowing: undefined,
                   /* Building (TODO 7b): the house they are waiting for, which they are working on, and whether a shift is under way. */
                   waitHouse: -1, buildAt: -1, shift: false,
+                  fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   gathering: undefined,   // TODO 9a: at the day's cutting, quarrying or mining
                   /* TODO 10: the other five of the ten, and what of the last hard times has yet to wear off. */
                   patient: nature(RT(), S.patient), temper: nature(RT(), S.temper), hard: nature(RT(), S.hardwork),
@@ -3266,7 +3270,7 @@
           const ti = y * cols + x, got = Math.min(stock[ti], need);
           stock[ti] -= got; need -= got;
         }
-        p.food += capacity - need;
+        p.food += capacity - need; count.reaped += capacity - need;   // TODO 14b: the harvest, in days of food
         if (p.dwelling >= 0) homes[p.dwelling].farmed++;          // the household farms (TODO 7c)
         /* Another household's field: half of it is theirs. */
         const holder = held.size ? held.get(fy * cols + fx) : undefined;
@@ -5266,7 +5270,11 @@
     }
     function villageTurn(v) {
       if (v.pop === 0) {
-        if (++v.empty > 6) {
+        /* Everybody fled (TODO 14b): the place stands while its own wait to come back, and they
+           come back a week after the last enemy left its edge. */
+        const waiting = v.gone && v.gone.some(id => { const q = byId.get(id); return q && q.hp > 0 && q.fledFrom === v.id && q.f === v.f; });
+        if (waiting) { v.foes = foesAt(v); if (v.foes > 0) v.dangerAt = t; else if (t - v.dangerAt > 7 * DAY_HOURS) comeHome(v); }
+        if (++v.empty > 6 && !waiting) {
           v.alive = false;
           note("gone", v.name + " stands empty.", 2, v.x, v.y, v.f);
           const f = factions[v.f];
@@ -5323,13 +5331,13 @@
       }
       /* Under the walls: soldiers of a faction at war with this one, and
          nobody of ours near enough to stop them. */
-      let ours = 0; const theirs = {};
+      let ours = 0; const theirs = {}, foesHere = [];
       const k = 3;
       for (let y = Math.max(0, Math.floor(v.y) - k); y <= Math.min(rows - 1, Math.floor(v.y) + k); y++)
         for (let x = Math.max(0, Math.floor(v.x) - k); x <= Math.min(cols - 1, Math.floor(v.x) + k); x++)
           for (const p of bucketAt(y * cols + x)) {
             if (p.job !== "soldier") continue;
-            if (p.f === v.f) ours++; else if (atWar(p.f, v.f)) theirs[p.f] = (theirs[p.f] || 0) + 1;
+            if (p.f === v.f) ours++; else if (atWar(p.f, v.f)) { theirs[p.f] = (theirs[p.f] || 0) + 1; foesHere.push(p); }
           }
       /* A village defends itself: a quarter of its grown-ups take up arms
          behind its walls, besides any soldiers near. Besiegers make headway
@@ -5340,6 +5348,16 @@
       const sides = Object.keys(theirs);
       const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = ours + v.adults * 0.25;
       v.foes = attackers;
+      /* What an army does where it stands (TODO 14b): spoils the crops, burns what it can, takes
+         the food; and people run from it, and come home when it has gone. */
+      /* Houses burn only while the enemy has the upper hand by the siege's own measure (more of
+         them than the place's soldiers and the grown-ups who take up arms), and households run
+         only from a siege. Measured first with "more of them than our soldiers" for both: a
+         default year starved 89 against 47, and 28 villages were taken against 11, as households
+         left at the first raider and the place emptied of defenders. */
+      if (attackers > 0) { v.dangerAt = t; ravage(v, foesHere, attackers > defence); }
+      if (v.siege > 0) flee(v);
+      else if (v.gone && t - v.dangerAt > 7 * DAY_HOURS) comeHome(v);
       if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
         if (v.siege >= 4 + Math.floor(v.pop / 15)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]]); }
@@ -5438,10 +5456,99 @@
       census();
     }
 
+    /* ── what a war leaves (TODO 14b, 2026-11-19) ──────────────────────────
+       Armies lived off the land they marched through and wrecked what they could not use: crops
+       cut, trampled or burned, houses burned, stores taken (the chevauchée; Hanson: grain burns
+       only while it stands ripe and dry, green grain is trampled or cut, slowly). People ran to
+       the nearest walls and came back when the army had gone (Jean de Venette; Wright). None of
+       it is scripted: it happens only where enemy soldiers stand at a village's edge. */
+    /* Enemy soldiers at the edge of a village nobody is left in (the daily count in
+       `villageTurn` does the same for one that is lived in). */
+    function foesAt(v) {
+      let n = 0;
+      for (let y = Math.max(0, Math.floor(v.y) - 3); y <= Math.min(rows - 1, Math.floor(v.y) + 3); y++)
+        for (let x = Math.max(0, Math.floor(v.x) - 3); x <= Math.min(cols - 1, Math.floor(v.x) + 3); x++)
+          for (const p of bucketAt(y * cols + x)) if (p.job === "soldier" && atWar(p.f, v.f)) n++;
+      return n;
+    }
+    function ravage(v, foes, winning) {
+      const ripe = (season().ripe - 1) / 3, share = 0.1 + 0.5 * ripe;   // of what stands, a day, on a soldier's square and the eight round it
+      for (const p of foes) {
+        const fx = Math.floor(p.x), fy = Math.floor(p.y);
+        for (let k = 0; k < 9; k++) {
+          const x = fx + PATCH[k][0], y = fy + PATCH[k][1];
+          if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+          const i = y * cols + x, lost = stock[i] * share;
+          stock[i] -= lost; count.spoiled += lost;
+        }
+      }
+      /* While they have the upper hand at the edge of the place, a house burns for about every
+         ten of them a day, the outermost first; what was in it is taken or lost. */
+      if (!winning) return;
+      let n = Math.floor(foes.length / 10 + R());
+      if (n <= 0) return;
+      const mine = homes.filter(h => h.v === v.id && h.built).sort((a, b) => Math.hypot(b.x - v.x, b.y - v.y) - Math.hypot(a.x - v.x, a.y - v.y));
+      let loot = 0;
+      for (const h of mine) { if (n-- <= 0) break; loot += burnHouse(v, h); }
+      for (const p of foes) { if (loot <= 0) break; const take = Math.min(loot, Math.max(0, 10 - p.food)); p.food += take; loot -= take; }
+    }
+    /* A house burned: its household lose half of what they had in it, sleep in the ruin, and
+       must build it again (TODO 7b's building, from nothing). Returns the food taken. */
+    function burnHouse(v, h) {
+      h.built = false; h.work = 0; h.goodsIn = 0; h.paid = false; h.water = 0; h.taken = false; h.burned = t;
+      h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
+      if (!sites.includes(h)) sites.push(h);
+      let food = 0, head = null;
+      for (const q of PLAIN ? people : residents(v.id)) {
+        if (q.hp <= 0 || q.dwelling !== h.id) continue;
+        food += q.food * 0.5; q.food *= 0.5;
+        if (adult(q) && (!head || q.id === h.head)) head = q;
+      }
+      h.owner = head ? head.id : 0;
+      if (head) head.waitHouse = h.id;
+      count.burned++;
+      return food;
+    }
+    /* A place taken by storm is sacked: half its store taken or spoiled, a quarter of its houses burned. */
+    function sack(v) {
+      v.food *= 0.5;
+      const mine = homes.filter(h => h.v === v.id && h.built);
+      for (let n = Math.round(mine.length / 4); n > 0 && mine.length; n--) burnHouse(v, mine.splice(Math.floor(R() * mine.length), 1)[0]);
+      count.sacked++;
+    }
+    /* Running from an army: a household at a time, the frightened and the less bold first, to the
+       nearest village of their own faction with no enemy at it. Soldiers and the leader stay. */
+    function flee(v) {
+      let refuge = null, best = Infinity;
+      for (const o of villages) if (o.alive && o !== v && o.f === v.f && o.siege === 0 && o.foes === 0) { const d = Math.hypot(o.x - v.x, o.y - v.y); if (d < best) { best = d; refuge = o; } }
+      if (!refuge) return;
+      const lead = factions[v.f].leader;
+      for (const p of (PLAIN ? people : residents(v.id)).slice()) {
+        if (p.home !== v.id || p.hp <= 0 || !adult(p) || p.job === "soldier" || p.id === lead || p.fear < 0.6) continue;
+        if (R() > 0.25 * (1.2 - p.bold)) continue;
+        const mate = byId.get(p.partner), us = [p];
+        if (mate && mate.hp > 0 && mate.home === v.id && mate.job !== "soldier" && mate.id !== lead) us.push(mate);
+        for (const q of PLAIN ? people : residents(v.id)) if (q.hp > 0 && !adult(q) && q.home === v.id && us.some(a => q.mum === a.id || q.dad === a.id || q.carer === a.id)) us.push(q);
+        for (const q of us) { q.fledFrom = v.id; rehome(q, refuge, "fled"); (v.gone || (v.gone = [])).push(q.id); count.refugees++; }
+      }
+    }
+    /* Home again, a week after the last enemy left — if it is still their own faction's. */
+    function comeHome(v) {
+      const back = v.gone.map(id => byId.get(id)).filter(q => q && q.hp > 0 && q.fledFrom === v.id);
+      v.gone = null;
+      back.sort((a, b) => (adult(b) ? 1 : 0) - (adult(a) ? 1 : 0));   // grown-ups first, so the children follow them into a house
+      for (const q of back) {
+        q.fledFrom = -1;
+        if (q.f !== v.f || (!adult(q) && !back.some(a => adult(a) && (q.mum === a.id || q.dad === a.id || q.carer === a.id)))) continue;
+        rehome(q, v, "home"); count.cameHome++;
+      }
+    }
+
     function capture(v, by) {
       const old = factions[v.f];
       const refuge = villages.filter(o => o.alive && o.f === old.id && o !== v).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
       v.f = by.id; v.siege = 0; v.broke = t;
+      sack(v);
       /* The winners take a share of what was in the store and the till. */
       by.treasury += v.till * 0.5; v.till *= 0.5;
       let fled = 0, stayed = 0;
