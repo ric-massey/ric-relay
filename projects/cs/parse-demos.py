@@ -706,6 +706,47 @@ def write_replay(match_id, replay):
         encoding="utf-8", newline="\n")
 
 
+def demo_mode(seats):
+    """Premier or Competitive, read off the rank type the demo gives each
+    player (11 = Premier rating, 12 = Competitive skill group); None when no
+    one's rank shows. The live feed calls Premier "competitive", and Leetify,
+    which knows better, doesn't have every game, so this is the one source
+    that always gets it right."""
+    types = [s.get("rank_type") for s in seats if s.get("rank_type")]
+    if not types:
+        return None
+    return {11: "premier", 12: "competitive"}.get(max(set(types), key=types.count))
+
+
+def set_mode(m, seats):
+    dm = demo_mode(seats)
+    # Leetify's "matchmaking" already means Premier; only a missing or
+    # live-feed "competitive" label is replaced.
+    if dm == "premier" and m.get("mode") in (None, "competitive"):
+        m["mode"] = "premier"
+    elif dm == "competitive" and not m.get("mode"):
+        m["mode"] = "competitive"
+
+
+def fix_modes():
+    """Re-label games already in the archive from their saved replays."""
+    data, fixed = csdata.load(), 0
+    for m in data["matches"]:
+        f = csdata.MATCH_DIR / f"{m['id']}.js"
+        if not f.exists():
+            continue
+        text = f.read_text(encoding="utf-8")
+        body = json.loads(text[text.index("]=", text.index("CS_MATCH")) + 2:].rstrip().rstrip(";"))
+        before = m.get("mode")
+        set_mode(m, body.get("seats", []))
+        if m.get("mode") != before:
+            fixed += 1
+            print(f"demos: {m['id']} {m.get('map')} {before} -> {m['mode']}")
+    if fixed:
+        csdata.save(data)
+    print(f"demos: {fixed} match mode(s) corrected")
+
+
 def ingest(path, acct, data):
     work, tmp = open_demo(path)
     try:
@@ -729,6 +770,7 @@ def ingest(path, acct, data):
     # Leetify-only measurements (aim, utility, ratings) survive the demo's line.
     m["me"] = {**keep_me, **summary["me"]}
     m["replay"] = True
+    set_mode(m, replay["seats"])
     write_replay(m["id"], replay)
     return m
 
@@ -737,6 +779,9 @@ def main():
     acct = csdata.account()
     st = csdata.read_state()
     done = st.setdefault("parsed", {})
+    if "--fix-modes" in sys.argv:
+        fix_modes()
+        return
     if "--rebuild" in sys.argv:
         done.clear()
         paths = sorted(keep_dir(acct).glob("*.dem*"))
