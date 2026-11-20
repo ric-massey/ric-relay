@@ -734,6 +734,44 @@
      panel needs (`paneData`). One frame and one panel are asked for at a
      time, and the next when the answer is in. */
   let keeper = null, snap = null, vs = [], fs = [], landNow = null, landStale = false, bigAt = 0;
+  /* TODO 15.25, pass 4: once the page holds a whole land, the keeper sends only the blocks of
+     squares whose crops or holders changed; they are written into `landNow` and only those blocks
+     are painted again (`landDirty`, block numbers). The whole land is painted again only when the
+     colours it is washed with change (`washKey`: which faction each village is, and the
+     factions' colours), not every time the villages are sent. An update that does not follow
+     on from what the page holds is dropped, and the next ask, still naming the old one, is
+     answered with the whole land. */
+  let landDirty = null, washKey = "";
+  function washCheck() {
+    let k = vs.length + "|";
+    for (const v of vs) k += (v ? v.f : "") + ",";
+    k += "|"; for (const f of fs) k += f.colour + ",";
+    if (k !== washKey) { washKey = k; landStale = true; }
+  }
+  function takeLand(L) {
+    bigAt = performance.now();
+    if (!L.part) { landNow = L; landStale = true; landDirty = null; return; }
+    if (!landNow || landNow.at !== L.base) { bigAt = 0; return; }
+    const w = world, cols = w.cols, rows = w.rows, B = L.B, bc = Math.ceil(cols / B);
+    const dirty = landDirty || (landDirty = new Set());
+    const put = (blocks, from, into, owners) => {
+      let k = 0;
+      for (const b of blocks) {
+        const bx = b % bc, by = Math.floor(b / bc), x0 = bx * B, y0 = by * B, x1 = Math.min(cols, x0 + B), y1 = Math.min(rows, y0 + B);
+        for (let y = y0; y < y1; y++) { into.set(from.subarray(k, k + x1 - x0), y * cols + x0); k += x1 - x0; }
+        dirty.add(b);
+        if (owners) {
+          /* A border is lightened on the square left of it or above it: those blocks too. */
+          if (bx > 0) dirty.add(b - 1);
+          if (by > 0) dirty.add(b - bc);
+          if (B === FIELD_BLOCK) fieldBlocks.delete(bx + ":" + by); else fieldsFor = null;
+        }
+      }
+    };
+    put(L.cropB, L.crop, landNow.full, false);
+    put(L.ownB, L.own, landNow.owner, true);
+    landNow.at = L.at; landNow.B = B;
+  }
   let asked = false, askedAt = 0, askGap = 0, making = 0, jump = false, seq = 0;
   let paneData = null, paneAsked = false, paneWant = false;
   const POPULATION_PAGE = 60;
@@ -837,12 +875,12 @@
          ask again only after six times as long, so reading never takes more
          than about a seventh of the time the world has to run in. */
       snap = m; askGap = Math.max(15, m.cost * 6);
-      if (m.vs) { vs = m.vs; landStale = true; }
+      if (m.vs) { vs = m.vs; washCheck(); }
       if (m.homes) homesArr = m.homes;
       if (m.tracks) { trackMap = new Map(); for (let k = 0; k < m.tracks.length; k += 2) trackMap.set(m.tracks[k], m.tracks[k + 1]); }
       if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
-      if (m.fs) { fs = m.fs; landStale = true; }
-      if (m.land) { landNow = m.land; landStale = true; bigAt = performance.now(); }
+      if (m.fs) { fs = m.fs; washCheck(); }
+      if (m.land) takeLand(m.land);
       if (picked && picked.person && m.picked && m.picked.id === picked.person && !m.picked.gone) picked.name = m.picked.name;
     } else if (m.t === "pane") {
       paneAsked = false;
@@ -871,7 +909,7 @@
     for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; reached = 0;
     tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
-    snap = null; vs = []; fs = []; landNow = null; landStale = false; bigAt = 0; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
+    snap = null; vs = []; fs = []; landNow = null; landStale = false; bigAt = 0; landDirty = null; washKey = ""; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
     paneData = null; paneAsked = false; paneWant = false; ruleMsg = "";
     setHash(toHash(true));
     $("run-title").textContent = ENGINES[mode].title;
@@ -1157,7 +1195,7 @@
                     pair: tab === "talk" && selectedExchange ? [selectedExchange.a, selectedExchange.b] : null,
                     /* The fields: every few steps and at most five times a second; a big land,
                        which is a big thing to send, every two seconds. */
-                    land: !landNow ? { at: 0, force: true } : big ? (now - bigAt > 2000 ? { at: 0, force: true } : null) : now - bigAt > 200 ? { at: landNow.at, force: false } : null,
+                    land: !landNow ? { at: -1, force: true } : big ? (now - bigAt > 2000 ? { at: landNow.at, force: true } : null) : now - bigAt > 200 ? { at: landNow.at, force: false } : null,
                     fresh: !vs.length });
     }
     if (!snap) return;
@@ -1346,22 +1384,82 @@
     const g = tilesPic.getContext("2d"), wg = washPic.getContext("2d");
     if (!paintLand.img || paintLand.img.width !== cols || paintLand.img.height !== rows) { paintLand.img = g.createImageData(cols, rows); paintLand.wimg = wg.createImageData(cols, rows); }
     const img = paintLand.img, d = img.data, wimg = paintLand.wimg, wd = wimg.data;
+    landDirty = null;
+    /* A big land is repainted 600,000 squares a frame, so no one frame
+       holds the page up (a 1,000 km land: 120 to 150 ms in one go, every two
+       seconds); the picture on screen is the last whole one until the new
+       one is done. A land of a million squares or fewer is done at once. */
+    painting = painter(g, wg, img, wimg, n, cols, big);
+    paintMore(land && n > 1e6 ? 6e5 : Infinity);
+  }
+  function painter(g, wg, img, wimg, n, cols, big) {
+    const d = img.data, wd = wimg.data;
     const tints = fs.map(f => rgb(f.colour)), fullOf = landNow.full, own = landNow.owner;
     /* Each village's faction, looked up once: -1 for none or one not drawn. */
     const factionOf = new Int32Array(vs.length + 1).fill(-1);
     for (let j = 0; j < vs.length; j++) { const f = vs[j] && vs[j].f; if (f != null && tints[f]) factionOf[j] = f; }
     const whose = i => { const o = own[i]; return o >= 0 && o < vs.length ? factionOf[o] : -1; };
-    /* A big land is repainted 600,000 squares a frame, so no one frame
-       holds the page up (a 1,000 km land: 120 to 150 ms in one go, every two
-       seconds); the picture on screen is the last whole one until the new
-       one is done. A land of a million squares or fewer is done at once. */
-    painting = { i: 0, n, cols, big, d, wd, whose, tints, fullOf, img, wimg, g, wg };
-    paintMore(land && n > 1e6 ? 6e5 : Infinity);
+    return { i: 0, n, cols, big, d, wd, whose, tints, fullOf, img, wimg, g, wg };
   }
   let painting = null;
   function paintMore(limit) {
-    const P = painting, { n, cols, big, d, wd, whose, tints, fullOf } = P, end = Math.min(n, P.i + limit);
-    for (let i = P.i; i < end; i++) {
+    const P = painting, end = Math.min(P.n, P.i + limit);
+    paintSquares(P, P.i, end);
+    P.i = end;
+    if (end < P.n) return;
+    painting = null;
+    P.g.putImageData(P.img, 0, 0); P.wg.putImageData(P.wimg, 0, 0);
+    land = tilesPic; borders = null;
+    /* Halved copies of the whole picture, for far out: shrinking a big land
+       smoothly on every frame cost more than drawing it (a 1,000 km land,
+       125 frames in three seconds against 295); a copy near the size on
+       screen is cheap to draw. Made when the land is repainted. */
+    mips = [];
+    for (let src = tilesPic; src.width > 512;) {
+      const c = document.createElement("canvas"); c.width = Math.ceil(src.width / 2); c.height = Math.ceil(src.height / 2);
+      const cg = c.getContext("2d"); cg.imageSmoothingEnabled = true; cg.drawImage(src, 0, 0, c.width, c.height);
+      mips.push(c); src = c;
+    }
+    if (!P.big) borders = bordersOf(P.whose, P.cols, P.n / P.cols);
+  }
+  /* Only the blocks that changed (pass 4, above): the same squares worked out the same way, put
+     into the picture a block at a time, and the halved copies brought up to date round them. */
+  function paintDirty() {
+    const w = world, cols = w.cols, rows = w.rows, n = cols * rows, B = landNow.B || 64, bc = Math.ceil(cols / B);
+    const img = paintLand.img;
+    if (!img || !tilesPic || tilesPic.width !== cols || tilesPic.height !== rows || soil.look !== look || landDirty.size * B * B > n / 3) { paintLand(); return; }
+    const P = painter(tilesPic.getContext("2d"), washPic.getContext("2d"), img, paintLand.wimg, n, cols, cols * 8 > 4096);
+    for (const b of landDirty) {
+      const x0 = (b % bc) * B, y0 = Math.floor(b / bc) * B, x1 = Math.min(cols, x0 + B), y1 = Math.min(rows, y0 + B);
+      for (let y = y0; y < y1; y++) paintSquares(P, y * cols + x0, y * cols + x1);
+      P.g.putImageData(img, 0, 0, x0, y0, x1 - x0, y1 - y0); P.wg.putImageData(P.wimg, 0, 0, x0, y0, x1 - x0, y1 - y0);
+      /* Each halved copy, over the same ground and a little round it (smoothing reads the neighbours). */
+      let sx0 = x0 - 2, sy0 = y0 - 2, sx1 = x1 + 2, sy1 = y1 + 2, src = tilesPic;
+      for (const c of mips) {
+        const kx = c.width / src.width, ky = c.height / src.height;
+        const dx0 = Math.max(0, Math.floor(sx0 * kx)), dy0 = Math.max(0, Math.floor(sy0 * ky)), dx1 = Math.min(c.width, Math.ceil(sx1 * kx)), dy1 = Math.min(c.height, Math.ceil(sy1 * ky));
+        if (dx1 > dx0 && dy1 > dy0) c.getContext("2d").drawImage(src, dx0 / kx, dy0 / ky, (dx1 - dx0) / kx, (dy1 - dy0) / ky, dx0, dy0, dx1 - dx0, dy1 - dy0);
+        sx0 = dx0 - 2; sy0 = dy0 - 2; sx1 = dx1 + 2; sy1 = dy1 + 2; src = c;
+      }
+    }
+    landDirty = null;
+    if (!P.big) borders = bordersOf(P.whose, cols, rows);
+  }
+  /* A line wherever one faction's land meets another's: left, top, width
+     and height of each, in squares. */
+  function bordersOf(whose, cols, rows) {
+    const out = [];
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const i = y * cols + x, a = whose(i);
+      if (a < 0) continue;
+      if (x + 1 < cols) { const o = whose(i + 1); if (o >= 0 && o !== a) out.push(x + 0.875, y, 0.25, 1); }
+      if (y + 1 < rows) { const o = whose(i + cols); if (o >= 0 && o !== a) out.push(x, y + 0.875, 1, 0.25); }
+    }
+    return out;
+  }
+  function paintSquares(P, from, end) {
+    const { n, cols, big, d, wd, whose, tints, fullOf } = P;
+    for (let i = from; i < end; i++) {
       /* Paler where it has been harvested, and washed with the colour of
          whoever holds it. */
       const pale = 0.5 * (1 - fullOf[i] / 255);
@@ -1381,32 +1479,6 @@
       }
       const k = i * 4; d[k] = r; d[k + 1] = gg; d[k + 2] = b; d[k + 3] = 255;
       wd[k] = wr; wd[k + 1] = wgg; wd[k + 2] = wb; wd[k + 3] = wa * 255;
-    }
-    P.i = end;
-    if (end < n) return;
-    painting = null;
-    const rows = n / cols;
-    P.g.putImageData(P.img, 0, 0); P.wg.putImageData(P.wimg, 0, 0);
-    land = tilesPic; borders = null;
-    /* Halved copies of the whole picture, for far out: shrinking a big land
-       smoothly on every frame cost more than drawing it (a 1,000 km land,
-       125 frames in three seconds against 295); a copy near the size on
-       screen is cheap to draw. Made when the land is repainted. */
-    mips = [];
-    for (let src = tilesPic; src.width > 512;) {
-      const c = document.createElement("canvas"); c.width = Math.ceil(src.width / 2); c.height = Math.ceil(src.height / 2);
-      const cg = c.getContext("2d"); cg.imageSmoothingEnabled = true; cg.drawImage(src, 0, 0, c.width, c.height);
-      mips.push(c); src = c;
-    }
-    if (big) return;
-    /* A line wherever one faction's land meets another's: left, top, width
-       and height of each, in squares. */
-    borders = [];
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-      const i = y * cols + x, a = whose(i);
-      if (a < 0) continue;
-      if (x + 1 < cols) { const o = whose(i + 1); if (o >= 0 && o !== a) borders.push(x + 0.875, y, 0.25, 1); }
-      if (y + 1 < rows) { const o = whose(i + cols); if (o >= 0 && o !== a) borders.push(x, y + 0.875, 1, 0.25); }
     }
   }
 
@@ -1780,6 +1852,19 @@
   window.__wbSite = () => { if (!homesArr) return null; for (let k = 0; k < homesArr.length; k += 7) if (homesArr[k + 6] < 1) return [homesArr[k], homesArr[k + 1]]; return null; };
   window.__wbBurned = () => { if (!homesArr) return null; for (let k = 0; k < homesArr.length; k += 7) if (homesArr[k + 6] < 0) return [homesArr[k], homesArr[k + 1]]; return null; };   // TODO 14b
   window.__wbWalls = h => { for (const v of vs) v.wall = h; return vs.length; };   // TODO 14e: draw walls without waiting for a war (until the next villages arrive)
+  /* TODO 15.25: the land as painted now, against the same land painted whole: how many colour
+     values differ, and by at most how much, in the picture, the wash and each halved copy (these
+     are smoothed, so may differ by a little at a block's edge). */
+  window.__wbLandCheck = () => {
+    if (!tilesPic || painting || !landNow) return null;
+    if (landDirty && landDirty.size && !landStale) paintDirty();   // what has come in and not yet been painted
+    if (painting) return null;
+    const grab = c => c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    const a = grab(tilesPic).slice(), b = grab(washPic).slice(), m = mips.map(c => grab(c).slice());
+    paintLand(); while (painting) paintMore(Infinity); landStale = false;
+    const diff = (x, y) => { let n = 0, most = 0; for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) { n++; most = Math.max(most, Math.abs(x[i] - y[i])); } return [n, most]; };
+    return { picture: diff(a, grab(tilesPic)), wash: diff(b, grab(washPic)), halved: m.map((x, i) => diff(x, grab(mips[i]))), at: landNow.at };
+  };
   window.__wbZoom = (z, x, y) => { cam.s = z; if (x != null) { cam.x = x; cam.y = y; } else if (vs[0]) { cam.x = vs[0].x; cam.y = vs[0].y; window.__px0 = cam.x; window.__py0 = cam.y; } cam.held = true; follow = false; return true; };
   /* A person's colour, from the number the keeper sent for the view it was
      asked for: a faction, or a place on one of the ramps. */
@@ -1827,6 +1912,7 @@
        steps for a small land, every two seconds for a big one. */
     if (painting) paintMore(6e5);
     else if (landNow && (landStale || !land)) { paintLand(); landStale = false; }
+    else if (landDirty && landDirty.size) paintDirty();
     const mine = picked && picked.person && f.picked && f.picked.id === picked.person ? f.picked : null;
     if (mine && mine.gone) { follow = false; jump = false; }
     else if (mine && jump) { cam.x = mine.x; cam.y = mine.y; cam.s = Math.max(cam.s, 48); jump = false; }

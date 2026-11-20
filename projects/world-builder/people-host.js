@@ -55,6 +55,14 @@
     let maxSim = 0, maxWall = 0;
     let vsSig = "", fsSig = "", heldSent = -1, trackSent = -1;       // what the page was last told of villages, factions and held fields
     let frameKey = "";                               // the last frame asked for, and the step it was made at
+    /* The land as the page was last sent it (TODO 15.25, pass 4): each square's crop as sent
+       (`landFull`), the crop it was worked out from (`landStock`, the bits of the engine's number),
+       and the holders as sent (`sentOwner`). Once the page holds a whole land, it is sent only the
+       blocks of LAND_BLOCK squares a side whose crops or holders have changed since; a square's crop
+       is only worked out again when the engine's number for it has changed. */
+    const LAND_BLOCK = 64;
+    let landFull = null, landStock = null, sentOwner = null, sentAt = -1, cropDirty = null, ownDirty = null;   // the blocks found changed
+    if (LAND_BLOCK !== 64) throw new Error("LAND_BLOCK is found by shifting by 6");
     let sorted = null, sortedSig = "";               // everybody by name, for the People list
     let trial = null;                                // the quiet test of a world (see `tryOut`)
     /* Scratch the frames are filled into; what is sent is a copy cut to size,
@@ -87,6 +95,7 @@
 
     function start(m) {
       world = null; trial = null; vsSig = fsSig = ""; sorted = null; sortedSig = ""; frameKey = "";
+      landFull = landStock = sentOwner = null; sentAt = -1;
       const t0 = now();
       let w;
       try { w = People.create(m.values); }
@@ -285,14 +294,67 @@
          the page asks, because it is a big thing to send. */
       const transfer = [out.x.buffer, out.y.buffer, out.tint.buffer, out.flags.buffer, out.gear.buffer, out.links.buffer];
       if (wantLand) {
-        const tiles = w.cols * w.rows, full = new Uint8Array(tiles), fert = w.fert, stock = w.stock, capOf = w.tileCapacity;
-        for (let i = 0; i < tiles; i++) { const f = fert[i]; full[i] = f > 0 ? Math.round(Math.min(1, stock[i] / (f * capOf)) * 255) : 255; }
-        const owner = w.owner.slice();
-        out.land = { full: full, owner: owner, at: w.sceneTick };
-        transfer.push(full.buffer, owner.buffer);
+        const tiles = w.cols * w.rows, fert = w.fert, stock = w.stock, capOf = w.tileCapacity;
+        if (!landFull || landFull.length !== tiles) { landFull = new Uint8Array(tiles); landStock = null; }
+        const full = landFull, own = w.owner, cols = w.cols, rows = w.rows, bits = new Int32Array(stock.buffer, stock.byteOffset, tiles);
+        if (landStock && m.land.at === sentAt) {
+          /* The page holds what was sent last: only the blocks that have changed since, found in
+             the same pass that reads the crops. */
+          const bc = Math.ceil(cols / LAND_BLOCK), nb = bc * Math.ceil(rows / LAND_BLOCK);
+          if (!cropDirty || cropDirty.length !== nb) { cropDirty = new Uint8Array(nb); ownDirty = new Uint8Array(nb); }
+          cropDirty.fill(0); ownDirty.fill(0);
+          for (let y = 0; y < rows; y++) {
+            const rb = (y >> 6) * bc;
+            for (let x = 0, i = y * cols; x < cols; x++, i++) {
+              if (bits[i] !== landStock[i]) {
+                landStock[i] = bits[i];
+                const f = fert[i], v = f > 0 ? Math.round(Math.min(1, stock[i] / (f * capOf)) * 255) : 255;
+                if (v !== full[i]) { full[i] = v; cropDirty[rb + (x >> 6)] = 1; }
+              }
+              if (own[i] !== sentOwner[i]) ownDirty[rb + (x >> 6)] = 1;
+            }
+          }
+          out.land = landChanges(w, full, w.sceneTick);
+          transfer.push(out.land.cropB.buffer, out.land.crop.buffer, out.land.ownB.buffer, out.land.own.buffer);
+        } else {
+          /* The first, or the page has missed one: the whole land. */
+          for (let i = 0; i < tiles; i++) { const f = fert[i]; full[i] = f > 0 ? Math.round(Math.min(1, stock[i] / (f * capOf)) * 255) : 255; }
+          landStock = bits.slice(); sentOwner = own.slice();
+          const send1 = full.slice(), owner = own.slice();
+          out.land = { full: send1, owner: owner, at: w.sceneTick };
+          transfer.push(send1.buffer, owner.buffer);
+        }
+        sentAt = w.sceneTick;
       }
       out.cost = now() - began;
       send(out, transfer);
+    }
+
+    /* The blocks found changed (`cropDirty`, `ownDirty`), sent: their crops (`cropB`, their squares
+       in `crop`) and holders (`ownB`, `own`), block by block in order, each block's squares row
+       by row; and the holders kept as sent are brought up to date (the crops already are). `base` is the land the page must hold to use them. */
+    function landChanges(w, full, at) {
+      const cols = w.cols, rows = w.rows, owner = w.owner, B = LAND_BLOCK, bc = Math.ceil(cols / B);
+      const cropB = [], ownB = [];
+      let nc = 0, no = 0;
+      for (let b = 0; b < cropDirty.length; b++) {
+        if (!cropDirty[b] && !ownDirty[b]) continue;
+        const x0 = (b % bc) * B, y0 = Math.floor(b / bc) * B, size = (Math.min(cols, x0 + B) - x0) * (Math.min(rows, y0 + B) - y0);
+        if (cropDirty[b]) { cropB.push(b); nc += size; }
+        if (ownDirty[b]) { ownB.push(b); no += size; }
+      }
+      const crop = new Uint8Array(nc), own = new Int32Array(no);
+      let k = 0;
+      for (const b of cropB) {
+        const x0 = (b % bc) * B, y0 = Math.floor(b / bc) * B, x1 = Math.min(cols, x0 + B), y1 = Math.min(rows, y0 + B);
+        for (let y = y0; y < y1; y++) { const r = full.subarray(y * cols + x0, y * cols + x1); crop.set(r, k); k += x1 - x0; }
+      }
+      k = 0;
+      for (const b of ownB) {
+        const x0 = (b % bc) * B, y0 = Math.floor(b / bc) * B, x1 = Math.min(cols, x0 + B), y1 = Math.min(rows, y0 + B);
+        for (let y = y0; y < y1; y++) { const r = owner.subarray(y * cols + x0, y * cols + x1); own.set(r, k); sentOwner.set(r, y * cols + x0); k += x1 - x0; }
+      }
+      return { part: true, base: sentAt, at: at, B: B, cropB: Int32Array.from(cropB), crop: crop, ownB: Int32Array.from(ownB), own: own };
     }
 
     /* ── the side panel ────────────────────────────────────────────────────
