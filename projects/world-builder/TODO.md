@@ -2777,6 +2777,85 @@ the same trade-off Ric made for household goods in 15.5a.
    thatch worn in 15–30 years, a timber house falling one to four decades after its roof goes; stone
    for good), said as guesses where no clean figure was found?
 
+**Ric's answers (2026-11-20):**
+- *Walls:* "4 years of peace is that realistic for the walls?" → researched below: no.
+- *Every new building gets the broken looks too:* "The new buildings will need the broken stuff put
+  in too" — each building in the table has its own six stages, in its own shape.
+1. *Upkeep:* "If they are living in it it doesn't need patches if no one lives there or works there
+   then I can be rebuilt for a cost." So **a building in use does not wear**; only one nobody lives
+   or works in decays, and it can be mended for a cost. No upkeep hours in a living village.
+2. *Which buildings:* the table, **and grinding and baking added** ("probably needs to be added") —
+   so the mill and oven are in, with what they do (researched below).
+3. *Screenshots of the stages first:* "No that's ok."
+4. *Who may take from a ruin:* "Anyone. But people may still be protective of the land or view it
+   as theirs" — anybody may take; whoever thinks it theirs (the faction whose land it is, the
+   family that left it) may hold it against them, a grievance like any other (items 10–12).
+5. *Moving back in:* "Needs to be fixed if it isn't but cost less then making a new one" — a ruined
+   house is mended before it is lived in, for less than building new, by how far gone it is.
+6. *Stone robbing:* **no.**
+7. *A world that starts ruined:* "If it starts with a person then it's not in ruin. And if it
+   starts empty then it is unknown" — buildings with nobody in them, and no cause given.
+8. *Timing:* **wait** — item 16 is built after item 15, so ruins can hold every era's things.
+9. *Danger in ruins:* **item 18's.**
+10. *Figures:* "Yes but look again before a guess" → looked again, below; what is still a guess
+   says so.
+
+**Walls in peace — four years was not realistic.** Town walls were neglected in peace — the Crown
+sometimes had to push towns into repairs, and murage money was sometimes never spent on the walls —
+but they stood: York mended its walls bit by bit for centuries, smaller German towns preferred
+constant small repairs to rare overhauls, and most English town walls went only when towns sold
+and pulled them down in the eighteenth century
+([Murage](https://en.wikipedia.org/wiki/Murage);
+[Building History, town walls](https://buildinghistory.org/buildings/townwalls.shtml);
+[Towns and Defence in Later Medieval Germany](https://deremilitari.org/?p=1753);
+[Worcester city walls](https://en.wikipedia.org/wiki/Worcester_city_walls)). A timber rampart
+rotted and was given up in part as its posts decayed
+([hillfort summary, Bath Spa](https://researchspace.bathspa.ac.uk/16195/1/16195.pdf)); no figure for
+how many years a palisade post lasts in the ground was found. *So:* a wall is a building like the
+rest — it does not wear while its village lives in it, and once nobody is there it falls on the
+clock of its material, timber far sooner than stone. Walls are not taken down in peace unless
+somebody chooses to. **The engine's "gone in about four years of peace" (`people.js`, the siege
+step) is wrong by this, and is changed when item 16 is built** — or earlier, if Ric wants it fixed
+on its own (it changes how often a walled place holds out in a later war).
+
+**Grinding and baking.** *Without a mill:* grain was ground by hand, about an hour for two pounds of
+flour on a simple stone (Laudan, rough); in a modern Indian study a household's hand grinding took
+three hours a day and a mill cut it to a third of an hour; families needed "a couple of hours every
+day" ([Laudan, "The daily grind"](https://www.rachellaudan.com/2009/11/its-the-shear-bloody-work-of-it-sic-grinding.html);
+[ICAR, Indian Farming](https://epubs.icar.org.in/index.php/IndFarm/article/download/172931/66228/527950)).
+No rotary-quern figure was found. *With a mill:* lords claimed "suit of mill" — their tenants' grain
+ground at the lord's mill, the miller taking a toll in grain, about a sixteenth at Chester — though
+grain bought at market could be ground anywhere and many tenants were not bound; the earl of Chester
+seized grain sent elsewhere and even bread baked elsewhere
+([Mills Archive](https://new.millsarchive.org/from-quern-to-computer-the-history-of-flour-milling/7);
+[Chester mills, British History Online](https://archive.british-history.ac.uk/node/48976);
+Langdon, [*Mills in the Medieval Economy*](https://academic.oup.com/book/47612)). *Ovens:* in
+much of France and the Low Countries all had to bake in the lord's oven for a fee; oven monopolies
+outlived mill ones round Lyon and were gone in Flanders by the late middle ages
+([Banal rights](https://en.wikipedia.org/wiki/Banal_rights)). *How it would fit:* grain becomes
+flour before it is food — by hand at home, costing a household hours every day, or at a mill for a
+share of the grain, saving those hours; bread is baked at home or at an oven for a fee. A watermill
+needs a stream (item 4's rivers); who owns a mill or oven and whether people must use it is the
+land rule and the government's (7c, 15c), so a greedy lord's mill takes more. *Questions for later
+(when 16 is built):* who builds the first mill — the leader, the village, or anybody with the
+means? Is grinding a household's chore for anybody in it, or by custom (15a)?
+
+**Looked again before guessing (Ric's 10).**
+- *Grain:* sealed pits kept wheat "for several years" without insects
+  ([Saint-Denis grain pits](https://archeologie.culture.gouv.fr/saint-denis/en/grain-pits)); in a
+  barn, medieval farmers seldom kept wheat more than two years, and at Crawley over 170 years of
+  accounts old wheat appears nine times, under 2% of the crop (McCloskey and Nash,
+  [pdf](https://deirdremccloskey.com/docs/graham/nash.pdf)); a watched store loses 2–5% a season.
+  *Still a guess:* how fast an unwatched store goes; chosen as a watched store's loss several times
+  over, gone within one to two years, and pit storage, if built, lasting years.
+- *Thatch:* 15–30 years for long straw, longer for reed, kept up (above). *Still a guess:* how
+  long a roof lasts with nobody mending it.
+- *Earth walls once the roof is gone:* rain at the base and the corners is what brings cob down,
+  and a wall kept wet fails ([IHBC, dampness in earth walling](https://ihbc.org.uk/guidance_notes/docs/Cob_Paper/page6.html));
+  no figure in years was found. *Still a guess.*
+- *Timber frames:* unrepaired reconstructions stood 13 to 40 years (above).
+- *Stone:* centuries; walls went when people took them down.
+
 ### [ ] 17. Catastrophes on the land
 
 **Now:** nothing can be dropped on the world.
