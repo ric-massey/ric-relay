@@ -25,14 +25,14 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 2026-11-20 03:08 UTC | Anubis | Premier | 9–13 | loss | 8-20-6 | 58.6 | 0.46 | -9.11 | yes | [gsi-20261120T030802.md](gsi-20261120T030802.md) |
-| 2026-11-20 02:25 UTC | Ancient | Competitive | 6–13 | loss | 2-18-6 | 32.1 | 0.13 | — | yes | [gsi-20261120T022559.md](gsi-20261120T022559.md) |
-| 2026-11-20 01:55 UTC | Mirage | Competitive | 13–7 | win | 11-13-0 | 59.1 | 0.77 | — | yes | [gsi-20261120T015526.md](gsi-20261120T015526.md) |
-| 2026-11-18 06:41 UTC | Mirage | Competitive | 13–3 | win | 18-7-3 | 104.5 | 1.76 | — | yes | [gsi-20261118T064130.md](gsi-20261118T064130.md) |
-| 2026-11-18 06:09 UTC | Mirage | Competitive | 7–13 | loss | 12-17-1 | 60.1 | 0.74 | — | yes | [gsi-20261118T060932.md](gsi-20261118T060932.md) |
+| 2026-11-20 02:25 UTC | Ancient | Premier | 6–13 | loss | 2-18-6 | 32.1 | 0.13 | — | yes | [gsi-20261120T022559.md](gsi-20261120T022559.md) |
+| 2026-11-20 01:55 UTC | Mirage | Premier | 13–7 | win | 11-13-0 | 59.1 | 0.77 | — | yes | [gsi-20261120T015526.md](gsi-20261120T015526.md) |
+| 2026-11-18 06:41 UTC | Mirage | Premier | 13–3 | win | 18-7-3 | 104.5 | 1.76 | — | yes | [gsi-20261118T064130.md](gsi-20261118T064130.md) |
+| 2026-11-18 06:09 UTC | Mirage | Premier | 7–13 | loss | 12-17-1 | 60.1 | 0.74 | — | yes | [gsi-20261118T060932.md](gsi-20261118T060932.md) |
 | 2026-11-12 03:19 UTC | Inferno | Competitive | 8–13 | loss | 9-16-3 | 62.6 | 0.61 | — | yes | [gsi-20261112T031924.md](gsi-20261112T031924.md) |
 | 2026-11-10 04:31 UTC | Cache | Premier | 13–10 | win | 8-22-4 | 55.0 | 0.33 | -7.42 | yes | [gsi-20261110T043131.md](gsi-20261110T043131.md) |
 | 2026-11-08 22:16 UTC | Inferno | Premier | 13–8 | win | 12-14-8 | 71.9 | 0.92 | +2.39 | yes | [gsi-20261108T221621.md](gsi-20261108T221621.md) |
-| 2026-11-08 21:35 UTC | Inferno | Competitive | 10–13 | loss | 15-19-5 | 79.8 | 0.76 | — | yes | [gsi-20261108T213555.md](gsi-20261108T213555.md) |
+| 2026-11-08 21:35 UTC | Inferno | Premier | 10–13 | loss | 15-19-5 | 79.8 | 0.76 | — | yes | [gsi-20261108T213555.md](gsi-20261108T213555.md) |
 | 2026-11-06 03:33 UTC | Anubis | Premier | 14–16 | loss | 21-23-4 | 73.6 | 0.91 | -1.68 | yes | [gsi-20261106T033307.md](gsi-20261106T033307.md) |
 | 2026-11-06 02:41 UTC | Inferno | Premier | 13–5 | win | 14-13-4 | 85.6 | 1.10 | -2.86 | yes | [gsi-20261106T024115.md](gsi-20261106T024115.md) |
 | 2026-11-05 05:32 UTC | Dust II | Competitive | 13–8 | win | 19-12-2 | 84.8 | 1.33 | — | yes | [gsi-20261105T053221.md](gsi-20261105T053221.md) |
@@ -80,7 +80,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | 2026-10-06 02:39 UTC | Anubis | Competitive | 6–13 | loss | 5-19-3 | 38.3 | 0.22 | -12.73 | yes | [3846689522670633012.md](3846689522670633012.md) |
 | 2026-10-06 01:55 UTC | Mirage | Competitive | 12–12 | draw | 13-15-2 | 46.8 | 0.86 | -3.17 | yes | [3846683791036776519.md](3846683791036776519.md) |
 | 2026-10-02 03:13 UTC | Rush 001 | Custom | 6–2 | win | 8-3-0 | 85.5 | 1.49 | +10.67 | no | [lt-36a75749b8651cde.md](lt-36a75749b8651cde.md) |
-| date unknown | Mirage | None | 4–5 | loss | 8-7-2 | 75.3 | 1.09 | — | yes | [3851858021890130135.md](3851858021890130135.md) |
+| date unknown | Mirage | Competitive | 4–5 | loss | 8-7-2 | 75.3 | 1.09 | — | yes | [3851858021890130135.md](3851858021890130135.md) |
 
 ## By map
 
@@ -164,9 +164,9 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Side Hall | 4 | 7% | 3 | 9% | 0.75 |
 | Main Hall | 4 | 7% | 2 | 6% | 0.50 |
 | T Side Upper | 3 | 5% | 2 | 6% | 0.67 |
-| House | 2 | 3% | 2 | 6% | 1.00 |
 | CT Spawn | 2 | 3% | 2 | 6% | 1.00 |
 | T Side Lower | 2 | 3% | 2 | 6% | 1.00 |
+| House | 2 | 3% | 2 | 6% | 1.00 |
 | Top of Mid | 2 | 3% | 1 | 3% | 0.50 |
 | Ramp | 2 | 3% | 1 | 3% | 0.50 |
 | Outside | 1 | 2% | 3 | 9% | 3.00 |
@@ -186,8 +186,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite A | 3 | 4% | 6 | 13% | 2.00 |
 | Palace Interior | 3 | 4% | 2 | 4% | 0.67 |
 | Mid Doors | 3 | 4% | 2 | 4% | 0.67 |
-| Heaven | 3 | 4% | 1 | 2% | 0.33 |
 | Back of B | 3 | 4% | 1 | 2% | 0.33 |
+| Heaven | 3 | 4% | 1 | 2% | 0.33 |
 | Bricks | 3 | 4% | 0 | 0% | 0.00 |
 | Main | 2 | 3% | 2 | 4% | 1.00 |
 | Street | 2 | 3% | 1 | 2% | 0.50 |
@@ -203,19 +203,19 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite B | 4 | 12% | 2 | 10% | 0.50 |
 | Mid | 4 | 12% | 0 | 0% | 0.00 |
 | Highway | 3 | 9% | 1 | 5% | 0.33 |
-| Fork Lift | 2 | 6% | 2 | 10% | 1.00 |
 | B Halls | 2 | 6% | 2 | 10% | 1.00 |
+| Fork Lift | 2 | 6% | 2 | 10% | 1.00 |
 | Corner | 2 | 6% | 1 | 5% | 0.50 |
 | CT Lane | 2 | 6% | 0 | 0% | 0.00 |
 | Heaven | 2 | 6% | 0 | 0% | 0.00 |
 | Outside A | 1 | 3% | 3 | 15% | 3.00 |
-| B Main | 1 | 3% | 1 | 5% | 1.00 |
 | A Main | 1 | 3% | 1 | 5% | 1.00 |
-| T Spawn | 1 | 3% | 0 | 0% | 0.00 |
+| B Main | 1 | 3% | 1 | 5% | 1.00 |
 | Squeaky | 1 | 3% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 3% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 10% | — |
-| A Stairs | 0 | 0% | 1 | 5% | — |
 | Vents | 0 | 0% | 1 | 5% | — |
+| A Stairs | 0 | 0% | 1 | 5% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -231,18 +231,18 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Upper Tunnel | 4 | 4% | 5 | 6% | 1.25 |
 | B Doors | 4 | 4% | 0 | 0% | 0.00 |
 | Middle | 3 | 3% | 2 | 2% | 0.67 |
-| Bombsite A | 3 | 3% | 1 | 1% | 0.33 |
 | Tunnel Stairs | 3 | 3% | 1 | 1% | 0.33 |
+| Bombsite A | 3 | 3% | 1 | 1% | 0.33 |
 | A Ramp | 3 | 3% | 0 | 0% | 0.00 |
 | Under A | 2 | 2% | 6 | 7% | 3.00 |
 | Lower Tunnel | 2 | 2% | 4 | 5% | 2.00 |
 | Mid Doors | 2 | 2% | 2 | 2% | 1.00 |
 | Hole | 2 | 2% | 0 | 0% | 0.00 |
-| Pit | 1 | 1% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 1% | 0 | 0% | 0.00 |
+| Pit | 1 | 1% | 0 | 0% | 0.00 |
 | Short Stairs | 0 | 0% | 4 | 5% | — |
-| Outside Tunnel | 0 | 0% | 1 | 1% | — |
 | CT Spawn | 0 | 0% | 1 | 1% | — |
+| Outside Tunnel | 0 | 0% | 1 | 1% | — |
 
 ### Inferno: where Ric dies and kills
 
@@ -260,8 +260,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Balcony | 3 | 3% | 3 | 3% | 1.00 |
 | Arch | 3 | 3% | 2 | 2% | 0.67 |
 | Quad | 1 | 1% | 0 | 0% | 0.00 |
-| Back Alley | 1 | 1% | 0 | 0% | 0.00 |
 | Library | 1 | 1% | 0 | 0% | 0.00 |
+| Back Alley | 1 | 1% | 0 | 0% | 0.00 |
 | T Ramp | 0 | 0% | 6 | 6% | — |
 | Lower Mid | 0 | 0% | 1 | 1% | — |
 
@@ -288,8 +288,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Jungle | 3 | 1% | 2 | 1% | 0.67 |
 | House | 3 | 1% | 1 | 0% | 0.33 |
 | Ladder | 2 | 1% | 3 | 1% | 1.50 |
-| Back Alley | 2 | 1% | 2 | 1% | 1.00 |
 | Snipers Nest | 2 | 1% | 2 | 1% | 1.00 |
+| Back Alley | 2 | 1% | 2 | 1% | 1.00 |
 | T Spawn | 1 | 0% | 2 | 1% | 2.00 |
 | Side Alley | 1 | 0% | 0 | 0% | 0.00 |
 
@@ -307,8 +307,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | T Side Upper | 5 | 4% | 2 | 3% | 0.40 |
 | Connector | 4 | 3% | 5 | 6% | 1.25 |
 | Alley | 4 | 3% | 1 | 1% | 0.25 |
-| Entrance | 1 | 1% | 2 | 3% | 2.00 |
 | Electrical Box | 1 | 1% | 2 | 3% | 2.00 |
+| Entrance | 1 | 1% | 2 | 3% | 2.00 |
 | T Spawn | 1 | 1% | 0 | 0% | 0.00 |
 | Dumpster | 1 | 1% | 0 | 0% | 0.00 |
 
@@ -320,15 +320,15 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Tunnels | 1 | 7% | 0 | 0% | 0.00 |
-| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Crane | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Mid | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
-| Connector | 0 | 0% | 1 | 12% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
+| Connector | 0 | 0% | 1 | 12% | — |
 
 
 ## Model check
