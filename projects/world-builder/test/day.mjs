@@ -59,6 +59,7 @@ export function spentDifferently(a, b, part) {
 /* A value for a setting that is not its default: half way to the far end, the
    same choice `world-builder.test.mjs` makes, so the three agree. */
 export function other(it, base) {
+  if (it.type === "own") return "1.temper=0.95,1.bold=0.95";   // one faction its own nature (TODO 15a)
   if (it.type === "toggle") return !base;
   if (it.type === "select") return it.options.map(o => o[0]).find(v => v !== base);
   /* How many people and how much land go as far as a computer can carry

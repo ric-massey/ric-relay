@@ -244,7 +244,7 @@ if (!physicsOnly && process.argv.includes("--generations")) {
      them; the rest show up in a small quiet one within a few years. */
   const angry = { map: "small", people: 260, factions: 4, villages: 2, seed: 4, aggression: 0.9, rebel: 0.6, loyalty: 0.2, divided: 0.9, rich: 0.5 };
   const hard = new Set(["war", "aggression", "deadly", "rebel", "switch"]);
-  const alt = { crowd: 20, aggression: 0.1, rebel: 0, switch: 1 };
+  const alt = { crowd: 20, aggression: 0.1, rebel: 0, switch: 1, own: "1.temper=0.95,1.bold=0.95" };   // own: one faction its own nature (TODO 15a)
   const base = new Map();
   for (const it of items(People)) {
     const from = hard.has(it.key) ? angry : small;
