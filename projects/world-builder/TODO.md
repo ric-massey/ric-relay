@@ -2437,6 +2437,9 @@ lost with each item; the row has not been run since item 13, and the M1 rows for
 never filled in. Run the full bench, find what each item added at 20,000, and win back what does
 not change the world. Item 15 adds per-faction ways, offices and know-how, so this matters more
 after it.
+**Overlaps 15.25** (added the same day by another session after a performance audit): the
+speed work itself is 15.25's five passes; j is only the 20,000-person measurement and, if it
+finds something 15.25 does not cover, a pass added there rather than here.
 
 **Budget:** default for a–i; j faster only.
 
