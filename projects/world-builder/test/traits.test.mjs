@@ -50,7 +50,10 @@ function hours(o, days, seed) {
 {
   /* Sickness off: an outbreak in one run and not the other fills the beds whatever anybody is like. */
   const idle = hours({ hardwork: 0.1, plague: "none" }, 20), keen = hours({ hardwork: 0.9, plague: "none" }, 20);
-  assert.ok(keen.rest < idle.rest * 0.5 && keen.work > idle.work + 0.05,
+  /* Under 0.7 since TODO 15.5a (it was 0.5): the bench pays only for what was ordered, so there is
+     less work to be had, and the keen rest 4.0% against the idle 7.1% (before, about 1% against 5%);
+     they still work about eleven points more. */
+  assert.ok(keen.rest < idle.rest * 0.7 && keen.work > idle.work + 0.05,
     "the hardworking work: resting and visiting " + (idle.rest * 100).toFixed(1) + "% → " + (keen.rest * 100).toFixed(1) + "%, at work " + (idle.work * 100).toFixed(1) + "% → " + (keen.work * 100).toFixed(1) + "%");
 
   const set = hours({ curious: 0.1 }, 20), new_ = hours({ curious: 0.9 }, 20);

@@ -2143,6 +2143,11 @@
         const tail = Math.pow(R(), 1 + S.unequal * 8) * (1 + S.unequal * 8);
         p.coins = shared ? 0 : S.coins * ((1 - S.unequal) + S.unequal * tail * 1.6);
         if (adult(p)) p.job = "farmer";
+        /* What a household already owns, of every age (TODO 15.5a): spread by id, not drawn, so the
+           world's dice fall as before. Everybody starting with nothing sent every household to the
+           store in the first hours, and the orders that left set a season's stock several times what
+           a village used, made in its first weeks. */
+        if (adult(p)) p.goods = 0.15 + ((p.id * 0.6180339887) % 1) * 0.85;
       }
       for (const v of villages) {
         v.food = 0; let n = 0;
@@ -2737,6 +2742,7 @@
        asked for plus that stock, less what is on the shelf. Before this, a
        default year made about 30,000 goods and used under 3,000 (README,
        "Made to order"). */
+    const LEVY = ["farmer", "crafter", "herder", "hunter", "fisher", "woodcutter", "miner"];   // who is called up, in this order
     const ORDER_KEEP = 60 * DAY_HOURS, USED_KEEP = Math.exp(-1 / 90);
     function placeOrder(p, v, amount) {
       if (amount <= 0.01) return;
@@ -6372,8 +6378,10 @@
         let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 / (wars && inSeason ? 1 : 7))));   // a levy for the season comes in days (TODO 14e)
         /* Farmers first, as levies were; then crafters. With real-size bodies (TODO 7a) farming
            stopped queuing in crowds, fields went further, fewer farmed, and an army raised from
-           farmers alone stalled short of what its leader asked (4 of 23 wanted 6). */
-        for (const job of ["farmer", "crafter"]) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
+           farmers alone stalled short of what its leader asked (4 of 23 wanted 6). Then any other
+           trade (TODO 15.5a): once crafters made only to order there were few, and in rule.test's
+           world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
+        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
