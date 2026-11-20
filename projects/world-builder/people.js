@@ -648,7 +648,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1241,7 +1241,7 @@
        `bond`, an old friendship or feud that fades over a generation; an alliance, a trade deal
        (no tax on each other's people), tribute paid (`pays`: this side pays the other), and
        when this side last made a demand of the other. */
-    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0 }; }   // began: this side's leader when the war began (TODO 14c)
+    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0, sold: 0, rate: 0, wed: null }; }   // sold, rate, wed: TODO 14d   // began: this side's leader when the war began (TODO 14c)
     function newVillage(x, y, f) {
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
@@ -2617,6 +2617,12 @@
       r.op = clamp(r.op + by * k * k * k, -1, 1);
     }
     /* Nobody carries goods to a people theirs is hostile to, or who are hostile to them (TODO 13). */
+    /* Sales across a border, kept as a running sum that halves in about seventy days (TODO 14d): a
+       trade deal is made where trade already goes on, as the Hanse's treaties confirmed privileges
+       its merchants already used. */
+    function crossSale(seller, buyer, amount) { const r = factions[seller].rel[buyer]; if (r) r.sold += amount; }   // what seller's people sold in buyer's villages
+    /* Trade both ways: the smaller of what each side's people sold to the other. */
+    function twoWay(f, o) { return Math.min(f.rel[o.id].sold, o.rel[f.id].sold); }
     function hostile(a, b) { return a !== b && (factions[a].rel[b].op < -0.3 || factions[b].rel[a].op < -0.3); }
     function taxFor(v, p) { return v.f !== p.f && factions[v.f].rel[p.f] && factions[v.f].rel[p.f].trade ? 0 : taxOf(v); }
     function buy(p, v, what, amount) {
@@ -3549,12 +3555,13 @@
             p.sayT = TK(60);
           }
           if (here.f !== p.f && sold > 0) { goodwill(factions[here.f], p.f, 0.012); goodwill(factions[p.f], here.f, 0.012); }
+          if (here.f !== p.f && sold + intoStore > 0) crossSale(p.f, here.f, sold + intoStore);
           p.cargo = null; wear(p, "pack");
         } else if (p.cargo) {
           const got = sell(p, here, p.cargo.what, p.cargo.amount);
           if (p.cargo.what === "food" && here.id !== p.home) here.inFood = (here.inFood || 0) + got;   // food brought in (TODO 8)
           if (p.cargo.what === "food") p.food += p.cargo.amount - got; else if (p.cargo.what === "goods") p.goods += p.cargo.amount - got; else here[p.cargo.what] += p.cargo.amount - got;   // unsold wood, stone or ore is left in the store
-          if (here.f !== p.f && got > 0) { goodwill(factions[here.f], p.f, 0.012); goodwill(factions[p.f], here.f, 0.012); }
+          if (here.f !== p.f && got > 0) { goodwill(factions[here.f], p.f, 0.012); goodwill(factions[p.f], here.f, 0.012); crossSale(p.f, here.f, got); }
           p.cargo = null; wear(p, "pack");
         }
         shop(p, here);
@@ -5858,6 +5865,7 @@
        they like the defender, or the alliance is over. */
     function startWar(f, o, text) {
       const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o);
+      if (bound(rel)) { count.wedBroken++; text += " The marriage between them did not hold the peace."; }
       warMoves++; rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0; relDeals(rel, back);
       rel.began = f.leader; back.began = o.leader;
       if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
@@ -5882,14 +5890,28 @@
     }
     /* A demand: pay, or there will be war. The other side pays if it is outmatched and its leader
        is neither bold nor hot-tempered enough to refuse; a refusal is an insult. */
+    /* How much tribute (TODO 14d): what the two sides agree is the share of a year's stores that
+       the side paying expects to lose to a war, less what an even fight would leave it (Fearon 1995:
+       a settlement both prefer to war lies between what each expects of the fight). r is how many
+       times stronger the side taking it is; the chance it wins is r / (1 + r). So a side twice as
+       strong takes a sixth of the stores a year, three times as strong a quarter. Paid daily, out of
+       what is in the stores that day. Before, every tribute was the same, about two thirds a year. */
+    function tributeShare(r) { return clamp(r / (1 + r) - 0.5, 0.05, 0.45); }
+    function dailyRate(share) { return -Math.log(1 - share) / 365; }
+    function shareWords(share) {
+      const parts = [[0.07, "a twentieth"], [0.12, "a tenth"], [0.18, "a sixth"], [0.22, "a fifth"], [0.29, "a quarter"], [0.38, "a third"]];
+      for (const [x, w] of parts) if (share < x) return w;
+      return "nearly half";
+    }
     function demand(f, o, why) {
       const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o), at = b.pair ? b.pair[1] : { x: 0, y: 0 };
       rel.askedAt = t; count.demands++;
       const ol = byId.get(o.leader), dare = ol ? (ruling(ol, "temper", o) + ol.bold) / 2 : 0.5;
       if (might(o, f) < might(f, o) * (1.15 - dare * 0.7)) {
-        back.pays = true; count.tributes++;
+        const share = tributeShare(might(f, o) / Math.max(1, might(o, f)));
+        back.pays = true; back.rate = dailyRate(share); count.tributes++;
         back.op = clamp(back.op - 0.15, -1, 1);
-        note("tribute", o.name + " has agreed to pay tribute to " + f.name + (why ? ", " + why : "") + ", rather than fight.", 3, at.x, at.y, f.id);
+        note("tribute", o.name + " has agreed to pay " + f.name + " " + shareWords(share) + " of its stores a year" + (why ? ", " + why : "") + ", rather than fight.", 3, at.x, at.y, f.id);
         return "paid";
       }
       count.refusals++;
@@ -5897,9 +5919,65 @@
       note("threat", f.name + " demanded tribute of " + o.name + (why ? ", " + why : "") + "; " + (ol ? ol.name : o.name) + " refused.", 2.5, at.x, at.y, f.id);
       return "refused";
     }
+    /* ── peace by marriage (TODO 14d) ─────────────────────────────────────
+       A son or daughter of one leader married to one of the other's, as Henry V married Catherine of
+       Valois at Troyes (1420) and James IV Margaret Tudor under the Treaty of Perpetual Peace (1502),
+       which did not stop Flodden (1513). Kinship between rulers made wars rarer and shorter, and the
+       death of the relative who tied them made them likelier again (Benzell and Cooke, A Network of
+       Thrones, 2021); Erasmus: a marriage may make a peace but cannot make it last. Here the tie holds
+       while the couple are alive and together; while it holds a leader's wish for war against the
+       other side counts for less (not nothing), and a war is weighed sooner for peace. */
+    function heirOf(lead) {
+      if (!lead) return null;
+      let best = null;
+      const free = q => q.hp > 0 && adult(q) && !q.partner && q.age < q.dieAt * 0.75 && q.f === lead.f;
+      for (const q of people) if (free(q) && (q.mum === lead.id || q.dad === lead.id) && (!best || q.age < best.age)) best = q;
+      if (best) return best;
+      for (const q of people) if (free(q) && q !== lead && ((lead.mum && q.mum === lead.mum) || (lead.dad && q.dad === lead.dad)) && (!best || q.age < best.age)) best = q;
+      if (best) return best;
+      if (free(lead)) return lead;
+      /* Nobody of the leader's own family free: one of the faction's great families, the richest who is
+         (Ric, 2026-11-19: "generally leaders are well off … people who marry marry in similar pay
+         ranges"; noble houses married for a peace as royal ones did). Without coins, the richest is
+         whoever comes first. */
+      for (const q of people) if (free(q) && (!best || q.coins > best.coins)) best = q;
+      return best;
+    }
+    function bound(rel) {
+      if (!rel.wed) return false;
+      const a = byId.get(rel.wed[0]), b = byId.get(rel.wed[1]);
+      return !!a && !!b && a.hp > 0 && b.hp > 0 && a.partner === b.id;
+    }
+    /* f's family marries into o's. The one who is not a leader goes to live with the other side. */
+    function wed(f, o) {
+      const a = heirOf(byId.get(f.leader)), b = heirOf(byId.get(o.leader));
+      if (!a || !b || a === b) return false;
+      const rel = f.rel[o.id], back = o.rel[f.id];
+      a.partner = b.id; b.partner = a.id; befriend(a, b, 0.6);
+      const mover = a.id !== f.leader ? a : b.id !== o.leader ? b : null, stay = mover === a ? b : a;
+      if (mover && mover.home !== stay.home) { rehome(mover, villages[stay.home], "married"); mover.hx = stay.hx; mover.hy = stay.hy; mover.dwelling = stay.dwelling; }
+      rel.wed = [a.id, b.id]; back.wed = [b.id, a.id];
+      rel.bond = clamp(rel.bond + 0.3, -1, 1); back.bond = clamp(back.bond + 0.3, -1, 1);
+      rel.op = clamp(rel.op + 0.3, -1, 1); back.op = clamp(back.op + 0.3, -1, 1);
+      rel.grief *= 0.5; back.grief *= 0.5;
+      count.weddings++;
+      return true;
+    }
+    function whose(p, f) {
+      const l = byId.get(f.leader);
+      return p.id === f.leader ? "the leader of " + f.name : l && kin(p, l) ? "of the family of the leader of " + f.name : "of one of the great families of " + f.name;
+    }
     /* Would o's leader take an alliance or a trade deal f offers? */
     function wouldAlly(o, f) { const ol = byId.get(o.leader), r = o.rel[f.id]; return !r.war && !r.pays && !f.rel[o.id].pays && r.op > 0.25 - (ol ? ol.warm - 0.5 : 0) * 0.3; }
-    function wouldTrade(o, f) { const ol = byId.get(o.leader), r = o.rel[f.id]; return !shared && !r.war && r.op > 0.1 - (ol ? ol.honest - 0.5 : 0) * 0.2; }
+    /* A trade deal is worth making only where there is trade to free of tax (TODO 14d): sales across
+       the border both ways: each side's people selling in the other's villages half a day's food
+       for each of the smaller side's people, in the running sum of sales (about the last hundred
+       days; a deal lapses when it falls under half that). Before, liking was enough and nine in ten
+       neighbours at peace had one; with a fixed 40 days' food, nearly as many still did (240 of 271
+       pair-months, six default worlds); with a day's food a head counted whichever way it went,
+       130 of 257. */
+    function tradeMin(f, o) { return Math.max(10, Math.min(f.pop, o.pop) * 0.5); }
+    function wouldTrade(o, f) { const ol = byId.get(o.leader), r = o.rel[f.id]; return !shared && !r.war && twoWay(f, o) >= tradeMin(f, o) && r.op > 0.1 - (ol ? ol.honest - 0.5 : 0) * 0.2; }
     /* Each day, one faction's dealings with each of the others. */
     function deal(f, o, lead, b) {
       const rel = f.rel[o.id], back = o.rel[f.id], at = b.pair ? b.pair[0] : { x: 0, y: 0 };
@@ -5910,9 +5988,9 @@
         const to = b.pair ? b.pair[1] : villages.find(v => v.alive && v.f === o.id);
         if (to) {
           let food = 0;
-          for (const v of villages) if (v.alive && v.f === f.id) { const x = v.food * 0.003; v.food -= x; food += x; }
+          for (const v of villages) if (v.alive && v.f === f.id) { const x = v.food * rel.rate; v.food -= x; food += x; }
           to.food += food; count.tribute += food;
-          if (!shared) { const c = f.treasury * 0.01; f.treasury -= c; o.treasury += c; }
+          if (!shared) { const c = f.treasury * rel.rate * 3.3; f.treasury -= c; o.treasury += c; }   // the treasury at the rate it always paid against the stores
         }
         rel.grief = clamp(rel.grief + 0.004, 0, 3); rel.op = clamp(rel.op - 0.002, -1, 1);
         const dare = (ruling(lead, "temper", f) + lead.bold) / 2;
@@ -5942,7 +6020,9 @@
          each other; honest leaders keep them. */
       if (rel.trade) {
         if (rel.op < -0.05 || back.op < -0.05) { rel.trade = back.trade = false; note("trade", f.name + " and " + o.name + " have ended their trade deal.", 1.5, at.x, at.y, f.id); }
-      } else if (!shared && !o.yours && b.d < 34 && rel.op > 0.15 && wouldTrade(o, f) && R() < 0.02 * (0.5 + lead.honest)) {
+        /* Trade dried up: the deal lapses, unless it is an old friendship's (TODO 14d). */
+        else if (!shared && rel.bond < 0.5 && twoWay(f, o) < tradeMin(f, o) * 0.5) { rel.trade = back.trade = false; note("trade", "The trade deal between " + f.name + " and " + o.name + " has lapsed: little passes between them now.", 1, at.x, at.y, f.id); }
+      } else if (!shared && !o.yours && b.d < 34 && rel.op > 0.15 && twoWay(f, o) >= tradeMin(f, o) && wouldTrade(o, f) && R() < 0.02 * (0.5 + lead.honest)) {
         rel.trade = back.trade = true; count.deals++;
         note("trade", f.name + " and " + o.name + " have agreed to trade free of tax.", 2, at.x, at.y, f.id);
       }
@@ -6034,7 +6114,14 @@
         /* What they think of each other drifts toward the old bond, not to nothing; the bond
            fades over a generation (half in about ten years). */
         rel.bond *= 0.9998; rel.op += (rel.bond * 0.6 - rel.op) * 0.005;
+        rel.sold *= 0.99;   // TODO 14d: the last seventy days' trade, about
         const b = border(f, o);
+        /* A marriage between the two leaders' families ends with a death or a parting (TODO 14d). */
+        if (rel.wed && !bound(rel)) {
+          rel.wed = back.wed = null; count.wedEnded++;
+          if (b.pair) note("wed", "The marriage that bound " + f.name + " and " + o.name + " is over.", 2, b.pair[0].x, b.pair[0].y, f.id);
+        }
+        const tied = bound(rel);
         deal(f, o, lead, b);
         /* Whoever is ruled from the page makes war and peace from the page. */
         if (f.yours) { if (rel.war && b.pair) f.target[o.id] = b.pair[1].id; continue; }
@@ -6051,6 +6138,21 @@
              held kept patient leaders at war as long as hot-tempered ones (test/dealings.test.mjs). */
           const mark = 0.35 + lead.bold * 0.5 + S.aggression * 0.3 + (ruling(lead, "temper", f) - 0.5) * 0.4
                        - (culpable(lead, rel) ? 0 : 0.3) + heldAgainst(lead, o) * 0.1 + Math.max(0, folk(f, o)) * (f.rule === "elected" ? 0.1 : 0.05);
+          /* Nearly weary enough: a warm leader may offer a marriage to end it, which the other side
+             takes a little short of the weariness it would want for a plain peace (TODO 14d). */
+          if (weary > mark - 0.15 && weary <= mark && !o.yours && R() < 0.02 * (0.3 + lead.warm)) {
+            const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3;
+            const olead = byId.get(o.leader);
+            if (theirs > 0.05 + (olead ? olead.bold : 0.5) * 0.2 - (culpable(olead, back) ? 0 : 0.1) && wed(f, o)) {
+              if (lead.id !== rel.began || (olead && olead.id !== back.began)) count.peaceNew++;
+              warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t;
+              rel.grief *= 0.4; back.grief *= 0.4;
+              count.peaces++;
+              const a = byId.get(rel.wed[0]), c = byId.get(rel.wed[1]);
+              note("wed", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead, sealed by a marriage: " + a.name + ", " + whose(a, f) + ", to " + c.name + ", " + whose(c, o) + ".", 4, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
+              continue;
+            }
+          }
           if (weary > mark) {
             const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3;
             const olead = byId.get(o.leader);
@@ -6061,8 +6163,13 @@
               count.peaces++;
               /* The side that gave in pays, when the other was winning and is not led by a patient sort. */
               const gave = theirs <= 0.15 + (olead ? olead.bold : 0.5) * 0.2;
-              if (gave && olead && back.dead < rel.dead && R() > ruling(olead, "patient", o)) { rel.pays = true; count.tributes++; }
-              note("peace", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead" + (rel.pays ? "; " + f.name + " is to pay tribute" : "") + ".", 3.5, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
+              let share = 0;
+              if (gave && olead && back.dead < rel.dead && R() > ruling(olead, "patient", o)) {
+                /* How lopsided it was (TODO 14d): their strength against ours, and the dead each side lost. */
+                share = tributeShare(might(o, f) / Math.max(1, might(f, o)) * Math.sqrt((rel.dead + 1) / (back.dead + 1)));
+                rel.pays = true; rel.rate = dailyRate(share); count.tributes++;
+              }
+              note("peace", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead" + (rel.pays ? "; " + f.name + " is to pay " + shareWords(share) + " of its stores a year" : "") + ".", 3.5, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
             }
           }
         /* Rivals may take up arms again eighteen months after a peace, and from
@@ -6086,11 +6193,24 @@
              What the people hold weighs on how a war ends, not on whether it starts.) */
           let want = (rel.grief + land + covet + Math.max(0, -rel.op) * 0.6 + mind) * (0.35 + lead.bold) * (0.25 + S.aggression * 1.5) * (0.6 + hot * 0.8) * (1.2 - calm * 0.4);
           if (back.pays) want *= 0.3;   // tribute coming in is what a war would have taken
+          if (tied) want *= 0.5;        // family on the other side (TODO 14d): less, never nothing
           if (rel.ally) want = 0;       // allies do not fight; the alliance ends first
           const mine = might(f, o), theirs = might(o, f);
           const why = rel.grief > land && rel.grief > covet && rel.grief > 0.3 ? (rel.bond < -0.3 ? "over an old feud" : "over old wrongs") : covet > land && covet > 0.3 ? "for its wealth" : land > 0.3 ? "for land" : mind > 0.3 ? "over what its leader holds against them" : "out of plain dislike";
           /* Short of war: a leader who wants something of a weaker neighbour may demand tribute
              first, the more so the more patient they are; a hot temper goes straight to war. */
+          /* On the day a war would be chosen, a leader more patient and warm than hot-tempered may offer a
+             marriage instead (TODO 14d): never one of middling nature, up to six times in ten the most
+             patient and warmest. The other side's leader takes it as they are warm and the blood less bad;
+             refused, it is war. */
+          if (want > 0.8 && mine > theirs * 0.7 && !tied && !o.yours && rel.op < 0 && R() < clamp(calm + lead.warm - hot - 0.5, 0, 0.6)) {
+            const olead = byId.get(o.leader);
+            if (olead && olead.warm + R() * 0.6 > 0.6 + Math.max(0, -back.op) * 0.3 && wed(f, o)) {
+              const a = byId.get(rel.wed[0]), c = byId.get(rel.wed[1]);
+              note("wed", a.name + ", " + whose(a, f) + ", has married " + c.name + ", " + whose(c, o) + ", to make peace between them.", 3, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
+              continue;
+            }
+          }
           if (want > 0.5 && !back.pays && t - rel.askedAt > 120 * DAY_HOURS && mine > theirs * 1.2 && R() < 0.1 + calm * 0.5 - hot * 0.1) {
             demand(f, o, why === "out of plain dislike" ? "" : why);
           } else if (want > 0.8 && mine > theirs * 0.7 && R() < 0.5) {
@@ -6458,6 +6578,8 @@
       /* After `advance(seconds, true)`: put passed-over people's counts right before reading them. */
       settle: openUp,
       dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar, heldAgainst: heldAgainst, standing: standing,
+      /* TODO 14d: tribute's share of a year's stores for how many times stronger the taker is; a marriage between two factions' leading families, and whether it holds. */
+      tributeShare: tributeShare, wed: (a, b) => wed(factions[a], factions[b]), bound: bound,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },

@@ -1383,6 +1383,61 @@ Research notes (2026-11-19):
   keeps half of the soldiers who took it as its garrison. Cost: thirty minds read once a day per
   pair of neighbouring factions; nothing per person.
 
+### [x] 14d. Peace and dealings left from item 13
+
+**Done 2026-11-19.** Peace by marriage between leading families (the richest of the faction when the
+leader has nobody free, after Ric: leaders are well off and people married within their standing):
+offered instead of a war by a patient, warm leader, or to end a war nearly weary enough; it holds
+while the couple do. Twelve worlds of two old enemies, two years: three marriages, one ending a war,
+one keeping the peace two years, one failed within four months. Trade deals need sales both ways
+across the border: in force 93% → 34% of neighbouring pair-months at peace (six default worlds, a
+year). Tribute agreed by how lopsided the sides are, 5% to 45% of a year's stores (was a flat two
+thirds). `test/treaties.test.mjs`. **Left out:** a page button to offer a marriage; everyday
+marriages by wealth (new item 15b).
+
+**Now** (2026-11-19): peace comes from weariness or a new leader, never a marriage; a trade deal
+forms between any two neighbours at peace who like each other well enough (six default worlds, a
+year: one in force for 250 of 268 pair-months of neighbours at peace, 93%); tribute is always
+0.3% of the stores and 1% of the treasury a day, about two thirds of the stores a year, whoever
+pays whom.
+**Do:** peace by marriage between leaders' families, and whether it holds; trade deals that need
+real trade across the border; tribute an amount the two sides agree, weighed against a war.
+**Done when:** peace by marriage happens in some worlds and sometimes fails; under half of
+neighbouring pairs at peace have a trade deal in a default world; tribute differs with how
+lopsided the two sides are.
+**Ric decides:** nothing up front (item 14).
+**Budget:** default.
+
+Research notes (2026-11-19):
+- **Marriage and peace.** Benzell and Cooke, "A Network of Thrones: Kinship and Conflict in Europe,
+  1495–1918" (AEJ: Applied 2021): the death of a relative two rulers shared, for reasons that had
+  nothing to do with politics, was followed by more and longer wars; growing kinship explains a
+  good part of the fall in European war after 1800. They take Erasmus's point that a marriage can
+  make a peace but not make it last. https://www.aeaweb.org/research/familial-ties-network-thrones ;
+  https://econpapers.repec.org/RePEc:aea:aejapp:v:13:y:2021:i:3:p:102-33 . Cases: the Treaty of
+  Troyes (1420, Henry V and Catherine of Valois); the Treaty of Perpetual Peace (1502, James IV and
+  Margaret Tudor), broken at Flodden in 1513.
+- **What tribute is worth.** Fearon, "Rationalist Explanations for War" (International
+  Organization 1995): because a war costs both sides, there is a range of settlements both prefer
+  to fighting, set by each side's chance of winning less its costs.
+  https://en.wikipedia.org/wiki/Bargaining_model_of_war ; https://www.doi.org/10.1017/S0020818300033324
+- **Treaties follow trade.** The Hanse's treaties mostly confirmed or restored privileges its
+  merchants already used (Cologne in England 1157, Novgorod 1191/2; Stralsund 1370 and Utrecht 1474
+  enforced and restored them). https://www.historytoday.com/archive/feature/hanseatic-league-europes-first-common-market ;
+  https://wikipedia.com/wiki/Treaty_of_Utrecht_(1474)
+- **Chosen, and its cost.** Marriage: a leader's youngest free grown child (else a brother or
+  sister, else the leader) marries the other leader's; the one who is not a leader moves to the
+  other side. Offered to end a war that is nearly weary enough for peace, or between two peoples
+  with bad blood by a patient, warm leader; it holds while the two are alive and together, and
+  while it holds a leader's wish for war against the other side counts half. A war begun while it
+  holds is a marriage that failed. Trade: every sale by one faction's people in another's village
+  adds to a running sum both sides keep (it falls 1% a day); a deal needs it to reach a day's food
+  for each of the smaller side's people, and lapses below half that. Tribute: the side taking it
+  is r times as strong (and after a war, the dead each lost); it wins a war with chance
+  r / (1 + r) (Tullock's contest), and the two agree on that less an even half, as a share of a
+  year's stores (5% to 45%), paid a little each day. Cost: a sum per sale, and a search through the
+  people only on the day a marriage is made.
+
 ### [ ] 14e. Walls, sieges and raids
 
 **Now:** a village defends itself with a quarter of its grown-ups and any soldiers near; an army
@@ -1450,6 +1505,27 @@ different speeds; knocking down a tower slows the news in its area and nowhere e
 - Moving from one era to the next by itself: "A setting, on or off" — the visitor chooses.
 - Different groups in different eras in the same world (one side guns, the other spears): "Yes".
 - Order: go straight to 15 although 12b, 14b, 14c and 14d are unticked: "Yes, do 15".
+
+Research notes:
+
+### [ ] 15b. Who marries whom
+
+Added 2026-11-19 at Ric's word, while 14d was built: "generally leaders are well off dont people
+who marry marry in similarry pay ranges? most the time in earlier times and the money was spread
+unevenly in lots of areas i mean there was tons of factors that play into who marrys who".
+**Now:** two single grown-ups who are not kin and like each other enough may pair up when they
+talk, whatever each owns, whatever their families think, and whichever side of a border they are
+on. 14d's marriages for peace take a leader's own family first, then one of the faction's richest.
+**Do:** marriage that follows what it followed in the time: standing and wealth (marrying within
+one's own kind), what the families want and what a match brings them (land, a dowry), the parish or
+village (most married within a few miles), faith and people, age at marriage by era (late in
+north-west Europe, early elsewhere: Hajnal), and remarriage after a death.
+**Research first:** homogamy by wealth and class in pre-industrial records (parish registers,
+marriage contracts); dowry and bride-price; how far people went to find a spouse; who arranged it.
+**Ric decides:** how much families arrange it against the couple's own liking; whether it differs by era (item 15).
+**Done when:** in a world where wealth is uneven, the rich mostly marry the rich and the poor the
+poor, measurably more than by chance, and the leading families marry each other.
+**Budget:** default.
 
 Research notes:
 

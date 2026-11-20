@@ -1857,6 +1857,50 @@ over a year, so even before this most ended under somebody new (16 of 18); now a
 one over twenty times as readily as the one who began it. Cost: thirty minds read once a day for
 each pair of neighbouring factions; the bench is unchanged. Test: `test/war.test.mjs`, "Why wars end".
 
+### Peace by marriage, trade deals and tribute (2026-11-19)
+
+TODO item 14d, item 13's leftovers. Before this, peace came from weariness or a new leader and never
+from a marriage; a trade deal formed between nearly any two neighbours at peace who liked each other
+(in force for 93% of neighbouring pairs at peace, six default worlds, a year); and tribute was a
+flat 0.3% of the stores and 1% of the treasury a day, about two thirds of the stores a year,
+whoever paid whom.
+
+- **Peace by marriage.** On the day a leader would choose war, one more patient and warm than
+  hot-tempered may offer a marriage instead (never a leader of middling nature, up to six times in
+  ten the most patient and warmest); and a leader whose war is nearly weary enough for peace may end
+  it with one. The other side's leader takes it as they are warm and the bad blood is less. Who
+  marries: the leader's youngest free grown child, else a brother or sister, else the leader, else
+  the richest free grown-up of the faction, "one of its great families" (Ric: leaders are well off,
+  and people married within their standing). The one who is not a leader goes to live on the other
+  side. The tie holds while the two are alive and together; while it holds, a leader's wish for war
+  against the other side counts half, not nothing; a death or a parting ends it, and it is told. A
+  war begun while it holds is a marriage that failed. Kinship between rulers made wars rarer and
+  shorter, and the death of the relative who tied them made them likelier again (Benzell and Cooke,
+  "A Network of Thrones", AEJ: Applied 2021, https://www.aeaweb.org/research/familial-ties-network-thrones );
+  Erasmus: a marriage can make a peace but not make it last. The Treaty of Perpetual Peace (1502)
+  married James IV to Margaret Tudor and did not prevent Flodden (1513).
+- **Trade deals need trade, both ways.** Every sale by one faction's people in another's village
+  (food sold door to door or to the store, goods, wood, stone) adds to a running sum that falls by
+  1% a day (about the last hundred days). A deal needs each side's people to have sold half a day's
+  food for each of the smaller side's people in the other's villages, and lapses below half that,
+  unless the two are old friends. The Hanse's treaties mostly confirmed privileges its merchants
+  already used (https://www.historytoday.com/archive/feature/hanseatic-league-europes-first-common-market).
+- **Tribute is an agreed amount.** The side taking it is r times as strong (its soldiers and a
+  share of its grown-ups, and half its allies'; after a war, times the square root of how many more
+  the payer lost). It would win a war with chance r / (1 + r) (a Tullock contest), and the two agree
+  on that less an even half, as a share of a year's stores between 5% and 45%: twice as strong, a
+  sixth; three times, a quarter. It is paid a little each day, from that day's stores, and from the
+  treasury at the same rate as before against the stores. A settlement both sides prefer to the cost
+  of a war: Fearon, "Rationalist Explanations for War" (1995), https://www.doi.org/10.1017/S0020818300033324 .
+
+Measured: trade deals in force for 92 of 273 neighbouring pair-months at peace in six default
+worlds over a year (34%, from 93%); in twelve worlds of two old enemies over two years, three
+marriages: one ended a year's war, one kept two peoples from war for the two years, and one
+failed within four months. Leaders have no grown children at the start, so the first marriages
+come from the great families. Cost: a sum per sale; a search through the people only on the day a
+marriage is made. Not done: the page has no button to offer a marriage; everyday marriages still
+ignore wealth (TODO 15b).
+
 ### What a war leaves (2026-11-19)
 
 TODO item 14b. Ric: "i want the aftermath of war to be accurate too." Before this the dead already

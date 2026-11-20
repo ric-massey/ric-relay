@@ -864,7 +864,9 @@ when it is built.
 - [x] After: the dead missing from households, widows and orphans, burned places, lost
   harvests, people fleeing, land taken, grudges that last. (2026-11-19, TODO 14b: crops spoiled,
   houses burned, places sacked, people fleeing a siege and coming home; the rest was there.)
-- [ ] Peace: a new leader, a treaty, tribute, a marriage, and whether it holds.
+- [x] Peace: a new leader, a treaty, tribute, a marriage, and whether it holds. (2026-11-19, TODO 14d:
+  peace by marriage between leading families, which holds while the couple do; tribute agreed for
+  how lopsided the two sides are; trade deals only where trade goes both ways.)
 
 **9. Leaders and factions**
 - Now: chiefs, votes, the rich ruling, tax, relief, breakaways, the visitor ruling a faction.

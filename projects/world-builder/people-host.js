@@ -326,7 +326,7 @@
       } else if (tab === "factions") {
         out.factions = w.factions.map(f => {
           const lead = byId.get(f.leader), rel = {};
-          for (const o of w.factions) if (o !== f && f.rel[o.id]) { const r = f.rel[o.id], b = o.rel[f.id] || {}; rel[o.id] = { war: !!r.war, op: r.op, ally: !!r.ally, trade: !!r.trade, pays: !!r.pays, gets: !!b.pays }; }
+          for (const o of w.factions) if (o !== f && f.rel[o.id]) { const r = f.rel[o.id], b = o.rel[f.id] || {}; rel[o.id] = { war: !!r.war, op: r.op, ally: !!r.ally, trade: !!r.trade, pays: !!r.pays, gets: !!b.pays, wed: !!r.wed }; }
           return { id: f.id, name: f.name, colour: f.colour, alive: f.alive, pop: f.pop, soldiers: f.soldiers, rule: f.rule, tax: f.tax, loyal: f.loyal, land: f.land,
                    treasury: f.treasury, yours: f.yours ? { tax: f.yours.tax, army: f.yours.army, relief: f.yours.relief, land: f.yours.land } : null,
                    lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
@@ -409,7 +409,7 @@
             : r === "ally" ? "Allied with " + o.name + "." : r === "unallied" ? "The alliance with " + o.name + " is over."
             : r === "refused-ally" ? o.name + " refused. They ally only with a people they think well of."
             : r === "trade" ? "Trading free of tax with " + o.name + "." : r === "untraded" ? "The trade deal with " + o.name + " is over."
-            : r === "refused-trade" ? o.name + " refused. They trade free of tax only with a people they do not dislike."
+            : r === "refused-trade" ? o.name + " refused. They make a trade deal only where there is trade between you already, and with a people they do not dislike."
             : r === "paid" ? o.name + " will pay tribute." : r === "refused" && what === "tribute" ? o.name + " refused to pay, and will not forget being asked."
             : r === "asked" ? "You asked them within the month." : r === "stopped" ? "No more tribute to " + o.name + ". They will not like it." : r;
       } else if (what === "set") w.set(a[0], a[1]);
