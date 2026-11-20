@@ -1541,6 +1541,73 @@ different speeds; knocking down a tower slows the news in its area and nowhere e
 
 Research notes:
 
+*Researched 2026-11-20 with 15b and 15c, at Ric's word ("do research please for all of those. To
+see what was the historical and correct way"). Nothing here is built; the approach waits on Ric.*
+
+**How other history simulations did eras, and where it went wrong.** Civilization's tech tree
+is the usual way, and the usual complaint about it is that it is deterministic: one fixed
+sequence everybody walks through, the same for every people, and technology driving society
+rather than the other way round ([Ghys, "Technology Trees: Freedom and Determinism in Historical
+Strategy Games", Game Studies 12(1), 2012](https://gamestudies.org/1201/articles/tuur_ghys);
+[Slocombe, Liverpool](https://livrepository.liverpool.ac.uk/3027693/)). That is exactly what Ric
+said not to do ("it snot just eras there should be different ways in each era"). The academic
+model that worked is the other way: Turchin, Currie, Turner and Gavrilets ran an agent-based
+model over the real Old World in which military technology (horse warfare) spread outward from
+where it began, and the spread of large states it predicted matched the record, 65% of the
+variance, 1500 BCE–1500 CE ([PNAS 110(41), 2013](https://pmc.ncbi.nlm.nih.gov/articles/PMC3799307)).
+So: **an era is per people, not per world, and a technique spreads by contact** — trade, war,
+marriage, people moving — when the "move on by itself" setting (Ric, 2026-11-19) is on.
+
+**The numbers an era sets.** What was found, and how sure:
+- *How many one farmer feeds.* US: 19 in 1940, 73 in 1970, about 166 now (American Farm Bureau
+  Federation's figure, worked from farm output, not one farmer's
+  — [fb.org fast facts](https://fb.org/newsroom/fast-facts),
+  [Statista series since 1940](https://statista.com/statistics/207339/number-of-persons-fed-per-farmer-in-the-us-since-1940)).
+  Ancient and medieval figures still to be sourced from a farming-share series before building.
+- *Travel and news.* Roman travel is modelled by Stanford's ORBIS: fourteen ways of going by
+  road, from walking to relays of horses, plus river boats and two kinds of ship, with cost —
+  not distance — deciding who is connected ([ORBIS](https://isaw.nyu.edu/exhibitions/space/orbis.html);
+  [Scheidel, SSRN 2609654](https://papers.ssrn.com/abstract=2609654)). Sixteenth century: a
+  courier from Ragusa to Constantinople, about 1,200 km, could take up to thirty days; Braudel's
+  maps of news reaching Venice are drawn in one-week bands
+  ([Luebke, "A two-miles-per-hour world"](https://pages.uoregon.edu/dluebke/301ModernEurope/Space-Time%2016thC.html)).
+  Industrial: rail and telegraph (figures to source). Modern: a phone works within a tower's
+  reach — GSM's own timing limits a cell to 34.9 km, 120 km in extended-range cells at half the
+  capacity; what a tower really covers depends on ground and how many use it
+  ([Timing advance](https://en.wikipedia.org/wiki/Timing_advance)). That is the "tower" Ric asked
+  for: a thing with a reach, which can be built and knocked down.
+- *Weapons.* Trevor Dupuy's Theoretical Lethality Index scores a weapon by rate of fire, range,
+  accuracy and effect: a 1903 rifle 495, a Maxim gun 3,463, a WWII .50 machine gun 4,973 — 115
+  times a flintlock. Armies spread out as weapons got deadlier, so losses a day rose far more
+  slowly than the index (his Operational Lethality Index divides by that spreading out)
+  ([Dupuy Institute](https://dupuyinstitute.org/2018/05/07/scoring-weapons-and-aggregation-in-trevor-dupuys-combat-models/);
+  [Volokh, the TLI table](https://reason.com/volokh/2022/11/01/the-theoretical-lethality-index-is-useful-for-military-history-but-not-for-gun-control-policy/)).
+  An era sets both numbers, never deadliness alone. Sword and bow values to read from Dupuy's
+  *The Evolution of Weapons and Warfare* (1980) before building.
+- *How many under arms.* Modern peacetime: about 1% or less (US late 1980s, 2.25 million); world
+  wars at their peak about 10% of Britain's whole population; the "nation in arms" after the
+  French Revolution raised the share less than usually thought (13 great powers, 1600–2000)
+  ([Our World in Data](https://ourworldindata.org/military-long-run-perspective);
+  [unamur paper](https://www.unamur.be/en/eco/eeco/pdf/technology.pdf)). 14e's `WAR_ERA`
+  (season, standing share, campaign share, wall worth, wall hold, wall days) is already the
+  shape this takes; Roman and medieval shares still to source.
+- *Buildings and their shapes* (Ric, 2026-11-20). Round timber-and-thatch houses were the
+  typical building of pre-Roman Britain; longhouses held several generations and were lengthened
+  as the family grew; Rome laid towns out on a grid of blocks (*insulae*) with the atrium house
+  (*domus*) and blocks of flats; the late medieval north built timber-framed hall houses
+  ([English Heritage](https://www.english-heritage.org.uk/learn/story-of-england/romans/architecture/);
+  [Britannica, house](https://www.britannica.com/topic/house-dwelling);
+  [Longhouse](https://en.wikipedia.org/wiki/Longhouse)). Industrial terraces and modern blocks
+  still to source. A shape belongs to a people as well as an era: Iron Age Britain built round
+  while Rome built square in the same centuries.
+
+**Approach proposed (not agreed).** One record per faction, its *ways*: the era's numbers (what
+`WAR_ERA` holds now, plus food, travel, news, weapons, medicine, building) and its customs
+(government — 15c; marriage — 15b; building shape). The present world is that record filled with
+today's values, so a world nobody changes is byte for byte as it was. Towers and cars are things
+on the land, built and owned like houses and carts. Cost: one lookup per faction where a
+constant is read now; nothing per person.
+
 ### [ ] 15b. Who marries whom
 
 Added 2026-11-19 at Ric's word, while 14d was built: "generally leaders are well off dont people
@@ -1562,6 +1629,56 @@ poor, measurably more than by chance, and the leading families marry each other.
 **Budget:** default.
 
 Research notes:
+
+*Researched 2026-11-20 (see item 15's note). Nothing built; the approach waits on Ric.*
+
+- **Age at marriage, and where the couple lives.** North-west of a line from Trieste to St
+  Petersburg, women married at 24 or more and men at about 26, spouses were close in age, 10% or
+  more never married and a new couple set up its own household; east and south of it most women
+  were married by 25, nearly everybody married, and the bride joined her husband's family
+  ([Western European marriage pattern](https://en.wikipedia.org/wiki/Western_European_marriage_pattern);
+  [Levine, Encyclopedia.com](https://www.encyclopedia.com/international/encyclopedias-almanacs-transcripts-and-maps/european-marriage-pattern)).
+  The engine already follows the north-western way (a couple moves out — comment at
+  `people.js` ~1364); it is one of two customs, not the rule.
+- **Who chooses.** In 190 foraging societies almost all children were born in marriage and
+  marriage was arranged by parents and close kin; about 70% (69.9%) were parental arrangements,
+  and parents controlled daughters' marriages more than sons'
+  ([Apostolou, Evolution and Human Behavior 28(6), 2007](https://hraf.yale.edu/ehc/documents/22)).
+  So the couple's own liking deciding alone, as now, is the rare case in history, not the usual.
+- **What passes between the families.** In Murdock's Ethnographic Atlas of 1,167 pre-industrial
+  societies, bride-price (the groom's side pays) is in about two thirds and dowry (the bride
+  brings property) in under 4% — but dowry was the custom of the stratified plough societies of
+  Europe and Asia, where most people lived. Bride-price goes with more than one wife and with
+  divorce ([Anderson, "The Economics of Dowry and Brideprice", JEP 21(4), 2007](https://ideas.repec.org/a/aea/jecper/v21y2007i4p151-174.html)).
+- **Like marries like.** Over 1.7 million English marriage records 1837–2021 the underlying
+  correlation of groom's and bride's status is about 0.8, unchanged in 180 years, and evidence
+  takes it back to 1754 ([Clark and Cummins, LSE working paper 337, 2022](https://www.lse.ac.uk/asset-library/information/wp337.pdf)).
+  The comparative history of marrying within one's class is van Leeuwen and Maas
+  ([IRSH 50 supplement 13, 2005](https://research-portal.uu.nl/en/publications/endogamy-and-social-class-in-history-an-overview/)).
+  This answers Ric's "dont people who marry marry in similarry pay ranges?": yes, strongly.
+- **How far.** Parish-register studies find marriages mostly within the parish or the next few;
+  readers who could sign went further ([Durham thesis](https://etheses.durham.ac.uk/id/eprint/7130);
+  [Shropshire 1754–1810](https://qmro.qmul.ac.uk/xmlui/handle/123456789/1673)). A figure in miles
+  to read from Millard, *Local Population Studies* 1982, before building.
+- **Cousins and more than one wife.** About 85% of recorded societies allowed a man more than one
+  wife, though most men in them had one ([Henrich, Boyd and Richerson, "The puzzle of monogamous
+  marriage", 2012](https://pmc.ncbi.nlm.nih.gov/articles/PMC3260845)). Cousin marriage was common
+  until the Western Church forbade it; how long a people lived under that ban predicts how rare
+  it is today ([Schulz et al., Science 366, 2019](https://coevolution.fas.harvard.edu/sites/projects.iq.harvard.edu/files/culture_cognition_coevol_lab/files/sciencefull.pdf)).
+  Both are customs that differ between peoples of the same age — Ric's "as for marrage same thing".
+- **Marrying again.** In sixteenth-century England a quarter to under a third of those marrying
+  were marrying again; by the nineteenth about a tenth ([Wrigley and Schofield via Boulton,
+  Continuity and Change](https://resolve.cambridge.org/core/journals/continuity-and-change/article/london-widowhood-revisited-the-decline-of-female-remarriage-in-the-seventeenth-and-early-eighteenth-centuries/A3B2E55B71FD085349C9F3D865EFB987)).
+
+**Approach proposed (not agreed).** Each people's marriage customs, on its *ways* record (item 15):
+who decides (a weight from the couple's liking to the families' choice), what passes (nothing,
+bride-price, dowry), the age, where the couple lives (own house, his family, hers), cousins
+allowed or not, one spouse or more, and how far a match is looked for. A match is weighed as liking
+plus the families' weight times what it brings them (wealth and standing alike, the payment, an
+alliance) less the distance. Families look among the singles their own village and the next few
+hold, a list already kept up (item 2), so it costs a short list a day per family with somebody
+of age, not everybody against everybody. **Measured by** the correlation of spouses' household
+wealth against the same people paired at random, and how often the leading families marry each other.
 
 ### [ ] 15c. Government, deeper
 
@@ -1588,6 +1705,89 @@ different things.
 **Budget:** default.
 
 Research notes:
+
+*Researched 2026-11-20 (see item 15's note). Nothing built; the approach waits on Ric.*
+
+**The range of ways people ruled — tribes as much as states (Ric: "tribes even had different ways").**
+- *No ruler at all, held down on purpose.* Among egalitarian foragers and others, a headman leads
+  by persuasion, and anybody who tries to command is met by criticism, ridicule, disobedience,
+  shunning and, in the end, killing — Boehm's "reverse dominance hierarchy"
+  ([Boehm, Current Anthropology 1993](https://www.gwern.net/doc/sociology/intrasexual-aggression/1993-boehm.pdf)).
+- *A big man.* In Melanesia standing was earned, not inherited: a man gathered a following by
+  giving and feasting, and lost it when he could not; in Polynesia, by contrast, rank was
+  inherited, chiefs and sub-chiefs made a pyramid, and polities of two or three thousand were
+  ordinary ([Sahlins, "Poor Man, Rich Man, Big-Man, Chief", CSSH 5(3), 1963](https://www.cambridge.org/core/product/identifier/S0010417500001729/type/journal_article)).
+- *Kin groups and a peacemaker, no head.* The Nuer had no ruler; lineages joined against the more
+  distant and split against the nearer, and a killing was settled through a leopard-skin chief,
+  a neutral man with no power to command
+  ([Evans-Pritchard, *The Nuer*, 1940](https://is.muni.cz/el/phil/podzim2023/CMAa07/um/Evans_Pritchard_E_E_1940_The_Nuer.pdf?lang=en);
+  [OpenStax, acephalous societies](https://openstax.org/books/introduction-anthropology/pages/8-2-acephalous-societies-bands-and-tribes)).
+  The book also has an age-set system: men of one age grade act together.
+- *Chiefs and an assembly.* Among the Germans Tacitus described, chiefs decided small matters and
+  all the free men decided great ones, having heard the chiefs first; the assembly met at new or
+  full moon, a king or chief was heard for his age, birth, war record or eloquence, assent was
+  the clash of weapons, and the assembly also tried crimes
+  ([Germania 11](https://facultystaff.richmond.edu/~wstevens/history331texts/barbarians.html)).
+- *A council whose members can be recalled.* The Haudenosaunee Grand Council: fifty chiefs, each
+  chosen by his clan's mother and removable by her ("dehorned") if he did not serve his people
+  ([Haudenosaunee Confederacy](https://www.haudenosauneeconfederacy.com/chiefs.html)).
+- *A king who must carry the great men.* Magna Carta clause 12: no scutage or aid without "the
+  common counsel of the kingdom", save three named cases; clause 14 said how that council was
+  summoned, forty days' notice ([Magna Carta Project](https://magnacarta.cmp.uea.ac.uk/read/magna_carta_1215/Clause_12)).
+  More generally North, Wallis and Weingast: most states in history are a coalition of the
+  powerful who share out land, offices and monopolies, and keep the peace with each other only
+  while staying in pays better than fighting
+  ([*Violence and Social Orders*, NBER w12795](https://www.nber.org/papers/w12795.pdf)).
+- *Salaried officials.* The Western Han had about 120,000 officials for about 58 million people,
+  one for every 480 or so, before the clerks under them
+  ([Government of the Han](https://en.wikipedia.org/wiki/Government_of_the_Han_dynasty)).
+  Across 414 societies over 10,000 years, Seshat codes whether a polity has professional
+  soldiers, officers, priests, bureaucrats and judges, courts and examinations; these arrive
+  together with size, one dimension explaining about three quarters of the variation
+  ([Turchin et al., PNAS 115(2), 2018](https://pmc.ncbi.nlm.nih.gov/articles/PMC5777031)).
+  That is the link to eras: which offices a people can have depends on how big and how settled it is.
+- *Collecting the tax.* A state could pay collectors a wage, a share, or sell the right: the tax
+  farmer (Rome's *publicani*, the Ottoman *iltizam*) paid a bid and kept whatever he collected
+  above it, which is why tax farming was hard on the taxed
+  ([Cosgel and Miceli, "Tax collection in history"](https://pages.ucsd.edu/~bslantchev/courses/ps143a/readings/Cosgel%20&%20Miceli%20-%20Tax%20Collection%20in%20History.pdf)).
+
+**What makes who holds office change what a faction does — two models.**
+- *Selectorate theory*: a leader keeps power by keeping a "winning coalition". With few to please,
+  spending goes to them (land, office, gifts); with many, it goes to things everyone gets (relief,
+  walls, roads), because those are cheaper per head
+  ([Bueno de Mesquita et al., *The Logic of Political Survival*, 2003](https://en.wikipedia.org/wiki/Selectorate_theory)).
+- *Blanton and Fargher*: over a worldwide sample, rulers who lived off their own people's taxes
+  had to give them voice, provided more for all and were more limited; rulers with income from
+  outside the people (tribute, plunder, monopolies) did not
+  ([*Collective Action in the Formation of Pre-Modern States*, 2008](https://link.springer.com/book/9780387738765);
+  [2009 article](https://www.socionauki.ru/journal/files/seh/2009_2/collective_action_in_the_evolution_of_pre_modern_states.pdf)).
+
+**Approach proposed (not agreed).** A faction's government becomes three things, all real people
+or records, never a label that decides by itself:
+1. *Who must agree* — the coalition: nobody (one ruler), the great families (the richest
+   households, by name), the elders, a council chosen by kin, or all grown-ups. A decision the
+   leader makes now (tax, war, peace, relief, the army) needs the coalition's leaning, not the
+   leader's nature alone. The coalition's size sets how the treasury is spent between the
+   coalition and everyone (selectorate). That is the item's "Done when": the same leader with a
+   different coalition does measurably different things.
+2. *Offices* — real people with a job: collector, judge, captain, elder, peacemaker. They cost
+   their keep (or the farmed share), and they take a cut by their own honesty (item 10's traits)
+   unless somebody checks them. None in a band; about one per few hundred people in an early state.
+3. *Laws* — records on the faction that outlast a leader: a levy, a wall levy, what a killing or
+   a theft costs (a payment between kin groups in a tribe, a fine or punishment in a state), the
+   land rule. Changed only by whoever the way of ruling says can change them.
+Revolts, elections and breakaways stay as they are, now reading the coalition: a coalition whose
+share shrinks turns on its ruler (North, Wallis and Weingast). Cost: each faction keeps its
+coalition and officials as kept-up lists, a few dozen people; a decision sums over those, not
+over everybody. Within the default budget.
+
+**Order (asked 2026-11-20).** Ric: "should eras be done first? … it is the groundwork for the rest
+no?" Every finding above ties a people's way of ruling to its size and age (Seshat) and to its
+customs (Ric: different peoples in one era). The groundwork all three items share is the
+per-faction *ways* record. Proposed: split 15 into **15a** (the *ways* record and the era numbers
+the engine already has: war, walls, food, travel, news — the world unchanged until a value is
+changed), then **15c** and **15b** on top of it, then **15d** (towers, cars, building shapes,
+medicine, techniques spreading). Waiting on Ric.
 
 ### [ ] 16. Ruins and scavenging
 
