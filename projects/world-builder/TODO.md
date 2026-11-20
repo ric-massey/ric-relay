@@ -1515,7 +1515,7 @@ Research notes:
 ### [ ] 15. Eras, old to modern — split into 15a to 15h
 
 **Split 2026-11-20** (Ric: "Split it"), because 15c and 15b stand on part of it. The order is
-**15a → 15c → 15g → 15b → 15e → 15f → 15h → 15d** (rearranged 2026-11-20, below; faith before marriage at Ric's word). This entry
+**15a → 15c → 15g → 15b → 15e → 15f → 15h → 15i → 15d** (rearranged 2026-11-20, below; faith before marriage at Ric's word; 15i added the same day). This entry
 keeps the research and Ric's answers for all of them; tick it when 15d is ticked.
 
 **Now:** one era, a farming village with hand weapons.
@@ -2284,6 +2284,51 @@ fought with the law for their weapons (15d).
 men arriving one by one; cutting a supply line makes an army withdraw — none of it scripted.
 **Budget:** default (one coarse map per side a day).
 
+### [ ] 15i. People who belong to no one place: foragers, herders who move, and travellers
+
+Added 2026-11-20 (Ric: "aren't their people who aren't part of a place? Depending on the era too? They
+travel?"). Before 15d, which makes "Foragers" one of the starting eras.
+**Now** (read from `people.js`): everybody belongs to a village from birth (`p.home`); a village
+never moves; traders, herders, hunters and soldiers go out and come back. Every grown-up takes a job
+(farmer, crafter, trader, fisher, woodcutter, miner, herder, hunter), farming is always there, there
+is no gathering of wild plants, and every faction has a leader (elected, a chief, or the richest).
+A band where everybody hunts, gathers and shares, with no jobs, no farming, no ruler and no fixed
+place, cannot be made.
+**What history has** (research begun 2026-11-20):
+- *Foragers.* Bands of a few families who moved camp: Binford's "foragers" moved often and stored
+  nothing, his "collectors" moved to a few key places (water) and sent parties out from them; how
+  often a band moves follows how fast it uses up the food round its camp; band size is strikingly
+  steady and changes with the season (Binford 1980, [pdf](https://edisciplinas.usp.br/pluginfile.php/4902707/mod_resource/content/1/Binford.pdf);
+  Kelly, *The Lifeways of Hunter-Gatherers*; Batek, [PNAS 2017](https://pmc.ncbi.nlm.nih.gov/articles/PMC5373393);
+  263 camps, [*American Antiquity* 2018](https://www.cambridge.org/core/journals/american-antiquity/article/scaling-the-size-structure-and-dynamics-of-residentially-mobile-huntergatherer-camps/3A1BC468ED01A37BA8FFCE003D1C7B44)).
+  No ruler, held down on purpose (Boehm, 15c's notes); work by age and sex, not by trade; food shared.
+  *Moves a year and camp sizes to read from Kelly's and Binford's tables before building.*
+- *Herders who move.* Pastoral nomads following grazing by season; about 30–40 million today, a
+  falling share where farms spread; 40% of Mongolia still; long pushed aside by farmers and towns
+  ([Nomadic pastoralism](https://en.wikipedia.org/wiki/Nomadic_pastoralism);
+  [Pastoralism journal 2015](https://core.ac.uk/download/70970062.pdf);
+  [FAO](https://www.fao.org/3/y2647e/y2647e02.htm)).
+- *Travellers inside a settled people.* Pedlars, tinkers and travelling craftsmen, players, pilgrims,
+  harvest workers on the road, and vagrants ([Nomad](https://en.wikipedia.org/wiki/Nomad); "weaver in
+  winter, bricklayer in summer", 15.5's notes). *No share of the population found yet; to find before
+  building.*
+**Proposed (not agreed).** A household's home can be a camp, not a village: a camp moves when the
+food round it runs down (the forager rule) or with the season and the grazing (herders), and takes
+its people, shelters and stores with it. What a people does comes from what it knows (15e: no
+farming known means gathering and hunting) and its customs and stats (15a), never from a switch;
+a forager band gets jobs only if a need makes them (15f) and a ruler only if 15c's needs make one.
+Travellers are people whose living keeps them on the road (pedlar, tinker, harvest hand), and the
+landless who have no place to go (after a famine, a war, 15.5b). Settled and moving peoples meet:
+trade, raids, marriage, and the old quarrel between the farmer's field and the herder's grazing.
+**Ric decides:** (1) which kinds — forager bands, herding nomads, travellers inside settled peoples,
+all three? (2) can a settled family take to the road and back (a vagrant after a famine; a herder
+family settling)? (3) is a moving people a faction of its own, or can it live inside a settled one's
+land?
+**Done when:** a people with no farming know-how lives by gathering and hunting, moves camp when the
+food runs down, and has no fixed jobs and no ruler unless its own needs make them; a herding people
+moves with the season; none of it is a switch.
+**Budget:** default (a camp moves rarely; nothing per person between moves).
+
 ### [ ] 15d. Eras as starting points; news by what is built; towers, cars, houses, medicine
 
 Split out of 15 on 2026-11-20; rewritten the same day with Ric's answers. Last of the 15 family,
@@ -2433,7 +2478,7 @@ after passes 1–5.
 ### [ ] 15.5. What items 1–14 missed, and what is weak
 
 **Order (Ric, 2026-11-20): 15.5 is done before 15** — "we should do 15.5 then 15". The
-whole order is now **15.5 → 15 (15a done; then 15c, 15g, 15b, 15e, 15f, 15h, 15d) → 16 → 17**.
+whole order is now **15.5 → 15 (15a done; then 15c, 15g, 15b, 15e, 15f, 15h, 15i, 15d) → 16 → 17**.
 15.25 was done by another session the same day.
 
 Added 2026-11-20 (Ric: "Look through 1-14 and see what we missed or where we need to improve",
@@ -2506,7 +2551,34 @@ after it.
 speed work itself is 15.25's five passes; j is only the 20,000-person measurement and, if it
 finds something 15.25 does not cover, a pass added there rather than here.
 
-**Budget:** default for a–i; j faster only.
+**15.5k. Babies, children and mothers dying, and the gap between births** (added 2026-11-20, Ric:
+"early humans … the baby infertility rate was low … is all that built in?"; "Write what you said
+down"). *Now* (read from `people.js`): each person's age of death is drawn at birth between 0.72 and
+1.28 of "How long they live" (default 60), so almost nobody dies of age before about 43; a child dies
+only of the sickness (three times likelier under five) or of cold. Nearly every child grows up. A
+fed couple at home has children at a steady rate, with no gap after a birth, and no mother dies in
+childbirth. *History:* about a quarter of babies died in their first year and nearly half of children
+before fifteen, among foragers and in historical populations alike (Volk and Atkinson 2013, item 15's
+notes); foragers had about six children each, about 3.7 years apart, the gap kept mostly by
+breastfeeding, and 60% reached fifteen (Kaplan, Hill, Lancaster and Hurtado 2000,
+[pdf](https://www.unm.edu/~jlancas/KaplanHillLancasterHurtado_2000_LHEvolution.pdf); forager and
+chimpanzee vital rates, [PNAS 2019](https://pmc.ncbi.nlm.nih.gov/articles/PMC6600907); Hill and
+Hurtado on the Ache's spacing); England's parish registers 1650–1800 give about 10 mothers dead per
+1,000 births, 17 at the mid-seventeenth-century peak, and with several births a woman's lifetime risk
+near one in sixteen ([Cambridge Group, childbirth in the past](https://www.campop.geog.cam.ac.uk/blog/2024/09/19/childbirth-in-the-past/);
+[*Medical History*](https://pubmed.ncbi.nlm.nih.gov/3511335/)). *Needed:* yes, for every era,
+today's village included. It is a missed piece of item 10's people, and it changes the default world:
+with children dying as they did, today's birth rate would shrink every world, so births rise to
+match — as they did in life — rather than a number being turned until the world holds.
+*Proposed:* children die of what killed them (sickness, hunger, cold, accident) at the historical
+strength by age, not of a fixed rate; a mother can die in childbirth; a mother nursing a baby is
+unlikely to conceive for a few years; how long people live and how many children they have stay
+settings. Each era's medicine (15d) then lowers these, as it really did.
+*Questions:* (1) Children dying of real causes at real rates, so a family loses some? (2) Mothers
+dying in childbirth? (3) The gap after a birth? (4) The default world's "Children" setting then means
+"as many as they had", with the world measured to see it holds?
+
+**Budget:** default for a–i and k; j faster only.
 
 Research notes (2026-11-20, Ric: "research those and make sure all are needed first and the
 logistics of them. Like any questions that would pop up. Not coding questions"). For each part:
