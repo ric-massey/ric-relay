@@ -2790,6 +2790,9 @@ the same trade-off Ric made for household goods in 15.5a.
 4. *Who may take from a ruin:* "Anyone. But people may still be protective of the land or view it
    as theirs" — anybody may take; whoever thinks it theirs (the faction whose land it is, the
    family that left it) may hold it against them, a grievance like any other (items 10–12).
+   Ric, the same day: **"only if they see them or hear about it"** — the grudge comes only from
+   seeing the taking (being within sight, as events are seen in item 12) or being told of it, and
+   a wrong telling can blame the wrong person, as any news can.
 5. *Moving back in:* "Needs to be fixed if it isn't but cost less then making a new one" — a ruined
    house is mended before it is lived in, for less than building new, by how far gone it is.
 6. *Stone robbing:* **no.**
