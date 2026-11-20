@@ -2434,7 +2434,7 @@ after passes 1–5.
 
 **Order (Ric, 2026-11-20): 15.5 is done before 15** — "we should do 15.5 then 15". The
 whole order is now **15.5 → 15 (15a done; then 15c, 15g, 15b, 15e, 15f, 15h, 15d) → 16 → 17**.
-Where 15.25 (added by another session) falls in that is not yet said.
+15.25 was done by another session the same day.
 
 Added 2026-11-20 (Ric: "Look through 1-14 and see what we missed or where we need to improve",
 then "15.5 please"). Every "not met", "open" and "left out" note in items 1–14 was checked against
