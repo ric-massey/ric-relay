@@ -2298,7 +2298,7 @@ hear news at measurably different speeds; knocking down a tower or cutting a lin
 in its area and nowhere else.
 **Budget:** default.
 
-### [ ] 15.25. Faster People simulation without losing quality, and births without a population cap
+### [x] 15.25. Faster People simulation without losing quality, and births without a population cap
 
 Added 2026-11-20 at Ric's request after a performance audit: "1-5 needs added in todo as
 15.25". On births: "Idk why births stop they shouldn't." Then: "Don't do the birth cap fix.
@@ -2308,31 +2308,31 @@ working on the engine, so re-read and re-profile its current version before impl
 
 **Do, in small measured passes:**
 
-- [ ] **1. Make conversations cheaper to record.** `converse` and `conversationState` in
+- [x] **1. Make conversations cheaper to record.** `converse` and `conversationState` in
   `people.js` create before/after snapshots and compare their fields for every exchange.
   Reuse temporary storage and avoid duplicate reads while keeping every conversation, its
   actual effects and the inspector's before/after receipts. An inspected record must still
   survive eviction from the rolling history without being changed by later conversations.
-- [ ] **2. Reuse pathfinding storage.** `routeAround` creates maps, heap storage and node objects
+- [x] **2. Reuse pathfinding storage.** `routeAround` creates maps, heap storage and node objects
   for each search. Investigate reusable scratch buffers for it and `landWay`, keeping the same
   search order, tie-breaking, search bounds, routes and checks on every footstep. Preserve the
   invalidation rules for blocked steps, failed searches, bodies moving and crossings changing.
-- [ ] **3. Schedule people who are due instead of scanning everyone each step.** `actionTick`
+- [x] **3. (measured; not built, see Research notes) Schedule people who are due instead of scanning everyone each step.** `actionTick`
   skips idle people's behaviour but still checks everyone's wake time 1,440 times per day.
   Investigate an ordered active list or due-time buckets. Preserve the existing person order,
   including somebody woken by an interaction during a step, hourly updates, births, deaths,
   moves and outside orders. Measure the scheduler's own overhead before choosing it.
-- [ ] **4. Send and paint changed map regions.** `people-host.js` currently builds a full crop
+- [x] **4. Send and paint changed map regions.** `people-host.js` currently builds a full crop
   picture and copies the whole owner array for a land update; `index.html` repaints the land
   from that answer. Investigate changed chunks, separate ownership changes from crop changes,
   and reuse transfer buffers safely. Keep the same detail and update cadence, correct borders,
   panning and zooming, with a complete first picture and recovery from a missed update.
-- [ ] **5. Keep indexes for repeated population searches.** Audit family, faction, village and
+- [x] **5. Keep indexes for repeated population searches.** Audit family, faction, village and
   event-witness lookups before adding more features. Reuse existing resident/spatial lists;
   add ordered child or faction lists where measurements justify them. Births, deaths, adoption,
   moves and faction changes must keep every index correct. Preserve eligibility, encounter
   order and random-number consumption; do not replace individual people with totals.
-- [ ] **Remove the birth population cap.** `reflect` currently requires `people.length < 3000`
+- [x] **Remove the birth population cap.** `reflect` currently requires `people.length < 3000`
   before a couple can have a child. Remove that arbitrary gate when this work is implemented.
   Keep the existing age, partner, food, crowding and fertility rules, including Children set to
   zero. Add regression coverage for births at and above 3,000 people and for crossing that
@@ -2368,6 +2368,64 @@ the results and any remaining work here; do not tick this whole item after only 
 **Budget:** improve measured runtime or display cost without reducing simulation detail;
 unaffected benchmark cases follow the existing no-more-than-5% regression budget. Measure the
 cost of newly allowed births separately rather than disguising it as an optimization regression.
+
+**Research notes (2026-11-20).** Profiled first (seed 7, sickness off, a day after the first):
+5,000 on 40 km 2.06 s a day, of it `act` 20% and conversations 21% inclusive (receipts about
+half of that); 20,000 on 80 km 14.2 s, `landWay` 15% self, `routeAround` 9%, conversations 11%.
+Counted at 20,000: 916 land-way asks a day, 534 searched, 4.7 million looks, the cache never
+cleared; 7,437 crowd searches, 50 million body checks.
+- *Reused workspaces*: both searches already pushed a place again rather than changing its
+  priority, the cheap way ([Amit Patel's A* implementation notes](https://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html));
+  what cost was making a queue, two `Map`s and an object a place each search. Chosen: typed
+  arrays kept between searches, a table emptied by a round number. Same order, same ties.
+  `Math.hypot` could not be swapped for `Math.sqrt`: 35% of whole-number pairs give a different
+  last digit, which would break ties differently.
+- *Ordered event scheduling*: a calendar queue ([Brown 1988](https://www.maths.tcd.ie/~eoin/index/brown_calendar88.html))
+  is the standard O(1) way to pick who is due. Measured before choosing: the pass over everybody's
+  waking time is about 5% of a 5,000-person day (an extra empty pass), and a tighter loop gave no
+  measurable change in three alternated runs. A queue would also have to keep the person order
+  the world depends on. Not built.
+- *Changed regions and transferable buffers*: a buffer handed to the page belongs to the page
+  ([MDN, Transferable objects](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects)),
+  so the keeper keeps its own copy of what it sent and sends only the blocks that differ; the page
+  paints a block with `putImageData`'s dirty rectangle ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/putImageData)).
+  A canvas is held premultiplied by alpha, so reading back see-through pixels is lossy
+  ([Mozilla bug 389366](https://bugzilla.mozilla.org/show_bug.cgi?id=389366)): the page check
+  reads the canvas once first.
+- *Population searches*: none of the whole-population scans was hot (census 0.15 s a day at
+  20,000, `reflect` 0.1 s). The ones that were: a village's houses searched through every house
+  (0.19 s a day), a founding's search for each family's children, and the census reading traits
+  by a list of names.
+
+**Ric's answers:** none were needed: "the scope above is requested", and the birth fix was asked
+for with it.
+
+**What was done (2026-11-20), all five passes and the births, each held to the identical world.**
+Proof: a scratch harness hashed the whole world (people, minds, villages, factions, events and
+their hops, conversations and receipts, stores, holders) after every day, old engine against
+new, in nine worlds (orders from the page, 2,000 on 17 km, a town, two enemies at war 40 days,
+150 days through winter, 400 on 500 km, 5,000, 20,000, light records): the same in all nine
+after passes 1–5.
+1. Conversation receipts: done (before-rows reused, after compared in place; `shift` for the
+   rolling list).
+2. Search workspaces: done. 20,000 people: crowd search 2.9 → 1.6 s a day, land search 0.99 →
+   0.90 s. Costs about 0.8 MB of fixed workspace per world (a 400-person world 2.5 → 3.3 MB).
+3. Scheduling the due: measured and **not built** (above).
+4. Changed map regions: done. 400 on 500 km: 21 → 11 ms to prepare a land update, 12.4 MB → a
+   few KB. The page paints only changed blocks and no longer repaints the whole land whenever
+   the villages are sent. Checked in headless Edge, small and big land and phone width: painted
+   by blocks = painted whole, value for value. `test/land-updates.test.mjs`.
+5. Indexes: done where measured: each village's houses (`homesOf`), a founding's children,
+   census traits by name.
+- Births: the 3,000 line is gone. `test/births.test.mjs` (slow lane): births above 3,000 with
+  the audit on, a country crossing 3,000 by births and births after, none with Children at
+  nought.
+- **Bug found and fixed**: somebody passed over as listening was not woken when their speaker
+  was drawn into talk with another, so passing over differed from visiting everybody (two
+  enemies of 300 on day 6; two seeds in five at 3,300). Fixed in `said`; such worlds now equal
+  plain walking (`test/dozing.test.mjs`, "left listening"), and so differ from before.
+
+**Done 2026-11-20:** passes 1, 2, 4 and 5 and the births, measured and held to the same world; pass 3 measured and not built; a passing-over bug found by the audit and fixed. Left: nothing of this item; the biggest costs now are `act` itself and the conversations' own work (`exchange`), which no pass here touched.
 
 ### [ ] 15.5. What items 1–14 missed, and what is weak
 
@@ -3075,4 +3133,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-19 | 12b | AMD Ryzen 5 3600, 24 GB | 2.24 s a day, 133× | *not run* | 7.0 MB, 1.37 KB | **acting on news of sickness, famine and prices**: the same world until a report comes. Against 14c, alternated: 400 0.13/0.13 → 0.14/0.14 s, 2,000 0.70/0.70 → 0.72/0.72 s, 5,000 2.30/2.22 → 2.25/2.23 s; mid-year 2,000 (day 150, six days) old 0.59–0.64 s, new 0.63–0.76 s, a different world: a profile gives the new reading 0.5% of the time |
 | 2026-11-20 | 14d, 14e | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | *not run* | 7.1 MB, 1.38 KB | **peace by marriage, trade deals, tribute; walls, raids, a fighting season**: a different world in a war. 14e against 14d, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.70/0.68 → 0.70/0.69 s, 5,000 2.01/2.06 → 2.06/2.06 s: the same |
 | 2026-11-20 | 15a | AMD Ryzen 5 3600, 24 GB | 2.25 s a day, 133× | *not run* | 6.6 MB, 1.29 KB | **each people's ways**: a faction's own nature, events by age and size, a war lost, elected leaders lean to their people; a different world. Against 14e, quick rows alternated new/old/new: 400 0.13/0.13/0.13 s, 2,000 0.68/0.68/0.71 s, 5,000 2.31/2.28/2.25 s — within the drift. Cost: ten adds per grown-up per census (every six hours), one pass over a faction's people per war lost. |
+| 2026-11-20 | 15.25 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× (2.15 before) | 12.3 s a day, 24× (14.8 before) | 6.7 MB, 1.30 KB | **faster, the same world**: passes 1, 2, 4, 5 against 15a, alternated twice, nothing else running: 400 0.13/0.13 → 0.11/0.11 s, 2,000 0.69/0.68 → 0.60/0.60 s, 5,000 2.14/2.16 → 1.94/1.99 s, 20,000 14.83/14.85 → 12.27/15.16 s (the second an outlier; 12.46/12.47 with births), 400 on 500 km 0.16/0.15 → 0.14/0.15 s; a 400-person world 2.5 → 3.3 MB (the search workspace). **Births past 3,000 and the listening fix, measured apart**: 5,000 1.94/1.99 → 2.09/2.04 s (people are born now), 20,000 12.27 → 12.46/12.47 s. Land update for the page, 400 on 500 km: 21 → 11 ms, 12.4 MB → a few KB |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

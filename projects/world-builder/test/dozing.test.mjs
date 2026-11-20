@@ -170,4 +170,10 @@ sameFor("changed from outside", { people: 300, factions: 2, villages: 2, map: 8,
 //     and are remembered until anybody nearby moves: two days of it.
 sameFor("a dense small country", { people: 600, map: 8, seed: 7, plague: "none" }, 40);
 
+
+// Somebody listening, passed over, whose partner is drawn into talk with somebody else
+// (2026-11-20, TODO 15.25): they were left standing as if still spoken to. Two old enemies,
+// where it first showed, on the sixth day.
+sameFor("left listening", { seed: 4, factions: 2, neighbours: "enemies", people: 300, coins: 1 }, 24 * 7);
+
 console.log("dozing: passing over people with nothing to do leaves the world exactly as it was");

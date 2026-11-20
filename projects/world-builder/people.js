@@ -51,6 +51,7 @@
   const REFLECT_HOURS = 6;
   const NEW_TRAITS = ["patient", "temper", "hard", "curious", "honest"];   // TODO 10: the five added to the first five
   const TRAITS = ["bold", "warm", "greed", "stub", "patient", "temper", "hard", "curious", "honest"];
+  if (TRAITS.join() !== "bold,warm,greed,stub,patient,temper,hard,curious,honest") throw new Error("census adds the traits up by name, in this order");
   const TRAIT_FADE = Math.LN2 / (2 * 365 * 4);   // a look every six hours; half gone in two years
   const life = o => TRAITS.map(k => o[k] || 0);
   const LIFE = {
@@ -1086,12 +1087,12 @@
       /* A household keeps its fields through a winter: they go back only after three months running
          without farming them (measured: taken back each month, every winter emptied the holdings). */
       const farms = new Set();
-      for (const h of homes) if (h.v === v.id) {
+      for (const h of homesOf(v)) if (h.v === v.id) {
         h.idle = h.farmed >= 2 ? 0 : (h.idle || 0) + 1;
         if (family && (allotted ? h.n > 0 && (h.farmed >= 2 || h.fields && h.idle < 3) : h.n > 0)) farms.add(h.id);
         h.farmed = 0;
       }
-      for (const h of homes) if (h.v === v.id && h.fields) {
+      for (const h of homesOf(v)) if (h.v === v.id && h.fields) {
         const keep = family && h.built && farms.has(h.id) ? h.fields.filter(i => owner[i] === v.id) : [];
         for (const i of h.fields) if (!keep.includes(i)) held.delete(i);
         h.fields = keep.length ? keep : null;
@@ -1337,6 +1338,10 @@
        richer household's house is bigger (Ric). Sizes are in squares
        (250 m): `len` along the facing, `wid` across it. README, "Houses". */
     const homes = [];
+    /* Each village's houses, in the order they were built (TODO 15.25, pass 5): every search of a
+       village's houses went through every house in the land, and a house never changes village. */
+    const homesIn = [], NO_HOMES = Object.freeze([]);
+    const homesOf = v => homesIn[v.id] || NO_HOMES;
     const M = 1 / 250;                                   // a metre, in squares
     function newHome(v, wealth) {
       let x = v.x, y = v.y, a = 0;
@@ -1350,7 +1355,7 @@
       const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
                   built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9 };   // TODO 14b: when it last burned
       sizeHome(h, wealth);
-      homes.push(h);
+      homes.push(h); (homesIn[v.id] || (homesIn[v.id] = [])).push(h);
       return h;
     }
     /* ── building houses (TODO 7b, 2026-11-16) ─────────────────────────────
@@ -1372,11 +1377,11 @@
     function startHouse(owner, v) {
       /* An empty house first: one whose household died out or moved away. */
       let empty = null;
-      for (const h of homes) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { empty = h; break; }
+      for (const h of homesOf(v)) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { empty = h; break; }
       if (empty) { empty.taken = true; moveIn(owner, empty); return empty; }
       /* Or a site somebody gave up on. */
       /* (Or whose owner no longer waits on it: moved away, or fled and came back, TODO 14b.) */
-      for (const h of homes) if (h.v === v.id && !h.built && !waitsOn(h)) { h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood; owner.waitHouse = h.id; return h; }
+      for (const h of homesOf(v)) if (h.v === v.id && !h.built && !waitsOn(h)) { h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood; owner.waitHouse = h.id; return h; }
       const h = newHome(v, clamp(funds(owner) / 40, 0, 1));
       h.built = false; h.owner = owner.id; sites.push(h); h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
       h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood;
@@ -1468,7 +1473,7 @@
          once, the smallest house there is, as a cottar's was. (Lodging them in a neighbour's house
          while they built was tried: hungry newcomers spent their days building, not farming, and
          a year starved more than half as many again.) */
-      for (const h of homes) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { h.n = 1; p.hx = h.x; p.hy = h.y; p.dwelling = h.id; p.waitHouse = -1; return; }
+      for (const h of homesOf(v)) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { h.n = 1; p.hx = h.x; p.hy = h.y; p.dwelling = h.id; p.waitHouse = -1; return; }
       const h = newHome(v, 0);
       h.n = 1; p.hx = h.x; p.hy = h.y; p.dwelling = h.id;
     }
@@ -2335,7 +2340,8 @@
         if (p.sick > 0) v.sick++;
         if (adult(p)) {
           v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") f.soldiers++;
-          const m = f.mean; for (let i = 0; i < TRAITS.length; i++) m[i] += p[TRAITS[i]];
+          /* Each by name, in the order of TRAITS: read by a name held in a list, it was most of the census (TODO 15.25). */
+          const m = f.mean; m[0] += p.bold; m[1] += p.warm; m[2] += p.greed; m[3] += p.stub; m[4] += p.patient; m[5] += p.temper; m[6] += p.hard; m[7] += p.curious; m[8] += p.honest;
         }
       }
       for (const f of factions) if (f.adults) for (let i = 0; i < TRAITS.length; i++) f.mean[i] /= f.adults; else f.mean.fill(0.5);
@@ -3360,7 +3366,7 @@
           v.wellWork = (v.wellWork || 0) + 4;
           if (v.wellWork >= WELL_HOURS) {
             v.well = { x: v.wellAt.x, y: v.wellAt.y };
-            for (const h of homes) if (h.v === v.id) h.src = null;   // fetch from it now, where it is nearer
+            for (const h of homesOf(v)) if (h.v === v.id) h.src = null;   // fetch from it now, where it is nearer
           }
         }
         p.task = "idle"; p.wait = 0; return;
@@ -3938,11 +3944,17 @@
     }
     const leans = p => (viewOf(p) > 0.25 ? "share" : viewOf(p) < -0.25 ? "keep" : "middle");
     function said(a, b, kind, la, lb) {
+      /* Whoever either was talking to is left standing there: if they were being passed over as
+         listening (TODO 2b), they are looked at again, as they would be every step. Until 2026-11-20
+         they were not, and stood listening to somebody already talking to another (found by the
+         audit in worlds of 3,300, TODO 15.25). */
+      if (a.talkingTo && a.talkingTo !== b.id) { const o = byId.get(a.talkingTo); if (o) wakeUp(o); }
+      if (b.talkingTo && b.talkingTo !== a.id) { const o = byId.get(b.talkingTo); if (o) wakeUp(o); }
       a.say = la; a.sayT = TK(30); b.say = lb || ""; b.sayT = TK(30);
       a.talkingTo = b.id; b.talkingTo = a.id;
       if (S.records === "light") return;
       chatter.push({ id: nextExchange++, day: activityTicks / ACTIONS_PER_HOUR / DAY_HOURS, t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
-      if (chatter.length > 160) chatter.splice(0, chatter.length - 160);
+      while (chatter.length > 160) chatter.shift();   // the same as cutting the front off, without a new array each time (TODO 15.25)
     }
     function kin(a, b) {
       return a.mum === b.id || a.dad === b.id || b.mum === a.id || b.dad === a.id ||
@@ -3952,6 +3964,29 @@
     // Receipts surround the whole interaction: several branches speak before
     // moving house or changing friendship. Capture after return, without RNG calls
     // or model writes, so reading an exchange cannot change its outcome.
+    /* TODO 15.25, pass 1: what each was before is kept as plain numbers in two reused rows
+       (`CS_` below), and only turned into a receipt once the exchange has been said; what each
+       is after is read straight off them and compared, without a second receipt. The receipts
+       and effects are the same as when both were whole objects (2026-11-20: conversations were a
+       fifth of a 5,000-person day, about half of it the receipts). */
+    const CS_FOOD = 0, CS_COINS = 1, CS_GOODS = 2, CS_VIEWS = 3, CS_LOYAL = 4, CS_TRUST = 5, CS_HOME = 6, CS_F = 7, CS_PARTNER = 8, CS_NEWS = 9, CS_SICK = 10, CS_HUNGRY = 11, CS_AGE = 12, CS_N = 13;
+    const csWas = [new Float64Array(CS_N), new Float64Array(CS_N)], csJob = ["", ""];
+    function keepState(row, i, p, other) {
+      row[CS_FOOD] = p.food; row[CS_COINS] = p.coins; row[CS_GOODS] = p.goods; row[CS_VIEWS] = viewOf(p); row[CS_LOYAL] = p.loyal;
+      row[CS_TRUST] = feel(p, other.id); row[CS_HOME] = p.home; row[CS_F] = p.f; row[CS_PARTNER] = p.partner || 0;
+      row[CS_NEWS] = newsOf(p); row[CS_SICK] = p.sick > 0 ? 1 : 0; row[CS_HUNGRY] = p.hungry > 0 ? 1 : 0; row[CS_AGE] = Math.floor(p.age);
+      csJob[i] = p.job;
+    }
+    function partnerName(id) { return byId.get(id)?.name || "None"; }
+    /* The receipt of who somebody was, from the row kept before (the same fields, in the same
+       order, as `conversationState` gave). */
+    function stateFrom(row, i, p) {
+      return { id: p.id, name: p.name, age: row[CS_AGE], job: csJob[i],
+        home: villages[row[CS_HOME]].name, faction: factions[row[CS_F]].name,
+        food: row[CS_FOOD], coins: row[CS_COINS], goods: row[CS_GOODS], views: row[CS_VIEWS], loyal: row[CS_LOYAL],
+        trust: row[CS_TRUST], partner: partnerName(row[CS_PARTNER]),
+        news: row[CS_NEWS], sick: row[CS_SICK] === 1, hungry: row[CS_HUNGRY] === 1 };
+    }
     function conversationState(p, other) {
       return { id: p.id, name: p.name, age: Math.floor(p.age), job: p.job,
         home: villages[p.home].name, faction: factions[p.f].name,
@@ -3959,33 +3994,40 @@
         trust: feel(p, other.id), partner: byId.get(p.partner)?.name || "None",
         news: newsOf(p), sick: p.sick > 0, hungry: p.hungry > 0 };
     }
+    function effect(c, p, field, before, after, detail) {
+      c.effects.push({ person: p.id, name: p.name, field, before, after, detail: detail || "" });
+    }
+    const num = (x, y) => Math.abs(x - y) < 1e-12;
     function converse(a, b) {
       wakeUp(a); wakeUp(b);
       /* Both of them have now had company. This is the only thing that clears
          it, so somebody nobody speaks to keeps going out to look for company. */
       a.alone = 0; b.alone = 0;
       if (S.records === "light") { exchange(a, b); return; }
-      const before = [conversationState(a, b), conversationState(b, a)], previous = nextExchange;
-      const diplomacy = a.f !== b.f ? [factions[a.f], factions[b.f]].map((f, i) => {
-        const other = i === 0 ? b.f : a.f;
-        return { faction: f, other, value: f.rel[other].op };
-      }) : [];
+      keepState(csWas[0], 0, a, b); keepState(csWas[1], 1, b, a);
+      const previous = nextExchange, fa = a.f, fb = b.f, dipA = fa !== fb ? factions[fa].rel[fb].op : 0, dipB = fa !== fb ? factions[fb].rel[fa].op : 0;
       exchange(a, b);
       const c = chatter[chatter.length - 1];
       if (!c || c.id < previous) return;
-      const after = [conversationState(a, b), conversationState(b, a)];
-      c.people = before; c.effects = [];
-      for (let i = 0; i < before.length; i++) {
-        const old = before[i], now = after[i];
-        for (const field of ["food", "coins", "goods", "views", "loyal", "trust", "home", "faction", "job", "partner", "news", "sick"]) {
-          if (typeof old[field] === "number" ? Math.abs(now[field] - old[field]) < 1e-12 : now[field] === old[field]) continue;
-          c.effects.push({ person: old.id, name: old.name, field, before: old[field], after: now[field],
-            detail: field === "news" ? newsText(byId.get(old.id)) || "News passed on." : "" });
-        }
+      c.people = [stateFrom(csWas[0], 0, a), stateFrom(csWas[1], 1, b)]; c.effects = [];
+      for (let i = 0; i < 2; i++) {
+        const p = i ? b : a, other = i ? a : b, was = csWas[i], old = c.people[i];
+        if (!num(p.food, was[CS_FOOD])) effect(c, p, "food", was[CS_FOOD], p.food);
+        if (!num(p.coins, was[CS_COINS])) effect(c, p, "coins", was[CS_COINS], p.coins);
+        if (!num(p.goods, was[CS_GOODS])) effect(c, p, "goods", was[CS_GOODS], p.goods);
+        const views = viewOf(p); if (!num(views, was[CS_VIEWS])) effect(c, p, "views", was[CS_VIEWS], views);
+        if (!num(p.loyal, was[CS_LOYAL])) effect(c, p, "loyal", was[CS_LOYAL], p.loyal);
+        const trust = feel(p, other.id); if (!num(trust, was[CS_TRUST])) effect(c, p, "trust", was[CS_TRUST], trust);
+        if (p.home !== was[CS_HOME]) { const h = villages[p.home].name; if (h !== old.home) effect(c, p, "home", old.home, h); }
+        if (p.f !== was[CS_F]) { const n = factions[p.f].name; if (n !== old.faction) effect(c, p, "faction", old.faction, n); }
+        if (p.job !== csJob[i]) effect(c, p, "job", csJob[i], p.job);
+        if ((p.partner || 0) !== was[CS_PARTNER]) { const n = partnerName(p.partner); if (n !== old.partner) effect(c, p, "partner", old.partner, n); }
+        const news = newsOf(p); if (news !== was[CS_NEWS]) effect(c, p, "news", was[CS_NEWS], news, newsText(p) || "News passed on.");
+        if ((p.sick > 0 ? 1 : 0) !== was[CS_SICK]) effect(c, p, "sick", old.sick, p.sick > 0);
       }
-      for (const d of diplomacy) if (d.value !== d.faction.rel[d.other].op) {
-        c.effects.push({ name: d.faction.name, field: "diplomacy", detail: factions[d.other].name,
-          before: d.value, after: d.faction.rel[d.other].op });
+      if (fa !== fb) {
+        if (dipA !== factions[fa].rel[fb].op) c.effects.push({ name: factions[fa].name, field: "diplomacy", detail: factions[fb].name, before: dipA, after: factions[fa].rel[fb].op });
+        if (dipB !== factions[fb].rel[fa].op) c.effects.push({ name: factions[fb].name, field: "diplomacy", detail: factions[fa].name, before: dipB, after: factions[fb].rel[fa].op });
       }
     }
     function exchange(a, b) {
@@ -4521,6 +4563,25 @@
        of the way is skipped when the straight line past it stays on land.
        The crowd search (`routeAround`) still does the last few metres. */
     let wayG = null, wayFrom = null, wayAt = null, wayStamp = 0;
+    /* The search's queue, kept between searches and grown as needed (TODO 15.25, pass 2): the
+       same heap, pushed and popped in the same order, in two typed arrays instead of two new
+       lists a search. */
+    let wayHeap = new Int32Array(1024), wayHf = new Float64Array(1024), wayN = 0;
+    function wayPush(i, fv) {
+      if (wayN === wayHeap.length) { const h = new Int32Array(wayN * 2), f = new Float64Array(wayN * 2); h.set(wayHeap); f.set(wayHf); wayHeap = h; wayHf = f; }
+      let k = wayN++;
+      while (k > 0) { const j = (k - 1) >> 1; if (wayHf[j] <= fv) break; wayHeap[k] = wayHeap[j]; wayHf[k] = wayHf[j]; k = j; }
+      wayHeap[k] = i; wayHf[k] = fv;
+    }
+    function wayPop() {
+      const top = wayHeap[0], li = wayHeap[--wayN], lf = wayHf[wayN];
+      if (wayN) {
+        let k = 0;
+        for (;;) { let c = k * 2 + 1; if (c >= wayN) break; if (c + 1 < wayN && wayHf[c + 1] < wayHf[c]) c++; if (wayHf[c] >= lf) break; wayHeap[k] = wayHeap[c]; wayHf[k] = wayHf[c]; k = c; }
+        wayHeap[k] = li; wayHf[k] = lf;
+      }
+      return top;
+    }
     const ways = new Map();
     function landWay(p) {
       const s0 = tileAt(p.x, p.y), g0 = tileAt(p.tx, p.ty);
@@ -4529,22 +4590,23 @@
       if (!tiles_) {
         if (!wayG) { wayG = new Float32Array(tiles); wayFrom = new Int32Array(tiles); wayAt = new Int32Array(tiles); }
         if (++wayStamp > 2e9) { wayAt.fill(0); wayStamp = 1; }
-        const gx = g0 % cols, gy = (g0 / cols) | 0, est = i => Math.hypot(i % cols - gx, ((i / cols) | 0) - gy);
-        const heap = [], hf = [];
-        const push = (i, fv) => { let k = heap.length; heap.push(i); hf.push(fv); while (k > 0) { const j = (k - 1) >> 1; if (hf[j] <= fv) break; heap[k] = heap[j]; hf[k] = hf[j]; k = j; } heap[k] = i; hf[k] = fv; };
-        const pop = () => { const top = heap[0], li = heap.pop(), lf = hf.pop(); if (heap.length) { let k = 0; for (;;) { let c = k * 2 + 1; if (c >= heap.length) break; if (c + 1 < heap.length && hf[c + 1] < hf[c]) c++; if (hf[c] >= lf) break; heap[k] = heap[c]; hf[k] = hf[c]; k = c; } heap[k] = li; hf[k] = lf; } return top; };
-        wayAt[s0] = wayStamp; wayG[s0] = 0; wayFrom[s0] = -1; push(s0, est(s0));
+        const gx = g0 % cols, gy = (g0 / cols) | 0;
+        wayN = 0;
+        wayAt[s0] = wayStamp; wayG[s0] = 0; wayFrom[s0] = -1; wayPush(s0, Math.hypot(s0 % cols - gx, ((s0 / cols) | 0) - gy));
         let found = false;
-        for (let looks = 0; heap.length && looks < 4e6; looks++) {
-          const i = pop(); if (i === g0) { found = true; break; }
+        for (let looks = 0; wayN && looks < 4e6; looks++) {
+          const i = wayPop(); if (i === g0) { found = true; break; }
           const x = i % cols, y = (i / cols) | 0, gi = wayG[i];
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            if (!dx && !dy) continue;
-            const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-            const j = ny * cols + nx, k = ground[j]; if (stopAt(j) || shut(x, y, dx, dy)) continue;
-            const g = gi + (dx && dy ? Math.SQRT2 : 1) / (cross !== null && cross[j] === 3 ? 1 : paceAt(j));
-            if (wayAt[j] === wayStamp && g >= wayG[j]) continue;
-            wayAt[j] = wayStamp; wayG[j] = g; wayFrom[j] = i; push(j, g + est(j));
+          for (let dy = -1; dy <= 1; dy++) {
+            const ny = y + dy; if (ny < 0 || ny >= rows) continue;
+            for (let dx = -1; dx <= 1; dx++) {
+              if (!dx && !dy) continue;
+              const nx = x + dx; if (nx < 0 || nx >= cols) continue;
+              const j = ny * cols + nx; if (stopAt(j) || shut(x, y, dx, dy)) continue;
+              const g = gi + (dx && dy ? Math.SQRT2 : 1) / (cross !== null && cross[j] === 3 ? 1 : paceAt(j));
+              if (wayAt[j] === wayStamp && g >= wayG[j]) continue;
+              wayAt[j] = wayStamp; wayG[j] = g; wayFrom[j] = i; wayPush(j, g + Math.hypot(nx - gx, ny - gy));
+            }
           }
         }
         if (!found) return null;
@@ -4585,6 +4647,48 @@
       return true;
     }
     const DIAGONAL = Math.hypot(1, 1) * 0.5;
+    /* The crowd search's workspace (TODO 15.25, pass 2). Places: a table keyed by the place's
+       number, emptied by moving on `raRound` (a place of an older round is not there), holding the
+       cheapest way there found (`raCost`) and whether a body fits there (`raClear`: 0 not yet
+       asked, 1 yes, 2 no). An 800-look search reaches at most 6,401 places, so 16,384 rows are
+       never more than two-fifths full. Nodes: one row each in the `raIx`…`raPar` arrays, and
+       the queue holds their row numbers. */
+    const RA_ROWS = 16384, RA_MASK = RA_ROWS - 1, RA_NODES = 8192;
+    const raKey = new Int32Array(RA_ROWS), raStamp = new Int32Array(RA_ROWS), raCost = new Float64Array(RA_ROWS), raClear = new Uint8Array(RA_ROWS);
+    const raIx = new Int32Array(RA_NODES), raIy = new Int32Array(RA_NODES), raPar = new Int32Array(RA_NODES), raHeap = new Int32Array(RA_NODES);
+    const raX = new Float64Array(RA_NODES), raY = new Float64Array(RA_NODES), raG = new Float64Array(RA_NODES), raH = new Float64Array(RA_NODES), raF = new Float64Array(RA_NODES);
+    let raRound = 0, raN = 0, raHeapN = 0;
+    function raSlot(k) {
+      let h = Math.imul(k, 0x9E3779B1) >>> 18;
+      while (raStamp[h] === raRound && raKey[h] !== k) h = (h + 1) & RA_MASK;
+      return h;
+    }
+    function raCostOf(k) { const h = raSlot(k); return raStamp[h] === raRound ? raCost[h] : undefined; }
+    function raSet(k, g) { const h = raSlot(k); raStamp[h] = raRound; raKey[h] = k; raCost[h] = g; raClear[h] = 0; }
+    function raNode(ix, iy, x, y, g, parent) {
+      const n = raN++;
+      raIx[n] = ix; raIy[n] = iy; raX[n] = x; raY[n] = y; raG[n] = g; raPar[n] = parent; raH[n] = 0; raF[n] = 0;
+      return n;
+    }
+    function raPush(n) {
+      let i = raHeapN++; const f = raF[n];
+      while (i > 0) { const j = (i - 1) >> 1; if (raF[raHeap[j]] <= f) break; raHeap[i] = raHeap[j]; i = j; }
+      raHeap[i] = n;
+    }
+    function raPop() {
+      const first = raHeap[0], last = raHeap[--raHeapN];
+      if (raHeapN) {
+        let i = 0; const lf = raF[last];
+        while (i * 2 + 1 < raHeapN) {
+          let j = i * 2 + 1;
+          if (j + 1 < raHeapN && raF[raHeap[j + 1]] < raF[raHeap[j]]) j++;
+          if (raF[raHeap[j]] >= lf) break;
+          raHeap[i] = raHeap[j]; i = j;
+        }
+        raHeap[i] = last;
+      }
+      return first;
+    }
     let sure = false, outOfTries = false;      // the audit's: search whatever is remembered; how the last search ended
     function routeAround(p) {
       if (MEMO && !sure && stillNoWay(p)) {
@@ -4606,62 +4710,50 @@
       }
       outOfTries = false;
       if (!arrival) return noWay(p, p.tx - 0.5, p.ty - 0.5, p.tx + 0.5, p.ty + 0.5);
-      const heap = [], costs = new Map(), clear = new Map();
+      /* TODO 15.25, pass 2: the search's places, costs and queue live in arrays kept between
+         searches (`ra…`, below) in place of two new Maps and an object a place each time. The
+         same places are looked at in the same order and give the same way. */
+      raRound++;
+      if (raRound > 2e9) { raStamp.fill(0); raRound = 1; }
+      raN = 0; raHeapN = 0;
       let lx = p.x, ly = p.y, hx = p.x, hy = p.y;   // every place the search looks at lies in this box
       /* A number, not "x,y": the search makes a key for every neighbour of
          every place it looks at, and building a string each time was a third
          of its cost. 800 looks cannot get 4,096 half-squares from the start. */
       const key = (x, y) => (x + 4096) * 8192 + (y + 4096);
-      const distance = n => Math.hypot(p.tx - n.x, p.ty - n.y);
-      function push(n) {
-        let i = heap.length; heap.push(n);
-        while (i > 0) { const j = (i - 1) >> 1; if (heap[j].f <= n.f) break; heap[i] = heap[j]; i = j; }
-        heap[i] = n;
-      }
-      function pop() {
-        const first = heap[0], last = heap.pop();
-        if (heap.length) {
-          let i = 0;
-          while (i * 2 + 1 < heap.length) {
-            let j = i * 2 + 1;
-            if (j + 1 < heap.length && heap[j + 1].f < heap[j].f) j++;
-            if (heap[j].f >= last.f) break;
-            heap[i] = heap[j]; i = j;
-          }
-          heap[i] = last;
-        }
-        return first;
-      }
       /* How far a place is from where they are going is worked out once and
          kept on it (`h`), and the length of a step along the lattice is one
          of two numbers (2026-11-15, TODO 2b): the search asked for both
          again at every look, 6,400 square roots a search for the step alone,
          and a sixth of a dense land's time was that one sum. The same
          numbers, so the same search. */
-      const start = { ix: 0, iy: 0, x: p.x, y: p.y, g: 0, parent: null, h: 0, f: 0 };
-      start.h = distance(start); start.f = start.h; costs.set(key(0, 0), 0); push(start);
-      for (let tries = 0; heap.length && tries < 800; tries++) {
-        const n = pop();
-        if (n.g !== costs.get(key(n.ix, n.iy))) continue;
-        if (n.h <= 0.5) {
+      const start = raNode(0, 0, p.x, p.y, 0, -1);
+      raH[start] = Math.hypot(p.tx - p.x, p.ty - p.y); raF[start] = raH[start]; raSet(key(0, 0), 0); raPush(start);
+      for (let tries = 0; raHeapN && tries < 800; tries++) {
+        const n = raPop();
+        if (raG[n] !== raCostOf(key(raIx[n], raIy[n]))) continue;
+        if (raH[n] <= 0.5) {
           const path = [];
-          for (let q = n; q.parent; q = q.parent) path.push({ x: q.x, y: q.y });
+          for (let q = n; raPar[q] >= 0; q = raPar[q]) path.push({ x: raX[q], y: raY[q] });
           return path.reverse();
         }
+        const nix = raIx[n], niy = raIy[n], ngx = raX[n], ngy = raY[n], ng = raG[n];
         for (let iy = -1; iy <= 1; iy++) for (let ix = -1; ix <= 1; ix++) {
           if (!ix && !iy) continue;
-          const nx = n.ix + ix, ny = n.iy + iy, k = key(nx, ny);
-          const x = p.x + nx * 0.5, y = p.y + ny * 0.5, g = n.g + (ix && iy ? DIAGONAL : 0.5);
-          if (g >= (costs.get(k) ?? Infinity)) continue;
+          const nx = nix + ix, ny = niy + iy, k = key(nx, ny);
+          const x = p.x + nx * 0.5, y = p.y + ny * 0.5, g = ng + (ix && iy ? DIAGONAL : 0.5);
+          const slot = raSlot(k);
+          if (g >= (raStamp[slot] === raRound ? raCost[slot] : Infinity)) continue;
           if (x < lx) lx = x; else if (x > hx) hx = x;
           if (y < ly) ly = y; else if (y > hy) hy = y;
-          if (!clear.has(k)) clear.set(k, free(p, x, y));
-          if (!clear.get(k)) continue;
+          if (raStamp[slot] !== raRound) { raStamp[slot] = raRound; raKey[slot] = k; raCost[slot] = Infinity; raClear[slot] = 0; }
+          if (raClear[slot] === 0) raClear[slot] = free(p, x, y) ? 1 : 2;
+          if (raClear[slot] !== 1) continue;
           let fits = true;
-          for (let s = 1; s < 6; s++) if (!free(p, n.x + ix * 0.5 * s / 6, n.y + iy * 0.5 * s / 6)) { fits = false; break; }
+          for (let s = 1; s < 6; s++) if (!free(p, ngx + ix * 0.5 * s / 6, ngy + iy * 0.5 * s / 6)) { fits = false; break; }
           if (!fits) continue;
-          const q = { ix: nx, iy: ny, x, y, g, parent: n, h: 0, f: 0 }; q.h = distance(q); q.f = g + q.h;
-          costs.set(k, g); push(q);
+          const q = raNode(nx, ny, x, y, g, n); raH[q] = Math.hypot(p.tx - x, p.ty - y); raF[q] = g + raH[q];
+          raCost[slot] = g; raPush(q);
         }
       }
       /* Out of tries with places still to look at is a different failure from
@@ -4675,8 +4767,8 @@
          3,325 searches a day at 730 millionths of a second each, 60% of the
          engine's time, each run again every seven steps by somebody who had
          not moved in a crowd that had not moved either. */
-      outOfTries = heap.length > 0;      // told to the audit separately from what is remembered
-      if (heap.length) return noWay(p, lx, ly, hx, hy, true);
+      outOfTries = raHeapN > 0;      // told to the audit separately from what is remembered
+      if (raHeapN) return noWay(p, lx, ly, hx, hy, true);
       // A fully enclosed person waits for a real opening.
       /* What is remembered is the ground the search looked at, and no more.
          Until 2026-11-15 the box was stretched to take in where they were
@@ -5434,9 +5526,12 @@
           }
         }
       }
-      /* Children. */
+      /* Children. Until 2026-11-20 nobody was born once there were 3,000 people, a line drawn to
+         keep worlds small: a world started bigger than that never had a child (Ric: "Idk why births
+         stop they shouldn't"; TODO 15.25). What limits births now is only what always did: age, a
+         partner at home, food, how crowded the village is, and the Children setting. */
       const mate = byId.get(p.partner);
-      if (mate && p.id < mate.id && mate.home === p.home && S.births > 0 && people.length < 3000 &&
+      if (mate && p.id < mate.id && mate.home === p.home && S.births > 0 &&
           p.age < p.dieAt * 0.7 && mate.age < mate.dieAt * 0.7 && p.food > 0.5 && mate.food > 0.5 && p.hungry === 0) {
         const room = clamp(1.6 - v.pop / (crowdOf(v) * 1.6), 0.15, 1) * (v.hungry > v.pop * 0.15 ? 0.3 : 1);
         /* This is a rate per calendar year, scaled to the six-hour reflection
@@ -5640,9 +5735,14 @@
       const share = goers.length / v.pop;
       nv.food = v.food * share; v.food -= nv.food;
       nv.till = v.till * share; v.till -= nv.till;
+      /* Their children who live here, each parent's in the order of `people` (TODO 15.25, pass 5: once,
+         not a look through everybody for every family that goes). Whether a child is still here is
+         asked as each goes, as one may have gone already with the other parent. */
+      const kidsOf = new Map();
+      for (const q of people) if (q.home === v.id && !adult(q)) for (const id of [q.mum, q.dad]) if (id) { const l = kidsOf.get(id); if (l) { if (l[l.length - 1] !== q) l.push(q); } else kidsOf.set(id, [q]); }
       for (const p of goers) {
         rehome(p, nv, "founded");
-        for (const q of people) if ((q.mum === p.id || q.dad === p.id) && !adult(q) && q.home === v.id) rehome(q, nv, "founded");
+        for (const q of kidsOf.get(p.id) || []) if ((q.mum === p.id || q.dad === p.id) && !adult(q) && q.home === v.id) rehome(q, nv, "founded");
       }
       count.founded++;
       note("founded", goers[0].name + " led " + goers.length + " families out of " + v.name + " to found " + nv.name + ".", 2, nv.x, nv.y, v.f);
@@ -5728,7 +5828,7 @@
       if (!winning) return;
       let n = Math.floor(foes.length / (band ? 3 : 10) + R());   // a band comes to burn; an army burns as it waits
       if (n <= 0) return;
-      const homes2 = homes.filter(h => h.v === v.id && h.built).sort((a, b) => Math.hypot(b.x - v.x, b.y - v.y) - Math.hypot(a.x - v.x, a.y - v.y));
+      const homes2 = homesOf(v).filter(h => h.v === v.id && h.built).sort((a, b) => Math.hypot(b.x - v.x, b.y - v.y) - Math.hypot(a.x - v.x, a.y - v.y));
       let loot = 0;
       for (const h of homes2) { if (n-- <= 0) break; loot += burnHouse(v, h); if (band) count.raidBurned++; }
       for (const p of foes) { if (loot <= 0) break; const take = Math.min(loot, Math.max(0, 10 - p.food)); p.food += take; loot -= take; }
@@ -5756,7 +5856,7 @@
     /* A place taken by storm is sacked: half its store taken or spoiled, a quarter of its houses burned. */
     function sack(v) {
       v.food *= 0.5;
-      const mine = homes.filter(h => h.v === v.id && h.built);
+      const mine = homesOf(v).filter(h => h.v === v.id && h.built);
       for (let n = Math.round(mine.length / 4); n > 0 && mine.length; n--) burnHouse(v, mine.splice(Math.floor(R() * mine.length), 1)[0]);
       count.sacked++;
     }

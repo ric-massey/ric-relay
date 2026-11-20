@@ -1901,6 +1901,82 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: the page has no button to offer a marriage; everyday marriages still
 ignore wealth (TODO 15b).
 
+### Faster, the same world; and children past 3,000 people (2026-11-20)
+
+TODO item 15.25. Ric asked for the performance audit's five passes and, separately, for births
+past 3,000 ("Idk why births stop they shouldn't"). Every speed pass had to give the identical
+world: each was checked by hashing the whole world (every person, every mind, villages,
+factions, events with who told whom, conversations with their receipts, stores and holders)
+after every day, old engine against new, in nine worlds: an ordinary country with orders given
+from the page (ruling, war, tax, peace), 2,000 on 17 km, a town, two old enemies at war for 40
+days, 150 days through winter, 400 on 500 km, 5,000 on 40 km, 20,000 on 80 km, and
+conversations kept light. All nine were the same, hash for hash, before the births change.
+
+**Measured first** (CPU profiles, seed 7): at 5,000 people the step itself (`act`) is a fifth of
+the time and conversations another fifth, half of that the receipts; at 20,000 the land search
+(`landWay`) is 15% and the crowd search (`routeAround`) 9%.
+
+1. **Conversation receipts** (`converse`). What each of the two was before is kept as numbers in
+   two rows used again and again, made into the receipt only once something has been said, and
+   what each is after is read off them and compared directly instead of building a second
+   receipt. The receipts and effects are field for field what they were. The rolling list of 160
+   exchanges drops its oldest with `shift` rather than cutting a new array.
+2. **The two searches.** The land search keeps its queue in typed arrays between searches; the
+   crowd search keeps its places, costs, "does a body fit here" answers and nodes in fixed
+   arrays (a table of 16,384 rows emptied by moving on a round number; an 800-look search reaches
+   at most 6,401 places), in place of two new `Map`s and an object a place. Same order, same
+   ties, same ways. A 20,000-person day: the crowd search 2.9 → 1.6 s, the land search
+   0.99 → 0.90 s (timed by wrapping them). `Math.hypot` is kept: it is not the same number as
+   `Math.sqrt(x² + y²)` (35% of whole-number pairs differ in the last place), and a different
+   estimate breaks ties differently.
+3. **Only waking whoever is due.** Measured, not built: passing over the sleepers is one look at a
+   number each; an extra empty pass over 5,000 people cost about 5% of a day, a tighter loop
+   gave no measurable change over three alternated runs, and an ordered list of who wakes when
+   would have to be kept in the person order the engine depends on. Left as it is.
+4. **The land sent to the page** (`people-host.js`, `index.html`). The keeper remembers what it
+   last sent, and once the page holds a whole land it sends only the 64-square blocks whose
+   crops or holders have changed; a square's crop is only worked out again when the engine's
+   number for it has changed. The page writes them into its copy and paints only those blocks
+   (and the halved copies round them); it paints the whole land again only when the colours
+   change (a village changing sides, a faction's colour), not every time the villages are sent,
+   as it did. An update the page did not take is answered at the next ask with the whole land.
+   400 people on 500 km: 21 → 11 ms to prepare, 12.4 MB → a few KB sent. In the browser (headless
+   Edge, a small land, a big one and a phone-width window), the picture painted block by block
+   was checked against the same land painted whole every five seconds of Max: the same, value
+   for value, including the halved copies. (Before the canvas is first read back, a few
+   see-through wash pixels differ by one: the browser keeps a canvas premultiplied by its
+   alpha, and the specification warns that reading it back is lossy; once read, never again.)
+5. **Searches of everybody.** None was hot except: every search of a village's houses went
+   through every house in the land (now each village keeps its own, in the same order); a
+   village founding a new one looked through everybody for each family's children (now once);
+   the census read the ten traits through a list of names (now by name: 0.15 → 0.11 s a day at
+   20,000).
+
+**Births past 3,000.** `reflect` had `people.length < 3000` among the conditions for a child: a
+world started bigger never had one. Gone; age, a partner at home, food, crowding and the
+Children setting still decide, and Children at nought still means none
+(`test/births.test.mjs`). This changes every world that reaches 3,000, and its cost is the extra
+people, not the engine (speed log).
+
+**A bug the audit found.** With births at 3,300 people the engine's own audit stopped: somebody
+passed over as listening was left standing after the one speaking to them had been drawn into
+talk with somebody else. The old engine did it too, with no births (two seeds in five at 3,300,
+and two old enemies of 300 on their sixth day): passing people over was not, there, the same
+world as visiting everybody. `said` now wakes whoever either speaker was talking to before. Worlds
+where it happened differ from before from that hour on, and are now the same as with everybody
+visited every step (`test/dozing.test.mjs`, "left listening").
+
+Sources: Brown, R. (1988), "Calendar queues: a fast O(1) priority queue implementation for the
+simulation event set problem", *CACM* 31(10) ([abstract](https://www.maths.tcd.ie/~eoin/index/brown_calendar88.html))
+— the event-scheduling idea weighed and not needed for pass 3; Amit Patel's
+[A* implementation notes](https://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html)
+(an array heap, inserting again rather than changing a priority, as both searches already did);
+MDN, [Transferable objects](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects)
+(a buffer handed over belongs to the other side, so the keeper keeps its own copy of what it
+sent) and [`putImageData`](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/putImageData)
+(painting a dirty rectangle of a kept image); on premultiplied alpha,
+[Mozilla bug 389366](https://bugzilla.mozilla.org/show_bug.cgi?id=389366).
+
 ### Each people's ways, by its own nature (2026-11-20)
 
 TODO item 15a, the groundwork for government (15c), faith (15g) and marriage (15b). Ric: "the
