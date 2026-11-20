@@ -2824,6 +2824,39 @@ fouled (a well near houses, a river below a town), and later its sewers and clea
 built (15d); the sickness (and item 18) spreads more where these are bad. *Question:* in, as
 proposed, measured so a default world's towns lose about what they do now?
 
+**Ric's answers on l–r and the three placed in 15 (2026-11-20):**
+- *l, who does which work:* "Yes? I mean pregnant women can't farm as well and might not be as strong.
+  And there should be some societal stuff too." So bodies differ as well as customs. *Looked up:* women
+  averaged about 52% of men's upper-body and 66% of lower-body strength in one study (Miller and
+  others 1993, [PubMed](https://pubmed.ncbi.nlm.nih.gov/8477683/)), the gap larger in the upper body
+  ([review 2023](https://pubmed.ncbi.nlm.nih.gov/36696264/)); a new mother was meant to lie in for about
+  a month, which poorer women could seldom afford ([LEMDO, pregnancy and childbirth](https://lemdo.uvic.ca/emee/childbirth.html));
+  women did a little over a third of farm tasks in early modern England
+  ([*The Experience of Work in Early Modern England*](https://resolve.cambridge.org/core/books/experience-of-work-in-early-modern-england/agriculture-and-food-production/756B4A05E951DAD3663CEE82452005B5)).
+  *No source found* on how late pregnancy cut field work; to look again before building.
+  *So:* each person has a strength that differs by sex and person; heavy work (ploughing, quarrying,
+  fighting) goes slower for the weaker; late pregnancy and the weeks after a birth cut heavy work, and
+  the lying-in lasts as long as the household can spare her; and on top of the bodies, each people's
+  customs (15a) say who is expected to do what — which may hold women back from work they could do, or
+  not — and those customs move as their people's stats do.
+- *l, couples of the same sex:* "Yeah. If society believes it's ok — people have died over that." So
+  such couples exist, and how a people treats them is its own custom from its stats (15a): accepted,
+  hidden, or punished — and where it is punished, by its law (15c) and its faith (15g), people can be
+  harmed or killed for it, as they have been. Never one rule for every people.
+- *m, children working:* yes.
+- *n, house work as hours:* yes. *Clothes:* "They should maybe matter? If it doesn't cost much for the
+  copy or gpu" — one number a person (how warm what they wear is), worn down by use and made good by
+  spinning hours, read only in the cold (9c): no drawing and no stock of goods. Kept only if it costs
+  next to nothing; measured.
+- *o, working animals:* yes, **the cheapest way to run** — counted as what a household or village owns,
+  not as animals that walk about, eat and die one by one.
+- *p, irrigation:* yes.
+- *q, climate over centuries:* yes, and **on by default** (Ric's choice: a default world changes with it).
+- *r, town deaths:* "There shouldn't be a town fixed death rate it should all be of actual causes." So
+  the fixed rate goes entirely; towns die of crowding, foul water and the sickness, measured.
+- *15c, slavery and serfdom:* yes, **with a setting to turn it off**; a ruled faction can keep, free or
+  forbid it: yes.
+- *15f, long-distance trade:* yes. *15g, festivals and holy days:* yes.
 **Budget:** default for a–r; j faster only.
 
 Research notes (2026-11-20, Ric: "research those and make sure all are needed first and the
