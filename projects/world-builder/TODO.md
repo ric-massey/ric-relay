@@ -2324,6 +2324,46 @@ trade, raids, marriage, and the old quarrel between the farmer's field and the h
 all three? (2) can a settled family take to the road and back (a vagrant after a famine; a herder
 family settling)? (3) is a moving people a faction of its own, or can it live inside a settled one's
 land?
+**Ric's answers (2026-11-20):** (1) **all of them**, "and if there are more ways of living we're
+missing"; (2) a settled family can take to the road and back: **yes**; (3) a moving people as its own
+faction or inside a settled one's land: "What is realistic. Probably both." And the figures: "yeah
+that stuff needs looked up".
+**Looked up (2026-11-20):**
+- *How often foragers moved, and how many.* Across 312 forager cases, a camp moved on average 7.4
+  times a year (median 5.5, from 0 to 58); a camp held on average 41 people (median 27) (Marlowe 2005,
+  summarised in [PMC table](https://pmc.ncbi.nlm.nih.gov/articles/PMC2999363/table/T3));
+  the Ache, in rich forest, moved 75–100 times a year in camps of about 43. Warm, productive places
+  mean shorter, more frequent moves ([PMC review](https://pmc.ncbi.nlm.nih.gov/articles/PMC5373393)).
+  *To read from Kelly's tables before building:* distance a move.
+- *Both, as Ric guessed.* Steppe peoples formed empires of their own beside settled ones and lived
+  off them by tribute, raiding and trade — the Xiongnu beside the Han, alternating war and peace to
+  raise the tribute and avoiding taking farmland — while many herding and travelling peoples lived
+  within a state's land and law (Barfield, *Shadow Empires*, [Princeton](https://press.princeton.edu/books/paperback/9780691278308/shadow-empires);
+  [review](https://asianreviewofbooks.com/content/shadow-empires-an-alternative-imperial-history-by-thomas-j-barfield/);
+  Golden, ["The stateless nomads of early medieval Central Eurasia"](https://cyberleninka.ru/article/n/the-stateless-nomads-of-early-medieval-central-eurasia)).
+  Nomads alone had few resources to build a state from, so their empires drew on settled neighbours.
+  *So:* a moving people is a faction when its own stats and needs make it one (15c), and otherwise
+  lives on a settled people's land, paying or not.
+- *Travellers in a settled land.* England licensed hawkers and pedlars in 1697 at £4 a year and £4 a
+  horse, treating the unlicensed as vagrants ([Hawkers Act 1697](https://vlex.co.uk/vid/hawkers-act-1697-808145973));
+  the fear of vagrants followed fast population growth in the sixteenth and seventeenth centuries,
+  which made a large underemployed migratory labour force, and many taken up as vagrants were simply
+  out of work ([*Rural History* 2013, poverty and mobility](https://resolve.cambridge.org/core/services/aop-cambridge-core/content/view/0918E97B5FE98C377E190988311860D1/S0956793312000180a.pdf/editorial-poverty-and-mobility-in-england-1600-1850.pdf);
+  [Sturdy beggar](https://en.wikipedia.org/wiki/Sturdy_beggar)). *No share of the people found yet;*
+  Beier's and Slack's work is where to look. That is the sim's own rule: people take to the road when
+  land and work run out, not by a quota.
+- *More ways of living than the three* (Ric: "if there are more ways of living we're missing"). The
+  usual classification runs foragers (most food from hunting, fishing and gathering), herders,
+  horticulturalists (gardens with long fallow — fields cleared, used, left, so villages may move
+  every some years) and farmers ([eHRAF, subsistence types](https://ehrafworldcultures.yale.edu/help/LearnMore/subsistence.html);
+  [CUNY, subsistence](https://pressbooks.cuny.edu/discoveringculturalanthropology/chapter/chapter-5/)),
+  with many peoples between them ([ANU, the middle ground](https://openresearch-repository.anu.edu.au/server/api/core/bitstreams/87962771-a5d0-41ae-a57f-828fa5545e0c/content)).
+  Ways the sim does not have, *to research before Ric chooses*: **shifting cultivation** (slash and
+  burn, the village moving when the soil tires — ties to 15.5d); **foragers who settle** where food is
+  rich enough (big fishing peoples, who stored food and had rank and slaves); **transhumance**
+  (the village stays, the herds and herders go up to summer grazing and back); **sea nomads** living
+  on boats; and livings from **taking** — raiders, bandits and pirates — and from **fighting for
+  pay** (mercenaries), which 14e's raiding bands and 15h's armies touch.
 **Done when:** a people with no farming know-how lives by gathering and hunting, moves camp when the
 food runs down, and has no fixed jobs and no ruler unless its own needs make them; a herding people
 moves with the season; none of it is a switch.
@@ -2577,6 +2617,9 @@ settings. Each era's medicine (15d) then lowers these, as it really did.
 *Questions:* (1) Children dying of real causes at real rates, so a family loses some? (2) Mothers
 dying in childbirth? (3) The gap after a birth? (4) The default world's "Children" setting then means
 "as many as they had", with the world measured to see it holds?
+**Ric's answers (2026-11-20):** all four **yes**. Asked whether 15.5k belongs in 15.5 or elsewhere:
+it stays in 15.5 — it changes today's world in every era, and 15d's medicine stands on it — and runs
+right after 15.5e (wounds and old age), the other part about bodies.
 
 **Budget:** default for a–i and k; j faster only.
 
@@ -2847,7 +2890,7 @@ engine already turns into an overthrow or a breakaway.
 
 **Order of 15.5 after the answers:** a (made to order) → h (gear paid for; the button) → b (the
 government's grain trade; food riots; rivers with a direction; grain by boat) → e (lasting wounds; the old
-slowing) → d (clearing, wear, fallow by choice, manure) → f (household firewood) → g (news of
+slowing) → k (children and mothers dying; the gap between births) → d (clearing, wear, fallow by choice, manure) → f (household firewood) → g (news of
 plenty) → c (2 km², finer land, the edge as an option) → j, then i after 15.
 
 ### [ ] 16. Ruins and scavenging
