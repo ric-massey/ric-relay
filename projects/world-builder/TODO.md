@@ -1974,6 +1974,16 @@ Research notes:
   ([*Collective Action in the Formation of Pre-Modern States*, 2008](https://link.springer.com/book/9780387738765);
   [2009 article](https://www.socionauki.ru/journal/files/seh/2009_2/collective_action_in_the_evolution_of_pre_modern_states.pdf)).
 
+**Kings** (Ric, 2026-11-20: "Why aren't kings a thing in the government plan? Or are they just not by
+that term?"). They are, not by that word: the engine's "A chief for life, then their child" is hereditary
+rule, which is what a kingship is; the research above has the king who must carry his great men (Magna
+Carta), and 15g's ruler who takes up a faith for the standing it gives is divine right. What the plan does
+not yet have is the *word* and what goes with it: a title by how much the ruler holds and how it is held —
+a chief of one people, a king over several chiefs' peoples, an emperor over kings (Flannery and Marcus:
+chiefdoms became states by taking in chiefdoms, states empires by swallowing states). *Proposed:* the title
+is read off what the ruler actually holds (one people or many, inherited or chosen), shown in the panel
+and the news, and never decides anything by itself. *Question for Ric:* titles shown that way?
+
 **Approach proposed (not agreed).** A faction's government becomes three things, all real people
 or records, never a label that decides by itself:
 1. *Who must agree* — the coalition: nobody (one ruler), the great families (the richest
@@ -2477,6 +2487,36 @@ carts and roads). Written into each item:
 food runs down, and has no fixed jobs and no ruler unless its own needs make them; a herding people
 moves with the season; none of it is a switch.
 **Budget:** default (a camp moves rarely; nothing per person between moves).
+**How foragers' days differ** (added 2026-11-20, Ric: "do they sleep different do they actually live
+different? Are their responsibilities different?"; "didn't hunter gatherers live longer but couldn't
+support as many people as farmers?").
+- *Work and leisure.* Agta foragers: about 24 hours a week of work out of camp, 20 of chores, and a third
+  of daylight in leisure; neighbours who took up farming worked about 10 hours a week more, and the women
+  in the most farming communities had half the leisure (Dyble and others, *Nature Human Behaviour* 2019,
+  [paper](https://www.nature.com/articles/s41562-019-0614-6)); among the Tsimane and Hadza, farming gave
+  more food an hour for about the same hours, which may be why it was taken up (Kraft and others 2021,
+  [pdf](https://gurven.anth.ucsb.edu/sites/default/files/sitefiles/papers/kraft%20et%20al.%202021.pdf)).
+- *Children.* Raised by many hands: each couple with young children had help from about 1.3 other adults
+  in South American foragers, and older children did much of it; grandmothers were not the main helpers
+  there ([PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC2817285); [PMC 2024](https://pmc.ncbi.nlm.nih.gov/articles/PMC10955362)).
+- *Food.* Game divided across the band with no favour to kin; plant foods shared widely, a little more to
+  kin ([PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC4184416)).
+- *How long they lived.* Life expectancy at birth was low because so many children died, but those who
+  reached adulthood most often died at about 68–78: an adult forager could expect a long life (Gurven and
+  Kaplan, "Longevity among hunter-gatherers", 2007, [pdf](https://gurven.anth.ucsb.edu/sites/secure.lsit.ucsb.edu.anth.d7_gurven/files/sitefiles/papers/GurvenKaplan2007pdr.pdf)).
+  Early farmers were shorter and sicker than the foragers before them in 19 of 21 societies studied (Cohen
+  and Armelagos 1984), recovering later in some regions; the big change was more births, closer together,
+  rather than fewer deaths ([Mummert and others 2011](https://econpapers.repec.org/RePEc:eee:ehbiol:v:9:y:2011:i:3:p:284-301);
+  [PMC 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC9942808)).
+- *How many the land holds.* Foraging seldom supports more than about one person a square kilometre, from
+  0.01 up; shifting cultivation about 20–30 a square kilometre of farmland, farming far more
+  ([Foragers](https://en.wikipedia.org/wiki/Hunter-gatherer); [MIT Press excerpt](https://muse.jhu.edu/books/9780262312264/9780262312264-12.pdf)).
+  So Ric is right on both counts: fewer, healthier, longer-lived adults as foragers; many more people, more
+  crowded and sicker, as farmers.
+*None of it is set:* the hours come from how much work a day's food takes and what is shared; the health
+comes from a varied diet against a grain diet and from crowding (15.5r); the numbers from how much food
+the land gives each way; the sleep from 15.5s. Measured against these figures when 15i is built.
+
 **Also in 15i** (Ric, 2026-11-20): **foragers who settle** where food is rich and can be stored (the
 fishing peoples of the North-West coast), **seasonal herding** (herds and a few herders at summer
 pasture, the village keeping hay for winter), and, **as its last part**, **sea nomads** whose home is
@@ -2857,7 +2897,31 @@ proposed, measured so a default world's towns lose about what they do now?
 - *15c, slavery and serfdom:* yes, **with a setting to turn it off**; a ruled faction can keep, free or
   forbid it: yes.
 - *15f, long-distance trade:* yes. *15g, festivals and holy days:* yes.
-**Budget:** default for a–r; j faster only.
+**15.5s. Sleep that follows the way people live** (added 2026-11-20, Ric: "sleep should follow the way
+they live. Didn't foragers and even on slept in two 4hr segments. Until there was artificial light it
+wasn't like that right?"). *Now* (`sleepTicks` in `people.js`): somebody who goes to bed in the dark
+sleeps until dawn, one to ten hours, in one piece; nobody has a light. *History — partly right, and
+argued:* Ekirch found over 500 references to a "first sleep" and "second sleep" in pre-industrial
+Europe, with a waking hour between, and argues artificial light ended it
+([Scientific American](https://www.scientificamerican.com/article/ancient-sleep-in-modern-t);
+[National Geographic](https://www.nationalgeographic.com/science/article/polyphasic-biphasic-segmented-sleep));
+but three equatorial forager peoples measured with wrist monitors slept in one piece, about 6.4 hours,
+falling asleep some three hours after sunset, waking before sunrise, an hour longer in winter, timed by
+the night's cooling as much as the dark (Yetish and others, *Current Biology* 2015,
+[pdf](https://gurven.anth.ucsb.edu/sites/secure.lsit.ucsb.edu.anth.d7_gurven/files/sitefiles/papers/yetishetal2015.pdf));
+farmers in Madagascar did sleep in two pieces, and the Hadza showed a stir after midnight
+([PMC 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC4763365)); and a 2023 reading of the English sources
+questions how common it was ([PMC 2023](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10404514/)).
+Two pieces seem to come with **long nights and no light** — the far north in winter — more than with a
+way of life. *Proposed:* a person needs a night's sleep (about six to seven hours, a little more in
+winter); they lie down some hours after dark, not at dark, unless tired; where the night is much longer
+than the sleep they need, they wake in the middle and are up a while (tending the fire, talking) before a
+second sleep — so two sleeps appear on long winter nights without a rule saying so, and vanish where
+nights are short or (with 15e/15f) light is had: a fire, candles, lamps, then electric light, each letting
+people stay up. *Questions:* (1) As proposed — two sleeps arising from long nights, not set by era?
+(2) The waking hour does something (talking, passing news, minding the fire), not just shown?
+
+**Budget:** default for a–s; j faster only.
 
 Research notes (2026-11-20, Ric: "research those and make sure all are needed first and the
 logistics of them. Like any questions that would pop up. Not coding questions"). For each part:
@@ -3141,7 +3205,7 @@ for; the button) → b (the government's grain trade; food riots; bandits; river
 grain by boat) → r (dirt and disease in towns) → e (lasting wounds; the old slowing) → l (men and
 women) → k (children and mothers dying; the gap between births) → m (children working) → n (work in
 the house) → d (clearing, wear, fallow by choice, manure, shifting cultivation) → o (animals that work)
-→ p (irrigation) → q (climate over centuries) → f (household firewood) → g (news of plenty) → c (2 km²,
+→ p (irrigation) → q (climate over centuries) → s (sleep) → f (household firewood) → g (news of plenty) → c (2 km²,
 finer land, the edge as an option) → j, then i after 15. l comes before k because k's mothers need it.
 
 ### [ ] 16. Ruins and scavenging
