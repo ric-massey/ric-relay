@@ -1983,6 +1983,7 @@ a chief of one people, a king over several chiefs' peoples, an emperor over king
 chiefdoms became states by taking in chiefdoms, states empires by swallowing states). *Proposed:* the title
 is read off what the ruler actually holds (one people or many, inherited or chosen), shown in the panel
 and the news, and never decides anything by itself. *Question for Ric:* titles shown that way?
+**Ric (2026-11-20): "We can show titles that way."**
 
 **Approach proposed (not agreed).** A faction's government becomes three things, all real people
 or records, never a label that decides by itself:
@@ -2920,6 +2921,13 @@ second sleep — so two sleeps appear on long winter nights without a rule sayin
 nights are short or (with 15e/15f) light is had: a fire, candles, lamps, then electric light, each letting
 people stay up. *Questions:* (1) As proposed — two sleeps arising from long nights, not set by era?
 (2) The waking hour does something (talking, passing news, minding the fire), not just shown?
+**Ric (2026-11-20):** "For the sleeps how close to the equator changes the nights which changes the
+sleep. So I think it should all be in there." Both yes: two sleeps arise from the length of the night,
+which the world already works out from its latitude and the day of the year (the sunrise equation,
+TODO "the year is settings"), so near the equator nights stay about twelve hours and sleep stays in one
+piece, as Yetish measured, and far north the long winter nights split it, as Ekirch's sources describe —
+by the same rule, with nothing set per place or era. The waking hour does something: people talk and
+pass news (item 12), tend the fire, see to children.
 
 **Budget:** default for a–s; j faster only.
 
