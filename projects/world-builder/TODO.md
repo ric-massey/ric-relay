@@ -2248,6 +2248,77 @@ hear news at measurably different speeds; knocking down a tower or cutting a lin
 in its area and nowhere else.
 **Budget:** default.
 
+### [ ] 15.25. Faster People simulation without losing quality, and births without a population cap
+
+Added 2026-11-20 at Ric's request after a performance audit: "1-5 needs added in todo as
+15.25". On births: "Idk why births stop they shouldn't." Then: "Don't do the birth cap fix.
+Just put it in the todos with the others. Only mess with the todo page." **This entry records
+future work; none of these changes has been implemented by the audit.** Another session is
+working on the engine, so re-read and re-profile its current version before implementing this.
+
+**Do, in small measured passes:**
+
+- [ ] **1. Make conversations cheaper to record.** `converse` and `conversationState` in
+  `people.js` create before/after snapshots and compare their fields for every exchange.
+  Reuse temporary storage and avoid duplicate reads while keeping every conversation, its
+  actual effects and the inspector's before/after receipts. An inspected record must still
+  survive eviction from the rolling history without being changed by later conversations.
+- [ ] **2. Reuse pathfinding storage.** `routeAround` creates maps, heap storage and node objects
+  for each search. Investigate reusable scratch buffers for it and `landWay`, keeping the same
+  search order, tie-breaking, search bounds, routes and checks on every footstep. Preserve the
+  invalidation rules for blocked steps, failed searches, bodies moving and crossings changing.
+- [ ] **3. Schedule people who are due instead of scanning everyone each step.** `actionTick`
+  skips idle people's behaviour but still checks everyone's wake time 1,440 times per day.
+  Investigate an ordered active list or due-time buckets. Preserve the existing person order,
+  including somebody woken by an interaction during a step, hourly updates, births, deaths,
+  moves and outside orders. Measure the scheduler's own overhead before choosing it.
+- [ ] **4. Send and paint changed map regions.** `people-host.js` currently builds a full crop
+  picture and copies the whole owner array for a land update; `index.html` repaints the land
+  from that answer. Investigate changed chunks, separate ownership changes from crop changes,
+  and reuse transfer buffers safely. Keep the same detail and update cadence, correct borders,
+  panning and zooming, with a complete first picture and recovery from a missed update.
+- [ ] **5. Keep indexes for repeated population searches.** Audit family, faction, village and
+  event-witness lookups before adding more features. Reuse existing resident/spatial lists;
+  add ordered child or faction lists where measurements justify them. Births, deaths, adoption,
+  moves and faction changes must keep every index correct. Preserve eligibility, encounter
+  order and random-number consumption; do not replace individual people with totals.
+- [ ] **Remove the birth population cap.** `reflect` currently requires `people.length < 3000`
+  before a couple can have a child. Remove that arbitrary gate when this work is implemented.
+  Keep the existing age, partner, food, crowding and fertility rules, including Children set to
+  zero. Add regression coverage for births at and above 3,000 people and for crossing that
+  boundary through actual births; newborns must still use existing household supplies and
+  join the engine's growing memory, wake and spatial structures correctly. This intentionally
+  changes worlds at the old cap, and its extra simulation work must be reported separately
+  from the gains made by optimizations.
+
+**Research first:** allocation reuse and bounded search workspaces, ordered event scheduling,
+spatial queries and transferable-buffer ownership. Extend the audit with current profiles of
+ordinary villages, dense towns, war, winter and older worlds, plus large sparsely settled maps.
+Keep the engine and its worker; these are improvements within them.
+
+**Audit measurements (2026-11-20, provisional):** AMD Ryzen 5 3600, 24 GB, Node v24.19.0,
+seed 7, sickness off, full conversation records, the working copy then current. With the first
+day excluded, CPU-profiled runs took about 2.36 s/day for 5,000 people on 40 km (three measured
+days), and 14.84 s/day for 20,000 on 80 km (two days). Conversations accounted for about 22%
+and 16% of sampled time respectively; local route searches about 16% at 20,000. These are
+inclusive call-tree shares, not additive categories. Only about 27-28% of person-steps ran
+behaviour, although every wake time was checked. Desktop load varied, so these are pointers
+to where to measure, not guaranteed performance targets. A keeper-only land update for 400
+people on 500 km took about 21 ms to prepare and contained 12.4 MB of typed-array data; that
+excludes message delivery and browser painting. No optimization speedup has yet been measured.
+
+**Ric decides:** the scope above is requested. The discussion of seven friends did not authorize
+a new friendship cap; keep the existing five-person close circle and other relationship rules.
+**Done when:** each optimization is measured before/after and produces the same world for the
+same seed, including memories, events, choices and conversation receipts, over representative
+timelines and outside interventions. Extend `walking`, `dozing`, `keeper`, conversation and
+time/food coverage where needed. Verify map changes in the browser at phone and desktop widths.
+Test the birth fix separately because removing the cap intentionally changes outcomes. Record
+the results and any remaining work here; do not tick this whole item after only one pass.
+**Budget:** improve measured runtime or display cost without reducing simulation detail;
+unaffected benchmark cases follow the existing no-more-than-5% regression budget. Measure the
+cost of newly allowed births separately rather than disguising it as an optimization regression.
+
 ### [ ] 15.5. What items 1–14 missed, and what is weak
 
 Added 2026-11-20 (Ric: "Look through 1-14 and see what we missed or where we need to improve",
