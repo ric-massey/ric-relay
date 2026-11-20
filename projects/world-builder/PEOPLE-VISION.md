@@ -773,7 +773,9 @@ when it is built.
 - [ ] Size. The smallest is 5 km across now; Ric wants about 2 km². The largest is 500 km across;
   a state is roughly 500 to 1,200 km. A square is 250 m, which is too coarse for a 2 km² world:
   a house and its field would be one square. The square has to get smaller as the land does.
+  (2026-11-20: largest is 1,000 km since 4a; the smallest is `TODO.md` 15.5c.)
 - [ ] Land that changes: cleared forest, worn-out soil, flood, fire, land that recovers.
+  (2026-11-20: soil and forest are `TODO.md` 15.5d; flood and fire item 17.)
 
 **2. Water**
 - Now: none. People need only food.
@@ -819,7 +821,9 @@ when it is built.
 - [x] The mind: how many slots, what kinds of thing a slot holds, how the weakest is forgotten. (2026-11-17, TODO item 11: Ric, 20, "A little", "Grudges last longest")
 - [ ] Skills: learned by doing, taught, lost when the people who had them die.
 - [ ] Health: wounds, sickness, old age, what a person can no longer do.
-- [ ] What the visitor sets about people at the start ("what the people are kinda like").
+  (2026-11-20: wounds and old age `TODO.md` 15.5e; sickness item 18.)
+- [x] What the visitor sets about people at the start ("what the people are kinda like").
+  (2026-11-17, TODO 10: ten sliders and "How much they differ"; per faction is 15a.)
 - [ ] Making a person small in memory, once the count makes it matter.
 
 **5. Talking and knowing**
@@ -838,10 +842,11 @@ when it is built.
   goods.
 - [x] Real materials: wood, stone, ore, cloth, and what is made from each. (2026-11-17, TODO 9:
   wood, stone, ore, wool and hides; Ric: "Few and clear".)
-- [ ] Ways to live other than farming: fishing, herding, hunting, cutting wood, mining, and
+- [x] Ways to live other than farming: fishing, herding, hunting, cutting wood, mining, and
   scavenging ruins — a living that lasts only as long as the ruins do.
+  (2026-11-16/17, TODO 6c and 9: all but scavenging, which is item 16.)
 - [ ] Money kept simple (decided). What "almost no money" means for how people trade.
-- [ ] Who owns land and buildings.
+- [x] Who owns land and buildings. (2026-11-16, TODO 7c: each faction's own land rule.)
 
 **7. Eras**
 - Now: one era, roughly a farming village with hand weapons.

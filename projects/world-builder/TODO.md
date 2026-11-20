@@ -2245,6 +2245,77 @@ hear news at measurably different speeds; knocking down a tower or cutting a lin
 in its area and nowhere else.
 **Budget:** default.
 
+### [ ] 15.5. What items 1–14 missed, and what is weak
+
+Added 2026-11-20 (Ric: "Look through 1-14 and see what we missed or where we need to improve",
+then "15.5 please"). Every "not met", "open" and "left out" note in items 1–14 was checked against
+items 15–20 and `PEOPLE-VISION.md`. Parts a–h are things no later item picks up; part i is things
+that are in but hardly show in a normal world; part j is speed. Do the parts in order, one a
+session, the way any item is done; split further if one is too big.
+
+**15.5a. The store piles up goods nobody uses** (left open by item 9). A village store holds
+hundreds of goods that are never spent. 15f's jobs and workplaces stand on this economy, so it
+must make sense first. Find out where goods come in and why nothing draws them down (what
+households want, what crafters use, what wears out). Done when: a default year's store holds
+roughly what its people use in a season, without a cap or a rule that throws goods away.
+
+**15.5b. Towns cannot be fed from round them** (left open by item 8 and its food-supply fix). A
+city of half the people starves: the land round it has a quarter of what it needs to spare, and
+its money buys less. Research how real towns drew grain (item 8's notes: 20–30 km by land, much
+further by water) before changing anything. Done when: a starting city is fed or fails because
+of the land and the roads round it, measured over several seeds, never because a number was
+turned until it lived.
+
+**15.5c. Land from about 2 km²** (left by item 4a, never done by item 5). The smallest land is 5 km
+across (25 km²); Ric asked for about 2 km². The square must get smaller as the land does, or a
+house and its field are one square. Ric decides: how few people and villages a land that small
+starts with.
+
+**15.5d. Land that changes** (`PEOPLE-VISION.md`, "Land"). Soil worn out by farming the same
+square year after year and coming back when left; forest cleared and staying cleared until it
+regrows. Floods and fires dropped by the visitor stay item 17. Research first: medieval yields on
+land left fallow and not; how long woodland takes to come back.
+
+**15.5e. Health: wounds and old age** (`PEOPLE-VISION.md`, "People"). A wound from a fight or a
+battle that heals slowly or does not; old age taking away what a person can do (heavy work, long
+walks, fighting). Item 18 stays the mechanism for sickness that spreads. Ric decides: whether a
+lasting wound can stop somebody working for good.
+
+**15.5f. A household's own firewood** (left open by item 9). Firewood is the village's, while
+food, water and money are the household's. Make it the household's, fetched or bought like water.
+
+**15.5g. News of a good harvest** (left open by 12b). People act on news of dear food and dry
+years, not on news of plenty elsewhere. A good harvest becomes an event people hold and pass on,
+and traders and the hungry act on it the way 12b's news is acted on.
+
+**15.5h. Two things left out of items 13 and 14.** (1) In a war, crafters turn to making gear for
+the soldiers, from the stats and the store as any work is chosen (14a); (2) a page button for a
+ruled faction to offer a marriage for peace (13, 14d), using 14d's marriage as it is.
+
+**15.5i. In, but hardly seen in a normal world.** Measure each again after item 15 has changed
+the world, and only then decide whether it needs work; write what was found here.
+- Fords, bridges and armies stopped by water show only on lands of about 100 km and up: the default
+  17 km land has no big river (6). Boats carrying goods are rare everywhere (7).
+- Few houses built in a first year; no road built on purpose, roads only wear in (7).
+- News is forgotten within days, since in a full mind it is usually the weakest thing held (12).
+- Few have family in another village early on, so fleeing to family and food sent to them are rare
+  (12b).
+- Fights only between neighbours of one village (10); Honest moves no hours until people go hungry
+  (10).
+- People moved house about half again as often after item 11 (248 a world-year against 168);
+  written down, never explained.
+- A faction at war works as much as one at peace (51% against 51%), not more (14a).
+- Even wars mostly outlast two years (3 of 13 ended, 14c, 14e).
+- Widows remarry no sooner or later for a war (14b); remarriage itself is 15b.
+
+**15.5j. Speed.** 20,000 people on 80 km ran at 52× after 2b and about 19× by item 13, a little
+lost with each item; the row has not been run since item 13, and the M1 rows for item 2 on were
+never filled in. Run the full bench, find what each item added at 20,000, and win back what does
+not change the world. Item 15 adds per-faction ways, offices and know-how, so this matters more
+after it.
+
+**Budget:** default for a–i; j faster only.
+
 ### [ ] 16. Ruins and scavenging
 
 **Now:** a dead village leaves nothing.
