@@ -2023,6 +2023,9 @@ rank when somebody dies — the eldest son, all the children alike, the kin grou
 is a custom like marriage and tied to it (a dowry is an early share), from the stats of the
 people with the most say (15a). It replaces the single "When somebody dies" setting for peoples
 whose customs have been worked out; a world nobody changes keeps the setting as it is.
+Also here (Ric, 2026-11-20, from 15.5e): **the old handing the farm to a child in exchange for
+their keep** — a room, food, fuel — as medieval maintenance agreements did, the land going back if
+the child failed them (research in 15.5's notes).
 
 **Ric (2026-11-20), after the research:** "For marriage it looks like it depends on the culture.
 And the culture needs to be decided but it still differs between people. So the most influential
@@ -2447,6 +2450,108 @@ right at it.
 **Summary.** Needed before 15f: a (the store). Needed, with a question on what the truth is: b.
 Needed, Ric's own asks: c, e. Needed for long runs: d. Small: g, the button in h. Least needed: f
 (could be dropped or folded into a). The gear in h belongs before 15h. i and j are checks.
+
+**Ric's answers (2026-11-20).** These replace the "likely shape" lines above where they differ.
+- **a.** Households using goods up: **no** — "adding that will have little return for how much that
+  cost to track". Crafters make to order: **yes**. When nobody wants what they make: "What do people
+  do in real life?" → researched below.
+- **b.** A city of half the people starving: "People starving blame the government or die. And
+  governments generally don't want people dying so they would try to make it work? No? A lot of
+  people move or try something if they have the skills. This needs researched (make sure this isn't
+  already in)" → researched below. Boats carrying grain in bulk: **yes** — "Boats should be pretty
+  important for travel because it makes it easy but then the question goes of which way the rivers
+  travel" → researched below.
+- **c.** A 2 km² world is one village watched house by house: yes. How many people and groups:
+  whatever happens — "If a group of 50 people decide to break off they should. Inventions are so
+  much less likely and so on" (no special rules for a small world; 15e's finding rate already
+  falls with fewer people). Land **stored finer if the computer allows** (as people have no top:
+  advice, not a block). The world beyond the edge: **an option** (closed, or people coming and going).
+- **d.** People clear forest for fields: yes. Resting land: **the people's choice** (a custom, 15a).
+  Herds manure fields: yes.
+- **e.** Lasting harm from a bad wound: yes. The old slowing down: yes. Handing the farm to a child:
+  **in 15b**, with inheritance. Who looks after somebody who cannot work: "Family or even maybe they
+  find a way to make a new job" (15f's workplaces give the second).
+- **f.** Firewood: **keep** — "firewood was important till the modern age no?" Yes: rural households
+  burned most of Europe's firewood, and its use did not fall in many countries until after the
+  Second World War (Warde 2019, above).
+- **g.** Where news of plenty goes: "Not sure which is best. Do research" → below.
+- **h.** Wartime gear "must be payed for or donated. Nothings free": the leader pays from the
+  treasury, or people give it. The marriage button: "The marriage button is for me so I should have
+  ultimate power" — read as: Ric picks anybody on either side and the match is made, no refusal.
+- **i.** Which weak spots first: "Idk" → measure all after 15, those people see most (rivers and
+  boats, houses, news) first.
+- **j.** No floor: "it can go under in massive runs like 20,000 people".
+
+Research after Ric's answers (2026-11-20):
+
+**What craftsmen did when their trade was slack (a, Q3).** Mixed livings were the rule, not the
+exception: one trade often did not feed a family, so people combined them — blacksmith and trader,
+tailor and night-watchman — and many took day labour or went on the road for work part of the year;
+harvest needed extra hands everywhere ([Habsburg history, "Weaver in winter, bricklayer in
+summer"](https://www.habsburger.net/en/chapter/weaver-winter-bricklayer-summer); by-employment,
+[EHS working paper](https://ideas.repec.org/p/ehs/wpaper/10001.html); England's men in farming fell
+from about 65% to 43–51% by the early 1700s as work specialised,
+[*The Experience of Work in Early Modern England*](https://www.cambridge.org/core/books/experience-of-work-in-early-modern-england/introduction/48EE0BECF2672EE15CE26DA6B282EFD3)).
+*In the engine already:* `choose` weighs every living for everybody, so a crafter with no work
+farms, fishes, cuts wood or moves without a new rule. *What to build:* crafting pays only for what
+was asked for, so with no orders the bench stops paying and the rest follows by itself.
+
+**A town going hungry: what is already in, and what is not (b, Q4).** *Already in* (read from
+`people.js`): hunger lowers mood and mood lowers loyalty to the leader; enough disloyalty
+overthrows a chief or the rich (`revolution`) or breaks a village away (the "breaks away" setting);
+a leader who believes in sharing, or has a full treasury, turns on relief — the treasury buys
+bread from the village store for those who cannot pay; the hungry move house to where there is
+food, ask neighbours, and act on news of famine. *Not in:* a government getting grain from
+**elsewhere**. Relief only buys from the store of the hungry place itself, so when that is empty
+it does nothing. *History:* Florence rebuilt Orsanmichele about 1290 as a public grain market with
+storage halls above, and rationed in famine ([Nanni 2019](https://flore.unifi.it/retrieve/e398c37f-4b86-179a-e053-3705fe0a4cff/Nanni%202019_Facing%20the%20Crisis%20in%20Medieval%20Florence.pdf));
+Tuscan communes' legitimacy rode on feeding the city ([*Speculum*, Feeding the Medieval Italian
+City-State](https://www.journals.uchicago.edu/doi/10.1086/693379)); a permanent public granary was
+the exception, most were set up in a crisis or a war ([Horrea](https://francoangeli.it/riviste/articolo/45695));
+Venice and Genoa bought their grain abroad; Valencia subsidised grain brought in. England's Books of
+Orders (1587, reissued in every dearth until the 1640s) had juries count every holder's grain and
+justices force it to open market at fair prices ([Slack, "Books of Orders"](https://core-prod.cambridgecore.org/core/journals/transactions-of-the-royal-historical-society/article/books-of-orders-the-making-of-english-social-policy-15771631/77CAFBCE3647464DE4F0BD606B14B0CD);
+[Nielsen, *JEH*](https://www.cambridge.org/core/journals/journal-of-economic-history/article/storage-and-english-government-intervention-in-early-modern-grain-markets/50C3503F73A5B77135688A8426954580)).
+*So the missing piece is the government's own grain trade:* a leader whose people are going hungry
+spends the treasury buying grain from other villages and other factions (by cart or boat) into a
+store, and may force hoarders to sell or ration — each by the leader's stats (15a: a warm leader
+buys, a greedy one keeps the treasury, a hard one takes from hoarders by force). Nothing here makes
+a city that cannot be fed live: if there is no grain to buy in reach, it still starves, blames the
+leader, or empties.
+*Question for later:* food riots — the hungry seizing grain from stores and carts — were the other
+side of this. In, as an act of the angry (item 10's hot-tempered), or not?
+
+**Which way rivers run (b, Q5).** *In the engine:* when the land is made, every square gets one
+downhill neighbour and water is added up along it (`people.js`, the water step), but that direction
+is not kept once the land is made, and a boat goes as fast either way. *History:* downstream a boat
+drifts with the current, often under sail; upstream it was towed by people or horses from the bank,
+much slower, and only where the bank was clear the whole way
+([Viabundus, river transport](https://www.landesgeschichte.uni-goettingen.de/roads/viabundus/?p=939));
+on the Tiber a towed barge made about 15–20 km a day upstream, by a trial with a replica
+([Ostia](https://ostia-antica.org/introduction/rome-transport-tiber.htm)); later canal practice is
+roughly 25–30 km a day down, 8–16 up (a blog, not a source to use). Carting cost about twice river
+carriage in medieval England (Masschaele), and much more against the sea. *What to build:* keep
+each river square's downhill direction (one number a square, already worked out), make a boat
+faster with the current and towed slowly against it, and let grain and goods go by boat where
+that is cheaper. So towns downstream of good farmland are fed more easily than towns upstream of
+it — which is how river cities grew, without a rule saying so.
+
+**Where news of plenty belongs (g, Q18).** Merchants learned prices by letters: Datini's archive
+holds over 100,000, and his factors at Caffa left for Tuscany on news that grain had risen there;
+how fast prices evened out between markets followed how fast news went between them
+([MAIASP 2022](https://en.maiask.ru/data/documents/14_EvstiuninENG.htm);
+[*EREH* 2017](https://econpapers.repec.org/RePEc:oup:ereveh:v:21:y:2017:i:4:p:414-433.);
+[AHA 2020](https://aha.confex.com/aha/2020/webprogram/Paper28964.html)). So news of plenty has two
+halves: heard by word of mouth, which is 12b's machinery and costs nearly nothing to add, and
+carried by letter, which needs writing (15e) and travels at the speed of what is built (15d).
+*Recommendation:* keep g in 15.5 as the word-of-mouth half (a good harvest becomes news like a
+famine, and traders, the hungry and families act on it as on 12b's news), and let 15e's letters
+and 15d's roads make it faster later. No separate item.
+
+**Order of 15.5 after the answers:** a (made to order) → h (gear paid for; the button) → b (the
+government's grain trade; rivers with a direction; grain by boat) → e (lasting wounds; the old
+slowing) → d (clearing, wear, fallow by choice, manure) → f (household firewood) → g (news of
+plenty) → c (2 km², finer land, the edge as an option) → j, then i after 15.
 
 ### [ ] 16. Ruins and scavenging
 
