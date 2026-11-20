@@ -1512,7 +1512,11 @@ Research notes:
   = 2; a target is picked every fifteen days per enemy from villages within thirty squares. Cost: a
   pass over the villages every fifteen days per enemy; the bench is unchanged.
 
-### [ ] 15. Eras, old to modern
+### [ ] 15. Eras, old to modern — split into 15a and 15d
+
+**Split 2026-11-20** (Ric: "Split it"), because 15c and 15b stand on part of it. The order is
+**15a → 15c → 15b → 15d**. This entry keeps the research and Ric's answers for both halves; tick
+it when 15d is ticked.
 
 **Now:** one era, a farming village with hand weapons.
 **Do:** an era is a set of numbers over the same world: how many one farmer feeds, what
@@ -1608,77 +1612,40 @@ today's values, so a world nobody changes is byte for byte as it was. Towers and
 on the land, built and owned like houses and carts. Cost: one lookup per faction where a
 constant is read now; nothing per person.
 
-### [ ] 15b. Who marries whom
+### [ ] 15a. Each people's ways, and decisions made from the stats
 
-Added 2026-11-19 at Ric's word, while 14d was built: "generally leaders are well off dont people
-who marry marry in similarry pay ranges? most the time in earlier times and the money was spread
-unevenly in lots of areas i mean there was tons of factors that play into who marrys who".
-**Now:** two single grown-ups who are not kin and like each other enough may pair up when they
-talk, whatever each owns, whatever their families think, and whichever side of a border they are
-on. 14d's marriages for peace take a leader's own family first, then one of the faction's richest.
-**Do:** marriage that follows what it followed in the time: standing and wealth (marrying within
-one's own kind), what the families want and what a match brings them (land, a dowry), the parish or
-village (most married within a few miles), faith and people, age at marriage by era (late in
-north-west Europe, early elsewhere: Hajnal), and remarriage after a death.
-**Research first:** homogamy by wealth and class in pre-industrial records (parish registers,
-marriage contracts); dowry and bride-price; how far people went to find a spouse; who arranged it.
-**Ric decides:** how much families arrange it against the couple's own liking; whether it differs by era (item 15).
-**Ric (2026-11-20):** it differs by era and also between peoples of the same era ("as for marrage same thing"); research it before building ("those need to be researched").
-**Done when:** in a world where wealth is uneven, the rich mostly marry the rich and the poor the
-poor, measurably more than by chance, and the leading families marry each other.
+Split out of 15 on 2026-11-20 as the groundwork 15c, 15b and 15d stand on.
+**Now:** every number about how a people lives and fights is one constant for the whole world
+(`WAR_ERA`, the food and travel figures), and a faction's ways of doing things are a few
+settings chosen at the start (`rule`, `land`).
+**Do:** one record per faction, its *ways*: the era's numbers already in the engine (war, walls,
+food, travel, news) and its customs. **Customs are not labels chosen once: they come from the
+stats of the people with the most say** (Ric, below) — the leader, and whoever the leader must
+carry (15c). As those people change, or are replaced, or their traits move, the customs move.
+**Make what changes a person depend on their age and on how big the thing was** (Ric, below):
+item 10's events move traits by fixed amounts whatever the age; here the young move more and the
+old less, and a bigger event (a war lost, a famine, a parent killed) more than a small one.
+**Research first** (begun): how much traits move with age — rank-order stability of personality
+rises from about 0.31 in childhood to 0.54 at college age, 0.64 at 30 and about 0.74 from 50
+([Roberts and DelVecchio, Psychological Bulletin 126, 2000](https://stafforini.com/works/roberts-2000-rankorder-consistency-personality/);
+updated by [Bleidorn et al. 2022](https://www.gwern.net/doc/psychology/personality/2022-bleidorn.pdf):
+stability rises through early life to a plateau in young adulthood). How a people's customs
+follow its powerful people, and how fast customs change, still to research.
+**Ric decides:** whether the visitor sets each people's nature at the start (ten sliders per
+faction, not one set for the world), so two peoples begin with different customs.
+**Done when:** a world nobody changes is byte for byte the world it was; two factions whose
+leading people differ in their stats end up with measurably different customs; a raid moves a
+child more than an old person.
 **Budget:** default.
 
+**Ric (2026-11-20):** "the culture needs to be decided but it still differs between people. So
+the most influential people what morals and stats they have should decide the marriage thing.
+The marriage thing should be decided through the stats. That's something that needs to also be in
+the givernment and everything else they make a decision based on their stats and sometimes those
+decisions change their stats if their young enough or the thing that happened was a big enough
+deal."
+
 Research notes:
-
-*Researched 2026-11-20 (see item 15's note). Nothing built; the approach waits on Ric.*
-
-- **Age at marriage, and where the couple lives.** North-west of a line from Trieste to St
-  Petersburg, women married at 24 or more and men at about 26, spouses were close in age, 10% or
-  more never married and a new couple set up its own household; east and south of it most women
-  were married by 25, nearly everybody married, and the bride joined her husband's family
-  ([Western European marriage pattern](https://en.wikipedia.org/wiki/Western_European_marriage_pattern);
-  [Levine, Encyclopedia.com](https://www.encyclopedia.com/international/encyclopedias-almanacs-transcripts-and-maps/european-marriage-pattern)).
-  The engine already follows the north-western way (a couple moves out — comment at
-  `people.js` ~1364); it is one of two customs, not the rule.
-- **Who chooses.** In 190 foraging societies almost all children were born in marriage and
-  marriage was arranged by parents and close kin; about 70% (69.9%) were parental arrangements,
-  and parents controlled daughters' marriages more than sons'
-  ([Apostolou, Evolution and Human Behavior 28(6), 2007](https://hraf.yale.edu/ehc/documents/22)).
-  So the couple's own liking deciding alone, as now, is the rare case in history, not the usual.
-- **What passes between the families.** In Murdock's Ethnographic Atlas of 1,167 pre-industrial
-  societies, bride-price (the groom's side pays) is in about two thirds and dowry (the bride
-  brings property) in under 4% — but dowry was the custom of the stratified plough societies of
-  Europe and Asia, where most people lived. Bride-price goes with more than one wife and with
-  divorce ([Anderson, "The Economics of Dowry and Brideprice", JEP 21(4), 2007](https://ideas.repec.org/a/aea/jecper/v21y2007i4p151-174.html)).
-- **Like marries like.** Over 1.7 million English marriage records 1837–2021 the underlying
-  correlation of groom's and bride's status is about 0.8, unchanged in 180 years, and evidence
-  takes it back to 1754 ([Clark and Cummins, LSE working paper 337, 2022](https://www.lse.ac.uk/asset-library/information/wp337.pdf)).
-  The comparative history of marrying within one's class is van Leeuwen and Maas
-  ([IRSH 50 supplement 13, 2005](https://research-portal.uu.nl/en/publications/endogamy-and-social-class-in-history-an-overview/)).
-  This answers Ric's "dont people who marry marry in similarry pay ranges?": yes, strongly.
-- **How far.** Parish-register studies find marriages mostly within the parish or the next few;
-  readers who could sign went further ([Durham thesis](https://etheses.durham.ac.uk/id/eprint/7130);
-  [Shropshire 1754–1810](https://qmro.qmul.ac.uk/xmlui/handle/123456789/1673)). A figure in miles
-  to read from Millard, *Local Population Studies* 1982, before building.
-- **Cousins and more than one wife.** About 85% of recorded societies allowed a man more than one
-  wife, though most men in them had one ([Henrich, Boyd and Richerson, "The puzzle of monogamous
-  marriage", 2012](https://pmc.ncbi.nlm.nih.gov/articles/PMC3260845)). Cousin marriage was common
-  until the Western Church forbade it; how long a people lived under that ban predicts how rare
-  it is today ([Schulz et al., Science 366, 2019](https://coevolution.fas.harvard.edu/sites/projects.iq.harvard.edu/files/culture_cognition_coevol_lab/files/sciencefull.pdf)).
-  Both are customs that differ between peoples of the same age — Ric's "as for marrage same thing".
-- **Marrying again.** In sixteenth-century England a quarter to under a third of those marrying
-  were marrying again; by the nineteenth about a tenth ([Wrigley and Schofield via Boulton,
-  Continuity and Change](https://resolve.cambridge.org/core/journals/continuity-and-change/article/london-widowhood-revisited-the-decline-of-female-remarriage-in-the-seventeenth-and-early-eighteenth-centuries/A3B2E55B71FD085349C9F3D865EFB987)).
-
-**Approach proposed (not agreed).** Each people's marriage customs, on its *ways* record (item 15):
-who decides (a weight from the couple's liking to the families' choice), what passes (nothing,
-bride-price, dowry), the age, where the couple lives (own house, his family, hers), cousins
-allowed or not, one spouse or more, and how far a match is looked for. A match is weighed as liking
-plus the families' weight times what it brings them (wealth and standing alike, the payment, an
-alliance) less the distance. Families look among the singles their own village and the next few
-hold, a list already kept up (item 2), so it costs a short list a day per family with somebody
-of age, not everybody against everybody. **Measured by** the correlation of spouses' household
-wealth against the same people paired at random, and how often the leading families marry each other.
 
 ### [ ] 15c. Government, deeper
 
@@ -1703,6 +1670,30 @@ divided these powers; how much a ruler could do without the great families; what
 **Done when:** two factions with the same leader but different councils or laws do measurably
 different things.
 **Budget:** default.
+
+**Ric's answers (2026-11-20), after the research:** split 15 ("Split it"). On offices: "Which
+ones exist shouldn't be how big the people is unless if that's how it would play out idk how
+governments started or how they got big and how they were designed." So **no office is unlocked
+by size.** An office comes to exist when a leader or council has a need they cannot meet
+themselves (more disputes than they can hear, more households than they can collect from, a war to
+run) and the means to keep somebody in it, and chooses by their own stats to make one — a greedy
+ruler farms out the tax, an honest one pays a collector. If bigger peoples end up with more
+offices, as Seshat found, that must come out of the run, and is measured, not set. And every
+decision comes from the stats of whoever decides (see 15a).
+**How governments started and grew — what was found for Ric's "idk".** Two explanations, and both
+are about what people did, not a size reached. Carneiro: where farmland is hemmed in by
+mountains, desert or sea, a beaten village cannot move away, so war ends in conquest and tribute
+instead of flight, and conquerors build the apparatus to hold what they took
+([Carneiro, *Science* 1970; restated 2012](https://www.sociostudies.org/journal/files/seh/2012_2/005-030.pdf));
+cross-cultural tests find it holds in some places, not all
+([HRAF re-analysis](https://hraf.yale.edu/documents/1284)). Flannery and Marcus, over the whole
+record from bands to empires: population and surplus alone do not explain it; each society's own
+"social logic" — how its people thought rank should be earned or inherited — decided whether and
+how inequality and offices grew; chiefdoms became states by taking in other chiefdoms, and states
+became empires by swallowing states
+([*The Creation of Inequality*, 2012](https://prod.lsa.umich.edu/anthro/people/faculty/archaeological-faculty/kflanner/The-Creation-of-Inequality-How-Our-Prehistoric-Ancestors-Set-the-Stage-for-Monarchy-Slavery-and-Empir.html);
+[review](https://www.lrb.co.uk/v35/n07/steven-mithen/foursomes-and-so-on)). That second one is
+Ric's rule in the historians' words: the people's own stats decide the design.
 
 Research notes:
 
@@ -1781,13 +1772,101 @@ share shrinks turns on its ruler (North, Wallis and Weingast). Cost: each factio
 coalition and officials as kept-up lists, a few dozen people; a decision sums over those, not
 over everybody. Within the default budget.
 
-**Order (asked 2026-11-20).** Ric: "should eras be done first? … it is the groundwork for the rest
+**Order (asked and answered 2026-11-20).** Ric: "should eras be done first? … it is the groundwork for the rest
 no?" Every finding above ties a people's way of ruling to its size and age (Seshat) and to its
 customs (Ric: different peoples in one era). The groundwork all three items share is the
 per-faction *ways* record. Proposed: split 15 into **15a** (the *ways* record and the era numbers
 the engine already has: war, walls, food, travel, news — the world unchanged until a value is
 changed), then **15c** and **15b** on top of it, then **15d** (towers, cars, building shapes,
-medicine, techniques spreading). Waiting on Ric.
+medicine, techniques spreading). Ric: "Split it" — done above.
+
+### [ ] 15b. Who marries whom
+
+Added 2026-11-19 at Ric's word, while 14d was built: "generally leaders are well off dont people
+who marry marry in similarry pay ranges? most the time in earlier times and the money was spread
+unevenly in lots of areas i mean there was tons of factors that play into who marrys who".
+**Now:** two single grown-ups who are not kin and like each other enough may pair up when they
+talk, whatever each owns, whatever their families think, and whichever side of a border they are
+on. 14d's marriages for peace take a leader's own family first, then one of the faction's richest.
+**Do:** marriage that follows what it followed in the time: standing and wealth (marrying within
+one's own kind), what the families want and what a match brings them (land, a dowry), the parish or
+village (most married within a few miles), faith and people, age at marriage by era (late in
+north-west Europe, early elsewhere: Hajnal), and remarriage after a death.
+**Research first:** homogamy by wealth and class in pre-industrial records (parish registers,
+marriage contracts); dowry and bride-price; how far people went to find a spouse; who arranged it.
+**Ric decides:** how much families arrange it against the couple's own liking; whether it differs by era (item 15).
+**Ric (2026-11-20):** it differs by era and also between peoples of the same era ("as for marrage same thing"); research it before building ("those need to be researched").
+**Done when:** in a world where wealth is uneven, the rich mostly marry the rich and the poor the
+poor, measurably more than by chance, and the leading families marry each other.
+**Budget:** default.
+
+**Ric (2026-11-20), after the research:** "For marriage it looks like it depends on the culture.
+And the culture needs to be decided but it still differs between people. So the most influential
+people what morals and stats they have should decide the marriage thing. The marriage thing should
+be decided through the stats." So the customs listed in the approach below are not chosen per
+people: each comes from the stats of that people's most influential (15a), and each person still
+weighs a match by their own stats inside them.
+
+Research notes:
+
+*Researched 2026-11-20 (see item 15's note). Nothing built; the approach waits on Ric.*
+
+- **Age at marriage, and where the couple lives.** North-west of a line from Trieste to St
+  Petersburg, women married at 24 or more and men at about 26, spouses were close in age, 10% or
+  more never married and a new couple set up its own household; east and south of it most women
+  were married by 25, nearly everybody married, and the bride joined her husband's family
+  ([Western European marriage pattern](https://en.wikipedia.org/wiki/Western_European_marriage_pattern);
+  [Levine, Encyclopedia.com](https://www.encyclopedia.com/international/encyclopedias-almanacs-transcripts-and-maps/european-marriage-pattern)).
+  The engine already follows the north-western way (a couple moves out — comment at
+  `people.js` ~1364); it is one of two customs, not the rule.
+- **Who chooses.** In 190 foraging societies almost all children were born in marriage and
+  marriage was arranged by parents and close kin; about 70% (69.9%) were parental arrangements,
+  and parents controlled daughters' marriages more than sons'
+  ([Apostolou, Evolution and Human Behavior 28(6), 2007](https://hraf.yale.edu/ehc/documents/22)).
+  So the couple's own liking deciding alone, as now, is the rare case in history, not the usual.
+- **What passes between the families.** In Murdock's Ethnographic Atlas of 1,167 pre-industrial
+  societies, bride-price (the groom's side pays) is in about two thirds and dowry (the bride
+  brings property) in under 4% — but dowry was the custom of the stratified plough societies of
+  Europe and Asia, where most people lived. Bride-price goes with more than one wife and with
+  divorce ([Anderson, "The Economics of Dowry and Brideprice", JEP 21(4), 2007](https://ideas.repec.org/a/aea/jecper/v21y2007i4p151-174.html)).
+- **Like marries like.** Over 1.7 million English marriage records 1837–2021 the underlying
+  correlation of groom's and bride's status is about 0.8, unchanged in 180 years, and evidence
+  takes it back to 1754 ([Clark and Cummins, LSE working paper 337, 2022](https://www.lse.ac.uk/asset-library/information/wp337.pdf)).
+  The comparative history of marrying within one's class is van Leeuwen and Maas
+  ([IRSH 50 supplement 13, 2005](https://research-portal.uu.nl/en/publications/endogamy-and-social-class-in-history-an-overview/)).
+  This answers Ric's "dont people who marry marry in similarry pay ranges?": yes, strongly.
+- **How far.** Parish-register studies find marriages mostly within the parish or the next few;
+  readers who could sign went further ([Durham thesis](https://etheses.durham.ac.uk/id/eprint/7130);
+  [Shropshire 1754–1810](https://qmro.qmul.ac.uk/xmlui/handle/123456789/1673)). A figure in miles
+  to read from Millard, *Local Population Studies* 1982, before building.
+- **Cousins and more than one wife.** About 85% of recorded societies allowed a man more than one
+  wife, though most men in them had one ([Henrich, Boyd and Richerson, "The puzzle of monogamous
+  marriage", 2012](https://pmc.ncbi.nlm.nih.gov/articles/PMC3260845)). Cousin marriage was common
+  until the Western Church forbade it; how long a people lived under that ban predicts how rare
+  it is today ([Schulz et al., Science 366, 2019](https://coevolution.fas.harvard.edu/sites/projects.iq.harvard.edu/files/culture_cognition_coevol_lab/files/sciencefull.pdf)).
+  Both are customs that differ between peoples of the same age — Ric's "as for marrage same thing".
+- **Marrying again.** In sixteenth-century England a quarter to under a third of those marrying
+  were marrying again; by the nineteenth about a tenth ([Wrigley and Schofield via Boulton,
+  Continuity and Change](https://resolve.cambridge.org/core/journals/continuity-and-change/article/london-widowhood-revisited-the-decline-of-female-remarriage-in-the-seventeenth-and-early-eighteenth-centuries/A3B2E55B71FD085349C9F3D865EFB987)).
+
+**Approach proposed (not agreed).** Each people's marriage customs, on its *ways* record (item 15):
+who decides (a weight from the couple's liking to the families' choice), what passes (nothing,
+bride-price, dowry), the age, where the couple lives (own house, his family, hers), cousins
+allowed or not, one spouse or more, and how far a match is looked for. A match is weighed as liking
+plus the families' weight times what it brings them (wealth and standing alike, the payment, an
+alliance) less the distance. Families look among the singles their own village and the next few
+hold, a list already kept up (item 2), so it costs a short list a day per family with somebody
+of age, not everybody against everybody. **Measured by** the correlation of spouses' household
+wealth against the same people paired at random, and how often the leading families marry each other.
+
+### [ ] 15d. Eras, the rest: towers, cars, building shapes, medicine, techniques that spread
+
+Split out of 15 on 2026-11-20. Everything in 15's **Do** that 15a did not take: cell towers and
+cars as things built, owned and destroyed; building shapes by era and by people; medicine;
+weapons and travel by era; and, with "move on by itself" on, techniques passing between peoples
+by trade, war, marriage and people moving (Turchin et al. 2013, in 15's notes). 15's research,
+"Ric decides" answers and "Done when" apply here.
+**Budget:** default.
 
 ### [ ] 16. Ruins and scavenging
 
