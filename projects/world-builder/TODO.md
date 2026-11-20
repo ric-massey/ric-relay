@@ -1633,6 +1633,9 @@ stability rises through early life to a plateau in young adulthood). How a peopl
 follow its powerful people, and how fast customs change, still to research.
 **Ric decides:** whether the visitor sets each people's nature at the start (ten sliders per
 faction, not one set for the world), so two peoples begin with different customs.
+**Ric (2026-11-20): "I like nature sliders"** — yes, per faction. Proposed: the world's ten
+sliders stay as they are and every faction starts from them; a faction can be opened to set its
+own ten, so a world nobody touches is the world it was.
 **Done when:** a world nobody changes is byte for byte the world it was; two factions whose
 leading people differ in their stats end up with measurably different customs; a raid moves a
 child more than an old person.
@@ -1669,6 +1672,9 @@ divided these powers; how much a ruler could do without the great families; what
 **Ric's answers (2026-11-20):** how deep: "yes the governemnts need to go way deeper"; it comes before 15 (asked "15c first, or straight to 15?"); 15b and 15c "need to be researched" first. Which offices: still Ric's, asked after the research with what each era had.
 **Done when:** two factions with the same leader but different councils or laws do measurably
 different things.
+Also (Ric, 2026-11-20, below): on hemmed-in land, more wars end in conquest and tribute, and more
+offices appear, than on open land from the same seed — or the run says it does not, and that is
+written down instead of tuned.
 **Budget:** default.
 
 **Ric's answers (2026-11-20), after the research:** split 15 ("Split it"). On offices: "Which
@@ -1694,6 +1700,33 @@ became empires by swallowing states
 ([*The Creation of Inequality*, 2012](https://prod.lsa.umich.edu/anthro/people/faculty/archaeological-faculty/kflanner/The-Creation-of-Inequality-How-Our-Prehistoric-Ancestors-Set-the-Stage-for-Monarchy-Slavery-and-Empir.html);
 [review](https://www.lrb.co.uk/v35/n07/steven-mithen/foursomes-and-so-on)). That second one is
 Ric's rule in the historians' words: the people's own stats decide the design.
+
+**Ric (2026-11-20): "could we build something like this in there?"** — yes, as things that can
+happen, never as a path a faction is put on. What the engine already has, and what it lacks:
+- *Carneiro — has:* land from the seed with sea, lakes, rivers and hills nobody walks through
+  (4a, 4b); a village with no good land in reach feels **cramped**, and a cramped leader is more
+  ready for war (`found`, `decide`); war takes villages (`capture`, 14); tribute agreed between
+  factions (14d). *Lacks:* (1) **the way out.** A family running from war goes only to a village
+  of its own faction (`flee`, `capture`). On open land the beaten should be able to leave
+  instead — break new ground beyond the winner's reach as a people of their own — and only where
+  sea, mountain or desert close that off are they stuck with the winner. That one choice is the
+  whole of Carneiro's argument. (2) **taken as a subject, not only absorbed.** Today a taken
+  village simply changes flag. A beaten people should also be able to stay itself — its own
+  leader, its own ways — and pay tribute, as most conquered chiefdoms did; which of the two
+  happens comes from the winner's stats and how far away it is. (3) **holding it costs
+  somebody.** More subject villages than the ruler and the coalition can watch is the need that
+  makes an office (above): a collector for the tribute, a captain for the garrison.
+- *Flannery and Marcus — has:* the start setting for who leads (vote, a chief and then his
+  child, the richest) and revolts that change it (`overthrow`). *Lacks:* whether rank is
+  **earned or inherited** comes from the people's own stats (15a) — the proud and the greedy
+  among the leading families making it run in families, the warm and the stubborn holding it
+  open — rather than from a setting chosen once; and **a people taken in brings its own ways**,
+  so a conqueror ruling three subject chiefdoms holds three sets of customs that pull on it.
+- *Measured, not set:* the same seed on hemmed-in land and on open land (the sea, hills and
+  "how settled" settings), many seeds each, counting how wars end, tribute paid, offices made
+  and how many villages one faction holds. No number is changed to make the hemmed-in side win.
+  Cost: the way out is `found` run for a beaten household, already cheap; a subject is one more
+  relation per pair of factions.
 
 Research notes:
 
