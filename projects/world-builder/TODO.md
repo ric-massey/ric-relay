@@ -2218,6 +2218,9 @@ works, wires and lines are buildings with methods too, and a tower or a car stop
 what feeds it stops. Money stays simple (Ric).
 **Done when:** a people that farms better moves people into other work by itself; knocking down a
 power works stops what it fed; no workplace is placed by the program.
+**Ric (2026-11-20, from item 17):** "Firefighters can be a job if it matches with the cities needs.
+Or towns. That's the thing about the jobs they have to match what the city needs." A job exists
+where the place needs it and can pay for it — never placed, never a fixed share of the people.
 **Budget:** default.
 
 ### [ ] 15h. Armies: what they carry, how far they go, and strategy
@@ -3099,6 +3102,89 @@ nothing is looked at.
    that way?
 8. *Order:* buildings breaking is item 16, which waits for 15. Should 17 wait for 16 too, or go
    first with houses only (they can already burn)?
+
+**Ric's answers (2026-11-20):**
+1. By themselves: **a setting**, "for sure".
+2. Dropping one: **numbers only** — no named sizes.
+3. **The published formulas.**
+4. Fires started by people: **yes**, "but make sure it's backed by statistics on how often and how
+   it spreads" → researched below. And: "Firefighters can be a job if it matches with the cities
+   needs. Or towns. That's the thing about the jobs they have to match what the city needs."
+5. Warning signs: **yes**, "if there is one and it's likely people would leave" → below.
+6. Colder years over the whole map: **yes**, "if it's realistic" → below.
+7. Fallout on the land here, the sickness in 18: **yes.**
+8. **17 comes after 16.**
+Also asked: "Is plague apocalypses in there too? Or is that later?" — **later: item 18**, "Catastrophes
+in people: plague, radiation, zombies", one mechanism (something carried that spreads and changes
+the body and what the person wants); the existing sickness becomes it with its old numbers.
+
+**Fires people start: how often, how they spread, and who fights them (Ric's 4).**
+- *How often.* Small fires were common and poorly recorded; big ones were not rare. Several hundred
+  large urban fires burned in early modern Europe, more in the seventeenth century, clustered in
+  hot dry spells (Garrioch, "Large fires and climatic variability in urban Europe, 1500–1800",
+  [*Climate and Culture*](https://www.whpress.co.uk/CCH/952_Garrioch.html); "Towards a fire history
+  of European cities", [*Urban History* 2019](https://www.cambridge.org/core/journals/urban-history/article/towards-a-fire-history-of-european-cities-late-middle-ages-to-late-nineteenth-century/DCF986C2797AAFB0A9B6F07DE549E501)).
+  England 1500–1750 had over three hundred town fires that destroyed ten houses or more — two or
+  three a year across a country of some hundreds of towns ([Tufts, Perseus](https://dl.tufts.edu/teiviewer/parent/rv043431c/chapter/c8s10)).
+  London 1833–49 counted 450 to 840 fires a year, most small. *Still to find before building:* a
+  rate per household per year for small fires (Garrioch's and Zwierlein's studies are where to
+  look). *So:* a fire starts in a household at a small chance a day, raised by dry weather, wind
+  and trades that burn (baking, smithing); most stay in one house.
+- *How it spreads.* Building to building by radiant heat, hot gas carried on the wind, and
+  firebrands landing downwind; it depends strongly on wind speed and direction and on the gap
+  between buildings, and changes between gaps of 1–2 m and 2–3 m (Himoto and Tanaka, *Fire Safety
+  Journal* 2008, [pdf](https://repository.kulib.kyoto-u.ac.jp/dspace/bitstream/2433/93452/1/j.firesaf.2007.12.008.pdf);
+  Usui and Teraki 2018, spread by gap and construction, [J-STAGE](https://www.jstage.jst.go.jp/article/journalcpij/53/3/53_1507/_article/-char/en);
+  wind-tunnel firebrands, [*Frontiers* 2020](https://www.frontiersin.org/articles/10.3389/fmech.2020.628510)).
+  London's 1666 fire stopped at a gap on London Bridge. *The model to build from:* Himoto and
+  Tanaka's three ways of spreading, with each house's material (item 9) and the gap to the next
+  (houses already have real positions and sizes, 7a); *their fitted numbers to read before
+  building.* Out of town, the share-of-the-wind rule for grass and forest (above).
+- *Who fights them.* Rome had paid firefighters (the vigiles, under Augustus) with bucket chains
+  and pumps; they were later replaced by guilds. London before 1666 had no organised fire service;
+  after it, fire insurers paid their own brigades, and the first fire-engine company is dated 1678;
+  Boston passed fire rules in 1631 ([History of firefighting](https://en.wikipedia.org/wiki/History_of_firefighting);
+  [Vigiles](https://en.wikipedia.org/wiki/Vigiles)). So most of history fought fire with
+  neighbours and buckets, and paid firefighters came where a town was big and rich and had lost to
+  fire. *How it fits Ric's rule:* everybody near a fire may run to it with water, weighed in
+  `choose` like any task (a neighbour's house, one's own); a firefighter is a job a town takes on
+  only when its own losses make it worth paying for — the 15f rule that jobs match what the place
+  needs.
+
+**Warnings people would act on (Ric's 5).**
+- *Volcano:* there are signs — steam blasts, small quakes, swelling — and acting on them saves
+  lives: Pinatubo (1991) showed signs two months ahead, the clearest in its last ten days;
+  evacuation 48 hours before the big eruption saved 5,000–20,000 lives, and the visible early
+  eruption is what persuaded people to go; the signs alone did not
+  ([USGS, Pinatubo](https://www.usgs.gov/news/remembering-mount-pinatubo-25-years-ago-mitigating-crisis);
+  [USGS fact sheet](https://pubs.usgs.gov/fs/1997/fs113-97)). *In:* rumbling days to weeks ahead,
+  some people leaving by their own boldness and what they hold (items 10–12), more once ash falls.
+- *Flood:* a river rises before it floods, and warnings work only when people believe them; more
+  warning time is not always better ([EEA, flood warnings](https://www.eea.europa.eu/publications/late-lessons-2/late-lessons-chapters/late-lessons-ii-chapter-15);
+  [PMC review](https://pmc.ncbi.nlm.nih.gov/articles/PMC7120419)). *In:* water rising for a day or
+  more, seen by those by the river.
+- *Earthquake:* some are preceded by foreshocks and many are not, and a foreshock cannot be told
+  from an ordinary small quake until after; L'Aquila (2009) had them, read only afterwards
+  ([Reasenberg, USGS](https://pubs.usgs.gov/publication/70021771);
+  [PMC, central Italy](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10474115/)). *Not in:* no
+  usable warning, by Ric's rule.
+- *Fire:* smoke is seen as it spreads; people flee or fight. *Bomb, asteroid:* no warning in the
+  world (a warning would be something people have, like a radio — 15d).
+
+**Colder years over the whole map — is it realistic? (Ric's 6).**
+- *Volcanoes: yes, measured.* Tambora cooled the northern summer about half a degree and 1816's
+  harvests failed in Britain and Ireland; Laki's haze brought a hard winter to Europe (above).
+- *Bombs: argued.* Robock, Toon and Xia model soot from burning cities cooling the world for years,
+  and in *Nature Food* (2022) famine killing more than the war — assuming trade stops and nobody
+  adapts; Los Alamos (Reisner and others, 2018, 2019) found far less soot reaching high enough and
+  far less cooling, and others have said the Robock group's data and code are hard to check
+  ([*ACP* 2023 discussion](https://acp.copernicus.org/articles/23/6691/2023/);
+  [*Nature* 2011](https://www.nature.com/articles/475037b);
+  [NIDS review](https://www.nids.mod.go.jp/english/publication/security/pdf/2023/01/04.pdf)).
+  *So:* volcanic cold is in, from the measured eruptions. Cold after bombs is a real effect of
+  unsettled size; proposed: it follows the soot a city's burning puts up (how much burned, from this
+  item's own fires), using the published range, with the low end as the default and the setting
+  able to take the high end — *Ric to say.*
 
 ### [ ] 18. Catastrophes in people: plague, radiation, zombies
 
