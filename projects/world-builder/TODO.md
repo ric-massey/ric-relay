@@ -2997,7 +2997,108 @@ years after eruptions, impact effects by size, how floods and fires spread.
 the aftermath differs with where and when it lands.
 **Budget:** default; no cost at all while nothing is happening.
 
-Research notes:
+Research notes (2026-11-20, Ric: "Alright 17"; read as search summaries; nothing built):
+
+**What the engine has now** (read, not run). Nothing can be put into the People world while it
+runs except orders to a faction you rule and live settings. Hard times that come by themselves:
+dry years (rain by place and year, 6b), cold winters (firewood, 9c), the sickness. The physics
+sandbox has a tool row (place, throw, erase, heat, cool, pin); the People page has none. Things
+item 17 would lean on: people flee danger at their own village and come home when it has passed
+(14b), news is seen within 3 km and told beyond (12), houses can burn and be rebuilt (14b, 7b),
+and items still to come — buildings that break in stages (16), land that changes (15.5d), and
+radiation sickness (18).
+
+**What each kind does, from the published figures.**
+- *Nuclear weapon.* Blast and the distance a given overpressure reaches scale with the cube root
+  of the yield: eight times the yield, twice the reach (Glasstone and Dolan, *The Effects of
+  Nuclear Weapons*, 1977, [DTRA pdf](https://www.dtra.mil/Portals/125/Documents/NTPR/newDocs/NTREReport/Glasstone%201977%20-%20The%20Effects%20of%20Nuclear%20Weapons.pdf);
+  the same rule in the 1957 edition). 5 psi is the classic "most buildings down" ring. Thermal
+  burns and fallout have their own chapters (the burn ranges by yield, and a fallout plume carried
+  downwind) — *to be read from the book itself before building.* Hiroshima: about 350,000 people
+  there that day, about 140,000 dead by the end of 1945; the city's residents fell to about
+  137,000 by November 1945, 171,000 in 1946, jobs back to prewar levels by about 1948, and the
+  centre was again the densest place by 1950, because people chose to rebuild where it was
+  ([Hiroshima Prefecture](https://www.pref.hiroshima.lg.jp/site/peace80-en/reconstruction-atomic-bombing.html);
+  [LSE CEP](https://cep.lse.ac.uk/_new/publications/abstract.asp?index=11800)).
+- *Asteroid.* The Earth Impact Effects Program (Collins, Melosh and Marcus 2005) takes the
+  object's size, density, speed, angle and the ground it hits, and gives entry, crater, fireball
+  and heat, thrown-out rock, shaking and the air blast at any distance; near the impact heat does
+  most harm, and far off the Earth's curve shields places from it
+  ([paper](https://articles.adsabs.harvard.edu/pdf/2005M%26PS...40..817C);
+  [the program](https://impact.ese.ic.ac.uk/ImpactEarth/)). Its equations are published: *to be
+  read from the paper before building.*
+- *Volcano.* Ash: a few millimetres can damage crops, under about 50 mm can even act as a mulch on
+  pasture, 100 mm or more (less when wet, twice as heavy) brings down weak, flat or wide roofs, and
+  over 300 mm kills or starves livestock ([USGS, roof loading](https://volcanoes.usgs.gov/volcanic_ash/roof_loading.html);
+  [USGS, pastures](https://volcanoes.usgs.gov/volcanic_ash/amount_ash_pastures.html);
+  [GNS Science](https://www.gns.cri.nz/our-science/natural-hazards-and-risks/volcanoes/ash/)).
+  Far off, the cold: Laki (Iceland, 1783) poisoned the grass, killed 60–80% of the island's
+  livestock and, by the famine after, a fifth to a quarter of its people
+  ([Laki](https://en.wikipedia.org/wiki/Laki)); Tambora (1815) killed about 10,000 at once and tens
+  of thousands more by famine and disease nearby, cooled the northern summer about half a degree,
+  and 1816 was "the year without a summer" — failed harvests in Britain and Ireland, typhus after
+  ([Tambora](https://en.wikipedia.org/wiki/1815_eruption_of_Mount_Tambora);
+  [Year Without a Summer](https://en.wikipedia.org/wiki/Year_Without_a_Summer);
+  [Oeschger Centre, Bern](https://boris.unibe.ch/81880/7/tambora_e_web.pdf)). So a volcano is two
+  things: what falls near it, and colder years everywhere.
+- *Fire.* In forest and shrubland a fire runs forward at about a tenth of the wind speed (0.3 to
+  10.5 km/h observed), in cured grass about a fifth, and grassfires have run 10–15 km/h
+  ([Cruz and Alexander 2019](https://link.springer.com/article/10.1007/s13595-019-0829-8);
+  [CSIRO, grassfire rule of thumb](https://research.csiro.au/spark/news)). In a town: the Great Fire
+  of London (1666) began in a bakery, was driven by wind through timber houses (by then mostly
+  tiled, not thatched — thatch spreading it is a myth), burned 13,200 houses and left about
+  70,000 of 80,000 homeless; the recorded dead are a handful and the real count is argued; a gap in
+  the houses on London Bridge stopped it crossing the river
+  ([London Museum](https://www.londonmuseum.org.uk/collections/london-stories/great-fire-of-london/);
+  [Museum of London, myths](https://museumoflondon.org.uk/discover/three-myths-you-believe-about-great-fire-london);
+  [Londonist](https://londonist.com/2016/08/is-it-true-that-only-six-people-died-in-the-great-fire)).
+  So fire spreads by wind and by what there is to burn, and a gap stops it.
+- *Earthquake.* Most deaths are from buildings falling, so what matters is what they are built of:
+  mud brick and unbuilt-up stone fall even at moderate shaking (Iran's stock, 80% of it, "succumbs
+  even for moderate levels"); the USGS's PAGER estimates deaths from shaking × how many of each
+  kind of building × how likely each is to fall × how many inside die
+  ([USGS, collapse fragility](https://pubs.usgs.gov/publication/70035719);
+  [Jaiswal and Wald 2010](https://webarchive.library.unt.edu/web/20121002070525/http://earthquake.usgs.gov/earthquakes/pager/prodandref/Jaiswal_Wald_2010_Semi.pdf)).
+  *Its tables by building kind to be read before building.*
+- *Flood.* Crop loss goes with depth, how long the water stands, and when in the growing year it
+  comes ([Monteleone 2023](https://cris.unibo.it/retrieve/72f0b22c-b022-42c1-9280-445d3c881340/2023_Monteleone_Estimations%20of%20Crop%20Losses_WATER.pdf);
+  [2026 preprint](https://egusphere.copernicus.org/preprints/2026/egusphere-2026-6703/)). *No figure
+  for pre-modern flood deaths was found; to look again before building.* The land already knows
+  where water goes (rivers downhill, lakes, river flats: 4a, 6b), so a flood can follow the
+  ground rather than a circle.
+- *Drought.* Already in as dry years (6b). A placed drought is the same thing made worse for a
+  place and a number of years.
+
+**How it would fit the engine** (proposed, not agreed). One record for every kind: where, how
+big, when, and what it does at each distance — to people (killed or hurt, by what they stand in or
+under), to buildings (a stage of item 16's damage, by material), to the land (ash, burned, flooded,
+poisoned, a crater; recovering on 15.5d's clock), to stores and fields, to water, and to the sky
+(colder or darker years for the whole map, for so long). Fire and flood also *spread* — fire by
+wind and fuel (forest, timber, thatch), flood downhill along the ground the land already has — and
+stop at gaps; the others are rings. Everything after is the engine's own: the dead are missing from
+their households, the hurt heal or do not (15.5e), people who see it or hear of it flee and come
+back or do not (14b, 12), fields go unharvested, a leader sends relief or does not (15.5b), a
+faith may form round it (15g). Nothing is written to happen afterwards. With nothing placed,
+nothing is looked at.
+
+**Questions for Ric:**
+1. *By themselves:* should catastrophes also happen on their own (a setting: off, rare, as often as
+   real ones), or only when you drop them?
+2. *How you drop one:* a tool on the People page — pick a kind, a size, tap the map? And named
+   sizes to pick from (a Hiroshima-sized bomb, a Tambora-sized eruption), or only numbers?
+3. *How real:* the published equations (cube-root blast, the impact program, ash thresholds, fire
+   at a share of the wind), or simpler rings?
+4. *Fire started by people:* the Great Fire began in a bakery. Should ovens and hearths sometimes
+   start fires by themselves (more in dry, windy weather, in timber towns), and people fight them
+   and make firebreaks? Or are fires only dropped?
+5. *Warning:* should some come with signs people can read — a river rising, a mountain rumbling —
+   so some flee in time, or always without warning?
+6. *The whole map:* a big eruption or many bombs cool the years after everywhere (1816; nuclear
+   winter). In, as a cold that thins every harvest for some years?
+7. *Fallout:* item 17 puts it on the land and item 18 makes people sick from it. Fine to split it
+   that way?
+8. *Order:* buildings breaking is item 16, which waits for 15. Should 17 wait for 16 too, or go
+   first with houses only (they can already burn)?
 
 ### [ ] 18. Catastrophes in people: plague, radiation, zombies
 
