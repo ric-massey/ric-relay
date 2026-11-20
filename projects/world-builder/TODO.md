@@ -2316,6 +2316,138 @@ after it.
 
 **Budget:** default for a–i; j faster only.
 
+Research notes (2026-11-20, Ric: "research those and make sure all are needed first and the
+logistics of them. Like any questions that would pop up. Not coding questions"). For each part:
+what the engine does now (read from the code, not run), what history says, whether it is needed,
+and the questions for Ric. Nothing here is agreed. Sources were read as search summaries.
+
+**a. The store.** *Now:* a crafter sells everything over one good to the store
+(`people.js` "make"); a household buys one good when it holds under 0.15 and never uses it up;
+goods leave the store only for houses, gear and carts. So goods are made every day and almost
+nothing spends them, and the price sits at its floor while crafters keep working. *History:*
+peasants owned far fewer household goods than in later centuries and put their spare into
+livestock and the farm (Briggs, manorial court-roll inventories c.1270–1420,
+[medievalists.net](https://www.medievalists.net/2011/02/manorial-court-roll-inventories-as-evidence-for-english-peasant-consumption-and-living-standards-c-1270-c-1420/);
+Briggs, Forward and Jervis, [open monograph](https://library.oapen.org/bitstream/handle/20.500.12657/89841/1/the-material-culture-of-english-rural-households.pdf));
+much craft work was made to order rather than for stock (books, swords: [Smarthistory](https://smarthistory.org/making-books-for-profit-in-medieval-times),
+[Albion, cutlers](https://albion-swords.com/articles/cutlers-and-guilds.htm)); a thin source.
+*Needed:* yes, and first: 15f's workplaces sell into this. *Likely shape:* goods a household
+really uses that wear out (clothes, pots, tools already wear), and crafters working when there is
+a want, not into a full store.
+*Questions:* (1) Should a household need goods the way it needs food and water (clothes and pots
+wearing out), or is "goods" only for houses, gear and carts? (2) Should crafters make to order
+(somebody asks, they make it) or for the store, stopping when it is full? (3) When nobody wants
+what crafters make, what do they do: farm, move, go hungry?
+
+**b. Feeding towns.** *Now:* market day carries spare food up to 10 km to a town going short;
+boats carry goods only between two landings on the same water. A city of half the people starves:
+the land round it has about a quarter of what it needs to spare. *History:* a pre-industrial town
+seldom held more than a tenth to a fifth of a people (item 8's notes), so a city of half the
+people is a start the past did not have. Small towns drew on 8–12.5 km round (Dyer); Wiltshire
+manors sold grain within about 17 km ([Galloway and others, summarised](https://sas-space.sas.ac.uk/39/1/britnell.pdf));
+carting about doubled the price of bulk goods within 50–70 km ([MPRA 10924](https://mpra.ub.uni-muenchen.de/10924/1/MPRA_paper_10924.pdf));
+in England carting cost about twice river carriage (Masschaele, *EcHR* 1993), and Diocletian's
+edict made shipping grain across the Mediterranean cheaper than carting it 75 miles
+([Laudan](https://www.rachellaudan.com/2014/07/roman-empire-food-miles.html)). Big cities lived
+on grain by water. *Needed:* partly. A town of the size history had being fed is needed; a city
+of half the people starving may be the right answer. *Likely shape:* grain carried by boat in
+bulk along rivers and coasts (7d's boats, made to carry grain), and nothing else changed.
+*Questions:* (1) Is a city of half the people starving a bug, or the truth to keep? (2) Should
+boats carry grain in bulk to a town by water, so only cities on water can grow big, as in
+history? (3) Should the start choice say a city may not be fed?
+
+**c. Land from 2 km².** *Now:* 5 km across at least (25 km²), because the default eight villages
+do not fit below that (`people.js` "How much land"); a square is 250 m. 2 km² is about 1.4 km
+across: six squares by six. *History:* a holding was about 12 ha (item 7's notes), so 2 km²
+(200 ha) is fifteen to twenty holdings: one hamlet or small village, a few dozen to about a
+hundred people. Figures for people per km² in 1300 disagree by four times between sources
+([summary blog](https://dailymedieval.blogspot.com/2019/04/population-density.html);
+[Warwick paper](https://warwick.ac.uk/fac/soc/economics/seminars/seminars/conferences/venice3/programme/english_medieval_population.pdf)).
+*Needed:* Ric asked for it. It is a different kind of world: one village, close up.
+*Questions:* (1) What is a 2 km² world for: one village watched house by house? (2) Then how many
+people, villages and factions: one village and no wars, or several hamlets? (3) Should the land
+itself be finer at that size (a square of 50 m, more detail stored), or the same 250 m squares
+drawn finer, which item 4a chose for zooming in? (4) What happens at the edge: is the rest of the
+world just not there (nobody comes or goes), or are there people beyond it?
+
+**d. Land that changes.** *Now:* a forest square holds sixty loads and grows twenty back a year,
+so a forest is never cleared for good; fields are farmed on whatever ground is farmable and never
+tire. *History:* English demesne wheat gave about three to six times the seed (Campbell's yields
+database, [BAHS](https://www.bahs.org.uk/crop-yields-database/); Ebony, 2.9 times:
+[BAHS](https://www.bahs.org.uk/AGHR/ARTICLES/33n1a2.pdf)); a third of the land lay fallow under
+three fields, half under two ([Britannica](https://www.britannica.com/topic/three-field-system));
+marling and manure raised yields. Wheat on Rothamsted's Broadbalk with no manure since 1843 is
+low but has not fallen to nothing: worn soil settles at a floor, it does not die
+([Rothamsted](https://www.rothamsted.ac.uk/news/maintaining-wheat-yields-possible-over-many-years)).
+English fields left alone were scrub in about 25 years and near woodland in about 50
+([Cambridge, passive rewilding](https://www.repository.cam.ac.uk/handle/1810/323983)).
+*Needed:* for long runs, yes. Over a year or two it changes little. *Likely shape:* each square
+remembers how hard it was farmed; yields fall toward a floor and come back with fallow or manure;
+farmers clear forest for new fields (assarting) and a field left alone goes back to scrub, then
+forest, over decades.
+*Questions:* (1) Should people clear forest to make new fields, so the map changes? (2) Fallow:
+should farmers rest land by their own choice (and is that a people's custom, 15a), or always?
+(3) Should herds manure fields, so herding and farming help each other? (4) Is it worth it before
+eras, given most runs are short?
+
+**e. Wounds and old age.** *Now:* a wound lowers a person's health, which comes back at a fixed
+rate (if they have water) and always comes back in full. Old age only makes sickness and cold more
+likely; everybody works as hard until the day they die, at an age drawn at birth. *History:* 32%
+of medieval Cambridge skeletons had broken bones, 44% of ordinary working people, nearly all well
+healed ([Dittmar and others, via Cambridge](https://www.cam.ac.uk/node/221581)); some badly hurt
+people were cared for for years ([Lund knee](https://www.discovermagazine.com/medieval-skeleton-reveals-what-life-was-like-with-a-disability-in-the-middle-47582)).
+Old peasants handed their holding to a child in exchange for keep — a room, food, fuel — under
+agreements the manor court enforced, and the land went back if the child failed them
+([Encyclopedia.com, widows and the elderly](https://encyclopedia.com/history/news-wires-white-papers-and-books/widows-and-elderly);
+[ORB, retirement](https://www.the-orb.arlima.net/encyclop/culture/towns/florilegium/lifecycle/lcret02.html)).
+*Needed:* yes, and it ties to 15b's inheritance. *Questions:* (1) Should a bad wound leave lasting
+harm (slower, cannot fight, cannot do heavy work)? (2) Should the old slow down over years, so
+there is a time when a person can no longer farm? (3) Should the old hand the farm to a child for
+their keep, as in history (and should that wait for 15b's inheritance)? (4) Who looks after
+somebody who cannot work: their family, at a cost in the family's hours?
+
+**f. A household's firewood.** *Now:* the village store burns wood for everybody in the cold.
+*History:* the right to take wood for the fire (firebote, one of the estovers) belonged to a
+holding, from the lord's or the common wood ([Estovers](https://en.wikipedia.org/wiki/Estovers));
+town households bought it. Rural households burned most of the firewood there was, and how much
+is badly recorded (Warde 2019, [Cambridge repository](https://www.repository.cam.ac.uk/handle/1810/292463));
+the only per-family figure found (6–12 cords a year) is from a game book and is not used.
+*Needed:* least of all. It makes firewood work like food and water, and a cold household
+different from its neighbour, but little else. *Questions:* (1) Keep it, or drop it? (2) If kept:
+does a household fetch its own wood like water, and may it cut only where the land rule (7c)
+lets it?
+
+**g. News of a good harvest.** *Now:* traders already see every price within reach (Ric's
+choice in 12b); "Food is dear in V" and dry years add a pull. *History:* whether medieval grain
+markets were one market or many is argued: Gras saw about fifteen separate market areas, Clark
+an efficient market from the thirteenth century ([Galloway](https://sas-space.sas.ac.uk/42/1/galloway.pdf)).
+*Needed:* small. Since traders see prices anyway, plenty elsewhere already pulls them; this adds
+the hungry and families acting on it. *Questions:* (1) Who should act on news of plenty: traders,
+the hungry moving there, families sending to buy? (2) Is it worth an item, or fold it into 15h's
+supply or 15f's trade?
+
+**h. Wartime gear and a marriage button.** *History:* the English crown bought arms in bulk by
+orders spread over many places so no one place ran short — about 1.23 million arrows 1341–59, and
+20,000 bows and 900,000 arrows given out 1344–51 — through royal fletchers and outside suppliers
+([Richardson thesis](https://etheses.whiterose.ac.uk/3919/1/Thom_Richardson_thesis_final.pdf);
+[De Re Militari, the Tower](https://deremilitari.org/?p=2105)). So wartime gear was paid for by the
+ruler and made by ordinary crafters answering orders. *Needed:* the gear, yes, before 15h (an
+army that carries its supplies needs them made). The button is small. *Questions:* (1) Does the
+leader pay for gear from the treasury (raising tax), or order it unpaid? (2) Marriage button: may
+the other side refuse, by the same reckoning 14d uses? Who can be offered: only the leader's
+family, or you choose?
+
+**i. Weak spots.** No research: they are to be measured after 15. *Question:* which of them matter
+most to you, so they are looked at first?
+
+**j. Speed.** *Question:* should 20,000 people at 16× (the speed Ric chose in item 3) be a floor no
+later item may go under? On the machine items 13–14 were measured on, 20,000 ran at about 16–19×,
+right at it.
+
+**Summary.** Needed before 15f: a (the store). Needed, with a question on what the truth is: b.
+Needed, Ric's own asks: c, e. Needed for long runs: d. Small: g, the button in h. Least needed: f
+(could be dropped or folded into a). The gear in h belongs before 15h. i and j are checks.
+
 ### [ ] 16. Ruins and scavenging
 
 **Now:** a dead village leaves nothing.
