@@ -2374,6 +2374,10 @@ cost of newly allowed births separately rather than disguising it as an optimiza
 
 ### [ ] 15.5. What items 1–14 missed, and what is weak
 
+**Order (Ric, 2026-11-20): 15.5 is done before 15** — "we should do 15.5 then 15". The
+whole order is now **15.5 → 15 (15a done; then 15c, 15g, 15b, 15e, 15f, 15h, 15d) → 16 → 17**.
+Where 15.25 (added by another session) falls in that is not yet said.
+
 Added 2026-11-20 (Ric: "Look through 1-14 and see what we missed or where we need to improve",
 then "15.5 please"). Every "not met", "open" and "left out" note in items 1–14 was checked against
 items 15–20 and `PEOPLE-VISION.md`. Parts a–h are things no later item picks up; part i is things
@@ -3184,7 +3188,7 @@ the body and what the person wants); the existing sickness becomes it with its o
   *So:* volcanic cold is in, from the measured eruptions. Cold after bombs is a real effect of
   unsettled size; proposed: it follows the soot a city's burning puts up (how much burned, from this
   item's own fires), using the published range, with the low end as the default and the setting
-  able to take the high end — *Ric to say.*
+  able to take the high end. **Ric (2026-11-20): yes.**
 
 ### [ ] 18. Catastrophes in people: plague, radiation, zombies
 
