@@ -2001,6 +2001,18 @@ the engine already has: war, walls, food, travel, news — the world unchanged u
 changed), then **15c** and **15b** on top of it, then **15d** (towers, cars, building shapes,
 medicine, techniques spreading). Ric: "Split it" — done above.
 
+**Slavery and serfdom are in 15c too** (added 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built)). *Now:* nobody is unfree.
+*History:* Roman Italy's slaves were perhaps 1 to 1.5 million of 5 to 6 million in the late first
+century BC (20–30%), the empire as a whole about 10% (Scheidel, [2005](https://www.Gwern.net/doc/history/2005-scheidel.pdf));
+only a handful of societies ever passed 20% (Roman Italy, the US South, Brazil, the Caribbean);
+captives of war were a main source. *To read before building:* Domesday's *servi* (about a tenth of
+those counted), medieval serfdom, and Domar's argument that bound labour arises where land is plentiful
+and hands are few. *Proposed:* unfree people as a status a people's law allows or forbids (15c), from
+the stats of those with the say (15a): captives taken in war or raids may be kept and worked or sold,
+a debtor may be bound, a lord's tenants bound to the land; they work and live as others do but cannot
+leave or choose, and may flee or rise when they can. *Questions:* (1) In, as proposed? (2) Can a
+player-ruled faction keep, free or forbid it?
+
 ### [ ] 15g. Faith: peoples who come up with their own
 
 Added 2026-11-20 (Ric: "Faith seems pretty important. How do we make it so they can come up with
@@ -2046,6 +2058,17 @@ to rites and rules.
 **Ric (2026-11-20): "Yes it can drive harsh things."** A faith's rules may call for sacrifice or
 holy war where its holders' stats lead there — never placed, and measured like any other custom.
 **Budget:** default.
+
+**Festivals and holy days are in 15g too** (added 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built)). *Now:* every day is a working day
+but for sleep and rest. *History:* the Church forbade work on Sundays and feast days; how many feasts
+were kept varied from a handful to about 30 a year even between neighbouring manors on one estate,
+negotiated between lords and tenants, and some lords allowed none
+([*Journal of Ecclesiastical History*, work and holy days](https://resolve.cambridge.org/core/journals/journal-of-ecclesiastical-history/article/work-and-festa-ferianda-in-medieval-england1/4732239CC2F61BA02104400C3C6F2754);
+[Durham, peasants' leave](https://dur.ac.uk/departments/academic/history/news/medieval-peasants-enjoyed-a-surprising-range-of-sick-annual-and-bereavement-leave-benefits/));
+popular figures of 40–60 feast days and 150–180 working days are loose. *Proposed:* a faith's rest days
+and festivals are its own (15g), kept or not by a people's customs and its lords (15a, 15c); a
+festival is a day people gather, eat, talk and pass news, so it does something. *Question:* in, as
+proposed?
 
 ### [ ] 15b. Who marries whom
 
@@ -2222,6 +2245,18 @@ power works stops what it fed; no workplace is placed by the program.
 Or towns. That's the thing about the jobs they have to match what the city needs." A job exists
 where the place needs it and can pay for it — never placed, never a fixed share of the people.
 **Budget:** default.
+
+**Long-distance trade is in 15f too** (added 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built)). *Now:* traders carry within reach of
+their village. *History:* caravans went about 35 km a day, a camel carrying about 160 kg; over long,
+slow, unsafe routes mostly goods dear for their weight paid, though some routes carried ordinary goods
+too — wool, cloth, millstones, weapons, slaves; ships went far faster per day
+([UNESCO](https://en.unesco.org/silkroad/sites/default/files/knowledge-bank-article/the%20necessities%20of%20trade.pdf);
+[Transport Geography](https://transportgeography.org/?page_id=1042);
+[Bulliet interview](https://revistas.uniandes.edu.co/index.php/hiscrit/article/download/8485/8766/39075?inline=1)).
+*No share of trade by value found yet.* *Proposed:* goods carried between far places by traders who
+travel for weeks, worth it only for what is dear for its weight (finished goods, ore, wool), by land or
+by boat; a route grows where traders keep going, and bandits and pirates (15.5b, 15h) prey on it.
+*Question:* in, as proposed? On a 1,000 km land, far trade is within one world.
 
 ### [ ] 15h. Armies: what they carry, how far they go, and strategy
 
@@ -2699,7 +2734,97 @@ dying in childbirth? (3) The gap after a birth? (4) The default world's "Childre
 it stays in 15.5 — it changes today's world in every era, and 15d's medicine stands on it — and runs
 right after 15.5e (wounds and old age), the other part about bodies.
 
-**Budget:** default for a–i and k; j faster only.
+**Ten things history had that the plan missed** — checked against this file, `PEOPLE-VISION.md`
+and `people.js` on 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built). **One language** for everybody, by Ric's word: no
+part for languages. Seven are parts of 15.5 below; slavery and serfdom go to 15c, long-distance
+trade to 15f, festivals and holy days to 15g.
+
+**15.5l. Men and women.** *Now:* the engine has no sex at all — any two grown-ups who are not kin may
+pair and have children. *History:* almost every people divided work by sex (Murdock and Provost's
+cross-cultural codes, 1973); where the plough was used men did the field work and women worked more
+at home, and peoples whose forebears ploughed still hold more unequal views of women's place today
+(Alesina, Giuliano and Nunn, "On the Origins of Gender Roles: Women and the Plough", *QJE* 2013,
+[NBER](https://www.nber.org/papers/w16718.pdf); [HRAF](https://hraf.yale.edu/documents/1096/hypotheses/3469)).
+*Needed:* yes, and first among these — 15.5k's mothers dying in childbirth, 15b's marriage and
+inheritance and 15.5n's house work all need it. *Proposed:* each person is a man or a woman at birth;
+a child needs a mother; who does which work is a people's custom from its stats (15a, already built),
+the plough leaning it one way as Boserup and Alesina found, never one rule for every people.
+*Questions:* (1) Who does which work: a custom per people from its stats, as proposed? (2) May two men
+or two women live as a couple (no children of their own; they may take in orphans, as 14b's orphans
+are taken in)?
+
+**15.5m. Children working.** *Now:* a child does nothing until "Grown up at" (default 14) but fetch
+water from six (6a). *History:* children did light farm and house work early — minding sheep and
+younger children, scaring birds, gleaning — and serious work from about twelve to fourteen (Pittsburgh,
+[the medieval child](https://representingchildhood.pitt.edu/medieval_child.htm)); children were a
+real part of the labour market, with wages that tracked the economy (Horrell and Humphries, "Children's
+work and wages in Britain, 1280–1860", [LSE](https://researchonline.lse.ac.uk/id/eprint/100510));
+pauper apprenticeship was allowed from seven, more usually in the teens. Popular sites put herding and
+weeding at seven but cite nothing; Hanawalt's *The Ties That Bind* to read before building.
+*Proposed:* light tasks from about six or seven (minding the young, herding near home, scaring birds,
+gleaning at harvest), more as they grow, full work at "Grown up at"; schooling, where a people has it
+(15e), takes hours from this. *Question:* children working, as proposed?
+
+**15.5n. Work in the house.** *Now:* none but fetching water. *History:* making cloth was one of
+the largest uses of a household's hours — spinning was about 85% of the work of cloth, and most women
+and many girls spun (a historian's blog, [ACOUP](https://acoup.blog/2021/03/19/collections-clothing-how-did-they-make-it-part-iii-spin-me-right-round/));
+by one table a pound of yarn took about 500 hours on an early wheel and 200 about 1700, 3 on a water
+frame by 1800 (unsourced blog; Humphries and Schneider, "Spinning the industrial revolution",
+[Oxford](https://ora.ox.ac.uk/objects/uuid:4f321519-a0b7-4879-a521-139cbca81b25/files/r0v8380664), to
+read for real figures). Cooking and minding small children took hours every day; no figure found yet.
+*Note:* Ric said no to tracking household goods wearing out (15.5a), so cloth is hours spent, not a
+stock to count — unless Ric wants clothes to matter (warmth, 9c's cold). *Questions:* (1) House work
+as hours a household must spend each day (cooking, minding children, spinning), so a household short of
+hands feels it? (2) Do clothes count for anything (keeping warm in the cold), or only the hours?
+
+**15.5o. Animals that work.** *Now:* none; "packhorse" is a word in a comment, and carts move without
+anything pulling them. *History:* a plough team was eight oxen and a carucate the land it could
+plough in a season; Domesday counted over 80,000 teams, about 650,000 oxen; horses came into farm work
+slowly, first in richer, market-minded places, two horses doing about the work of three oxen; horse
+hauling changed carting in the 12th–13th centuries (Langdon, *Horses, Oxen and Technological
+Innovation*, [Birmingham thesis](https://etheses.bham.ac.uk/id/eprint/14029);
+[Carucate](https://en.wikipedia.org/wiki/Carucate); [Domesday ploughs](https://sites.google.com/site/domesdaymaterials/domesday-book/data-terminology/manors/ploughs);
+[Medievalists, horse or ox](https://www.medievalists.net/2023/02/horse-ox-medieval-times/)).
+*Proposed:* oxen and horses as animals a household or village owns, bred from the herds (9b), fed on
+grazing and hay; a plough team sets how much land a household can work, a horse or ox pulls a cart
+(7d), horses carry riders and soldiers (15h later). *Questions:* (1) In, as proposed? (2) Animals as
+counted beasts that eat and die, or as part of what a household owns (cheaper)?
+
+**15.5p. Irrigation and big works.** *Now:* none; `PEOPLE-VISION.md` notes "irrigation is not built by
+anybody yet"; river flats are spared in dry years (6b). *History:* Wittfogel's claim that big
+irrigation made despots is widely rejected; Bali's rice terraces were run for a thousand years by
+local water-temple networks, Nepal's small canals by farmers; Hohokam canals were cleaned yearly in
+one to eight days by the villages that used them ([Arizona](https://open.uapress.arizona.edu/system/actioncallout/e/a/d/eade843d-73b8-4c98-a577-22e0eee3a4d6/attachment/d43f5c1a16aa22fcdf630239591b30fd.pdf);
+[Irrigation management](https://en.wikipedia.org/wiki/Irrigation_management)); irrigation raised
+yields round Assyrian canals ([PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC4811293)).
+*No figure for how much it raises a yield found yet.* *Proposed:* a ditch from a river is a thing a
+village (or a leader) builds with hours, that waters the fields along it so a dry year spares them as
+it spares river flats, and needs cleaning each year or silts up. *Question:* in, as proposed?
+
+**15.5q. Climate over centuries.** *Now:* each year's rain differs (6b) and winters vary, but nothing
+shifts over decades. *History:* the Little Ice Age cooled the northern hemisphere by under 1 °C on
+the whole (more in places, by some accounts 2 °C in northern Europe in the 16th–17th centuries), with
+longer winters and cool wet summers, shorter growing seasons and failed harvests (Parker, *Global
+Crisis*, [Yale](https://www.degruyterbrill.com/document/doi/10.12987/9780300189193/html);
+[PMC review](https://pmc.ncbi.nlm.nih.gov/articles/PMC3198350)); Kelly and Ó Gráda argue the
+smoothing of the data made the cycles look tidier than they were ([UCD](https://www.ucd.ie/t4cms/wp10_14.pdf)).
+*Proposed:* a slow swing in warmth and rain over decades and centuries, from the seed, under the
+year-to-year weather — never a scripted cold age. *Questions:* (1) In, from the seed? (2) A setting
+for how big the swings are, off by default so a world is as it was?
+
+**15.5r. Dirt and disease in towns.** *Now:* a town loses one more person in a hundred a year and a
+city a little over two, a fixed number (item 8). *History:* the town penalty came from crowding, waste
+and foul water; infants in English market towns of 2,000–3,000 died at 209–270 in 1,000 in 1675–1749
+against under 100 in remote country; it fell once water, sewers and public health came (from the 1870s
+in the US), and some argue it lasted into the 1930s where water and sewers lagged
+([*Continuity and Change*, Norway](https://www.cambridge.org/core/journals/continuity-and-change/article/urban-penalty-towns-and-mortality-in-nineteenthcentury-norway/E13CF2DD58DA5CBC98D2397FD32E9066);
+[PMC 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7186836); [Haines, NBER](https://www.nber.org/papers/h0134)).
+*Proposed:* replace the fixed number with its causes: how crowded a place is, whether its water is
+fouled (a well near houses, a river below a town), and later its sewers and clean water as things
+built (15d); the sickness (and item 18) spreads more where these are bad. *Question:* in, as
+proposed, measured so a default world's towns lose about what they do now?
+
+**Budget:** default for a–r; j faster only.
 
 Research notes (2026-11-20, Ric: "research those and make sure all are needed first and the
 logistics of them. Like any questions that would pop up. Not coding questions"). For each part:
@@ -2978,10 +3103,13 @@ itself in hard times (Hobsbawm: impoverishment, crisis, war, conquest). Nothing 
 nobody is placed as a bandit. Those robbed hold it against them, as any theft (10, 12). Research in
 15i's notes.
 
-**Order of 15.5 after the answers:** a (made to order) → h (gear paid for; the button) → b (the
-government's grain trade; food riots; bandits; rivers with a direction; grain by boat) → e (lasting wounds; the old
-slowing) → k (children and mothers dying; the gap between births) → d (clearing, wear, fallow by choice, manure, shifting cultivation) → f (household firewood) → g (news of
-plenty) → c (2 km², finer land, the edge as an option) → j, then i after 15.
+**Order of 15.5 after the answers** (with l–r added 2026-11-20): a (made to order) → h (gear paid
+for; the button) → b (the government's grain trade; food riots; bandits; rivers with a direction;
+grain by boat) → r (dirt and disease in towns) → e (lasting wounds; the old slowing) → l (men and
+women) → k (children and mothers dying; the gap between births) → m (children working) → n (work in
+the house) → d (clearing, wear, fallow by choice, manure, shifting cultivation) → o (animals that work)
+→ p (irrigation) → q (climate over centuries) → f (household firewood) → g (news of plenty) → c (2 km²,
+finer land, the edge as an option) → j, then i after 15. l comes before k because k's mothers need it.
 
 ### [ ] 16. Ruins and scavenging
 
