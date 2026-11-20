@@ -157,6 +157,8 @@ const SUITES = [
   // About a minute: three worlds of 80 to 210 days, acting on news of sickness and famine (TODO 12b).
   ['world-builder heard', ['projects/world-builder/test/heard.test.mjs'], 'slow'],
   ['world-builder treaties', ['projects/world-builder/test/treaties.test.mjs']],   // TODO 14d
+  // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
+  ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],
   // About seven minutes: twelve worlds, a year and a half each, to tell hot leaders from patient ones.
   ['world-builder dealings', ['projects/world-builder/test/dealings.test.mjs'], 'slow'],
   /* TODO.md item 2 (2026-11-15): people with nothing to do are passed over

@@ -855,7 +855,9 @@ when it is built.
 - Now: factions go to war and make peace, soldiers are real people, fights wear gear, armies
   need food from home (first version, 2026-11-14).
 - [ ] War "accurate to the time": weapons, reach and deadliness by era, walls and sieges, raids,
-  how far an army can go.
+  how far an army can go. (2026-11-20, TODO 14e: walls raised in wartime, raids by bands, a
+  fighting season, an army a people can keep, weariness that knows who is winning, all as numbers
+  item 15 sets per era; weapons by era and an army's reach are item 15.)
 - [x] Wartime effort: fear only where the fighting is, and a war elsewhere makes people work and
   store more. (2026-11-19, TODO 14a.)
 - [x] Why a war starts and why it ends, from what the people and the leader hold in mind.

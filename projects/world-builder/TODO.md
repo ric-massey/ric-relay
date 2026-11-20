@@ -1191,7 +1191,9 @@ Research notes:
 - **Chosen, and its cost.** Five numbers more per pair of factions; a leader's mind is read only
   when they weigh a war. No cost per person.
 
-### [ ] 14. War true to its time, and what it leaves
+### [x] 14. War true to its time, and what it leaves
+
+**Done 2026-11-20**, in five parts (14a–14e below): wartime effort where the danger is not, what a war leaves, why wars start and end, peace by marriage, trade deals and tribute, and walls, raids and a fighting season. **Left out** across them: weapons, reach and deadliness by era and how far an army can go (item 15); crafters turning to gear for the soldiers; a page button to offer a marriage.
 
 **Now:** wars start and end, soldiers are real people, gear wears, armies eat from home.
 **Do:** why a war starts and ends comes from what people and leaders hold in mind. Walls, sieges
@@ -1438,9 +1440,23 @@ Research notes (2026-11-19):
   year's stores (5% to 45%), paid a little each day. Cost: a sum per sale, and a search through the
   people only on the day a marriage is made.
 
-### [ ] 14e. Walls, sieges and raids
+### [x] 14e. Walls, sieges and raids
 
-**Now:** a village defends itself with a quarter of its grown-ups and any soldiers near; an army
+**Done 2026-11-20.** A fighting season (up to a fifth of grown-ups in spring and summer, 4% from
+harvest to winter's end), raiding bands of one soldier in five sent every fifteen days at the
+richest weakly held enemy village, walls raised where danger came near (doubling a village's
+defence, twenty more days of siege), and weariness that counts places lost and taken and fields
+spoiled; a side that has lost places and is past its mark yields. All in `WAR_ERA` for item 15.
+Forced wars, thirteen seeds, two years: soldiers 30–46 all year → 25–30 in season, about 10 out of
+it; places taken 50 → 7; starved 304 → 88; raids burned houses without a siege in 9 of 13; wars
+where a side took places ended on days 368–499, even ones mostly 600–708 (two not in two years). A
+default year, eight worlds: starved 48 → 21, alive 2,997 → 3,139, killed in battle 109 → 8, places
+taken 16 → 2, peace made 4 → 0 times within the year. A walled place held longer than the same
+place open, seed for seed (`test/walls.test.mjs`). **Left out:** a wall costs materials, not
+hours; bands found no stores to carry off; first walls at castle strength (worth 2, sixty days)
+stopped every capture, so they are a village's.
+
+**Now** (2026-11-19): a village defends itself with a quarter of its grown-ups and any soldiers near; an army
 goes for one place of each enemy at a time. At war, a side triples its soldiers in three months,
 to about a quarter of all its people, and keeps them under arms the whole year round. Weariness
 grows with the dead, the years and the hungry, never with who is winning: losing villages and
@@ -1480,6 +1496,21 @@ Research notes:
   and 24, so the count tips either way with small changes. Wars end on the clock (weariness about
   0.3 a year against a mark of 0.9-1.05 for the leader who began it) or with a new leader; the
   only "losing" test, fewer than a third of the other's soldiers, never comes between equals.
+- **The season and the army.** Feudal service was forty days a year; campaigns ran between sowing
+  and harvest, and pre-modern standing forces were well under one in a hundred of the people.
+  (https://warhistory.org/article/feudalism-and-military-history )
+- **Raids.** Most medieval war was raiding: the chevauchée
+  (https://en.wikipedia.org/wiki/John_of_Gaunt%27s_chevauch%C3%A9e_of_1373 ), the Harrying of the
+  North, the Border reivers who rode in the dark months after harvest
+  (https://www.historic-uk.com/HistoryUK/HistoryofScotland/The-Border-Reivers/ ); villagers fled to
+  walled towns (https://www.medievalists.net/2009/12/the-experience-of-civilian-populations-during-the-hundred-years-war-in-france-1330-1440/ ).
+- **Walls and sieges.** Towns paid for walls by murage grants (https://gatehouse-gazetteer.info/murage/mur/441.html );
+  a strong castle could hold for months (Kenilworth 1266, about six)
+  (https://www.english-heritage.org.uk/learn/story-of-england/medieval/siege-warfare/ ).
+- **Chosen, and its cost.** `WAR_ERA`: season on, standing 0.04, campaign 0.2, wall worth 1 (a
+  full wall doubles defence), 20 more siege days, 30 days to build. Raiders are soldiers with id % 5
+  = 2; a target is picked every fifteen days per enemy from villages within thirty squares. Cost: a
+  pass over the villages every fifteen days per enemy; the bench is unchanged.
 
 ### [ ] 15. Eras, old to modern
 
@@ -1498,6 +1529,8 @@ were handled in other history simulations and where that went wrong.
 **Done when:** the same land and people in two eras fight, travel and hear news at measurably
 different speeds; knocking down a tower slows the news in its area and nowhere else.
 **Budget:** default.
+
+**Ric (2026-11-20):** "and also for eras the buildings shapes. technology. 15b and it snot just eras there should be different ways in each era.  you know what i mean?  as for marrage same thing." So an era also sets the shapes of buildings (not only what they are made of and how big) and its technology; and within one era, peoples differ: two factions of the same age can govern, marry, build and fight in different ways (customs per people, not one way per era).
 
 **Ric's answers (2026-11-19, asked before a scheduled run):**
 - Which eras: "Ancient, Medieval, Industrial (1800s), Modern" (all four offered; the present
@@ -1523,8 +1556,35 @@ north-west Europe, early elsewhere: Hajnal), and remarriage after a death.
 **Research first:** homogamy by wealth and class in pre-industrial records (parish registers,
 marriage contracts); dowry and bride-price; how far people went to find a spouse; who arranged it.
 **Ric decides:** how much families arrange it against the couple's own liking; whether it differs by era (item 15).
+**Ric (2026-11-20):** it differs by era and also between peoples of the same era ("as for marrage same thing"); research it before building ("those need to be researched").
 **Done when:** in a world where wealth is uneven, the rich mostly marry the rich and the poor the
 poor, measurably more than by chance, and the leading families marry each other.
+**Budget:** default.
+
+Research notes:
+
+### [ ] 15c. Government, deeper
+
+Added 2026-11-19 at Ric's word, while 14e was built: "is there government in there? governmnet
+decides alot of those things and the government probably needs to be way deeper no?"
+**Now:** a faction's government is one leader (a chief, an elected leader who can be voted out or
+turned on, or the richest), who alone sets tax, relief, the army, who holds the land, war, peace,
+alliances, trade deals, tribute and marriages; a village may have its own tax and relief; there are
+revolutions and breakaways. Nobody stands between the leader and the people: no council or nobles,
+no officials or collectors, no laws or courts. Walls (14e) are raised by a village on its own.
+**Do:** the people and bodies a government is made of, and what each decides, so that what a
+faction does depends on who holds which office: a council or great families the leader must carry,
+officials who collect, judge and muster (and can be honest or not), laws that last past a leader
+(levies, murage, what is a crime and what it costs), and how each of these differs by kind of rule
+and by era (item 15).
+**Research first:** how chiefdoms, early states, feudal monarchies, city councils and modern states
+divided these powers; how much a ruler could do without the great families; what officials cost.
+**Ric decides:** how deep; which offices; whether this comes before eras (15).
+**Ric (2026-11-20), for 15b and 15c both:** not one way per era: different ways within each era (different peoples of the same age govern differently), and the same for marriage. "and also for eras the buildings shapes. technology. 15b and it snot just eras there should be different ways in each era.  you know what i mean?  as for marrage same thing."
+**Ric (2026-11-20), later:** "eras are important to be done deeply as well as governments    tribes even had different ways": tribes too, not only states, had their own ways of ruling (e.g. chiefs, elders, councils, assemblies); research and build that range, and eras just as deeply.
+**Ric's answers (2026-11-20):** how deep: "yes the governemnts need to go way deeper"; it comes before 15 (asked "15c first, or straight to 15?"); 15b and 15c "need to be researched" first. Which offices: still Ric's, asked after the research with what each era had.
+**Done when:** two factions with the same leader but different councils or laws do measurably
+different things.
 **Budget:** default.
 
 Research notes:
@@ -1634,4 +1694,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-19 | 14b | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× | *not run* | 7.0 MB, 1.37 KB | **what a war leaves**: crops spoiled, houses burned, sacks, refugees, a different world in a war. Against 14a, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.67/0.68 → 0.67/0.65 s, 5,000 1.92/1.95 → 1.97/1.96 s: the same |
 | 2026-11-19 | 14c | AMD Ryzen 5 3600, 24 GB | 1.93 s a day, 155× | *not run* | 7.0 MB, 1.37 KB | **why wars end**: blame, grudges, garrisons, a different world in a war. Against 14b, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.66/0.67 → 0.79/0.66 s, 5,000 1.92/1.98 → 2.03/1.93 s: the same within this machine's drift |
 | 2026-11-19 | 12b | AMD Ryzen 5 3600, 24 GB | 2.24 s a day, 133× | *not run* | 7.0 MB, 1.37 KB | **acting on news of sickness, famine and prices**: the same world until a report comes. Against 14c, alternated: 400 0.13/0.13 → 0.14/0.14 s, 2,000 0.70/0.70 → 0.72/0.72 s, 5,000 2.30/2.22 → 2.25/2.23 s; mid-year 2,000 (day 150, six days) old 0.59–0.64 s, new 0.63–0.76 s, a different world: a profile gives the new reading 0.5% of the time |
+| 2026-11-20 | 14d, 14e | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | *not run* | 7.1 MB, 1.38 KB | **peace by marriage, trade deals, tribute; walls, raids, a fighting season**: a different world in a war. 14e against 14d, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.70/0.68 → 0.70/0.69 s, 5,000 2.01/2.06 → 2.06/2.06 s: the same |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

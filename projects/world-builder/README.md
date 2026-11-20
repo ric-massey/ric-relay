@@ -1901,6 +1901,59 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: the page has no button to offer a marriage; everyday marriages still
 ignore wealth (TODO 15b).
 
+### Walls, sieges, raids and the fighting season (2026-11-20)
+
+TODO item 14e. Before this a side at war tripled its soldiers in three months, to about a quarter
+of its people, and kept them under arms the whole year; an army went for one place of each enemy at
+a time and nothing else; no village had a wall; and weariness grew with the dead, the years and the
+hungry, never with who was winning.
+
+- **The fighting season.** Soldiers were farmers: feudal service ran forty days a year, and a
+  campaign was fought between sowing and harvest. At war, in spring and summer before the crop is
+  ripe, a side calls up to a fifth of its grown-ups (`WAR_ERA.campaign`), at about 2% a day; from
+  harvest to the end of winter it keeps only a few (`WAR_ERA.standing`, 4%) and the rest go home.
+  The army marches only in season; garrisons in places taken stay all year.
+- **Raids.** Besides the army, every fifteen days a side picks the open enemy village within thirty
+  squares that has the most food and people for the fewest defenders (never the army's own target)
+  and sends a band of one soldier in five at it for five days. A band burns houses (a third of a
+  house for each raider, against a tenth for an army), spoils crops and carries off stores, and wins
+  against a village's grown-ups alone if it outnumbers its soldiers and the place has under half a
+  wall. It does not take the place. Raiding the countryside, not besieging it, was most of medieval
+  war: the chevauchée (https://en.wikipedia.org/wiki/John_of_Gaunt%27s_chevauch%C3%A9e_of_1373 ),
+  the Border reivers (https://www.historic-uk.com/HistoryUK/HistoryofScotland/The-Border-Reivers/ ),
+  the people of France in the Hundred Years War
+  (https://www.medievalists.net/2009/12/the-experience-of-civilian-populations-during-the-hundred-years-war-in-france-1330-1440/ ).
+- **Walls.** A village raises a wall in wartime when danger has come near (enemies at its edge in
+  the last sixty days, or a raid on it in the last year) and nobody is attacking it that day, as
+  towns raised murage to build theirs (https://gatehouse-gazetteer.info/murage/mur/441.html ). It
+  takes about thirty days and its stone (else spare wood, else goods): ten and half a unit for each
+  person. A full wall doubles a village's defence (`WAR_ERA.wallWorth`) and adds twenty days to a
+  siege (`WAR_ERA.wallHold`); a place taken keeps half its wall; at peace a wall falls back over
+  four years. A siege could take months (Kenilworth, 1266, about six;
+  https://www.english-heritage.org.uk/learn/story-of-england/medieval/siege-warfare/ ); these are a
+  village's walls, not a castle's, and set higher they stopped every place being taken at all.
+- **Who is winning.** Each side counts the places it has lost and taken and the crop spoiled on its
+  land in this war. Places lost add to its weariness (more for a small people), places taken take a
+  little off, and spoiled fields add as much as a fifth of a year's food would. A side that has lost
+  places to an enemy that has lost none, and is a little past its mark, yields: peace, with tribute
+  more often than not. Between equals it comes to nothing, so even wars still run long, as they do
+  (Bennett and Stam, "The Duration of Interstate Wars", APSR 1996).
+
+All of these are numbers in `WAR_ERA` at the top of `people.js`, so item 15 can set them for each
+age (all year, no season and walls worth little for a modern army). The page draws a grey ring round
+a village with at least a quarter of a wall.
+
+Measured. Forced wars (600 people, three tribes, one declares on another, thirteen seeds, two
+years), the 14d engine against this one: soldiers 30–46 all year → about 25–30 in season and about
+10 out of it; places taken 50 → 7; starved 304 → 88; raids burned houses without any siege in 9 of
+13 worlds; wars ended within two years 13 → 11. Wars where one side took places ended on days 368,
+420 and 499; even ones mostly on days 600–708, and two not in two years. A default year, eight
+worlds: starved 48 → 21, alive 2,997 → 3,139, killed in battle 109 → 8, places taken 16 → 2,
+houses burned 244 → 50 (36 of them by bands), 54 walls raised, peace made 4 → 0 times within the
+year (wars are fought less hard, so they tire later). Not done: a wall costs materials, not
+people's hours; bands carry off stores only where there are any, and in these runs there were none
+to take. Test: `test/walls.test.mjs` (slow, about eight minutes).
+
 ### What a war leaves (2026-11-19)
 
 TODO item 14b. Ric: "i want the aftermath of war to be accurate too." Before this the dead already

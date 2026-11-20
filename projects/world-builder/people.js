@@ -648,7 +648,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1125,6 +1125,28 @@
        is dear when the village wants more than it holds: houses being built,
        what crafters work, tools, weapons and carts. README, "Wood, stone and ore". */
     const MATS = S.materials !== "goods";
+    /* What a time's wars are like (TODO 14e), as numbers item 15 sets for each age; these are a
+       farming village's, ancient to medieval.
+       - season: soldiers fight between sowing and harvest and go home for the harvest, the
+         levy's forty days and the summer campaign (false: all year, as paid armies did);
+       - standing: the share of grown-ups that can be kept under arms for long, at war, out of
+         season (pre-modern standing forces were a few in a hundred at most);
+       - campaign: the most that can be called up for one season;
+       - wallWorth: how much a wall at its full height adds to the defence of a place, as a multiple
+         of what it was (1: twice);
+       - wallHold: how many days more a place with a full wall holds out. A village's bank, ditch and
+         palisade, not a town's stone wall or a castle (Kenilworth, 1266, held nearly six months):
+         with a castle's numbers here (three times the defence, sixty days) nothing was taken in
+         thirteen forced wars of two years;
+       - wallDays: the days a village takes to raise one, working at it. */
+    const WAR_ERA = { season: true, standing: 0.04, campaign: 0.2, wallWorth: 1, wallHold: 20, wallDays: 30 };
+    let fightDay = -1, fightNow = true;
+    function fighting() {
+      if (!WAR_ERA.season) return true;
+      const d = today();
+      if (d !== fightDay) { fightDay = d; const sn = season(); fightNow = (sn.name === "spring" || sn.name === "summer") && sn.ripe < 1.05; }
+      return fightNow;
+    }
     const MAT = ["wood", "stone", "iron"];
     const MAT_TASK = { wood: "cut", stone: "quarry", iron: "mine" };
     const MAT_JOB = { wood: "woodcutter", stone: "miner", iron: "miner" };
@@ -1232,7 +1254,7 @@
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
                   leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
-                  views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9 };
+                  views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9 };
       factions.push(f);
       for (const o of factions) if (o !== f) { f.rel[o.id] = blankRel(); o.rel[f.id] = blankRel(); }
       return f;
@@ -1241,7 +1263,7 @@
        `bond`, an old friendship or feud that fades over a generation; an alliance, a trade deal
        (no tax on each other's people), tribute paid (`pays`: this side pays the other), and
        when this side last made a demand of the other. */
-    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0, sold: 0, rate: 0, wed: null }; }   // sold, rate, wed: TODO 14d   // began: this side's leader when the war began (TODO 14c)
+    function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0, sold: 0, rate: 0, wed: null, lost: 0, took: 0, spoiled: 0 }; }   // lost, took, spoiled: this war's places and crops (TODO 14e)   // sold, rate, wed: TODO 14d   // began: this side's leader when the war began (TODO 14c)
     function newVillage(x, y, f) {
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
@@ -1253,7 +1275,7 @@
                   raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined,   // TODO 10: the last time enemies struck here, and the year last looked back on
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
-                  heldTo: -1e9 };   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
+                  heldTo: -1e9, wall: 0 };   // wall: TODO 14e, 0 none to 1 its full height   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
       v.ore = o / c;
@@ -3695,8 +3717,11 @@
       }
       let enemy = -1;
       for (const o of factions) if (o.alive && atWar(f.id, o.id)) { enemy = o.id; break; }
-      if (enemy >= 0 && p.id % 3 !== 0 && !(home.heldTo > t)) {   // a garrison stays (TODO 14c)
-        const goal = villages[f.target[enemy]];
+      /* A band out raiding, in or out of the season (the Border reivers rode in the long nights of
+         early winter); the army marches only in the fighting season (TODO 14e). */
+      const rd = enemy >= 0 ? f.raid[enemy] : null, raider = !!rd && rd.v >= 0 && t < rd.until && p.id % 5 === 2;
+      if (enemy >= 0 && !(home.heldTo > t) && (raider || (p.id % 3 !== 0 && fighting()))) {   // a garrison stays (TODO 14c)
+        const goal = villages[raider ? rd.v : f.target[enemy]];
         if (goal && goal.alive && goal.f === enemy) {
           /* Before marching: rations drawn at a village of their own, and a
              weapon that works. Nobody marches on an empty pack or a broken
@@ -5485,8 +5510,22 @@
          live there. Until 2026-11-14 a village with no soldier near it fell in
          four days, and a world's wars were won, lost and over in a month. */
       const sides = Object.keys(theirs);
-      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = ours + v.adults * 0.25;
+      /* Behind a wall the same people count for more (TODO 14e). */
+      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + WAR_ERA.wallWorth * v.wall);
       v.foes = attackers;
+      /* A wall raised in wartime by the people of the place, out of what is in its store (murage, asked
+         for when the enemy was near or had just struck): after enemy soldiers were at its edge in the
+         last two months, or it was raided in the last year; let go in a long peace. Raised by every
+         village at war, every one was walled within a month and nothing was taken in 13 forced wars. */
+      if (S.war) {
+        if (v.wall < 1 && (t - v.dangerAt < 60 * DAY_HOURS || t - v.raidAt < YEAR) && v.foes === 0) {   // built between attacks, not under them
+          const need = (10 + v.pop * 0.5) / WAR_ERA.wallDays;   // a day's wood, stone or goods
+          let got = 0;
+          if (MATS) { const st = Math.min(v.stone, need); v.stone -= st; got += st; const wd = Math.min(Math.max(0, v.wood - v.wantWood * 0.5), need - got); if (wd > 0) { v.wood -= wd; got += wd; } }
+          else { const g = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= g; got += g; }
+          if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / WAR_ERA.wallDays); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f); } }
+        } else if (v.wall > 0 && !atWarAnywhere(factions[v.f])) v.wall = Math.max(0, v.wall - 1 / (4 * 365));   // gone in about four years of peace
+      }
       /* What an army does where it stands (TODO 14b): spoils the crops, burns what it can, takes
          the food; and people run from it, and come home when it has gone. */
       /* Houses burn only while the enemy has the upper hand by the siege's own measure (more of
@@ -5494,13 +5533,17 @@
          only from a siege. Measured first with "more of them than our soldiers" for both: a
          default year starved 89 against 47, and 28 villages were taken against 11, as households
          left at the first raider and the place emptied of defenders. */
-      if (attackers > 0) { v.dangerAt = t; ravage(v, foesHere, attackers > defence); }
+      /* A band sent to raid it (TODO 14e) burns and takes while there are more of them than soldiers to
+         meet them: the people of an open village bar their doors, they do not go out to fight it. */
+      let band = false;
+      if (attackers > 0) for (const k of sides) { const rd = factions[+k].raid[v.f]; if (rd && rd.v === v.id && t < rd.until + DAY_HOURS) band = true; }
+      if (attackers > 0) { v.dangerAt = t; ravage(v, foesHere, attackers > defence || (band && attackers > ours && v.wall < 0.5), band); }
       if (v.sick > 0 && v.gone) v.dangerAt = t;   // those who left for a sickness wait a week past it (TODO 12b)
       if (v.siege > 0) flee(v);
       else if (v.gone && t - v.dangerAt > 7 * DAY_HOURS) comeHome(v);
       if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
-        if (v.siege >= 4 + Math.floor(v.pop / 15)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
+        if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(v.wall * WAR_ERA.wallHold)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
       } else v.siege = Math.max(0, v.siege - 1);
 
       /* Too full: some of them go and start somewhere new, if there is land. */
@@ -5611,9 +5654,11 @@
           for (const p of bucketAt(y * cols + x)) if (p.job === "soldier" && atWar(p.f, v.f)) n++;
       return n;
     }
-    function ravage(v, foes, winning) {
+    function ravage(v, foes, winning, band) {
       const ripe = (season().ripe - 1) / 3, share = 0.1 + 0.5 * ripe;   // of what stands, a day, on a soldier's square and the eight round it
+      const mine = factions[v.f];
       for (const p of foes) {
+        const r = mine.rel[p.f], was = count.spoiled;
         const fx = Math.floor(p.x), fy = Math.floor(p.y);
         for (let k = 0; k < 9; k++) {
           const x = fx + PATCH[k][0], y = fy + PATCH[k][1];
@@ -5621,16 +5666,19 @@
           const i = y * cols + x, lost = stock[i] * share;
           stock[i] -= lost; count.spoiled += lost;
         }
+        if (r) r.spoiled += count.spoiled - was;   // TODO 14e: fields lost tire a side
       }
       /* While they have the upper hand at the edge of the place, a house burns for about every
          ten of them a day, the outermost first; what was in it is taken or lost. */
       if (!winning) return;
-      let n = Math.floor(foes.length / 10 + R());
+      let n = Math.floor(foes.length / (band ? 3 : 10) + R());   // a band comes to burn; an army burns as it waits
       if (n <= 0) return;
-      const mine = homes.filter(h => h.v === v.id && h.built).sort((a, b) => Math.hypot(b.x - v.x, b.y - v.y) - Math.hypot(a.x - v.x, a.y - v.y));
+      const homes2 = homes.filter(h => h.v === v.id && h.built).sort((a, b) => Math.hypot(b.x - v.x, b.y - v.y) - Math.hypot(a.x - v.x, a.y - v.y));
       let loot = 0;
-      for (const h of mine) { if (n-- <= 0) break; loot += burnHouse(v, h); }
+      for (const h of homes2) { if (n-- <= 0) break; loot += burnHouse(v, h); if (band) count.raidBurned++; }
       for (const p of foes) { if (loot <= 0) break; const take = Math.min(loot, Math.max(0, 10 - p.food)); p.food += take; loot -= take; }
+      /* A band takes what it can carry from the store besides, and goes (TODO 14e). */
+      if (band) for (const p of foes) { const take = Math.min(v.food, Math.max(0, 10 - p.food)); if (take <= 0) continue; v.food -= take; p.food += take; count.looted += take; }
     }
     /* A house burned: its household lose half of what they had in it, sleep in the ruin, and
        must build it again (TODO 7b's building, from nothing). Returns the food taken. */
@@ -5688,6 +5736,8 @@
       const old = factions[v.f];
       const refuge = villages.filter(o => o.alive && o.f === old.id && o !== v).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
       v.f = by.id; v.siege = 0; v.broke = t;
+      if (old.rel[by.id]) old.rel[by.id].lost++; if (by.rel[old.id]) by.rel[old.id].took++;   // TODO 14e
+      v.wall *= 0.5;   // breached
       sack(v);
       /* The winners take a share of what was in the store and the till. */
       by.treasury += v.till * 0.5; v.till *= 0.5;
@@ -5854,6 +5904,12 @@
       }
       return n ? sum / n : 0;
     }
+    /* Who is winning (TODO 14e): places lost tire a side, places taken keep it at it, each as a share
+       of the places it had, and crops spoiled by the other's soldiers tire it as a share of a year's
+       food for its people. Between equals it comes to nothing either way, and a stalemate runs on. */
+    function winning(rel, mine, theirs, f) {
+      return rel.lost / (mine + rel.lost + 1) * 1.2 - rel.took / (theirs + rel.took + 1) * 0.6 + rel.spoiled / (f.pop * 365 + 1) * 2;
+    }
     /* How strong a faction looks to a neighbour: its soldiers and grown-ups, and half its allies'. */
     function might(f, not) {
       let m = f.soldiers + f.adults * 0.15;
@@ -5867,6 +5923,7 @@
       const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o);
       if (bound(rel)) { count.wedBroken++; text += " The marriage between them did not hold the peace."; }
       warMoves++; rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0; relDeals(rel, back);
+      rel.lost = back.lost = rel.took = back.took = rel.spoiled = back.spoiled = 0;
       rel.began = f.leader; back.began = o.leader;
       if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
       count.wars++;
@@ -5877,6 +5934,7 @@
         if (a.yours || (al && R() < 0.35 + al.bold * 0.4 + a.rel[o.id].op * 0.3 - Math.max(0, r2.op) * 0.3)) {
           if (a.yours) { note("ally", a.name + " is allied to " + o.name + ", now at war with " + f.name + ": it is yours to answer.", 2.5, at.x, at.y, a.id); continue; }
           warMoves++; r2.war = b2.war = true; r2.since = b2.since = t; r2.dead = b2.dead = 0; relDeals(r2, b2);
+          r2.lost = b2.lost = r2.took = b2.took = r2.spoiled = b2.spoiled = 0;
           r2.began = a.leader; b2.began = f.leader;
           if (bb.pair) { a.target[f.id] = bb.pair[1].id; f.target[a.id] = bb.pair[0].id; }
           count.wars++; count.joined++;
@@ -6067,17 +6125,23 @@
         if (!shared && f.treasury < wages) want *= 0.8;
         f.peace = f.peace + clamp(want - f.peace, -0.004, 0.004);
       }
-      f.army = f.yours ? f.yours.army : clamp((f.peace ?? S.soldiers) * (wars ? 2.6 : 1) + (wars ? 0.08 : 0), 0, 0.6);
+      /* At war (TODO 14e): in the fighting season as many as were called before, up to the most that
+         can be called for one season; out of it, what can be kept for long (and what they keep in
+         peace). Before, a side at war kept about a quarter of its people under arms all year round. */
+      const inSeason = fighting();
+      f.army = f.yours ? f.yours.army : !wars ? (f.peace ?? S.soldiers)
+             : inSeason ? Math.min(WAR_ERA.campaign, clamp((f.peace ?? S.soldiers) * 2.6 + 0.08, 0, 0.6))
+             : Math.max(f.peace ?? S.soldiers, WAR_ERA.standing);
       /* Stand soldiers down when there are more than are wanted, call some up
          when there are too few. */
       if (f.soldiers > f.army * f.adults * 1.25 + 1) {
         let extra = Math.floor(f.soldiers - f.army * f.adults);
-        for (const p of people) { if (extra <= 0) break; if (p.f === f.id && p.job === "soldier") { p.job = "farmer"; p.task = "idle"; extra--; } }
+        for (const p of people) { if (extra <= 0) break; if (p.f === f.id && p.job === "soldier" && !(villages[p.home].heldTo > t)) { p.job = "farmer"; p.task = "idle"; extra--; } }   // home for the harvest; a garrison stays (TODO 14e)
       } else if (f.soldiers < f.army * f.adults) {   // in peace too: the leader decided how many
         /* An army is raised a few at a time — two in a hundred adults a week —
            not conjured whole the day a war starts; and rebuilt as slowly
            after it is broken. */
-        let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 / 7)));
+        let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 / (wars && inSeason ? 1 : 7))));   // a levy for the season comes in days (TODO 14e)
         /* Farmers first, as levies were; then crafters. With real-size bodies (TODO 7a) farming
            stopped queuing in crowds, fields went further, fewer farmed, and an army raised from
            farmers alone stalled short of what its leader asked (4 of 23 wanted 6). */
@@ -6127,10 +6191,26 @@
         if (f.yours) { if (rel.war && b.pair) f.target[o.id] = b.pair[1].id; continue; }
         if (rel.war) {
           if (b.pair) f.target[o.id] = b.pair[1].id;
+          /* A band sent raiding (TODO 14e): every fortnight or so, to the open place of theirs within
+             reach whose store is worth most against what defends it, never where the army is going. */
+          const rd = f.raid[o.id];
+          if (!rd || t > rd.until + 10 * DAY_HOURS) {
+            let best = null, bs = 0;
+            for (const v of villages) {
+              if (!v.alive || v.f !== o.id || v.id === f.target[o.id]) continue;
+              let near = 1e9; for (const u of villages) if (u.alive && u.f === f.id) near = Math.min(near, Math.hypot(u.x - v.x, u.y - v.y));
+              if (near > 30) continue;
+              const sc = (v.food + v.pop) / (1 + v.adults * 0.25 * (1 + WAR_ERA.wallWorth * v.wall)) / (1 + near * 0.05);
+              if (sc > bs) { bs = sc; best = v; }
+            }
+            f.raid[o.id] = { v: best ? best.id : -1, until: t + 5 * DAY_HOURS };
+            if (best) count.bands++;
+          }
           /* Weariness builds with the dead, the years and the hungry. A war
              between equals used to end within months and a handful of dead;
              it now lasts until it has cost something. */
-          const weary = rel.dead / (f.pop + 1) * 3 + (t - rel.since) / YEAR * 0.3 + hungry * 0.5;
+          let mineV = 0, theirV = 0; for (const v of villages) if (v.alive) { if (v.f === f.id) mineV++; else if (v.f === o.id) theirV++; }
+          const weary = rel.dead / (f.pop + 1) * 3 + (t - rel.since) / YEAR * 0.3 + hungry * 0.5 + winning(rel, mineV, theirV, f);
           /* Who leads, and what they and their people hold (TODO 14c): a leader not to blame for the
              war stops sooner (Croco); a grudge of their own, or their people's, keeps them at it, the
              people's twice as much under a leader they can vote out. No more than a leader's temper
@@ -6154,9 +6234,13 @@
             }
           }
           if (weary > mark) {
-            const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3;
+            const theirs = back.dead / (o.pop + 1) * 3 + (t - back.since) / YEAR * 0.3 + winning(back, theirV, mineV, o);
             const olead = byId.get(o.leader);
-            if (theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 - (culpable(olead, back) ? 0 : 0.1) || f.soldiers < o.soldiers * 0.35) {
+            /* Asked for by a side that is losing, a peace on terms: the side that is winning takes it
+               when it has taken more than it lost, with tribute (TODO 14e). */
+            const yields = rel.lost > rel.took && back.took > back.lost && weary > mark + 0.1;
+            if (yields) count.surrenders++;
+            if (yields || theirs > 0.15 + (olead ? olead.bold : 0.5) * 0.2 - (culpable(olead, back) ? 0 : 0.1) || f.soldiers < o.soldiers * 0.35) {
               if (lead.id !== rel.began || (olead && olead.id !== back.began)) count.peaceNew++;
               warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t;
               rel.grief *= 0.4; back.grief *= 0.4;
@@ -6164,7 +6248,7 @@
               /* The side that gave in pays, when the other was winning and is not led by a patient sort. */
               const gave = theirs <= 0.15 + (olead ? olead.bold : 0.5) * 0.2;
               let share = 0;
-              if (gave && olead && back.dead < rel.dead && R() > ruling(olead, "patient", o)) {
+              if ((yields || (gave && back.dead < rel.dead)) && olead && R() > ruling(olead, "patient", o) * (yields ? 0.5 : 1)) {
                 /* How lopsided it was (TODO 14d): their strength against ours, and the dead each side lost. */
                 share = tributeShare(might(o, f) / Math.max(1, might(f, o)) * Math.sqrt((rel.dead + 1) / (back.dead + 1)));
                 rel.pays = true; rel.rate = dailyRate(share); count.tributes++;
@@ -6580,6 +6664,8 @@
       dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar, heldAgainst: heldAgainst, standing: standing,
       /* TODO 14d: tribute's share of a year's stores for how many times stronger the taker is; a marriage between two factions' leading families, and whether it holds. */
       tributeShare: tributeShare, wed: (a, b) => wed(factions[a], factions[b]), bound: bound,
+      /* TODO 14e: the numbers item 15 sets for each age, and how much who is winning weighs. */
+      warEra: WAR_ERA, winning: winning,
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },

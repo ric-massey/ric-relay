@@ -93,9 +93,12 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
 
 /* What a war leaves (TODO 14b): where enemy soldiers stand at a village's edge the crops are
    spoiled; where they outnumber its own soldiers houses burn and households run to a safe village
-   of their own; they come home once the enemy has been gone a week. */
-{
-  const w = People.create({ people: 600, map: 40, factions: 3, villages: 6, seed: 11, soldiers: 0.12 });
+   of their own; they come home once the enemy has been gone a week, unless the place has fallen
+   meanwhile (since TODO 14e seed 11's fell the day after, so it tries worlds until one holds; seed 15's
+   holds, with houses burned on day 21). */
+let cameBack = 0;
+for (const seed of [15, 13, 11]) {
+  const w = People.create({ people: 600, map: 40, factions: 3, villages: 6, seed, soldiers: 0.12 });
   w.step(24);
   w.rule(0, true); w.rule(1, true);   // both ruled from the page, so both armies can be stood down after
   w.declare(0, 1, "war");
@@ -103,6 +106,7 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
      world, a little over two months in. */
   for (let d = 0; d < 200 && !(w.stats().burned > 0 && w.stats().refugees > 0); d++) w.step(24);
   const s = w.stats();
+  if (seed !== 15 && !(s.burned > 0 && s.refugees > 0)) continue;   // a later world whose war never reached a village
   assert.ok(s.spoiled > 0, "an army at a village's edge spoils its crops");
   assert.ok(s.burned > 0, "raiders burn houses");
   assert.ok(s.refugees > 0, "people run from an army");
@@ -118,12 +122,20 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
   /* Both armies stood down: a week after the last enemy has left, everybody who fled is home,
      a village that everybody fled included (it stands empty for them meanwhile). */
   assert.ok(away.length > 0, "people are away from home");
+  const fledFrom = new Map(away.map(p => [p.id, p.fledFrom]));
   w.order(0, { army: 0 }); w.order(1, { army: 0 });
   w.step(24 * 14);
   const still = w.people.filter(p => p.hp > 0 && p.fledFrom >= 0).length;
   assert.equal(still, 0, "everybody who fled has come home, or stopped waiting");
-  assert.ok(w.stats().cameHome >= away.filter(p => p.hp > 0 && w.adult(p)).length, "the grown-ups who fled came home (" + w.stats().cameHome + ")");
+  /* Grown-ups whose own side still holds the place they fled are home; from a place that fell,
+     nobody is sent back into the enemy's hands. */
+  const held = away.filter(p => p.hp > 0 && w.adult(p) && w.villages[fledFrom.get(p.id)].f === p.f);
+  for (const p of away) if (p.hp > 0 && w.villages[fledFrom.get(p.id)].f !== p.f) assert.ok(p.home !== fledFrom.get(p.id), "nobody goes home to a place the enemy took");
+  assert.ok(w.stats().cameHome >= held.length, "the grown-ups who fled came home (" + w.stats().cameHome + " of " + held.length + ")");
+  cameBack += held.length;
+  if (held.length) break;
 }
+assert.ok(cameBack > 0, "in some world the place people fled held, and they came home to it");
 
 /* Why wars end (TODO 14c): each side remembers whose leader it was when the war began, and a
    place taken keeps a garrison for a year. */

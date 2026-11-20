@@ -1722,6 +1722,7 @@
   window.__wbHouse = k => homesArr && homesArr.length > k * 7 ? [homesArr[k * 7], homesArr[k * 7 + 1]] : [0, 0];
   window.__wbSite = () => { if (!homesArr) return null; for (let k = 0; k < homesArr.length; k += 7) if (homesArr[k + 6] < 1) return [homesArr[k], homesArr[k + 1]]; return null; };
   window.__wbBurned = () => { if (!homesArr) return null; for (let k = 0; k < homesArr.length; k += 7) if (homesArr[k + 6] < 0) return [homesArr[k], homesArr[k + 1]]; return null; };   // TODO 14b
+  window.__wbWalls = h => { for (const v of vs) v.wall = h; return vs.length; };   // TODO 14e: draw walls without waiting for a war (until the next villages arrive)
   window.__wbZoom = (z, x, y) => { cam.s = z; if (x != null) { cam.x = x; cam.y = y; } else if (vs[0]) { cam.x = vs[0].x; cam.y = vs[0].y; window.__px0 = cam.x; window.__py0 = cam.y; } cam.held = true; follow = false; return true; };
   /* A person's colour, from the number the keeper sent for the view it was
      asked for: a faction, or a place on one of the ramps. */
@@ -1847,6 +1848,13 @@
       ctx.globalAlpha = 0.8; ctx.fillStyle = "#6b5a46"; ctx.fill(); ctx.globalAlpha = 1;
       ctx.strokeStyle = factionColour(v.f); ctx.lineWidth = 2; ctx.stroke();
     }
+    /* Walls (TODO 14e): a stone-grey ring, thicker as it goes up; close in, at the edge of the houses. */
+    for (const v of vs) {
+      if (!v.alive || !(v.wall >= 0.25)) continue;
+      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 128 ? (v.r || 4) * s : (s >= 6 ? 4 : Math.max(4, s * 0.55)) * (v.place === "city" ? 1.8 : v.place === "town" ? 1.4 : 1) + 7;
+      ctx.strokeStyle = "#b9b2a4"; ctx.lineWidth = s >= 128 ? Math.max(2, s * 0.02) * v.wall * 2 : 1 + v.wall * 2;
+      ctx.beginPath(); ctx.arc(x, y, k, 0, Math.PI * 2); ctx.stroke();
+    }
     /* Villages. */
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const v of vs) {
@@ -1945,7 +1953,7 @@
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], gone: ["Abandoned", "#98a8a5"] };
+                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], gone: ["Abandoned", "#98a8a5"] };
     ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     for (const e of f.marks) {
       const m = MARK[e.kind]; if (!m) continue;
