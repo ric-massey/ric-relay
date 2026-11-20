@@ -2582,10 +2582,10 @@ fear of the soldiers hold it back, and it fades when the hungry are too weak. Mo
 grain and sell or share it at a fair price; a hot-tempered crowd may burn or hurt. The leader
 answers by their stats — relief, buying grain in, or soldiers — and that moves loyalty, which the
 engine already turns into an overthrow or a breakaway.
-*Question for Ric:* riots in, as above?
+**Ric (2026-11-20): "Yes they should"** — food riots are in 15.5b, as above.
 
 **Order of 15.5 after the answers:** a (made to order) → h (gear paid for; the button) → b (the
-government's grain trade; rivers with a direction; grain by boat) → e (lasting wounds; the old
+government's grain trade; food riots; rivers with a direction; grain by boat) → e (lasting wounds; the old
 slowing) → d (clearing, wear, fallow by choice, manure) → f (household firewood) → g (news of
 plenty) → c (2 km², finer land, the edge as an option) → j, then i after 15.
 
