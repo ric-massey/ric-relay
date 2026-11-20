@@ -1612,6 +1612,46 @@ today's values, so a world nobody changes is byte for byte as it was. Towers and
 on the land, built and owned like houses and carts. Cost: one lookup per faction where a
 constant is read now; nothing per person.
 
+**Checked 2026-11-20 (Ric: "let's go through it all again and see if anything is missing for
+15"): what 15a–15d do not yet cover.** Waiting on Ric for which go in and where.
+1. *Time.* At 16× a year takes about two hours (a day is five minutes at 1×), so a century is
+   about 190 hours. "Moving on by itself" over centuries would never be seen, and neither would a
+   chiefdom growing into a state. Needs a way to run years quickly — the long-run speed item 20
+   and the vision's "skipping through generations" point at — or it stays a promise on paper.
+2. *Where a new technique comes from.* 15d has techniques spreading by contact, nothing on how
+   one first appears. Proposed in the same rule as everything else: from the stats (the curious,
+   item 10) and a need (a hard winter, a war being lost), only where there is a surplus to spare
+   people for it; and a technique can be **lost** when the people who held it die out (item 11's
+   skills), as wheel-thrown pottery was lost in post-Roman Britain (to source).
+3. *Livings for an industrial or modern people.* One farmer feeding 166 means almost nobody farms;
+   the engine's livings are farming, fishing, herding, hunting, wood, stone, ore, crafts and
+   trade (item 9). A modern people needs factory and service work, or most of it sits idle.
+4. *Power, wires, fuel.* The vision lists "towers, power, fuel, vehicles"; 15 has towers and
+   cars. A tower needs power; a telegraph needs a line; a car needs fuel made somewhere. Each a
+   thing on the land, built and broken, by the tower's rule.
+5. *News by each means.* The vision's list — on foot, by rider, by letter, by telegraph or radio,
+   by phone near a tower. A letter needs somebody who can write and somebody to carry it; 15
+   gives only a speed per era.
+6. *Writing.* Not anywhere yet. It is what lets a law outlast a leader (15c), a tax be counted,
+   an office be run from far away, a letter be sent; Seshat codes it with government. Who can
+   read, by era and by people, from the stats.
+7. *Faith.* 15b names it and nothing builds it. Priests are one of Seshat's offices, and in many
+   peoples the ruler's right to rule came from it. Ask Ric whether it is wanted, and where.
+8. *How far an army can go.* The vision gives "how far an army can go" to 15; 15 lists weapons
+   and travel but not an army's reach on what it can carry or take (logistics by era).
+9. *Inheritance.* "When somebody dies" is one world setting (coins to the children, the faction or
+   the village). Land and rank passing to the eldest son, split between all children, or to the
+   kin group is a custom like marriage, tied to it (dowry, a widow's share) and to 15c (a chief's
+   heir). Proposed: in 15b, from the stats like the rest.
+10. *Figures still unsourced* (each named in the notes above): ancient and medieval share of
+   people farming, rail and telegraph speeds, sword and bow lethality, Roman and medieval army
+   shares, industrial and modern house forms, medicine by era (life expectancy, children dying),
+   marriage distances in miles, how fast customs change. 15c's research is thin on city councils
+   and modern states. Each to be read before the item that uses it is built.
+11. *Which era the present world is.* Ric chose Ancient, Medieval, Industrial and Modern, with
+   "the present farming village stays as it is". The vision also says "from tribes". Is the
+   present village the tribal era (before any state), or one more era beside the four?
+
 ### [ ] 15a. Each people's ways, and decisions made from the stats
 
 Split out of 15 on 2026-11-20 as the groundwork 15c, 15b and 15d stand on.
