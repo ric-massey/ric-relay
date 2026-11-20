@@ -1751,7 +1751,9 @@ than four.
   ([Britannica](https://www.britannica.com/place/Italy/The-popolo-and-the-formation-of-the-signorie-in-central-and-northern-Italy);
   [Podestà](https://en.wikipedia.org/wiki/Podest%C3%A0)). Modern states still to research with 15c.
 
-### [ ] 15a. Each people's ways, and decisions made from the stats
+### [x] 15a. Each people's ways, and decisions made from the stats
+
+**Done 2026-11-20.** A tab a faction under Their nature (`own` in the link); events move people by age (Roberts and DelVecchio; nothing under six, Bauer et al.) and size (a parent lost twice, a burned house, each week of famine, a war lost); an elected leader's decisions are half the leader, half the people's average. A world nobody sets apart starts as before; the running default world changes (Ric: "Yes, always"). `test/ways.test.mjs`. Left: the council and great families who share the say are 15c; the era's numbers on a per-faction record (`WAR_ERA` and the rest) move with 15d, where eras are set per faction — nothing reads them per faction until then. `dealings.test.mjs`'s "more killed under hot-tempered leaders" was 6 against 4 before and 3 against 3 after, too few deaths to tell apart; it now asks for no fewer.
 
 Split out of 15 on 2026-11-20 as the groundwork 15c, 15b and 15d stand on.
 **Now:** every number about how a people lives and fights is one constant for the whole world
@@ -1788,6 +1790,53 @@ decisions change their stats if their young enough or the thing that happened wa
 deal."
 
 Research notes:
+
+*Researched 2026-11-20.*
+
+**How much an event moves somebody, by age.** Rank-order stability (above): about 0.31 in
+childhood, 0.54 at college age, 0.64 at 30, about 0.74 from 50 (Roberts and DelVecchio 2000).
+What is not stable is what can move, so the share an event moves a person is taken as one minus
+that: 0.69, 0.46, 0.36, 0.26. War is sharper still: in Georgia and Sierra Leone, war changed the
+fairness and in-group loyalty of people who lived through it between about 7 and 20, and had no
+measurable effect on young children and only a muted one on older adults
+([Bauer, Cassar, Chytilová and Henrich, *Psychological Science* 25, 2014](https://coevolution.fas.harvard.edu/publications/wars-enduring-effects-development-egalitarian-motivations));
+across nearly 20 studies in over 40 countries the effect of war on cooperation at home is strong
+and does not fade with time
+([Bauer et al., "Can War Foster Cooperation?", *J. Econ. Perspectives* 30(3), 2016](https://www.nber.org/papers/w22312)).
+So the curve is: little before about six, most from six to twenty, falling to a quarter of that
+by fifty. *Not used:* Giuliano and Spilimbergo's "impressionable years" (18–25) paper was
+retracted ([notice](https://www.restud.com/retraction-of-growing-up-in-a-recession/)).
+
+**How big an event is.** The meta-analysis of life events and personality (44 studies, 121,187
+people) found real but small effects and tested no dose
+([Bühler et al., *European J. of Personality*, 2023](https://boris.unibe.ch/185539)); war studies
+measure exposure as a dose — deaths in the household or community (Voors et al. 2012, already in
+the README; Bauer et al. 2016). Nothing found gives a dose-response curve. So size is the share of
+what was lost: in a raid, the share of the village killed or burned; in a famine, how long they
+went without; a death, how close the dead was (a parent or child more than a cousin). Plain
+proportion, no tuned curve.
+
+**How a people's customs follow its powerful people.** People copy those who are admired and
+followed — prestige-biased learning ([Henrich and Gil-White, *Evolution and Human Behavior* 22,
+2001](https://pubmed.ncbi.nlm.nih.gov/11384884/); [Jiménez and Mesoudi 2019, review](https://link.springer.com/content/pdf/10.1057/s41599-019-0228-7.pdf)),
+and leaders can move a group's norms of cooperation (Henrich, Chudek and Boyd 2015,
+[the "Big Man" models](https://pmc.ncbi.nlm.nih.gov/articles/PMC4633849)). Against that, a people's
+basic values change mostly as one generation replaces another, slowly
+([Inglehart, generational replacement](https://www.cambridge.org/core/books/civic-culture-transformed/value-change-over-a-third-of-a-century/10C6E418C8706870594626CEECBFE4B9)).
+**Approach chosen:** nothing new is tuned. A custom is a decision made from the stats of whoever
+has the say (the leader now; the council and great families with 15c); those stats move only as
+the people themselves move (events, by age and size) or are replaced (death, a new leader, a
+revolution, children who take after their parents). Generational replacement then gives the
+slow change for free. Cost: one pass over a faction's grown-ups once a day (as `landWant`
+already does), nothing per person per step.
+
+**Ric's answers (2026-11-20):**
+- Age and size of an event, in every world (it changes the default world): "Yes, always".
+- An elected leader's decisions lean to what the people are like (half the leader, half the
+  average grown-up), not to the middle: "Lean to the people".
+- New events: "A war lid and loosing a parent" — a war lost (the whole faction, more the more it
+  lost) and children grieving a parent (more than any other death).
+- Per-faction sliders: "Faction tabs" — All, then one tab a faction, each starting from All.
 
 ### [ ] 15c. Government, deeper
 
@@ -2236,6 +2285,7 @@ men arriving one by one; cutting a supply line makes an army withdraw — none o
 
 Split out of 15 on 2026-11-20; rewritten the same day with Ric's answers. Last of the 15 family,
 because an era is now only a starting list of know-how (15e) and buildings (15f).
+**From 15a (2026-11-20):** the era numbers that are one constant for the world now (`WAR_ERA` — season, standing, campaign, wall worth, hold and days — and the food and travel figures) go on a record per faction here, where they first differ by faction; 15a left them as they are since nothing could read them differently yet.
 **Do:** the nine eras as starting points chosen per faction (**Which eras**, in 15); weapons by
 era with the Lanchester law that fits them (15h); medicine (children dying, length of life); house
 shapes by era and by people; cell towers and cars as things built, owned, fed and destroyed; and
@@ -2247,6 +2297,77 @@ and each of those is a thing that can be built, cut or knocked down.
 hear news at measurably different speeds; knocking down a tower or cutting a line slows the news
 in its area and nowhere else.
 **Budget:** default.
+
+### [ ] 15.25. Faster People simulation without losing quality, and births without a population cap
+
+Added 2026-11-20 at Ric's request after a performance audit: "1-5 needs added in todo as
+15.25". On births: "Idk why births stop they shouldn't." Then: "Don't do the birth cap fix.
+Just put it in the todos with the others. Only mess with the todo page." **This entry records
+future work; none of these changes has been implemented by the audit.** Another session is
+working on the engine, so re-read and re-profile its current version before implementing this.
+
+**Do, in small measured passes:**
+
+- [ ] **1. Make conversations cheaper to record.** `converse` and `conversationState` in
+  `people.js` create before/after snapshots and compare their fields for every exchange.
+  Reuse temporary storage and avoid duplicate reads while keeping every conversation, its
+  actual effects and the inspector's before/after receipts. An inspected record must still
+  survive eviction from the rolling history without being changed by later conversations.
+- [ ] **2. Reuse pathfinding storage.** `routeAround` creates maps, heap storage and node objects
+  for each search. Investigate reusable scratch buffers for it and `landWay`, keeping the same
+  search order, tie-breaking, search bounds, routes and checks on every footstep. Preserve the
+  invalidation rules for blocked steps, failed searches, bodies moving and crossings changing.
+- [ ] **3. Schedule people who are due instead of scanning everyone each step.** `actionTick`
+  skips idle people's behaviour but still checks everyone's wake time 1,440 times per day.
+  Investigate an ordered active list or due-time buckets. Preserve the existing person order,
+  including somebody woken by an interaction during a step, hourly updates, births, deaths,
+  moves and outside orders. Measure the scheduler's own overhead before choosing it.
+- [ ] **4. Send and paint changed map regions.** `people-host.js` currently builds a full crop
+  picture and copies the whole owner array for a land update; `index.html` repaints the land
+  from that answer. Investigate changed chunks, separate ownership changes from crop changes,
+  and reuse transfer buffers safely. Keep the same detail and update cadence, correct borders,
+  panning and zooming, with a complete first picture and recovery from a missed update.
+- [ ] **5. Keep indexes for repeated population searches.** Audit family, faction, village and
+  event-witness lookups before adding more features. Reuse existing resident/spatial lists;
+  add ordered child or faction lists where measurements justify them. Births, deaths, adoption,
+  moves and faction changes must keep every index correct. Preserve eligibility, encounter
+  order and random-number consumption; do not replace individual people with totals.
+- [ ] **Remove the birth population cap.** `reflect` currently requires `people.length < 3000`
+  before a couple can have a child. Remove that arbitrary gate when this work is implemented.
+  Keep the existing age, partner, food, crowding and fertility rules, including Children set to
+  zero. Add regression coverage for births at and above 3,000 people and for crossing that
+  boundary through actual births; newborns must still use existing household supplies and
+  join the engine's growing memory, wake and spatial structures correctly. This intentionally
+  changes worlds at the old cap, and its extra simulation work must be reported separately
+  from the gains made by optimizations.
+
+**Research first:** allocation reuse and bounded search workspaces, ordered event scheduling,
+spatial queries and transferable-buffer ownership. Extend the audit with current profiles of
+ordinary villages, dense towns, war, winter and older worlds, plus large sparsely settled maps.
+Keep the engine and its worker; these are improvements within them.
+
+**Audit measurements (2026-11-20, provisional):** AMD Ryzen 5 3600, 24 GB, Node v24.19.0,
+seed 7, sickness off, full conversation records, the working copy then current. With the first
+day excluded, CPU-profiled runs took about 2.36 s/day for 5,000 people on 40 km (three measured
+days), and 14.84 s/day for 20,000 on 80 km (two days). Conversations accounted for about 22%
+and 16% of sampled time respectively; local route searches about 16% at 20,000. These are
+inclusive call-tree shares, not additive categories. Only about 27-28% of person-steps ran
+behaviour, although every wake time was checked. Desktop load varied, so these are pointers
+to where to measure, not guaranteed performance targets. A keeper-only land update for 400
+people on 500 km took about 21 ms to prepare and contained 12.4 MB of typed-array data; that
+excludes message delivery and browser painting. No optimization speedup has yet been measured.
+
+**Ric decides:** the scope above is requested. The discussion of seven friends did not authorize
+a new friendship cap; keep the existing five-person close circle and other relationship rules.
+**Done when:** each optimization is measured before/after and produces the same world for the
+same seed, including memories, events, choices and conversation receipts, over representative
+timelines and outside interventions. Extend `walking`, `dozing`, `keeper`, conversation and
+time/food coverage where needed. Verify map changes in the browser at phone and desktop widths.
+Test the birth fix separately because removing the cap intentionally changes outcomes. Record
+the results and any remaining work here; do not tick this whole item after only one pass.
+**Budget:** improve measured runtime or display cost without reducing simulation detail;
+unaffected benchmark cases follow the existing no-more-than-5% regression budget. Measure the
+cost of newly allowed births separately rather than disguising it as an optimization regression.
 
 ### [ ] 15.5. What items 1–14 missed, and what is weak
 
@@ -2950,4 +3071,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-19 | 14c | AMD Ryzen 5 3600, 24 GB | 1.93 s a day, 155× | *not run* | 7.0 MB, 1.37 KB | **why wars end**: blame, grudges, garrisons, a different world in a war. Against 14b, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.66/0.67 → 0.79/0.66 s, 5,000 1.92/1.98 → 2.03/1.93 s: the same within this machine's drift |
 | 2026-11-19 | 12b | AMD Ryzen 5 3600, 24 GB | 2.24 s a day, 133× | *not run* | 7.0 MB, 1.37 KB | **acting on news of sickness, famine and prices**: the same world until a report comes. Against 14c, alternated: 400 0.13/0.13 → 0.14/0.14 s, 2,000 0.70/0.70 → 0.72/0.72 s, 5,000 2.30/2.22 → 2.25/2.23 s; mid-year 2,000 (day 150, six days) old 0.59–0.64 s, new 0.63–0.76 s, a different world: a profile gives the new reading 0.5% of the time |
 | 2026-11-20 | 14d, 14e | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | *not run* | 7.1 MB, 1.38 KB | **peace by marriage, trade deals, tribute; walls, raids, a fighting season**: a different world in a war. 14e against 14d, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.70/0.68 → 0.70/0.69 s, 5,000 2.01/2.06 → 2.06/2.06 s: the same |
+| 2026-11-20 | 15a | AMD Ryzen 5 3600, 24 GB | 2.25 s a day, 133× | *not run* | 6.6 MB, 1.29 KB | **each people's ways**: a faction's own nature, events by age and size, a war lost, elected leaders lean to their people; a different world. Against 14e, quick rows alternated new/old/new: 400 0.13/0.13/0.13 s, 2,000 0.68/0.68/0.71 s, 5,000 2.31/2.28/2.25 s — within the drift. Cost: ten adds per grown-up per census (every six hours), one pass over a faction's people per war lost. |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

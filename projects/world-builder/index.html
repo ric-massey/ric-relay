@@ -124,6 +124,13 @@
   .row .val { color: var(--acc); font-size: .84rem; }
   .row .help { color: var(--dim); font-size: .8rem; line-height: 1.4; margin: .2rem 0 0; }
   /* What this computer makes of the world as set: the one line under "How many people". */
+  /* Each faction's own nature (TODO 15a): a tab a faction above the ten sliders. */
+  .ntabs { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+  .ntabs button { min-width: 44px; min-height: 36px; padding: .3rem .65rem; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; color: var(--ink); font: inherit; font-size: .86rem; cursor: pointer; }
+  .ntabs button[aria-selected="true"] { border-color: var(--acc); color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--panel)); }
+  .ntabs button.set::after { content: " •"; color: var(--acc); }
+  .nnote { display: flex; align-items: baseline; gap: .6rem; color: var(--dim); font-size: .8rem; margin: .35rem 0 0; }
+  .nnote button { background: none; border: 0; color: var(--acc); font: inherit; text-decoration: underline; cursor: pointer; padding: .2rem 0; min-height: 32px; }
   .row .canrun { color: var(--ink); border-left: 2px solid var(--acc); padding-left: .55rem; margin-top: .5rem; }
   .row .canrun.waiting { color: var(--dim); border-left-color: var(--line); }
   .row .canrun.slow { border-left-color: var(--warn); }
@@ -435,7 +442,47 @@
   function words(it, v) {
     if (it.type === "range") return it.say ? it.say(v) : String(v);
     if (it.type === "toggle") return v ? "on" : "off";
+    if (it.type === "own") { const n = new Set(String(v).split(",").filter(Boolean).map(x => x.split(".")[0])).size; return n ? n + (n === 1 ? " faction" : " factions") + " of their own" : "all alike"; }
     return (it.options.find(o => o[0] === v) || ["", ""])[1];
+  }
+
+  /* Each faction's own nature (TODO 15a; Ric, 2026-11-20: "Faction tabs"). Tab 0 is All: the
+     ten sliders are the world's. On tab n they show faction n's own, which start from All and
+     are kept in values.own as "n.key=value,…"; moving one back to All's value drops it. */
+  let natureTab = 0;
+  const NATURE = ["bold", "warm", "greedy", "stubborn", "loyalty", "patient", "temper", "hardwork", "curious", "honest"];
+  function ownMap() { const m = new Map(); for (const x of String(values.own || "").split(",").filter(Boolean)) { const i = x.indexOf("="); m.set(x.slice(0, i), +x.slice(i + 1)); } return m; }
+  function shown(k) { if (!natureTab || !NATURE.includes(k)) return values[k]; const v = ownMap().get(natureTab + "." + k); return v === undefined ? values[k] : v; }
+  function setOwn(k, v) {
+    const m = ownMap(), key = natureTab + "." + k;
+    if (v === values[k]) m.delete(key); else m.set(key, v);
+    values.own = ENGINES[mode].api.clean({ factions: values.factions, own: [...m].map(([a, b]) => a + "=" + b).join(",") }).own;
+  }
+  function natureTabs() {
+    const bar = $("ntabs"); if (!bar) return;
+    const n = values.factions || 1, set = new Set(String(values.own || "").split(",").filter(Boolean).map(x => +x.split(".")[0]));
+    if (natureTab > n) natureTab = 0;
+    const hadFocus = bar.contains(document.activeElement);   // rebuilt on every change: keep the keyboard on the open tab
+    bar.textContent = "";
+    for (let i = 0; i <= n; i++) {
+      const b = document.createElement("button");
+      b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(i === natureTab));
+      b.textContent = i ? "Faction " + i : "All";
+      if (i && set.has(i)) { b.classList.add("set"); b.title = "Has its own"; }
+      b.addEventListener("click", () => { natureTab = i; fill(); });
+      bar.appendChild(b);
+      if (hadFocus && i === natureTab) b.focus();
+    }
+    const note = $("nnote"), mine = natureTab ? [...ownMap().keys()].filter(x => +x.split(".")[0] === natureTab).length : 0;
+    note.textContent = "";
+    const t = document.createElement("span");
+    t.textContent = !natureTab ? "Every faction starts from these, unless it has its own." : mine ? "Faction " + natureTab + ": " + mine + " of the ten set apart from All." : "Faction " + natureTab + " is the same as All. Move a slider to make it its own.";
+    note.appendChild(t);
+    if (mine) {
+      const r = document.createElement("button"); r.type = "button"; r.textContent = "Same as All";
+      r.addEventListener("click", () => { const m = ownMap(); for (const k of [...m.keys()]) if (+k.split(".")[0] === natureTab) m.delete(k); values.own = ENGINES[mode].api.clean({ factions: values.factions, own: [...m].map(([a, b]) => a + "=" + b).join(",") }).own; preset = null; fill(); });
+      note.appendChild(r);
+    }
   }
 
   function buildSetup() {
@@ -461,6 +508,14 @@
         const row = document.createElement("div"); row.className = "row";
         const id = "set-" + it.key;
         let ctl, numeric = null;
+        if (it.type === "own") {
+          row.innerHTML = "<div class='rhead'><span class='lab'>Whose nature</span></div><div class='ntabs' id='ntabs' role='tablist' aria-label='Whose nature'></div><p class='nnote' id='nnote'></p>";
+          /* No control of its own: the tabs and the ten sliders below are it. Listed so the
+             group's summary and the count of changed settings include it. */
+          controls[it.key] = { it: it, row: row, ctl: {}, numeric: null, val: null, group: s.querySelector(".sum") };
+          d.appendChild(row);
+          continue;
+        }
         if (it.type === "range") {
           /* Every physics number can be typed. Of the People settings, the
              one with no top can (TODO item 3): the slider sweeps to its
@@ -472,7 +527,7 @@
             "</span></div><input type='range' id='" + id + (typed ? "-slider" : "") + "' aria-label='" + esc(it.label) + "' min='0' max='1000' step='1'>";
           ctl = row.querySelector("input[type=range]");
           numeric = row.querySelector("input[type=number]");
-          ctl.addEventListener("input", () => { values[it.key] = posToValue(it, +ctl.value); if (numeric) numeric.value = values[it.key]; preset = null; refresh(); });
+          ctl.addEventListener("input", () => { const v = posToValue(it, +ctl.value); if (natureTab && NATURE.includes(it.key)) setOwn(it.key, v); else values[it.key] = v; if (numeric) numeric.value = v; preset = null; refresh(); });
           if (numeric) {
             numeric.setAttribute("aria-describedby", id + "-words");
             numeric.addEventListener("input", () => {
@@ -502,7 +557,7 @@
   }
   function fill() {
     for (const k in controls) {
-      const c = controls[k], v = values[k];
+      const c = controls[k], v = shown(k);
       if (c.it.type === "range") c.ctl.value = valueToPos(c.it, v);
       else if (c.it.type === "select") c.ctl.value = v;
       else c.ctl.checked = v;
@@ -515,13 +570,15 @@
      that sums a closed group up, and the address. */
   function refresh() {
     const E = ENGINES[mode].api;
+    if (natureTab > (values.factions || 1)) { natureTab = 0; fill(); return; }
+    natureTabs();
     let changed = 0;
     const sums = new Map();
     for (const k in controls) {
-      const c = controls[k], v = values[k];
-      if (c.val) { const w = words(c.it, v); c.val.textContent = (c.numeric && w === String(v)) ? "" : w; }
-      if (c.it.type === "range") c.ctl.setAttribute("aria-valuetext", words(c.it, v));
-      const on = !c.it.when || c.it.when(values);
+      const c = controls[k], v = values[k], sv = shown(k);
+      if (c.val) { const w = words(c.it, sv); c.val.textContent = (c.numeric && w === String(v)) ? "" : w; }
+      if (c.it.type === "range") c.ctl.setAttribute("aria-valuetext", words(c.it, sv));
+      const on = (!c.it.when || c.it.when(values)) && !(natureTab && k === "differ");
       c.row.classList.toggle("off", !on);
       c.ctl.disabled = !on;
       if (c.numeric) c.numeric.disabled = !on;
@@ -645,7 +702,7 @@
        which is the fun of it. */
     const E = ENGINES[mode].api, next = {};
     for (const g of E.SCHEMA) for (const it of g.items) {
-      if (it.key === "rate") continue;
+      if (it.key === "rate" || it.type === "own") continue;
       if (it.type === "range") next[it.key] = posToValue(it, Math.random() * 1000);
       else if (it.type === "toggle") next[it.key] = Math.random() < 0.7;
       else next[it.key] = it.options[Math.floor(Math.random() * it.options.length)][0];

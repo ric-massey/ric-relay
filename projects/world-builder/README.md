@@ -1901,6 +1901,58 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: the page has no button to offer a marriage; everyday marriages still
 ignore wealth (TODO 15b).
 
+### Each people's ways, by its own nature (2026-11-20)
+
+TODO item 15a, the groundwork for government (15c), faith (15g) and marriage (15b). Ric: "the
+most influential people what morals and stats they have should decide … sometimes those
+decisions change their stats if their young enough or the thing that happened was a big enough
+deal." Before this every faction began from the same ten sliders, every event moved everybody by
+the same amount whatever their age, and an elected leader's nature was simply pulled toward the
+middle.
+
+- **A faction's own nature.** Under Their nature the setup page has a tab for All and one a
+  faction. All is the ten sliders as before. A faction's tab shows the same ten, starting from
+  All; moving one sets that faction apart, and moving it back drops it. The link carries it as
+  `own=2.temper=0.9,…` (the faction, the slider, the value). "How much they differ" stays one for
+  the world. A world nobody sets apart starts person for person as it did
+  (`test/ways.test.mjs` keeps the old engine's fingerprint), and setting one faction apart
+  leaves every other faction's people exactly as they were.
+- **Customs come from the stats of whoever has the say.** Nothing new is tuned. What a faction
+  does was already decided from its leader's nature: a chief or the richest by their own, which
+  is how a grasping people's chief comes to keep the land for themselves (five of six seeds, none
+  for a content people). A leader the people can vote out was half their own nature and half
+  "ordinary"; the other half is now **the people's own**: their grown-ups' average, counted
+  with the census every six hours. So a hot-tempered people's elected leader acts
+  hot-tempered (Ric: "Lean to the people"). Every trait a leader's decision reads (bold, warm,
+  greedy, honest, patient, hot-tempered) goes through this. People copy those they admire and
+  follow ([Henrich and Gil-White 2001](https://pubmed.ncbi.nlm.nih.gov/11384884/)), but a people's
+  values change mostly as one generation replaces another (Inglehart): here a people's customs
+  move only as its people move or are replaced — events, deaths, a new leader, a revolution,
+  children who take after their parents. 15c adds the council and great families who share the say.
+- **An event moves the young more, and a bigger one more.** How much a hard event moves somebody
+  is one minus how stable personality is at their age: 0.31 in childhood, 0.54 at college age,
+  0.64 at thirty, 0.74 from fifty ([Roberts and DelVecchio 2000](https://stafforini.com/works/roberts-2000-rankorder-consistency-personality/)),
+  over its value at thirty, so a thirty-year-old moves as everybody did before. Nothing before
+  six: war left no measurable mark on children younger than that, and only a muted one on older
+  adults ([Bauer, Cassar, Chytilová and Henrich 2014](https://coevolution.fas.harvard.edu/publications/wars-enduring-effects-development-egalitarian-motivations)).
+  So a six-year-old moves 1.9 times as much as before, a twelve-year-old 1.6, a sixty-year-old
+  0.72: a child two to two and a half times as much as the old. *Size* is plain proportion, since
+  no study found gives a dose curve (the meta-analysis of life events,
+  [Bühler et al. 2023](https://boris.unibe.ch/185539), tested none): a parent lost counts twice
+  any other death; a house burned in a raid is a raid of its own for the household; every week
+  without food after the third day is another famine; a war lost is felt by the whole people.
+- **A war lost** (Ric: "A war lost"). At a peace, the side that lost more places than it took, or
+  that pays for it, is shaken as a raid, all of it, times one plus the share of its places it
+  lost; a faction that falls has lost everything (twice). No study found separates losing from
+  living through a war, so the raid's own changes are used. Counted in `stats().warsLost`.
+
+**Measured.** A year of the default world, eight seeds (1–7, 11), before and after: 11 starved
+both times; people 3,143 → 3,151; wars 28 → 29; raids 86 → 79; quarrels 1,087 → 882 and fights
+632 → 497; killed in battle 7 → 22 (a handful a world, so noisy). Average traits at the year's end
+moved by no more than a few hundredths. Checked on the page: the tabs, a link that carries one
+faction's nature, moving a slider back to All, fewer factions than an open tab, a phone-width
+window, and a world started from such a link.
+
 ### Walls, sieges, raids and the fighting season (2026-11-20)
 
 TODO item 14e. Before this a side at war tripled its soldiers in three months, to about a quarter
