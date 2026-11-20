@@ -2548,6 +2548,42 @@ carried by letter, which needs writing (15e) and travels at the speed of what is
 famine, and traders, the hungry and families act on it as on 12b's news), and let 15e's letters
 and 15d's roads make it faster later. No separate item.
 
+**Ric (2026-11-20):** the marriage button as read above, **yes** (he picks anybody on either side;
+no refusal). Food riots: "Do research on people is it really just a hot tempered thing?"
+
+**Food riots: who riots, and why (b).** Not a matter of temper. What the research finds:
+- *Unfairness, not hunger alone.* Riots came when food seemed held back or sent away unfairly —
+  grain hoarded, carted out of a hungry district, sold above what was thought a fair price. There
+  were hard years with no riots and riots in years prices were steady (Thompson, "The Moral Economy
+  of the English Crowd", 1971, [text](https://libcom.org/article/moral-economy-english-crowd-eighteenth-century-e-p-thompson);
+  [Encyclopedia.com, Food riots](https://www.encyclopedia.com/food/encyclopedias-almanacs-transcripts-and-maps/food-riots)).
+- *Mostly orderly.* The usual riot seized grain and sold it at the "fair" price, or stopped a cart
+  leaving; killing was rare (Thompson; [Moral economy](https://en.wikipedia.org/wiki/Moral_economy)).
+- *A community act.* Whether hardship turned into a riot depended on how close-knit the people
+  were — neighbours who knew each other, a trade in common (Bohstedt, *Riots and Community Politics
+  in England and Wales*; *The Politics of Provisions*,
+  [summary](https://www.ids.ac.uk/wp-content/uploads/2018/11/Ep-02_Food-Riots-Food-Rights-and-the-Politics-of-Provisions_Transcript.pdf)).
+  Miners, weavers and labourers who bought their bread, more than farmers who grew it; rural workers
+  too ([*Historical Journal* 2021](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/59BAAD776E6130924B6D37D87E81ADFA/S0018246X21000029a.pdf/rural_workers_and_the_role_of_the_rural_in_eighteenthcentury_english_food_rioting.pdf)).
+- *Women prominent*, from the sixteenth century on, as the ones who bought the household's food
+  (Thompson, *Customs in Common*).
+- *Early, not late.* In Ireland's famine riots ran into the hundreds in 1846–47 and faded as hope
+  and anger gave way to despair at the worst ([EH.net](https://eh.net/encyclopedia/irelands-great-famine/);
+  [RTÉ on Ó Gráda](https://www.rte.ie/history/famine-ireland/2020/0921/1166563-hunger-will-break-through-a-wall-food-riots-)).
+- *The answer from above* — relief or soldiers — decided what came next (Bohstedt). Today: worse
+  poverty and less food a head make riots likelier (Berazneva and Lee), but price alone does not
+  say where (Heslin, *Journal of Peace Research* 2021, [via vLex](https://vlex.co.uk/vid/riots-and-resources-how-875453579)).
+
+*How it would fit the engine:* a riot is something a village's hungry do together, never a timer.
+It is likelier where people go short while they can see food that is not theirs (a store, a
+hoarder's larder, a cart leaving), where they know each other well (item 11's friends), and among
+those who buy their food rather than grow it; temper (item 10) makes it rougher, patience and
+fear of the soldiers hold it back, and it fades when the hungry are too weak. Most riots take the
+grain and sell or share it at a fair price; a hot-tempered crowd may burn or hurt. The leader
+answers by their stats — relief, buying grain in, or soldiers — and that moves loyalty, which the
+engine already turns into an overthrow or a breakaway.
+*Question for Ric:* riots in, as above?
+
 **Order of 15.5 after the answers:** a (made to order) → h (gear paid for; the button) → b (the
 government's grain trade; rivers with a direction; grain by boat) → e (lasting wounds; the old
 slowing) → d (clearing, wear, fallow by choice, manure) → f (household firewood) → g (news of
