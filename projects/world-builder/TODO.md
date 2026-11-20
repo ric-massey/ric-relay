@@ -2282,6 +2282,11 @@ to go round, wait for numbers, hold a river or a hill, cut the enemy's food, or 
 fought with the law for their weapons (15d).
 **Done when:** an army that outruns its food turns back or starves; a gathered army beats the same
 men arriving one by one; cutting a supply line makes an army withdraw — none of it scripted.
+**Also in 15h** (Ric, 2026-11-20, from 15i's research): **mercenaries** — soldiers whose living is war,
+hired from a treasury by contract, who plunder or turn bandit when nobody pays them (the free
+companies; about a third of armies in 1500 by one estimate; Thomson's *Mercenaries, Pirates, and
+Sovereigns* to read first) — and **pirates**, taking at sea from boats carrying goods (7d), run by
+their own rules (Leeson); Barbary captive numbers (Davis) to find first.
 **Budget:** default (one coarse map per side a day).
 
 ### [ ] 15i. People who belong to no one place: foragers, herders who move, and travellers
@@ -2425,10 +2430,22 @@ what the sim already has toward it, and whether it is worth having.
 15.5d (it is that part's land change used as a way of farming); bandits with 15.5b (hunger and
 landlessness are what make them) or with 15i; foragers who settle and transhumance in 15i;
 mercenaries and pirates in 15h; sea nomads last, or not at all.
+**Ric (2026-11-20): "Yep"** — placed as recommended, with 15.5 done before 15, and none in 16–19.
+So nothing placed in 15.5 may lean on an item of 15: shifting cultivation needs only 15.5d's land,
+and bandits only what 15.5b and the engine already have (hunger, the landless, theft, raiding bands,
+carts and roads). Written into each item:
+- **15.5d** — shifting cultivation.
+- **15.5b** — bandits on land.
+- **15i** — foragers who settle, seasonal herding, and sea nomads as its last part.
+- **15h** — mercenaries, and pirates at sea.
 **Done when:** a people with no farming know-how lives by gathering and hunting, moves camp when the
 food runs down, and has no fixed jobs and no ruler unless its own needs make them; a herding people
 moves with the season; none of it is a switch.
 **Budget:** default (a camp moves rarely; nothing per person between moves).
+**Also in 15i** (Ric, 2026-11-20): **foragers who settle** where food is rich and can be stored (the
+fishing peoples of the North-West coast), **seasonal herding** (herds and a few herders at summer
+pasture, the village keeping hay for winter), and, **as its last part**, **sea nomads** whose home is
+a boat. Research in the notes above.
 
 ### [ ] 15d. Eras as starting points; news by what is built; towers, cars, houses, medicine
 
@@ -2757,6 +2774,12 @@ forest, over decades.
 should farmers rest land by their own choice (and is that a people's custom, 15a), or always?
 (3) Should herds manure fields, so herding and farming help each other? (4) Is it worth it before
 eras, given most runs are short?
+**Shifting cultivation is in 15.5d too** (Ric, 2026-11-20): with soil that wears and forest that
+grows back, farmers may clear forest for a field, crop it a few years and leave it to regrow (20 to 40
+years in old Europe), and a village with no forest left near may move. As people crowd, the rest
+grows shorter and the work for each meal longer, until fields are cropped every year (Boserup) —
+coming out of the run, not set. *To find before building:* how often such villages moved. Research
+in 15i's notes.
 
 **e. Wounds and old age.** *Now:* a wound lowers a person's health, which comes back at a fixed
 rate (if they have water) and always comes back in full. Old age only makes sickness and cold more
@@ -2948,10 +2971,16 @@ grain and sell or share it at a fair price; a hot-tempered crowd may burn or hur
 answers by their stats — relief, buying grain in, or soldiers — and that moves loyalty, which the
 engine already turns into an overthrow or a breakaway.
 **Ric (2026-11-20): "Yes they should"** — food riots are in 15.5b, as above.
+**Bandits are in 15.5b too** (Ric, 2026-11-20, from 15i's research): the hungry, the landless and the
+dishonest (item 10's honest trait) may choose to take for a living — from carts on the roads (7d) and
+from weakly held villages, as 14e's raiding bands do — weighed in `choose` like any living, rising by
+itself in hard times (Hobsbawm: impoverishment, crisis, war, conquest). Nothing starts a band;
+nobody is placed as a bandit. Those robbed hold it against them, as any theft (10, 12). Research in
+15i's notes.
 
 **Order of 15.5 after the answers:** a (made to order) → h (gear paid for; the button) → b (the
-government's grain trade; food riots; rivers with a direction; grain by boat) → e (lasting wounds; the old
-slowing) → k (children and mothers dying; the gap between births) → d (clearing, wear, fallow by choice, manure) → f (household firewood) → g (news of
+government's grain trade; food riots; bandits; rivers with a direction; grain by boat) → e (lasting wounds; the old
+slowing) → k (children and mothers dying; the gap between births) → d (clearing, wear, fallow by choice, manure, shifting cultivation) → f (household firewood) → g (news of
 plenty) → c (2 km², finer land, the edge as an option) → j, then i after 15.
 
 ### [ ] 16. Ruins and scavenging
