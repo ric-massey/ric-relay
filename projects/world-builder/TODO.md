@@ -2364,6 +2364,67 @@ that stuff needs looked up".
   (the village stays, the herds and herders go up to summer grazing and back); **sea nomads** living
   on boats; and livings from **taking** — raiders, bandits and pirates — and from **fighting for
   pay** (mercenaries), which 14e's raiding bands and 15h's armies touch.
+**The other ways of living, researched (2026-11-20, Ric: "Research those").** For each: what it is,
+what the sim already has toward it, and whether it is worth having.
+- *Shifting cultivation (slash and burn).* Short spells of cropping, then long fallow while the
+  forest and the soil come back — 20 to 40 years in old Europe; shortening the fallow works only to a
+  point, then yields fall and the soil goes. Boserup: as people grow more crowded, fallow shortens,
+  from forest fallow to bush fallow to yearly cropping, and each step is more work for each meal; where
+  land is short, shifting cultivation cannot be kept up. The land is usually held by households
+  ([FAO](https://www.fao.org/4/r5265e/r5265e06.htm); [Shifting cultivation](https://en.wikipedia.org/wiki/Shifting_cultivation);
+  [Mertz and others, *Human Ecology*](https://link.springer.com/doi/10.1007/s10745-006-9014-4)).
+  *Have:* fields, forest, households holding land (7c); worn soil and regrowth are 15.5d. *Worth it:*
+  yes, and nearly free once 15.5d is in — it is clearing forest for a field and leaving it, and the
+  village moving when no forest is left near. Boserup's sequence then comes out of the run as people
+  grow crowded. *To find:* how often swidden villages moved.
+- *Foragers who settle.* Where food is rich and can be stored — the salmon of the North-West coast —
+  foragers lived in permanent winter villages, stored food, had hereditary nobles, commoners and
+  slaves, raided, and were denser than many farming peoples near them; storage was needed for this but
+  did not cause it alone, and crowding and war did not predict it ([PMC 2021](https://pmc.ncbi.nlm.nih.gov/articles/PMC8020663);
+  [Canadian Museum of History](https://historymuseum.ca/cmc/exhibitions/archeo/hnpc/npvol28e.html);
+  Wengrow and Graeber, [*American Anthropologist*](https://discovery-pp.ucl.ac.uk/10040342/1/Wengrow_Graeber_American%20Anthropologist_Rough.pdf)).
+  *Have:* fishing (6c), stores, ranks by wealth. *Worth it:* yes — it is the forager band of 15i
+  staying put where the fish are, with rank coming from 15c's stats, not from the fish. It shows that
+  settling does not need farming.
+- *Transhumance.* The village and most people stay; the herds and a few herders go up to summer
+  pasture (an alp, a shieling, a hafod) and come down in autumn — in the Alps in late September or
+  early October, and in the Alps since about 3000 BC ([Transhumance](https://en.wikipedia.org/wiki/Transhumance);
+  [Alpine transhumance](https://en.wikipedia.org/wiki/Alpine_transhumance);
+  [Almabtrieb](https://en.wikipedia.org/wiki/Almabtrieb)). *Have:* herders who go out and come back
+  each day (9b). *Worth it:* yes, small: herders sleeping at a summer hut for the season where grazing
+  is far and high, the herds grazing the hills in summer, and the village keeping hay for winter.
+- *Sea nomads.* The Sama-Bajau lived by fishing and trade from boats, many families keeping close to
+  shore in stilt houses or on their boats, diving for sea cucumber, shell and pearls for land patrons
+  who traded them on, and trading with land peoples for pottery and iron; now mostly settling
+  ([Bajau](https://en.wikipedia.org/wiki/Sama-Bajau); [ANU Press, Sather](https://press-files.anu.edu.au/downloads/press/p69411/html/ch13s04.html);
+  [National Geographic](https://www.nationalgeographic.com/photography/article/we-are-what-we-eat-diving-for-dinner-with-the-sea-gypsies)).
+  *Have:* boats (6d, 7d), fishing, coasts. *Worth it:* the least: a home that is a boat, which needs
+  long warm coasts the seed must make. Could come later, after boats as homes are natural.
+- *Bandits and pirates.* Hobsbawm's social bandits came from peasants in times of impoverishment,
+  economic crisis, war, conquest and foreign rule, and a few were remembered as noble; "in real life
+  most Robin Hoods were far from noble" ([Social banditry](https://en.wikipedia.org/wiki/Social_banditry);
+  [British Academy](https://www.britac.ac.uk/blog/eric-hobsbawm%E2%80%99s-%E2%80%98bandits%E2%80%99)). Pirates
+  ran their ships by written codes and rules because it paid them to (Leeson, *The Invisible Hook*,
+  [Princeton chapter](https://assets.press.princeton.edu/chapters/s8850.pdf)). *Have:* the landless
+  and the hungry (15.5b), the dishonest stealing (10), raiding bands (14e), roads and carts and boats
+  carrying goods (7d). *Worth it:* yes — a band taking from carts and villages is the landless,
+  hungry and dishonest choosing to take, a living weighed in `choose` like any other, and it rises
+  in hard times by itself. *To find:* Barbary corsairs' captive numbers (Davis) if piracy at sea goes in.
+- *Fighting for pay.* Free companies of the 12th–14th centuries fought for whoever hired them and
+  plundered between wars; Siena paid 291,379 florins in 1342–99 to buy them off; condottieri hired
+  out by contract and some became lords; the Swiss hired out by canton; by one estimate about a third
+  of European armies in 1500 were mercenaries; standing armies came partly in answer to the free
+  companies' plunder ([Free company](https://en.wikipedia.org/wiki/Free_company);
+  [Condottieri](https://en.wikipedia.org/wiki/Condottieri);
+  [War History, medieval mercenaries](https://warhistory.org/2017/10/20/mercenaries-during-the-middle-ages/)
+  — popular sources, the shares rough). *Have:* soldiers raised by a faction (14e), a treasury.
+  *Worth it:* yes, with 15h: soldiers whose living is war, hired from the treasury, who turn bandit
+  when nobody pays them. Janice Thomson's *Mercenaries, Pirates, and Sovereigns* to read before
+  building.
+**Questions for Ric:** which of these go in, and where? Recommendation: shifting cultivation with
+15.5d (it is that part's land change used as a way of farming); bandits with 15.5b (hunger and
+landlessness are what make them) or with 15i; foragers who settle and transhumance in 15i;
+mercenaries and pirates in 15h; sea nomads last, or not at all.
 **Done when:** a people with no farming know-how lives by gathering and hunting, moves camp when the
 food runs down, and has no fixed jobs and no ruler unless its own needs make them; a herding people
 moves with the season; none of it is a switch.
