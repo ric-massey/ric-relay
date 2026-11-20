@@ -77,8 +77,12 @@ function hours(o, days, seed) {
   /* A winter with little put by: hungry households, and some with plenty. Three worlds, since in
      any one it comes down to a few households. */
   const robbed = (honest, seed) => hours({ honest, start: "winter", stored: 0.2 }, 30, seed).pilfered;
-  /* Three worlds: since item 11 a thief knows only some of the houses (2026-11-17: 8 against 0). */
-  const crooks = { pilfered: robbed(0.1, 11) + robbed(0.1, 3) + robbed(0.1, 7) }, straight = { pilfered: robbed(0.9, 11) + robbed(0.9, 3) + robbed(0.9, 7) };
+  /* Three worlds: since item 11 a thief knows only some of the houses (2026-11-17: 8 against 0).
+     Five since TODO 15.5a: with crafters no longer making goods nobody wanted, those hours went to
+     food, and these winters had a twentieth of the hungry hours (7 against 0 over five worlds, 2
+     against 0 over the first three; a thinner winter, stored 0.1, has nobody with plenty to rob). */
+  const seeds = [11, 3, 7, 5, 9], sum = honest => seeds.reduce((n, seed) => n + robbed(honest, seed), 0);
+  const crooks = { pilfered: sum(0.1) }, straight = { pilfered: sum(0.9) };
   assert.ok(crooks.pilfered >= straight.pilfered * 3 + 4, "the dishonest steal when hungry: " + straight.pilfered + " → " + crooks.pilfered + " larders robbed");
 }
 

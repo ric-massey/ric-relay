@@ -405,7 +405,7 @@
         const pick = m.picked || {};
         if (pick.village != null && w.villages[pick.village]) {
           const v = w.villages[pick.village], f = w.factions[v.f];
-          out.village = { id: v.id, name: v.name, f: v.f, alive: v.alive, pop: v.pop, hungry: v.hungry, sick: v.sick, food: v.food, goods: v.goods, wood: v.wood, stone: v.stone, iron: v.iron, wool: v.wool, hide: v.hide, mats: w.settings.materials !== "goods",
+          out.village = { id: v.id, name: v.name, f: v.f, alive: v.alive, pop: v.pop, hungry: v.hungry, sick: v.sick, food: v.food, goods: v.goods, wanted: v.wanted, wood: v.wood, stone: v.stone, iron: v.iron, wool: v.wool, hide: v.hide, mats: w.settings.materials !== "goods",
                           priceFood: v.priceFood, till: v.till, loyal: v.loyal, founded: v.founded, siege: v.siege, storeDays: w.storeDays(v),
                           faction: { name: f.name, colour: f.colour } };
         } else {

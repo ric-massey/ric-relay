@@ -1901,6 +1901,61 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: the page has no button to offer a marriage; everyday marriages still
 ignore wealth (TODO 15b).
 
+### Made to order (2026-11-20)
+
+TODO item 15.5a. A village store held hundreds of goods that nobody ever used: a crafter sold
+everything past one good to the store, the store's price sat at its floor, and the bench still
+paid, so crafters kept working. Measured on the default world over a year before the change: seed 1
+made 30,103 goods and took 2,723 out of the store, seed 2 made 38,461 and took 1,217; the stores
+ended the year at 38 and 54 goods a head, with about 15,000 more in crafters' own hands, unsold
+because the till could not pay for them.
+
+Ric's answers: households using goods up, **no** ("adding that will have little return for how
+much that cost to track"); crafters make to order, **yes**; and when nobody wants what crafters
+make, "What do people do in real life?" They took other work: one trade often did not feed a
+family, and people combined trades, took day labour and went where work was (the TODO's research
+notes, with sources). `choose` already weighs every living for everybody, so nothing new was
+needed for that half.
+
+- **An order** is left by somebody who wants goods the store cannot supply: a household with less
+  than a sixth of a good and the coins for one, a worker whose tool, pack, weapon, shield or cart
+  needs fitting or mending, and a house waiting on goods (with "One kind of goods"). Each person
+  holds one order at a time, the largest they have wanted, at one village; it is filled when they
+  buy, dropped when they die, and given up after sixty days. A village's `wanted` is the sum of
+  its people's orders (`test/orders.test.mjs` adds them up).
+- **A season's stock.** The store also keeps about what was taken from it lately: `used`, a running
+  sum of goods taken out that falls by e⁻¹ in ninety days. That is the shop keeping what it sells
+  in a season, not a cap: nothing is thrown away, and salvage from the dead can still put more on
+  the shelf.
+- **What a crafter can sell** is the orders plus that stock, less what is on the shelf, and no more
+  than the till can pay for. A batch is made only up to that, plus one in hand; the bench is worth
+  only the part of a batch that is asked for, shared between the village's crafters, so with
+  nothing asked for it is worth nothing and people do something else. A house a household pays a
+  builder for is an order too: a builder's wage keeps a crafter while there is one to build.
+- **The price of goods** is dear while orders wait and cheap while the shelf holds more than a
+  season's use: 2 at a full season's stock, between 0.6 and 9 as before.
+- **Goods are carried only where they are asked for** and can be paid for. Without that, a village
+  with orders waiting looked dear, and carriers took packs there that its empty till could not
+  buy, and kept them: 20 to 37 goods each by autumn.
+- The village panel shows **On order** beside Goods.
+
+Measured, the default world over a year, after: seed 1 made 884 and took out 520, seed 2 made 808
+and took out 425; the stores ended the year at 0.86 and 0.46 goods a head and people held about
+0.7 each. That is 1.7 to 2.7 seasons' use, most of it made in the first weeks when every household
+bought at once, and slowly drawn down. Making goods fell from 4–7% of grown-ups' hours to about 1%,
+and no one keeps "crafter" as a trade in an ordinary year: the goods are made by people who farm,
+herd and hunt, in their spare hours, as Ric's answer expected. WORLDS_LINE
+
+Found on the way: the engine already had a function named `askFor` (asking a neighbour for food),
+and the first version of this one had the same name; the later declaration won, and every order
+asked a village for food instead. It was renamed `placeOrder` before anything was measured for
+this section.
+
+Cost: a few sums per purchase and per sale, and one pass over the houses being built per village
+an hour, which was already made for materials. `test/bench.mjs --quick`, two runs each, old then
+new: 400 people 0.14/0.15 → 0.17/0.16 s a day, 2,000 0.80/0.93 → 0.82/0.79, 5,000 2.50/2.47 →
+2.52/2.30 — within this machine's noise.
+
 ### Faster, the same world; and children past 3,000 people (2026-11-20)
 
 TODO item 15.25. Ric asked for the performance audit's five passes and, separately, for births
