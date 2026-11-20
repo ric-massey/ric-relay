@@ -1515,7 +1515,7 @@ Research notes:
 ### [ ] 15. Eras, old to modern — split into 15a to 15h
 
 **Split 2026-11-20** (Ric: "Split it"), because 15c and 15b stand on part of it. The order is
-**15a → 15c → 15b → 15e → 15f → 15g → 15h → 15d** (rearranged 2026-11-20, below). This entry
+**15a → 15c → 15g → 15b → 15e → 15f → 15h → 15d** (rearranged 2026-11-20, below; faith before marriage at Ric's word). This entry
 keeps the research and Ric's answers for all of them; tick it when 15d is ticked.
 
 **Now:** one era, a farming village with hand weapons.
@@ -1677,8 +1677,17 @@ constant is read now; nothing per person.
 12. "Organize them the best way you see fit" → the order is now
     **15a → 15c → 15b → 15e → 15f → 15g → 15h → 15d** (ways; government; marriage; know-how and
     writing; work and buildings; faith; armies; eras as starting points, news, towers, cars,
-    houses, medicine). Each stands on the ones before it; 15g could move before 15b if Ric wants
-    faith in marriage from the start.
+    houses, medicine). Each stands on the ones before it.
+
+**Ric's answers to the questions after that (2026-11-20):**
+- Nine eras: "Sure all 9 work."
+- Faith driving harsh things (sacrifice, holy war): "Yes it can drive harsh things" → 15g.
+- How often things are found: "Rare (make it a slide tho)" → 15e: a setting, rare by default.
+- Faith before marriage, so marrying within a faith is there from the start: "However it has been
+  in history. Which I think is a yes" → **15g moves before 15b**; the order is now
+  **15a → 15c → 15g → 15b → 15e → 15f → 15h → 15d**. 15g's teachers-and-writing link is added
+  when 15e is built.
+- Weapons: Ric supplied Dupuy's figures (below, in 15h), gathered in another session.
 
 **Which eras (research 2026-11-20).** Archaeology's three ages (Stone, Bronze, Iron) with the
 Stone Age split into Palaeolithic, Mesolithic and Neolithic (Lubbock, 1865), and history's
@@ -1709,10 +1718,7 @@ than four.
   by ship ([Victorian Web](https://victorianweb.org/technology/telecom/telegraph.html);
   [AI Impacts, transatlantic message speed](https://aiimpacts.org/historic-trends-in-transatlantic-message-speed/)).
   *Thin:* early rail — one report of a royal train averaging 40 mph; to source properly.
-- *Weapons.* Lethality for swords, spears and bows is in Dupuy's 1964 report for the US Army
-  (*Historical Trends Related to Weapon Lethality*, Enclosure 1). Its host, apps.dtic.mil, cannot
-  be reached from the cloud machine this was researched on; read it from another machine, or from
-  Dupuy's *Numbers, Predictions and War* (1979), before 15h.
+- *Weapons.* Found: Dupuy's tables, supplied by Ric (2026-11-20) — in 15h.
 - *Under arms.* Roman army 255,000 (Tiberius) to about 390,000–442,000 (Severus, Diocletian)
   ([Size of the Roman army](https://en.wikipedia.org/wiki/Size_of_the_Roman_army)), against an
   empire of perhaps 45 to 120 million — about half to one per cent. *Not found* from a good source:
@@ -1946,6 +1952,52 @@ the engine already has: war, walls, food, travel, news — the world unchanged u
 changed), then **15c** and **15b** on top of it, then **15d** (towers, cars, building shapes,
 medicine, techniques spreading). Ric: "Split it" — done above.
 
+### [ ] 15g. Faith: peoples who come up with their own
+
+Added 2026-11-20 (Ric: "Faith seems pretty important. How do we make it so they can come up with
+their own faiths?").
+**Now:** there is no faith.
+**Research (2026-11-20).**
+- *What ideas stick.* Boyer: the religious ideas that last break only a few everyday expectations
+  — a person who cannot die, a river that listens — which makes them easier to remember than plain
+  ideas or very strange ones (the "minimally counterintuitive" effect; the evidence is mixed and
+  stronger in the young) ([Religion Explained](https://en.wikipedia.org/wiki/Religion_Explained);
+  [Minimal counterintuitiveness](https://en.wikipedia.org/wiki/Minimal_counterintuitiveness_effect)).
+- *Two ways a faith lives.* Whitehouse: rare, frightening, unforgettable rites bind small groups
+  tightly (imagistic); teaching repeated often, by specialists, holds large, centrally run faiths
+  together (doctrinal); tested on 645 rituals in the world's ethnographic files
+  ([Modes of religiosity](https://en.wikipedia.org/wiki/Modes_of_religiosity)).
+- *Faith and rule.* Across Austronesian peoples, belief in broad supernatural punishment came
+  *before* political complexity, while moralising high gods did not
+  (Watts et al., Proc. R. Soc. B 2015); ritual human sacrifice helped keep stratified societies
+  stratified once they were (Watts et al., [Nature 532, 2016](https://www.nature.com/articles/nature17159)) — correlational.
+- *How a faith spreads.* Stark: early Christianity grew about 40% a decade by one person at a time
+  along family and friends, people who were closer to members than to anyone outside, plus more
+  children; no mass conversions needed ([Rise of Christianity](https://press.princeton.edu/node/62616);
+  [a review](https://www.astralcodexten.com/p/book-review-the-rise-of-christianity)).
+- *How faith fades.* Agent-based models fitted to survey data: religiousness falls as life gets
+  safer and people more educated (Gore, Lemos, Shults and Wildman,
+  [JASSS 21(1), 2018](https://jasss.soc.surrey.ac.uk/21/1/4.html)).
+**Proposed (not agreed).** A belief is something a person holds (item 11): an explanation of
+something big that happened which they cannot otherwise explain — a drought, a plague, a victory —
+with a rite (what to do) and a rule (what is forbidden). It is *made up by a person* after such an
+event: likelier in the curious, the bold or the frightened (item 10), stronger after a bigger
+event (15a). It spreads by talk along trust (item 12), the way Stark found, and sticks better if it
+is strange in one way only. When many hold the same belief it is a faith with a name, made from
+the words of the land and the person who began it. Then, all from the stats of those who hold
+it (15a): which rites and rules it keeps; whether it lives by rare great rites in small groups or
+by teaching (which needs teachers, and writing helps, 15e); whether a ruler takes it up for the
+standing it gives (15c), with priests as an office; whether it splits when two leaders hold
+different versions. What it does: more trust and help among those who share it, marrying within it
+(15b), a reason in a war's grudges (item 14c), and fading where life is safe.
+**Done when:** a faith that nobody wrote appears after a hard event, spreads along friendships and
+not at random, and a people with one does measurably different things than without.
+**Ric decides:** whether a faith can make people do harsh things (sacrifice, holy war) or keep it
+to rites and rules.
+**Ric (2026-11-20): "Yes it can drive harsh things."** A faith's rules may call for sacrifice or
+holy war where its holders' stats lead there — never placed, and measured like any other custom.
+**Budget:** default.
+
 ### [ ] 15b. Who marries whom
 
 Added 2026-11-19 at Ric's word, while 14d was built: "generally leaders are well off dont people
@@ -2082,6 +2134,8 @@ important put it in").
 **Done when:** with nothing scripted, a technique is found, spreads to a neighbour and is lost
 in a people that shrinks; a connected people finds more than the same people cut off.
 **Ric decides:** how often things are found (rare, as history, or often, so a run shows it).
+**Ric (2026-11-20): "Rare (make it a slide tho)".** A setting, "How often new things are found",
+rare by default (as in history); turned up, a run shows it sooner.
 **Budget:** default (a finding is checked only for people already at work).
 
 ### [ ] 15f. Work and buildings: technology people are employed in
@@ -2114,50 +2168,6 @@ what feeds it stops. Money stays simple (Ric).
 power works stops what it fed; no workplace is placed by the program.
 **Budget:** default.
 
-### [ ] 15g. Faith: peoples who come up with their own
-
-Added 2026-11-20 (Ric: "Faith seems pretty important. How do we make it so they can come up with
-their own faiths?").
-**Now:** there is no faith.
-**Research (2026-11-20).**
-- *What ideas stick.* Boyer: the religious ideas that last break only a few everyday expectations
-  — a person who cannot die, a river that listens — which makes them easier to remember than plain
-  ideas or very strange ones (the "minimally counterintuitive" effect; the evidence is mixed and
-  stronger in the young) ([Religion Explained](https://en.wikipedia.org/wiki/Religion_Explained);
-  [Minimal counterintuitiveness](https://en.wikipedia.org/wiki/Minimal_counterintuitiveness_effect)).
-- *Two ways a faith lives.* Whitehouse: rare, frightening, unforgettable rites bind small groups
-  tightly (imagistic); teaching repeated often, by specialists, holds large, centrally run faiths
-  together (doctrinal); tested on 645 rituals in the world's ethnographic files
-  ([Modes of religiosity](https://en.wikipedia.org/wiki/Modes_of_religiosity)).
-- *Faith and rule.* Across Austronesian peoples, belief in broad supernatural punishment came
-  *before* political complexity, while moralising high gods did not
-  (Watts et al., Proc. R. Soc. B 2015); ritual human sacrifice helped keep stratified societies
-  stratified once they were (Watts et al., [Nature 532, 2016](https://www.nature.com/articles/nature17159)) — correlational.
-- *How a faith spreads.* Stark: early Christianity grew about 40% a decade by one person at a time
-  along family and friends, people who were closer to members than to anyone outside, plus more
-  children; no mass conversions needed ([Rise of Christianity](https://press.princeton.edu/node/62616);
-  [a review](https://www.astralcodexten.com/p/book-review-the-rise-of-christianity)).
-- *How faith fades.* Agent-based models fitted to survey data: religiousness falls as life gets
-  safer and people more educated (Gore, Lemos, Shults and Wildman,
-  [JASSS 21(1), 2018](https://jasss.soc.surrey.ac.uk/21/1/4.html)).
-**Proposed (not agreed).** A belief is something a person holds (item 11): an explanation of
-something big that happened which they cannot otherwise explain — a drought, a plague, a victory —
-with a rite (what to do) and a rule (what is forbidden). It is *made up by a person* after such an
-event: likelier in the curious, the bold or the frightened (item 10), stronger after a bigger
-event (15a). It spreads by talk along trust (item 12), the way Stark found, and sticks better if it
-is strange in one way only. When many hold the same belief it is a faith with a name, made from
-the words of the land and the person who began it. Then, all from the stats of those who hold
-it (15a): which rites and rules it keeps; whether it lives by rare great rites in small groups or
-by teaching (which needs teachers, and writing helps, 15e); whether a ruler takes it up for the
-standing it gives (15c), with priests as an office; whether it splits when two leaders hold
-different versions. What it does: more trust and help among those who share it, marrying within it
-(15b), a reason in a war's grudges (item 14c), and fading where life is safe.
-**Done when:** a faith that nobody wrote appears after a hard event, spreads along friendships and
-not at random, and a people with one does measurably different things than without.
-**Ric decides:** whether a faith can make people do harsh things (sacrifice, holy war) or keep it
-to rites and rules.
-**Budget:** default.
-
 ### [ ] 15h. Armies: what they carry, how far they go, and strategy
 
 Added 2026-11-20 (Ric: "we need to cover what it is carrying with it so it knows how far they can
@@ -2179,6 +2189,29 @@ by one; food comes from home without being carried.
   ([Lanchester's laws](https://en.wikipedia.org/wiki/Lanchester%27s_laws);
   [Kress, NPS](https://faculty.nps.edu/mkress/docs/Lanchester_Models.pdf)). This is why arriving
   one at a time is so costly, and more so with each era (15d).
+- *Dupuy's lethality, by weapon* (supplied by Ric, 2026-11-20, from another session's search; its
+  own notes on what it saw are kept). Units are roughly theoretical casualties an hour against men
+  standing one to a square metre on open ground. Two versions disagree — the 1964 HERO report adds
+  a mobility factor and runs higher — so **use one set only: the 1980 book's**, Dupuy, *The
+  Evolution of Weapons and Warfare* (1980), p. 92, as reproduced by Duke's firearms-law centre,
+  ISSI (2021) and a CGSC monograph:
+  sword, pike and the like 23; ordinary bow 19; English longbow 36; 17th-century matchlock musket
+  19; 18th-century flintlock 43; early 19th-century rifle 36; mid-19th-century rifle (Minié
+  bullet) 102; late 19th-century breech-loader 153; Springfield 1903 495; WWI machine gun 3,463;
+  WWII machine gun 4,973; 16th-century 12-pounder cannon 43; 17th-century 224; Gribeauval
+  12-pounder 940; French 75 mm 386,530; WWII 105 mm howitzer 657,215; WWII medium tank 935,458
+  (one source prints 575,000); WWII fighter-bomber 1,245,789; V-2 3,338,370; 20 kt nuclear
+  airburst 49,086,000; 1 Mt 695,385,000 (one source 694,385,000).
+  *Not in that set:* javelin, crossbow, arquebus (the 1964 set has crossbow 32 and arquebus 10,
+  but is not to be mixed in). How the index is made — rate of fire × targets per strike ×
+  relative effect × range effect × accuracy × reliability — with the factors known for sword
+  (reach 1 m, accuracy 0.95, effect 0.4), longbow (200 m, 0.95, 0.5), musket (150 m, 0.55, 0.6),
+  flintlock (200 m, 0.65, 0.7) and the 1903 rifle (2,000 m, 0.95), from Dupuy's *Numbers,
+  Predictions and War* (1979) via [Volokh 2022](https://reason.com/volokh/2022/11/01/the-theoretical-lethality-index-is-useful-for-military-history-but-not-for-gun-control-policy/).
+  A missing weapon is made from those factors, never guessed.
+  *Dispersion (OLI = TLI ÷ dispersion), NOT verified* — from memory of Dupuy's *Understanding War*
+  (1987, p. 84): antiquity 1, Napoleonic 20, American Civil War 25, WWI 250, WWII 3,000, 1973
+  4,000. To check in the book before it is used; without it deadly weapons would kill far too many.
 - *How a program reasons about ground.* An influence map: a coarse grid where each side's strength
   spreads out and fades with distance, giving threat, who holds what and where the front is; game
   armies use it to choose where to attack, defend or gather
