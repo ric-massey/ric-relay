@@ -2602,7 +2602,92 @@ scavengers as well".
 band can live on a ruined world for a while and then has to do something else.
 **Budget:** default.
 
-Research notes:
+Research notes (2026-11-20, Ric: "let's look at 16 now"; read as search summaries; nothing built):
+
+**What the engine does now** (read from `people.js`, not run). "A dead village leaves nothing" is
+not quite true. When a village has stood empty for a week and nobody who fled is waiting to come
+back, it is marked dead ("V stands empty"), its till goes to the faction's treasury — and
+everything else stays in it, unread: its store of food, goods, wood, stone, ore, wool and hides,
+its houses (built or burned), its walls, well, boat and bridge, and what the last people to die
+there left (`die` puts a dead person's food, goods and gear into their village's store). Nothing
+reads a dead village again: no one takes from it, no one moves in, it does not decay, and a new
+village (`found`) may be founded on the same ground and gets none of it. Inside a living village
+an empty house is taken first by newcomers and burned houses are rebuilt, so the village-sized ruin
+is what is missing. So item 16 is mostly **letting people find and use what is already there, and
+letting it rot**; little new has to be made.
+
+**How often places died, and why.** England has some 2,000–3,000 known deserted medieval villages
+(Beresford and Hurst listed 2,263 in 1968), emptied over 1340–1750: plague, but more often slow
+economic change — land turned to sheep, poor soil, a colder climate, a lord clearing tenants
+([Deserted medieval village](https://en.wikipedia.org/wiki/Deserted_medieval_village);
+[Beresford's Lost Villages, Hull](https://dmv.hull.ac.uk/);
+[National Trust](https://www.nationaltrust.org.uk/discover/history/why-were-some-medieval-villages-deserted);
+[Herefordshire](https://htt.herefordshire.gov.uk/herefordshires-past/the-medieval-period/villages/deserted-villages)).
+Most were never lived in again; their fields became pasture. Wharram Percy's church stayed in use
+for six centuries after the village went ([English Heritage](https://english-heritage.org.uk/visit/places/wharram-percy-deserted-medieval-village/history/significance)).
+
+**How long things last untended.**
+- *Grain:* kept and watched, traditional stores lose about 2–5% over a season to insects, rodents
+  and mould; damp or heat can ruin grain in three months; rodents are the danger in an unwatched
+  store, damaging the building too ([FAO](https://www.fao.org/4/t0522e/T0522E09.htm);
+  [Post-harvest losses](https://en.wikipedia.org/wiki/Post-harvest_losses_(grains))). No figure for
+  an abandoned store was found; *to be chosen and said as a guess:* gone within a year or two.
+- *Timber and thatch:* reconstructed houses left unrepaired stood one to four decades — a sunken
+  house 13 years with no repairs and fit for more, West Stow's leaning badly at 40, Castell Henllys'
+  roundhouses rebuilt at 30–35 ([Mytum and Meek, Liverpool](https://livrepository.liverpool.ac.uk/3077192/);
+  [West Stow](https://heritage.suffolk.gov.uk/media/pdfs/2015_west_stow_british_archaeology.pdf);
+  [*The Life Cycle of Structures in Experimental Archaeology*](https://www.sidestone.com/openaccess/9789088903656.pdf)).
+  The roof goes first, then the frame racks.
+- *Stone:* lasts centuries, and was the most taken: medieval builders stripped Roman buildings for
+  stone and burned marble for lime; in Italy it was organised, with permits and workshops
+  ([Liverani 2025](https://flore.unifi.it/retrieve/329060e9-8f9e-4149-b513-85fe113b9f07/Liverani2025_Use%20and%20misuse%20of%20reuse.pdf);
+  [Brewminate, spolia in Rome](https://brewminate.com/architectural-spolia-and-urban-transformation-in-ancient-and-medieval-rome/)).
+  Using old stone was not always cheaper than new (Brenk, in the same).
+- *Iron and tools:* rust but last years; no figure used.
+- *Fields:* scrub in about 25 years, near woodland in about 50 (15.5d's notes) — a ruin's fields go
+  back to the wild on the same clock as any field left alone.
+- *A modern town:* Pripyat, emptied in two days in 1986, was looted over the years after, and
+  trees and vines took it within decades ([Atlas Obscura](https://www.atlasobscura.com/articles/pripyat-before-after);
+  [National Geographic](https://www.nationalgeographic.com/culture/article/life-goes-on-chernobyl-35-years-after-worlds-worst-nuclear-accident)).
+  So what is portable goes in years; what is built goes in decades; stone stays.
+
+**Who owned what was left.** Medieval law gave ownerless things to the lord or the crown, not the
+finder: goods washed up from a wreck with nobody left alive were the king's by privilege (Bracton),
+hidden gold and silver with no known owner was treasure trove and the crown's
+([Treasure trove](https://en.wikipedia.org/wiki/Treasure_trove);
+[Jus naufragii](https://en.wikipedia.org/wiki/Jus_naufragii);
+[Bracton](https://amesfoundation.law.harvard.edu/Bracton/Unframed/English/v2/339.htm)) — though
+people living by a wreck took what they could and believed it theirs for centuries. So whether a
+ruin is free to take is a custom and a law, like the land rule (7c) and 15c's laws.
+
+**How it would fit the engine** (proposed, not agreed). A dead village becomes a ruin: the same
+record, still holding what it held, read by nobody until somebody comes. Its store rots by kind —
+food fast, wool and hides slower, goods and tools slowly, wood in years, stone never; its houses
+lose their roofs and fall over decades; its fields go back to scrub. Scavenging is a living in
+`choose`, weighed like cutting wood: the walk, what one knows is there (a ruin is held in the mind
+like a market, item 11, and passed on in talk, item 12), and what it is worth against other work.
+What is carried away is gone from the ruin, so a ruin empties as it is searched. Builders can take
+stone and timber from ruins instead of quarrying and cutting (stone robbing). A household or a band
+can move into a ruin and roof its houses again rather than build from nothing. A world that starts
+ruined is a world whose places are made as usual and then emptied before the start, so everything
+in the ruins was really there.
+
+**Questions for Ric:**
+1. *Who may take from a ruin:* anybody, or only the faction that held the land (others are thieves,
+   a grievance), or as each faction's own law (15c)?
+2. *Moving back in:* can people resettle a ruin — take its houses, roof them, farm its fields
+   again — or do ruins stay ruins, as most English ones did?
+3. *Stone robbing:* should builders take stone and timber from ruins for new houses and walls?
+4. *A world that starts ruined:* what emptied it — a war, a plague, a catastrophe (item 17), or
+   nothing said? And how many survivors, and where?
+5. *Ruins of what era:* item 16 comes before item 15 is built, so a ruin can hold only what today's
+   villages hold. Should 16 wait for 15 (so a ruined modern town can hold modern things), or go now
+   and grow with 15?
+6. *Danger in ruins:* should some ruins be dangerous — sickness where the dead lie, radiation after
+   item 17, the dead's kin or a garrison guarding it — or is that item 18's?
+7. *How long things last:* fine to use the figures above (grain gone in a year or two untended,
+   timber houses falling over one to four decades, stone for good), said as guesses where no clean
+   figure was found?
 
 ### [ ] 17. Catastrophes on the land
 
