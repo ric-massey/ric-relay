@@ -1512,11 +1512,11 @@ Research notes:
   = 2; a target is picked every fifteen days per enemy from villages within thirty squares. Cost: a
   pass over the villages every fifteen days per enemy; the bench is unchanged.
 
-### [ ] 15. Eras, old to modern — split into 15a and 15d
+### [ ] 15. Eras, old to modern — split into 15a to 15h
 
 **Split 2026-11-20** (Ric: "Split it"), because 15c and 15b stand on part of it. The order is
-**15a → 15c → 15b → 15d**. This entry keeps the research and Ric's answers for both halves; tick
-it when 15d is ticked.
+**15a → 15c → 15b → 15e → 15f → 15g → 15h → 15d** (rearranged 2026-11-20, below). This entry
+keeps the research and Ric's answers for all of them; tick it when 15d is ticked.
 
 **Now:** one era, a farming village with hand weapons.
 **Do:** an era is a set of numbers over the same world: how many one farmer feeds, what
@@ -1651,6 +1651,99 @@ constant is read now; nothing per person.
 11. *Which era the present world is.* Ric chose Ancient, Medieval, Industrial and Modern, with
    "the present farming village stays as it is". The vision also says "from tribes". Is the
    present village the tribal era (before any state), or one more era beside the four?
+
+**Ric's answers to that check (2026-11-20), and what each became:**
+1. *Time:* "there is a max option that runs it as fast as your computer can handle. So. That's
+   figured out." Measured on Ric's M1 before item 2: 400 people at 408× — a year in about four
+   and a half minutes, a century in about seven and a half hours; bigger worlds are slower.
+2. *Where a technique comes from:* "Idk what to do about 2. Propose an idea please" → **15e**.
+3. *Livings:* "technology needs to be more of a thing and there does need to be jobs so do some
+   research of how we could implement that" → **15f**.
+4. *Power, wires, fuel:* "These seem kinda fixed by #3 answer" → in **15f**, as buildings and
+   what they make.
+5. *News:* "the news speed shouldn't be for era it should be for what is built" → **15d**: news
+   moves at the speed of what is built between two places.
+6. *Writing:* "If writing is that important put it in I'm not sure where or how it will
+   influence things" → **15e**, with what it changes.
+7. *Faith:* "Faith seems pretty important. How do we make it so they can come up with their own
+   faiths?" → **15g**.
+8. *Armies:* "we need to cover what it is carrying with it so it knows how far they can go.
+   Armies will need more work too because rn they just run up one at a time instead of using war
+   strategies" → **15h**.
+9. *Inheritance:* "I agree" → in **15b**.
+10. *Figures:* "Research these numbers please" → found below; what could not be found is said.
+11. *Eras:* "I guess there can be a fifth I was thinking there was more eras that were important
+    to humans as well" → below, **Which eras**.
+12. "Organize them the best way you see fit" → the order is now
+    **15a → 15c → 15b → 15e → 15f → 15g → 15h → 15d** (ways; government; marriage; know-how and
+    writing; work and buildings; faith; armies; eras as starting points, news, towers, cars,
+    houses, medicine). Each stands on the ones before it; 15g could move before 15b if Ric wants
+    faith in marriage from the start.
+
+**Which eras (research 2026-11-20).** Archaeology's three ages (Stone, Bronze, Iron) with the
+Stone Age split into Palaeolithic, Mesolithic and Neolithic (Lubbock, 1865), and history's
+ancient, post-classical, early modern and late modern after them; the three ages are criticised
+as too centred on tools and as meaningless outside Europe
+([Three-age system](https://en.wikipedia.org/wiki/Three-age_system);
+[List of time periods](https://en.wikipedia.org/wiki/List_of_time_periods)). That criticism is the
+reason for doing it as below. **Proposed:** an era is only a *starting point* — the know-how
+(15e) and buildings (15f) a people begins with — never a stage it must pass through. Nine to
+choose from per faction: **Foragers** (bands, no farming), **Early farmers** (the present world's
+village), **Bronze Age** (first cities, writing, kings), **Ancient** (iron, coin, empires),
+**Medieval**, **Early modern** (gunpowder, printing, ocean ships), **Industrial**, **Modern**,
+**Information** (computers, phones). Once 15e exists each is a list, so nine cost little more
+than four.
+
+**Figures found (2026-11-20, for item 10 of the check).**
+- *People farming.* England: industry and services already 40% of workers in 1381 (so about 60%
+  farming); men in farming 68% in 1522, 46% around 1700; farming 37% of workers by 1759
+  ([Broadberry, Campbell and van Leeuwen](https://pureadmin.qub.ac.uk/ws/portalfiles/portal/1640964/EEH_Sectoral_shares_paper.pdf);
+  [LSE wp240](https://www.lse.ac.uk/asset-library/information/wp240.pdf)). US one farmer feeds 19
+  (1940) → 166 now (above). *Not found:* a Roman figure.
+- *Travel and news.* Persian royal road: about 2,700 km in seven to nine days by relays of horse
+  and rider; Roman *cursus publicus*: about 80 km (50 miles) a day, one courier the whole way
+  ([History of Information](https://historyofinformation.com/detail.php?entryid=1700);
+  [World History Encyclopedia](https://www.worldhistory.org/article/1442/letters--post-in-the-ancient-world/)).
+  Telegraph: in 1844 news of a royal birth was on London's streets within forty minutes; the 1858
+  Atlantic cable took 16½ hours for 99 words, the 1866 cable eight words a minute, against weeks
+  by ship ([Victorian Web](https://victorianweb.org/technology/telecom/telegraph.html);
+  [AI Impacts, transatlantic message speed](https://aiimpacts.org/historic-trends-in-transatlantic-message-speed/)).
+  *Thin:* early rail — one report of a royal train averaging 40 mph; to source properly.
+- *Weapons.* Lethality for swords, spears and bows is in Dupuy's 1964 report for the US Army
+  (*Historical Trends Related to Weapon Lethality*, Enclosure 1). Its host, apps.dtic.mil, cannot
+  be reached from the cloud machine this was researched on; read it from another machine, or from
+  Dupuy's *Numbers, Predictions and War* (1979), before 15h.
+- *Under arms.* Roman army 255,000 (Tiberius) to about 390,000–442,000 (Severus, Diocletian)
+  ([Size of the Roman army](https://en.wikipedia.org/wiki/Size_of_the_Roman_army)), against an
+  empire of perhaps 45 to 120 million — about half to one per cent. *Not found* from a good source:
+  medieval shares (only hobby figures, about 0.2% for an English army of 10,000).
+- *Houses.* Back-to-back houses from about 1790 in Leeds, Birmingham, Manchester and other
+  industrial towns; byelaw terraced houses replaced them; built new until banned in 1909
+  ([Harrison, Industrial Archaeology Review](https://eprints.whiterose.ac.uk/142804);
+  [Back-to-back house](https://en.wikipedia.org/wiki/Back-to-back_house)). *Not found:* modern
+  forms, to source with 15d.
+- *Medicine.* About half of all children died before fifteen among foragers and in historical
+  populations (48.8% averaged over 20 forager and 43 historical populations), about a quarter in
+  the first year ([Volk and Atkinson 2013](https://hraf.yale.edu/documents/1064)). World life
+  expectancy at birth 32 in 1900, 73 in 2023 ([Our World in Data](https://ourworldindata.org/grapher/life-expectancy)).
+- *Marriage distance.* British baby boomers married someone about six miles from where they were
+  born, against 18 in Europe and 60 in the US (an 11-generation family tree, 1650–1950); in some
+  English regions up to 80% of working-class couples began under four miles apart; rural Dorset
+  1837–1936 under 11 miles even into the 1930s (Perry 1969)
+  ([Ancestry summary](https://blogs.ancestry.com/cm/how-far-would-you-go-to-find-love/);
+  [Daily Mail on the Science paper](https://www.pressreader.com/uk/scottish-daily-mail/20180302/281522226585763)).
+  The *Science* paper itself to read before 15b.
+- *How fast customs change.* Peoples whose ancestors lived through less stable climates from
+  generation to generation keep less to tradition (Giuliano and Nunn, *Review of Economic Studies*
+  2021, [NBER w23617](https://www.nber.org/papers/w23617)) — but a 2026 replication found errors
+  and a smaller, often non-significant effect ([Economic Inquiry](https://ideas.repec.org/a/bla/ecinqu/v64y2026i1p22-37.html)).
+  So: customs change as the people who hold them change (15a), with no extra constant tuned on this.
+- *City councils* (for 15c). Italian communes: an assembly of citizens, then councils for
+  finance, tolls, the army, roads and food; consuls, then a *podestà* hired from outside so no
+  faction held the office; guilds gaining power until in Florence in 1282 the guilds ruled; term
+  limits; most later fell to a lord, Venice and Siena did not
+  ([Britannica](https://www.britannica.com/place/Italy/The-popolo-and-the-formation-of-the-signorie-in-central-and-northern-Italy);
+  [Podestà](https://en.wikipedia.org/wiki/Podest%C3%A0)). Modern states still to research with 15c.
 
 ### [ ] 15a. Each people's ways, and decisions made from the stats
 
@@ -1873,6 +1966,12 @@ marriage contracts); dowry and bride-price; how far people went to find a spouse
 poor, measurably more than by chance, and the leading families marry each other.
 **Budget:** default.
 
+**Inheritance belongs here too** (Ric, 2026-11-20: "I agree"): who gets land, house, goods and
+rank when somebody dies — the eldest son, all the children alike, the kin group, a widow's share —
+is a custom like marriage and tied to it (a dowry is an early share), from the stats of the
+people with the most say (15a). It replaces the single "When somebody dies" setting for peoples
+whose customs have been worked out; a world nobody changes keeps the setting as it is.
+
 **Ric (2026-11-20), after the research:** "For marriage it looks like it depends on the culture.
 And the culture needs to be decided but it still differs between people. So the most influential
 people what morals and stats they have should decide the marriage thing. The marriage thing should
@@ -1932,13 +2031,185 @@ hold, a list already kept up (item 2), so it costs a short list a day per family
 of age, not everybody against everybody. **Measured by** the correlation of spouses' household
 wealth against the same people paired at random, and how often the leading families marry each other.
 
-### [ ] 15d. Eras, the rest: towers, cars, building shapes, medicine, techniques that spread
+### [ ] 15e. Know-how: how a technique is found, spreads and is lost; and writing
 
-Split out of 15 on 2026-11-20. Everything in 15's **Do** that 15a did not take: cell towers and
-cars as things built, owned and destroyed; building shapes by era and by people; medicine;
-weapons and travel by era; and, with "move on by itself" on, techniques passing between peoples
-by trade, war, marriage and people moving (Turchin et al. 2013, in 15's notes). 15's research,
-"Ric decides" answers and "Done when" apply here.
+Added 2026-11-20 (Ric: "Idk what to do about 2. Propose an idea please"; "If writing is that
+important put it in").
+**Now:** there is no know-how: what a people can make is fixed by the settings.
+**Research (2026-11-20).**
+- *Where new things come from.* Muthukrishna and Henrich: innovation is mostly not lone genius
+  but what a "collective brain" does — serendipity, recombining things already known, and small
+  improvements — and its rate rises with how many people learn from each other, how faithfully
+  they copy, and a little variation in the copying
+  ([Phil. Trans. R. Soc. B 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC4780534)).
+- *Losing it.* When rising seas cut Tasmania off from Australia, the people there lost skills
+  over ten thousand years: too few learners to keep hard skills alive
+  ([Henrich, American Antiquity 2004](https://www2.psych.ubc.ca/~henrich/Website/Papers/HenrichTasmania.pdf));
+  across Oceania larger, better connected islands had more and more complex tools (Kline and Boyd,
+  Proc. R. Soc. B 2010). Contested: others find population does not predict complexity everywhere.
+- *Why there and then.* Allen: Britain mechanised because labour was dear and coal cheap, so
+  machines that swap labour for fuel paid there and nowhere else
+  ([Allen, CAGE](https://warwick.ac.uk/fac/soc/economics/research/centres/cage/news/podcasts/allen-industrial-revolution.pdf));
+  contested on the wages, not on the idea that people invent to save what is dear.
+- *Writing.* It began as accounts — Uruk, about 3300 BCE, mostly records of grain and goods — and
+  Goody shows what it then did to a society: tax, census, contracts, written law, all kept by
+  trained specialists, at first priests and officials
+  ([Goody, *The Logic of Writing and the Organization of Society*, 1986](https://www.cambridge.org/core/books/logic-of-writing-and-the-organization-of-society/letter-of-the-law/51EF636AD61CE00900F441A6608079AC);
+  [Englund 2011](https://cdli.ucla.edu/staff/englund/publications/englund2011a.pdf)). Who could
+  write: in England about 1800, about 60% of men and 40% of women could sign their names; north-west
+  Europe rose fastest 1600–1800 ([Our World in Data](https://ourworldindata.org/literacy)).
+**Proposed (not agreed).**
+1. *A technique is something people hold*, like the skills of item 11, not a flag on a faction.
+   Each has what it is built from (other techniques, a material in reach) and what it does (a
+   way of working, a building, a weapon). There is one list with what each needs; there is no
+   order and no tree a people walks along.
+2. *Found by somebody at work.* While a person does a task, there is a small chance they find a
+   technique whose parts they already know. It is higher when they are curious (item 10), have
+   time and food to spare, and the task is short of something — a hard winter, a war being lost,
+   work that costs too many hours, which is Allen's "dear labour". More people who know the parts
+   and talk to each other means more finding, so a big connected people invents more without that
+   being set: the collective brain comes out of the run.
+3. *Spread* by teaching (a parent, a master), by seeing it done, by taking a made thing apart
+   (traded goods, captured weapons), and with people who marry in or move. Copies are imperfect;
+   a skilled teacher copies better.
+4. *Lost* when everybody who held it dies or forgets it without passing it on — Tasmania.
+5. *Writing is one technique, and it changes the others:* what is written does not die with the
+   person who knew it (a lost technique can be found again in writing); a letter carries news
+   word for word instead of as remembered (item 12's distortion falls); a tax, a debt and a law
+   can be written and checked (15c's collectors can be audited, and a law outlasts the memory of
+   it); an office can be run from far away. Who can write is a skill taught, chosen by the stats
+   (the curious, families that can spare a child, customs from 15a).
+**Done when:** with nothing scripted, a technique is found, spreads to a neighbour and is lost
+in a people that shrinks; a connected people finds more than the same people cut off.
+**Ric decides:** how often things are found (rare, as history, or often, so a run shows it).
+**Budget:** default (a finding is checked only for people already at work).
+
+### [ ] 15f. Work and buildings: technology people are employed in
+
+Added 2026-11-20 (Ric: "technology needs to be more of a thing and there does need to be jobs so
+do some research of how we could implement that"; power, wires and fuel go here: "These seem kinda
+fixed by #3 answer").
+**Now:** the livings are farming, fishing, herding, hunting, wood, stone, ore, crafts and trade
+(item 9). With one farmer feeding 166, almost everybody would have nothing to do.
+**Research (2026-11-20).**
+- *How a game models it.* Victoria 3: every building is a workplace; each has "production methods"
+  that set what it uses, what it makes and which workers it needs, and a new technology unlocks a
+  new method rather than a free bonus — automation needs fewer labourers but more engineers, and
+  costs coal and engines ([Dev Diary 5](https://forum.paradoxplaza.com/forum/threads/victoria-3-dev-diary-5-production-methods.1480760)).
+- *Why workers move.* Structural transformation: as people grow richer they spend a smaller share
+  on food (Engel's law), about the same on goods and more on services, and work follows the
+  spending from farm to workshop to service
+  ([Herrendorf, Rogerson and Valentinyi, NBER w18996](https://www.nber.org/papers/w18996)).
+  England's share in farming above (60% in 1381 to 37% in 1759) and the US's one-in-166 are the
+  same movement.
+**Proposed (not agreed).** A workplace is a building with a *method*: what goes in (materials,
+fuel, power), what tools it needs, how many hands and which skills, and what comes out. A
+technique (15e) unlocks a method, never a bonus. People choose a workplace in `choose` the way
+they choose any living, by what it pays against the walk and their skills, reading the same
+`livelihood` figures. What is wanted comes from households' spending — food first, then goods,
+then services (a shop, a carter, a teacher, a healer, a clerk who can write). Power works, fuel
+works, wires and lines are buildings with methods too, and a tower or a car stops working when
+what feeds it stops. Money stays simple (Ric).
+**Done when:** a people that farms better moves people into other work by itself; knocking down a
+power works stops what it fed; no workplace is placed by the program.
+**Budget:** default.
+
+### [ ] 15g. Faith: peoples who come up with their own
+
+Added 2026-11-20 (Ric: "Faith seems pretty important. How do we make it so they can come up with
+their own faiths?").
+**Now:** there is no faith.
+**Research (2026-11-20).**
+- *What ideas stick.* Boyer: the religious ideas that last break only a few everyday expectations
+  — a person who cannot die, a river that listens — which makes them easier to remember than plain
+  ideas or very strange ones (the "minimally counterintuitive" effect; the evidence is mixed and
+  stronger in the young) ([Religion Explained](https://en.wikipedia.org/wiki/Religion_Explained);
+  [Minimal counterintuitiveness](https://en.wikipedia.org/wiki/Minimal_counterintuitiveness_effect)).
+- *Two ways a faith lives.* Whitehouse: rare, frightening, unforgettable rites bind small groups
+  tightly (imagistic); teaching repeated often, by specialists, holds large, centrally run faiths
+  together (doctrinal); tested on 645 rituals in the world's ethnographic files
+  ([Modes of religiosity](https://en.wikipedia.org/wiki/Modes_of_religiosity)).
+- *Faith and rule.* Across Austronesian peoples, belief in broad supernatural punishment came
+  *before* political complexity, while moralising high gods did not
+  (Watts et al., Proc. R. Soc. B 2015); ritual human sacrifice helped keep stratified societies
+  stratified once they were (Watts et al., [Nature 532, 2016](https://www.nature.com/articles/nature17159)) — correlational.
+- *How a faith spreads.* Stark: early Christianity grew about 40% a decade by one person at a time
+  along family and friends, people who were closer to members than to anyone outside, plus more
+  children; no mass conversions needed ([Rise of Christianity](https://press.princeton.edu/node/62616);
+  [a review](https://www.astralcodexten.com/p/book-review-the-rise-of-christianity)).
+- *How faith fades.* Agent-based models fitted to survey data: religiousness falls as life gets
+  safer and people more educated (Gore, Lemos, Shults and Wildman,
+  [JASSS 21(1), 2018](https://jasss.soc.surrey.ac.uk/21/1/4.html)).
+**Proposed (not agreed).** A belief is something a person holds (item 11): an explanation of
+something big that happened which they cannot otherwise explain — a drought, a plague, a victory —
+with a rite (what to do) and a rule (what is forbidden). It is *made up by a person* after such an
+event: likelier in the curious, the bold or the frightened (item 10), stronger after a bigger
+event (15a). It spreads by talk along trust (item 12), the way Stark found, and sticks better if it
+is strange in one way only. When many hold the same belief it is a faith with a name, made from
+the words of the land and the person who began it. Then, all from the stats of those who hold
+it (15a): which rites and rules it keeps; whether it lives by rare great rites in small groups or
+by teaching (which needs teachers, and writing helps, 15e); whether a ruler takes it up for the
+standing it gives (15c), with priests as an office; whether it splits when two leaders hold
+different versions. What it does: more trust and help among those who share it, marrying within it
+(15b), a reason in a war's grudges (item 14c), and fading where life is safe.
+**Done when:** a faith that nobody wrote appears after a hard event, spreads along friendships and
+not at random, and a people with one does measurably different things than without.
+**Ric decides:** whether a faith can make people do harsh things (sacrifice, holy war) or keep it
+to rites and rules.
+**Budget:** default.
+
+### [ ] 15h. Armies: what they carry, how far they go, and strategy
+
+Added 2026-11-20 (Ric: "we need to cover what it is carrying with it so it knows how far they can
+go. Armies will need more work too because rn they just run up one at a time instead of using war
+strategies").
+**Now:** an army marches on a village of each enemy, one place at a time, and its men arrive one
+by one; food comes from home without being carried.
+**Research (2026-11-20).**
+- *Carrying.* Engels worked out how Alexander's army was fed: what a man, a mule and a cart can
+  carry, what each eats, and that pack animals eat their own loads, so an army can go only so many
+  days from water and food; a soldier carried about ten days' rations by one summary
+  ([Engels 1978](https://ucpress.edu/books/alexander-the-great-and-the-logistics-of-the-macedonian-army/epub-pdf);
+  [History Hit](https://www.historyhit.com/how-did-alexander-the-great-sustain-his-army/)). His
+  rations appendix to be read before building.
+- *Numbers and weapons.* Lanchester: with hand weapons each fights one at a time and strength grows
+  with numbers (linear law); with weapons that reach, every man can fire at every enemy and
+  strength grows with numbers squared (square law), so splitting an army quarters each half —
+  concentration decides; real battles fit about 1.5 between the two
+  ([Lanchester's laws](https://en.wikipedia.org/wiki/Lanchester%27s_laws);
+  [Kress, NPS](https://faculty.nps.edu/mkress/docs/Lanchester_Models.pdf)). This is why arriving
+  one at a time is so costly, and more so with each era (15d).
+- *How a program reasons about ground.* An influence map: a coarse grid where each side's strength
+  spreads out and fades with distance, giving threat, who holds what and where the front is; game
+  armies use it to choose where to attack, defend or gather
+  ([Game Developer: influence mapping](https://www.gamedev.net/articles/programming/artificial-intelligence/the-core-mechanics-of-influence-mapping-r2799);
+  [Miles and Louis, UNR 2006](https://www.cse.unr.edu/~sushil/pubs/newestPapers/2006/cig06/cig2006.pdf)).
+**Proposed (not agreed).** An army is people who carry real food and goods (by hand, beast or
+cart, 7d), eat each day, take from the land and villages they pass (hurting them, item 14b), and
+are fed along a line of carts from home that can be cut. How far it can go is worked out from that
+before it sets out, and it turns back when it must. It gathers before it marches and moves
+together; its leader (by their stats: bold, patient, hot-tempered) chooses from one influence map
+per side, kept up once a day on a coarse grid, where to strike (the weakest held place), whether
+to go round, wait for numbers, hold a river or a hill, cut the enemy's food, or retreat. Battles
+fought with the law for their weapons (15d).
+**Done when:** an army that outruns its food turns back or starves; a gathered army beats the same
+men arriving one by one; cutting a supply line makes an army withdraw — none of it scripted.
+**Budget:** default (one coarse map per side a day).
+
+### [ ] 15d. Eras as starting points; news by what is built; towers, cars, houses, medicine
+
+Split out of 15 on 2026-11-20; rewritten the same day with Ric's answers. Last of the 15 family,
+because an era is now only a starting list of know-how (15e) and buildings (15f).
+**Do:** the nine eras as starting points chosen per faction (**Which eras**, in 15); weapons by
+era with the Lanchester law that fits them (15h); medicine (children dying, length of life); house
+shapes by era and by people; cell towers and cars as things built, owned, fed and destroyed; and
+**news at the speed of what is built** (Ric: "the news speed shouldn't be for era it should be for
+what is built"): between two places, news goes by the fastest thing that links them — a walker, a
+road, a relay of horses, a post (needs writing, 15e), a telegraph line, a radio, a tower in reach —
+and each of those is a thing that can be built, cut or knocked down.
+**Done when:** 15's "Done when": the same land and people from two starting eras fight, travel and
+hear news at measurably different speeds; knocking down a tower or cutting a line slows the news
+in its area and nowhere else.
 **Budget:** default.
 
 ### [ ] 16. Ruins and scavenging
