@@ -2592,6 +2592,8 @@ plenty) → c (2 km², finer land, the edge as an option) → j, then i after 15
 ### [ ] 16. Ruins and scavenging
 
 **Now:** a dead village leaves nothing.
+**Ric (2026-11-20):** the unit is the **building**, not the village — any building nobody keeps up
+decays, and a dead village is one where all of them are (research notes below).
 **Do:** a place that dies or is destroyed leaves a ruin holding what was really there, less what
 rotted and what others took. Scavenging is a living chosen like any other and lasts only while
 ruins do. A world can start already ruined. Ric: "ruins... seems like it needs to be viable for
@@ -2672,22 +2674,108 @@ can move into a ruin and roof its houses again rather than build from nothing. A
 ruined is a world whose places are made as usual and then emptied before the start, so everything
 in the ruins was really there.
 
-**Questions for Ric:**
-1. *Who may take from a ruin:* anybody, or only the faction that held the land (others are thieves,
+**Ric (2026-11-20): a ruin is a building, not a village.** "It shouldn't be a dead village it should
+be a dead building. Because if a village has 1 person there and 15 buildings the other buildings
+would start breaking down the same way no? And the buildings are something that needs to be
+thought of too. How do they change in look? Also what type of buildings are needed?" So the unit
+is the building: any building nobody keeps up decays, whether its village is dead, nearly empty,
+or full and too poor to mend it. A dead village is just a place where every building is in that
+state. The notes above still hold for what a ruin holds and who takes it.
+
+**What buildings there are now** (read from `people.js` and `index.html`). *Houses* are real: a
+place, a size by wealth, built or a building site, burned (TODO 14b), and drawn from above as their
+roof — thatch in the faction's colour with a ridge; a site as its timber frame, roofed by quarters;
+a burned house as a charred floor and wall stumps. Houses never wear: an unburned house stands as
+new for ever. *Wells, bridges and boats* are one point each per village, built once, never worn.
+*Walls* are a number from 0 to 1 per village, and are the one thing that already decays: about four
+years of peace takes them down. The *store*, the *workshop* (the bench) and the *market* are not
+buildings at all: the store is a pool of goods at the village's middle, and making goods happens
+at home.
+
+**How buildings decay, and what keeps them up.**
+- *Roofs go first.* Thatch needs its ridge redone about every 12–15 years and the whole coat every
+  15–30 years for long straw, 25–35 for combed wheat reed, 30–60 for water reed; birds and fungus
+  eat it faster in shade (modern UK guidance: [Historic England](https://historicengland.org.uk/advice/technical-advice/buildings/thatching-advice/);
+  [Thatch Advice Centre](https://www.thatchadvicecentre.co.uk/thatch-information/care-thatch/longevity);
+  [Thatch](https://en.wikipedia.org/wiki/Thatch)). With the roof gone, rain reaches the walls:
+  clay and wattle walls wash down, timber rots from the bottom, and the frame racks and falls
+  (the unrepaired reconstructions above, 13 to 40 years).
+- *Kept up, a peasant house could last centuries.* The old view that peasant houses lasted a
+  generation came from excavated poor houses; Dyer and others showed many were well built, and the
+  oldest dated peasant house still lived in was framed from timber felled in 1262. The poor's
+  cottages of wattle, daub and thatch were the ones that did not last
+  ([Peasant homes in medieval England](https://en.wikipedia.org/wiki/Peasant_homes_in_medieval_England);
+  [Dyer, furnishings](https://www.medievalists.net/2011/03/furnishings-of-medieval-english-peasant-houses-investment-consumption-and-life-style/);
+  [Wrathmell, hypotheses](https://www.medievalists.net/2011/06/some-general-hypoteses-on-english-medieval-peasant-house-construction-from-the-7th-to-the-17th-centuries/)).
+  So how long a house stands depends on what it is made of and whether anyone mends it.
+- *What is left in the end.* A deserted village is now grass over earthworks: house platforms,
+  the banks of crofts, sunken lanes ("hollow ways"), with stone footings where houses were of stone
+  ([Wharram Percy, description](https://www.english-heritage.org.uk/visit/places/wharram-percy-deserted-medieval-village/history/description);
+  [Gainsthorpe](https://www.english-heritage.org.uk/visit/places/gainsthorpe-medieval-village/history/)).
+
+**How a building could change in look** (proposed; the page already has three of these looks).
+From above, as houses are drawn now:
+1. *Kept* — as now.
+2. *Worn* — the thatch greyer and patched, the ridge sagging; a house whose upkeep is behind.
+3. *Roof holed* — part of the roof gone and the frame showing through (the building-site look,
+   run backwards).
+4. *Roofless* — the walls' outline only, green inside.
+5. *Fallen* — stumps and rubble, the burned house's look in grey and green, not black.
+6. *Earthwork* — a faint platform in the grass, then scrub and trees on 15.5d's clock; a stone
+   house keeps its wall lines far longer than a timber one.
+A burned house joins at 5. Time in each stage follows the material (item 9: wood or stone).
+
+**Which buildings are needed.** A medieval village commonly had houses with their outbuildings, a
+church, the lord's manor house, a mill, a smithy, a bread oven, barns and granaries, an alehouse
+and a dovecote; Wharram Percy had about forty peasant houses round a church and two manor houses;
+the lord owned the mill and oven and charged for their use
+([Herefordshire, structure of a village](https://htt.herefordshire.gov.uk/herefordshires-past/the-medieval-period/villages/the-structure-of-a-village);
+[Building History, villages](https://buildinghistory.org/villages.shtml)). The site's rule is that
+every setting does something, so the proposal is **a building only where it does something the
+sim already does or an item is about to add**, sorted by that:
+
+| Building | What it would do | Now / which item |
+|---|---|---|
+| House | sleep, keep food and water, a household's wealth shown | in (7) |
+| Well, bridge, boat landing, wall | water, crossing, boats, defence | in (6, 7, 14e), as points or a number |
+| Store / granary / barn | where the village store is; can burn, be raided, have rats | the store is a pool now |
+| Workshop / smithy | where crafters make goods, tools and weapons; ore and wood go in | making is done at home now; 15f |
+| Market place | where market day and trade happen | a point now (8) |
+| Leader's hall / manor | where the leader lives; a court, offices (15c); the barn for the leader's share (7c) | 15c |
+| Shrine / church | where a faith's rites happen | 15g |
+| Alehouse | where people meet and news spreads | talk happens anywhere (12) |
+| Fort / castle, garrison | holding a place taken (14c), a stronger wall | 14c, 14e |
+| Mill, oven | grinding and baking for a fee | nothing in the sim grinds or bakes |
+| Dock / harbour | boats carrying goods (7d), grain by boat (15.5b) | 15.5b |
+| Factory, power works, tower | modern work and news | 15d, 15f |
+
+Mill and oven do nothing unless grinding and baking are added, which adds tracking for little —
+the same trade-off Ric made for household goods in 15.5a.
+
+**Questions for Ric (these replace the list that was here):**
+1. *Upkeep as work:* should every building need mending (rethatching, posts, walls), so a household
+   too poor or too few to keep its house up sees it wear, and a building nobody mends falls?
+   That costs hours in every living village, which the old engine never spent.
+2. *Which buildings:* from the table, which should be real buildings? Recommendation: store/barn,
+   workshop, market place and dock now (they are already things the sim does), the hall, shrine and
+   fort with 15c, 15g and 14's garrisons, factory and tower with 15d/15f; no mill or oven.
+3. *The look:* the six stages above, shown on a real seed as screenshots before it is built?
+4. *Who may take from a ruin* (still open): anybody, or only the faction that held the land (others are thieves,
    a grievance), or as each faction's own law (15c)?
-2. *Moving back in:* can people resettle a ruin — take its houses, roof them, farm its fields
-   again — or do ruins stay ruins, as most English ones did?
-3. *Stone robbing:* should builders take stone and timber from ruins for new houses and walls?
-4. *A world that starts ruined:* what emptied it — a war, a plague, a catastrophe (item 17), or
+5. *Moving back in:* a living village already gives a newcomer an empty house first. Should a
+   roofless or fallen house be taken and mended the same way (cheaper than building new), and a
+   whole ruined village be resettled, or do ruins mostly stay ruins, as most English ones did?
+6. *Stone robbing:* should builders take stone and timber from ruins for new houses and walls?
+7. *A world that starts ruined:* what emptied it — a war, a plague, a catastrophe (item 17), or
    nothing said? And how many survivors, and where?
-5. *Ruins of what era:* item 16 comes before item 15 is built, so a ruin can hold only what today's
+8. *Ruins of what era:* item 16 comes before item 15 is built, so a ruin can hold only what today's
    villages hold. Should 16 wait for 15 (so a ruined modern town can hold modern things), or go now
    and grow with 15?
-6. *Danger in ruins:* should some ruins be dangerous — sickness where the dead lie, radiation after
+9. *Danger in ruins:* should some ruins be dangerous — sickness where the dead lie, radiation after
    item 17, the dead's kin or a garrison guarding it — or is that item 18's?
-7. *How long things last:* fine to use the figures above (grain gone in a year or two untended,
-   timber houses falling over one to four decades, stone for good), said as guesses where no clean
-   figure was found?
+10. *How long things last:* fine to use the figures above (grain gone in a year or two untended;
+   thatch worn in 15–30 years, a timber house falling one to four decades after its roof goes; stone
+   for good), said as guesses where no clean figure was found?
 
 ### [ ] 17. Catastrophes on the land
 
