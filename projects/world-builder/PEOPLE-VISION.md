@@ -827,7 +827,7 @@ when it is built.
   of news. Friendships are a list.
 - [x] Talking as passing something one person holds to another. (2026-11-18, TODO 12.)
 - [x] Trust, and things arriving weaker or wrong. (2026-11-18, TODO 12: Ric, "1 in 20".)
-- [x] People acting on what they know, not on what is true. (2026-11-18, TODO 12: news of war, and where food is; more is TODO 12b.)
+- [x] People acting on what they know, not on what is true. (2026-11-18, TODO 12: news of war, and where food is; 2026-11-19, TODO 12b: sickness, famine, dear food and dry years.)
 - [x] Children: some inherited, some heard (decided: "a mix of both"). How much of each. (2026-11-18, TODO 12: up to four of each parent's strongest things, weaker.)
 - [ ] News over distance by era: on foot, by rider, by letter, by radio, by phone within reach
   of a tower.

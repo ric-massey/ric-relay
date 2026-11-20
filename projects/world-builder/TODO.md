@@ -1087,7 +1087,18 @@ Research notes:
   the tellings on the event; who told whom on the event for a year. Talking costs only when two
   people meet, as before.
 
-### [ ] 12b. Acting on more of what is heard
+### [x] 12b. Acting on more of what is heard
+
+**Done 2026-11-19.** News of a sickness keeps people from the village their telling names (moving,
+going hungry, market, trade); a household with close family elsewhere leaves a sick home for them
+one time in five and comes back a week after it ends; news of a famine keeps movers away and sends
+family with food; a new "Food is dear in V" and the old dry-year news pull traders' food and grain
+half as hard again. Met: trips set out for A by outsiders in 30 days, told the sickness is at A
+1, told it is at B 9; trips to B 206 and 10 (`test/heard.test.mjs`). Default year, eight seeds: starved 12 → 16, sick deaths 115 →
+109, 18 left for a sickness, 106 days of food carried to family, traders' grain 72 → 504. Speed the
+same. **Not met / open:** few have family in another village in a world's first years, so flight
+and help are rare early; news of a good harvest elsewhere is not a thing yet (only dear food and
+dry years); traders still see every price within reach (Ric's choice).
 
 **Now:** people act on news of wars and villages taken (as a grievance) and on being told where
 there is food.
@@ -1095,11 +1106,47 @@ there is food.
 sickness keeps people from the village it is in; news of a good harvest or high prices draws
 traders. Each read from what the person holds, so a wrong telling sends them the wrong way.
 **Ric decides:** which kinds of news people act on.
+
+**Ric's answers (2026-11-19):**
+- Which news: "Sickness", "Famine", "Prices and harvests" (all three).
+- Traders, who see every village's prices within reach: "Keep it, news adds a pull".
+- Hearing of a sickness in one's own village: "A few, to family" leave for a while.
 **Done when:** a changed telling of where a sickness is moves people measurably differently from
 the true one.
 **Budget:** default.
 
 Research notes:
+- **What the engine has now (2026-11-19).** Events people can hold and pass on include "A sickness
+  has started in V" (`sick`), "V is starving" (`famine`) and "A dry year for F … about N%"
+  (`dry`); a wrong telling can swap the village or the number. Only war, taken and feud news is
+  acted on (`actOn`: a grievance). Where to move house, where to go when hungry and where a
+  trader carries a load are all chosen from every village's true store and prices within reach
+  (`choose` "move", the hungry move, `bestRoute`): nobody needs to have heard anything.
+- **Sickness.** Early modern Italian cities issued health passes (fedi di sanità) to show a
+  traveller came from a place free of plague, and turned away people and goods from places
+  reported infected; Venice had its travellers and envoys report any news of contagion so trade
+  could be steered round it (Bamji, *Social History of Medicine* 2019,
+  https://eprints.whiterose.ac.uk/123540/1/Bamji%20SHM%20Health%20passes.pdf; Duke collection of
+  bills of health 1630-1818, https://archives.lib.duke.edu/catalog/italpubhealthdocs). England in
+  1665 controlled travel, York's innkeepers reporting every arrival (search summary; see also
+  Udale on Bristol household quarantine, https://blogs.lse.ac.uk/economichistory/2022/11/18/household-quarantine-in-bristol-1565-1604).
+  So what kept people from a place was the report of sickness there, true or not.
+- **Famine.** In the Somali famine of 2011 people's social connections decided who coped, though
+  the same networks did not always carry everyone (Maxwell et al., *Food Policy* 2016,
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC5176329/); in Kagera, Tanzania, migrants cut their own
+  eating to send to relatives at home in need (De Weerdt and Hirvonen, IFPRI,
+  https://www.ifpri.org/blog/how-migrants-africa-maintain-economic-and-social-links-home-villages);
+  among the Dinka chiefs call on the starving family's own relatives first (World Peace
+  Foundation, https://worldpeacefoundation.org/blog/an-exceptional-farmer-who-survived-a-famine-my-aunt-mary-ajok-south-sudan/).
+  Help goes along family ties, to those one hears are in need.
+- **Prices and traders.** Where traders cannot know prices elsewhere, prices between markets
+  stay far apart and goods go to waste; when Kerala's fishermen got phones, the spread nearly
+  vanished and waste stopped (Jensen, *QJE* 2007, https://econpapers.repec.org/RePEc:oup:qjecon:v:122:y:2007:i:3:p:879-924;
+  questioned on who had phones, Srinivasan and Burrell 2013,
+  https://www.ischool.berkeley.edu/node/7017). Medieval merchants ran on letters: the Datini
+  archive holds over 100,000, and its factors at Caffa wanted to sail for Tuscany on news that
+  grain had risen there (MAIASP 2022, https://en.maiask.ru/data/documents/14_EvstiuninENG.htm).
+  A trader goes where they have heard it is dear.
 
 ### [x] 13. Leaders and factions that deal with each other
 
@@ -1510,4 +1557,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-19 | 14a | AMD Ryzen 5 3600, 24 GB | 1.92 s a day, 156× | *not run* | 7.0 MB, 1.36 KB | **wartime effort**: fear only where the fighting is, a different world. Against item 13, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.69/0.68 → 0.68/0.71 s, 5,000 1.97/1.95/1.98/1.94 → 1.94/2.20/1.87/1.92 s: the same |
 | 2026-11-19 | 14b | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× | *not run* | 7.0 MB, 1.37 KB | **what a war leaves**: crops spoiled, houses burned, sacks, refugees, a different world in a war. Against 14a, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.67/0.68 → 0.67/0.65 s, 5,000 1.92/1.95 → 1.97/1.96 s: the same |
 | 2026-11-19 | 14c | AMD Ryzen 5 3600, 24 GB | 1.93 s a day, 155× | *not run* | 7.0 MB, 1.37 KB | **why wars end**: blame, grudges, garrisons, a different world in a war. Against 14b, alternated: 400 0.13/0.13 → 0.13/0.13 s, 2,000 0.66/0.67 → 0.79/0.66 s, 5,000 1.92/1.98 → 2.03/1.93 s: the same within this machine's drift |
+| 2026-11-19 | 12b | AMD Ryzen 5 3600, 24 GB | 2.24 s a day, 133× | *not run* | 7.0 MB, 1.37 KB | **acting on news of sickness, famine and prices**: the same world until a report comes. Against 14c, alternated: 400 0.13/0.13 → 0.14/0.14 s, 2,000 0.70/0.70 → 0.72/0.72 s, 5,000 2.30/2.22 → 2.25/2.23 s; mid-year 2,000 (day 150, six days) old 0.59–0.64 s, new 0.63–0.76 s, a different world: a profile gives the new reading 0.5% of the time |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

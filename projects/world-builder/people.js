@@ -544,6 +544,7 @@
     const MB = Math.ceil(S.memory * 1.25) + 1;
     const M0 = MB * (Math.ceil(S.people * 1.1) + 16);   // room for the first people and a few born; grows by half after
     let mKind = new Uint8Array(M0), mAbout = new Int32Array(M0), mStr = new Float32Array(M0), mAt = new Float32Array(M0);
+    let mindStamp = 0;   // changes whenever anything is held or forgotten, or a report comes or goes (TODO 12b: `rumours`)
     /* Who told them (a person's id; -1 saw it, or worked it out, themselves) and which telling of
        an event they hold (0 what happened; see `retold`). TODO 12. */
     let mFrom = new Int32Array(M0), mVar = new Uint8Array(M0);
@@ -647,7 +648,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1231,7 +1232,7 @@
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
                   leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
-                  views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6 };
+                  views: leaderViews || 0, target: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9 };
       factions.push(f);
       for (const o of factions) if (o !== f) { f.rel[o.id] = blankRel(); o.rel[f.id] = blankRel(); }
       return f;
@@ -1251,7 +1252,7 @@
                   cold: 0,   // TODO 9c: the share of the village unwarmed today
                   raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined,   // TODO 10: the last time enemies struck here, and the year last looked back on
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
-                  dangerAt: -1e9, gone: null,
+                  dangerAt: -1e9, gone: null, dearAt: -1e9,
                   heldTo: -1e9 };   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
@@ -1596,7 +1597,7 @@
       if (p.mb < 0) return undefined;
       let o = mFind(p, kind, about);
       if (o < 0) o = mRoom(p);
-      mKind[o] = kind; mAbout[o] = about; mStr[o] = strength; mAt[o] = t; mFrom[o] = -1; mVar[o] = 0;
+      mKind[o] = kind; mAbout[o] = about; mStr[o] = strength; mAt[o] = t; mFrom[o] = -1; mVar[o] = 0; mindStamp++;
       return o;
     }
     /* Hold what somebody told them (TODO 12): who it came from, and which telling. */
@@ -1605,7 +1606,7 @@
       if (o !== undefined) { mFrom[o] = from; mVar[o] = v || 0; }
       return o;
     }
-    function forget(p, kind, about) { const o = mFind(p, kind, about); if (o >= 0) mKind[o] = 0; }
+    function forget(p, kind, about) { const o = mFind(p, kind, about); if (o >= 0) { mKind[o] = 0; mindStamp++; } }
     /* How p feels about somebody: −1 a bitter grudge, +1 the closest of friends; 0 nobody to them. */
     function feel(p, id) {
       if (p.mb < 0) return 0;
@@ -1744,6 +1745,7 @@
       heard(hearer, M_NEWS, id, Math.min(1, mNow(o) * 0.95), teller.id, v);
       logHop(e, hearer, teller.id, teller.name, v);
       actOn(hearer, e, said);
+      shunSick(hearer, e, v);
       return { said: said, believed: true };
     }
     /* People act on what they hold, right or wrong: news that names their own side and another,
@@ -1754,6 +1756,83 @@
       if (!mine || !said.includes(mine.name)) return;
       p.loyal = clamp(p.loyal + 0.02, 0, 1);
       for (const x of factions) if (x.alive && x !== mine && said.includes(x.name) && mine.rel[x.id]) mine.rel[x.id].op = clamp(mine.rel[x.id].op - 0.002, -1, 1);
+    }
+    /* ── acting on more of what is heard (TODO 12b) ──────────────────────
+       Ric, 2026-11-19: sickness, famine, and prices and harvests. Each is read from what the person
+       holds as it was told to them, so a telling that names the wrong village sends them the wrong
+       way. A report is acted on for so many days after what it tells of (`ACT_DAYS`). */
+    const ACT_DAYS = { sick: 30, famine: 30, dear: 20, dry: 120 };
+    const acted = new Set();   // recent events of those kinds: minds are read for them only while there are some
+    /* The village a telling names (for a dry year, the faction), or -1. Kept here, keyed by event and
+       telling, not on the event: the page reads events, and reading must not change them. */
+    const named = new Map();
+    function namedIn(e, v) {
+      const key = e.id * TELLINGS + v;
+      let n = named.get(key);
+      if (n === undefined) {
+        const said = telling(e, v), list = e.kind === "dry" ? factions : villages;
+        n = -1; let len = 0;
+        for (const x of list) if (x.name && x.name.length > len && said.includes(x.name)) { n = x.id; len = x.name.length; }
+        named.set(key, n);
+      }
+      return n;
+    }
+    /* What p has heard and still holds, into these four lists (read them before the next call):
+       villages with a sickness, villages starving, villages where food is dear, factions with a dry
+       year. False when there is nothing. */
+    const heardSick = [], heardFamine = [], heardDear = [], heardDry = [];
+    /* Read once for a person in an hour: a choice asks three or four times (measured 2026-11-19, the
+       repeat reads made a day 10% slower). Anything held or forgotten, and any new report, starts over. */
+    let rumP = -1, rumT = -1, rumS = -1, rumAny = false;
+    function rumours(p) {
+      if (!acted.size || p.mb < 0) return false;
+      if (p.id === rumP && t === rumT && mindStamp === rumS) return rumAny;
+      rumP = p.id; rumT = t; rumS = mindStamp; rumAny = false;
+      heardSick.length = 0; heardFamine.length = 0; heardDear.length = 0; heardDry.length = 0;
+      let any = false;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) {
+        if (mKind[o] !== M_NEWS || !acted.has(mAbout[o]) || mNow(o) <= 0.1) continue;
+        const e = eventById(mAbout[o]);
+        if (!e || t - e.t > ACT_DAYS[e.kind] * DAY_HOURS) continue;
+        const at = namedIn(e, mVar[o]); if (at < 0) continue;
+        (e.kind === "sick" ? heardSick : e.kind === "famine" ? heardFamine : e.kind === "dear" ? heardDear : heardDry).push(at);
+        any = true;
+      }
+      rumAny = any;
+      return any;
+    }
+    function forgetActed() {
+      for (const id of acted) {
+        const e = eventById(id);
+        if (!e || t - e.t > ACT_DAYS[e.kind] * DAY_HOURS) { acted.delete(id); mindStamp++; for (let v = 0; v < TELLINGS; v++) named.delete(id * TELLINGS + v); }
+      }
+    }
+    /* A sickness at home (Ric: "A few, to family"): a household with close family in another village
+       of their own goes to them until a week after the sickness has gone, as those who could left
+       London in 1665; some carry it with them, as they did. Read from the telling they hold: told it
+       is somewhere else, they stay. */
+    function shunSick(p, e, v) {
+      if (e.kind !== "sick" || !adult(p) || p.hp <= 0 || p.fledFrom >= 0 || p.job === "soldier" || p.cargo || p.mb < 0) return;
+      const home = villages[p.home];
+      if (p.id === factions[p.f].leader || namedIn(e, v) !== home.id || t - e.t > ACT_DAYS.sick * DAY_HOURS) return;
+      rumours(p);
+      let to = null, close = 0.4;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) {
+        if (mKind[o] !== M_KIN) continue;
+        const x = mNow(o); if (x <= close) continue;
+        const q = byId.get(mAbout[o]); if (!q || q.hp <= 0 || q.home === home.id) continue;
+        const there = villages[q.home];
+        if (there.alive && there.f === p.f && !there.siege && !heardSick.includes(there.id)) { close = x; to = there; }
+      }
+      if (!to || R() > 0.2) return;
+      const lead = factions[p.f].leader, mate = byId.get(p.partner), us = [p];
+      if (mate && mate.hp > 0 && mate.home === home.id && mate.job !== "soldier" && mate.id !== lead && mate.fledFrom < 0) us.push(mate);
+      for (const q of PLAIN ? people : residents(home.id)) if (q.hp > 0 && !adult(q) && q.home === home.id && us.some(a => q.mum === a.id || q.dad === a.id || q.carer === a.id)) us.push(q);
+      home.dangerAt = Math.max(home.dangerAt, t);   // a week at least before they come back (`comeHome`)
+      for (const q of us) { q.fledFrom = home.id; rehome(q, to, "sickness"); (home.gone || (home.gone = [])).push(q.id); count.fledSick++; }
+      p.say = "There's sickness at home. We're going to family in " + to.name + "."; p.sayT = TK(80);
     }
     /* A tip about somebody else's larder, from what the teller has seen or been told. */
     function tipFor(p, hungry) {
@@ -1903,6 +1982,7 @@
       const e = { id: events.length ? events[events.length - 1].id + 1 : 0, t: t, year: Math.floor(year()), kind: kind, text: text,
                   weight: weight, x: x, y: y, f: f == null ? -1 : f };
       events.push(e);
+      if (ACT_DAYS[kind]) { acted.add(e.id); mindStamp++; }   // TODO 12b
       /* The record is finite and the least important goes first — the same
          rule KONDRITE's living world keeps. */
       if (events.length > 400) {
@@ -2902,7 +2982,7 @@
            London about 1300 drew its grain from 60 km round by land and further by water (Campbell
            et al. 1993); a market town from the villages a day's walk round. */
         const m = v.marketTo >= 0 ? villages[v.marketTo] : null;
-        if (m && m.alive && season().ripe < 1.5) {
+        if (m && m.alive && season().ripe < 1.5 && !(rumours(p) && heardSick.includes(m.id))) {
           const spare = p.food - reserve(p) - 2;
           if (spare > 2) {
             /* By handcart or packhorse, as a grain trader carries: a pack of five days a trip could
@@ -2917,6 +2997,28 @@
             const risk = m.f === p.f && !m.siege ? 0.4 : 0.8;
             weigh("market", (0.3 + n.provide * 0.6 + want * 0.5) * Math.min(1, load / 5) - away(dist(p, m)) * 0.35 - n.food * 0.5 - n.rest * 0.4 - n.safety * risk - dark * 0.5,
               () => { p.food -= load; p.cargo = { what: "food", amount: load, grain: !shared, paid: load * MARKET_PRICE / 1.4 }; p.at = m.id; go(p, m.x, m.y, "carry"); p.wait = 0; });
+          }
+        }
+
+        /* Food for family where they have heard there is a famine (TODO 12b; Ric: "Famine"). Help
+           went along family ties to those one heard were in need (Kagera, the Dinka: README). */
+        if (p.job !== "soldier" && rumours(p) && heardFamine.length) {
+          const spare = p.food - reserve(p) - 2;
+          if (spare > 2) {
+            let kin = null, close = 0.3;
+            const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+            for (let o = o0; o < o1; o++) {
+              if (mKind[o] !== M_KIN) continue;
+              const x = mNow(o); if (x <= close) continue;
+              const q = byId.get(mAbout[o]);
+              if (q && q.hp > 0 && q.home !== p.home && heardFamine.includes(q.home) && villages[q.home].alive && !atWar(villages[q.home].f, p.f) && dist(p, villages[q.home]) < 34) { close = x; kin = q; }
+            }
+            if (kin) {
+              const there = villages[kin.home], load = Math.min(spare * 0.6, grainLoad(p));
+              weigh("help", 0.35 + close * 0.6 + n.provide * 0.2 - away(dist(p, there)) * 0.35 - n.food * 0.5 - n.rest * 0.4 - n.safety * 0.8 - dark * 0.5,
+                () => { p.food -= load; p.cargo = { what: "food", amount: load, gift: kin.id }; p.at = there.id; go(p, there.x, there.y, "carry"); p.wait = 0;
+                        p.say = "Food for " + kin.name + " in " + there.name + ". They're starving there."; p.sayT = TK(80); });
+            }
           }
         }
 
@@ -2972,8 +3074,10 @@
         let ties = 0.25 + (mate && mate.home === p.home && mate.hp > 0 ? 0.55 : 0) + p.kids * 0.12;
         for (const [id, s] of tiesOf(p)) if (s > 0.2) { const q = byId.get(id); if (q && q.home === p.home) ties += 0.05; }
         let best = null, bs = 0;
+        const rum = rumours(p);   // TODO 12b: not to where they have heard of a sickness or a famine
         for (const o of villages) {
           if (!o.alive || o === v || atWar(o.f, p.f)) continue;
+          if (rum && (heardSick.includes(o.id) || heardFamine.includes(o.id))) continue;
           const d = dist(p, o);
           if (d > 20) continue;
           const foreign = o.f !== p.f;
@@ -3350,8 +3454,9 @@
       p.markets[v.id] = sceneTick;
     }
     function nextMarket(p, here) {
+      const rum = rumours(p);   // TODO 12b: not to a village they have heard has a sickness
       return villages.filter(o => o.alive && o !== here && !atWar(o.f, p.f) && !hostile(o.f, p.f) &&
-        (!shared || o.f === p.f) && dist(here, o) <= 34)
+        (!shared || o.f === p.f) && dist(here, o) <= 34 && !(rum && heardSick.includes(o.id)))
         .sort((a, b) => (p.markets?.[a.id] || 0) - (p.markets?.[b.id] || 0) || dist(here, a) - dist(here, b))[0];
     }
 
@@ -3360,17 +3465,23 @@
        so the route a trader takes and the reason they took it are one number. */
     function bestRoute(p, here) {
       let best = null, gain = shared ? 0.25 : 0.3, what = "food";
+      /* What they have heard (TODO 12b; Ric: "Keep it, news adds a pull"): they still see every price
+         within reach, but go nowhere they have heard has a sickness, and food goes half as willingly
+         again to where they have heard it is dear, starving, or had a dry year. */
+      const rum = rumours(p);
       for (const o of villages) {
         if (!o.alive || o === here) continue;
         if (o.f !== p.f && (atWar(o.f, p.f) || shared || hostile(o.f, p.f))) continue;
+        if (rum && heardSick.includes(o.id)) continue;
+        const pull = rum && (heardDear.includes(o.id) || heardFamine.includes(o.id) || heardDry.includes(o.f)) ? 1.5 : 1;
         const d = Math.hypot(o.x - here.x, o.y - here.y);
         if (d > 34) continue;
         if (shared) {
-          const g = here.food / (here.pop + 1) - o.food / (o.pop + 1);
+          const g = (here.food / (here.pop + 1) - o.food / (o.pop + 1)) * pull;
           if (g > gain) { gain = g; best = o; what = "food"; }
         } else {
           for (const w of ["food", "goods"]) {
-            const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02);
+            const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02) * (w === "food" ? pull : 1);
             if (g > gain && (w === "food" ? here.food : here.goods) > 1) { gain = g; best = o; what = w; }
           }
           /* Wood, stone and ore from where they are cheap (TODO 9a): an ore village sells to a forest one. */
@@ -3388,7 +3499,7 @@
                home who could have. Measured 2026-11-14 without this, a hard
                winter starved more with grain trade than without it. */
             const load = grainLoad(p), moved = Math.min(here.spare, o.short, load, (o.purse || 0) / 2);
-            const g = moved / load * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02);
+            const g = moved / load * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02) * pull;
             if (g > gain) { gain = g; best = o; what = "grain"; }
           }
         }
@@ -3408,7 +3519,13 @@
       if (dist(p, here) > 2.5) { go(p, here.x, here.y, p.cargo ? "carry" : "pickup"); p.wait = 0; return; }
       rememberMarket(p, here);
       if (p.task === "carry") {
-        if (p.cargo && p.cargo.grain) {
+        if (p.cargo && p.cargo.gift !== undefined) {
+          /* Food for family (TODO 12b): to them if they are still here, or to the store. */
+          const q = byId.get(p.cargo.gift);
+          if (q && q.hp > 0 && q.home === here.id) q.food += p.cargo.amount; else here.food += p.cargo.amount;
+          if (here.id !== p.home) { here.inFood = (here.inFood || 0) + p.cargo.amount; count.helped += p.cargo.amount; }
+          p.cargo = null;
+        } else if (p.cargo && p.cargo.grain) {
           /* Door to door, the most short first, at what it cost plus the
              carrying; whoever cannot pay does not get it — a trader is not
              charity. What nobody buys goes to the store, and what the store
@@ -5214,8 +5331,10 @@
         }
         if (p.hungry > 50 && f.leader !== p.id && R() < 0.4) {
           let best = null, bs = v.food / (v.pop + 1) + 0.25;
+          const rum = rumours(p);
           for (const o of villages) {
             if (!o.alive || o === v || atWar(o.f, p.f) || dist(p, o) > 18) continue;
+            if (rum && (heardSick.includes(o.id) || heardFamine.includes(o.id))) continue;
             if (o.f !== p.f && R() > S.switch) continue;
             const s = o.food / (o.pop + 1);
             if (s > bs) { bs = s; best = o; }
@@ -5333,6 +5452,15 @@
       if (v.hungry > v.pop * 0.4 && v.pop > 8 && (!v.famine || t - v.famine >= 30 * DAY_HOURS)) {
         v.famine = t; note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f);
       }
+      /* Word that food is dear (TODO 12b): one household in seven going hungry with money to pay, not
+         in the first month (everybody is hungry on the first day, walking home), not while the place
+         is starving (that is its own news), and at most one a faction every four months. Read off
+         households short of a fortnight's food it came every day from the start, and at one a village
+         every two months it was as much news as everything else together, crowding the rest out
+         (the newest is what is told). */
+      if (!shared && t > 30 * DAY_HOURS && v.pop > 8 && v.hungry > v.pop * 0.15 && (v.purse || 0) > v.pop && t - v.dearAt >= 90 * DAY_HOURS && t - factions[v.f].dearAt >= 120 * DAY_HOURS && !(v.famine && t - v.famine < 30 * DAY_HOURS)) {
+        v.dearAt = t; factions[v.f].dearAt = t; note("dear", "Food is dear in " + v.name + ".", 1.5, v.x, v.y, v.f);
+      }
       /* Under the walls: soldiers of a faction at war with this one, and
          nobody of ours near enough to stop them. */
       let ours = 0; const theirs = {}, foesHere = [];
@@ -5360,6 +5488,7 @@
          default year starved 89 against 47, and 28 villages were taken against 11, as households
          left at the first raider and the place emptied of defenders. */
       if (attackers > 0) { v.dangerAt = t; ravage(v, foesHere, attackers > defence); }
+      if (v.sick > 0 && v.gone) v.dangerAt = t;   // those who left for a sickness wait a week past it (TODO 12b)
       if (v.siege > 0) flee(v);
       else if (v.gone && t - v.dangerAt > 7 * DAY_HOURS) comeHome(v);
       if (sides.length && attackers > defence * 1.2) {
@@ -6082,6 +6211,7 @@
       if (t % REFLECT_HOURS === 0) {
         census();
         for (const v of villages) if (v.alive) { market(v); if (t % DAY_HOURS === 0) villageTurn(v); }
+        if (t % DAY_HOURS === 0 && acted.size) forgetActed();
         /* The newest thing that happened is known first where it happened. */
         /* TODO 12: only those who were there see it; everybody else hears it from somebody.
            (Until item 12 a whole side knew within hours.) */
@@ -6090,6 +6220,7 @@
           for (const p of people) if (Math.abs(p.x - e.x) < WITNESS && Math.abs(p.y - e.y) < WITNESS && Math.hypot(p.x - e.x, p.y - e.y) < WITNESS && newsOf(p) < e.id && R() < 0.6) {
             hold(p, M_NEWS, e.id, 1);
             logHop(e, p, -1, "", 0);
+            shunSick(p, e, 0);
           }
         }
       }
@@ -6293,6 +6424,16 @@
       inMind: inMind, tiesOf: tiesOf, viewOf: viewOf, feel: feel, newsOf: newsOf,   // TODO 11
       newsText: newsText, traceNews: traceNews, eventById: eventById, telling: telling,   // TODO 12
       setView: setView, befriend: befriend,   // for the tests
+      /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
+         the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */
+      report: (kind, vid, ids, sayVid) => {
+        const v = villages[vid], text = n => kind === "sick" ? "A sickness has started in " + n + "." : kind === "famine" ? n + " is starving." : "Food is dear in " + n + ".";
+        const e = note(kind, text(v.name), 2, v.x, v.y, v.f);
+        let tv = 0;
+        if (sayVid !== undefined && sayVid !== vid) { e.vars = [e.text, text(villages[sayVid].name)]; tv = 1; }
+        for (const id of ids) { const p = byId.get(id); if (p && heard(p, M_NEWS, e.id, 1, -1, tv) !== undefined) shunSick(p, e, tv); }
+        return e;
+      },
       /* Paths and roads (TODO 7d): how trodden each square is, 1 a path and 2 a road, and a number
          that changes when they do. */
       trod: trod, track: track, get trackStamp() { return trackStamp; },

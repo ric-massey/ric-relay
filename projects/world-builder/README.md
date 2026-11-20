@@ -1758,6 +1758,53 @@ year takes about 40 s instead of 115. `test/bench.mjs`: 400 people 0.34 → 0.12
 against 14%), and when a village store is empty every hungry person looks through all their
 neighbours for one with grain to spare (`choose`, a quarter of the time).
 
+### Acting on more of what is heard (2026-11-19)
+
+TODO item 12b. Until now people acted on only two kinds of news: wars and villages taken (a
+grievance) and who had food to spare. Where to move, where to go when hungry and where a trader
+carried a load were chosen from every village's true store and prices, heard or not. Ric chose
+which news people act on: **"Sickness", "Famine", "Prices and harvests"**; traders **"Keep it, news
+adds a pull"**; a sickness at home sends **"A few, to family"**. Everything is read from the telling
+a person holds, so a telling that names the wrong village sends them the wrong way.
+
+- **Sickness.** Somebody who holds "A sickness has started in V" from the last 30 days does not move
+  there, go there hungry, take food to its market, carry a load to it or look for a market there. Somebody who hears it of
+  their own village, and has close family (a family tie above 0.4) in another village of their own
+  side, takes their household to them one time in five, and comes back a week after the last case
+  there. Early modern Italian cities turned away people and goods from places reported infected,
+  checked by health passes (Bamji 2019), and Venice had its travellers report any news of
+  contagion; those who could left London in 1665, and some carried it with them.
+- **Famine.** "V is starving" keeps people from moving there. Somebody with food beyond their
+  winter's keep and family in V takes them up to a load (`grainLoad`), given to them, or to the
+  store if they have gone. Help in a famine runs along family ties (the Somali famine of 2011,
+  Maxwell et al. 2016; migrants in Kagera, Tanzania, cutting their own eating for relatives at
+  home; Dinka chiefs calling on a starving family's relatives first).
+- **Prices and harvests.** A new piece of news, "Food is dear in V": one household in seven there
+  going hungry with money to pay, not in the first month, not while it is starving, at most one a
+  side every four months. A trader still sees every price within reach, but food and grain go half
+  as willingly again to where they have heard food is dear, a famine, or a dry year for that side.
+  Where traders cannot know prices elsewhere, prices stay far apart and food is wasted (Jensen 2007,
+  Kerala's fishermen and their phones); Datini's factors at Caffa wanted to sail for Tuscany on news
+  that grain had risen there.
+
+Measured: everybody outside the biggest village (seed 13, day 60) told of a sickness there: trips
+set out for it by outsiders over 30 days (to sell, trade or look for a market) 11 with no report,
+1 told it is there, 9 told it is at the next village instead; trips to that next one 99, 206 and
+10 (`test/heard.test.mjs`, the item's "done when"). Everybody with family in another village
+(seed 11, day 200) told it is starving: 431 days of food carried there in ten days. A default year, eight seeds, before → after: starved 12 → 16 (the usual spread), died of the
+sickness 115 → 109, left home for a sickness 0 → 18, food carried to family 0 → 106 days, grain
+carted by traders 72 → 504 days, market food 10,766 → 12,880. Few have family in another village
+in a world's first years (11 grown-ups of about 270 after a year, seed 11), so flight and help
+are rare until families spread by marriage.
+
+**Chosen, and its cost.** The news a person holds is read at most once an hour when they decide
+(`rumours`, cached until anything is held or forgotten), only while some report of these kinds
+is under 30 days old (120 for a dry year); which village a telling names is worked out once per
+telling and kept by the engine, not on the event. Under half a percent of a mid-year day (a
+profile); the bench unchanged. "Food is dear" first read households short of a fortnight's food:
+that is every village at the start, and at one a village every two months it was as much news as
+everything else together, crowding the rest out (the newest is what is told).
+
 ### Why wars start and end (2026-11-19)
 
 TODO item 14c. Ric: "why a war starts and ends comes from what people and leaders hold in mind …
