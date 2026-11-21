@@ -183,7 +183,23 @@ body[data-look="terminal"]{--desk:#040904;--ink:#8dffa6;--muted:#4fae66;--accent
   --entry:#ffc56b;--entry-font:400 clamp(16px,3vw,24px)/1 var(--term-font);--given:#d8ffe0;--given-font:700 clamp(16px,3vw,24px)/1 var(--term-font);
   --peer:#8dffa60d;--same:#8dffa626;--chosen:#8dffa6;--chosen-ring:none;--note:#4fae66;--bad:#ff6b6b;--bad-bg:#ff6b6b22;
   --key:#040904;--key-ink:#8dffa6;--key-border:1px dashed #2c6b3a;--key-radius:0;--key-shadow:none;--key-font:400 22px/1 var(--term-font);--held:#8dffa6;--held-ink:#040904;--on-bg:#8dffa6;--on-ink:#040904}
-body[data-look="terminal"] .sudoku .square.chosen{color:#040904}
+/* Highlights you can read (Ric, 2026-11-21: "The green highlight in the terminal is rough
+   … the words can be darker"): the chosen square is solid green with near-black, bold
+   text; squares with the same number are a deep green with bright white text; its row,
+   column and box only a faint tint. */
+body[data-look="terminal"]{--paper:#040904}
+body[data-look="terminal"] .sudoku .square.peer{background:#0c2614}
+body[data-look="terminal"] .sudoku .square.same{background:#1f6e37;color:#f4fff6;font-weight:700}
+body[data-look="terminal"] .sudoku .square.chosen{background:#8dffa6;color:#021004;font-weight:700;box-shadow:none}
+body[data-look="terminal"] .sudoku .square.chosen .notes-grid,body[data-look="terminal"] .sudoku .square.chosen .notes-grid .hot{color:#021004}
+body[data-look="terminal"] .sudoku .square.chosen::before{color:#021004!important}
+body[data-look="terminal"] .notes-grid .hot{color:#f4fff6;background:#1f6e37}
+/* Notes and the other switches: lit while on, plain while off. A hover is only a
+   faint tint, and touch screens get none, so an off switch never looks on. */
+body[data-look="terminal"] .sd-tools .tools button.on{background:#8dffa6!important;color:#021004!important;font-weight:700}
+body[data-look="terminal"] .sd-tools .tools button:not(.on):hover,body[data-look="terminal"] .sd-tools .tools button:not(.on):focus-visible{background:#0f2a16!important;color:#d8ffe0!important}
+@media (hover:none){body[data-look="terminal"] .sd-tools .tools button:not(.on):hover{background:transparent!important;color:var(--ink)!important}}
+body[data-look="terminal"] .sd-tray .numpad button.held{background:#8dffa6;color:#021004;font-weight:700}
 body[data-look="terminal"] .sudoku .square.empty:not(:has(.notes-grid))::before{content:'.';color:#2f7a42}
 body[data-look="terminal"] .sd-head h1::before{content:'$ ./';color:#4fae66}
 body[data-look="terminal"] .sd-head h1{text-transform:lowercase}
