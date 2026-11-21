@@ -43,16 +43,23 @@ const People = createRequire(import.meta.url)("../people.js");
 {
   const w = People.create({ seed: 5, people: 80, villages: 1, factions: 1, war: false, soldiers: 0, plague: "none", temper: 0 });
   w.step(1);
-  const young = w.people.filter(p => w.adult(p) && p.age < 30 && !p.partner);
+  /* Every single adult under 45, paired with the first one free who isn't kin: under-30s alone
+     gave two pairs, too few to count on one of them still living side by side in year 3 (15.5t's
+     harvest tax moved the last such pair into a new village). */
+  const young = w.people.filter(p => w.adult(p) && p.age < 45 && !p.partner);
   const kin = (a, b) => a.mum === b.id || a.dad === b.id || b.mum === a.id || b.dad === a.id || (a.mum && a.mum === b.mum);
   const pairs = [];
-  for (let i = 0; i + 1 < young.length && pairs.length < 8; i += 2) {
-    const [a, b] = young.slice(i, i + 2);
-    if (kin(a, b)) continue;
+  const used = new Set();
+  for (const a of young) {
+    if (pairs.length >= 8) break;
+    if (used.has(a.id)) continue;
+    const b = young.find(b => b !== a && !used.has(b.id) && !kin(a, b));
+    if (!b) continue;
+    used.add(a.id); used.add(b.id);
     w.befriend(a, b, -0.9);
     pairs.push([a.id, b.id]);
   }
-  assert.ok(pairs.length >= 2, "pairs to watch");
+  assert.ok(pairs.length >= 6, "pairs to watch: " + pairs.length);
   for (const p of w.people) p.temper = 0;
   w.step(24 * 365 * 2);
   let looked = 0, went = 0;
