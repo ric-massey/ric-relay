@@ -689,7 +689,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { goodsMade: 0, goodsUsed: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1307,7 +1307,7 @@
        when this side last made a demand of the other. */
     function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0, sold: 0, rate: 0, wed: null, lost: 0, took: 0, spoiled: 0 }; }   // lost, took, spoiled: this war's places and crops (TODO 14e)   // sold, rate, wed: TODO 14d   // began: this side's leader when the war began (TODO 14c)
     function newVillage(x, y, f) {
-      const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0,
+      const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
                   alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
                   /* Wood, stone and ore in store, what each fetches and how much the village wants (TODO 9a). */
@@ -1446,12 +1446,13 @@
       const k = MATS ? (v.stone > v.wood ? "stone" : "wood") : "goods";
       if (h.goodsIn < h.goodsNeed && v[k] >= 1) {
         const price = MATS ? matPrice(v, k) : v.priceGoods;
-        if (shared) { v[k] -= 1; h.goodsIn++; }
+        if (shared) { v[k] -= 1; h.goodsIn++; if (!MATS) tookGoods(owner, v, 1); }
         else if (owner && funds(owner) - price >= keep) {
           const cost = price, tax = cost * taxOf(v);
           pay(owner, cost); v.till += cost - tax; factions[v.f].treasury += tax; v[k] -= 1; h.goodsIn++;
+          if (!MATS) tookGoods(owner, v, 1);
         }
-      }
+      } else if (!MATS && h.goodsIn < h.goodsNeed && owner && owner.hp > 0) placeOrder(owner, v, h.goodsNeed - h.goodsIn);   // goods for the house, made to order (15.5a)
       if (h.work + h.goodsIn * GATHER_HOURS >= h.need + h.goodsNeed * GATHER_HOURS) {
         h.built = true; count.houses++;
         if (owner && owner.hp !== -99 && owner.home === h.v) moveIn(owner, h);
@@ -1524,7 +1525,7 @@
       const f = factions[v.f];
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
-                  tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30 * STEP_SCALE), food: 0.8 + R() * 0.6, coins: 0, goods: 0, gear: {},
+                  tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30 * STEP_SCALE), food: 0.8 + R() * 0.6, coins: 0, goods: 0, order: 0, orderV: -1, orderT: 0, gear: {},
                   hp: 1, bold: nature(R(), ownOf(v.f, "bold")), warm: nature(R(), ownOf(v.f, "warm")), greed: nature(R(), ownOf(v.f, "greedy")), stub: clamp(ownOf(v.f, "stubborn") + (R() - 0.5) * S.differ, 0, 1), loyal: clamp(0.35 + ownOf(v.f, "loyalty") * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, sick: 0, immune: false,
@@ -2142,6 +2143,11 @@
         const tail = Math.pow(R(), 1 + S.unequal * 8) * (1 + S.unequal * 8);
         p.coins = shared ? 0 : S.coins * ((1 - S.unequal) + S.unequal * tail * 1.6);
         if (adult(p)) p.job = "farmer";
+        /* What a household already owns, of every age (TODO 15.5a): spread by id, not drawn, so the
+           world's dice fall as before. Everybody starting with nothing sent every household to the
+           store in the first hours, and the orders that left set a season's stock several times what
+           a village used, made in its first weeks. */
+        if (adult(p)) p.goods = 0.15 + ((p.id * 0.6180339887) % 1) * 0.85;
       }
       for (const v of villages) {
         v.food = 0; let n = 0;
@@ -2331,7 +2337,7 @@
       workedList = list;
     }
     function census() {
-      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; }
+      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; v.crafters = 0; }
       for (const f of factions) { f.pop = 0; f.soldiers = 0; f.hungry = 0; f.loyal = 0; f.adults = 0; f.mean.fill(0); }
       for (const p of people) {
         const v = villages[p.home], f = factions[p.f];
@@ -2339,7 +2345,7 @@
         if (p.hungry > 0) { v.hungry++; f.hungry++; }
         if (p.sick > 0) v.sick++;
         if (adult(p)) {
-          v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") f.soldiers++;
+          v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") f.soldiers++; else if (p.job === "crafter") v.crafters++;
           /* Each by name, in the order of TRAITS: read by a name held in a list, it was most of the census (TODO 15.25). */
           const m = f.mean; m[0] += p.bold; m[1] += p.warm; m[2] += p.greed; m[3] += p.stub; m[4] += p.patient; m[5] += p.temper; m[6] += p.hard; m[7] += p.curious; m[8] += p.honest;
         }
@@ -2468,7 +2474,10 @@
       /* The bench: what a batch would be worth at what the village is paying
          for goods. A village short of goods pays more, which is the signal
          that makes somebody take it up. */
-      const bench = clamp(craftOutput(p, v) * (shared ? 1.6 : v.priceGoods * 0.8), 0, 1.4);
+      /* Only as much of a batch as the village has asked for pays (TODO 15.5a), shared between the
+         village's crafters; with nothing asked for, the bench pays nothing and they do something else. */
+      const batch = craftOutput(p, v), wanted = clamp(asked(v) / (batch * (1 + v.crafters * 0.5)), 0, 1);
+      const bench = clamp(batch * wanted * (shared ? 1.6 : v.priceGoods * 0.8), 0, 1.4);
       /* The road: whether anywhere reachable wants what is here. */
       const here = villages[p.at] && villages[p.at].alive ? villages[p.at] : v;
       const route = villages.filter(o => o.alive).length > 1 ? bestRoute(p, here) : { best: null, gain: 0, what: "food" };
@@ -2485,7 +2494,10 @@
       /* Somebody takes up the work that looks worth most to them. Greed makes
          the paid trades more tempting; nobody becomes a trader with nowhere to
          trade with, and nobody works land that has nothing on it. */
-      const score = { farmer: w.land, crafter: w.bench * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) };
+      /* A house a household pays to have built is an order too (TODO 15.5a): a builder's wage, shared
+         between the village's crafters. Before 15.5a the glut kept crafters about whether or not. */
+      const building = v.paidSites > 0 ? BUILDER_PAY * clamp(v.paidSites / (1 + v.crafters * 0.5), 0, 1) : 0;
+      const score = { farmer: w.land, crafter: Math.max(w.bench, building) * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) };
       if (FISH && fishGround(v)) score.fisher = fishWorth(v) * 0.9;   // TODO 6c
       if (MATS) {                                                       // TODO 9a
         const iw = matSpot(v, "wood"), is = matSpot(v, "stone"), io = matSpot(v, "iron");
@@ -2718,9 +2730,43 @@
         const cost = amount * price, tax = cost * taxFor(v, p);
         pay(p, cost); v.till += cost - tax; factions[v.f].treasury += tax;
       }
-      if (what === "food") { v.food -= amount; p.food += amount; } else if (what === "goods") { v.goods -= amount; p.goods += amount; } else v[what] -= amount;   // a load of wood, stone or ore goes on the cart
+      if (what === "food") { v.food -= amount; p.food += amount; } else if (what === "goods") { v.goods -= amount; p.goods += amount; tookGoods(p, v, amount); } else v[what] -= amount;   // a load of wood, stone or ore goes on the cart
       return amount;
     }
+    /* ── made to order (TODO 15.5a) ────────────────────────────────────────
+       Crafters make what somebody has asked for, not into a full store. A
+       household or a worker who wants goods the store cannot supply leaves an
+       order (one at a time, the largest they have wanted), and the store keeps
+       about what was taken from it in the last season (`v.used`, a running sum
+       that falls by e⁻¹ in ninety days). What a crafter can sell is what is
+       asked for plus that stock, less what is on the shelf. Before this, a
+       default year made about 30,000 goods and used under 3,000 (README,
+       "Made to order"). */
+    const LEVY = ["farmer", "crafter", "herder", "hunter", "fisher", "woodcutter", "miner"];   // who is called up, in this order
+    const ORDER_KEEP = 60 * DAY_HOURS, USED_KEEP = Math.exp(-1 / 90);
+    function placeOrder(p, v, amount) {
+      if (amount <= 0.01) return;
+      if (p.order > 0 && p.orderV !== v.id) dropOrder(p);
+      if (amount > p.order) { v.wanted += amount - p.order; p.order = amount; }
+      p.orderV = v.id; p.orderT = t;
+    }
+    function dropOrder(p) {
+      if (p.order > 0) { const o = villages[p.orderV]; if (o) o.wanted = Math.max(0, o.wanted - p.order); }
+      p.order = 0; p.orderV = -1;
+    }
+    /* Goods taken off the shelf: the season's use, and the taker's order filled. */
+    function tookGoods(p, v, amount) {
+      count.goodsUsed += amount; v.used += amount;
+      if (p && p.order > 0 && p.orderV === v.id) {
+        const filled = Math.min(p.order, amount);
+        p.order -= filled; v.wanted = Math.max(0, v.wanted - filled);
+        if (p.order <= 0.01) dropOrder(p);
+      }
+    }
+    /* What the village would buy from its crafters now: orders and a season's stock, less the shelf. */
+    function asked(v) { return Math.max(0, v.wanted + v.used - v.goods); }
+    /* And what its till can pay for of that, for goods carried to it from elsewhere. */
+    function canBuy(v) { return shared ? asked(v) : Math.min(asked(v), Math.max(0, v.till) / (v.priceGoods * 0.85)); }
     function sell(p, v, what, amount) {
       if (amount <= 0.01) return 0;
       if (!shared) {
@@ -2753,7 +2799,12 @@
         }
       }
       outfit(p, v);
-      if (p.goods < 0.15 && (shared ? v.goods > v.pop * 0.05 : p.coins > v.priceGoods * 3)) buy(p, v, "goods", 1);
+      /* An order left two months unfilled is given up (TODO 15.5a). */
+      if (p.order > 0 && t - p.orderT > ORDER_KEEP) dropOrder(p);
+      if (p.goods < 0.15 && (shared || p.coins > v.priceGoods * 3)) {
+        const got = shared && v.goods <= v.pop * 0.05 ? 0 : buy(p, v, "goods", 1);
+        if (got < 0.99) placeOrder(p, v, 1 - got);
+      }
     }
     /* Declarations, not arrows: `livelihood` reads them from `chooseJob`, which
        `settle` calls while the world is still being built. */
@@ -2780,7 +2831,7 @@
         if (mat === "wool" && !matGround(v).grass.length && v.wool < needed) mat = undefined;  // a pack of whatever there is, with no grazing near
         if (mat && v[mat] < needed) continue;
         if (p.goods < needed) buy(p, v, "goods", needed - p.goods);
-        if (p.goods + 1e-10 < needed) continue;
+        if (p.goods + 1e-10 < needed) { placeOrder(p, v, needed - p.goods); continue; }
         p.goods = Math.max(0, p.goods - needed); p.gear[key] = 1;
         if (mat) v[mat] -= needed;
       }
@@ -3499,16 +3550,19 @@
       if (p.task === "make") {
         if (!p.making) { p.making = true; p.wait = spell("craft"); return; }
         p.making = false;
-        const made = craftOutput(p, v);
-        wear(p, "tool");
+        /* Only what is asked for, and one in hand, counting what they already hold unsold (TODO 15.5a):
+           made for orders a till could not pay, goods piled up in the hands of people who made them in
+           their spare hours, 10–14 each by autumn. */
+        const room = asked(v), made = Math.min(craftOutput(p, v), Math.max(0, room + 1 - p.goods));
+        if (made > 0) wear(p, "tool");
         if (MATS) {
           /* The wood and ore it took, bought from the store (TODO 9a). */
           const w = v.wood >= 0.5 ? Math.min(v.wood, made * 0.4) : 0, o = v.iron >= 0.3 ? Math.min(v.iron, made * 0.25) : 0, l = v.wool >= 0.3 ? Math.min(v.wool, made * 0.2) : 0;
           v.wood -= w; v.iron -= o; v.wool -= l;
           if (!shared) { const c = Math.min(funds(p), w * v.priceWood + o * v.priceIron + l * v.priceWool); pay(p, c); v.till += c; }
         }
-        p.goods += made;
-        if (p.goods > 1) { const sold = sell(p, v, "goods", p.goods - 1); p.goods -= sold; }
+        p.goods += made; count.goodsMade += made;
+        if (p.goods > 1 && room > 0.01) { const sold = sell(p, v, "goods", Math.min(p.goods - 1, room)); p.goods -= sold; }
         shop(p, v);
         p.task = "idle"; p.wait = spell("market");
         return;
@@ -3557,6 +3611,10 @@
          within reach, but go nowhere they have heard has a sickness, and food goes half as willingly
          again to where they have heard it is dear, starving, or had a dry year. */
       const rum = rumours(p);
+      /* Nor to load at a village they have heard has a sickness, unless they are already there
+         (found by test/heard.test.mjs after TODO 15.5a: hunters of other peoples kept going to the
+         village named, to pick up a load for somewhere else). */
+      if (rum && here.id !== p.home && heardSick.includes(here.id) && Math.hypot(p.x - here.x, p.y - here.y) > here.radius + 1) return { best: null, gain: 0, what: "food" };
       for (const o of villages) {
         if (!o.alive || o === here) continue;
         if (o.f !== p.f && (atWar(o.f, p.f) || shared || hostile(o.f, p.f))) continue;
@@ -3570,7 +3628,10 @@
         } else {
           for (const w of ["food", "goods"]) {
             const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02) * (w === "food" ? pull : 1);
-            if (g > gain && (w === "food" ? here.food : here.goods) > 1) { gain = g; best = o; what = w; }
+            /* Goods only to where they are asked for and can be paid for (TODO 15.5a): a village with
+               orders waiting looks dear, and carriers took packs there that its empty till could not
+               buy, and kept them — 20 to 37 goods each by autumn. */
+            if (g > gain && (w === "food" ? here.food > 1 : here.goods > 1 && canBuy(o) > 1)) { gain = g; best = o; what = w; }
           }
           /* Wood, stone and ore from where they are cheap (TODO 9a): an ore village sells to a forest one. */
           if (MATS) for (const w of TRADED) {
@@ -3809,6 +3870,7 @@
       p.hp = -99; needStamp++;
       if (p.on) { madeRoom(p.x, p.y); p.on = 2; }   // the dead are in nobody's way: see `move`. 2: counted
       count[why]++;
+      dropOrder(p);
       const v = villages[p.home], f = factions[p.f];
       if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else if (p.cargo.what === "goods") v.goods += p.cargo.amount; else v[p.cargo.what] += p.cargo.amount; }
       v.food += p.food; v.goods += p.goods;
@@ -5556,11 +5618,15 @@
     function market(v) {
       if (S.prices === "float" && !shared) {
         v.priceFood = clamp(Math.pow((v.pop * 0.5 + 1) / Math.max(v.food, 0.4), 0.6), 0.3, 7);
-        v.priceGoods = clamp(2 * Math.pow((v.pop * 0.12 + 1) / Math.max(v.goods, 0.3), 0.5), 0.6, 9);
+        /* Goods are dear while orders wait and cheap while the shelf holds more than a season's use (TODO 15.5a). */
+        const base = v.pop * 0.05 + 1;
+        v.priceGoods = clamp(2 * Math.pow((v.wanted + v.used + base) / (Math.max(0, v.goods) + base), 0.5), 0.6, 9);
       } else { v.priceFood = 1; v.priceGoods = 2; }
+      /* Houses being built, and those a household pays a builder for (TODO 15.5a). */
+      let need = 0, paid = 0; for (const h of sites) if (h.v === v.id && !h.built) { need += Math.max(0, h.goodsNeed - h.goodsIn); if (h.paid) paid++; }
+      v.paidSites = paid;
       if (MATS) {
         /* What the village wants of each (TODO 9a): its houses being built, what its crafters work, its gear. */
-        let need = 0; for (const h of sites) if (h.v === v.id && !h.built) need += Math.max(0, h.goodsNeed - h.goodsIn);
         v.wantWood = need * 0.8 + v.pop * 0.3 + 2; v.wantStone = need * 0.2 + v.pop * 0.08 + 1; v.wantIron = v.pop * 0.1 + 1;
         v.wantWool = v.pop * 0.08 + 1; v.wantHide = v.pop * 0.04 + 1;   // TODO 9b: clothes, packs, shields
         if (FIRE && matGround(v).wood.length) v.wantWood += v.pop * BURN * (chill() * 30 + winterAhead());   // TODO 9c: the winter's fires
@@ -5574,6 +5640,7 @@
       }
     }
     function villageTurn(v) {
+      v.used *= USED_KEEP;   // TODO 15.5a: the season's use, a running sum
       if (v.pop === 0) {
         /* Everybody fled (TODO 14b): the place stands while its own wait to come back, and they
            come back a week after the last enemy left its edge. */
@@ -6315,8 +6382,10 @@
         let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 / (wars && inSeason ? 1 : 7))));   // a levy for the season comes in days (TODO 14e)
         /* Farmers first, as levies were; then crafters. With real-size bodies (TODO 7a) farming
            stopped queuing in crowds, fields went further, fewer farmed, and an army raised from
-           farmers alone stalled short of what its leader asked (4 of 23 wanted 6). */
-        for (const job of ["farmer", "crafter"]) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
+           farmers alone stalled short of what its leader asked (4 of 23 wanted 6). Then any other
+           trade (TODO 15.5a): once crafters made only to order there were few, and in rule.test's
+           world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
+        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */

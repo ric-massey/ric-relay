@@ -50,7 +50,10 @@ function hours(o, days, seed) {
 {
   /* Sickness off: an outbreak in one run and not the other fills the beds whatever anybody is like. */
   const idle = hours({ hardwork: 0.1, plague: "none" }, 20), keen = hours({ hardwork: 0.9, plague: "none" }, 20);
-  assert.ok(keen.rest < idle.rest * 0.5 && keen.work > idle.work + 0.05,
+  /* Under 0.7 since TODO 15.5a (it was 0.5): the bench pays only for what was ordered, so there is
+     less work to be had, and the keen rest 4.0% against the idle 7.1% (before, about 1% against 5%);
+     they still work about eleven points more. */
+  assert.ok(keen.rest < idle.rest * 0.7 && keen.work > idle.work + 0.05,
     "the hardworking work: resting and visiting " + (idle.rest * 100).toFixed(1) + "% → " + (keen.rest * 100).toFixed(1) + "%, at work " + (idle.work * 100).toFixed(1) + "% → " + (keen.work * 100).toFixed(1) + "%");
 
   const set = hours({ curious: 0.1 }, 20), new_ = hours({ curious: 0.9 }, 20);
@@ -77,8 +80,12 @@ function hours(o, days, seed) {
   /* A winter with little put by: hungry households, and some with plenty. Three worlds, since in
      any one it comes down to a few households. */
   const robbed = (honest, seed) => hours({ honest, start: "winter", stored: 0.2 }, 30, seed).pilfered;
-  /* Three worlds: since item 11 a thief knows only some of the houses (2026-11-17: 8 against 0). */
-  const crooks = { pilfered: robbed(0.1, 11) + robbed(0.1, 3) + robbed(0.1, 7) }, straight = { pilfered: robbed(0.9, 11) + robbed(0.9, 3) + robbed(0.9, 7) };
+  /* Three worlds: since item 11 a thief knows only some of the houses (2026-11-17: 8 against 0).
+     Five since TODO 15.5a: with crafters no longer making goods nobody wanted, those hours went to
+     food, and these winters had a twentieth of the hungry hours (7 against 0 over five worlds, 2
+     against 0 over the first three; a thinner winter, stored 0.1, has nobody with plenty to rob). */
+  const seeds = [11, 3, 7, 5, 9], sum = honest => seeds.reduce((n, seed) => n + robbed(honest, seed), 0);
+  const crooks = { pilfered: sum(0.1) }, straight = { pilfered: sum(0.9) };
   assert.ok(crooks.pilfered >= straight.pilfered * 3 + 4, "the dishonest steal when hungry: " + straight.pilfered + " → " + crooks.pilfered + " larders robbed");
 }
 

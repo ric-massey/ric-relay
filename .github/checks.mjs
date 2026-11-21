@@ -159,6 +159,7 @@ const SUITES = [
   ['world-builder treaties', ['projects/world-builder/test/treaties.test.mjs']],   // TODO 14d
   ['world-builder ways', ['projects/world-builder/test/ways.test.mjs']],   // TODO 15a
   ['world-builder land updates', ['projects/world-builder/test/land-updates.test.mjs']],   // TODO 15.25
+  ['world-builder made to order', ['projects/world-builder/test/orders.test.mjs']],   // TODO 15.5a
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

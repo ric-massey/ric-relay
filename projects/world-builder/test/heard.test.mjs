@@ -12,28 +12,39 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 
-// 1. Everybody outside the biggest village (A) is told a sickness has started there; or, in the
-//    second world, told the same news naming the next biggest (B). Trips set out for each by people
+// 1. Everybody outside the busiest village (A) is told a sickness has started there; or, in the
+//    second world, told the same news naming the next busiest (B). Trips set out for each by people
 //    who do not live there (to sell, trade or look for a market), over the next thirty days.
-function trips(say) {
-  const w = People.create({ seed: 13, plague: "none" });
-  w.step(24 * 60);
-  const big = w.villages.filter(v => v.alive).sort((a, b) => b.pop - a.pop), A = big[0], B = big[1];
-  const e = w.report("sick", A.id, w.people.filter(p => p.hp > 0 && w.adult(p) && p.home !== A.id).map(p => p.id), say === "B" ? B.id : A.id);
-  assert.ok(w.telling(e, say === "B" ? 1 : 0).includes(say === "B" ? B.name : A.name), "the telling names the village it should");
-  const TRIP = new Set(["carry", "scout", "pickup"]), was = new Map();
+/* A and B are the two villages most travelled to in the same world told nothing (they were the two
+   biggest until TODO 15.5a; once goods went only where they were ordered, seed 13's second biggest
+   had 4 trips in a month, too few to tell anything). */
+function counted(w, days = 30) {
+  const TRIP = new Set(["carry", "scout", "pickup"]), was = new Map(), to = new Map();
   for (const p of w.people) was.set(p.id, p.at + ":" + p.task);
-  let toA = 0, toB = 0;
-  for (let h = 0; h < 24 * 30; h++) {
+  for (let h = 0; h < 24 * days; h++) {
     w.step(1);
     for (const p of w.people) {
       if (p.hp <= 0) continue;
       const k = p.at + ":" + p.task;
-      if (k !== was.get(p.id) && TRIP.has(p.task)) { if (p.at === A.id && p.home !== A.id) toA++; if (p.at === B.id && p.home !== B.id) toB++; }
+      if (k !== was.get(p.id) && TRIP.has(p.task) && p.home !== p.at) to.set(p.at, (to.get(p.at) || 0) + 1);
       was.set(p.id, k);
     }
   }
-  return { toA, toB };
+  return to;
+}
+const busiest = (() => {
+  const w = People.create({ seed: 13, plague: "none" });
+  w.step(24 * 60);
+  return [...counted(w)].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+})();
+function trips(say) {
+  const w = People.create({ seed: 13, plague: "none" });
+  w.step(24 * 60);
+  const A = w.villages[busiest[0]], B = w.villages[busiest[1]];
+  const e = w.report("sick", A.id, w.people.filter(p => p.hp > 0 && w.adult(p) && p.home !== A.id).map(p => p.id), say === "B" ? B.id : A.id);
+  assert.ok(w.telling(e, say === "B" ? 1 : 0).includes(say === "B" ? B.name : A.name), "the telling names the village it should");
+  const to = counted(w);
+  return { toA: to.get(A.id) || 0, toB: to.get(B.id) || 0 };
 }
 {
   const right = trips("A"), wrong = trips("B");
