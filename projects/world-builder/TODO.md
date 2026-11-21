@@ -2951,6 +2951,17 @@ is split the same way, so 15.5 needs nothing from 15:
   a thing built and fed, so it stops when what feeds it stops. As light gets cheaper people stay up
   later and the night's waking hour goes, by the rule above. (1900: 0.22 hours of work a thousand
   lumen-hours; 1992: 0.00012.)
+**Light changes sleep** (Ric, 2026-11-21: "Shouldn't light mess with sleep?"). Yes, and measured: two
+Toba/Qom communities in the Argentine Chaco, of one people and once foragers, one with electricity and
+one without — the one with it slept later and less, and its body clock (the evening rise of melatonin)
+ran later; the lead author thinks industrial societies show it more strongly
+([de la Iglesia and others 2015, PubMed](https://pubmed.ncbi.nlm.nih.gov/26092820/);
+[University of Washington](https://www.washington.edu/news/2015/06/19/access-to-electricity-is-linked-to-reduced-sleep);
+[melatonin follow-up, PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC5320422)). *So:* light after dark
+does two things, by how bright it is — people stay up while they have it (and spend it), and their
+sleep moves later and shortens a little, so on long nights the middle waking goes and on short ones
+people sleep less. Firelight and a candle do little of this; electric light does most. *To find
+before building:* how many minutes, from the full papers.
 
 **Budget:** default for a–s; j faster only.
 
