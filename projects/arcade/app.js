@@ -20,13 +20,13 @@
     {id:'snake',name:'Snake',tag:'An appetite for trouble.',sub:'Eat. Grow. Mind the walls.',rules:'Use the arrow keys, WASD, swipe anywhere on the board, or tap the direction buttons. Eat an apple for ten points and grow one segment. The walls and your own body end the game. You cannot reverse into yourself. The pace picks up as you eat. Slow is gentler and Through walls lets you wrap around the edges; only Classic goes on the board. P pauses, and changing tabs pauses automatically.'}
   ];
   const MODES = {
-    solitaire:[['draw1','Draw one'],['draw3','Draw three']],
+    solitaire:[['draw1','Draw one'],['draw3','Draw three'],['daily','Daily deal']],
     chess:[['cpu','Vs computer · you’re White'],['cpu-black','Vs computer · you’re Black'],['two','Two players']],
     checkers:[['cpu','Vs computer'],['two','Two players']],
     tictactoe:[['cpu','Vs computer'],['two','Two players']],
     wordle:[['daily','Daily word'],['practice','Practice']],
-    sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard']],
-    minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines']],
+    sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['daily','Daily puzzle']],
+    minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines'],['expert','Expert · 99 mines']],
     snake:[['classic','Classic'],['slow','Slow'],['walls','Through walls']],
     tetris:[]
   };
@@ -73,12 +73,12 @@
   // ---- scoreboards (shared Worker, unchanged keys) -------------------------
   /* Only the original game of each kind has a board: Draw one, Classic Snake.
      New boards would need the Worker's allowlist changed and redeployed. */
-  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':null;case 'sudoku':return 'sudoku-'+mode;case 'minesweeper':return 'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return 'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:'wordle-practice';default:return null;}}
+  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':mode==='daily'?'solitaire-daily-'+dailyDate:null;case 'sudoku':return mode==='daily'?'sudoku-daily-'+dailyDate:'sudoku-'+mode;case 'minesweeper':return 'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return 'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:'wordle-practice';default:return null;}}
   function scoreText(score,key=board()){return key?.startsWith('wordle-')?score+' / 6':key==='snake'||key==='tetris'?score.toLocaleString():fmtTime(score);}
   function sorted(rows,key){return rows.slice().sort((a,b)=>(key==='snake'||key==='tetris'?b.score-a.score:a.score-b.score)||(a.at||0)-(b.at||0)).slice(0,10);}
   async function request(path,options){if(!remote)throw Error('offline');const res=await fetch(remote+'/arcade/scores'+path,{...options,signal:AbortSignal.timeout(6000)});if(!res.ok)throw Error(res.status===429?'Please wait a minute before submitting again.':'Shared scoreboard is unavailable.');return res.json();}
   function showRows(rows,key){$('scores').replaceChildren();if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent='The board is open. Put your initials up here.';$('scores').append(li);return;}for(const row of sorted(rows,key)){const li=document.createElement('li'),name=document.createElement('strong'),score=document.createElement('span');name.textContent=row.initials;score.textContent=scoreText(row.score,key);li.append(name,score);$('scores').append(li);}}
-  async function refreshScores(){const key=board(),version=++boardRefresh;$('score-panel').hidden=!key;if(!key)return;$('score-kind').textContent=key.startsWith('wordle-')?(mode==='daily'?'Today · '+dailyDate+' · fewest guesses':'Practice · fewest guesses'):key==='snake'||key==='tetris'?'Top ten · highest score':'Top ten · fastest wins';$('score-source').textContent='Loading shared board…';try{const data=await request('?board='+encodeURIComponent(key));if(version!==boardRefresh)return;showRows(data.scores,key);$('score-source').textContent='Everyone · shared scoreboard';}catch{if(version!==boardRefresh)return;showRows(storage.get('scores:'+key,[]),key);$('score-source').textContent='This browser only · shared board unavailable';}}
+  async function refreshScores(){const key=board(),version=++boardRefresh;$('score-panel').hidden=!key;if(!key)return;$('score-kind').textContent=key.startsWith('wordle-')?(mode==='daily'?'Today · '+dailyDate+' · fewest guesses':'Practice · fewest guesses'):key.includes('-daily-')?'Today · '+dailyDate+' · fastest wins':key==='snake'||key==='tetris'?'Top ten · highest score':'Top ten · fastest wins';$('score-source').textContent='Loading shared board…';try{const data=await request('?board='+encodeURIComponent(key));if(version!==boardRefresh)return;showRows(data.scores,key);$('score-source').textContent='Everyone · shared scoreboard';}catch{if(version!==boardRefresh)return;showRows(storage.get('scores:'+key,[]),key);$('score-source').textContent='This browser only · shared board unavailable';}}
   function saveDaily(){if(game?.id==='wordle'&&mode==='daily')storage.set('daily:'+dailyDate,{guesses:s.guesses,submitted:s.submitted||false,hard:!!s.hard});}
 
   // ---- your stats (this browser) ------------------------------------------
@@ -127,6 +127,7 @@
       if(lastMove)lastMove.fresh=false;
       if(game.id==='wordle')dailyDate=new Date().toISOString().slice(0,10);
       if(game.id==='sudoku'&&!s.given)return false;
+      if(isDaily()){dailyDate=new Date().toISOString().slice(0,10);if(s.day!==dailyDate){storage.remove('save:'+game.id);resetRun();return false;}}
       renderStats();
       if(action())renderAction(true);else render();
       if(clocked()&&elapsed)hint('Welcome back. Your game was saved; the clock picks up on your next move.');
@@ -158,9 +159,31 @@
   $('new-game').onclick=()=>start();
   $('mode').onchange=()=>{mode=$('mode').value;storage.set('mode:'+game.id,mode);start();};
 
+  // ---- sound (off unless turned on) -----------------------------------------
+  /* Small sounds made on the spot with Web Audio: no files to load. Off by
+     default (2026-11-21 TODO: "Sound effects (off by default)"); the speaker
+     button beside New game turns them on for every game, kept as classics:sound. */
+  let audio=null,soundOn=!!storage.get('sound',false);
+  const tone=(f,d,{type='sine',vol=.12,at=0,to=null}={})=>{const t0=audio.currentTime+at,o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.setValueAtTime(f,t0);if(to)o.frequency.exponentialRampToValueAtTime(to,t0+d);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(vol,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g).connect(audio.destination);o.start(t0);o.stop(t0+d+.02);};
+  const SOUNDS={
+    tap:()=>tone(660,.06,{type:'triangle',vol:.08}),
+    card:()=>{tone(320,.05,{type:'triangle',vol:.09});tone(180,.07,{type:'sine',vol:.06,at:.01});},
+    flip:()=>tone(520,.07,{type:'triangle',vol:.07,to:780}),
+    capture:()=>{tone(300,.09,{type:'square',vol:.05});tone(200,.12,{type:'triangle',vol:.08,at:.03});},
+    flag:()=>tone(880,.08,{type:'triangle',vol:.07,to:1200}),
+    eat:()=>{tone(700,.06,{type:'square',vol:.04});tone(1050,.08,{type:'square',vol:.04,at:.05});},
+    clear:()=>[523,659,784].forEach((f,i)=>tone(f,.12,{type:'triangle',vol:.08,at:i*.05})),
+    error:()=>{tone(180,.09,{type:'square',vol:.05});tone(150,.12,{type:'square',vol:.05,at:.09});},
+    boom:()=>tone(160,.5,{type:'sawtooth',vol:.09,to:40}),
+    lose:()=>[392,330,262].forEach((f,i)=>tone(f,.22,{type:'triangle',vol:.08,at:i*.14})),
+    win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.25,{type:'triangle',vol:.09,at:i*.09}))
+  };
+  function sfx(name){if(!soundOn)return;try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();SOUNDS[name]?.();}catch{}}
+  function soundButton(){const b=button('',()=>{soundOn=!soundOn;storage.set('sound',soundOn);paint();if(soundOn)sfx('flip');},'sound-toggle');b.id='sound-toggle';const paint=()=>{b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>'+(soundOn?'<path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>':'<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>')+'</svg>';b.setAttribute('aria-label',soundOn?'Sound on':'Sound off');b.setAttribute('aria-pressed',String(soundOn));b.title=soundOn?'Sound on':'Sound off';};paint();$('new-game').before(b);}
+
   // ---- celebration ---------------------------------------------------------
   function celebrate(){
-    if(reduced())return;const c=document.createElement('canvas');c.className='confetti';c.width=innerWidth;c.height=innerHeight;document.body.append(c);const x=c.getContext('2d'),css=getComputedStyle(document.body);
+    sfx('win');if(reduced())return;const c=document.createElement('canvas');c.className='confetti';c.width=innerWidth;c.height=innerHeight;document.body.append(c);const x=c.getContext('2d'),css=getComputedStyle(document.body);
     const colors=[css.getPropertyValue('--green'),'#f1c667','#e58276','#69cad2','#b293d5',css.getPropertyValue('--ink')].map(v=>v.trim()||'#f1c667');
     const bits=Array.from({length:120},()=>({x:innerWidth/2+(Math.random()-.5)*innerWidth*.3,y:innerHeight*.4,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,r:Math.random()*6,s:5+Math.random()*5,c:colors[Math.floor(Math.random()*colors.length)]}));
     const t0=performance.now();const step=t=>{const k=(t-t0)/1000;x.clearRect(0,0,c.width,c.height);for(const b of bits){b.vy+=.45;b.x+=b.vx;b.y+=b.vy;b.vx*=.99;b.r+=.15;x.save();x.globalAlpha=Math.max(0,1-k/1.8);x.translate(b.x,b.y);x.rotate(b.r);x.fillStyle=b.c;x.fillRect(-b.s/2,-b.s/4,b.s,b.s/2);x.restore();}if(k<1.8)requestAnimationFrame(step);else c.remove();};requestAnimationFrame(step);
@@ -181,7 +204,7 @@
   function route(){
     const id=document.body.dataset.game,next=GAMES.find(g=>g.id===id);cleanup();if(!next){location.replace('../../gaming.html');return;}
     game=next;opts=storage.get('opt:'+id,{})||{};$('playroom').hidden=false;$('game-title').textContent=game.name;$('game-subtitle').textContent=game.sub;$('rules').textContent=game.rules;document.title=game.name+' — RIC//NET';
-    modes();levelPicker();
+    modes();levelPicker();soundButton();
     if(!restore())start();
     // No jump-scroll to the board: the header is compact enough that New game stays in view.
   }
@@ -194,17 +217,25 @@
       case 'tictactoe':s=Array(9).fill('');break;
       case 'chess':s=E.Chess.create();keys=[E.Chess.key(s)];break;
       case 'checkers':s=E.Checkers.create();keys=[checkerKey()];break;
-      case 'solitaire':s=E.Solitaire.create();s.draw=mode==='draw3'?3:1;break;
-      case 'sudoku':s=E.Sudoku.create(mode);s.given=s.b.slice();if(opts.mistakes)eligible=false;break;
-      case 'minesweeper':s=E.Mines.create(...({easy:[9,10],medium:[12,25],hard:[16,40]}[mode]));break;
+      case 'solitaire':s=mode==='daily'?E.Solitaire.create(dailyRandom()):E.Solitaire.create();s.draw=mode==='draw3'?3:1;break;
+      case 'sudoku':s=mode==='daily'?E.Sudoku.create('medium',dailyRandom()):E.Sudoku.create(mode);s.given=s.b.slice();if(opts.mistakes)eligible=false;break;
+      // Expert is 30 × 16; on a screen taller than it is wide it stands upright (16 across).
+      case 'minesweeper':s=mode==='expert'?(innerWidth<innerHeight?E.Mines.create(30,99,16):E.Mines.create(16,99,30)):E.Mines.create(...({easy:[9,10],medium:[12,25],hard:[16,40]}[mode]));break;
       case 'wordle':initWord();break;
       case 'snake':s=E.Snake.create();s.wrap=mode==='walls';break;
       case 'tetris':s=E.Tetris.create();break;
     }
+    if(isDaily()){s.day=dailyDate;const done=storage.get('dailydone:'+game.id+':'+dailyDate);if(done){eligible=false;}}
     renderStats();
     if(action())renderAction();else render();
+    if(isDaily()&&!eligible)hint(`You already finished today’s ${game.id==='sudoku'?'puzzle':'deal'}. Replays stay off the board. A new one comes at midnight UTC.`);
     updateMetric();refreshScores();
   }
+  /* Daily Sudoku and Solitaire (2026-11-21): one deal per UTC date, the same for
+     everyone, from a random stream seeded by the game and the date. */
+  function isDaily(){return mode==='daily'&&(game.id==='sudoku'||game.id==='solitaire');}
+  function dailyRandom(){dailyDate=new Date().toISOString().slice(0,10);return E.seeded(game.id+':'+dailyDate);}
+  function dailyDone(t){if(!isDaily())return;if(!storage.get('dailydone:'+game.id+':'+dailyDate))storage.set('dailydone:'+game.id+':'+dailyDate,{t});clearInterval(ticker);const tick=()=>hint('Next daily '+(game.id==='sudoku'?'puzzle':'deal')+' in '+untilNext()+'.');tick();ticker=setInterval(tick,1000);}
   function render(){({tictactoe:renderTic,chess:renderChess,checkers:renderCheckers,solitaire:renderSolitaire,sudoku:renderSudoku,minesweeper:renderMines,wordle:renderWord}[game.id]||drawAction)();}
   function grid(n,cls){const b=document.createElement('div');b.className='board '+cls;b.style.gridTemplateColumns=`repeat(${n},1fr)`;stage.replaceChildren(b);return b;}
   /* Computer moves wait a moment so "thinking…" paints first. */
@@ -215,7 +246,7 @@
     const turn=s.filter(Boolean).length%2?'O':'X',winner=E.Tic.winner(s),line=E.Tic.line(s);
     status(winner?winner==='draw'?'A draw.':(mode==='cpu'?(winner==='X'?'You win':'The computer wins'):'Player '+winner+' wins'):turn+' to play'+(mode==='cpu'&&turn==='O'?' · computer thinking…':''));
     const b=grid(3,'ttt');b.dataset.turn=!winner&&!(mode==='cpu'&&turn==='O')?turn:''; // hover shows a faint X or O
-    s.forEach((v,i)=>{const sq=button(v,()=>{if(finished||cpuBusy||s[i]||(mode==='cpu'&&turn==='O'))return;history.push(s.slice());s[i]=turn;moved=new Set([i]);renderTic();},'square '+(v==='O'?'o':'')+(moved.has(i)?' drop':'')+(line?.includes(i)?' win':''));sq.setAttribute('aria-label',`Row ${Math.floor(i/3)+1}, column ${i%3+1}: ${v||'empty'}`);sq.disabled=!!v||finished;b.append(sq);});
+    s.forEach((v,i)=>{const sq=button(v,()=>{if(finished||cpuBusy||s[i]||(mode==='cpu'&&turn==='O'))return;history.push(s.slice());s[i]=turn;moved=new Set([i]);sfx('tap');renderTic();},'square '+(v==='O'?'o':'')+(moved.has(i)?' drop':'')+(line?.includes(i)?' win':''));sq.setAttribute('aria-label',`Row ${Math.floor(i/3)+1}, column ${i%3+1}: ${v||'empty'}`);sq.disabled=!!v||finished;b.append(sq);});
     if(line){const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.setAttribute('class','strike');svg.setAttribute('viewBox','0 0 3 3');svg.setAttribute('aria-hidden','true');const ln=document.createElementNS(NS,'line');const at=i=>[i%3+.5,Math.floor(i/3)+.5];const a=at(line[0]),z=at(line[2]),dx=(z[0]-a[0])*.2,dy=(z[1]-a[1])*.2;ln.setAttribute('x1',a[0]-dx);ln.setAttribute('y1',a[1]-dy);ln.setAttribute('x2',z[0]+dx);ln.setAttribute('y2',z[1]+dy);ln.setAttribute('pathLength','1');svg.append(ln);b.append(svg);}
     tools.replaceChildren(button('↶ Undo',()=>{if(cpuBusy||!history.length)return;finished=false;s=history.pop();moved=new Set();renderTic();}));
     const st=stats();hint(mode==='cpu'?`You ${st.won||0} · Computer ${st.lost||0} · Draws ${st.drawn||0}`:`X ${st.sides?.X||0} · O ${st.sides?.O||0} · Draws ${st.sides?.draw||0}`);moved=new Set();
@@ -226,7 +257,7 @@
       finish(winner==='draw'?'A good standoff.':mode==='cpu'?(winner==='X'?'You take it.':'The computer takes it.'):winner+' takes it.',winner==='draw'?'Nobody gave an inch. Another round?':'Three in a row. Time for the rematch.');return;
     }
     persist();
-    if(mode==='cpu'&&turn==='O')cpu(()=>{const i=E.Tic.pick(s,LEVELS.tictactoe[opts.level||'medium']);s[i]='O';moved=new Set([i]);renderTic();});
+    if(mode==='cpu'&&turn==='O')cpu(()=>{const i=E.Tic.pick(s,LEVELS.tictactoe[opts.level||'medium']);s[i]='O';moved=new Set([i]);sfx('tap');renderTic();});
   }
 
   // ---- chess & checkers ----------------------------------------------------
@@ -297,9 +328,22 @@
       finish(result,'The board is settled. Play another whenever you like.');return;
     }
     persist();
-    if(thinking&&!cpuBusy)cpu(()=>{const m=E.Chess.best(s,LEVELS.chess[opts.level||'medium']);if(m)playChess(m,true);});
+    if(thinking&&!cpuBusy){if(opts.level==='hard'){const token=revision;cpuBusy=true;hardMove(E.copy(s),m=>{if(token!==revision||finished)return;cpuBusy=false;if(m)playChess(m,true);});}else cpu(()=>{const m=E.Chess.best(s,LEVELS.chess[opts.level||'medium']);if(m)playChess(m,true);});}
   }
-  function playChess(m,ai=false){history.push({state:E.copy(s),keyCount:keys.length,san:sanList.length,last:lastMove});sanList.push(E.Chess.san(s,m));s=E.Chess.apply(s,m);keys.push(E.Chess.key(s));selected=null;hintMove=null;lastMove={from:m.from,to:m.to,fresh:true};if(ai)cpuBusy=false;renderChess();}
+  /* Hard thinks in chess-worker.js for up to ~2 s, deeper as time allows. Where a
+     worker can't start (file:// pages) it falls back to a shorter search here. */
+  let chessWorker=null,workerJob=0;
+  function hardMove(state,done){
+    if(chessWorker===null){try{chessWorker=new Worker('../arcade/chess-worker.js');chessWorker.onerror=()=>{chessWorker=false;};}catch{chessWorker=false;}}
+    const local=()=>setTimeout(()=>done(E.Chess.think(state,700,3)),30);
+    if(!chessWorker){local();return;}
+    const id=++workerJob;let settled=false;const give=m=>{if(settled)return;settled=true;clearTimeout(guard);done(m);};
+    const guard=setTimeout(()=>{chessWorker=false;give(E.Chess.best(state,2));},8000);
+    chessWorker.onmessage=e=>{if(e.data.id===id)give(e.data.move);};
+    chessWorker.onerror=()=>{chessWorker=false;give(E.Chess.best(state,2));};
+    chessWorker.postMessage({id,state,ms:1800});
+  }
+  function playChess(m,ai=false){sfx(s.b[m.to]||m.enpassant?'capture':'tap');history.push({state:E.copy(s),keyCount:keys.length,san:sanList.length,last:lastMove});sanList.push(E.Chess.san(s,m));s=E.Chess.apply(s,m);keys.push(E.Chess.key(s));selected=null;hintMove=null;lastMove={from:m.from,to:m.to,fresh:true};if(ai)cpuBusy=false;renderChess();}
   function undoBoard(){
     if(cpuBusy||!history.length)return;finished=false;
     const mine=human();
@@ -327,7 +371,7 @@
      route stays highlighted; each hop slides from the square it just left. */
   function playChecker(m){
     const chained=s.chain>=0&&lastMove&&lastMove.to===m.from;
-    history.push({state:E.copy(s),keyCount:keys.length,last:lastMove});s=E.Checkers.apply(s,m);if(s.chain<0)keys.push(checkerKey());
+    sfx(m.capture!==undefined?'capture':'tap');history.push({state:E.copy(s),keyCount:keys.length,last:lastMove});s=E.Checkers.apply(s,m);if(s.chain<0)keys.push(checkerKey());
     lastMove={from:m.from,to:m.to,path:chained?[...(lastMove.path||[]),lastMove.from]:[],fresh:true};
     selected=s.chain>=0?s.chain:null;renderCheckers();
   }
@@ -339,7 +383,7 @@
   function solitaireMove(from,to){
     const pile=E.Solitaire.pile(s,from),stack=pile.slice(from.index??pile.length-1),old=E.copy(s);
     if(!E.Solitaire.move(s,from,to))return false;
-    history.push(old);selected=null;hintMove=null;moved=new Set(stack.map(cardId));beginClock();renderSolitaire();afterSolitaire();return true;
+    history.push(old);selected=null;hintMove=null;moved=new Set(stack.map(cardId));sfx('card');beginClock();renderSolitaire();afterSolitaire();return true;
   }
   /* Once the stock and waste are empty and every card is face up, the cards
      walk home on their own, one at a time. */
@@ -347,7 +391,7 @@
     if(E.Solitaire.won(s)){solitaireWon();return;}
     if(E.Solitaire.autoReady(s)&&!autoTimer){hint('Every card is showing. Carrying them home…');autoTimer=setInterval(()=>{const step=E.Solitaire.autoStep(s);if(!step){clearInterval(autoTimer);autoTimer=null;renderSolitaire();return;}moved=new Set([cardId(step.card)]);renderSolitaire();if(E.Solitaire.won(s)){clearInterval(autoTimer);autoTimer=null;solitaireWon();}},reduced()?10:110);}
   }
-  function solitaireWon(){const t=seconds(),post=mode==='draw1'&&eligible;record('won',mode==='draw1'?t:null);celebrate();finish('A clean table.',`All four suits, home. ${s.moves} moves in ${fmtTime(t)}.`,post?t:null);}
+  function solitaireWon(){const t=seconds(),post=(mode==='draw1'||mode==='daily')&&eligible;record('won',mode!=='draw3'?t:null);celebrate();dailyDone(t);finish('A clean table.',`All four suits, home. ${s.moves} moves in ${fmtTime(t)}.`,post?t:null);}
   /* Tapping the selected card again sends it where it fits: home first, then
      the first column that takes it. A double-click does the same. */
   function sendAnywhere(p){const pile=E.Solitaire.pile(s,p),at=p.index??pile.length-1,c=pile[at];if(!c)return false;if(at===pile.length-1&&p.type!=='foundation'&&solitaireMove(p,{type:'foundation',col:c.suit}))return true;for(let col=0;col<7;col++)if(!(p.type==='tableau'&&p.col===col)&&E.Solitaire.copyTry(s,p,{type:'tableau',col}))return solitaireMove(p,{type:'tableau',col});return false;}
@@ -360,7 +404,7 @@
     }
     const pile=E.Solitaire.pile(s,p),index=p.index??pile.length-1;selected=pile[index]?.up?{...p,index}:null;if(p.type!=='tableau'&&selected)delete selected.index;renderSolitaire();
   }
-  function solitaireDraw(){if(finished||autoTimer)return;const old=E.copy(s);if(E.Solitaire.draw(s)){history.push(old);selected=null;hintMove=null;moved=new Set(s.waste.slice(-(s.draw||1)).map(cardId));beginClock();renderSolitaire();}}
+  function solitaireDraw(){if(finished||autoTimer)return;const old=E.copy(s);if(E.Solitaire.draw(s)){sfx('flip');history.push(old);selected=null;hintMove=null;moved=new Set(s.waste.slice(-(s.draw||1)).map(cardId));beginClock();renderSolitaire();}}
   function renderSolitaire(){
     stage.className='stage solitaire-stage';stage.replaceChildren();
     const top=el('div','solitaire-top');
@@ -453,19 +497,19 @@
     if(finished||selected===null||s.given[selected])return;beginClock();
     if(notesMode&&n){if(s.b[selected])return;sudokuHistory();const a=notes[selected]||[];notes[selected]=a.includes(n)?a.filter(v=>v!==n):[...a,n];}
     else{if(s.b[selected]===n)return;sudokuHistory();s.b[selected]=n;delete notes[selected];if(n){for(const j of peersOf(selected))if(notes[j])notes[j]=notes[j].filter(v=>v!==n);moved=new Set([selected]);}}
-    renderSudoku();sudokuFinish();
+    sfx('tap');renderSudoku();sudokuFinish();
   }
-  function sudokuFinish(){if(E.Sudoku.valid(s.b)){const t=seconds();record('won',eligible?t:null);celebrate();finish('Everything in its place.',`Puzzle solved in ${fmtTime(t)}.`+(!eligible?' You had some help, so this one stays off the board.':''),eligible?t:null);}}
+  function sudokuFinish(){if(E.Sudoku.valid(s.b)){const t=seconds();record('won',eligible?t:null);celebrate();dailyDone(t);finish('Everything in its place.',`Puzzle solved in ${fmtTime(t)}.`+(!eligible?' You had some help, so this one stays off the board.':''),eligible?t:null);}}
 
   // ---- Minesweeper (keeps its clock) ---------------------------------------
   let pressTimer=null,pressFired=0;
   const setFace=f=>{face=f;const b=$('mine-face');if(b)b.textContent=f;};
   function renderMines(){
-    const b=grid(s.n,'mines');
+    const {rows,cols}=E.Mines.size(s),b=grid(cols,'mines'+(rows!==cols?' wide':''));if(rows!==cols){b.style.aspectRatio=`${cols}/${rows}`;b.style.width=`min(100%,${cols*34}px)`;}
     s.b.forEach((v,i)=>{
       const revealed=s.open[i]||(s.over&&v===-1),wrongFlag=s.over&&!s.won&&s.flags[i]&&v!==-1;
       const sq=button(revealed?(v===-1?'✹':v||''):wrongFlag?'✕':s.flags[i]?'⚑':'',()=>mineTap(i),'square'+(revealed?' revealed v'+v:'')+(s.over&&v===-1?' bomb':'')+(s.flags[i]?' flag':'')+(wrongFlag?' wrong':'')+(moved.has(i)?' boom':''));
-      sq.setAttribute('aria-label',`Row ${Math.floor(i/s.n)+1}, column ${i%s.n+1}: ${revealed?(v===-1?'mine':v+' neighboring mines'):s.flags[i]?'flag':'covered'}`);
+      sq.setAttribute('aria-label',`Row ${Math.floor(i/cols)+1}, column ${i%cols+1}: ${revealed?(v===-1?'mine':v+' neighboring mines'):s.flags[i]?'flag':'covered'}`);
       sq.oncontextmenu=e=>{e.preventDefault();if(Date.now()-pressFired<800)return;mineFlag(i);};
       // Press and hold flags a square, on a phone or with a mouse.
       sq.onpointerdown=e=>{if(finished||s.open[i]||e.button>0)return;setFace('😮');const x=e.clientX,y=e.clientY;clearTimeout(pressTimer);pressTimer=setTimeout(()=>{pressFired=Date.now();navigator.vibrate?.(15);setFace('🙂');mineFlag(i);},420);sq.onpointermove=m=>{if(Math.hypot(m.clientX-x,m.clientY-y)>10)clearTimeout(pressTimer);};};
@@ -480,10 +524,10 @@
     if(!finished)status((s.mines-s.flags.filter(Boolean).length)+' mines left'+(!eligible?' · practice':''));
     hint(flagMode?'Tap a covered square to place or remove a flag.':'Tap to reveal. Right-click, press and hold, or Flag mode to mark a mine.');moved=new Set();persist();
   }
-  function mineFlag(i){if(finished||s.open[i])return;s.flags[i]=!s.flags[i];renderMines();}
+  function mineFlag(i){if(finished||s.open[i])return;s.flags[i]=!s.flags[i];sfx('flag');renderMines();}
   function mineTap(i){
     if(finished||Date.now()-pressFired<600)return;if(flagMode){mineFlag(i);return;}if(s.flags[i])return;
-    beforeReveal=s.started?E.copy(s):null;beginClock();E.Mines.reveal(s,i);face=s.over?(s.won?'😎':'😵'):'🙂';if(s.over&&!s.won)moved=new Set([i]);renderMines();
+    beforeReveal=s.started?E.copy(s):null;beginClock();E.Mines.reveal(s,i);face=s.over?(s.won?'😎':'😵'):'🙂';if(!s.won)sfx(s.over?'boom':'tap');if(s.over&&!s.won)moved=new Set([i]);renderMines();
     if(s.over){const t=seconds();record(s.won?'won':'lost',s.won&&eligible?t:null);if(s.won)celebrate();finish(s.won?'A clean sweep.':'That was a mine.',s.won?`Every safe square, in ${fmtTime(t)}.`+(eligible?'':' A practice run, so it stays off the board.'):'Take that click back, try the same board again, or start a fresh field.',s.won&&eligible?t:null);renderMines();}
   }
 
@@ -535,16 +579,16 @@
     if(finished||Date.now()<revealUntil)return;
     if(ch==='⌫'||ch==='Backspace'){input=input.slice(0,-1);renderWord();return;}
     if(ch==='↵'||ch==='Enter'){
-      const nope=msg=>{shake=!reduced();renderWord();hint(msg);};
+      const nope=msg=>{sfx('error');shake=!reduced();renderWord();hint(msg);};
       if(input.length!==5){nope('Five letters before you guess.');return;}
       if(!window.ArcadeWords.allowed.has(input)){nope('That word isn’t in the word list. Try another.');return;}
       if(s.hard){const p=hardProblem(input);if(p){nope(p);return;}}
-      s.guesses.push(input);input='';saveDaily();revealRow=s.guesses.length-1;
+      s.guesses.push(input);input='';saveDaily();revealRow=s.guesses.length-1;sfx('flip');
       const won=s.guesses.at(-1)===s.answer,out=won||s.guesses.length===6;
       if(out){finished=true;lastFinish={guesses:won?s.guesses.length:null};record(won?'won':'lost',won?s.guesses.length:null);}
       renderWord();
       if(won){finished=false;setTimeout(celebrate,reduced()?0:1300);finish('You found it.',`The word was ${s.answer.toUpperCase()}. ${s.guesses.length} of 6 guesses.`,s.guesses.length);}
-      else if(out){finished=false;finish('One word got away.',`The word was ${s.answer.toUpperCase()}. ${mode==='daily'?'Another daily word arrives at midnight UTC.':'Try another whenever you like.'}`);}
+      else if(out){finished=false;setTimeout(()=>sfx('lose'),reduced()?0:1300);finish('One word got away.',`The word was ${s.answer.toUpperCase()}. ${mode==='daily'?'Another daily word arrives at midnight UTC.':'Try another whenever you like.'}`);}
       return;
     }
     if(/^[a-z]$/i.test(ch)&&input.length<5){input+=ch.toLowerCase();renderWord();}
@@ -599,17 +643,17 @@
   /* A landed piece waits half a second before it locks; moving or turning it
      restarts the wait, up to 15 times, so it can't hover forever. */
   function nudgeLock(){if(lockAt!==null&&lockResets<15){lockAt=performance.now();lockResets++;}}
-  function lockPiece(){const rows=E.Tetris.fullRows(s);E.Tetris.lock(s);lockAt=null;lockResets=0;if(rows.length&&!reduced())flash={rows,at:performance.now()};}
+  function lockPiece(){const rows=E.Tetris.fullRows(s);E.Tetris.lock(s);sfx(rows.length?'clear':'tap');lockAt=null;lockResets=0;if(rows.length&&!reduced())flash={rows,at:performance.now()};}
   function actionMove(x,y){if(!running&&!finished&&game.id==='snake'&&$('action-overlay'))beginAction();if(!running||paused||finished)return;if(game.id==='snake')E.Snake.turn(s,x,y);else if(E.Tetris.move(s,x,y))nudgeLock();drawAction();}
   function rotate(reverse=false){if(game.id!=='tetris'||!running||paused||finished)return;if(E.Tetris.rotate(s,reverse))nudgeLock();drawAction();}
-  function holdPiece(){if(game.id!=='tetris'||!running||paused||finished)return;if(E.Tetris.hold(s)){lockAt=null;lockResets=0;}drawAction();actionEnd();}
+  function holdPiece(){if(game.id!=='tetris'||!running||paused||finished)return;if(E.Tetris.hold(s)){lockAt=null;lockResets=0;sfx('flip');}drawAction();actionEnd();}
   function softDrop(){if(game.id!=='tetris'||!running||paused||finished)return;if(E.Tetris.move(s,0,1)){s.score++;lockAt=null;}else lockPiece();updateMetric();drawAction();actionEnd();}
   function hardDrop(){if(game.id!=='tetris'||!running||paused||finished)return;while(E.Tetris.move(s,0,1))s.score+=2;lockPiece();accumulator=0;updateMetric();drawAction();actionEnd();}
-  function actionEnd(){if(!s.over||finished)return;const newBest=s.score>0&&s.score>bestScore;record(null,s.score);finish(game.id==='snake'?'That’s a wrap.':'Stacked to the rafters.',`${s.score.toLocaleString()} points. ${game.id==='tetris'?s.lines+' lines cleared.':'Another apple is waiting.'}${newBest?' A new personal best.':''}`,s.score>0&&board()?s.score:null);if(newBest)celebrate();}
+  function actionEnd(){if(!s.over||finished)return;const newBest=s.score>0&&s.score>bestScore;if(!newBest)sfx('lose');record(null,s.score);finish(game.id==='snake'?'That’s a wrap.':'Stacked to the rafters.',`${s.score.toLocaleString()} points. ${game.id==='tetris'?s.lines+' lines cleared.':'Another apple is waiting.'}${newBest?' A new personal best.':''}`,s.score>0&&board()?s.score:null);if(newBest)celebrate();}
   function tick(now){
     if(!running||paused||finished)return;accumulator+=Math.min(now-lastFrame,250);lastFrame=now;
     const delay=game.id==='snake'?(mode==='slow'?Math.max(110,240-Math.floor(s.score/10)*3):Math.max(65,160-Math.floor(s.score/10)*4)):Math.max(80,800*Math.pow(.82,Math.floor(s.lines/10)));
-    while(accumulator>=delay&&!s.over){accumulator-=delay;if(game.id==='snake'){const food=s.food,score=s.score;E.Snake.step(s);if(s.score>score&&!reduced())for(let k=0;k<12;k++){const a=Math.PI*2*k/12;particles.push({x:food.x,y:food.y,vx:Math.cos(a),vy:Math.sin(a),at:now});}}else if(E.Tetris.move(s,0,1))lockAt=null;else if(lockAt===null)lockAt=now;}
+    while(accumulator>=delay&&!s.over){accumulator-=delay;if(game.id==='snake'){const food=s.food,score=s.score;E.Snake.step(s);if(s.score>score)sfx('eat');if(s.score>score&&!reduced())for(let k=0;k<12;k++){const a=Math.PI*2*k/12;particles.push({x:food.x,y:food.y,vx:Math.cos(a),vy:Math.sin(a),at:now});}}else if(E.Tetris.move(s,0,1))lockAt=null;else if(lockAt===null)lockAt=now;}
     if(game.id==='tetris'&&lockAt!==null){if(E.Tetris.fits(s,s.piece,s.x,s.y+1))lockAt=null;else if(now-lockAt>=500)lockPiece();}
     drawAction();updateMetric();actionEnd();if(running&&!finished)frame=requestAnimationFrame(tick);
   }

@@ -13,12 +13,12 @@ dependency; shared code stays entirely inside these Gaming projects.
 
 | Game | Rules / modes | Scoreboard |
 |---|---|---|
-| Solitaire | Klondike, draw one or draw three, unlimited recycling; drag and drop or tap-tap, tap twice to send a card where it fits; hint, undo, "no moves left", finishes itself once every card is face up; no clock on screen unless Show timer | Draw one only: fastest completed games, seconds |
+| Solitaire | Klondike, draw one, draw three, or the daily deal (draw one, the same for everyone each UTC day), unlimited recycling; drag and drop or tap-tap, tap twice to send a card where it fits; hint, undo, "no moves left", finishes itself once every card is face up; no clock on screen unless Show timer | Draw one only: fastest completed games, seconds |
 | Tic-tac-toe | Computer at Easy/Medium/Hard (Hard is unbeatable minimax) or two people; undo; running tally; strike-through on the winning line | None; win/draw |
-| Chess | Drawn SVG pieces; computer at Easy/Medium/Hard (1/2/3 plies, alpha-beta) as White or Black (board flips), or two people; legal moves, castling, en passant, four promotions; checkmate, stalemate, threefold repetition, 50-move and insufficient-material draws; last move and check shown; move list and captures; hint; undo whole computer turns | None; win/draw |
+| Chess | Drawn SVG pieces; computer at Easy/Medium (1/2 plies) or Hard (deepening to ~1.8 s with capture search, in `chess-worker.js`) as White or Black (board flips), or two people; legal moves, castling, en passant, four promotions; checkmate, stalemate, threefold repetition, 50-move and insufficient-material draws; last move and check shown; move list and captures; hint; undo whole computer turns | None; win/draw |
 | Wordle | Independent Wordle-style game; six guesses; shared UTC daily word or unlimited practice; repeated-letter accounting; hard mode; tiles flip, a rejected word shakes; share (squares only); countdown to the next daily word; guess chart | Fewest guesses, separate daily and practice boards |
-| Sudoku | Easy/medium/hard; generated with exactly one solution; notes (cleared from peers when a number is placed), fill-all-notes, same-number highlight, numbers-left on the pad, conflict highlighting, keyboard numbers/arrows/N, erase, undo; no clock on screen unless Show timer | Fastest wins per difficulty; Reveal or Show mistakes makes that game ineligible |
-| Minesweeper | 9×9/10, 12×12/25, 16×16/40; first square and neighbors safe; flood reveal, flags (right-click, press and hold, Flag mode) and chord opening; face button; after a mine, take the click back or replay the same board (both ineligible); always shows its clock | Fastest wins per field |
+| Sudoku | Easy/medium/hard, or the daily puzzle (medium, the same for everyone each UTC day); generated with exactly one solution; notes (cleared from peers when a number is placed), fill-all-notes, same-number highlight, numbers-left on the pad, conflict highlighting, keyboard numbers/arrows/N, erase, undo; no clock on screen unless Show timer | Fastest wins per difficulty; Reveal or Show mistakes makes that game ineligible |
+| Minesweeper | 9×9/10, 12×12/25, 16×16/40, expert 30×16/99 (upright on a tall screen); first square and neighbors safe; flood reveal, flags (right-click, press and hold, Flag mode) and chord opening; face button; after a mine, take the click back or replay the same board (both ineligible); always shows its clock | Fastest wins per field |
 | Tetris | Seven-piece bag, clockwise/counterclockwise rotation with horizontal wall kicks, ghost piece, hold, three-piece preview, half-second lock delay (15 resets), line-clear flash, soft/hard drop, level every ten lines; phone: drag, tap, flick | Highest points |
 | Checkers | American 8×8; forward men, short kings, mandatory captures and continued jumps; crowning ends the turn; computer at Easy/Medium/Hard (2/5/8 plies, alpha-beta) or two people; last move and jump path shown; pieces taken; repetition/80 quiet plies draw | None; win/draw |
 | Snake | 20×20; Classic, Slow, or Through walls (wraps); food avoids the snake; two queued turns per step; rising speed; swipe anywhere, mid-swipe | Classic only: highest points; ten per apple |
@@ -49,6 +49,14 @@ for each game and mode, or the vs-computer and two-player tallies, kept in this
 browser under `classics:stats:<game>:<mode>`. Per-game choices (computer level,
 Show timer, Show mistakes, hard mode) are `classics:opt:<game>`; the last mode
 picked is `classics:mode:<game>`.
+
+**Sound** is off until the speaker button beside New game turns it on (all games,
+`classics:sound`); every sound is made with Web Audio, nothing is downloaded.
+
+**Daily deals** for Sudoku and Solitaire use `ArcadeGames.seeded(game + ':' + date)`, so
+never change how `Sudoku.create` or `Solitaire.create` consume random numbers without
+accepting that every daily deal changes. Their boards are `sudoku-daily-<date>` and
+`solitaire-daily-<date>`.
 
 **Movement** respects `prefers-reduced-motion`: pieces slide, cards land, tiles
 flip, rows shake, a winning line draws, and a win throws confetti. The result card

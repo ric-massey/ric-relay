@@ -1,14 +1,18 @@
 /* The Arcade games' public, casual scoreboards. Browser-reported scores, not
    verified competitive records. No account, analytics id, IP or location is
    published. Separate D1 tables: this handler never reads visitor records. */
-const FIXED = new Set(['solitaire','snake','tetris','wordle-practice',...['easy','medium','hard'].flatMap(d=>['sudoku-'+d,'mines-'+d])]);
+/* 2026-11-21: mines-expert (30 × 16, 99 mines), and dated boards for the daily
+   Sudoku puzzle and Solitaire deal beside the daily word. */
+const FIXED = new Set(['solitaire','snake','tetris','wordle-practice','mines-expert',...['easy','medium','hard'].flatMap(d=>['sudoku-'+d,'mines-'+d])]);
+const DATED = /^(wordle|sudoku-daily|solitaire-daily)-(\d{4}-\d{2}-\d{2})$/;
+const dateOf = board => DATED.exec(board || '')?.[2] || null;
 const ORIGIN = /^(https:\/\/(www\.)?ricmassey\.com|https:\/\/ric-massey\.github\.io|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
 const ready = new WeakMap();
 const DAY = 86400000;
 export function validBoard(board) {
   if (FIXED.has(board)) return true;
-  if (!/^wordle-\d{4}-\d{2}-\d{2}$/.test(board || '')) return false;
-  const text = board.slice(7), date = Date.parse(text);
+  const text = dateOf(board); if (!text) return false;
+  const date = Date.parse(text);
   return Number.isFinite(date) && new Date(date).toISOString().slice(0,10) === text && date <= Date.now() && date >= Date.now() - 366 * DAY;
 }
 export function validScore(board, score) {
@@ -48,7 +52,7 @@ export async function arcadeRoute(request, env, parts, url, {json,cors}) {
     if(!/^application\/json\b/i.test(request.headers.get('content-type')||''))return json({error:'send JSON'},415,origin);
     body=await readBody(request);
     if(!body||typeof body!=='object'||Array.isArray(body)||!validBoard(body.board)||!validScore(body.board,body.score)||!/^[A-Z]{1,3}$/.test(body.initials||'')||!/^[a-zA-Z0-9-]{12,64}$/.test(body.id||''))return json({error:'invalid score'},400,origin);
-    if(body.board.startsWith('wordle-')&&body.board!=='wordle-practice'&&Date.parse(body.board.slice(7))<Date.now()-2*DAY)return json({error:'this daily board is closed'},400,origin);
+    if(dateOf(body.board)&&Date.parse(dateOf(body.board))<Date.now()-2*DAY)return json({error:'this daily board is closed'},400,origin);
   }
   const board=request.method==='GET'?url.searchParams.get('board'):body.board;
   if(!validBoard(board))return json({error:'unknown board'},400,origin);
@@ -68,7 +72,7 @@ export async function arcadeRoute(request, env, parts, url, {json,cors}) {
       await db.batch([
         db.prepare('INSERT OR IGNORE INTO arcade_scores (id,board,initials,score,sort_score,at) VALUES (?,?,?,?,?,?)').bind(body.id,board,body.initials,body.score,order,now),
         db.prepare('DELETE FROM arcade_scores WHERE board = ? AND id NOT IN (SELECT id FROM arcade_scores WHERE board = ? ORDER BY sort_score, at, id LIMIT 100)').bind(board,board),
-        db.prepare("DELETE FROM arcade_scores WHERE board GLOB 'wordle-????-??-??' AND at < ?").bind(now-366*DAY)
+        db.prepare("DELETE FROM arcade_scores WHERE (board GLOB 'wordle-????-??-??' OR board GLOB 'sudoku-daily-????-??-??' OR board GLOB 'solitaire-daily-????-??-??') AND at < ?").bind(now-366*DAY)
       ]);
     }
     return json({scores:await scores(env.STATS,board)},200,origin,{'cache-control':'no-store'});

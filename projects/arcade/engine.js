@@ -7,6 +7,9 @@
   const inside = (r, c, n = 8) => r >= 0 && c >= 0 && r < n && c < n;
   const side = p => p && (p === p.toUpperCase() ? 'w' : 'b');
   const other = t => t === 'w' ? 'b' : 'w';
+  /* A repeatable random stream from a text seed (FNV-1a into mulberry32): the
+     daily Sudoku and Solitaire deals are the same for everyone on a date. */
+  const seeded = text => { let h = 2166136261; for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); let a = h >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
 
   const Tic = {
     winner(b) { for (const l of [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]) if (b[l[0]] && l.every(i => b[i] === b[l[0]])) return b[l[0]]; return b.every(Boolean) ? 'draw' : null; },
@@ -125,25 +128,56 @@
     /* depth 1 = easy (one move ahead, a little careless), 2 = medium, 3 = hard.
        apply() copies positions shallowly, so three plies stay quick in a
        browser; leaves are scored without generating their moves. */
-    best(s, depth = 2, random = Math.random) {
+    /* opt.quiet: at the horizon, keep following captures (up to 4 more plies)
+       so a piece left hanging isn't missed. opt.deadline: a time (ms) after
+       which the search gives up by throwing Chess.TIMEOUT; think() uses both. */
+    best(s, depth = 2, random = Math.random, opt = {}) {
       const value = { p:100,n:320,b:330,r:500,q:900,k:0 };
       const evaluate = n => { let v = 0; for (let i = 0; i < 64; i++) { const p = n.b[i]; if (!p) continue; const k = p.toLowerCase(), w = side(p) === 'w'; let x = value[k]; if (k !== 'k') x += 3 * (7 - Math.abs(3.5 - i % 8) - Math.abs(3.5 - (i >> 3))); if (k === 'p') x += 4 * (w ? 6 - (i >> 3) : (i >> 3) - 1); v += w ? x : -x; } return v; };
       const gain = (n, m) => (value[n.b[m.to]?.toLowerCase()] || 0) - (value[n.b[m.from].toLowerCase()] || 0) / 10 + (m.promote === 'q' ? 800 : 0);
       const order = (n, moves) => moves.sort((x,y) => gain(n,y) - gain(n,x));
+      let nodes = 0;
+      const tick = () => { if (opt.deadline && (++nodes & 255) === 0 && Date.now() > opt.deadline) throw Chess.TIMEOUT; };
+      const calm = (n,a,b,q) => {
+        tick(); const stand = evaluate(n); if (!q) return stand;
+        if (n.turn === 'w') { if (stand >= b) return stand; a = Math.max(a, stand); } else { if (stand <= a) return stand; b = Math.min(b, stand); }
+        let v = stand;
+        for (const m of order(n, Chess.moves(n).filter(m => n.b[m.to] || m.enpassant || m.promote))) { const score = calm(Chess.apply(n,m),a,b,q-1); if (n.turn === 'w') { v = Math.max(v,score); a = Math.max(a,v); } else { v = Math.min(v,score); b = Math.min(b,v); } if (a >= b) break; }
+        return v;
+      };
       const search = (n,d,a,b) => {
-        if (!d) return evaluate(n);
+        tick();
+        if (!d) return opt.quiet ? calm(n,a,b,4) : evaluate(n);
         const moves = Chess.moves(n); if (!moves.length) return Chess.check(n) ? (n.turn === 'w' ? -100000 - d : 100000 + d) : 0;
         if (n.half >= 100) return 0;
         let v = n.turn === 'w' ? -Infinity : Infinity;
         for (const m of order(n, moves)) { const score = search(Chess.apply(n,m),d-1,a,b); if (n.turn === 'w') { v = Math.max(v,score); a = Math.max(a,v); } else { v = Math.min(v,score); b = Math.min(b,v); } if (a >= b) break; } return v;
       };
-      const scored = order(s, Chess.moves(s)).map(m => ({ m, v: search(Chess.apply(s,m), depth-1, -Infinity, Infinity) }));
-      if (!scored.length) return undefined;
       const sign = s.turn === 'w' ? 1 : -1;
+      let rootMoves = order(s, Chess.moves(s));
+      if (opt.first) rootMoves = [...rootMoves.filter(m => m.from === opt.first.from && m.to === opt.first.to && m.promote === opt.first.promote), ...rootMoves.filter(m => !(m.from === opt.first.from && m.to === opt.first.to && m.promote === opt.first.promote))];
+      if (opt.prune) { // a narrowing window at the root: exact best, faster, no ties kept
+        let bestM, bestV = -Infinity, a = -Infinity, b = Infinity;
+        for (const m of rootMoves) { const v = sign * search(Chess.apply(s,m), depth-1, sign > 0 ? Math.max(a, bestV) : a, sign < 0 ? Math.min(b, -bestV) : b); if (v > bestV) { bestV = v; bestM = m; } }
+        return bestM;
+      }
+      const scored = rootMoves.map(m => ({ m, v: search(Chess.apply(s,m), depth-1, -Infinity, Infinity) }));
+      if (!scored.length) return undefined;
       scored.sort((x,y) => sign * (y.v - x.v));
       // Easy picks among moves within a pawn and a half of its best, so it slips now and then.
       const slack = depth <= 1 ? 150 : 0, near = scored.filter(x => sign * (scored[0].v - x.v) <= slack);
       return near[Math.floor(random() * near.length)].m;
+    },
+    TIMEOUT: { timeout: true },
+    /* Hard (2026-11-21): look deeper and deeper, following captures at the
+       end, until the time runs out; play the best move of the last search that
+       finished. Run off the page's thread (chess-worker.js) so it never freezes it. */
+    think(s, ms = 1500, maxDepth = 6) {
+      const deadline = Date.now() + ms; let move = Chess.best(s, 2, Math.random, { quiet: true, prune: true });
+      for (let d = 3; d <= maxDepth && Date.now() < deadline; d++) {
+        try { move = Chess.best(s, d, Math.random, { quiet: true, prune: true, deadline, first: move }) || move; } catch (e) { if (e !== Chess.TIMEOUT) throw e; break; }
+      }
+      return move;
     }
   };
 
@@ -203,18 +237,21 @@
   };
 
   const Mines = {
-    create(n=9, mines=10) { return { n,mines,b:Array(n*n).fill(0),open:Array(n*n).fill(false),flags:Array(n*n).fill(false),started:false,over:false,won:false }; },
-    neighbors(s,i) {const out=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if((dr||dc)&&inside(Math.floor(i/s.n)+dr,i%s.n+dc,s.n))out.push((Math.floor(i/s.n)+dr)*s.n+i%s.n+dc);return out;},
+    /* rows × cols; a square field passes one size. Saves from before 2026-11-21
+       have only n, so cols/rows fall back to it. */
+    create(n=9, mines=10, cols=n) { return { n,rows:n,cols,mines,b:Array(n*cols).fill(0),open:Array(n*cols).fill(false),flags:Array(n*cols).fill(false),started:false,over:false,won:false }; },
+    size(s){return{rows:s.rows||s.n,cols:s.cols||s.n};},
+    neighbors(s,i) {const {rows,cols}=Mines.size(s),r=Math.floor(i/cols),c=i%cols,out=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if((dr||dc)&&r+dr>=0&&r+dr<rows&&c+dc>=0&&c+dc<cols)out.push((r+dr)*cols+c+dc);return out;},
     reveal(s,i,random=Math.random) {
       if(s.over || s.flags[i])return;
       if(!s.started){const safe=new Set([i,...Mines.neighbors(s,i)]),spots=shuffle([...s.b.keys()].filter(j=>!safe.has(j)),random);for(const j of spots.slice(0,s.mines))s.b[j]=-1;for(let j=0;j<s.b.length;j++)if(s.b[j]!==-1)s.b[j]=Mines.neighbors(s,j).filter(k=>s.b[k]===-1).length;s.started=true;}
       if(s.open[i]) {if(s.b[i]>0&&Mines.neighbors(s,i).filter(j=>s.flags[j]).length===s.b[i])for(const j of Mines.neighbors(s,i))if(!s.open[j]&&!s.flags[j])Mines.reveal(s,j,random);return;}
       if(s.b[i]===-1){s.open[i]=true;s.over=true;return;}
       const pending=[i];while(pending.length){const j=pending.pop();if(s.open[j]||s.flags[j])continue;s.open[j]=true;if(!s.b[j])for(const k of Mines.neighbors(s,j))if(!s.open[k]&&!s.flags[k])pending.push(k);}
-      if(s.open.filter(Boolean).length===s.n*s.n-s.mines){s.over=true;s.won=true;}
+      if(s.open.filter(Boolean).length===s.b.length-s.mines){s.over=true;s.won=true;}
     },
     /* The same mines again, everything covered: "play this board again". */
-    replay(s){return{...Mines.create(s.n,s.mines),b:s.b.slice(),started:s.started};}
+    replay(s){const {rows,cols}=Mines.size(s);return{...Mines.create(rows,s.mines,cols),b:s.b.slice(),started:s.started};}
   };
 
   const Word = {
@@ -289,6 +326,6 @@
     fullRows(s){const rows=[];for(let r=0;r<20;r++){if(s.b[r].every((v,c)=>v||s.piece.some((row,pr)=>s.y+pr===r&&row[c-s.x])))rows.push(r);}return rows;},
     drop(s,random=Math.random){while(Tetris.move(s,0,1))s.score+=2;Tetris.lock(s,random);}
   };
-  const api={copy,shuffle,Tic,Chess,Checkers,Sudoku,Mines,Word,Solitaire,Snake,Tetris};
+  const api={copy,shuffle,seeded,Tic,Chess,Checkers,Sudoku,Mines,Word,Solitaire,Snake,Tetris};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ArcadeGames=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

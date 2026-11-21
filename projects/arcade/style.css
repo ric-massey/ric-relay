@@ -240,3 +240,8 @@ body[data-skin="0"] .board.mines .square.v1{color:#1d4fd6}body[data-skin="0"] .b
 }
 @media(prefers-reduced-motion:reduce){dialog[open]{animation:none}}
 @media(max-width:760px){.tetris-controls{flex-wrap:nowrap;gap:5px;width:100%}.tetris-controls button{flex:1;min-width:0;padding:8px 4px;font-size:13px}}
+
+/* 2026-11-21: sound switch, and the expert (non-square) minefield */
+.game-actions .sound-toggle{min-width:44px;padding:8px 10px;font-size:17px;line-height:1}
+.board.mines.wide{gap:2px}.board.mines.wide .square{font-size:clamp(11px,1.5vw,16px);border-width:2px}
+.game-actions .sound-toggle svg{width:20px;height:20px;display:block;margin:auto}.game-actions .sound-toggle[aria-pressed="false"]{color:var(--muted)}

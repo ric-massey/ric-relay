@@ -55,7 +55,9 @@ within that game's range. No account or owner token is needed. This is deliberat
 a casual, browser-reported scoreboard, not a server-verified game replay.
 
 Boards: `solitaire`, `snake`, `tetris`, `sudoku-{easy,medium,hard}`,
-`mines-{easy,medium,hard}`, `wordle-practice`, `wordle-YYYY-MM-DD` (UTC).
+`mines-{easy,medium,hard,expert}`, `wordle-practice`, `wordle-YYYY-MM-DD`,
+`sudoku-daily-YYYY-MM-DD` and `solitaire-daily-YYYY-MM-DD` (UTC; expert and the two
+daily deals added 2026-11-21).
 Timed wins are integer seconds, Wordle is 1–6 guesses, Snake is multiples of ten,
 and Tetris is points. Daily boards close to new submissions after two days; dates
 must be real and within the past year. GET returns only `{scores:[{initials,score,at}]}`.

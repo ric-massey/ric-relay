@@ -111,8 +111,8 @@ second); 4 plies was stronger but took up to a few seconds and froze the page.
 - [x] Press and hold to flag on a phone.
 - [x] Face button to restart; mines-left counter.
 - [x] Play the same board again after a loss (not eligible for the board).
-- [ ] Later, needs a Worker change: bigger "expert" field. New scoreboard boards are a
-      Worker allowlist change and a deploy (`worker/arcade.mjs`), so not in this pass.
+- [x] Expert field, 99 mines: 30 × 16, standing upright (16 across) on a screen taller
+      than it is wide. Board `mines-expert` (see the Worker note below).
 
 ## Tetris
 
@@ -130,8 +130,24 @@ second); 4 plies was stronger but took up to a few seconds and froze the page.
 - [x] Your best shown while playing; a burst when an apple is eaten.
 - [x] Two turns can be queued, so quick swipes aren't lost.
 
+## Ideas (built 2026-11-21, Ric: "work on the ideas not built yet in the todo")
+
+- [x] Chess Hard thinks in a Web Worker (`chess-worker.js`): deeper each pass until
+      ~1.8 s, following captures at the end (quiescence), so it no longer leaves pieces
+      hanging. The page never stalls (longest pause measured: 21 ms). On a file:// page
+      it falls back to a shorter search on the page.
+- [x] Sound effects, off by default: a speaker button beside New game, one setting for
+      every game (`classics:sound`). Sounds are made with Web Audio; no files.
+- [x] Daily Sudoku (medium) and daily Solitaire (draw one): same deal for everyone on a
+      UTC date, from `E.seeded(game + ':' + date)`. A replay of a finished daily stays
+      off the board; a countdown shows the next one.
+- [x] Expert Minesweeper (above).
+
+**Worker deploy needed:** the new boards (`mines-expert`, `sudoku-daily-<date>`,
+`solitaire-daily-<date>`) are in `worker/arcade.mjs`, but Worker deploys are manual
+(Actions → Deploy Worker). Until it runs, those three save scores on this browser
+only, and the board says so.
+
 ## Ideas not built yet
 
-- [ ] Chess: a stronger hard level run in a Web Worker so it can think longer without freezing the page.
-- [ ] Sound effects (off by default).
-- [ ] Daily challenges for Sudoku and Solitaire (same deal for everyone, like the daily word).
+- [ ] (none yet; add the next ones here)
