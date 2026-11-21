@@ -16,6 +16,29 @@ anything Ric decided, with the date and his words.
 - 2026-11-21, Ric: "making the chess peices look better would be nice allong with the
   rest of your changes please. maybe start a file for todo in minigames" → this file,
   and every item below was asked for.
+- 2026-11-21, Ric, after trying Snake on his phone: "if you drag right the snake moves
+  to the right of the screen how would it turn more?" → each swipe is measured from
+  where that stroke starts, so a short flick from anywhere turns again; a flick that
+  registers buzzes (where phones allow) and lights the matching arrow button.
+- 2026-11-21, Ric: "can you make it all look more polished? polish is extremely
+  important in this." → the polish pass below. Keep that bar for every change here.
+
+## Polish pass (2026-11-21, second round)
+
+- [x] Compact header (no jump-scroll), so the board and New game share the first screen.
+- [x] Tool rows: main actions, then quiet toggles (timer, helpers) on a smaller row.
+- [x] Result card: animated entrance, blurred backdrop, Back to game on the left.
+- [x] Snake/Tetris start screen: title, round Play button, keycaps (touch wording on
+      phones); Pause only shows while playing; on-screen arrows/buttons only on touch
+      screens; Tetris buttons in one row on a phone.
+- [x] Solitaire cards: rank and suit at both corners, J/Q/K lettered, face-down cards
+      stacked tight, the table only as tall as it needs.
+- [x] Chess/checkers: clean coordinates in the square colors, softer move dots;
+      checkers drawn as ridged discs with a gold crown for kings.
+- [x] Minesweeper: classic number colors on the Desktop 95 style.
+- [x] Sudoku number pad as wide as the grid; Wordle keys full size.
+- [x] Tetris score, lines, level and best in the panel beside the well.
+- [x] Tic-tac-toe: a faint X or O where you're about to play.
 
 ## Built 2026-11-21
 

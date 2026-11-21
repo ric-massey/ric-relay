@@ -65,7 +65,8 @@
     if(clockShown())parts.push(fmtTime(clockStart||elapsed?seconds():0));
     if(id==='solitaire')parts.push(s.moves+' moves');
     if(id==='snake')parts.push(s.score+' points',`best ${Math.max(s.score,bestScore)}`);
-    if(id==='tetris')parts.push(`${s.score.toLocaleString()} pts`,`${s.lines} lines`,`Lv ${1+Math.floor(s.lines/10)}`,`best ${Math.max(s.score,bestScore).toLocaleString()}`);
+    // Tetris shows its numbers in the panel beside the well instead.
+    if(id==='tetris'){const set=(k,v)=>{const e=$(k);if(e&&e.textContent!==v)e.textContent=v;};set('t-score',s.score.toLocaleString());set('t-lines',String(s.lines));set('t-level',String(1+Math.floor(s.lines/10)));set('t-best',Math.max(s.score,bestScore).toLocaleString());}
     $('metric').textContent=parts.join(' · ');
   }
 
@@ -136,7 +137,7 @@
 
   // ---- result dialog -------------------------------------------------------
   function finish(title,description,score=null){
-    if(finished)return;finished=true;running=false;stopClock();cancelAnimationFrame(frame);clearInterval(autoTimer);autoTimer=null;updateMetric();status(title);persist();
+    if(finished)return;finished=true;running=false;$('pause').hidden=true;stopClock();cancelAnimationFrame(frame);clearInterval(autoTimer);autoTimer=null;updateMetric();status(title);persist();
     pending=score===null?null:{id:window.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2),board:board(),score};
     $('result-title').textContent=title;$('result-description').textContent=description;$('initials-wrap').hidden=!pending;$('save-score').hidden=!pending;$('save-score').disabled=false;$('save-message').textContent='';$('initials').required=!!pending;$('initials').value=storage.get('initials','');$('result-eyebrow').textContent=pending?'Leave your mark.':'Good game.';
     dialogExtras();
@@ -182,10 +183,11 @@
     game=next;opts=storage.get('opt:'+id,{})||{};$('playroom').hidden=false;$('game-title').textContent=game.name;$('game-subtitle').textContent=game.sub;$('rules').textContent=game.rules;document.title=game.name+' — RIC//NET';
     modes();levelPicker();
     if(!restore())start();
-    // On a short window, bring the whole table into view rather than the page title.
-    requestAnimationFrame(()=>{const t=document.querySelector('.table-wrap').getBoundingClientRect();if(t.bottom>innerHeight&&t.top>innerHeight*.25&&innerHeight<1000)scrollTo({top:scrollY+t.top-8});});
+    // No jump-scroll to the board: the header is compact enough that New game stays in view.
   }
-  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='🙂';lastFinish=null;hint('');$('pause').hidden=!action();$('pause').textContent='Pause';status('');syncLevel();}
+  /* Main actions in one row; quieter toggles (timer, helpers) on a smaller second row. */
+  function toolRow(main,minor=[]){tools.replaceChildren(...main);if(minor.length){tools.append(el('span','break'));for(const b of minor){b.classList.add('minor');tools.append(b);}}}
+  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='🙂';lastFinish=null;hint('');$('pause').hidden=true;$('pause').textContent='Pause';status('');syncLevel();}
   function start(){
     resetRun();storage.remove('save:'+game.id);
     switch(game.id){
@@ -212,10 +214,10 @@
   function renderTic(){
     const turn=s.filter(Boolean).length%2?'O':'X',winner=E.Tic.winner(s),line=E.Tic.line(s);
     status(winner?winner==='draw'?'A draw.':(mode==='cpu'?(winner==='X'?'You win':'The computer wins'):'Player '+winner+' wins'):turn+' to play'+(mode==='cpu'&&turn==='O'?' · computer thinking…':''));
-    const b=grid(3,'ttt');
+    const b=grid(3,'ttt');b.dataset.turn=!winner&&!(mode==='cpu'&&turn==='O')?turn:''; // hover shows a faint X or O
     s.forEach((v,i)=>{const sq=button(v,()=>{if(finished||cpuBusy||s[i]||(mode==='cpu'&&turn==='O'))return;history.push(s.slice());s[i]=turn;moved=new Set([i]);renderTic();},'square '+(v==='O'?'o':'')+(moved.has(i)?' drop':'')+(line?.includes(i)?' win':''));sq.setAttribute('aria-label',`Row ${Math.floor(i/3)+1}, column ${i%3+1}: ${v||'empty'}`);sq.disabled=!!v||finished;b.append(sq);});
     if(line){const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.setAttribute('class','strike');svg.setAttribute('viewBox','0 0 3 3');svg.setAttribute('aria-hidden','true');const ln=document.createElementNS(NS,'line');const at=i=>[i%3+.5,Math.floor(i/3)+.5];const a=at(line[0]),z=at(line[2]),dx=(z[0]-a[0])*.2,dy=(z[1]-a[1])*.2;ln.setAttribute('x1',a[0]-dx);ln.setAttribute('y1',a[1]-dy);ln.setAttribute('x2',z[0]+dx);ln.setAttribute('y2',z[1]+dy);ln.setAttribute('pathLength','1');svg.append(ln);b.append(svg);}
-    tools.replaceChildren(button('Undo',()=>{if(cpuBusy||!history.length)return;finished=false;s=history.pop();moved=new Set();renderTic();}));
+    tools.replaceChildren(button('↶ Undo',()=>{if(cpuBusy||!history.length)return;finished=false;s=history.pop();moved=new Set();renderTic();}));
     const st=stats();hint(mode==='cpu'?`You ${st.won||0} · Computer ${st.lost||0} · Draws ${st.drawn||0}`:`X ${st.sides?.X||0} · O ${st.sides?.O||0} · Draws ${st.sides?.draw||0}`);moved=new Set();
     if(winner){
       if(mode==='cpu')record(winner==='draw'?'drawn':winner==='X'?'won':'lost');else record(winner==='draw'?'draw':winner);
@@ -257,7 +259,7 @@
       sq.setAttribute('aria-label',squareName(i)+(p?': '+(checker?(p.toLowerCase()==='w'?'Light':'Dark')+' '+(p===p.toUpperCase()?'king':'man'):(p===p.toUpperCase()?'White ':'Black ')+pieceName[p.toLowerCase()]):': empty')+(legal?', legal destination':''));
       if(p){
         const wrap=el('span','piece');
-        if(checker)wrap.append(el('span','checker'+(p.toLowerCase()==='b'?' black':''),p===p.toUpperCase()?'♛':''));else wrap.append(pieceSvg(p));
+        if(checker){const k=el('span','checker'+(p.toLowerCase()==='b'?' black':'')+(p===p.toUpperCase()?' king':''));if(p===p.toUpperCase())k.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18l-1.6-9-4.4 3.8L12 5.5 9 12.8 4.6 9z"/></svg>';wrap.append(k);}else wrap.append(pieceSvg(p));
         // The piece that just moved slides in from where it was.
         if(lastMove?.fresh&&lastMove.to===i&&!reduced()){const at=x=>{const dd=flip?63-x:x;return[dd%8,dd>>3];};const [fc,fr]=at(lastMove.from),[tc,tr]=at(i);wrap.style.setProperty('--dx',fc-tc);wrap.style.setProperty('--dy',fr-tr);wrap.classList.add('slide');sq.classList.add('moving');}
         sq.append(wrap);
@@ -286,7 +288,7 @@
       selected=moves.some(m=>m.from===i)?i:null;hintMove=null;renderChess();
     });
     const info=el('div','chess-info');info.append(capturedLine(),moveList());stage.append(info);
-    tools.replaceChildren(button('Undo turn',undoBoard),button('Hint',()=>{if(finished||cpuBusy||cpuTurn())return;hintMove=E.Chess.best(s,2);selected=hintMove?.from??null;renderChess();hint('Try this move.');}));
+    tools.replaceChildren(button('↶ Undo',undoBoard),button('Hint',()=>{if(finished||cpuBusy||cpuTurn())return;hintMove=E.Chess.best(s,2);selected=hintMove?.from??null;renderChess();hint('Try this move.');}));
     if(!hintMove)hint(vsCpu()?`Tap a piece, then a marked square. You play ${human()==='w'?'White':'Black'}.`:'Tap a piece, then a marked square. Pass the screen after your move.');
     if(result){
       const winner=result.startsWith('White')?'White':result.startsWith('Black')?'Black':null;
@@ -315,7 +317,7 @@
     squareGrid(moves,i=>{if(finished||cpuBusy||thinking)return;const m=moves.find(m=>m.from===selected&&m.to===i);if(m){playChecker(m);return;}selected=moves.some(m=>m.from===i)?i:null;renderCheckers();},true);
     let w=0,dk=0;for(const p of s.b){if(p.toLowerCase()==='w')w++;else if(p)dk++;}
     const info=el('div','checker-info');info.append(el('span',null,`Light: ${w} left · ${12-w} taken`),el('span',null,`Dark: ${dk} left · ${12-dk} taken`));stage.append(info);
-    tools.replaceChildren(button('Undo turn',undoBoard));
+    tools.replaceChildren(button('↶ Undo',undoBoard));
     hint('Captures are compulsory. Reach the far edge to become a king.');
     if(result){const winner=result.startsWith('Light')?'Light':result.startsWith('Dark')?'Dark':null;if(vsCpu())record(!winner?'drawn':winner==='Light'?'won':'lost');else record(winner||'draw');if(winner==='Light'||(mode==='two'&&winner))celebrate();finish(result,'Another round is a click away.');return;}
     persist();
@@ -333,7 +335,7 @@
   // ---- Solitaire -----------------------------------------------------------
   const suits=['♠','♥','♦','♣'];
   const cardId=c=>c.suit+'-'+c.rank;
-  function cardElement(c,fn,idx){const e=button('',fn,'card'+(!c.up?' down':'')+(E.Solitaire.red(c)?' red':'')+(moved.has(cardId(c))&&c.up&&!reduced()?' land':''));e.style.setProperty('--i',idx||0);const rank={1:'A',11:'J',12:'Q',13:'K'}[c.rank]||c.rank;const top=document.createElement('span');top.textContent=rank;const suit=document.createElement('span');suit.className='suit';suit.textContent=suits[c.suit];top.append(suit);const mid=document.createElement('span');mid.className='middle';mid.textContent=suits[c.suit];e.append(top,mid);e.setAttribute('aria-label',c.up?rank+' of '+['spades','hearts','diamonds','clubs'][c.suit]:'Face-down card');return e;}
+  function cardElement(c,fn,idx){const e=button('',fn,'card'+(!c.up?' down':'')+(E.Solitaire.red(c)?' red':'')+(moved.has(cardId(c))&&c.up&&!reduced()?' land':''));e.style.setProperty('--i',idx||0);const rank={1:'A',11:'J',12:'Q',13:'K'}[c.rank]||c.rank;const corner=cls=>{const k=el('span','idx '+cls,String(rank));k.append(el('span','suit',suits[c.suit]));return k;};const mid=el('span','middle',c.rank>10?String(rank):suits[c.suit]);if(c.rank>10)mid.classList.add('face');e.append(corner('tl'),mid,corner('br'));e.setAttribute('aria-label',c.up?rank+' of '+['spades','hearts','diamonds','clubs'][c.suit]:'Face-down card');return e;}
   function solitaireMove(from,to){
     const pile=E.Solitaire.pile(s,from),stack=pile.slice(from.index??pile.length-1),old=E.copy(s);
     if(!E.Solitaire.move(s,from,to))return false;
@@ -373,15 +375,18 @@
     s.tableau.forEach((pile,col)=>{
       const wrap=el('div','pile');wrap.dataset.drop='tableau:'+col;
       const empty=button('',()=>solitaireTap({type:'tableau',col}),'card-space'+(hintMove?.to?.type==='tableau'&&hintMove.to.col===col&&!pile.length?' hinted':''));empty.setAttribute('aria-label','Empty column '+(col+1)+', Kings only');wrap.append(empty);
-      pile.forEach((c,index)=>{const e=cardElement(c,()=>solitaireTap({type:'tableau',col,index}),index);if(c.up)e.dataset.from=`tableau:${col}:${index}`;if(selected?.type==='tableau'&&selected.col===col&&index>=selected.index)e.classList.add('selected');if(hintMove?.from?.type==='tableau'&&hintMove.from.col===col&&index>=hintMove.from.index)e.classList.add('hinted');if(hintMove?.to?.type==='tableau'&&hintMove.to.col===col&&index===pile.length-1)e.classList.add('hinted');wrap.append(e);});
-      wrap.style.minHeight=(Math.max(0,pile.length-1)*24+110)+'px';table.append(wrap);
+      // Face-down cards stack tight, face-up ones far enough apart to read.
+      let downs=0,ups=0;
+      pile.forEach((c,index)=>{const e=cardElement(c,()=>solitaireTap({type:'tableau',col,index}),index);e.style.setProperty('--d',downs);e.style.setProperty('--u',ups);if(c.up)ups++;else downs++;if(c.up)e.dataset.from=`tableau:${col}:${index}`;if(selected?.type==='tableau'&&selected.col===col&&index>=selected.index)e.classList.add('selected');if(hintMove?.from?.type==='tableau'&&hintMove.from.col===col&&index>=hintMove.from.index)e.classList.add('hinted');if(hintMove?.to?.type==='tableau'&&hintMove.to.col===col&&index===pile.length-1)e.classList.add('hinted');wrap.append(e);});
+      table.append(wrap);
     });
     stage.append(table);
-    tools.replaceChildren(
-      button('Undo',()=>{if(!history.length||finished||autoTimer)return;s=history.pop();selected=null;hintMove=null;moved=new Set();renderSolitaire();}),
-      button('Hint',()=>{if(finished||autoTimer)return;const o=E.Solitaire.options(s)[0];hintMove=o||(E.Solitaire.stuck(s)?null:'draw');selected=null;renderSolitaire();hint(o?'Try the glowing cards.':hintMove==='draw'?'Nothing on the table. Draw from the deck.':'No moves left. Undo a few, or deal again.');}),
-      button(opts.showTimer?'Hide timer':'Show timer',()=>{opts.showTimer=!opts.showTimer;saveOpts();renderSolitaire();})
-    );
+    // The table is as tall as its longest column (cards are absolutely placed).
+    let deepest=0;for(const c of table.querySelectorAll('.card'))deepest=Math.max(deepest,c.offsetTop+c.offsetHeight);const cardH=table.querySelector('.card-space')?.offsetHeight||100;table.style.height=Math.max(deepest,cardH*2.3)+'px';
+    toolRow([
+      button('↶ Undo',()=>{if(!history.length||finished||autoTimer)return;s=history.pop();selected=null;hintMove=null;moved=new Set();renderSolitaire();}),
+      button('Hint',()=>{if(finished||autoTimer)return;const o=E.Solitaire.options(s)[0];hintMove=o||(E.Solitaire.stuck(s)?null:'draw');selected=null;renderSolitaire();hint(o?'Try the glowing cards.':hintMove==='draw'?'Nothing on the table. Draw from the deck.':'No moves left. Undo a few, or deal again.');})
+    ],[button(opts.showTimer?'Hide timer':'Show timer',()=>{opts.showTimer=!opts.showTimer;saveOpts();renderSolitaire();})]);
     const stuck=!finished&&E.Solitaire.stuck(s);
     status(stuck?'No moves left · Undo or deal again':s.waste.length+' in waste · '+s.foundation.reduce((n,p)=>n+p.length,0)+'/52 home');
     if(!hintMove&&!autoTimer)hint('Drag a card or stack, or tap it then where it goes. Tap a card twice to send it where it fits.');
@@ -430,15 +435,16 @@
     });
     const count=Array(10).fill(0);for(const n of s.b)count[n]++;
     const pad=el('div','numpad');for(let n=1;n<=9;n++){const k=button('',()=>sudokuEntry(n),count[n]>=9?'done':'');k.append(el('span',null,String(n)),el('small',null,count[n]>=9?'✓':String(9-count[n])));k.setAttribute('aria-label',`${n}, ${Math.max(0,9-count[n])} left`);pad.append(k);}stage.append(pad);
-    tools.replaceChildren(
-      button('Undo',()=>{if(finished||!history.length)return;const h=history.pop();s.b=h.b;notes=h.notes;selected=h.selected;renderSudoku();}),
+    toolRow([
+      button('↶ Undo',()=>{if(finished||!history.length)return;const h=history.pop();s.b=h.b;notes=h.notes;selected=h.selected;renderSudoku();}),
       button('Erase',()=>sudokuEntry(0)),
-      button('Notes: '+(notesMode?'on':'off'),()=>{notesMode=!notesMode;renderSudoku();},notesMode?'on':''),
+      button('✎ Notes '+(notesMode?'on':'off'),()=>{notesMode=!notesMode;renderSudoku();},notesMode?'on':'')
+    ],[
       button('Fill notes',()=>{if(finished)return;sudokuHistory();for(let i=0;i<81;i++)if(!s.b[i])notes[i]=E.Sudoku.candidates(s.b,i);renderSudoku();}),
       button(opts.mistakes?'Mistakes: shown':'Show mistakes',()=>{opts.mistakes=!opts.mistakes;saveOpts();if(opts.mistakes&&!finished)eligible=false;renderSudoku();},opts.mistakes?'on':''),
       button('Reveal square',()=>{if(selected===null||s.given[selected]||finished){hint('Select an editable square first.');return;}sudokuHistory();eligible=false;s.b[selected]=s.answer[selected];delete notes[selected];beginClock();renderSudoku();sudokuFinish();}),
       button(opts.showTimer?'Hide timer':'Show timer',()=>{opts.showTimer=!opts.showTimer;saveOpts();updateMetric();renderSudoku();})
-    );
+    ]);
     status(s.b.filter(Boolean).length+'/81 filled'+(!eligible?' · helped':''));
     hint('Choose a square, then 1–9. N for notes; Backspace to erase.');moved=new Set();persist();
   }
@@ -546,19 +552,22 @@
 
   // ---- Snake & Tetris (canvas) ---------------------------------------------
   let blockColors=['','#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'];
-  function beginAction(){$('action-overlay')?.remove();if(running||finished)return;running=true;paused=false;s.started=true;lastFrame=performance.now();accumulator=0;frame=requestAnimationFrame(tick);status('Good luck.');}
+  function beginAction(){$('action-overlay')?.remove();if(running||finished)return;running=true;paused=false;s.started=true;$('pause').hidden=false;lastFrame=performance.now();accumulator=0;frame=requestAnimationFrame(tick);status('Good luck.');}
   function renderAction(resumed=false){
     stage.className='stage action-stage'+(game.id==='snake'?' snake-stage':' tetris-stage');stage.replaceChildren();
     const row=el('div','action-row'),wrap=el('div','canvas-wrap'+(game.id==='tetris'?' tetris':''));
     const c=document.createElement('canvas');c.width=game.id==='tetris'?300:500;c.height=game.id==='tetris'?600:500;c.id='game-canvas';c.className='game-canvas';c.setAttribute('role','img');c.setAttribute('aria-label',game.name+' game board. Use the controls below or your keyboard.');wrap.append(c);row.append(wrap);
-    if(game.id==='tetris'){const side=el('div','tetris-side');for(const [label,id,h] of [['Hold','hold-canvas',60],['Next','next-canvas',170]]){const box=el('div','side-box');box.append(el('span',null,label));const cv=document.createElement('canvas');cv.width=100;cv.height=h;cv.id=id;box.append(cv);side.append(box);}row.append(side);}
+    if(game.id==='tetris'){const side=el('div','tetris-side');for(const [label,id,h] of [['Hold','hold-canvas',60],['Next','next-canvas',170]]){const box=el('div','side-box');box.append(el('span',null,label));const cv=document.createElement('canvas');cv.width=100;cv.height=h;cv.id=id;box.append(cv);side.append(box);}const nums=el('dl','side-stats');for(const [k,id] of [['Score','t-score'],['Lines','t-lines'],['Level','t-level'],['Best','t-best']]){const d=el('div');const dd=el('dd');dd.id=id;d.append(el('dt',null,k),dd);nums.append(d);}side.append(nums);row.append(side);}
     stage.append(row);
     const overlay=el('div','start-overlay');overlay.id='action-overlay';
-    overlay.append(button(resumed?'Resume '+game.name:'Start '+game.name,beginAction),el('p',null,resumed?'Your game was saved right where you left it.':game.id==='snake'?'Arrow keys, WASD, or swipe anywhere on the board. Ten points an apple.':'Arrows to move and rotate, Space to drop, C to hold. On a phone: drag, tap, flick down.'));
+    const how=el('p','overlay-keys');
+    // Static, trusted markup: keycaps for the controls.
+    how.innerHTML=resumed?'Saved right where you left it.':game.id==='snake'?'<span class="key-only"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> steer · <kbd>P</kbd> pause</span><span class="touch-only">Swipe anywhere to steer</span>':'<span class="key-only"><kbd>←</kbd><kbd>→</kbd> move · <kbd>↑</kbd> turn · <kbd>Space</kbd> drop · <kbd>C</kbd> hold</span><span class="touch-only">Drag to move · tap to turn · flick down to drop</span>';
+    overlay.append(el('strong','overlay-title',resumed?'Welcome back':game.name),button(resumed?'Resume':'Play',beginAction,'overlay-play'),how);
     wrap.append(overlay);
     if(game.id==='snake'){const pad=el('div','dpad');for(const [label,x,y,cls,name]of [['↑',0,-1,'up','Up'],['←',-1,0,'left','Left'],['↓',0,1,'down','Down'],['→',1,0,'right','Right']]){const k=button(label,()=>actionMove(x,y),cls);k.setAttribute('aria-label',name);pad.append(k);}stage.append(pad);}
     else{const pad=el('div','tetris-controls');for(const [label,fn,name]of [['←',()=>actionMove(-1,0),'Left'],['↻',()=>rotate(),'Rotate'],['→',()=>actionMove(1,0),'Right'],['↓',()=>softDrop(),'Soft drop'],['Drop',()=>hardDrop(),'Hard drop'],['Hold',()=>holdPiece(),'Hold']]){const k=button(label,fn);k.setAttribute('aria-label',name);pad.append(k);}stage.append(pad);tetrisTouch(c);}
-    hint(game.id==='snake'?'Arrows / WASD · swipe anywhere on the board · P to pause':'← → move · ↑ / X rotate · Z reverse · ↓ soft · Space drop · C hold · P pause');
+    const touch=matchMedia('(any-pointer:coarse)').matches;hint(game.id==='snake'?(touch?'Swipe anywhere on the board to steer, or use the arrows.':'Arrows / WASD to steer · P to pause'):(touch?'Drag to move · tap to turn · flick down to drop':'← → move · ↑ / X rotate · Z reverse · ↓ soft · Space drop · C hold · P pause'));
     status(resumed?'Saved game · ready when you are.':'Ready when you are.');drawAction();updateMetric();
   }
   /* Snake on a phone (Ric, 2026-11-21: "swiping needs to be a way you can play
@@ -568,7 +577,16 @@
      style.css), so the page doesn't scroll under the game. */
   let swipe=null;
   stage.addEventListener('pointerdown',e=>{if(game?.id!=='snake'||e.target.closest('button'))return;swipe={x:e.clientX,y:e.clientY,id:e.pointerId};try{stage.setPointerCapture(e.pointerId);}catch{}if(!running&&!finished)beginAction();});
-  stage.addEventListener('pointermove',e=>{if(!swipe||e.pointerId!==swipe.id)return;const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;if(Math.max(Math.abs(dx),Math.abs(dy))<22)return;if(Math.abs(dx)>Math.abs(dy))actionMove(Math.sign(dx),0);else actionMove(0,Math.sign(dy));swipe.x=e.clientX;swipe.y=e.clientY;});
+  /* Each swipe is measured from where that stroke began, never from the
+     screen edge: after swiping right, a short flick up or down (from anywhere)
+     turns again. Holding the finger down and changing direction works too. */
+  stage.addEventListener('pointermove',e=>{
+    if(!swipe||e.pointerId!==swipe.id)return;const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;if(Math.max(Math.abs(dx),Math.abs(dy))<18)return;
+    const [x,y]=Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)];swipe.x=e.clientX;swipe.y=e.clientY;
+    if(x===swipe.lx&&y===swipe.ly)return;swipe.lx=x;swipe.ly=y;
+    const before=JSON.stringify([s.queued,s.queued2]);actionMove(x,y);
+    if(JSON.stringify([s.queued,s.queued2])!==before){navigator.vibrate?.(8);const k=stage.querySelector('.dpad .'+(x>0?'right':x<0?'left':y<0?'up':'down'));if(k){k.classList.remove('pressed');void k.offsetWidth;k.classList.add('pressed');}}
+  });
   const endSwipe=()=>{swipe=null;};stage.addEventListener('pointerup',endSwipe);stage.addEventListener('pointercancel',endSwipe);
   /* Tetris on a phone: drag sideways to move a column at a time, drag down to
      soft drop, flick down to hard drop, tap to rotate. */
@@ -626,6 +644,8 @@
     if(paused){cancelAnimationFrame(frame);const cover=el('div','paused-cover','Paused');cover.id='paused-cover';$('game-canvas').parentElement.append(cover);status('Paused. Your game is saved.');persist();}
     else{$('paused-cover')?.remove();status('Back at it.');lastFrame=performance.now();frame=requestAnimationFrame(tick);}
   }
+  // Solitaire's table height is measured from the cards, so re-measure when the window changes.
+  let resizeTimer=null;addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(game?.id==='solitaire'&&s&&!drag)renderSolitaire();},150);});
   $('pause').onclick=togglePause;document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)togglePause();if(document.hidden)persist();});
 
   // ---- keyboard --------------------------------------------------------------

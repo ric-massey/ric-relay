@@ -24,7 +24,9 @@ dependency; shared code stays entirely inside these Gaming projects.
 | Snake | 20×20; Classic, Slow, or Through walls (wraps); food avoids the snake; two queued turns per step; rising speed; swipe anywhere, mid-swipe | Classic only: highest points; ten per apple |
 
 All games work with touch/clicks. Snake also accepts swipes anywhere on the board
-(turning while the finger is still moving), arrows and WASD. Tetris uses arrows,
+(each stroke measured from where it starts, turning while the finger is still
+moving), arrows and WASD. Snake's arrows and Tetris's buttons only show on touch
+screens (`any-pointer: coarse`); a keyboard doesn't need them. Tetris uses arrows,
 X/Z, Space and C/Shift. P and the visible Pause button pause action games; hiding
 the tab pauses automatically.
 
