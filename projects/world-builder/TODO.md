@@ -1857,7 +1857,7 @@ divided these powers; how much a ruler could do without the great families; what
 **Ric decides:** how deep; which offices; whether this comes before eras (15).
 **Ric (2026-11-20), for 15b and 15c both:** not one way per era: different ways within each era (different peoples of the same age govern differently), and the same for marriage. "and also for eras the buildings shapes. technology. 15b and it snot just eras there should be different ways in each era.  you know what i mean?  as for marrage same thing."
 **Ric (2026-11-20), later:** "eras are important to be done deeply as well as governments    tribes even had different ways": tribes too, not only states, had their own ways of ruling (e.g. chiefs, elders, councils, assemblies); research and build that range, and eras just as deeply.
-**Ric's answers (2026-11-20):** how deep: "yes the governemnts need to go way deeper"; it comes before 15 (asked "15c first, or straight to 15?"); 15b and 15c "need to be researched" first. Which offices: still Ric's, asked after the research with what each era had.
+**Ric's answers (2026-11-20):** how deep: "yes the governemnts need to go way deeper"; it comes before 15 (asked "15c first, or straight to 15?"); 15b and 15c "need to be researched" first. Which offices: answered 2026-11-21, below ("Ric's answers (2026-11-21)").
 **Done when:** two factions with the same leader but different councils or laws do measurably
 different things.
 Also (Ric, 2026-11-20, below): on hemmed-in land, more wars end in conquest and tribute, and more
@@ -2003,6 +2003,108 @@ Revolts, elections and breakaways stay as they are, now reading the coalition: a
 share shrinks turns on its ruler (North, Wallis and Weingast). Cost: each faction keeps its
 coalition and officials as kept-up lists, a few dozen people; a decision sums over those, not
 over everybody. Within the default budget.
+
+**More research (2026-11-21), on what the notes above left thin.** Done ahead of 15.5 at Ric's
+word ("Research 15c now": research and the offices question only; nothing built until 15.5 is done).
+- *How an office is paid, and why it matters.* Four ways, each found in the record:
+  (1) **a share or a farm** — England's sheriff owed the Exchequer a fixed sum a year for his county
+  (the *farm*, fixed from the 1150s) and kept the rest of certain revenues; as prices rose, more and
+  more stayed in his pocket. The other kind was the **custodian** sheriff, paid a fixed sum, with all
+  the rest going to the king
+  ([Pipe Roll Society, farmer and custodian sheriffs](https://piperollsociety.co.uk/farmer%2Fcustodian-sheriffs);
+  [Cambridge, "The Sheriff's Farm"](https://cambridge.org/core/journals/transactions-of-the-royal-historical-society/article/sheriffs-farm/920EA08B70B8B07B80BD7AE40C72043F)).
+  Rome's *publicani* and the Ottoman *iltizam* (above) are the same thing sold to the highest bidder.
+  (2) **land for service** — the Ottoman *timar*: a horseman got the revenue of a piece of land,
+  usually newly conquered, instead of pay, and lost it if he did not serve for seven years; the land
+  stayed the state's, and the grant was not inherited, though often passed to a son who served
+  ([Timar](https://en.wikipedia.org/wiki/Timar); [Sipahi](https://en.wikipedia.org/wiki/Sipahi)).
+  It spared the treasury; in the end it moved power to the provinces. (3) **a wage** from the
+  treasury — the Han's salaried officials (above); the Ottoman household horsemen beside the timar
+  men. (4) **unpaid, by lot, for a year** — Athens: the council of 500, fifty from each of ten
+  tribes, and nearly every magistrate chosen by lot, a year at a time, at most twice in a life; at
+  the end of the year every official's acts were examined before a jury (*euthyna*), and abuses
+  were prosecuted then ([Britannica, sortition](https://www.britannica.com/topic/sortition);
+  [Boule](https://en.wikipedia.org/wiki/Boule_(ancient_Greece))). So the **check** on an office is
+  a thing in its own right: an audit at the end of a term, a custodian instead of a farmer, or none.
+- *A chief's land managers.* Hawaiʻi before contact: a paramount chief (*aliʻi nui*) over an
+  island, a chief over each district (*moku*), a chief over each land unit (*ahupuaʻa*), and under
+  him a *konohiki*, an overseer who shared out land and water, ran the farming and kept things
+  up; commoners never owned land ([National Park Service](https://www.nps.gov/locations/hawaii/social-structure.htm);
+  [Konohiki](https://en.wikipedia.org/wiki/Konohiki)). That is the engine's village with a
+  headman between it and the ruler — the office that comes first, before any collector or judge.
+- *An early state's provinces.* Ur III (about 2100–2000 BC): each province had a governor
+  (*ensi*) who answered for its *bala*, a share of livestock, grain, labour and goods sent to the
+  centre in a monthly rotation, counted by scribes in central offices
+  ([Bala taxation](https://en.wikipedia.org/wiki/Bala_taxation);
+  [Sharlach, *Provincial Taxation and the Ur III State*](https://link.springer.com/chapter/10.1007/978-3-030-48389-0_5)).
+  That is the governor of a subject people (Carneiro, above) — and it needs writing (15e) to count.
+- *What a killing costs.* In early English law a death was paid for by the killer's kin to the
+  dead man's kin: a free man (*ceorl*) 200 shillings in Ine's Wessex and in Mercia, a thegn 1,200,
+  six times as much; the king also took a payment for breaking his peace
+  ([Wergeld](https://en.wikipedia.org/wiki/Weregild); [Avalon, the laws](https://avalon.law.yale.edu/medieval/saxlaw.asp)).
+  A historian's note: probably no ordinary freeman could have paid such sums
+  ([Harvard ELH lecture](https://amesfoundation.law.harvard.edu/lhsemelh/lectures/s01.out.pdf)),
+  so it bound whole kin groups. A law in the engine: what a killing or theft costs, who pays (the
+  one who did it, or the kin), and whether it is paid to the kin or to the ruler.
+- *Why the state grew.* Tilly: wars cost money, so rulers built ways to take taxes and soldiers,
+  and those ways became the state, though nobody planned it
+  ([Tilly 1985](https://warwick.ac.uk/fac/arts/history/students/modules/hi299/topics/statesarmsarmies/0_tilly_85_5xr.pdf)).
+  Disputed: where war is cheap it slows state building rather than speeding it
+  ([NBER](https://conference.nber.org/conf_papers/f62735/f62735.pdf)), and states living on easy
+  revenue hand the collecting to tax farmers ([Saylor and Wheeler, *World Politics*](https://cambridge.org/core/services/aop-cambridge-core/content/view/1847609B1FE9114AE137509C99798644/S0043887116000319a.pdf/paying-for-war-and-building-states-the-coalitional-politics-of-debt-servicing-and-tax-institutions.pdf)).
+  For the engine: a war to pay for is one more *need* that makes a collector or a captain —
+  never a rule that war adds offices.
+- *Modern states.* Montesquieu's three powers (making laws, carrying them out, judging) were never
+  wholly separate anywhere; in a parliamentary state the cabinet comes out of the parliament and
+  falls to a vote of no confidence, in a presidential one they are held apart
+  ([Britannica](https://www.britannica.com/topic/separation-of-powers)). Size: in Britain in 1890
+  about 3.5% of workers were public employees
+  ([NBER, Abramovitz and Eliasberg](https://www.nber.org/system/files/chapters/c2653/c2653.pdf));
+  in 2021 the OECD average was 18.6% of all employment, from under 10% in Japan and Korea to close
+  to 30% in Norway, Sweden and Denmark
+  ([OECD, *Government at a Glance 2023*](https://www.oecd.org/en/publications/government-at-a-glance-2023_3d5c5d31-en/full-report/component-66.html)).
+  Most of that is schools and hospitals, which are 15f's work, not offices; the offices proper
+  (ministers, a parliament, courts) are few. *Not found:* a good per-head series for Prussia.
+- *Unfree people.* Domesday (1086) counted 25,156 slaves (*servi*) of 283,242 people recorded,
+  about 9%, beside 108,407 villeins and 82,119 bordars; Surrey 12%, one hundred near London 6%
+  ([Victoria County History, Middlesex](https://www.british-history.ac.uk/vch/middx/vol1/pp90-94);
+  [Bailey, LAMAS 57](https://archaeologydataservice.ac.uk/catalogue/adsdata/arch-4072-1/dissemination/pdf/LAMAS_Vol57_69-82_SlaveryLondonArea1086l.pdf)).
+  Domar (1970): where land is plentiful and hands are few, wages would be high, so landholders bind
+  the workers — but comparisons between countries find no steady link between free land and
+  serfdom ([Domar serfdom model](https://en.wikipedia.org/wiki/Domar_serfdom_model);
+  [Klein and Ogilvie, Bohemia](https://www.kent.ac.uk/economics/repec/1717.pdf)). So, the same
+  as Carneiro: open land gives landholders a *reason* to bind people, and whether they do comes from
+  their stats and whether they have the power (a law, a captain) — measured, not set.
+
+**The offices, as proposed after this research.** Each comes to exist only when a ruler or council
+has the need and the means (Ric, above), and is chosen by their stats; listed with the need that
+makes it:
+| Office | The need | Found as |
+|---|---|---|
+| Headman of a village | more villages than the ruler can see to | konohiki; a lord's reeve |
+| Collector | more households than the ruler can collect from | sheriff, publicani, bala |
+| Judge / peacemaker | more disputes than the ruler can hear | leopard-skin chief; assembly; court |
+| Captain | a war to run, or a taken village to hold | garrison captain; timar horseman |
+| Governor of a subject people | a beaten people kept as itself | ensi |
+| Scribe | counting what comes in (needs writing, 15e) | Ur III scribes; Han clerks |
+| Priest | waits for 15g | Seshat's priests |
+Paid one of four ways (a wage, a share or farm, land for service, or unpaid by lot for a year),
+chosen by the ruler's stats (the greedy farm it out, the honest pay a wage); checked or not (an
+audit at the end of a term). The council (who must agree) is chosen by kin, by wealth, by age, by
+vote or by lot, again by the stats of those already with the say.
+
+**Ric's answers (2026-11-21), after this research:**
+- Offices: all four asked about — **headman of a village, collector, judge or peacemaker, captain
+  and governor**. Scribes wait for writing (15e), priests for faith (15g).
+- Pay and checks: **"All four, ruler's traits pick"** — a wage, a farm (a fixed sum owed, the rest
+  kept), land for service, or unpaid by lot for a year with an audit, chosen by the stats of
+  whoever has the say.
+- Unfree people: **"Yes, as proposed"** — in 15c, allowed or forbidden by each people's law, from
+  the stats of those with the say.
+- A faction the visitor rules: **"Yes, all three"** — it can keep, free or forbid unfree people,
+  set the same way as tax and relief.
+- Not asked again: the approach above (coalition, offices, laws) stands as proposed, with these
+  answers; the build waits until 15.5 is done (Ric's order).
 
 **Order (asked and answered 2026-11-20).** Ric: "should eras be done first? … it is the groundwork for the rest
 no?" Every finding above ties a people's way of ruling to its size and age (Seshat) and to its
