@@ -2928,6 +2928,22 @@ TODO "the year is settings"), so near the equator nights stay about twelve hours
 piece, as Yetish measured, and far north the long winter nights split it, as Ekirch's sources describe —
 by the same rule, with nothing set per place or era. The waking hour does something: people talk and
 pass news (item 12), tend the fire, see to children.
+**Light is a thing** (Ric, 2026-11-21: "Lights should be a thing where is technology?"). Technology is
+15e (a technique found, spread, lost) and 15f (workplaces and what they make: power, fuel, wires). Light
+is split the same way, so 15.5 needs nothing from 15:
+- *In 15.5s, the old lights,* from what the world already has: the hearth's firelight, burning firewood
+  (9c), and rushlights and tallow candles from the fat of the herds (9b). Light was dear: by Nordhaus's
+  reckoning a thousand lumen-hours (about a hundred hours of one candle's light) cost some 58 hours of
+  work gathering wood in the Old Stone Age and about 5.4 hours in 1800 — sixty hours of work bought about
+  ten hours of tallow candlelight around 1775 ([Our World in Data, from Nordhaus](https://ourworldindata.org/grapher/hours-of-work-per-1000-lumen-hours?tab=chart);
+  [HumanProgress](https://humanprogress.org/trends/lighting-costs-near-nothing-now/);
+  [Nordhaus, Cowles paper](https://econpapers.repec.org/RePEc:cwl:cwldpp:1078)). So a household burns light
+  only as far as it can spare the fat or the wood, and staying up (spinning by the fire, 15.5n) costs it.
+- *In 15e and 15f, the later ones:* oil lamps (olive, then whale), better candles, gas lamps (a gasworks
+  and pipes), electric light (a power works and wires) — each a technique a people finds or learns, and
+  a thing built and fed, so it stops when what feeds it stops. As light gets cheaper people stay up
+  later and the night's waking hour goes, by the rule above. (1900: 0.22 hours of work a thousand
+  lumen-hours; 1992: 0.00012.)
 
 **Budget:** default for a–s; j faster only.
 
