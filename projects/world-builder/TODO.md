@@ -1193,7 +1193,7 @@ Research notes:
 
 ### [x] 14. War true to its time, and what it leaves
 
-**Done 2026-11-20**, in five parts (14a–14e below): wartime effort where the danger is not, what a war leaves, why wars start and end, peace by marriage, trade deals and tribute, and walls, raids and a fighting season. **Left out** across them: weapons, reach and deadliness by era and how far an army can go (item 15); crafters turning to gear for the soldiers; a page button to offer a marriage.
+**Done 2026-11-20**, in five parts (14a–14e below): wartime effort where the danger is not, what a war leaves, why wars start and end, peace by marriage, trade deals and tribute, and walls, raids and a fighting season. **Left out** across them: weapons, reach and deadliness by era and how far an army can go (item 15); crafters turning to gear for the soldiers; a page button to offer a marriage (both done in 15.5h).
 
 **Now:** wars start and end, soldiers are real people, gear wears, armies eat from home.
 **Do:** why a war starts and ends comes from what people and leaders hold in mind. Walls, sieges
@@ -1394,7 +1394,7 @@ while the couple do. Twelve worlds of two old enemies, two years: three marriage
 one keeping the peace two years, one failed within four months. Trade deals need sales both ways
 across the border: in force 93% → 34% of neighbouring pair-months at peace (six default worlds, a
 year). Tribute agreed by how lopsided the sides are, 5% to 45% of a year's stores (was a flat two
-thirds). `test/treaties.test.mjs`. **Left out:** a page button to offer a marriage; everyday
+thirds). `test/treaties.test.mjs`. **Left out:** a page button to offer a marriage (done in 15.5h); everyday
 marriages by wealth (new item 15b).
 
 **Now** (2026-11-19): peace comes from weariness or a new leader, never a marriage; a trade deal
@@ -2723,7 +2723,12 @@ food, water and money are the household's. Make it the household's, fetched or b
 years, not on news of plenty elsewhere. A good harvest becomes an event people hold and pass on,
 and traders and the hungry act on it the way 12b's news is acted on.
 
-**15.5h. Two things left out of items 13 and 14.** (1) In a war, crafters turn to making gear for
+**[x] 15.5h. Two things left out of items 13 and 14.** *Done 2026-11-21:* a soldier at war is
+armed from what the loyal give, then by the treasury buying from the store, then by an order the
+crafters fill (15.5a); a world with wars off is the same world. The Factions tab has **Arrange a
+marriage** for a ruled people: any grown-up of each, no refusal, a partner either had left on their
+own, family refused, and at war it ends the war. Left out: nothing of h. README, "Wartime gear, and a
+marriage of your choosing". (1) In a war, crafters turn to making gear for
 the soldiers, from the stats and the store as any work is chosen (14a); (2) a page button for a
 ruled faction to offer a marriage for peace (13, 14d), using 14d's marriage as it is.
 

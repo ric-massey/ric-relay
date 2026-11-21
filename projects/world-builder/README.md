@@ -1898,8 +1898,41 @@ worlds over a year (34%, from 93%); in twelve worlds of two old enemies over two
 marriages: one ended a year's war, one kept two peoples from war for the two years, and one
 failed within four months. Leaders have no grown children at the start, so the first marriages
 come from the great families. Cost: a sum per sale; a search through the people only on the day a
-marriage is made. Not done: the page has no button to offer a marriage; everyday marriages still
-ignore wealth (TODO 15b).
+marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
+for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
+
+### Wartime gear, and a marriage of your choosing (2026-11-21)
+
+TODO item 15.5h, two things items 13 and 14 left out.
+
+**Gear for a war is paid for or given.** Ric: it "must be payed for or donated. Nothings free".
+In history the English crown bought arms in bulk — about 1.23 million arrows 1341–59 — by orders
+spread over ordinary fletchers and outside suppliers, and paid for them (Richardson's thesis on the
+Tower's armouries, [White Rose eTheses](https://etheses.whiterose.ac.uk/3919/1/Thom_Richardson_thesis_final.pdf);
+[De Re Militari](https://deremilitari.org/?p=2105)). So:
+
+- A soldier at war who needs a weapon or a shield mended or made takes it first from what the
+  people have **given** for the war, then has the **treasury buy** it from the village store, as
+  rations are already bought (`provision`). What the store has not got is left as an order (15.5a),
+  and crafters make it as they make anything asked for. At peace a soldier still pays from their
+  own wages, as before.
+- At war, a **loyal** grown-up (loyalty over 0.6) who has more goods than the one they keep gives
+  the rest, when they next shop, to their village for the soldiers' gear.
+- A world with wars off is exactly the world it was (`test/wartime.test.mjs`).
+
+Measured, four wars of 300 people, 120 days each, old against new: soldiers with a weapon and a
+shield 90–97% against 92–97% (they were already armed out of their wages); the treasury bought 11
+to 24 goods' worth of gear in each, the people gave 10 to 23 and 7 or 8 of it was used; battle
+deaths 0–1 against 0–4. Treasuries in a long war end empty either way: wages drain them.
+
+**A marriage of your choosing.** Ric: "The marriage button is for me so I should have ultimate
+power." On the Factions tab, for a people you rule, each neighbour has **Arrange a marriage**: type
+or pick any grown-up of yours and any of theirs (the leader and their family listed first, then the
+unmarried), and they are married — 14d's marriage as it is, binding the two peoples, without the
+other side's leave. Somebody already married leaves their partner on their own. Family cannot marry,
+and a child cannot be chosen. At war, the marriage ends the war, as 14d's marriages to end a war do.
+The news says it was on your word; it does not call a farmer "of one of the great families", which
+is 14d's wording for its own choice, the richest.
 
 ### Made to order (2026-11-20)
 

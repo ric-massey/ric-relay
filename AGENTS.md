@@ -700,6 +700,11 @@ nobody had linked was a page nobody could find.
   every batch into the store — a default year made 30,000 goods and used under 3,000, and the
   crafters burned the wood the fires needed. A person holds one order (`p.order`, `p.orderV`);
   `test/orders.test.mjs` checks a village's `wanted` is their sum.
+  **Wartime gear is paid for or given** (TODO 15.5h, 2026-11-21; Ric: "Nothings free"): a soldier
+  at war is armed from `v.given`, then by the treasury (`arm`), then by an order; never hand gear
+  out free. **The marriage button is Ric's to command** ("I should have ultimate power"):
+  `declare(f, o, "wed", a, b)` takes any grown-up of each people and the other side does not refuse
+  — don't add a refusal to it; 14d's own marriages still ask. `test/wartime.test.mjs`.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

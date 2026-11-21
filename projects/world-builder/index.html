@@ -45,6 +45,10 @@
   .row .val { min-width: 3.2rem; text-align: center; font-variant-numeric: tabular-nums; }
   .row .btn { min-width: 44px; padding: .4rem .6rem; }
   .rule-msg { color: var(--acc); }
+  /* Choosing a marriage (TODO 15.5h). */
+  .wed { border-top: 1px solid var(--line); padding: .4rem 0 .2rem; margin: .2rem 0 .4rem; }
+  .wed label { display: block; font-size: 12px; color: var(--dim); }
+  .wed input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; margin: 3px 0 7px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 8px; }
   .graph { margin: .1rem 0 .5rem; }
   .graph .gl { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
   .graph .gl b { color: var(--ink); font-weight: 600; }
@@ -2163,6 +2167,7 @@
      keeper for anything else is out of date and is not drawn. */
   function paneKey() {
     return [tab, picked ? (picked.person ? "p" + picked.person : "v" + picked.village) : "", selectedExchange ? selectedExchange.id : "",
+            wedPick ? "w" + wedPick.f + "-" + wedPick.o : "",
             tab === "people" ? [$("people-search").value, $("people-settlement").value, $("people-faction").value, $("people-job").value, populationPage].join("\u0001") : ""].join("\u0002");
   }
   function pane(idle) {
@@ -2179,7 +2184,8 @@
     paneAsked = true;
     keeper.send({ t: "pane", seq: ++seq, key: paneKey(), idle: idle === true, tab: tab, picked: picked,
                   q: { search: $("people-search").value, settlement: $("people-settlement").value, faction: $("people-faction").value, job: $("people-job").value, page: populationPage, size: POPULATION_PAGE },
-                  exchange: selectedExchange ? { a: selectedExchange.a, b: selectedExchange.b } : null });
+                  exchange: selectedExchange ? { a: selectedExchange.a, b: selectedExchange.b } : null,
+                  wedPick: wedPick && tab === "factions" ? { f: wedPick.f, o: wedPick.o } : null });
   }
   function renderPane() {
     if (mode === "people" && tab === "talk" && selectedExchange && $("panes").dataset.exchange === String(selectedExchange.id)) return;
@@ -2196,6 +2202,7 @@
   /* The panel redraws itself several times a second. Not while a finger is on
      it, or the button being pressed is replaced before the click lands. */
   let paneHeld = false;
+  $("panes").addEventListener("input", e => { if (wedPick && e.target.dataset && e.target.dataset.wed) wedPick[e.target.dataset.wed] = e.target.value; });
   $("panes").addEventListener("input", e => {
     const input = e.target.closest("input[data-edit]");
     if (!input || !input.checkValidity() || !picked || picked.body == null || mode !== "physics") return;
@@ -2229,6 +2236,17 @@
     }
     if (a[0] === "village") { const v = vs[+a[1]]; if (!v) return; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
+    if (a[0] === "wedpick") {
+      wedPick = a[1] != null && !(wedPick && wedPick.f === +a[1] && wedPick.o === +a[2]) ? { f: +a[1], o: +a[2], a: "", b: "" } : null;
+      pane(); return;
+    }
+    if (a[0] === "wedgo" && wedPick && paneData && paneData.wedCands) {
+      const c = paneData.wedCands, pa = c.a.find(p => p.name === wedPick.a.trim()), pb = c.b.find(p => p.name === wedPick.b.trim());
+      ruleMsg = "";
+      if (!pa || !pb) { ruleMsg = "Choose somebody from each list by name."; pane(); return; }
+      keeper.send({ t: "do", seq: ++seq, what: "wed", a: [c.f, c.o, pa.id, pb.id] });
+      wedPick = null; return;
+    }
     if (mode === "people" && ["rule", "ftax", "army", "relief", "land", "vtax", "vrelief", "vreset", "war", "peace", "ally", "trade", "tribute", "stop", "live"].includes(a[0])) {
       /* A decision is the keeper's to carry out, from what stands in the
          world at that moment; the panel is drawn again when it says it has
@@ -2414,6 +2432,9 @@
      this panel redraws several times a second and would pull a slider out
      from under a finger. */
   let ruleMsg = "";
+  /* A marriage being chosen (TODO 15.5h): which two peoples, and the names typed so far, kept here
+     because the panel is drawn again several times a second. */
+  let wedPick = null;
   const pctOf = v => Math.round(v * 100) + "%";
   const stepRow = (label, value, go, extra) => "<div class='row'><span class='lbl'>" + label + "</span>" +
     "<span class='step'><button class='btn' data-go='" + go + ":-1' aria-label='Less " + esc(label.replace(/<[^>]*>/g, "")) + "'>\u2212</button><span class='val'>" + value + "</span>" +
@@ -2440,6 +2461,19 @@
     }
     return out.length ? "<span class='ln'>" + out.join(" · ").replace(/^./, c => c.toUpperCase()) + "</span>" : "";
   }
+  /* Any grown-up of yours and any of theirs; the match is made (Ric: "The marriage button is for me
+     so I should have ultimate power"). At war it ends the war, as 14d's marriages do. */
+  function wedForm(f, o, d) {
+    if (!wedPick || wedPick.f !== f.id || wedPick.o !== o.id) return "";
+    const c = d.wedCands;
+    if (!c || c.f !== f.id || c.o !== o.id) return "<div class='wed small'>Finding who could marry\u2026</div>";
+    const opts = list => list.map(p => "<option value='" + esc(p.name) + "'>" + p.age + (p.fam ? ", the leader's family" : "") + (p.wed ? ", married" : "") + "</option>").join("");
+    const atWar = f.rel[o.id] && f.rel[o.id].war;
+    return "<div class='wed'><label>Of " + esc(f.name) + " (" + c.a.length + " grown-ups)<input list='wed-a' data-wed='a' autocomplete='off' value='" + esc(wedPick.a) + "' placeholder='Type a name'></label><datalist id='wed-a'>" + opts(c.a) + "</datalist>" +
+      "<label>Of " + esc(o.name) + " (" + c.b.length + ")<input list='wed-b' data-wed='b' autocomplete='off' value='" + esc(wedPick.b) + "' placeholder='Type a name'></label><datalist id='wed-b'>" + opts(c.b) + "</datalist>" +
+      "<p class='small'>The leader and their family come first. Somebody already married leaves their partner." + (atWar ? " A marriage now ends the war." : "") + "</p>" +
+      "<div class='row'><button class='btn' data-go='wedgo'>Marry them</button><button class='btn' data-go='wedpick'>Cancel</button></div></div>";
+  }
   function rulePane(f, d) {
     const coins = d.money === "coins";
     if (!f.yours) return "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Rule " + esc(f.name) + " yourself</button></div>";
@@ -2459,7 +2493,8 @@
       }).join("") + "<p class='small'>* the tax set for the whole faction.</p>" : "") +
       (others.length ? "<h4>Neighbours</h4>" + others.map(o => "<div class='row'><span class='lbl'><span class='sw' style='background:" + o.colour + "'></span>" + esc(o.name) + "</span>" +
         (f.rel[o.id] && f.rel[o.id].war ? "<button class='btn' data-go='peace:" + f.id + ":" + o.id + "'>Offer peace</button>"
-                         : (d.war ? "<button class='btn' data-go='war:" + f.id + ":" + o.id + "'>Declare war</button>" : "<span class='small'>at peace \u2014 wars are off</span>") + dealButtons(f, o, d)) + "</div>").join("") : "") +
+                         : (d.war ? "<button class='btn' data-go='war:" + f.id + ":" + o.id + "'>Declare war</button>" : "<span class='small'>at peace \u2014 wars are off</span>") + dealButtons(f, o, d)) +
+        "<button class='btn' data-go='wedpick:" + f.id + ":" + o.id + "' aria-expanded='" + !!(wedPick && wedPick.f === f.id && wedPick.o === o.id) + "'>Arrange a marriage</button></div>" + wedForm(f, o, d)).join("") : "") +
       "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Hand " + esc(f.name) + " back to its leaders</button></div></div>";
   }
   /* The rules a running world can still change: only what the engine reads

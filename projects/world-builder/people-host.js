@@ -396,6 +396,19 @@
         out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive, f: v.f, x: v.x, y: v.y, pop: v.pop, tax: v.tax == null ? null : v.tax,
                                              relief: v.relief == null ? null : v.relief, taxNow: w.taxOf(v) }));
         out.history = w.history.map(r => ({ pop: r.pop }));
+        /* Choosing a marriage (TODO 15.5h): every grown-up of the two peoples, the leader and their family
+           first, then the unmarried, then by name. Sent only while the chooser is open. */
+        const wp = m.wedPick;
+        if (wp && w.factions[wp.f] && w.factions[wp.o]) {
+          const list = fid => {
+            const g = w.factions[fid], lead = byId.get(g.leader);
+            const fam = p => lead && (p === lead || p.mum === lead.id || p.dad === lead.id || (lead.mum && p.mum === lead.mum) || (lead.dad && p.dad === lead.dad));
+            return w.people.filter(p => p.hp > 0 && p.f === fid && w.adult(p))
+              .map(p => ({ id: p.id, name: p.name, age: Math.floor(p.age), wed: !!p.partner, fam: !!fam(p) }))
+              .sort((x, y) => (y.fam - x.fam) || (x.wed - y.wed) || x.name.localeCompare(y.name));
+          };
+          out.wedCands = { f: wp.f, o: wp.o, a: list(wp.f), b: list(wp.o) };
+        }
       } else if (tab === "news") {
         out.events = w.events.slice(-80).reverse().map(e => ({ weight: e.weight, x: e.x, y: e.y, year: e.year, text: e.text }));
       } else if (tab === "talk") {
@@ -474,6 +487,13 @@
             : r === "refused-trade" ? o.name + " refused. They make a trade deal only where there is trade between you already, and with a people they do not dislike."
             : r === "paid" ? o.name + " will pay tribute." : r === "refused" && what === "tribute" ? o.name + " refused to pay, and will not forget being asked."
             : r === "asked" ? "You asked them within the month." : r === "stopped" ? "No more tribute to " + o.name + ". They will not like it." : r;
+      } else if (what === "wed" && f && w.factions[a[1]]) {
+        /* A marriage the watcher arranges (TODO 15.5h): the two chosen, and no refusal. */
+        const r = w.declare(a[0], a[1], "wed", a[2], a[3]), o = w.factions[a[1]], pa = w.byId.get(a[2]), pb = w.byId.get(a[3]);
+        msg = r === "wed" ? pa.name + " has married " + pb.name + " of " + o.name + "."
+            : r === "wed-peace" ? pa.name + " has married " + pb.name + " of " + o.name + ", and the war is over."
+            : r === "kin" ? "They are family to each other."
+            : "Choose a grown-up of each people, both alive.";
       } else if (what === "set") w.set(a[0], a[1]);
       send({ t: "did", seq: m.seq, what: what, msg: msg });
     }

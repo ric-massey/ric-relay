@@ -689,7 +689,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { goodsMade: 0, goodsUsed: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1307,7 +1307,7 @@
        when this side last made a demand of the other. */
     function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0, sold: 0, rate: 0, wed: null, lost: 0, took: 0, spoiled: 0 }; }   // lost, took, spoiled: this war's places and crops (TODO 14e)   // sold, rate, wed: TODO 14d   // began: this side's leader when the war began (TODO 14c)
     function newVillage(x, y, f) {
-      const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0,
+      const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0, given: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
                   alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
                   /* Wood, stone and ore in store, what each fetches and how much the village wants (TODO 9a). */
@@ -2799,6 +2799,10 @@
         }
       }
       outfit(p, v);
+      /* At war, the loyal give what they have to spare for the soldiers' gear (TODO 15.5h). */
+      if (p.goods > 1.05 && p.job !== "soldier" && v.f === p.f && p.loyal > 0.6 && atWarAnywhere(factions[p.f])) {
+        const g = p.goods - 1; p.goods = 1; v.given += g; count.given += g;
+      }
       /* An order left two months unfilled is given up (TODO 15.5a). */
       if (p.order > 0 && t - p.orderT > ORDER_KEEP) dropOrder(p);
       if (p.goods < 0.15 && (shared || p.coins > v.priceGoods * 3)) {
@@ -2817,6 +2821,7 @@
       // Fit/repair an item only at a real village, after feeding the household.
       // Shop transactions preserve money; partial unaffordable goods stay owned.
       if (!adult(p) || p.hp <= 0 || p.food < 0.6 || dist(p, v) > 2.5 || atWar(p.f, v.f)) return;
+      const army = p.job === "soldier" && v.f === p.f && atWarAnywhere(factions[p.f]);
       for (const [key, spec] of Object.entries(GEAR)) {
         if (!spec.jobs.includes(p.job) || (p.gear[key] || 0) > 0.25) continue;
         /* A cart only out of what is left after a winter's bread, or from a shared store with three carts' worth in it (TODO 7d). */
@@ -2830,11 +2835,30 @@
         if (mat && key === "shield" && !matGround(v).wood.length && !matGround(v).grass.length && v.hide < needed) mat = undefined;
         if (mat === "wool" && !matGround(v).grass.length && v.wool < needed) mat = undefined;  // a pack of whatever there is, with no grazing near
         if (mat && v[mat] < needed) continue;
+        if (p.goods < needed && army) arm(p, v, needed - p.goods);   // TODO 15.5h
         if (p.goods < needed) buy(p, v, "goods", needed - p.goods);
         if (p.goods + 1e-10 < needed) { placeOrder(p, v, needed - p.goods); continue; }
         p.goods = Math.max(0, p.goods - needed); p.gear[key] = 1;
         if (mat) v[mat] -= needed;
       }
+    }
+    /* Gear for a soldier at war (TODO 15.5h; Ric: it "must be payed for or donated. Nothings free"):
+       first what the people have given for the war, then bought by the treasury from the store, as
+       rations are (`provision`). What the store has not got is left as an order, and crafters make
+       it as they make anything asked for — the English crown's arrows were ordered from ordinary
+       fletchers and paid for (README, "Wartime gear and a marriage of your choosing"). */
+    function arm(p, v, amount) {
+      const f = factions[p.f];
+      const g = Math.min(v.given, amount);
+      if (g > 0.01) {
+        v.given -= g; p.goods += g; amount -= g; count.armedGiven += g;
+        if (p.order > 0 && p.orderV === v.id) { const x = Math.min(p.order, g); p.order -= x; v.wanted = Math.max(0, v.wanted - x); if (p.order <= 0.01) dropOrder(p); }
+      }
+      if (shared || amount <= 0.01) return;
+      const n = Math.min(amount, v.goods, f.treasury / v.priceGoods);
+      if (n <= 0.01) return;
+      const cost = n * v.priceGoods;
+      f.treasury -= cost; v.till += cost; v.goods -= n; p.goods += n; tookGoods(p, v, n); count.armedBought += n;
     }
     function wear(p, key) { if (equipped(p, key)) p.gear[key] = Math.max(0, p.gear[key] - GEAR[key].wear); }
     /* What a day in the fields brings back, and how long it takes. How much
@@ -6245,10 +6269,18 @@
       return !!a && !!b && a.hp > 0 && b.hp > 0 && a.partner === b.id;
     }
     /* f's family marries into o's. The one who is not a leader goes to live with the other side. */
-    function wed(f, o) {
-      const a = heirOf(byId.get(f.leader)), b = heirOf(byId.get(o.leader));
+    /* `a` and `b` are the two the watcher chose (TODO 15.5h); otherwise each leader's heir. A partner
+       either already had is left on their own: the match is made, as Ric asked ("The marriage button is
+       for me so I should have ultimate power"). */
+    function wed(f, o, a, b) {
+      if (!a) a = heirOf(byId.get(f.leader));
+      if (!b) b = heirOf(byId.get(o.leader));
       if (!a || !b || a === b) return false;
       const rel = f.rel[o.id], back = o.rel[f.id];
+      for (const x of [a, b]) if (x.partner && x.partner !== (x === a ? b.id : a.id)) {
+        const old = byId.get(x.partner);
+        if (old && old.partner === x.id) { wakeUp(old); old.partner = 0; }
+      }
       a.partner = b.id; b.partner = a.id; befriend(a, b, 0.6);
       const mover = a.id !== f.leader ? a : b.id !== o.leader ? b : null, stay = mover === a ? b : a;
       if (mover && mover.home !== stay.home) { rehome(mover, villages[stay.home], "married"); mover.hx = stay.hx; mover.hy = stay.hy; mover.dwelling = stay.dwelling; }
@@ -6759,7 +6791,7 @@
     /* War and peace. Peace takes two: the other side accepts it only if it is
        weary — its dead, the years and its hungry, as its own leader would
        weigh them — or outmatched. */
-    function declare(fid, oid, what) {
+    function declare(fid, oid, what, aId, bId) {
       openUp();
       const f = factions[fid], o = factions[oid];
       if (!f || !o || !f.yours || !f.alive || !o.alive || f === o) return "";
@@ -6794,6 +6826,25 @@
         rel.pays = false; back.grief = clamp(back.grief + 0.4, 0, 3);
         note("tribute", f.name + " has stopped paying tribute to " + o.name + ", on your word.", 3, at.x, at.y, f.id);
         return "stopped";
+      }
+      /* A marriage the watcher arranges (TODO 15.5h): any two grown-ups, one of each people, and the
+         other side does not refuse. It is 14d's marriage as it is; at war, it seals a peace. */
+      if (what === "wed") {
+        const pa = byId.get(aId), pb = byId.get(bId);
+        if (!pa || !pb || pa.hp <= 0 || pb.hp <= 0 || !adult(pa) || !adult(pb) || pa.f !== f.id || pb.f !== o.id) return "no-wed";
+        if (kin(pa, pb)) return "kin";
+        wakeUp(pa); wakeUp(pb);
+        const atWar = rel.war;
+        wed(f, o, pa, pb);
+        if (atWar) {
+          warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t; rel.grief *= 0.4; back.grief *= 0.4;
+          count.peaces++;
+          lostWar(f, rel); lostWar(o, back);
+        }
+        /* Not "of one of the great families": that is 14d's choice, the richest; this may be anybody. */
+        const of = (q, g) => { const l = byId.get(g.leader); return q.id === g.leader ? "the leader of " + g.name : l && kin(q, l) ? "of the family of the leader of " + g.name : "of " + g.name; };
+        note("wed", pa.name + ", " + of(pa, f) + ", has married " + pb.name + ", " + of(pb, o) + (atWar ? ", and " + f.name + " and " + o.name + " have made peace, on your word." : ", on your word."), 3, at.x, at.y, f.id);
+        return atWar ? "wed-peace" : "wed";
       }
       if (what === "peace" && rel.war) {
         const olead = byId.get(o.leader);
