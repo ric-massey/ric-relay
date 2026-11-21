@@ -52,8 +52,11 @@ Do these in order. Do not skip one because the item looks small.
 6. **Build it**, following the rules below.
 7. **Test it.** Add tests for the new thing and list them in `/.github/checks.mjs`. While
    working, run `node .github/checks.mjs --only world-builder` from the repo root (add `--slow`
-   if the engine changed). Run the whole set, `node .github/checks.mjs` (and `--slow` if the
-   engine changed), once, just before pushing.
+   if the engine changed), and once more just before pushing. **Only World Builder's checks, never
+   the whole site's** (Ric, 2026-11-21: "we just need to test this game. not the whole site" — the
+   whole set's `--slow` spent nine minutes on another project's traffic simulation). The one
+   exception: a change to a file other projects share (`/.github/`, the site's front door) runs
+   the quick set, `node .github/checks.mjs`, without `--slow`.
 8. **Measure after**, the same things as step 5. A year-long run of the default world only if
    the item changed what happens once the world is running. Add a row to the Speed log. If the
    item made the world slower than its budget allows, fix that before going on.
@@ -92,8 +95,8 @@ No. Long runs are for proving something they can prove; check against what the i
 - **Keep the old answer instead of running the old code again.** Where a test compares against
   the old engine, save what the old engine gave once (a short fingerprint in `test/`) and
   compare against that.
-- **Only World Builder's checks while working** (`--only world-builder`); the whole site's set
-  once before the push.
+- **Only World Builder's checks** (`--only world-builder`), while working and before the push;
+  never the whole site's (Ric, 2026-11-21).
 - **A browser only when the page changed.**
 
 ## Rules for every item
@@ -2818,7 +2821,91 @@ villages are on navigable water and grain seldom moves between them. Left out: v
 by water (the vision's "Water as the reason places are where they are", not yet an item). README,
 "Rivers that run one way, and grain by boat".
 
-**[ ] 15.5b2. The government's grain trade**, and the measurement of a starting city fed or failing.
+**[x] 15.5b2. The government's grain trade**, and the measurement of a starting city fed or failing.
+*Done 2026-11-21:* a leader sets treasury coins aside in a village of theirs going short (a sixth
+hungry, the engine's "food is dear") and any carrier of any people brings grain to it; a ration from
+that store costs the household less by as much as the leader is warmer than greedy (up to a dole);
+a bold leader makes households with more than their winter sell the rest to the store at a fair
+price (as built, the bold alone — not "the bold who believe in sharing" as written in the answers
+below — and at what each would ask a neighbour, not the store's price: that emptied a treasury in a
+month), and they think less of the leader; a patient leader lays grain in after the reaping. No coin
+made or lost (`test/grain.test.mjs`). **Measured, the "done when":** a starting city, six seeds, ends
+with 172–404 against 178–315 before; it **still fails, and not because of the land**: public orders
+are almost never funded, because in every world measured, old and new, the tax rises to its top within
+about three months of peace and the treasury still holds next to nothing (the soldiers' wages cost
+more than the taxed trade brings) — new part **15.5t**. Bench within drift. README, "The government's
+grain".
+
+*Research notes for b2 (2026-11-21).* The research above ("A town going hungry") stands: Florence's
+Orsanmichele market and rationing, the Books of Orders, Venice and Genoa buying abroad. Added:
+- *Florence, 1329.* Villani himself was the commune's provisioning magistrate in the famine of
+  1328–30: grain was brought quickly from Sicily, 60,000 gold florins were taken from the city's
+  purse, and the grain was sold at prices the starving poor could pay
+  ([Giovanni Villani](https://en.wikipedia.org/wiki/Giovanni_Villani);
+  [Nanni 2019](https://flore.unifi.it/retrieve/e398c37f-4b86-179a-e053-3705fe0a4cff/Nanni%202019_Facing%20the%20Crisis%20in%20Medieval%20Florence.pdf):
+  rationing, special magistracies and the commune's own purchases to hold the price). So the
+  city *paid* for grain from far away and *sold* it cheap, not gave it free.
+- *Rome.* The grain dole began as cheap grain and became free; Caesar cut those entitled to
+  150,000, Augustus set it at about 200,000 men; it needed perhaps 15–33% of the grain Rome
+  brought in, under an official for the supply (*praefectus annonae*)
+  ([Cura annonae](https://en.wikipedia.org/wiki/Cura_annonae)). The exception, not the rule.
+- *China's "ever-normal" granaries*, from the 1st century BC and across every county under the
+  Qing: bought or kept grain to hold the price steady, and fell apart by the mid-1800s under the
+  demands put on them ([Britannica](https://www.britannica.com/topic/ever-normal-granary);
+  Will and Wong, *Nourish the People*, [OAPEN](https://library.oapen.org/bitstream/id/81b4313b-b6d2-4630-87db-f2cc9d726b7e/9780472901821.pdf)).
+  A store laid in *before* the want, against Florence's buying *in* it.
+
+*What the engine does now (read 2026-11-21).* Grain moves between villages only when a trader
+expects the households going short there to pay for it (`bestRoute`: the load is capped at half
+their coins, `o.purse / 2`, because a measured hard winter starved more when carts went where
+nobody could pay). Relief (`shop`) buys from the hungry village's own store, and does nothing once
+that store is empty. So a poor city is never sent grain, however much its leader holds.
+
+*Approach proposed.* No new carrier and no new route: the leader puts money behind the town's want.
+1. **A public order for grain.** Each turn a leader may set coins from the treasury aside for a
+   village of theirs that is going short and whose store is empty — held on the village, so no coin
+   is made or lost. A carrier of any people (cart or boat, 7d and b1) sees that money as buyers
+   there, exactly as it sees the households' coins now, and what the households do not buy goes
+   into the store, paid from it. Grain from other peoples comes the same way, by their traders.
+2. **Who decides, and how much**, from the leader's stats (15a, `ruling`): one who believes in
+   sharing (the relief rule now) orders; the greedy keep more of the treasury back; the warm spend
+   more. Nothing is bought where nothing is spare within reach, so a city on poor land with no
+   roads or river still goes hungry, and blames the leader.
+3. **Forcing hoarders to sell** (Books of Orders): a hard leader makes households holding more than
+   their winter's store, in a village going short, sell the excess to the store at the store's
+   price; those made to sell think less of the leader.
+4. **Out of the store** as now: sold at the store's price, and relief for those who cannot pay.
+Cost: a pass over a faction's villages each turn (already done for tax), and the forced sale only
+in villages going short.
+
+**Ric's answers (2026-11-21):**
+- How the grain reaches people: **"there should be options based on the type of ruler there is"**
+  — read as: all three (the store's price, cheaper with the treasury paying the rest, free), and
+  where a leader lands between them comes from their stats (`ruling`, so an elected leader leans to
+  the people): the share of the price the treasury pays is how much warmer than greedy they are,
+  from nothing (the greedy sell at the store's price) to all of it (a dole). Only for a household's
+  next days, not its winter's laying-in: a ration, as Florence's. Relief stays as it is.
+- Forcing hoarders: **"Yes, hard leaders force it"**. The engine's `hard` trait is *hard-working*,
+  so "hard" here is the leader who uses force: the bold who believe in sharing (relief) — the Books
+  of Orders were paternalist and forceful at once. Those made to sell like the leader less.
+- Stocking ahead: **"Both, by traits"** — a patient leader also orders grain into the store after
+  the harvest while it is cheap, for the hungry months before the next (the ever-normal granary);
+  an impatient one waits until people go short. Grain laid in this way comes only from what
+  households hold above their own winter, as any trader's does. Measured after: a starting city (rich land, several seeds) with and
+without, and the default world unchanged where nobody is short.
+
+**[ ] 15.5t. Treasuries that can never pay** (found by 15.5b2, 2026-11-21; placed here because b2's
+grain trade and b3's answer to riots both need a leader with money). *Now:* in the default world at
+peace, every faction's tax climbs from 0.12 to its top of 0.6 within about 90 days and stays there,
+with the treasury at 0 to 95 coins (seed 11: four peoples of about 100, 4 to 9 soldiers at 1 coin a
+day); the same in a starting city's world (a year's mean tax 0.45–0.56, old engine and new). The
+only thing the tax rule looks at is the soldiers' wages; so the taxed trade does not pay for a
+handful of soldiers, and a tax of 60% weighs on every person's loyalty all year. *Find out:* what a
+treasury takes in and pays out in a day (which sales are taxed now that crafters make only to order,
+15.5a; the levy; spare coins sent back to the tills), and what real peoples spent on soldiers and took
+in tax (a share of output, by era). *Done when:* a default world at peace keeps a tax near where it
+started, or the run shows why it cannot, written down rather than tuned; then 15.5b2's starting city
+measured again.
 
 **[ ] 15.5b3. Food riots** (Ric: "Yes they should"; who riots and why in the notes below).
 
@@ -3926,4 +4013,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-20 | 15a | AMD Ryzen 5 3600, 24 GB | 2.25 s a day, 133× | *not run* | 6.6 MB, 1.29 KB | **each people's ways**: a faction's own nature, events by age and size, a war lost, elected leaders lean to their people; a different world. Against 14e, quick rows alternated new/old/new: 400 0.13/0.13/0.13 s, 2,000 0.68/0.68/0.71 s, 5,000 2.31/2.28/2.25 s — within the drift. Cost: ten adds per grown-up per census (every six hours), one pass over a faction's people per war lost. |
 | 2026-11-20 | 15.25 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× (2.15 before) | 12.3 s a day, 24× (14.8 before) | 6.7 MB, 1.30 KB | **faster, the same world**: passes 1, 2, 4, 5 against 15a, alternated twice, nothing else running: 400 0.13/0.13 → 0.11/0.11 s, 2,000 0.69/0.68 → 0.60/0.60 s, 5,000 2.14/2.16 → 1.94/1.99 s, 20,000 14.83/14.85 → 12.27/15.16 s (the second an outlier; 12.46/12.47 with births), 400 on 500 km 0.16/0.15 → 0.14/0.15 s; a 400-person world 2.5 → 3.3 MB (the search workspace). **Births past 3,000 and the listening fix, measured apart**: 5,000 1.94/1.99 → 2.09/2.04 s (people are born now), 20,000 12.27 → 12.46/12.47 s. Land update for the page, 400 on 500 km: 21 → 11 ms, 12.4 MB → a few KB |
 | 2026-11-21 | 15.5a | Intel Xeon (cloud), 4 cores | 2.51 / 2.65 s a day (2.63 / 2.53 before, same machine) | *not run* | 7.0 MB, 1.37 KB | **made to order**, a different world (who takes which trade). `--quick` two runs each; 400 people timed alone for ten days 0.17 → 0.15 s a day; none of the new code in the profile |
+| 2026-11-21 | 15.5b2 | AMD Ryzen 5 3600, 24 GB | 2.12 / 2.33 s a day (2.12 / 2.13 before) | *not run* | 6.8 MB, 1.32 KB | **the government's grain**: public orders, rations, forced sales, laying in; a different world where a village goes hungry. `--quick` alternated old/new twice: 400 0.17/0.17 → 0.15/0.15 s, 2,000 0.67/0.73 → 0.71/0.73 s, 5,000 2.12/2.13 → 2.33/2.12 s: within the drift. Cost: one pass over a faction's villages a day; forced sales only in hungry villages |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

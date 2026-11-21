@@ -689,7 +689,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1296,7 +1296,8 @@
                   leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9,
-                  mean: new Float64Array(TRAITS.length) };   // TODO 15a: its grown-ups' average of each trait, at the last census
+                  mean: new Float64Array(TRAITS.length),   // TODO 15a: its grown-ups' average of each trait, at the last census
+                  cheap: 0 };   // TODO 15.5b2: the share of a ration's price the treasury pays, in a village under a public order for grain
       factions.push(f);
       for (const o of factions) if (o !== f) { f.rel[o.id] = blankRel(); o.rel[f.id] = blankRel(); }
       return f;
@@ -1310,6 +1311,9 @@
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0, given: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
                   alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
+                  /* A public order for grain (TODO 15.5b2): coins the treasury has set aside here, the days of food
+                     they are for, and whether for people going short now or to lay in after the harvest. */
+                  bid: 0, bidWant: 0, bidFor: "",
                   /* Wood, stone and ore in store, what each fetches and how much the village wants (TODO 9a). */
                   wood: 0, stone: 0, iron: 0, priceWood: 1, priceStone: 1, priceIron: 2, wantWood: 1, wantStone: 1, wantIron: 1, mats: undefined,
                   wool: 0, hide: 0, priceWool: 1.5, priceHide: 1.5, wantWool: 1, wantHide: 1,   // TODO 9b
@@ -1529,7 +1533,7 @@
                   hp: 1, bold: nature(R(), ownOf(v.f, "bold")), warm: nature(R(), ownOf(v.f, "warm")), greed: nature(R(), ownOf(v.f, "greedy")), stub: clamp(ownOf(v.f, "stubborn") + (R() - 0.5) * S.differ, 0, 1), loyal: clamp(0.35 + ownOf(v.f, "loyalty") * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, sick: 0, immune: false,
-                  unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id,
+                  unpaid: 0, forced: 0, hit: 0, from: v.f, ate: -999, at: v.id,
                   /* What they need besides food, which `p.food` already holds.
                      Rest rises with the hours awake, falls while asleep; alone
                      counts the hours since anybody spoke to them; fear comes
@@ -2251,7 +2255,7 @@
     function money() {
       let c = 0;
       for (const p of people) c += p.coins;
-      for (const v of villages) c += v.till;
+      for (const v of villages) c += v.till + v.bid;
       for (const f of factions) c += f.treasury;
       return c;
     }
@@ -2775,6 +2779,7 @@
        "Made to order"). */
     const LEVY = ["farmer", "crafter", "herder", "hunter", "fisher", "woodcutter", "miner"];   // who is called up, in this order
     const ORDER_KEEP = 60 * DAY_HOURS, USED_KEEP = Math.exp(-1 / 90);
+    const FORCED_FADE = Math.pow(0.5, REFLECT_HOURS / (90 * DAY_HOURS));   // TODO 15.5b2
     function placeOrder(p, v, amount) {
       if (amount <= 0.01) return;
       if (p.order > 0 && p.orderV !== v.id) dropOrder(p);
@@ -2812,6 +2817,20 @@
       if (what === "food") v.food += amount; else if (what === "goods") v.goods += amount; else v[what] += amount;
       return amount;
     }
+    /* A ration (TODO 15.5b2): in a village under a public order for people going short, a
+       household's next days of food from the store, the treasury paying `f.cheap` of the price —
+       Florence in 1329 sold the grain it brought in at what the poor could pay; at 1 it is a dole.
+       No tax: the leader is the buyer. */
+    function ration(p, v, f, want) {
+      const price = v.priceFood, own = price * (1 - f.cheap), state = price * f.cheap;
+      let amount = Math.min(want, v.food);
+      if (own > 1e-9) amount = Math.min(amount, funds(p) / own);
+      if (state > 1e-9) amount = Math.min(amount, f.treasury / state);
+      if (amount <= 0.01) return 0;
+      pay(p, amount * own); f.treasury -= amount * state; v.till += amount * price;
+      v.food -= amount; p.food += amount; count.rationed += amount;
+      return amount;
+    }
     /* What somebody does on reaching their own village: put in, take out. */
     function shop(p, v) {
       if (v.f !== p.f && atWar(v.f, p.f)) return;
@@ -2821,8 +2840,9 @@
       if (!shared && want > 1.2 && p.food < want * 0.6 && funds(p) > 1)
         buy(p, v, "food", Math.min(want - p.food, funds(p) * 0.5 / Math.max(0.3, v.priceFood)));
       if (p.food < 0.6) {
-        buy(p, v, "food", 1.1 - p.food);
         const f = factions[v.f];
+        if (!shared && v.bidFor === "short" && f.cheap > 0 && v.f === p.f) ration(p, v, f, 1.1 - p.food);
+        else buy(p, v, "food", 1.1 - p.food);
         if (p.food < 0.2 && !shared && (v.relief != null ? v.relief : f.relief) && v.f === p.f) {
           /* Relief: the treasury buys bread for somebody who cannot. */
           const amount = Math.min(0.6, v.food), cost = amount * v.priceFood;
@@ -3714,13 +3734,15 @@
              short — the trade that keeps a village on poor land alive. */
           /* Not while the grain is still standing: carting comes after the
              reaping, not instead of it. */
-          if ((here.spare || 0) > 5 && (o.short || 0) > 5 && p.coins > 2 && season().ripe < 1.5) {
+          /* A leader's public order counts as buyers there (TODO 15.5b2): its coins as theirs, its days of food as theirs. */
+          const wantThere = Math.max(o.short || 0, o.bidWant);
+          if ((here.spare || 0) > 5 && wantThere > 5 && p.coins > 2 && season().ripe < 1.5) {
             /* Only as much as the households going short there can pay for:
                a cart of grain nobody can buy is grain taken from neighbours at
                home who could have. Measured 2026-11-14 without this, a hard
                winter starved more with grain trade than without it. */
             /* A boatload is worth what it moves, in carts (TODO 15.5b1). */
-            const cart = grainLoad(p), load = cart * (byBoat(p, here, o) ? BOAT_LOADS : 1), moved = Math.min(here.spare, o.short, load, (o.purse || 0) / 2);
+            const cart = grainLoad(p), load = cart * (byBoat(p, here, o) ? BOAT_LOADS : 1), moved = Math.min(here.spare, wantThere, load, ((o.purse || 0) + o.bid) / 2);
             const g = moved / cart * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02) * pull;
             if (g > gain) { gain = g; best = o; what = "grain"; }
           }
@@ -3762,6 +3784,13 @@
             if (amount <= 0.01) continue;
             pay(q, amount * ask); p.coins += amount * ask; q.food += amount; sold += amount;
           }
+          /* Then to the leader's public order, at the same price, into the store (TODO 15.5b2). */
+          let bought = 0;
+          if (here.bid > 0.01 && p.cargo.amount - sold > 0.01) {
+            bought = Math.min(p.cargo.amount - sold, here.bid / ask);
+            here.bid -= bought * ask; p.coins += bought * ask; here.food += bought; sold += bought;
+            here.bidWant = Math.max(0, here.bidWant - bought); count.publicGrain += bought;
+          }
           const rest = p.cargo.amount - sold, intoStore = rest > 0.01 ? sell(p, here, "food", rest) : 0;
           p.food += rest - intoStore;
           if (here.id !== p.home) here.inFood = (here.inFood || 0) + sold + intoStore;   // grain brought in (TODO 8)
@@ -3800,7 +3829,7 @@
         const sellers = (PLAIN ? people : residents(here.id)).filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p && q.food > reserve(q) + 0.5)
           .sort((a, b) => (b.food - reserve(b)) - (a.food - reserve(a)));
         if (here.id === p.home && wouldShip(here, best, p)) here.wantBoat = (here.wantBoat || 0) + 1;   // TODO 15.5b1
-        const boat = byBoat(p, here, best), cap = Math.min(grainLoad(p) * (boat ? BOAT_LOADS : 1), (best.purse || 0) / 2);
+        const boat = byBoat(p, here, best), cap = Math.min(grainLoad(p) * (boat ? BOAT_LOADS : 1), ((best.purse || 0) + best.bid) / 2);
         let load = 0, paid = 0;
         for (const q of sellers) {
           if (load >= cap - 0.01 || p.coins < 0.1) break;
@@ -5621,8 +5650,10 @@
       const lead = byId.get(f.leader);
       const far = lead ? Math.abs(viewOf(p) - viewOf(lead)) : 0.5;
       const wantLoyal = p.mood * 0.85 + (S.loyalty - 0.5) * 0.7 + 0.2 - far * 0.22 - taxOf(v) * 0.4 -
-                        (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06);
+                        (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06) - p.forced * 0.4;
       p.loyal += (clamp(wantLoyal, 0, 1) - p.loyal) * 0.05;
+      /* Grain a leader made them sell weighs as a tax on it would (TODO 15.5b2), and is half forgotten in a season. */
+      if (p.forced > 0) { p.forced *= FORCED_FADE; if (p.forced < 0.005) p.forced = 0; }
 
       if (!adult(p)) return;
       /* Wages. */
@@ -5727,7 +5758,7 @@
           v.alive = false;
           note("gone", v.name + " stands empty.", 2, v.x, v.y, v.f);
           const f = factions[v.f];
-          f.treasury += v.till; v.till = 0;
+          f.treasury += v.till + v.bid; v.till = 0; v.bid = 0; v.bidWant = 0; v.bidFor = "";
           if (!villages.some(o => o.alive && o.f === v.f)) fall(f, -1);
         }
         return;
@@ -6410,6 +6441,72 @@
       /* Friends of old, kept: an alliance or a trade deal lived in is a bond. */
       if (rel.ally || rel.trade) rel.bond = clamp(rel.bond + 0.0004, -1, 1);
     }
+    /* ── the government's grain (TODO 15.5b2) ─────────────────────────────
+       Before this a leader's only help was relief bought from the hungry village's own store, which
+       did nothing once that store was empty, and no carrier took grain where the households could
+       not pay; so a poor city was never sent grain however full its treasury. Now a leader who can
+       spare it sets coins aside in a village of theirs going short — a public order — and any carrier,
+       of any people, sees them as buyers there (Florence in 1329 paid for Sicilian grain from the
+       city's purse; Villani). How much, how cheap it is sold on and whether hoarders are made to sell
+       all come from the leader's stats (`ruling`, Ric 2026-11-21: "options based on the type of ruler
+       there is"): the warm spend more of what the treasury holds beyond three weeks' wages and the
+       greedy less; the treasury pays as much of a ration's price as the leader is warmer than greedy
+       (nothing, cheaper, or a dole); the bold make households with more than their winter's store sell
+       the rest to the store at a fair price (England's Books of Orders, 1587); and the patient also lay
+       grain in during the three months after the reaping, against the hungry months (China's
+       ever-normal granaries). Nothing is bought where nobody within reach has grain to spare. */
+    const LAY_IN = 60;   // days of food a head a most patient leader lays in: the months between the store running low and the next harvest
+    function sinceHarvest() { const s = season(); return ((s.doy - s.yearNote.shift - WARM_PEAK - RIPE_AFTER) % 365 + 365) % 365; }
+    function grainPolicy(f, lead, wages) {
+      const warm = ruling(lead, "warm", f), greed = ruling(lead, "greed", f), patient = ruling(lead, "patient", f), bold = ruling(lead, "bold", f);
+      f.cheap = clamp(warm - greed, 0, 1);
+      /* Topped up once a day, from what is beyond three weeks' wages: spending into the wages made the
+         tax rule (above) raise the tax to its top in a hungry city within two months, measured. */
+      const daily = t % DAY_HOURS === 0;
+      let budget = daily ? Math.max(0, f.treasury - wages * 3) * warm * (1 - greed) : 0;
+      /* The reaping runs about six weeks either side of the ripest day; laying in is the three months after it. */
+      const after = sinceHarvest(), laying = after > 42 && after < 132;
+      for (const v of villages) {
+        if (!v.alive || v.f !== f.id) continue;
+        let want = 0, why = "";
+        /* Whether to buy is the leader's stats (the budget above); a visitor ruling the faction decides by its relief. */
+        if (v.pop > 0 && (f.yours || v.relief != null ? (v.relief != null ? v.relief : f.relief) : true)) {
+          /* Going short: as many hungry as the engine calls food dear (`villageTurn`). Households short of
+             a fortnight's food (`v.short`) are most of any village most of the year, and an order on that
+             alone tied up every treasury in every village, measured. */
+          if (v.pop > 8 && v.hungry > v.pop * 0.15 && v.food < (v.short || 0)) { want = v.short - v.food; why = "short"; }
+          else if (laying && patient > 0.5) { const goal = v.pop * LAY_IN * (patient - 0.5) * 2; if (v.food + 5 < goal) { want = goal - v.food; why = "stock"; } }
+        }
+        if (!want) { if (v.bid > 0) f.treasury += v.bid; v.bid = 0; v.bidWant = 0; v.bidFor = ""; continue; }
+        v.bidWant = want; v.bidFor = why;
+        /* Two coins a day's food, the figure a carrier reckons the households' purse at (`bestRoute`). */
+        const target = want * 2;
+        if (v.bid < target && budget > 0) { const add = Math.min(target - v.bid, budget); v.bid += add; f.treasury -= add; budget -= add; }
+        else if (v.bid > target) { f.treasury += v.bid - target; v.bid = target; }
+        if (why === "short" && daily && bold > 0.5) forceSale(f, v);
+      }
+    }
+    /* Households holding more than their winter's store in a village going short sell the rest to
+       the store at a fair price — what each would ask a neighbour (`trade`'s rule), not the store's
+       price in a dearth, which is pinned at its top and in a hungry city emptied the treasury in a
+       month, measured — paid from the till and then the treasury; nobody is made to sell what
+       cannot be paid for. Those made to sell hold it against the leader as a tax on it (`reflect`). */
+    function forceSale(f, v) {
+      let need = v.short - v.food;
+      for (const q of (PLAIN ? people : residents(v.id))) {
+        if (need <= 0.5) break;
+        if (q.home !== v.id || q.hp <= 0 || !adult(q) || q.id === f.leader) continue;
+        const extra = q.food - reserve(q) - 0.5;
+        if (extra <= 0.5) continue;
+        const price = clamp(1.5 * reserve(q) / Math.max(q.food, 0.1), 0.4, 8);
+        const amount = Math.min(extra, need, (Math.max(0, v.till) + f.treasury) / price);
+        if (amount <= 0.01) break;
+        const cost = amount * price, fromTill = Math.min(Math.max(0, v.till), cost);
+        v.till -= fromTill; f.treasury -= cost - fromTill; q.coins += cost;
+        q.food -= amount; v.food += amount; need -= amount; count.forcedGrain += amount;
+        q.forced = Math.min(1, q.forced + amount / (amount + q.food));
+      }
+    }
     function decide(f) {
       const lead = byId.get(f.leader);
       if (!lead || lead.hp === -99 || lead.f !== f.id) { succeed(f, "left"); return; }
@@ -6486,6 +6583,7 @@
              who does not waits until the treasury is overflowing. */
           f.relief = viewOf(lead) > 0.1 || f.treasury > wages * 2 + f.pop * 1.5;
         }
+        grainPolicy(f, lead, wages);
         /* Coins a treasury has no use for go back into the tills of its
            villages — it buys from them — or every coin in the world would end
            up in a chest and nobody could pay a farmer. */

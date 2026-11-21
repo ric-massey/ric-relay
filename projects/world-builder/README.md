@@ -1901,6 +1901,68 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### The government's grain (2026-11-21)
+
+TODO item 15.5b2, the second of four parts of 15.5b. Before this a leader's only help to the hungry
+was relief bought from their own village's store, which did nothing once that store was empty; and
+a carrier took grain only where the households going short could pay for it. So a poor city was
+never sent grain, however full its leader's treasury. Ric: the way it reaches people should have
+"options based on the type of ruler there is"; hard leaders force hoarders to sell; laying grain in
+ahead "Both, by traits".
+
+- **A public order for grain.** Once a day a leader may set coins from the treasury aside in a
+  village of theirs going short — as many hungry as the engine already calls "food is dear", a
+  sixth of its people. (Households short of a fortnight's food are most of any village most of
+  the year; an order on that tied every treasury up in every village, measured.) The coins stay on
+  the village, so none is made or lost. A carrier of any people, by cart or boat, sees them as
+  buyers there, as it sees the households' purses; after selling door to door, what is left goes
+  into the store, paid from them. Florence did this in the famine of 1328–30: grain fetched from
+  Sicily, 60,000 florins from the city's purse, sold at what the poor could pay
+  ([Giovanni Villani](https://en.wikipedia.org/wiki/Giovanni_Villani);
+  [Nanni 2019](https://flore.unifi.it/retrieve/e398c37f-4b86-179a-e053-3705fe0a4cff/Nanni%202019_Facing%20the%20Crisis%20in%20Medieval%20Florence.pdf)).
+- **How much, from the leader's stats** (`ruling`, so an elected leader leans to the people): of
+  what the treasury holds beyond three weeks' soldiers' wages, a share of warmth times
+  (1 − greed). Spending into the wages made the tax rule raise the tax to its top in a hungry city
+  within two months, measured, so the wages come first.
+- **How it reaches people.** In a village under an order, a household's next days of food from the
+  store are a ration: the treasury pays as much of the price as the leader is warmer than greedy —
+  nothing (the greedy sell at the store's price), cheaper, or all of it, a dole like Rome's
+  ([Cura annonae](https://en.wikipedia.org/wiki/Cura_annonae)). Only the next days, not a
+  winter's laying-in. Relief for those who cannot pay is as it was.
+- **Hoarders made to sell.** A bold leader (over the middle) makes households holding more than
+  their winter's store, in a village going short, sell the rest to the store at a fair price —
+  what each would ask a neighbour, not the store's price in a dearth, which is pinned at its top
+  and emptied the treasury in a month, measured — paid from the till, then the treasury. England's
+  Books of Orders (1587, reissued in every dearth to the 1640s) had juries count each holder's grain
+  and justices send it to market ([Slack](https://core-prod.cambridgecore.org/core/journals/transactions-of-the-royal-historical-society/article/books-of-orders-the-making-of-english-social-policy-15771631/77CAFBCE3647464DE4F0BD606B14B0CD)).
+  The engine's `hard` trait is hard-working, so "hard" here is `bold`. Those made to sell hold it
+  against the leader as a tax on that grain would weigh (`p.forced`, half forgotten in a season).
+- **Laying in.** A patient leader (over the middle) also orders grain into the store in the three
+  months after the reaping, up to 60 days a head for the most patient — the hungry months before
+  the next harvest — as China's "ever-normal" granaries did
+  ([Britannica](https://www.britannica.com/topic/ever-normal-granary)). It comes only from what
+  households hold above their own winter, as any trader's does.
+
+Nothing makes a city that cannot be fed live: where nobody within reach has grain to spare, no
+order is filled. `test/grain.test.mjs` holds the order and that no coin is made or lost, the
+greedy leader who makes none, the bold leader's forced sale (and the timid one's none), the
+ration's share, and laying in by a patient leader only.
+
+**Measured, a year each, old against new, six seeds each.** A starting city (2,000 people on
+30 km, half of them in one city): the city ended with 172–404 people against 178–315 before (mean
+246 against 258), starved 10 against 23 in all six; grain bought on public orders 0–89 days' food
+in a year; hoarders made to sell 37–1,332. The default world: starved 0 in five seeds either way,
+9 in one new; forced sales 0–170, public grain 0–19. Bench (`--quick`, two runs each way): within
+this machine's drift (400 people 0.15 against 0.17 s a day; 5,000 2.12–2.33 against 2.12–2.13).
+
+**So the city still fails, and not because of the land.** The public order is almost never
+funded: in every world measured, old and new, the tax rises to its top of 0.6 within about three
+months of peace and the treasury still sits near nothing, because the taxed trade does not cover
+the soldiers' wages (default world, seed 11: four factions of about 100, 4 to 9 soldiers, tax 0.60
+and treasury 0 to 95 by day 90). The city empties as before, its people moving out rather than
+starving. That is its own piece of work, written into the TODO as 15.5t; with money in the
+treasury the order works (the test).
+
 ### Rivers that run one way, and grain by boat (2026-11-21)
 
 TODO item 15.5b1, the first of four parts of 15.5b. Ric: "Boats should be pretty important for
