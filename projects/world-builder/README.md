@@ -1901,6 +1901,45 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Rivers that run one way, and grain by boat (2026-11-21)
+
+TODO item 15.5b1, the first of four parts of 15.5b. Ric: "Boats should be pretty important for
+travel because it makes it easy but then the question goes of which way the rivers travel".
+
+- **A river runs one way.** The way each river square drains was already worked out when the land
+  is made (`riverTo`); a boat now uses it. With the current a boat goes at its full pace, across it
+  at two thirds, and against it at a third. Upstream, boats were towed from the bank by people or
+  horses, about 15 to 20 km a day (Neckar: about 20 km in five hours of hauling,
+  [Wikipedia](https://en.wikipedia.org/wiki/Chain_boat_navigation_on_the_Neckar); Roman Rhine and
+  Tiber about 15 to 20, [Viabundus](https://www.landesgeschichte.uni-goettingen.de/roads/viabundus/?p=939)),
+  and downstream they drifted or sailed, two or three times as fast — a thin source for the downstream
+  figure, said here so it is not mistaken for a measured one. A way over water is now the quickest,
+  not the fewest squares, so the way down a river is not the way back.
+- **Boats follow a river round its corners and past its fords and bridges.** Until then a boat moved
+  only side to side between squares, so a river that ran corner to corner, as half of them do, had
+  no way along it; and a ford or a bridge cut a river into pieces no boat could pass.
+- **A landing can be on a big river**, not only a lake or the sea. Until then no river village could
+  ever have a boat.
+- **Grain by the boatload.** A village's boat carries ten carts of grain. A cart took half a tonne
+  to a tonne (Langdon: "a ton was a very respectable load for horse-hauled transport"); boats on the
+  Thames carried 60 to 200 quarters, about 13 to 45 tonnes ([London and Thames estuary
+  study](https://archaeologydataservice.ac.uk/catalogue/adsdata/arch-3427-1/dissemination/pdf/general_guide.pdf));
+  a village's own boat, fifteen person-days to build, is the small end. A grain trader at home whose
+  village has a boat loads a boatload where the boat takes less time a ration than a cart — so a
+  slow pull upriver can still lose to the road — and a village that would send grain better by water
+  wants a boat, as people who want to cross water do (6d). River carriage cost about half what
+  carting did in medieval England (Masschaele, *EcHR* 1993); here that saving is the time a ration takes.
+
+Measured: the default world, which has no big river, is the same world (`test/rivers.test.mjs`).
+On the longest big river of a 60 km land, a boat takes 1.9 hours down and 5.3 back up. **In a year
+of three river worlds (60 km, 1,500 people, 16 villages) no village built a boat**, before or after:
+few villages stand on water a boat can use (two to five of sixteen), and grain moved between
+villages only 0 to 101 days' food in a year, none of it between two that a boat joins. So this part
+changes nothing yet in an ordinary world. It is the transport the next parts stand on: a leader
+buying grain from far off (15.5b2), and villages that grow where water is (the vision's "Water as
+the reason places are where they are"). `test/rivers.test.mjs` holds the way down and up, the
+corners and fords, and that a trader takes a boatload only with their village's boat.
+
 ### Wartime gear, and a marriage of your choosing (2026-11-21)
 
 TODO item 15.5h, two things items 13 and 14 left out.

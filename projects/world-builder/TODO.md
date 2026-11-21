@@ -2701,6 +2701,27 @@ further by water) before changing anything. Done when: a starting city is fed or
 of the land and the roads round it, measured over several seeds, never because a number was
 turned until it lived.
 
+**Split 2026-11-21** (too big for one session, as "How to do an item" says): **b1** rivers that run
+one way and grain by boat in bulk (the transport the rest needs) → **b2** the government's grain
+trade (a leader buying grain in from other villages and peoples, and forcing hoarders to sell, by
+their stats) and the "done when" above, measured → **b3** food riots → **b4** bandits on land. The
+research for all four is in the notes below.
+
+**[x] 15.5b1. Rivers that run one way, and grain by boat.** *Done 2026-11-21:* boats go with the
+current at full pace, across it at two thirds and against it at a third; they follow rivers round
+corners and past fords and bridges (both were impassable before); a landing may be on a big river; a
+village's boat carries ten carts of grain where that is quicker a ration, and a village that would
+ship grain wants a boat. Measured: no boat built in a year of three river worlds, old or new — few
+villages are on navigable water and grain seldom moves between them. Left out: villages that settle
+by water (the vision's "Water as the reason places are where they are", not yet an item). README,
+"Rivers that run one way, and grain by boat".
+
+**[ ] 15.5b2. The government's grain trade**, and the measurement of a starting city fed or failing.
+
+**[ ] 15.5b3. Food riots** (Ric: "Yes they should"; who riots and why in the notes below).
+
+**[ ] 15.5b4. Bandits on land** (Ric, from 15i's research).
+
 **15.5c. Land from about 2 km²** (left by item 4a, never done by item 5). The smallest land is 5 km
 across (25 km²); Ric asked for about 2 km². The square must get smaller as the land does, or a
 house and its field are one square. Ric decides: how few people and villages a land that small

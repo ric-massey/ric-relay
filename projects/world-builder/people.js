@@ -689,7 +689,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2538,7 +2538,7 @@
          not set off (TODO 4b). */
       const from = pieceAt(p.x, p.y), to = pieceAt(p.tx, p.ty);
       /* A load for another village by water, where that is quicker (TODO 7d). */
-      const ship = CROSS && p.cargo && task === "carry" && from && from === to ? shipFor(p, p.tx, p.ty) : null;
+      const ship = CROSS && p.cargo && task === "carry" && from && from === to ? shipFor(p, p.tx, p.ty, p.cargo.boat ? BOAT_LOADS : 1) : null;
       if (ship) { p.over = { x: p.tx, y: p.ty, task: task, bx: ship.bx, by: ship.by, hours: ship.hours, sea: ship.sea }; p.tx = ship.ax; p.ty = ship.ay; p.task = "boat"; p.rowing = false; }
       else if (from && to && from !== to) {
         /* By boat, where their village has one on this shore (TODO 6d). An army does not. */
@@ -2580,7 +2580,9 @@
         if (x < 1 || y < 1 || x >= cols - 1 || y >= rows - 1) continue;
         const i = y * cols + x, d = Math.hypot(x - cx, y - cy); if (d > 8) continue;
         if (cross[i] === 1 && d < rd) { rd = d; river = i; }
-        if (ground[i] <= G_LAKE && d < sd) {
+        /* A landing on any water a boat goes on: a lake, the sea, or a big river (TODO 15.5b1; till
+           then never a river, so no river village could have a boat). */
+        if (boatable(i) && d < sd) {
           /* the land beside it, on the village's own piece */
           for (let k = 0; k < 8; k++) { const nx = x + [1, -1, 0, 0, 1, 1, -1, -1][k], ny = y + [0, 0, 1, -1, 1, -1, 1, -1][k], j = ny * cols + nx;
             if (landPiece[j] && landPiece[j] === pieceAt(v.x, v.y)) { sd = d; shore = j; break; } }
@@ -2618,7 +2620,7 @@
     }
     /* A boatload of goods along a coast or a big river to another village's landing, when that is
        quicker than the road by a tenth (TODO 7d): a small boat under sail and oar makes about 6 km an hour along a coast, against a laden walk. */
-    function shipFor(p, x, y) {
+    function shipFor(p, x, y, loads = 1) {
       const v = villages[p.home]; if (!v || !v.boat || !crossings(v).landing) return null;
       let o = null; for (const u of villages) if (u.alive && u !== v && Math.hypot(u.x - x, u.y - y) < 2.5) { o = u; break; }
       if (!o || !crossings(o).landing || Math.hypot(o.x - p.x, o.y - p.y) < 12) return null;
@@ -2627,26 +2629,55 @@
       const r = memo.get(o.id);
       if (!r) return null;
       const byLand = Math.hypot(o.x - p.x, o.y - p.y) * 1.4 / (WALK * ACTIONS_PER_HOUR * (equipped(p, "cart") ? 0.6 : 1));
-      return r.hours < byLand * 0.9 ? r : null;
+      /* By the time it takes a ration (TODO 15.5b1): a boatload is BOAT_LOADS carts, so it is worth
+         taking where the boat is slower than the road but not that many times slower. */
+      return r.hours < byLand * 0.9 * loads ? r : null;
     }
-    /* The way over water from landing `a` to the first land square `goal` accepts, out to 50 km,
-       at `kmh`; and whether any of it is the open sea. */
+    /* The way over water from landing `a` to the first land square `goal` accepts, out to 50 km of
+       water, at `kmh`; and whether it goes over the open sea. Since TODO 15.5b1 a river has a way it
+       runs: a boat goes with the current at `kmh`, across it at two thirds and against it at a
+       third, as boats were towed upstream from the bank at 15 to 20 km a day and went down two or
+       three times as fast (README, "Rivers that run one way"). So it is the quickest way, not the
+       fewest squares, and A to B is not B to A. Boats pass fords and go under bridges, which until
+       then cut a river into pieces no boat could get along. */
+    const boatable = j => ground[j] <= G_LAKE || (cross !== null && cross[j] >= 1);
+    const FX = [1, -1, 0, 0, 1, 1, -1, -1], FY = [0, 0, 1, -1, 1, -1, 1, -1];
     function waterRoute(a, goal, kmh) {
-      const ax = a.i % cols, ay = (a.i / cols) | 0, dist0 = new Map(), q = [];
-      for (let k = 0; k < 8; k++) { const nx = ax + [1, -1, 0, 0, 1, 1, -1, -1][k], ny = ay + [0, 0, 1, -1, 1, -1, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue; const j = ny * cols + nx; if (ground[j] <= G_RIVER && stopAt(j) || ground[j] <= G_LAKE) { dist0.set(j, 1); q.push(j); } }
-      let found = null, sea = false;
-      for (let h = 0; h < q.length && !found && q.length < 400000; h++) {
-        const i = q[h], x = i % cols, y = (i / cols) | 0, d = dist0.get(i);
-        if (d > 200) break;
-        if (ground[i] === G_SEA) sea = true;
-        for (let k = 0; k < 4 && !found; k++) {
-          const nx = x + [1, -1, 0, 0][k], ny = y + [0, 0, 1, -1][k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+      const ax = a.i % cols, ay = (a.i / cols) | 0, best = new Map(), steps = new Map(), seaOn = new Map();
+      /* A small heap of [hours, square]. */
+      const heap = [];
+      const push = (h, j) => { heap.push([h, j]); let c = heap.length - 1; while (c > 0) { const pa = (c - 1) >> 1; if (heap[pa][0] <= heap[c][0]) break; [heap[pa], heap[c]] = [heap[c], heap[pa]]; c = pa; } };
+      const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = c * 2 + 1, r = l + 1; let m = c; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === c) break; [heap[m], heap[c]] = [heap[c], heap[m]]; c = m; } } return top; };
+      const perSquare = 1 / (kmh * SQUARES_PER_KM);
+      for (let k = 0; k < 8; k++) { const nx = ax + FX[k], ny = ay + FY[k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue; const j = ny * cols + nx; if (boatable(j)) { best.set(j, perSquare); steps.set(j, 1); seaOn.set(j, ground[j] === G_SEA); push(perSquare, j); } }
+      let visited = 0;
+      while (heap.length && visited < 400000) {
+        const [h, i] = pop();
+        if (h > best.get(i)) continue;
+        visited++;
+        const n = steps.get(i);
+        if (n > 200) continue;
+        const x = i % cols, y = (i / cols) | 0, sea = seaOn.get(i);
+        /* Eight ways, a corner at its length: a river runs corner to corner as often as side to side,
+           and with only four no boat could follow one that did (found by test/rivers.test.mjs). Land is
+           still only reached side-on, as a boat puts in. */
+        for (let k = 0; k < 8; k++) {
+          const nx = x + FX[k], ny = y + FY[k]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
           const j = ny * cols + nx;
-          if (!stopAt(j) && goal(j)) found = { ax: a.x, ay: a.y, bx: nx + 0.5, by: ny + 0.5, hours: (d + 1) / (kmh * SQUARES_PER_KM) + 0.5, sea: sea };
-          else if (stopAt(j) && !dist0.has(j)) { dist0.set(j, d + 1); q.push(j); }
+          if (!boatable(j)) {
+            if (k < 4 && goal(j)) return { ax: a.x, ay: a.y, bx: nx + 0.5, by: ny + 0.5, hours: h + perSquare + 0.5, sea: sea };
+            continue;
+          }
+          /* The current, where the square left or the square entered is a river. */
+          const r = ground[i] === G_RIVER ? riverTo[i] : ground[j] === G_RIVER ? riverTo[j] : 255;
+          const len = k < 4 ? 1 : Math.SQRT2;
+          let cost = perSquare * len;
+          if (r < 8) { const along = (FX[k] * FX[r] + FY[k] * FY[r]) / (len * Math.hypot(FX[r], FY[r])); cost = perSquare * len * 3 / (2 + along); }
+          const hj = h + cost;
+          if (hj < (best.has(j) ? best.get(j) : Infinity)) { best.set(j, hj); steps.set(j, n + 1); seaOn.set(j, sea || ground[j] === G_SEA); push(hj, j); }
         }
       }
-      return found;
+      return null;
     }
     function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = TK(10) + Math.floor(R() * 30 * STEP_SCALE); }
 
@@ -2877,6 +2908,23 @@
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
     /* Grain goes by cart, not on a back: eight packs' worth. */
     function grainLoad(p) { return tradeCapacity(p) * (equipped(p, "cart") ? 8 : 5); }   // TODO 7d: by cart, or by handcart and packhorse
+    /* Grain by boat (TODO 15.5b1): a village's boat carries ten carts. A cart took half a tonne to a
+       tonne (Langdon: "a ton was a very respectable load"); boats on the Thames carried 60 to 200
+       quarters, 13 to 45 tonnes; a village's own boat, 15 person-days of work, is the small end. */
+    const BOAT_LOADS = 10;
+    /* Whether a trader at home can take grain to `o` by their village's boat, and it is worth it. */
+    function byBoat(p, here, o) { return CROSS && here.id === p.home && villages[p.home].boat ? !!shipFor(p, o.x, o.y, BOAT_LOADS) : false; }
+    /* A village with no boat whose grain would go better by water wants one (TODO 15.5b1), as people
+       who want to cross water do (6d): river towns kept boats for trade, not only for crossing. The
+       way is looked for once for each pair of villages. */
+    function wouldShip(v, o, p) {
+      if (!CROSS || v.boat || !crossings(v).landing || !crossings(o).landing || Math.hypot(o.x - v.x, o.y - v.y) < 12) return false;
+      const memo = v.ships || (v.ships = new Map());
+      if (!memo.has(o.id)) { const b = crossings(o).landing.i; memo.set(o.id, waterRoute(crossings(v).landing, j => j === b, 6)); }
+      const r = memo.get(o.id); if (!r) return false;
+      const byLand = Math.hypot(o.x - v.x, o.y - v.y) * 1.4 / (WALK * ACTIONS_PER_HOUR * (equipped(p, "cart") ? 0.6 : 1));
+      return r.hours < byLand * 0.9 * BOAT_LOADS;
+    }
     /* How fast somebody laden with a cart goes on this square (TODO 7d). */
     function cartPace(p, i) {
       if (!equipped(p, "cart")) return 1;
@@ -3671,8 +3719,9 @@
                a cart of grain nobody can buy is grain taken from neighbours at
                home who could have. Measured 2026-11-14 without this, a hard
                winter starved more with grain trade than without it. */
-            const load = grainLoad(p), moved = Math.min(here.spare, o.short, load, (o.purse || 0) / 2);
-            const g = moved / load * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02) * pull;
+            /* A boatload is worth what it moves, in carts (TODO 15.5b1). */
+            const cart = grainLoad(p), load = cart * (byBoat(p, here, o) ? BOAT_LOADS : 1), moved = Math.min(here.spare, o.short, load, (o.purse || 0) / 2);
+            const g = moved / cart * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02) * pull;
             if (g > gain) { gain = g; best = o; what = "grain"; }
           }
         }
@@ -3750,7 +3799,8 @@
            a seller's own winter. */
         const sellers = (PLAIN ? people : residents(here.id)).filter(q => q.home === here.id && adult(q) && q.hp > 0 && q !== p && q.food > reserve(q) + 0.5)
           .sort((a, b) => (b.food - reserve(b)) - (a.food - reserve(a)));
-        const cap = Math.min(grainLoad(p), (best.purse || 0) / 2);
+        if (here.id === p.home && wouldShip(here, best, p)) here.wantBoat = (here.wantBoat || 0) + 1;   // TODO 15.5b1
+        const boat = byBoat(p, here, best), cap = Math.min(grainLoad(p) * (boat ? BOAT_LOADS : 1), (best.purse || 0) / 2);
         let load = 0, paid = 0;
         for (const q of sellers) {
           if (load >= cap - 0.01 || p.coins < 0.1) break;
@@ -3761,8 +3811,11 @@
           load += amount; paid += amount * price;
         }
         if (load <= 0.5) { near(p, here, 2); p.wait = TK(40); return; }
-        p.cargo = { what: "food", amount: load, grain: true, paid: paid };
-        p.say = "A cart of grain for " + best.name + "."; p.sayT = TK(60);
+        /* A boatload only when more than a cart's worth was bought; otherwise it goes as a cart would. */
+        const boatload = boat && load > grainLoad(p);
+        p.cargo = { what: "food", amount: load, grain: true, paid: paid, boat: boatload };
+        if (boatload) count.boatGrain += load;
+        p.say = (boatload ? "A boatload of grain for " : "A cart of grain for ") + best.name + "."; p.sayT = TK(60);
         p.at = best.id; go(p, best.x + (R() - 0.5), best.y + (R() - 0.5), "carry");
         return;
       }
@@ -6937,6 +6990,10 @@
          that changes when they do. */
       trod: trod, track: track, get trackStamp() { return trackStamp; },
       cross: cross,   // TODO 6d: 1 a big river, 2 a ford, 3 a bridge (null with Crossing at "wade")
+      /* For tests (TODO 15.5b1): which way each river square runs (0–7, 255 none), and how many hours a
+         boat takes from the water beside land square `from` to land square `to` (null when it cannot). */
+      landingOf: vid => crossings(villages[vid]).landing, byBoat: (pid, oid) => { const p = byId.get(pid); return byBoat(p, villages[p.home], villages[oid]); },
+      boatHours: (from, to) => { const r = waterRoute({ i: from, x: from % cols + 0.5, y: ((from / cols) | 0) + 0.5 }, j => j === to, 6); return r ? r.hours : null; },
       rainK: rainK, rainField: y => RAIN ? rainField(y, new Uint8Array(tiles)) : null,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,

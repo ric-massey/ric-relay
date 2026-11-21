@@ -705,6 +705,10 @@ nobody had linked was a page nobody could find.
   out free. **The marriage button is Ric's to command** ("I should have ultimate power"):
   `declare(f, o, "wed", a, b)` takes any grown-up of each people and the other side does not refuse
   — don't add a refusal to it; 14d's own marriages still ask. `test/wartime.test.mjs`.
+  **Rivers run one way** (TODO 15.5b1, 2026-11-21): `waterRoute` is the quickest way by time, not
+  squares — with the current, across it, against it — and moves eight ways, past fords and bridges
+  (four ways and fords as walls made rivers impassable to boats). A boatload is `BOAT_LOADS` carts.
+  `test/rivers.test.mjs`.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer
