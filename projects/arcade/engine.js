@@ -275,6 +275,61 @@
     valid(b) { return b.length === 81 && b.every((n,i) => n >= 1 && n <= 9 && Sudoku.candidates(b.map((v,j) => j===i?0:v),i).includes(n)); }
   };
 
+  /* Ultimate tic-tac-toe (2026-11-21, Ric picked it): nine small boards in a big
+     one. The square you play in sends the other player to the board in that
+     position; if that board is decided, they may play anywhere. Win three
+     small boards in a row. s.b[k][i]: board k, square i; s.won[k]: 'X', 'O',
+     'D' (drawn) or ''; s.next: the board to play in, or -1 for any. */
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const Ultimate = {
+    create(first = 'X') { return { b: Array.from({length:9}, () => Array(9).fill('')), won: Array(9).fill(''), next: -1, turn: first }; },
+    moves(s) { if (Ultimate.winner(s)) return []; const out = []; for (let k = 0; k < 9; k++) { if (s.won[k] || (s.next >= 0 && s.next !== k)) continue; for (let i = 0; i < 9; i++) if (!s.b[k][i]) out.push([k, i]); } return out; },
+    small(cells) { for (const l of LINES) if (cells[l[0]] && cells[l[0]] !== 'D' && l.every(i => cells[i] === cells[l[0]])) return cells[l[0]]; return cells.every(Boolean) ? 'D' : ''; },
+    apply(s, [k, i]) {
+      const n = { b: s.b.map(r => r.slice()), won: s.won.slice(), next: -1, turn: s.turn === 'X' ? 'O' : 'X' };
+      n.b[k][i] = s.turn; n.won[k] = Ultimate.small(n.b[k]); n.next = n.won[i] ? -1 : i; return n;
+    },
+    /* 'X', 'O', 'draw' or null. */
+    winner(s) { for (const l of LINES) { const w = s.won[l[0]]; if ((w === 'X' || w === 'O') && l.every(k => s.won[k] === w)) return w; } return s.won.every(Boolean) ? 'draw' : null; },
+    line(s) { for (const l of LINES) { const w = s.won[l[0]]; if ((w === 'X' || w === 'O') && l.every(k => s.won[k] === w)) return l; } return null; },
+    /* How good the position is for `me`: lines on the big board weighted far
+       above lines inside small boards, the centres a little. */
+    score(s, me) {
+      const w = Ultimate.winner(s); if (w) return w === me ? 1e6 : w === 'draw' ? 0 : -1e6;
+      const them = me === 'X' ? 'O' : 'X', open = c => !c;
+      const lineValue = (cells, a, b) => { let v = 0; for (const l of LINES) { const m = l.filter(i => cells[i] === a).length, o = l.filter(i => cells[i] === b || cells[i] === 'D').length; if (!o && m) v += m === 2 ? 9 : 1; } return v; };
+      let v = 0;
+      v += 120 * (lineValue(s.won, me, them) - lineValue(s.won, them, me));
+      for (let k = 0; k < 9; k++) {
+        if (s.won[k] === me) v += k === 4 ? 60 : 40; else if (s.won[k] === them) v -= k === 4 ? 60 : 40;
+        else if (!s.won[k]) { const weight = k === 4 ? 1.5 : k % 2 ? 1 : 1.2; v += weight * (lineValue(s.b[k], me, them) - lineValue(s.b[k], them, me)); if (s.b[k][4] === me) v += 3; else if (s.b[k][4] === them) v -= 3; }
+      }
+      // Being sent anywhere is a gift to whoever moves next.
+      if (s.next < 0) v += s.turn === me ? 15 : -15;
+      return v;
+    },
+    /* easy: one move ahead with plenty of slack; medium: three; hard: deeper
+       and deeper until `ms` runs out. Returns [board, square]. */
+    pick(s, level = 'medium', random = Math.random, ms = 350) {
+      const me = s.turn, moves = Ultimate.moves(s); if (!moves.length) return null;
+      const deadline = Date.now() + ms; let nodes = 0; const STOP = {};
+      const order = (n, list) => list.map(m => [m, Ultimate.score(Ultimate.apply(n, m), n.turn)]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+      const search = (n, d, a, b) => {
+        if ((++nodes & 511) === 0 && Date.now() > deadline) throw STOP;
+        const w = Ultimate.winner(n); if (w || !d) return Ultimate.score(n, me) + (w && w !== 'draw' ? (w === me ? d : -d) : 0);
+        const list = Ultimate.moves(n); if (!list.length) return 0;
+        if (n.turn === me) { let v = -Infinity; for (const m of list) { v = Math.max(v, search(Ultimate.apply(n, m), d - 1, a, b)); a = Math.max(a, v); if (a >= b) break; } return v; }
+        let v = Infinity; for (const m of list) { v = Math.min(v, search(Ultimate.apply(n, m), d - 1, a, b)); b = Math.min(b, v); if (a >= b) break; } return v;
+      };
+      const rootSearch = depth => { const scored = order(s, moves).map(m => ({ m, v: search(Ultimate.apply(s, m), depth - 1, -Infinity, Infinity) })); return scored.sort((x, y) => y.v - x.v); };
+      if (level === 'easy') { const sc = rootSearch(1), near = sc.filter(x => x.v >= sc[0].v - 80); return near[Math.floor(random() * near.length)].m; }
+      if (level === 'medium') { const sc = rootSearch(3), top = sc.filter(x => x.v === sc[0].v); return top[Math.floor(random() * top.length)].m; }
+      let best = rootSearch(2)[0].m;
+      for (let d = 3; d <= 9; d++) { try { const sc = rootSearch(d); best = sc[0].m; if (Math.abs(sc[0].v) >= 1e5) break; } catch (e) { if (e !== STOP) throw e; break; } }
+      return best;
+    }
+  };
+
   const Mines = {
     /* rows × cols; a square field passes one size. Saves from before 2026-11-21
        have only n, so cols/rows fall back to it. */
@@ -415,6 +470,6 @@
     fullRows(s){const rows=[];for(let r=0;r<20;r++){if(s.b[r].every((v,c)=>v||s.piece.some((row,pr)=>s.y+pr===r&&row[c-s.x])))rows.push(r);}return rows;},
     drop(s,random=Math.random){while(Tetris.move(s,0,1))s.score+=2;Tetris.lock(s,random);}
   };
-  const api={copy,shuffle,seeded,Tic,Chess,Checkers,Sudoku,Mines,Word,Solitaire,Snake,Tetris};
+  const api={copy,shuffle,seeded,Tic,Ultimate,Chess,Checkers,Sudoku,Mines,Word,Solitaire,Snake,Tetris};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ArcadeGames=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

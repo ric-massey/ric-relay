@@ -23,7 +23,7 @@
     solitaire:[['draw1','Draw one'],['draw3','Draw three'],['daily','Daily deal']],
     chess:[['cpu','Vs computer · you’re White'],['cpu-black','Vs computer · you’re Black'],['two','Two players · pass the device'],['table','Two players · across the table'],['online','Play a friend online']],
     checkers:[['cpu','Vs computer'],['two','Two players · pass the device'],['table','Two players · across the table'],['online','Play a friend online']],
-    tictactoe:[['cpu','Vs computer'],['two','Two players']],
+    tictactoe:[['cpu','Vs computer'],['two','Two players'],['online','Play a friend online']],
     wordle:[['daily','Daily word'],['practice','Practice'],['past','Past daily words']],
     sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['expert','Expert'],['daily','Daily puzzle']],
     minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines'],['expert','Expert · 99 mines'],['custom','Custom size']],
@@ -138,6 +138,7 @@
       }
       if(game.id==='wordle')dailyDate=new Date().toISOString().slice(0,10);
       if(game.id==='sudoku'&&!s.given)return false;
+      if(game.id==='tictactoe'&&(Array.isArray(s)||!s.match))return false;
       if(isDaily()){dailyDate=new Date().toISOString().slice(0,10);if(s.day!==dailyDate){storage.remove('save:'+game.id);resetRun();return false;}}
       renderStats();
       if(action())renderAction(true);else render();
@@ -225,7 +226,7 @@
   function start(){
     resetRun();storage.remove('save:'+game.id);
     switch(game.id){
-      case 'tictactoe':s=Array(9).fill('');break;
+      case 'tictactoe':s=null;s=ticNew(false);if(mode==='online'){renderStats();netResume();refreshScores();return;}break;
       case 'chess':s=E.Chess.create();keys=[E.Chess.key(s)];clockNew();if(mode==='online'){renderStats();netResume();refreshScores();return;}break;
       case 'checkers':s=E.Checkers.create();keys=[checkerKey()];if(mode==='online'){renderStats();netResume();refreshScores();return;}break;
       case 'solitaire':s=mode==='daily'?E.Solitaire.create(dailyRandom()):E.Solitaire.create();s.draw=mode==='draw3'?3:1;if(opts.winnable&&mode!=='daily')winnableDeal();break;
@@ -252,24 +253,135 @@
   /* Computer moves wait a moment so "thinking…" paints first. */
   function cpu(fn){const token=revision;cpuBusy=true;setTimeout(()=>{if(token!==revision||finished)return;try{fn();}finally{cpuBusy=false;}},game.id==='tictactoe'?350:300);}
 
-  // ---- Tic-tac-toe ---------------------------------------------------------
-  function renderTic(){
-    const turn=s.filter(Boolean).length%2?'O':'X',winner=E.Tic.winner(s),line=E.Tic.line(s);
-    status(winner?winner==='draw'?'A draw.':(mode==='cpu'?(winner==='X'?'You win':'The computer wins'):'Player '+winner+' wins'):turn+' to play'+(mode==='cpu'&&turn==='O'?' · computer thinking…':''));
-    const b=grid(3,'ttt');b.dataset.turn=!winner&&!(mode==='cpu'&&turn==='O')?turn:''; // hover shows a faint X or O
-    s.forEach((v,i)=>{const sq=button(v,()=>{if(finished||cpuBusy||s[i]||(mode==='cpu'&&turn==='O'))return;history.push(s.slice());s[i]=turn;moved=new Set([i]);sfx('tap');renderTic();},'square '+(v==='O'?'o':'')+(moved.has(i)?' drop':'')+(line?.includes(i)?' win':''));sq.setAttribute('aria-label',`Row ${Math.floor(i/3)+1}, column ${i%3+1}: ${v||'empty'}`);sq.disabled=!!v||finished;b.append(sq);});
-    if(line){const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.setAttribute('class','strike');svg.setAttribute('viewBox','0 0 3 3');svg.setAttribute('aria-hidden','true');const ln=document.createElementNS(NS,'line');const at=i=>[i%3+.5,Math.floor(i/3)+.5];const a=at(line[0]),z=at(line[2]),dx=(z[0]-a[0])*.2,dy=(z[1]-a[1])*.2;ln.setAttribute('x1',a[0]-dx);ln.setAttribute('y1',a[1]-dy);ln.setAttribute('x2',z[0]+dx);ln.setAttribute('y2',z[1]+dy);ln.setAttribute('pathLength','1');svg.append(ln);b.append(svg);}
-    tools.replaceChildren(button('↶ Undo',()=>{if(cpuBusy||!history.length)return;finished=false;s=history.pop();moved=new Set();renderTic();}));
-    const st=stats();hint(mode==='cpu'?`You ${st.won||0} · Computer ${st.lost||0} · Draws ${st.drawn||0}`:`X ${st.sides?.X||0} · O ${st.sides?.O||0} · Draws ${st.sides?.draw||0}`);moved=new Set();
-    if(winner){
-      if(mode==='cpu')record(winner==='draw'?'drawn':winner==='X'?'won':'lost');else record(winner==='draw'?'draw':winner);
-      const t=stats();hint(mode==='cpu'?`You ${t.won||0} · Computer ${t.lost||0} · Draws ${t.drawn||0}`:`X ${t.sides?.X||0} · O ${t.sides?.O||0} · Draws ${t.sides?.draw||0}`);
-      if((mode==='cpu'&&winner==='X')||(mode==='two'&&winner!=='draw'))celebrate();
-      finish(winner==='draw'?'A good standoff.':mode==='cpu'?(winner==='X'?'You take it.':'The computer takes it.'):winner+' takes it.',winner==='draw'?'Nobody gave an inch. Another round?':'Three in a row. Time for the rematch.');return;
-    }
-    persist();
-    if(mode==='cpu'&&turn==='O')cpu(()=>{const i=E.Tic.pick(s,LEVELS.tictactoe[opts.level||'medium']);s[i]='O';moved=new Set([i]);sfx('tap');renderTic();});
+  // ---- Tic-tac-toe (round three, 2026-11-21: TODO.md "Tic-tac-toe: what players want") ----
+  /* s = {v:'classic'|'ultimate', b (9 squares, or an Ultimate position),
+     first: who starts this game, match: {len, X, O, D, game}}. Against the
+     computer you are X and it is O; the first move swaps every game (Ric:
+     "Matches and who starts"), so it starts every other one. A match is
+     single, best of 3 or best of 5: first to 2 or 3 wins, draws replayed. */
+  const otherMark=m=>m==='X'?'O':'X';
+  function ticNew(keepMatch){
+    const v=mode==='online'?(net.variant||'classic'):(opts.variant||'classic'),len=mode==='online'?1:+(opts.match||1);
+    const match=keepMatch&&s?.match&&s.match.len===len?s.match:{len,X:0,O:0,D:0,game:0};
+    match.game++;
+    // The first move swaps each game; online, X always starts and rematches swap seats instead.
+    const first=mode==='online'?'X':match.game%2?'X':'O';
+    return {v,first,match,b:v==='ultimate'?E.Ultimate.create(first):Array(9).fill('')};
   }
+  const ticTurn=()=>s.v==='ultimate'?s.b.turn:(s.b.filter(Boolean).length%2?otherMark(s.first):s.first);
+  const ticWinner=()=>s.v==='ultimate'?E.Ultimate.winner(s.b):E.Tic.winner(s.b);
+  const myMark=()=>mode==='online'?(net.color==='w'?'X':'O'):mode==='cpu'?'X':ticTurn();
+  const ticCpuTurn=()=>mode==='cpu'&&ticTurn()==='O';
+  const ticCanMove=()=>!finished&&!cpuBusy&&!ticWinner()&&(mode==='online'?net.started&&ticTurn()===myMark():!ticCpuTurn());
+  /* A move as text, for undo and online rooms: c4 = classic square 4, e47 = Ultimate board 4, square 7. */
+  const ticCode=m=>Array.isArray(m)?'e'+m[0]+m[1]:'c'+m;
+  function ticParse(v){const t=String(v);if(s.v==='ultimate'&&/^e[0-8][0-8]$/.test(t)){const m=[+t[1],+t[2]];return E.Ultimate.moves(s.b).some(x=>x[0]===m[0]&&x[1]===m[1])?m:null;}if(s.v==='classic'&&/^c[0-8]$/.test(t)){const i=+t[1];return !s.b[i]&&!E.Tic.winner(s.b)?i:null;}return null;}
+  function ticPlay(m,remote=false){
+    history.push(E.copy(s));const mark=ticTurn();
+    if(s.v==='ultimate'){s.b=E.Ultimate.apply(s.b,m);moved=new Set([m[0]*9+m[1]]);}else{s.b[m]=mark;moved=new Set([m]);}
+    sfx('tap');if(mode==='online'&&!remote)netSend('m',ticCode(m));renderTic();
+  }
+  /* Each mark is drawn stroke by stroke, the way each style would draw it. */
+  const NS='http://www.w3.org/2000/svg';
+  function ticMark(mark,fresh,big=false){
+    if(look()==='terminal'){const t=el('span','mark-text '+mark.toLowerCase(),mark);return t;}
+    const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('class','mark mark-'+mark.toLowerCase()+(fresh&&!reduced()?' fresh':'')+(big?' big':''));svg.setAttribute('aria-hidden','true');
+    const path=(d,k)=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);p.setAttribute('pathLength','1');p.style.setProperty('--k',k);svg.append(p);};
+    if(look()==='beach'&&mark==='O'){ // a scallop shell
+      const g=document.createElementNS(NS,'g');g.setAttribute('class','shell');svg.append(g);
+      const body=document.createElementNS(NS,'path');body.setAttribute('d','M50 82 C30 82 16 66 18 46 C20 30 34 18 50 18 C66 18 80 30 82 46 C84 66 70 82 50 82 Z');g.append(body);
+      for(const a of [-48,-28,-10,10,28,48]){const r=document.createElementNS(NS,'path');const rad=(a-90)*Math.PI/180;r.setAttribute('d',`M50 80 L${50+Math.cos(rad)*30} ${50+Math.sin(rad)*30+6}`);r.setAttribute('class','rib');g.append(r);}
+      const hinge=document.createElementNS(NS,'path');hinge.setAttribute('d','M40 80 L44 88 L56 88 L60 80 Z');hinge.setAttribute('class','hinge');g.append(hinge);
+      return svg;
+    }
+    if(mark==='X'){path('M24 22 C40 40 58 58 77 79',0);path('M76 23 C58 41 41 60 23 78',1);}
+    else path('M52 20 C30 19 19 36 21 53 C23 71 40 81 55 79 C73 76 82 60 79 43 C77 29 66 20 50 22',0);
+    return svg;
+  }
+  /* The # drawn by hand: four slightly wandering strokes. */
+  function ticGrid(seed){
+    const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 300 300');svg.setAttribute('class','hand-grid');svg.setAttribute('aria-hidden','true');svg.setAttribute('preserveAspectRatio','none');
+    const r=E.seeded('grid'+seed),j=()=>(r()-.5)*7;
+    for(const k of [100,200]){for(const vertical of [true,false]){const p=document.createElementNS(NS,'path');p.setAttribute('d',vertical?`M${k+j()} ${6+j()} Q${k+j()} 150 ${k+j()} ${294+j()}`:`M${6+j()} ${k+j()} Q150 ${k+j()} ${294+j()} ${k+j()}`);svg.append(p);}}
+    return svg;
+  }
+  function ticStrike(line,cls){
+    const svg=document.createElementNS(NS,'svg');svg.setAttribute('class','strike '+(cls||''));svg.setAttribute('viewBox','0 0 3 3');svg.setAttribute('aria-hidden','true');
+    const ln=document.createElementNS(NS,'line');const at=i=>[i%3+.5,Math.floor(i/3)+.5];const a=at(line[0]),z=at(line[2]),dx=(z[0]-a[0])*.2,dy=(z[1]-a[1])*.2;
+    ln.setAttribute('x1',a[0]-dx);ln.setAttribute('y1',a[1]-dy);ln.setAttribute('x2',z[0]+dx);ln.setAttribute('y2',z[1]+dy);ln.setAttribute('pathLength','1');svg.append(ln);return svg;
+  }
+  /* The tally in the margin: five-bar gates for each side and the draws. */
+  function ticTally(){
+    const slot=$('tally-slot');if(!slot)return;const st=stats();
+    const rows=mode==='cpu'?[['You',st.won||0],['Computer',st.lost||0],['Draws',st.drawn||0]]:mode==='online'?[['You',st.won||0],['Friend',st.lost||0],['Draws',st.drawn||0]]:[['X',st.sides?.X||0],['O',st.sides?.O||0],['Draws',st.sides?.draw||0]];
+    slot.replaceChildren();
+    for(const [label,n] of rows){const row=el('div','tally-row');row.append(el('span','tally-label',label));const marks=el('span','tally-marks');marks.setAttribute('aria-label',`${n}`);
+      if(look()==='terminal')marks.textContent=('|||| '.repeat(Math.floor(n/5))+'|'.repeat(n%5)).replace(/\|\|\|\| /g,'||||/ ')||'-';
+      else{for(let g=0;g<Math.floor(n/5);g++){const gate=el('span','gate five');for(let k=0;k<4;k++)gate.append(el('i'));gate.append(el('b'));marks.append(gate);}if(n%5){const gate=el('span','gate');for(let k=0;k<n%5;k++)gate.append(el('i'));marks.append(gate);}if(!n)marks.append(el('span','tally-none','—'));}
+      row.append(marks,el('span','tally-n',String(n)));slot.append(row);}
+  }
+  function ticHeader(){
+    const m=s.match,h=$('tic-head');if(!h)return;
+    const names=mode==='cpu'?{X:'You',O:'Computer'}:mode==='online'?{[myMark()]:'You',[otherMark(myMark())]:'Your friend'}:{X:'X',O:'O'};
+    h.textContent=(s.v==='ultimate'?'Ultimate · ':'')+(m.len>1?`Game ${m.game} · best of ${m.len} · ${names.X} ${m.X}–${m.O} ${names.O}`:`Game ${m.game}`)+` · ${names[s.first]} start${names[s.first]==='You'?'':'s'}`;
+  }
+  function renderTic(){
+    if(!s||Array.isArray(s))s=ticNew(false);
+    document.body.dataset.variant=s.v;
+    const winner=ticWinner(),turn=ticTurn(),thinking=ticCpuTurn()&&!winner,names=mode==='cpu'?{X:'You',O:'The computer'}:mode==='online'?{[myMark()]:'You',[otherMark(myMark())]:'Your friend'}:{X:'X',O:'O'};
+    status(winner?(winner==='draw'?'A draw.':names[winner]+(names[winner]==='You'?' win':' wins')):mode==='online'&&!net.started?(net.code?'Waiting for your friend to join…':'Play a friend online'):(mode==='online'?(turn===myMark()?'Your move':'Your friend’s move…'):mode==='cpu'?(turn==='X'?'Your move':'The computer is thinking…'):turn+' to play')+(s.v==='ultimate'&&!winner?(s.b.next>=0?` · board ${s.b.next+1}`:' · any board'):''));
+    stage.replaceChildren();const wrap=el('div','tic-wrap');
+    if(s.v==='classic'){
+      const b=el('div','board ttt');b.dataset.turn=ticCanMove()?turn:'';const line=E.Tic.line(s.b);
+      s.b.forEach((v,i)=>{const sq=button('',()=>{if(ticCanMove()&&!s.b[i])ticPlay(i);},'square'+(v?' taken':''));if(v)sq.append(ticMark(v,moved.has(i)));else if(ticCanMove())sq.dataset.ghost=turn;sq.setAttribute('aria-label',`Row ${Math.floor(i/3)+1}, column ${i%3+1}: ${v||'empty'}`);sq.disabled=!!v||!ticCanMove();b.append(sq);});
+      b.append(ticGrid(s.match.game));if(line)b.append(ticStrike(line));wrap.append(b);
+    }else{
+      const big=el('div','board ultimate'),u=s.b,line=E.Ultimate.line(u),live=new Set(winner?[]:E.Ultimate.moves(u).map(m=>m[0]));
+      for(let k=0;k<9;k++){
+        const small=el('div','small'+(live.has(k)&&ticCanMove()?' live':'')+(u.won[k]?' decided won-'+u.won[k].toLowerCase():''));small.setAttribute('role','group');small.setAttribute('aria-label',`Board ${k+1}${u.won[k]==='D'?', drawn':u.won[k]?', won by '+u.won[k]:''}`);
+        for(let i=0;i<9;i++){const v=u.b[k][i],ok=ticCanMove()&&!v&&!u.won[k]&&(u.next<0||u.next===k);const sq=button('',()=>{if(ok)ticPlay([k,i]);},'square'+(v?' taken':''));if(v)sq.append(ticMark(v,moved.has(k*9+i)));else if(ok)sq.dataset.ghost=turn;sq.disabled=!ok;sq.setAttribute('aria-label',`Board ${k+1}, row ${Math.floor(i/3)+1}, column ${i%3+1}: ${v||'empty'}`);small.append(sq);}
+        small.append(ticGrid(s.match.game*10+k));
+        if(u.won[k]==='X'||u.won[k]==='O'){const over=el('div','small-mark');over.append(ticMark(u.won[k],moved.size&&[...moved][0]>=k*9&&[...moved][0]<k*9+9,true));small.append(over);}
+        big.append(small);
+      }
+      big.append(ticGrid('big'+s.match.game));if(line)big.append(ticStrike(line,'big-strike'));wrap.append(big);
+    }
+    if(mode==='online'&&!net.started)wrap.append(onlineCard());
+    stage.append(wrap);
+    // Tools: which game, the match length, undo, and the next game of a match.
+    const variant=el('select');variant.setAttribute('aria-label','Which game');for(const [v,t] of [['classic','Classic'],['ultimate','Ultimate']]){const o=el('option',null,t);o.value=v;variant.append(o);}variant.value=mode==='online'?(net.variant||'classic'):(opts.variant||'classic');variant.disabled=mode==='online'&&!!net.code;variant.onchange=()=>{opts.variant=variant.value;saveOpts();if(mode==='online')netReset();start();};
+    const len=el('select');len.setAttribute('aria-label','Match');for(const [v,t] of [['1','Single games'],['3','Best of 3'],['5','Best of 5']]){const o=el('option',null,t);o.value=v;len.append(o);}len.value=String(opts.match||1);len.hidden=mode==='online';len.onchange=()=>{opts.match=+len.value;saveOpts();start();};
+    const undo=button('↶ Undo',()=>{if(cpuBusy||!history.length||finished||mode==='online')return;let h=history.pop();if(mode==='cpu'&&history.length&&ticTurnOf(h)!=='X'){h=history.pop();}s=h;moved=new Set();renderTic();});undo.disabled=mode==='online';
+    const bits=[variant,len,undo];
+    if(winner&&s.match.len>1&&!matchOver())bits.push(button('Next game',()=>nextTicGame(),'solid'));
+    tools.replaceChildren(...bits);
+    ticHeader();ticTally();
+    hint(s.v==='ultimate'&&!winner?'The square you play in sends the other player to that board. Win three boards in a row.':mode==='cpu'?`You are X. ${s.first==='X'?'You start this one.':'The computer starts this one.'}`:'');
+    moved=new Set();
+    if(winner){ticOver(winner);return;}
+    persist();
+    if(ticCpuTurn()&&!cpuBusy)cpu(()=>{cpuBusy=false;const level=LEVELS.tictactoe[opts.level||'medium'];if(s.v==='ultimate'){const m=E.Ultimate.pick(s.b,level);if(m)ticPlay(m);}else{const i=E.Tic.pick(s.b,level,'O');if(i>=0)ticPlay(i);}});
+  }
+  const ticTurnOf=state=>state.v==='ultimate'?state.b.turn:(state.b.filter(Boolean).length%2?otherMark(state.first):state.first);
+  const matchOver=()=>{const m=s.match,need=Math.ceil(m.len/2);return m.len>1&&(m.X>=need||m.O>=need);};
+  function nextTicGame(){const keep=s.match;resetRun();s=ticNew(true);s.match=keep;renderStats();renderTic();}
+  /* A game ends: it counts in the tally, the match moves on; the dialog comes
+     for a single game or when the match is decided. */
+  function ticOver(winner){
+    if(finished||s.counted)return;s.counted=true;
+    const m=s.match;if(winner==='draw')m.D++;else m[winner]++;
+    if(mode==='cpu'||mode==='online'){const mine=myMark();const once=mode==='online'?'netdone:'+net.code+':'+net.game:null;if(!(once&&storage.get(once))){record(winner==='draw'?'drawn':winner===mine?'won':'lost');if(once)storage.set(once,1);}}
+    else record(winner==='draw'?'draw':winner);
+    ticTally();ticHeader();persist();
+    const mine=myMark(),good=winner!=='draw'&&(mode==='two'||winner===mine);
+    if(m.len>1&&!matchOver()){finished=true;if(good)sfx('clear');else if(winner!=='draw')sfx('lose');hint(winner==='draw'?'A draw: it doesn’t count. Next game when you’re ready.':`${winner==='X'?(mode==='cpu'?'You':'X'):(mode==='cpu'?'The computer':'O')} take${mode==='cpu'&&winner==='X'?'':'s'} game ${m.game}. Next game when you’re ready.`);renderTicTools();return;}
+    if(good)celebrate();else if(winner!=='draw')sfx('lose');
+    const names={X:mode==='cpu'?'You':'X',O:mode==='cpu'?'The computer':'O'};
+    if(m.len>1){const w=m.X>m.O?'X':'O';finish(`${names[w]} take${w==='X'&&mode==='cpu'?'':'s'} the match.`,`${m.X}–${m.O}${m.D?`, with ${m.D} draw${m.D>1?'s':''}`:''}. Another match?`);}
+    else finish(winner==='draw'?'A good standoff.':mode==='online'?(winner===mine?'You take it.':'Your friend takes it.'):mode==='cpu'?(winner==='X'?'You take it.':'The computer takes it.'):winner+' takes it.',winner==='draw'?'Nobody gave an inch. Another round?':s.v==='ultimate'?'Three boards in a row.':'Three in a row. Time for the rematch.');
+    if(mode==='online')netAfterEnd();
+  }
+  function renderTicTools(){const t=tools.querySelector('.solid');if(!t&&s.match.len>1&&!matchOver())tools.append(button('Next game',()=>nextTicGame(),'solid'));}
 
   // ---- chess & checkers ----------------------------------------------------
   const pieceName={k:'king',q:'queen',r:'rook',b:'bishop',n:'knight',p:'pawn'};
@@ -540,7 +652,7 @@
     slot.replaceChildren(resign,draw,flip,pgn,cl);
   }
   const myOfferSide=()=>mode==='online'?net.color:s.turn;
-  const sideLabel=t=>game.id==='chess'?sideWord(t):sideName(t);
+  const sideLabel=t=>game.id==='chess'?sideWord(t):game.id==='tictactoe'?(t==='w'?'X':'O'):sideName(t);
   function resignNow(){
     if(finished)return;const who=mode==='online'?net.color:vsCpu()?human():s.turn;
     if(mode==='online')netSend('resign');
@@ -648,11 +760,12 @@
     }
     return card;
   }
-  const renderCurrent=()=>game.id==='chess'?renderChess():renderCheckers();
+  let lastTicMove=null;
+  const renderCurrent=()=>game.id==='chess'?renderChess():game.id==='tictactoe'?renderTic():renderCheckers();
   async function netCreate(){
     net.busy=true;net.error='';renderCurrent();
-    try{const pick=opts.netColor||'w',color=pick==='r'?(Math.random()<.5?'w':'b'):pick;const d=await netFetch('',{game:game.id,color});
-      net={code:d.code,token:d.token,seat:'h',hostColor:color,n:0,events:[]};storage.set(netKey(),{code:net.code,token:net.token,seat:'h'});netApply(true);netPoll();}
+    try{const pick=opts.netColor||'w',color=pick==='r'?(Math.random()<.5?'w':'b'):pick;const roomGame=game.id==='tictactoe'?(opts.variant==='ultimate'?'ultimate':'tictactoe'):game.id;const d=await netFetch('',{game:roomGame,color});
+      net={code:d.code,token:d.token,seat:'h',hostColor:color,n:0,events:[],variant:roomGame==='ultimate'?'ultimate':'classic'};storage.set(netKey(),{code:net.code,token:net.token,seat:'h'});netApply(true);netPoll();}
     catch(e){net.busy=false;net.error=e.status===429?'Too many new games just now. Try again in a minute.':'Couldn’t start a game. Check your connection and try again.';renderCurrent();}
   }
   async function netJoin(code){
@@ -671,13 +784,14 @@
     net.color=mine;net.game=g;net.started=!!net.guest;net.rematch=[...want];
     const wasFinished=finished;resetChessGame();if(beforeGame===g)finished=wasFinished;
     for(const e of ev.slice(begin)){
-      if(e.t==='m'){if(game.id==='chess'){const m=E.Chess.parse(s,e.v);if(m)applyQuiet(m);}else netCheckerTurn(e.v);}
+      if(e.t==='m'){if(game.id==='chess'){const m=E.Chess.parse(s,e.v);if(m)applyQuiet(m);}else if(game.id==='tictactoe'){const m=ticParse(e.v);if(m!==null){if(s.v==='ultimate')s.b=E.Ultimate.apply(s.b,m);else s.b[m]=ticTurn();lastTicMove=m;}}else netCheckerTurn(e.v);}
       else if(e.t==='resign'){const loser=seatColor(e.s);endWinner=loser==='w'?'b':'w';chessEnd=sideLabel(endWinner)+' wins · '+sideLabel(loser)+' resigned';}
       else if(e.t==='offer')drawOffer=seatColor(e.s);
       else if(e.t==='decline')drawOffer=null;
       else if(e.t==='accept'&&drawOffer){endWinner=null;chessEnd='Draw agreed';}
     }
     if(moveLog.length>before&&!fresh&&lastMove)lastMove.fresh=true;
+    if(game.id==='tictactoe'&&lastTicMove!==null&&!fresh){moved=new Set([Array.isArray(lastTicMove)?lastTicMove[0]*9+lastTicMove[1]:lastTicMove]);}lastTicMove=null;
     renderCurrent();
   }
   const seatColor=seat=>{const hc=net.game%2?(net.hostColor==='w'?'b':'w'):net.hostColor;return seat==='h'?hc:(hc==='w'?'b':'w');};
@@ -686,7 +800,7 @@
   async function netRefresh(){
     const d=await netFetch('/'+net.code+'?from='+(net.events?.length||0));
     const changed=d.events.length>0||net.guest!==d.guest||net.hostColor!==d.hostColor;
-    net.hostColor=d.hostColor;net.guest=d.guest;net.events=[...(net.events||[]),...d.events];net.n=d.n;
+    net.hostColor=d.hostColor;net.guest=d.guest;if(d.game)net.variant=d.game==='ultimate'?'ultimate':'classic';net.events=[...(net.events||[]),...d.events];net.n=d.n;
     if(changed){if(d.events.some(e=>e.t==='m'&&e.s!==net.seat))sfx('tap');netApply();}
   }
   function netPoll(){
@@ -708,7 +822,7 @@
   function netStillWanted(t,v){
     const over=finished||!!chessEnd;
     if(t==='again')return !net.rematch?.includes(net.seat);
-    if(t==='m')return !over&&net.started&&s.turn===net.color&&(game.id==='chess'?!!E.Chess.parse(s,v):netCheckerLegal(v));
+    if(t==='m')return game.id==='tictactoe'?!ticWinner()&&net.started&&ticTurn()===myMark()&&ticParse(v)!==null:!over&&net.started&&s.turn===net.color&&(game.id==='chess'?!!E.Chess.parse(s,v):netCheckerLegal(v));
     if(t==='resign')return !over;
     if(t==='offer')return !over&&!drawOffer;
     if(t==='accept')return !over&&!!drawOffer&&drawOffer!==net.color;
@@ -728,7 +842,7 @@
   }
   function resetChessGame(){
     history=[];finished=false;selected=null;promotion=null;hintMove=null;reviewAt=null;arrows=[];chessEnd=null;drawOffer=null;sanList=[];moveLog=[];lastMove=null;
-    if(game.id==='chess'){s=E.Chess.create();keys=[E.Chess.key(s)];chessClock=null;}else{s=E.Checkers.create();keys=[checkerKey()];}
+    if(game.id==='chess'){s=E.Chess.create();keys=[E.Chess.key(s)];chessClock=null;}else if(game.id==='tictactoe'){s=ticNew(false);}else{s=E.Checkers.create();keys=[checkerKey()];}
   }
   function undoBoard(){
     if(cpuBusy||!history.length||mode==='online')return;finished=false;
@@ -1511,7 +1625,7 @@
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
     if(game&&['snake','tetris'].includes(game.id)){drawAction();if(game.id==='tetris'){const nc=$('next-canvas'),hc=$('hold-canvas');if(nc&&hc)drawAction();}}
     // Board games whose pieces are drawn differently per style redraw the same position.
-    else if(game&&s&&['checkers','chess','solitaire','minesweeper','wordle'].includes(game.id)){render();renderStats();}
+    else if(game&&s&&['checkers','chess','solitaire','minesweeper','wordle','tictactoe'].includes(game.id)){render();renderStats();}
   }
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';

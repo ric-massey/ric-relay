@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#faf8ef">
+  <meta name="theme-color" content="#f4efe2">
   <title>Tic-tac-toe — RIC//NET</title>
-  <meta name="description" content="Play Tic-tac-toe in the Arcade. Three in a row. Three styles to choose from, with touch and keyboard controls.">
+  <meta name="description" content="Play Tic-tac-toe in the Arcade: classic or Ultimate, against the computer, a friend here or a friend online, single games or matches. Six styles, from a notebook to a steamed-up window to a beach.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Tic-tac-toe — RIC//NET">
-  <meta property="og:description" content="Play Tic-tac-toe in the Arcade. Three in a row. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:description" content="Play Tic-tac-toe in the Arcade: classic or Ultimate, against the computer, a friend here or a friend online, single games or matches. Six styles, from a notebook to a steamed-up window to a beach.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/tictactoe/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/tictactoe.jpg">
@@ -18,37 +18,181 @@
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
+/* Tic-tac-toe has its own page (round three, 2026-11-21, TODO.md): a page of
+   paper. The grid is drawn on it by hand, each X and O is drawn stroke by
+   stroke, and the tally is kept in the margin in five-bar gates. Each of the
+   six styles is a different surface and a different thing to draw with:
+   pencil on a notebook, ballpoint on a diner napkin, a finger on a steamed-up
+   window, a stick in wet sand (shells for O), two whiteboard markers, a
+   terminal. app.js only needs the ids (#tally-slot, #tic-head). */
 
-/* This page owns its theme; layout and rules stay inside the Arcade games. */
-body{background-color:var(--paper);color:var(--ink)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
-dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+/* ---- layout ------------------------------------------------------------------ */
+body{background:var(--desk);color:var(--ink);font-family:var(--body-font,Georgia,serif);min-height:100svh}
+.tc-bar{display:flex;align-items:center;gap:8px;min-height:52px;padding:6px max(2.5vw,12px);color:var(--bar-ink,var(--ink))}
+.tc-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.tc-back:hover{background:#80808026}
+.tc-site{margin-right:auto;font:600 12px/1 var(--body-font);letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.tc-bar .game-actions{position:relative;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;max-width:none;padding:0;justify-content:flex-end}
+:is(.tc-bar,.tc-sheet,dialog) :is(button,select){min-height:36px;padding:5px 12px;font-size:13px;white-space:nowrap;background:var(--btn,#fff);color:var(--btn-ink,var(--ink));border:var(--btn-border,1px solid #0003);border-radius:var(--radius,6px);font-family:var(--body-font,inherit)}
+button.solid{background:var(--accent)!important;color:var(--on-accent,#fff)!important;border-color:var(--accent)!important}
+@media(max-width:760px){.tc-bar{flex-wrap:wrap;row-gap:6px}.tc-bar .game-actions{order:3;flex-basis:100%;min-width:0;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.tc-bar .game-actions>*{flex:none}.tc-bar .game-actions label{width:auto;display:block}.tc-bar #new-game{order:-1}}
+/* the sheet: a margin on the left for the tally, the game in the middle */
+.tc-sheet{position:relative;display:grid;grid-template-columns:var(--margin-w,150px) 1fr;width:min(100% - 20px,860px);margin:8px auto 40px;min-height:min(80svh,720px);background:var(--sheet);color:var(--sheet-ink,var(--ink));border-radius:var(--sheet-radius,3px);box-shadow:var(--sheet-shadow,0 2px 0 #0001,0 20px 40px -22px #0008);overflow:hidden;max-width:none;padding:0}
+.tc-margin{padding:24px 14px 20px 18px;border-right:var(--margin-rule,2px solid #e8a0a0);display:flex;flex-direction:column;gap:14px}
+.tc-margin h2{margin:0;font:var(--hand-font,400 18px/1.2 'Segoe Print','Bradley Hand','Comic Sans MS',cursive);color:var(--note-ink,var(--sheet-ink))}
+.tally-row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;font:var(--hand-font,400 15px/1.2 'Segoe Print',cursive)}
+.tally-label{color:var(--note-ink,var(--sheet-ink))}
+.tally-n{grid-row:1;grid-column:2;font-size:12px;color:var(--muted);text-align:right}
+.tally-marks{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;min-height:22px;align-items:center;color:var(--tally-ink,var(--sheet-ink))}
+.gate{position:relative;display:inline-flex;gap:4px;height:20px;align-items:stretch}
+.gate i{width:2px;background:currentColor;border-radius:1px;transform:rotate(var(--r,2deg))}
+.gate i:nth-child(2){--r:-2deg}.gate i:nth-child(3){--r:3deg}.gate i:nth-child(4){--r:-1deg}
+.gate.five b{position:absolute;left:-3px;right:-3px;top:50%;height:2px;background:currentColor;transform:rotate(-24deg);border-radius:1px}
+.tally-none{color:var(--muted)}
+.tc-main{position:relative;display:flex;flex-direction:column;align-items:center;padding:22px clamp(10px,3vw,34px) 26px;min-width:0}
+.tc-head{margin:0 0 4px;font:var(--hand-font,400 15px/1.3 'Segoe Print',cursive);color:var(--note-ink,var(--sheet-ink));text-align:center}
+.tc-main #status{margin:0 0 12px;font:var(--status-font,600 13px/1.3 var(--body-font));color:var(--muted);text-align:center}
+.tc-main .stage{min-height:0;padding:0;width:100%}
+.tc-main .tools{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:16px 0 0}
+.tc-main .tools :is(button,select){min-height:34px;font-size:12.5px}
+.tc-main .hint{min-height:0;padding:8px 0 0;font-size:12.5px;color:var(--muted);text-align:center;max-width:420px}
+.tc-records{grid-column:1/-1;padding:14px 18px;border-top:var(--margin-rule,2px solid #e8a0a0);display:flex;flex-wrap:wrap;gap:12px 28px;font-size:13px}
+.tc-records .stats{margin:0}.tc-records .stats h2{font-size:13px;margin:0}.tc-records .stats .muted{font-size:11px;margin:0 0 6px}.tc-records .stat-grid{grid-template-columns:repeat(4,auto);gap:4px 18px}.tc-records .stat-grid dd{font-size:16px}
+@media(max-width:640px){.tc-sheet{grid-template-columns:1fr;width:100%;margin:0 0 30px;border-radius:0}.tc-margin{order:2;border-right:0;border-top:var(--margin-rule,2px solid #e8a0a0);flex-direction:row;flex-wrap:wrap;gap:10px 20px;padding:14px}.tc-margin h2{flex-basis:100%;font-size:16px}.tally-row{min-width:90px}.tc-records{order:3}.tc-records .stat-grid{grid-template-columns:repeat(2,auto)}}
+/* ---- the board ---------------------------------------------------------------- */
+.tic-wrap{position:relative;display:flex;justify-content:center;width:100%}
+.tc-main .board.ttt,.tc-main .board.ultimate{position:relative;width:min(100%,430px,max(240px,calc(100svh - 300px)));aspect-ratio:1;gap:0;border:0;background:none;display:grid;grid-template-columns:repeat(3,1fr)}
+.board.ttt .square,.board.ultimate .square{position:relative;background:none!important;border:0!important;border-radius:0;box-shadow:none!important;padding:8%;min-height:0;display:grid;place-items:center;cursor:pointer;color:inherit}
+.board.ttt .square:disabled,.board.ultimate .square:disabled{cursor:default}
+.board .square:focus-visible{outline:2px dashed var(--x-ink);outline-offset:-6px}
+.board .square[data-ghost]:hover::after{content:attr(data-ghost);position:absolute;inset:0;display:grid;place-items:center;font:var(--ghost-font,400 clamp(30px,8vw,70px)/1 'Segoe Print',cursive);color:var(--ghost,#0002)}
+.board.ultimate .square[data-ghost]:hover::after{font-size:clamp(12px,2.6vw,22px)}
+.hand-grid{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.hand-grid path{fill:none;stroke:var(--grid-ink);stroke-width:var(--grid-width,3);stroke-linecap:round;vector-effect:non-scaling-stroke;filter:var(--stroke-filter,none)}
+.mark{width:100%;height:100%;overflow:visible}
+.mark path{fill:none;stroke-width:var(--mark-width,7);stroke-linecap:round;stroke-linejoin:round;filter:var(--stroke-filter,none)}
+.mark-x path{stroke:var(--x-ink)}.mark-o path{stroke:var(--o-ink)}
+.mark.fresh path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw-stroke .28s ease-out forwards;animation-delay:calc(var(--k,0)*.22s)}
+@keyframes draw-stroke{to{stroke-dashoffset:0}}
+.strike{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.strike line{stroke:var(--strike-ink,var(--x-ink));stroke-width:.09;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw-stroke .5s .15s ease-out forwards}
+@media(prefers-reduced-motion:reduce){.strike line,.mark.fresh path{animation:none;stroke-dashoffset:0}}
+.mark-text{font:var(--mark-font,700 clamp(30px,8vw,64px)/1 var(--term-font,monospace))}
+.mark-text.x{color:var(--x-ink)}.mark-text.o{color:var(--o-ink)}
+/* Ultimate: nine small boards; the ones you may play in are lit */
+.board.ultimate{padding:0}
+.board.ultimate .small{position:relative;display:grid;grid-template-columns:repeat(3,1fr);margin:9%;border-radius:6px;transition:background-color .2s}
+.board.ultimate .small .hand-grid path{stroke-width:calc(var(--grid-width,3) * .55);opacity:.8}
+.board.ultimate .small.live{background:var(--live,#ffd84a33)}
+.board.ultimate .small .square{padding:10%}
+.board.ultimate .small .mark path{stroke-width:calc(var(--mark-width,7) * 1.1)}
+.board.ultimate .small.decided .square{opacity:.28}
+.board.ultimate .small.won-d .square{opacity:.5}
+.small-mark{position:absolute;inset:-4%;pointer-events:none}
+.small-mark .mark path{stroke-width:calc(var(--mark-width,7) * .9)}
+.board.ultimate .mark-text{font-size:clamp(11px,2.6vw,22px)}
+.board.ultimate .small-mark .mark-text{display:grid;place-items:center;width:100%;height:100%;font-size:clamp(40px,10vw,90px)}
+.big-strike line{stroke-width:.06}
+dialog{background:var(--sheet);color:var(--sheet-ink,var(--ink));border:1px solid #0002;border-radius:var(--radius,8px)}
+dialog .muted{color:var(--muted)}
+#help-dialog{max-width:520px}#help-dialog p{line-height:1.5}
 
-body{--paper:#faf8ef;--ink:#203b65;--muted:#53667d;--green:#275586;--panel:#eff2f6;--edge:#b7c5db;--display-font:'Comic Sans MS','Segoe Print',cursive;--radius:0px;background-image:linear-gradient(#bccde44d 1px,transparent 1px);background-size:100% 30px}
-body[data-skin="1"]{--paper:#163e34;--ink:#fff9dc;--muted:#c8dbca;--green:#35634a;--panel:#234d40;--edge:#71927c;color-scheme:dark;background-image:none;--cross:#fff7d4;--nought:#f7c883}
-body[data-skin="2"]{--paper:#f8df6c;--ink:#2e235c;--muted:#5c456b;--green:#6842a4;--panel:#ffe997;--edge:#46345e;--display-font:'Arial Black',sans-serif;--radius:16px;--cross:#564493;--nought:#a83142;background-image:none}
-.ttt{gap:0}.ttt .square{background:transparent!important;border:0;border-right:4px solid var(--edge);border-bottom:4px solid var(--edge);border-radius:0;font-family:var(--display-font);color:var(--cross,var(--ink));font-size:76px}.ttt .square:nth-child(3n){border-right:0}.ttt .square:nth-child(n+7){border-bottom:0}.ttt .square.o{color:var(--nought,#b33c48)}.table-wrap{border:0!important;background:transparent!important}.game-heading h1{transform:rotate(-2deg)}.page-mark .emblem{font-size:31px}
+/* =====================================================================================
+   1. Notebook: blue-lined school paper with a red margin, graphite pencil.
+   ===================================================================================== */
+body[data-look="notebook"]{--desk:#6f8b9e;--ink:#22262b;--muted:#6a6f76;--accent:#2a5ea8;--on-accent:#fff;--body-font:'Segoe UI',system-ui,sans-serif;--radius:4px;--bar-ink:#f3f6f9;
+  --sheet:repeating-linear-gradient(#0000 0 27px,#9cc0e6 27px 28px),#fdfcf7;--sheet-ink:#2e3238;--note-ink:#3a3f46;
+  --grid-ink:#3c4046;--grid-width:2.6;--x-ink:#3c4046;--o-ink:#3c4046;--mark-width:6;--stroke-filter:url(#graphite);--tally-ink:#3c4046;--ghost:#3c404626;--live:#f6e27a55}
 
-@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+/* =====================================================================================
+   2. Diner napkin: a paper napkin with an embossed edge and a coffee ring,
+   blue ballpoint for X, red pen borrowed from the waitress for O.
+   ===================================================================================== */
+body[data-look="napkin"]{--desk:repeating-linear-gradient(90deg,#c43d3d 0 30px,#f3f0ea 30px 60px),#c43d3d;--ink:#2a2a2a;--muted:#77706a;--accent:#c43d3d;--on-accent:#fff;--body-font:'Segoe UI',system-ui,sans-serif;--radius:4px;--bar-ink:#fff;
+  --sheet:radial-gradient(circle at 78% 22%,#0000 0 54px,#a8743a33 55px 60px,#a8743a14 61px 66px,#0000 67px),radial-gradient(#0000000a 1px,#0000 1.5px) 0 0/6px 6px,#f7f4ec;--sheet-radius:2px;--sheet-shadow:0 0 0 10px #f1ede3,0 0 0 11px #d8d1c2,0 20px 40px -20px #000c;
+  --margin-rule:1px dashed #cfc6b4;--note-ink:#1f3b9c;--hand-font:400 16px/1.2 'Segoe Print','Bradley Hand',cursive;
+  --grid-ink:#1f3b9c;--grid-width:2;--x-ink:#1f3b9c;--o-ink:#c0392b;--mark-width:4.5;--tally-ink:#1f3b9c;--ghost:#1f3b9c22;--live:#f0c96b44}
+body[data-look="napkin"] .tc-sheet{margin-top:20px}
+
+/* =====================================================================================
+   3. Steamed window: drawn with a finger on a fogged-up pane. The night outside
+   shows through every stroke; drops run down from the lines.
+   ===================================================================================== */
+body[data-look="window"]{--desk:#1c2733;--ink:#e8eef4;--bar-ink:#e8eef4;--muted:#6f7d89;--accent:#e8eef4;--on-accent:#1c2733;--body-font:'Segoe UI',system-ui,sans-serif;--radius:6px;color-scheme:dark;
+  --btn:#ffffff1a;--btn-ink:#e8eef4;--btn-border:1px solid #ffffff3a;
+  --sheet:radial-gradient(circle at 30% 40%,#ffffffd9,#e9eef2e6 60%),#e3e9ee;--sheet-ink:#5d6b77;--note-ink:#6f7d89;--sheet-radius:14px;--sheet-shadow:0 0 0 14px #3b2f26,0 0 0 16px #2a211a,0 30px 50px -20px #000;
+  --margin-rule:3px solid #3b2f26;
+  --grid-ink:#1f3a55;--grid-width:9;--x-ink:#1f3a55;--o-ink:#1f3a55;--mark-width:13;--stroke-filter:url(#smear);--tally-ink:#1f3a55;--ghost:#1f3a5522;--live:#ffffff70;--hand-font:400 17px/1.2 'Segoe Print',cursive}
+body[data-look="window"] .tc-sheet::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(#0000 0 0),radial-gradient(ellipse 3px 10px at 22% 30%,#1f3a5533,#0000),radial-gradient(ellipse 2px 14px at 64% 58%,#1f3a5533,#0000),radial-gradient(ellipse 3px 12px at 81% 20%,#1f3a5522,#0000);z-index:1}
+body[data-look="window"] :is(.hand-grid,.mark,.strike){opacity:.85}
+body[data-look="window"] .tc-sheet :is(button,select){background:#ffffffa6;color:#1f3a55;border-color:#1f3a5544}
+body[data-look="window"] .tc-bar :is(button,select) option,body[data-look="window"] .tc-sheet select option{color:#111;background:#fff}
+
+/* =====================================================================================
+   4. Beach: drawn in wet sand with a stick. Driftwood X, shells for O, the
+   foam line along the top.
+   ===================================================================================== */
+body[data-look="beach"]{--desk:linear-gradient(#7fc8e0,#bfe6ef 60%),#7fc8e0;--ink:#3d2f1f;--muted:#7a6a55;--accent:#e0794a;--on-accent:#fff;--body-font:'Trebuchet MS','Segoe UI',sans-serif;--radius:14px;--bar-ink:#11384a;
+  --sheet:radial-gradient(#0000000f 1px,#0000 1.6px) 0 0/5px 5px,radial-gradient(#ffffff26 1px,#0000 1.4px) 2px 3px/7px 7px,linear-gradient(#c9a776,#b8925e);--sheet-ink:#3d2f1f;--note-ink:#5a4329;--sheet-radius:28px 28px 8px 8px;--sheet-shadow:0 -8px 0 #ffffffcc,0 -14px 0 #ffffff66,0 20px 40px -20px #0006;
+  --margin-rule:2px dotted #8a6a42;--hand-font:700 16px/1.2 'Trebuchet MS',sans-serif;
+  --grid-ink:#7d5c35;--grid-width:7;--x-ink:#6b4a28;--o-ink:#f3e3cf;--mark-width:9;--stroke-filter:url(#groove);--tally-ink:#6b4a28;--ghost:#6b4a2833;--live:#ffffff38;--strike-ink:#e0794a}
+body[data-look="beach"] .shell path{fill:#f6e3cc;stroke:#b07c52;stroke-width:3}
+body[data-look="beach"] .shell .rib{fill:none;stroke:#c99a70;stroke-width:3}
+body[data-look="beach"] .shell .hinge{fill:#e9c9a8}
+body[data-look="beach"] .mark-o:not(:has(.shell)) path{stroke:#f6e3cc}
+body[data-look="beach"] .mark-x path{stroke-width:11}
+
+/* =====================================================================================
+   5. Whiteboard: dry-wipe markers, red for X and blue for O, a ghost of last
+   week's meeting not quite wiped off.
+   ===================================================================================== */
+body[data-look="whiteboard"]{--desk:#d7dade;--ink:#23262a;--muted:#6b7077;--accent:#2b59c3;--on-accent:#fff;--body-font:'Segoe UI',system-ui,sans-serif;--radius:6px;
+  --sheet:radial-gradient(ellipse at 70% 80%,#2b59c30a,#0000 40%),linear-gradient(135deg,#ffffff,#f2f4f6);--sheet-ink:#23262a;--sheet-radius:6px;--sheet-shadow:0 0 0 10px #b9bec4,0 0 0 12px #9aa0a7,0 24px 40px -20px #0008;
+  --margin-rule:2px solid #e5e8eb;--note-ink:#1d8a4e;--hand-font:700 16px/1.2 'Segoe Print','Comic Sans MS',cursive;
+  --grid-ink:#23262a;--grid-width:5;--x-ink:#d62c2c;--o-ink:#2b59c3;--mark-width:9;--tally-ink:#1d8a4e;--ghost:#23262a1f;--live:#ffd84a40}
+body[data-look="whiteboard"] .tc-main::before{content:'Q3 goals → ??';position:absolute;right:8%;top:14%;font:700 22px 'Segoe Print',cursive;color:#2b59c30d;transform:rotate(-6deg);pointer-events:none}
+
+/* =====================================================================================
+   6. Terminal: the grid as | and -, X and O as text.
+   ===================================================================================== */
+body[data-look="terminal"]{--desk:#040904;--ink:#8dffa6;--muted:#4fae66;--accent:#8dffa6;--on-accent:#040904;--body-font:var(--term-font);--radius:0;--hand-font:400 14px/1.3 var(--term-font);--status-font:400 13px var(--term-font);
+  --btn:#040904;--btn-ink:#8dffa6;--btn-border:1px dashed #2c6b3a;
+  --sheet:#040904;--sheet-ink:#8dffa6;--note-ink:#8dffa6;--sheet-radius:0;--sheet-shadow:0 0 0 1px #2c6b3a;--margin-rule:1px dashed #2c6b3a;
+  --grid-ink:#4fae66;--grid-width:1.5;--x-ink:#d8ffe0;--o-ink:#ffc56b;--tally-ink:#8dffa6;--ghost:#8dffa633;--live:#8dffa612;--ghost-font:400 clamp(30px,8vw,64px)/1 var(--term-font);--strike-ink:#8dffa6}
+body[data-look="terminal"] .hand-grid path{stroke-dasharray:6 5}
+body[data-look="terminal"] .tc-margin h2::before{content:'# '}
   </style>
 </head>
-<body data-game="tictactoe" data-skin="0">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">×○</span>Tic-tac-toe</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Tic-tac-toe</h1><p id="game-subtitle">Three in a row</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Notebook</option><option value="1">Blackboard</option><option value="2">Pop art</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>Rules</h2><p id="rules"></p></section></aside></div>
+<body data-game="tictactoe" data-skin="0" data-look="notebook">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="graphite"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" result="d"/><feComposite in="d" in2="n" operator="in" result="g"/><feMerge><feMergeNode in="d"/><feMergeNode in="g"/></feMerge></filter>
+    <filter id="smear" x="-20%" y="-20%" width="140%" height="160%"><feGaussianBlur stdDeviation="1.2"/></filter>
+    <filter id="groove" x="-10%" y="-10%" width="120%" height="130%"><feGaussianBlur stdDeviation=".6" result="b"/><feOffset dy="1.6" in="b" result="o"/><feFlood flood-color="#fff2d6" flood-opacity=".55"/><feComposite in2="o" operator="in" result="hl"/><feMerge><feMergeNode in="hl"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </svg>
+  <header class="tc-bar">
+    <a href="../../gaming.html" class="tc-back" aria-label="Back to the Arcade">←</a>
+    <span class="tc-site">The Arcade</span>
+    <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Who you play</span><select id="mode"></select></label><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Style"><option value="0" data-look="notebook">Notebook</option><option value="1" data-look="napkin">Diner napkin</option><option value="2" data-look="window">Steamed window</option><option value="3" data-look="beach">Beach</option><option value="4" data-look="whiteboard">Whiteboard</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
+  </header>
+  <main id="playroom" class="tc-sheet" aria-labelledby="game-title">
+    <aside class="tc-margin" aria-label="The tally"><h2>Tally</h2><div id="tally-slot"></div></aside>
+    <section class="tc-main">
+      <h1 id="game-title" class="sr-only">Tic-tac-toe</h1><p id="game-subtitle" hidden></p>
+      <p class="tc-head" id="tic-head"></p>
+      <p id="status" role="status" aria-live="polite"></p><span id="metric" hidden></span>
+      <div id="stage" class="stage"></div>
+      <div id="tools" class="tools"></div>
+      <p id="hint" class="hint"></p>
     </section>
+    <div class="tc-records"><div id="stats-slot"></div><section id="score-panel" hidden><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section></div>
     <noscript><p>Tic-tac-toe needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p>
+    <p><strong>Ultimate.</strong> Nine small boards make one big one. The square you play in sends the other player to the small board in that same position; if that board is already decided, they can play anywhere. Win a small board with three in a row there; win the game with three small boards in a row.</p>
+    <p><strong>Matches.</strong> Play single games, best of 3 or best of 5 (first to 2 or 3 wins; draws are replayed). Who starts swaps every game, so the computer starts every other one.</p>
+    <p><strong>Online.</strong> Pick "Play a friend online", start a game and send the link. Classic or Ultimate, whichever was chosen when you started it.</p>
+    <button id="close-help" class="solid">Got it</button></dialog>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>

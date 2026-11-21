@@ -197,7 +197,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
   cabinet's side panels, the high scores as an attract screen.
 - [x] **Snake** (built 2026-11-21): a handheld: the screen in a device body with its d-pad and buttons,
   score on the LCD, high scores on the device's menu screen.
-- [ ] **Tic-tac-toe:** a page of paper, the grid drawn on it, the tally kept in the
+- [x] **Tic-tac-toe:** a page of paper, the grid drawn on it, the tally kept in the
   margin.
 
 ### Checkers: what players want (built 2026-11-21)
@@ -343,6 +343,25 @@ into the help dialog wherever the page has no room for them. Page concepts:
 - [x] Six styles (Ric: "Yes, those six"), original looks, not copies of any
       official version: Arcade cabinet, Toy blocks (wooden blocks on a rug),
       Glass, Vector (green-line 70s screen), Paper cut, Terminal ([] blocks).
+
+### Tic-tac-toe: what players want (Ric, 2026-11-21: "Yep do tic tac toe", then his answers) — built the same day
+- [x] The page is a page of paper (concept above): the grid drawn on it by hand,
+      each X and O drawn stroke by stroke, the tally kept in the margin in
+      five-bar gates.
+- [x] Ultimate tic-tac-toe (Ric picked it): nine small boards in a big one; the
+      square you play in sends your opponent to that board; win three boards in
+      a row. Its own computer at three levels.
+- [x] Online with a friend (Ric picked it): the same rooms as Chess and Checkers,
+      for classic and Ultimate (`tictactoe` and `ultimate` rooms on the Worker).
+- [x] Matches and who starts (Ric picked it): single games, best of 3 or best of
+      5 (first to 2 or 3 wins; draws replayed), and the first move swaps each
+      game, so the computer starts every other one.
+- [x] Six styles (Ric: "Yes, those six"): Notebook (blue-lined paper, pencil),
+      Diner napkin (ballpoint, a coffee ring), Steamed window (finger-drawn on
+      fog, drops running), Beach (a stick in wet sand, shells for O), Whiteboard
+      (two marker colours), Terminal (ASCII).
+- [ ] **Deploy Worker** again for `tictactoe` and `ultimate` rooms (and the Sudoku,
+      Tetris boards before it). With this, every game in round three has its page.
 
 ### Online play, Chess and Checkers (Ric, 2026-11-21: "multiplayer for chess and checkers needs to be in")
 Two players on one device was already there, so this is playing a friend on their

@@ -31,6 +31,7 @@ test('rooms refuse bad games, events, codes and methods; idle rooms expire',{ski
   const made=await(await room(e,'',{game:'checkers',color:'w'})).json();
   for(const b of [{token:made.token,n:0,t:'hack'},{token:made.token,n:0,t:'m',v:'<script>'},{token:made.token,n:0,t:'resign',v:'x'},{token:made.token,n:'0',t:'resign'}])assert.equal((await room(e,'/'+made.code+'/events',b)).status,400);
   assert.equal((await room(e,'/'+made.code+'/events',{token:made.token,n:0,t:'m',v:'9x18x27'})).status,200);
+  for(const g of ['tictactoe','ultimate']){const r=await(await room(e,'',{game:g,color:'w'})).json();assert.equal((await room(e,'/'+r.code+'/events',{token:r.token,n:0,t:'m',v:g==='ultimate'?'e47':'c4'})).status,200);}
   assert.equal((await room(e,'/ZZZZ')).status,404);assert.equal((await room(e,'/abcd')).status,404);assert.equal((await room(e,'/'+made.code+'/other',{})).status,404);
   assert.equal((await worker.fetch(new Request('https://example.test/arcade/rooms/'+made.code,{method:'DELETE'}),e,{})).status,405);
   assert.equal((await room(e,'',{game:'chess',color:'w'},{origin:'https://elsewhere.test'})).status,403);

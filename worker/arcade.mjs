@@ -88,7 +88,7 @@ export async function arcadeRoute(request, env, parts, url, {json,cors}) {
    event count is a version: a write names the count it saw and is refused
    (409) if the room has moved on, so two writes can never interleave. No
    accounts, no lobby, nothing public; rooms idle for 14 days are deleted. */
-const ROOM_GAMES = new Set(['chess','checkers']);
+const ROOM_GAMES = new Set(['chess','checkers','tictactoe','ultimate']); // tic-tac-toe rooms added 2026-11-21
 const ROOM_EVENTS = new Set(['m','resign','offer','accept','decline','again']);
 const ROOM_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, which read as 1 and 0
 const ROOM_MAX_EVENTS = 1500, ROOM_IDLE = 14 * DAY;
