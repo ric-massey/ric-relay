@@ -1,0 +1,114 @@
+# Arcade minigames — to do
+
+The nine small games (Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper,
+Tetris, Checkers, Snake). Started 2026-11-21 from a look at every game, code and
+page. Tick an item (`[x]`) in the same commit that builds it, and say *why* next to
+anything Ric decided, with the date and his words.
+
+## Ric's calls
+
+- 2026-11-21, Ric: "minesweeper needs the timer btw it always has one but solitare
+  and sudoku dont need one." → Minesweeper keeps its clock as it is. Solitaire and
+  Sudoku no longer show a clock. Time is still kept quietly, so a win can still go
+  on the fastest-times board (the win card says the time), and a **Show timer**
+  button brings the clock back for anyone who wants to race.
+- 2026-11-21, Ric: "for snake on mobile swiping needs to be a way you can play too."
+- 2026-11-21, Ric: "making the chess peices look better would be nice allong with the
+  rest of your changes please. maybe start a file for todo in minigames" → this file,
+  and every item below was asked for.
+
+## Built 2026-11-21
+
+Everything ticked below was built in one pass and checked in the browser (desktop
+and phone size). Chess levels are 1/2/3 plies (hard thinks about a third of a
+second); 4 plies was stronger but took up to a few seconds and froze the page.
+
+## Every game (shared, `app.js` / `style.css`)
+
+- [x] **Save and resume.** Every move saves the game in this browser
+      (`classics:save:<game>`); coming back puts you where you were. New game starts
+      over. Snake and Tetris save when paused or when the tab is hidden.
+- [x] **Solitaire and Sudoku without a clock** (see Ric's call above).
+- [x] **Your stats** beside the scoreboard: played, won, current and best streak,
+      best result. Kept in this browser (`classics:stats:<game>`).
+- [x] **Board fits the window** — the bottom of the chess board, Wordle's keyboard and
+      Snake's buttons sat below the fold on a laptop.
+- [x] **Undo** where it was missing: Sudoku, Tic-tac-toe, Minesweeper (taking back a
+      mine keeps that game off the board).
+- [x] **Movement**: pieces slide, cards land, Wordle tiles flip, a small celebration
+      on a win. All of it off for people who ask their device for less motion.
+
+## Solitaire
+
+- [x] Double-click / double-tap a card to send it home.
+- [x] Drag and drop, as well as tap-tap.
+- [x] Finish automatically once every card is face up.
+- [x] Hint button; a note when no moves are left.
+- [x] Draw 3 option (Draw 1 is the scoreboard game).
+
+## Tic-tac-toe
+
+- [x] Easy / Medium / Unbeatable computer.
+- [x] Running tally (you, computer or O, draws), saved.
+- [x] Line drawn through the winning three.
+
+## Chess
+
+- [x] **Better-looking pieces** — drawn pieces (SVG) instead of font symbols, coloured
+      by each style.
+- [x] Last move highlighted; king shown in red in check.
+- [x] Move list and captured pieces.
+- [x] Easy / Medium / Hard computer; play as Black (board flips).
+- [x] Hint.
+
+## Checkers
+
+- [x] Last move highlighted.
+- [x] Easy / Medium / Hard computer (with a proper pruned search so it never stalls).
+- [x] Captured pieces shown.
+
+## Wordle
+
+- [x] Row shakes on a word that isn't accepted; tiles flip when a guess is revealed.
+- [x] Stats: played, win %, streak, guess chart.
+- [x] Share button (copies the coloured squares, no letters).
+- [x] Countdown to the next daily word.
+- [x] Hard mode (found letters must be used).
+
+## Sudoku
+
+- [x] Tapping a square highlights every square with the same number.
+- [x] Placing a number clears it from notes in its row, column and box.
+- [x] Number pad shows how many of each number are left.
+- [x] Show mistakes (keeps that game off the board, like Reveal).
+- [x] Fill in all notes helper.
+
+## Minesweeper (keeps its timer)
+
+- [x] Press and hold to flag on a phone.
+- [x] Face button to restart; mines-left counter.
+- [x] Play the same board again after a loss (not eligible for the board).
+- [ ] Later, needs a Worker change: bigger "expert" field. New scoreboard boards are a
+      Worker allowlist change and a deploy (`worker/arcade.mjs`), so not in this pass.
+
+## Tetris
+
+- [x] Hold a piece (C or Shift, and a button).
+- [x] Three upcoming pieces.
+- [x] Half a second before a piece locks, so it can slide at the last moment.
+- [x] Flash when lines clear; your best score shown while playing.
+- [x] Phone: swipe to move/drop, tap to rotate.
+
+## Snake
+
+- [x] **Swipe anywhere on the board to steer on a phone**, mid-swipe, several turns in
+      one drag (Ric's call above).
+- [x] Speed choice and a through-the-walls mode (only Classic posts to the board).
+- [x] Your best shown while playing; a burst when an apple is eaten.
+- [x] Two turns can be queued, so quick swipes aren't lost.
+
+## Ideas not built yet
+
+- [ ] Chess: a stronger hard level run in a Web Worker so it can think longer without freezing the page.
+- [ ] Sound effects (off by default).
+- [ ] Daily challenges for Sudoku and Solitaire (same deal for everyone, like the daily word).

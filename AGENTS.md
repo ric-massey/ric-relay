@@ -848,6 +848,11 @@ nobody had linked was a page nobody could find.
   `projects/arcade/build-words.py` from a credited Unlicense dictionary and an original
   answer selection; never silently reorder answers, because that changes daily words.
   Each game's cover and phone thumbnail is real gameplay, not a menu or mockup.
+  **Games in progress save in the browser** (2026-11-21, Ric: "like saving your game"),
+  under `classics:save:<game>`, with per-game stats, options and last mode beside it;
+  Minesweeper always shows its clock, Solitaire and Sudoku only on Show timer (Ric:
+  "solitare and sudoku dont need one"). The running list of game improvements is
+  `projects/arcade/TODO.md`; read it before changing a game.
   Front-door previews use the same rule engine through `projects/arcade/preview.js`.
   The quick checks include `projects/arcade/test/engine.test.cjs`,
   `projects/arcade/test/pages.test.cjs` and `worker/arcade.test.mjs`.

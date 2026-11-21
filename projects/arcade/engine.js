@@ -15,6 +15,16 @@
       let best = { value: turn === 'O' ? -100 : 100, index: -1 };
       for (const i of [4,0,2,6,8,1,3,5,7]) if (!b[i]) { const next = b.slice(); next[i] = turn; const v = Tic.best(next, turn === 'O' ? 'X' : 'O').value; if (turn === 'O' ? v > best.value : v < best.value) best = { value: v, index: i }; }
       return best;
+    },
+    /* The line of three that won, for drawing the strike-through. */
+    line(b) { for (const l of [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]) if (b[l[0]] && l.every(i => b[i] === b[l[0]])) return l; return null; },
+    /* easy: takes a win it sees half the time, otherwise anywhere; medium: the
+       perfect move two times in three; hard: never loses. */
+    pick(b, level = 'hard', turn = 'O', random = Math.random) {
+      const free = b.map((v,i) => v ? -1 : i).filter(i => i >= 0);
+      if (level === 'hard' || (level === 'medium' && random() < 2/3)) return Tic.best(b, turn).index;
+      if (level === 'easy' && random() < .5) for (const i of free) { const n = b.slice(); n[i] = turn; if (Tic.winner(n) === turn) return i; }
+      return free[Math.floor(random() * free.length)];
     }
   };
 
@@ -75,7 +85,7 @@
       return out;
     },
     apply(s, m) {
-      const n = copy(s), p = n.b[m.from], captured = n.b[m.to], t = side(p);
+      const n = { ...s, b: s.b.slice() }, p = n.b[m.from], captured = n.b[m.to], t = side(p);
       n.b[m.from] = ''; n.b[m.to] = m.promote ? (t === 'w' ? m.promote.toUpperCase() : m.promote) : p;
       if (m.enpassant) n.b[m.to + (t === 'w' ? 8 : -8)] = '';
       if (m.castle) { const king = m.to > m.from, a = m.from + (king ? 3 : -4), b = m.from + (king ? 1 : -1); n.b[b] = n.b[a]; n.b[a] = ''; }
@@ -96,18 +106,44 @@
       if (!men.length || (men.length === 1 && ['b','n'].includes(men[0].p)) || (men.every(x => x.p === 'b') && new Set(men.map(x => ((x.i >> 3) + x.i % 8) % 2)).size === 1)) return 'Draw by insufficient material';
       return null;
     },
-    best(s, depth = 2) {
+    /* Short algebraic notation for the move list: Nf3, exd5, O-O, e8=Q+, Qxf7#. */
+    san(s, m) {
+      const p = s.b[m.from], k = p.toLowerCase(), to = 'abcdefgh'[m.to % 8] + (8 - (m.to >> 3));
+      let out;
+      if (m.castle) out = m.to > m.from ? 'O-O' : 'O-O-O';
+      else if (k === 'p') out = (s.b[m.to] || m.enpassant ? 'abcdefgh'[m.from % 8] + 'x' : '') + to + (m.promote ? '=' + m.promote.toUpperCase() : '');
+      else {
+        const twins = Chess.moves(s).filter(o => o.to === m.to && o.from !== m.from && s.b[o.from] === p);
+        let dis = '';
+        if (twins.length) { const file = twins.some(o => o.from % 8 === m.from % 8), rank = twins.some(o => o.from >> 3 === m.from >> 3); dis = !file ? 'abcdefgh'[m.from % 8] : !rank ? String(8 - (m.from >> 3)) : 'abcdefgh'[m.from % 8] + (8 - (m.from >> 3)); }
+        out = k.toUpperCase() + dis + (s.b[m.to] ? 'x' : '') + to;
+      }
+      const n = Chess.apply(s, m);
+      if (Chess.check(n)) out += Chess.moves(n).length ? '+' : '#';
+      return out;
+    },
+    /* depth 1 = easy (one move ahead, a little careless), 2 = medium, 3 = hard.
+       apply() copies positions shallowly, so three plies stay quick in a
+       browser; leaves are scored without generating their moves. */
+    best(s, depth = 2, random = Math.random) {
       const value = { p:100,n:320,b:330,r:500,q:900,k:0 };
-      const evaluate = n => n.b.reduce((v,p,i) => v + (p ? (side(p) === 'w' ? 1 : -1) * (value[p.toLowerCase()] + (p.toLowerCase() !== 'k' ? 3 * (7 - Math.abs(3.5 - i % 8) - Math.abs(3.5 - (i >> 3))) : 0)) : 0), 0);
+      const evaluate = n => { let v = 0; for (let i = 0; i < 64; i++) { const p = n.b[i]; if (!p) continue; const k = p.toLowerCase(), w = side(p) === 'w'; let x = value[k]; if (k !== 'k') x += 3 * (7 - Math.abs(3.5 - i % 8) - Math.abs(3.5 - (i >> 3))); if (k === 'p') x += 4 * (w ? 6 - (i >> 3) : (i >> 3) - 1); v += w ? x : -x; } return v; };
+      const gain = (n, m) => (value[n.b[m.to]?.toLowerCase()] || 0) - (value[n.b[m.from].toLowerCase()] || 0) / 10 + (m.promote === 'q' ? 800 : 0);
+      const order = (n, moves) => moves.sort((x,y) => gain(n,y) - gain(n,x));
       const search = (n,d,a,b) => {
+        if (!d) return evaluate(n);
         const moves = Chess.moves(n); if (!moves.length) return Chess.check(n) ? (n.turn === 'w' ? -100000 - d : 100000 + d) : 0;
-        if (!d || n.half >= 100) return evaluate(n);
+        if (n.half >= 100) return 0;
         let v = n.turn === 'w' ? -Infinity : Infinity;
-        moves.sort((x,y) => (value[n.b[y.to]?.toLowerCase()] || 0) - (value[n.b[x.to]?.toLowerCase()] || 0));
-        for (const m of moves) { const score = search(Chess.apply(n,m),d-1,a,b); if (n.turn === 'w') { v = Math.max(v,score); a = Math.max(a,v); } else { v = Math.min(v,score); b = Math.min(b,v); } if (a >= b) break; } return v;
+        for (const m of order(n, moves)) { const score = search(Chess.apply(n,m),d-1,a,b); if (n.turn === 'w') { v = Math.max(v,score); a = Math.max(a,v); } else { v = Math.min(v,score); b = Math.min(b,v); } if (a >= b) break; } return v;
       };
-      let best, v = s.turn === 'w' ? -Infinity : Infinity;
-      for (const m of Chess.moves(s)) { const score = search(Chess.apply(s,m),depth-1,-Infinity,Infinity); if (s.turn === 'w' ? score > v : score < v) { best = m; v = score; } } return best;
+      const scored = order(s, Chess.moves(s)).map(m => ({ m, v: search(Chess.apply(s,m), depth-1, -Infinity, Infinity) }));
+      if (!scored.length) return undefined;
+      const sign = s.turn === 'w' ? 1 : -1;
+      scored.sort((x,y) => sign * (y.v - x.v));
+      // Easy picks among moves within a pawn and a half of its best, so it slips now and then.
+      const slack = depth <= 1 ? 150 : 0, near = scored.filter(x => sign * (scored[0].v - x.v) <= slack);
+      return near[Math.floor(random() * near.length)].m;
     }
   };
 
@@ -127,20 +163,28 @@
       return jumps.length ? jumps : s.chain >= 0 ? [] : steps;
     },
     apply(s,m) {
-      const n = copy(s), p = n.b[m.from]; n.b[m.to] = p; n.b[m.from] = ''; if (m.capture !== undefined) n.b[m.capture] = '';
+      const n = { ...s, b: s.b.slice() }, p = n.b[m.from]; n.b[m.to] = p; n.b[m.from] = ''; if (m.capture !== undefined) n.b[m.capture] = '';
       const crowned = p === p.toLowerCase() && (m.to < 8 || m.to >= 56); if (crowned) n.b[m.to] = p.toUpperCase();
       n.quiet = m.capture !== undefined || crowned ? 0 : s.quiet + 1;
       n.chain = m.capture !== undefined && !crowned ? m.to : -1;
       if (n.chain >= 0 && Checkers.moves(n).length) return n;
       n.chain = -1; n.turn = other(s.turn); return n;
     },
-    best(s, depth = 5) {
-      const search = (n,d) => {
-        const moves = Checkers.moves(n); if (!moves.length) return n.turn === 'w' ? -10000 : 10000;
-        if (!d) return n.b.reduce((v,p,i) => v + (p ? (p.toLowerCase() === 'w' ? 1 : -1) * (p === p.toUpperCase() ? 175 : 100 + (p === 'w' ? 7-(i>>3) : i>>3)*3) : 0),0);
-        return (n.turn === 'w' ? Math.max : Math.min)(...moves.map(m => search(Checkers.apply(n,m),d-1)));
+    /* Alpha-beta, so a board full of kings can't stall it. Easy looks 2 plies
+       and picks among near-best moves; medium 5; hard 8. */
+    best(s, depth = 5, random = Math.random) {
+      const evaluate = n => { let v = 0; for (let i = 0; i < 64; i++) { const p = n.b[i]; if (p) v += (p.toLowerCase() === 'w' ? 1 : -1) * (p === p.toUpperCase() ? 175 : 100 + (p === 'w' ? 7-(i>>3) : i>>3)*3); } return v; };
+      const search = (n,d,a,b) => {
+        const moves = Checkers.moves(n); if (!moves.length) return n.turn === 'w' ? -10000 - d : 10000 + d;
+        if (d <= 0 || n.quiet >= 80) return evaluate(n);
+        let v = n.turn === 'w' ? -Infinity : Infinity;
+        for (const m of moves) { const next = Checkers.apply(n,m), score = search(next, next.turn === n.turn ? d : d-1, a, b); if (n.turn === 'w') { v = Math.max(v,score); a = Math.max(a,v); } else { v = Math.min(v,score); b = Math.min(b,v); } if (a >= b) break; } return v;
       };
-      return Checkers.moves(s).map(m => ({m,v:search(Checkers.apply(s,m),depth-1)})).sort((a,b) => s.turn === 'w' ? b.v-a.v : a.v-b.v)[0]?.m;
+      const sign = s.turn === 'w' ? 1 : -1;
+      const scored = Checkers.moves(s).map(m => { const next = Checkers.apply(s,m); return { m, v: search(next, next.turn === s.turn ? depth : depth-1, -Infinity, Infinity) }; }).sort((x,y) => sign * (y.v - x.v));
+      if (!scored.length) return undefined;
+      const slack = depth <= 2 ? 60 : 0, near = scored.filter(x => sign * (scored[0].v - x.v) <= slack);
+      return near[Math.floor(random() * near.length)].m;
     }
   };
 
@@ -168,7 +212,9 @@
       if(s.b[i]===-1){s.open[i]=true;s.over=true;return;}
       const pending=[i];while(pending.length){const j=pending.pop();if(s.open[j]||s.flags[j])continue;s.open[j]=true;if(!s.b[j])for(const k of Mines.neighbors(s,j))if(!s.open[k]&&!s.flags[k])pending.push(k);}
       if(s.open.filter(Boolean).length===s.n*s.n-s.mines){s.over=true;s.won=true;}
-    }
+    },
+    /* The same mines again, everything covered: "play this board again". */
+    replay(s){return{...Mines.create(s.n,s.mines),b:s.b.slice(),started:s.started};}
   };
 
   const Word = {
@@ -179,7 +225,24 @@
   const Solitaire = {
     create(random=Math.random){const deck=shuffle(Array.from({length:52},(_,i)=>({rank:i%13+1,suit:Math.floor(i/13),up:false})),random),tableau=[];for(let col=0;col<7;col++){const pile=deck.splice(0,col+1);pile[col].up=true;tableau.push(pile);}return{tableau,stock:deck,waste:[],foundation:[[],[],[],[]],moves:0};},
     red:c=>c.suit===1||c.suit===2,
-    draw(s){if(s.stock.length){const c=s.stock.pop();c.up=true;s.waste.push(c);}else if(s.waste.length){s.stock=s.waste.reverse().map(c=>({...c,up:false}));s.waste=[];}else return false;s.moves++;return true;},
+    /* s.draw is 1 (the scoreboard game) or 3; older saves have none and draw one. */
+    draw(s){if(s.stock.length){for(let k=0;k<(s.draw||1)&&s.stock.length;k++){const c=s.stock.pop();c.up=true;s.waste.push(c);}}else if(s.waste.length){s.stock=s.waste.reverse().map(c=>({...c,up:false}));s.waste=[];}else return false;s.moves++;return true;},
+    /* Every legal non-draw move, most useful first: home moves, then moves that
+       turn over a card or empty a column, then waste to table. */
+    options(s){const out=[],home=c=>({type:'foundation',col:c.suit});
+      const tops=[...s.tableau.map((p,col)=>p.length?{type:'tableau',col,index:p.length-1}:null),s.waste.length?{type:'waste'}:null].filter(Boolean);
+      for(const f of tops){const t=Solitaire.copyTry(s,f,home(Solitaire.pile(s,f).at(-1)));if(t)out.push({from:f,to:t,rank:3});}
+      s.tableau.forEach((p,col)=>{const i=p.findIndex(c=>c.up);if(i<0)return;for(let dest=0;dest<7;dest++){if(dest===col)continue;if(i===0&&p[0].rank===13&&!s.tableau[dest].length)continue;const f={type:'tableau',col,index:i},t={type:'tableau',col:dest};if(Solitaire.copyTry(s,f,t))out.push({from:f,to:t,rank:i>0?2:1});}});
+      if(s.waste.length)for(let dest=0;dest<7;dest++){const t={type:'tableau',col:dest};if(Solitaire.copyTry(s,{type:'waste'},t))out.push({from:{type:'waste'},to:t,rank:1});}
+      return out.sort((a,b)=>b.rank-a.rank);},
+    copyTry(s,from,to){const n=copy(s);return Solitaire.move(n,from,to)?to:null;},
+    /* True when no move exists and no card in the stock or waste could ever be
+       played on what is showing now. */
+    stuck(s){if(Solitaire.options(s).length)return false;const cards=[...s.stock,...s.waste];const tops=s.tableau.map(p=>p.at(-1));return !cards.some(c=>c.rank===(s.foundation[c.suit].at(-1)?.rank||0)+1||tops.some(t=>t?(t.up&&t.rank===c.rank+1&&Solitaire.red(t)!==Solitaire.red(c)):c.rank===13));},
+    /* Once the stock and waste are empty and every card is face up, the rest is
+       just carrying cards home. One card per call, lowest first. */
+    autoReady(s){return !s.stock.length&&!s.waste.length&&s.tableau.every(p=>p.every(c=>c.up))&&!Solitaire.won(s);},
+    autoStep(s){let best=null;s.tableau.forEach((p,col)=>{const c=p.at(-1);if(c&&c.rank===(s.foundation[c.suit].at(-1)?.rank||0)+1&&(!best||c.rank<best.c.rank))best={c,col};});if(!best)return null;const from={type:'tableau',col:best.col,index:s.tableau[best.col].length-1},to={type:'foundation',col:best.c.suit};Solitaire.move(s,from,to);return{from,to,card:best.c};},
     pile(s,p){return p.type==='tableau'?s.tableau[p.col]:p.type==='foundation'?s.foundation[p.col]:s.waste;},
     move(s,from,to){
       if(from.type===to.type&&from.col===to.col)return false;
@@ -197,8 +260,12 @@
 
   const Snake = {
     create(){return{body:[{x:7,y:10},{x:6,y:10},{x:5,y:10}],dir:{x:1,y:0},queued:null,food:{x:14,y:10},score:0,over:false};},
-    turn(s,x,y){if(!s.queued&&(x!==-s.dir.x||y!==-s.dir.y))s.queued={x,y};},
-    step(s,random=Math.random){if(s.over)return;if(s.queued){s.dir=s.queued;s.queued=null;}const h={x:s.body[0].x+s.dir.x,y:s.body[0].y+s.dir.y},eat=h.x===s.food.x&&h.y===s.food.y;
+    /* Two turns can wait, so a quick swipe-swipe (down, then left) inside one
+       step isn't lost; each is checked against the direction before it.
+       Turning the way you're already going does nothing. */
+    turn(s,x,y){const last=s.queued2||s.queued||s.dir;if(s.queued2||(x===last.x&&y===last.y)||(x===-last.x&&y===-last.y))return;if(!s.queued)s.queued={x,y};else s.queued2={x,y};},
+    /* s.wrap: through-the-walls mode; leaving one edge brings you in the other side. */
+    step(s,random=Math.random){if(s.over)return;if(s.queued){s.dir=s.queued;s.queued=s.queued2||null;s.queued2=null;}const h={x:s.body[0].x+s.dir.x,y:s.body[0].y+s.dir.y};if(s.wrap){h.x=(h.x+20)%20;h.y=(h.y+20)%20;}const eat=h.x===s.food.x&&h.y===s.food.y;
       if(!inside(h.y,h.x,20)||s.body.slice(0,eat?undefined:-1).some(p=>p.x===h.x&&p.y===h.y)){s.over=true;return;}
       s.body.unshift(h);if(eat){s.score+=10;const free=[];for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(!s.body.some(p=>p.x===x&&p.y===y))free.push({x,y});if(!free.length){s.over=true;return;}s.food=free[Math.floor(random()*free.length)];}else s.body.pop();
     }
@@ -209,11 +276,17 @@
     create(random=Math.random){const s={b:Array.from({length:20},()=>Array(10).fill(0)),bag:[],next:null,piece:null,x:3,y:0,score:0,lines:0,over:false};Tetris.spawn(s,random);return s;},
     take(s,random){if(!s.bag.length)s.bag=shuffle([0,1,2,3,4,5,6],random);return copy(Tetris.shapes[s.bag.pop()]);},
     fits(s,p=s.piece,x=s.x,y=s.y){return p.every((row,r)=>row.every((v,c)=>!v||(x+c>=0&&x+c<10&&y+r<20&&(y+r<0||!s.b[y+r][x+c]))));},
-    spawn(s,random=Math.random){s.piece=s.next||Tetris.take(s,random);s.next=Tetris.take(s,random);s.x=Math.floor((10-s.piece[0].length)/2);s.y=0;if(!Tetris.fits(s))s.over=true;},
+    /* s.next is the next piece; s.queue holds the two after it. */
+    spawn(s,random=Math.random){s.queue=s.queue||[];s.piece=s.next||Tetris.take(s,random);s.next=s.queue.shift()||Tetris.take(s,random);while(s.queue.length<2)s.queue.push(Tetris.take(s,random));Tetris.place(s);},
+    place(s){s.x=Math.floor((10-s.piece[0].length)/2);s.y=0;if(!Tetris.fits(s))s.over=true;},
+    /* Hold swaps the falling piece with the held one (or the next piece), once per drop. */
+    hold(s,random=Math.random){if(s.over||s.held)return false;const kind=Math.max(...s.piece.flat()),prev=s.hold;s.hold=kind;if(prev){s.piece=copy(Tetris.shapes[prev-1]);Tetris.place(s);}else Tetris.spawn(s,random);s.held=true;return true;},
     move(s,dx,dy){if(!s.over&&Tetris.fits(s,s.piece,s.x+dx,s.y+dy)){s.x+=dx;s.y+=dy;return true;}return false;},
     rotate(s,reverse=false){if(s.over)return false;const p=reverse?s.piece[0].map((_,c)=>s.piece.map(row=>row[s.piece[0].length-1-c])):s.piece[0].map((_,c)=>s.piece.map(row=>row[c]).reverse());for(const dx of [0,-1,1,-2,2])if(Tetris.fits(s,p,s.x+dx,s.y)){s.piece=p;s.x+=dx;return true;}return false;},
     lock(s,random=Math.random){if(s.over)return;for(let r=0;r<s.piece.length;r++)for(let c=0;c<s.piece[r].length;c++)if(s.piece[r][c]){if(s.y+r<0){s.over=true;return;}s.b[s.y+r][s.x+c]=s.piece[r][c];}
-      const kept=s.b.filter(row=>!row.every(Boolean)),n=20-kept.length,level=1+Math.floor(s.lines/10);s.score+=[0,100,300,500,800][n]*level;s.lines+=n;while(kept.length<20)kept.unshift(Array(10).fill(0));s.b=kept;Tetris.spawn(s,random);},
+      const kept=s.b.filter(row=>!row.every(Boolean)),n=20-kept.length,level=1+Math.floor(s.lines/10);s.score+=[0,100,300,500,800][n]*level;s.lines+=n;while(kept.length<20)kept.unshift(Array(10).fill(0));s.b=kept;s.held=false;Tetris.spawn(s,random);},
+    /* Rows the falling piece would complete if it locked where it is (for the flash). */
+    fullRows(s){const rows=[];for(let r=0;r<20;r++){if(s.b[r].every((v,c)=>v||s.piece.some((row,pr)=>s.y+pr===r&&row[c-s.x])))rows.push(r);}return rows;},
     drop(s,random=Math.random){while(Tetris.move(s,0,1))s.score+=2;Tetris.lock(s,random);}
   };
   const api={copy,shuffle,Tic,Chess,Checkers,Sudoku,Mines,Word,Solitaire,Snake,Tetris};

@@ -13,23 +13,46 @@ dependency; shared code stays entirely inside these Gaming projects.
 
 | Game | Rules / modes | Scoreboard |
 |---|---|---|
-| Solitaire | Klondike, draw one, unlimited recycling, tap to select and move stacks, undo | Fastest completed games, seconds |
-| Tic-tac-toe | Unbeatable minimax computer or two people sharing the screen | None; win/draw |
-| Chess | Casual two-ply computer or two people; legal moves, castling, en passant, four promotions; checkmate, stalemate, threefold repetition, 50-move and insufficient-material draws; undo whole computer turns | None; win/draw |
-| Wordle | Independent Wordle-style game; six guesses; shared UTC daily word or unlimited practice; repeated-letter accounting | Fewest guesses, separate daily and practice boards |
-| Sudoku | Easy/medium/hard; generated with exactly one solution; notes, conflict highlighting, keyboard numbers/arrows, erase, optional reveal | Fastest wins per difficulty; a reveal makes that game ineligible |
-| Minesweeper | 9×9/10, 12×12/25, 16×16/40; first square and neighbors safe; flood reveal, flags and chord opening | Fastest wins per field |
-| Tetris | Seven-piece bag, clockwise/counterclockwise rotation with horizontal wall kicks, ghost piece, next preview, soft/hard drop, level every ten lines | Highest points |
-| Checkers | American 8×8; forward men, short kings, mandatory captures and continued jumps; crowning ends the turn; casual computer or two people; repetition/80 quiet plies draw | None; win/draw |
-| Snake | 20×20, solid walls, food avoids the snake, one queued turn per step, rising speed | Highest points; ten per apple |
+| Solitaire | Klondike, draw one or draw three, unlimited recycling; drag and drop or tap-tap, tap twice to send a card where it fits; hint, undo, "no moves left", finishes itself once every card is face up; no clock on screen unless Show timer | Draw one only: fastest completed games, seconds |
+| Tic-tac-toe | Computer at Easy/Medium/Hard (Hard is unbeatable minimax) or two people; undo; running tally; strike-through on the winning line | None; win/draw |
+| Chess | Drawn SVG pieces; computer at Easy/Medium/Hard (1/2/3 plies, alpha-beta) as White or Black (board flips), or two people; legal moves, castling, en passant, four promotions; checkmate, stalemate, threefold repetition, 50-move and insufficient-material draws; last move and check shown; move list and captures; hint; undo whole computer turns | None; win/draw |
+| Wordle | Independent Wordle-style game; six guesses; shared UTC daily word or unlimited practice; repeated-letter accounting; hard mode; tiles flip, a rejected word shakes; share (squares only); countdown to the next daily word; guess chart | Fewest guesses, separate daily and practice boards |
+| Sudoku | Easy/medium/hard; generated with exactly one solution; notes (cleared from peers when a number is placed), fill-all-notes, same-number highlight, numbers-left on the pad, conflict highlighting, keyboard numbers/arrows/N, erase, undo; no clock on screen unless Show timer | Fastest wins per difficulty; Reveal or Show mistakes makes that game ineligible |
+| Minesweeper | 9×9/10, 12×12/25, 16×16/40; first square and neighbors safe; flood reveal, flags (right-click, press and hold, Flag mode) and chord opening; face button; after a mine, take the click back or replay the same board (both ineligible); always shows its clock | Fastest wins per field |
+| Tetris | Seven-piece bag, clockwise/counterclockwise rotation with horizontal wall kicks, ghost piece, hold, three-piece preview, half-second lock delay (15 resets), line-clear flash, soft/hard drop, level every ten lines; phone: drag, tap, flick | Highest points |
+| Checkers | American 8×8; forward men, short kings, mandatory captures and continued jumps; crowning ends the turn; computer at Easy/Medium/Hard (2/5/8 plies, alpha-beta) or two people; last move and jump path shown; pieces taken; repetition/80 quiet plies draw | None; win/draw |
+| Snake | 20×20; Classic, Slow, or Through walls (wraps); food avoids the snake; two queued turns per step; rising speed; swipe anywhere, mid-swipe | Classic only: highest points; ten per apple |
 
-All games work with touch/clicks. Snake also accepts swipes, arrows and WASD.
-Tetris uses arrows, X/Z and Space. P and the visible Pause button pause action
-games; hiding the tab pauses automatically. Timed puzzles use wall time from the
-first action, including time spent in another tab. New Game abandons the current
-run; unfinished games are not saved. The daily word is the exception: guesses
-and whether its initials were submitted are saved in `localStorage` by UTC date.
+All games work with touch/clicks. Snake also accepts swipes anywhere on the board
+(turning while the finger is still moving), arrows and WASD. Tetris uses arrows,
+X/Z, Space and C/Shift. P and the visible Pause button pause action games; hiding
+the tab pauses automatically.
+
+**Saving** (2026-11-21, Ric asked for "saving your game"). Every game in progress
+is saved in this browser under `classics:save:<game>` after each move, and
+Snake/Tetris when paused, hidden or closed. Opening the page again puts you back
+where you were (Snake/Tetris behind a Resume button). New game, a mode change or
+finishing clears the save. The clock of a resumed timed game picks up on the next
+move, so time away isn't counted. The daily word keeps its own record as before
+(`classics:daily:<date>`: guesses, whether initials were submitted, hard mode);
 New Game cannot reset that result; Practice is always available.
+
+**Clocks** (Ric, 2026-11-21: "minesweeper needs the timer btw it always has one
+but solitare and sudoku dont need one"). Minesweeper always shows its clock.
+Solitaire and Sudoku keep time quietly so a win can still go on the fastest board
+(the win card says the time); their Show timer button puts the clock on screen.
+
+**Your games.** A stats panel beside the scoreboard: played, won, streaks and best
+for each game and mode, or the vs-computer and two-player tallies, kept in this
+browser under `classics:stats:<game>:<mode>`. Per-game choices (computer level,
+Show timer, Show mistakes, hard mode) are `classics:opt:<game>`; the last mode
+picked is `classics:mode:<game>`.
+
+**Movement** respects `prefers-reduced-motion`: pieces slide, cards land, tiles
+flip, rows shake, a winning line draws, and a win throws confetti. The result card
+waits half a second (Wordle: until the flip ends) so the last move is seen.
+
+The improvement list this pass came from, with what is left, is `TODO.md`.
 
 ## Where they sit
 
