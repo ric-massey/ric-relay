@@ -191,7 +191,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
   clock panel, the field; best times in their own window.
 - [x] **Sudoku:** a puzzle-book page: puzzle number and date as a header, the grid
   centred, the number pad as a tray beside it, notes and checks as pencil tools.
-- [ ] **Wordle:** one narrow column: tiles, then the keyboard docked to the bottom on a
+- [x] **Wordle:** one narrow column: tiles, then the keyboard docked to the bottom on a
   phone; stats and share in their own sheet.
 - [ ] **Tetris:** an arcade cabinet: the well in the middle, hold and next on the
   cabinet's side panels, the high scores as an attract screen.
@@ -312,6 +312,21 @@ into the help dialog wherever the page has no room for them. Page concepts:
       Terminal (ASCII).
 - [ ] **Deploy Worker** again: the live scoreboard needs `sudoku-expert` (added in
       worker/arcade.mjs with this round).
+
+### Wordle: what players want (Ric, 2026-11-21: "World next" [Wordle], then his answers) — built the same day
+- [x] The page is one narrow column (concept above): the tiles, then the keyboard,
+      docked to the bottom on a phone; stats and the scoreboard in their own sheet.
+- [x] Colour-blind mode (Ric picked it): high-contrast colours plus a mark on each
+      tile (● right spot, ○ elsewhere), so nothing depends on telling two colours
+      apart; the share squares follow it.
+- [x] Past daily words (Ric picked it): play any earlier day's word, picked by
+      date; it shares that day's record with the daily, and stays off the board.
+- [x] Letter hint in practice (Ric picked it): reveals one right letter in its
+      place; a hinted game stays off the practice board.
+- [x] Six styles (Ric: "Yes, those six"), each with its own colours instead of
+      green and yellow: Flip board (split-flap departures board), Letterpress
+      (wooden type, inked), Typewriter (struck letters, round keys), Neon (tubes
+      on brick), Crossword (a newspaper grid in pen), Terminal (ASCII).
 
 ### Online play, Chess and Checkers (Ric, 2026-11-21: "multiplayer for chess and checkers needs to be in")
 Two players on one device was already there, so this is playing a friend on their

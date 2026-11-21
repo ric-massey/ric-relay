@@ -24,7 +24,7 @@
     chess:[['cpu','Vs computer · you’re White'],['cpu-black','Vs computer · you’re Black'],['two','Two players · pass the device'],['table','Two players · across the table'],['online','Play a friend online']],
     checkers:[['cpu','Vs computer'],['two','Two players · pass the device'],['table','Two players · across the table'],['online','Play a friend online']],
     tictactoe:[['cpu','Vs computer'],['two','Two players']],
-    wordle:[['daily','Daily word'],['practice','Practice']],
+    wordle:[['daily','Daily word'],['practice','Practice'],['past','Past daily words']],
     sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['expert','Expert'],['daily','Daily puzzle']],
     minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines'],['expert','Expert · 99 mines'],['custom','Custom size']],
     snake:[['classic','Classic'],['slow','Slow'],['walls','Through walls']],
@@ -73,13 +73,13 @@
   // ---- scoreboards (shared Worker, unchanged keys) -------------------------
   /* Only the original game of each kind has a board: Draw one, Classic Snake.
      New boards would need the Worker's allowlist changed and redeployed. */
-  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':mode==='daily'?'solitaire-daily-'+dailyDate:null;case 'sudoku':return mode==='daily'?'sudoku-daily-'+dailyDate:'sudoku-'+mode;case 'minesweeper':return mode==='custom'?null:'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return 'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:'wordle-practice';default:return null;}}
+  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':mode==='daily'?'solitaire-daily-'+dailyDate:null;case 'sudoku':return mode==='daily'?'sudoku-daily-'+dailyDate:'sudoku-'+mode;case 'minesweeper':return mode==='custom'?null:'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return 'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:mode==='past'?null:'wordle-practice';default:return null;}}
   function scoreText(score,key=board()){return key?.startsWith('wordle-')?score+' / 6':key==='snake'||key==='tetris'?score.toLocaleString():fmtTime(score);}
   function sorted(rows,key){return rows.slice().sort((a,b)=>(key==='snake'||key==='tetris'?b.score-a.score:a.score-b.score)||(a.at||0)-(b.at||0)).slice(0,10);}
   async function request(path,options){if(!remote)throw Error('offline');const res=await fetch(remote+'/arcade/scores'+path,{...options,signal:AbortSignal.timeout(6000)});if(!res.ok)throw Error(res.status===429?'Please wait a minute before submitting again.':'Shared scoreboard is unavailable.');return res.json();}
   function showRows(rows,key){$('scores').replaceChildren();if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent='The board is open. Put your initials up here.';$('scores').append(li);return;}for(const row of sorted(rows,key)){const li=document.createElement('li'),name=document.createElement('strong'),score=document.createElement('span');name.textContent=row.initials;score.textContent=scoreText(row.score,key);li.append(name,score);$('scores').append(li);}}
   async function refreshScores(){const key=board(),version=++boardRefresh;$('score-panel').hidden=!key;if(!key)return;$('score-kind').textContent=key.startsWith('wordle-')?(mode==='daily'?'Today · '+dailyDate+' · fewest guesses':'Practice · fewest guesses'):key.includes('-daily-')?'Today · '+dailyDate+' · fastest wins':key==='snake'||key==='tetris'?'Top ten · highest score':'Top ten · fastest wins';$('score-source').textContent='Loading shared board…';try{const data=await request('?board='+encodeURIComponent(key));if(version!==boardRefresh)return;showRows(data.scores,key);$('score-source').textContent='Everyone · shared scoreboard';}catch{if(version!==boardRefresh)return;showRows(storage.get('scores:'+key,[]),key);$('score-source').textContent='This browser only · shared board unavailable';}}
-  function saveDaily(){if(game?.id==='wordle'&&mode==='daily')storage.set('daily:'+dailyDate,{guesses:s.guesses,submitted:s.submitted||false,hard:!!s.hard});}
+  function saveDaily(){if(game?.id==='wordle'&&(mode==='daily'||mode==='past'))storage.set('daily:'+(s.day||dailyDate),{guesses:s.guesses,submitted:s.submitted||false,hard:!!s.hard});}
 
   // ---- your stats (this browser) ------------------------------------------
   function statsKey(){return 'stats:'+game.id+':'+(mode||'all');}
@@ -115,7 +115,7 @@
   // ---- saving a game in progress -----------------------------------------
   function persist(){
     if(!game||!s)return;
-    if(game.id==='wordle'&&mode==='daily')return; // the daily word has its own record
+    if(game.id==='wordle'&&(mode==='daily'||mode==='past'))return; // a day's word has its own record
     if(finished){storage.remove('save:'+game.id);return;}
     if(action()&&!s.started)return;
     if(mode==='online')return; // an online game lives in its room
@@ -158,7 +158,7 @@
     const actions=document.querySelector('#result-dialog .dialog-actions');
     let again=$('play-again');if(!again){again=button('Play again',()=>{$('result-dialog').close();start();});again.id='play-again';actions.prepend(again);}
     let share=$('share-result');if(!share){share=button('Share',shareWordle);share.id='share-result';actions.prepend(share);}
-    again.textContent='Play again';again.onclick=()=>{$('result-dialog').close();start();};share.hidden=game.id!=='wordle';again.hidden=game.id==='wordle'&&mode==='daily';
+    again.textContent='Play again';again.onclick=()=>{$('result-dialog').close();start();};share.hidden=game.id!=='wordle';again.hidden=game.id==='wordle'&&mode==='daily';if(game.id==='wordle'&&mode==='past'){again.textContent='The day before';again.onclick=()=>{$('result-dialog').close();const n=new Date(Date.parse(s.day+'T12:00:00Z')-864e5).toISOString().slice(0,10);if(n>=FIRST_DAY){opts.pastDay=n;saveOpts();}start();};}
   }
   $('score-form').onsubmit=async e=>{e.preventDefault();if(!pending)return;const initials=$('initials').value.trim().toUpperCase();if(!/^[A-Z]{1,3}$/.test(initials)){$('initials').reportValidity();return;}const row={...pending,initials},key=row.board,token=revision;boardRefresh++;$('save-score').disabled=true;storage.set('initials',initials);try{const data=await request('',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(row)});if(token!==revision)return;showRows(data.scores,key);$('score-source').textContent='Everyone · shared scoreboard';$('save-message').textContent='Your initials are on the board.';}catch(error){if(token!==revision)return;if(error.message.includes('wait a minute')){$('save-message').textContent=error.message;$('save-score').disabled=false;return;}const rows=storage.get('scores:'+key,[]).filter(r=>r.id!==row.id);rows.push({...row,at:Date.now()});const saved=storage.set('scores:'+key,sorted(rows,key));showRows(saved?sorted(rows,key):[],key);$('score-source').textContent='This browser only · shared board unavailable';$('save-message').textContent=saved?'Saved on this browser only. The shared board couldn’t be reached.':'Your browser couldn’t save this score. Please try again.';if(!saved){$('save-score').disabled=false;return;}}pending=null;$('save-score').hidden=true;$('initials-wrap').hidden=true;if(game.id==='wordle'){s.submitted=true;saveDaily();renderWord();}};
   $('close-result').onclick=()=>$('result-dialog').close();
@@ -1156,7 +1156,32 @@
   }
 
   // ---- Wordle --------------------------------------------------------------
-  function initWord(){dailyDate=new Date().toISOString().slice(0,10);const saved=mode==='daily'?storage.get('daily:'+dailyDate):null;s={answer:mode==='daily'?E.Word.daily(window.ArcadeWords.answers,dailyDate):window.ArcadeWords.answers[Math.floor(Math.random()*window.ArcadeWords.answers.length)],guesses:[],submitted:false,hard:!!opts.hard};if(saved&&Array.isArray(saved.guesses)&&saved.guesses.length<=6&&saved.guesses.every(w=>typeof w==='string'&&/^[a-z]{5}$/.test(w)&&window.ArcadeWords.allowed.has(w))){s.guesses=saved.guesses;s.submitted=!!saved.submitted;s.hard=!!saved.hard;}finished=s.guesses.includes(s.answer)||s.guesses.length===6;}
+  /* Past daily words (Ric, 2026-11-21): any earlier day, by date. It shares that
+     day's record (classics:daily:<date>) with the daily, and never posts. */
+  const today=()=>new Date().toISOString().slice(0,10);
+  const FIRST_DAY='2026-01-01';
+  function pastDay(){const d=opts.pastDay;const y=new Date(Date.now()-864e5).toISOString().slice(0,10);return d&&d>=FIRST_DAY&&d<today()?d:y;}
+  function initWord(){
+    dailyDate=today();const day=mode==='past'?pastDay():mode==='daily'?dailyDate:null;
+    const saved=day?storage.get('daily:'+day):null;
+    s={answer:day?E.Word.daily(window.ArcadeWords.answers,day):window.ArcadeWords.answers[Math.floor(Math.random()*window.ArcadeWords.answers.length)],guesses:[],submitted:false,hard:!!opts.hard,day,hints:[]};
+    if(saved&&Array.isArray(saved.guesses)&&saved.guesses.length<=6&&saved.guesses.every(w=>typeof w==='string'&&/^[a-z]{5}$/.test(w)&&window.ArcadeWords.allowed.has(w))){s.guesses=saved.guesses;s.submitted=!!saved.submitted;s.hard=!!saved.hard;}
+    if(mode==='past')eligible=false;
+    finished=s.guesses.includes(s.answer)||s.guesses.length===6;
+  }
+  /* A letter hint, practice only (Ric, 2026-11-21): one right letter, in its place. */
+  function wordHint(){
+    if(finished||mode!=='practice')return;s.hints=s.hints||[];
+    const known=new Set(s.hints);for(const g of s.guesses)E.Word.feedback(g,s.answer).forEach((c,i)=>{if(c==='correct')known.add(i);});
+    const open=[0,1,2,3,4].filter(i=>!known.has(i));if(!open.length){hint('You already have every letter in place.');return;}
+    const at=open[Math.floor(Math.random()*open.length)];s.hints.push(at);sfx('flag');renderWord();hint(`Letter ${at+1} is ${s.answer[at].toUpperCase()}. A hinted game stays off the board.`);
+  }
+  /* What the colours mean, in each style's own words. */
+  function wordLegend(){
+    if(opts.contrast)return '● Orange: right spot · ○ Blue: elsewhere · Dark: not in the word';
+    return {flip:'Blue flap: right spot · Orange flap: elsewhere · Black: not in the word',letterpress:'Red ink: right spot · Blue ink: elsewhere · Grey: not in the word',typewriter:'Inked block: right spot · Red underline: elsewhere · Faint: not in the word',neon:'Pink: right spot · Cyan: elsewhere · Unlit: not in the word',crossword:'Circled: right spot · Shaded: elsewhere · Struck out: not in the word',terminal:'[A] right spot · (a) elsewhere · a not in the word'}[look()]||'Green: right spot · Gold: elsewhere · Gray: not this letter';
+  }
+  function colourBlind(){document.body.dataset.contrast=opts.contrast?'on':'';}
   function untilNext(){const now=new Date(),next=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1),t=Math.max(0,Math.floor((next-now)/1000));return `${Math.floor(t/3600)}:${String(Math.floor(t/60)%60).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;}
   /* Hard mode: greens stay put and every found letter is used again. */
   function hardProblem(guess){
@@ -1168,33 +1193,39 @@
     for(let r=0;r<6;r++){
       const guess=s.guesses[r],colors=guess?E.Word.feedback(guess,s.answer):null,row=r===flipping&&!reduced();
       for(let c=0;c<5;c++){
-        const ch=guess?.[c]||(r===s.guesses.length?input[c]||'':''),t=el('div','letter'+(colors&&!row?' '+colors[c]:''),ch);
+        const ghost=!guess&&r===s.guesses.length&&!input[c]&&s.hints?.includes(c)?s.answer[c]:'';
+        const ch=guess?.[c]||(r===s.guesses.length?input[c]||'':''),t=el('div','letter'+(colors&&!row?' '+colors[c]:'')+(ghost?' ghost':''),ch||ghost);
         // A new guess flips tile by tile; each tile takes its color halfway over.
         if(row){t.classList.add('flip');t.style.setProperty('--d',c*.25+'s');setTimeout(()=>t.classList.add(colors[c]),c*250+250);}
         if(r===s.guesses.length&&!guess){if(ch)t.classList.add('typed');if(shake)t.classList.add('shake');else if(c===input.length-1&&!reduced())t.classList.add('pop');}
+        if(c===0)t.dataset.n=r+1; // the Crossword style numbers each row like a clue
         t.setAttribute('aria-label',guess?`${guess[c]}, ${colors[c]}`:ch||'Empty letter');b.append(t);
       }
       if(guess&&!row)for(let c=0;c<5;c++){const ranks={absent:1,present:2,correct:3};if((ranks[used[guess[c]]]||0)<ranks[colors[c]])used[guess[c]]=colors[c];}
     }
     stage.append(b);
-    const keyboard=el('div','keyboard');for(const line of ['qwertyuiop','asdfghjkl','↵zxcvbnm⌫']){const keyrow=el('div','keyrow');for(const ch of line)keyrow.append(button(ch==='↵'?'ENTER':ch==='⌫'?'⌫':ch.toUpperCase(),()=>wordKey(ch),'key'+(ch==='↵'||ch==='⌫'?' wide':'')+(used[ch]?' '+used[ch]:'')));keyboard.append(keyrow);}stage.append(keyboard);
+    const keyboard=el('div','keyboard');for(const line of ['qwertyuiop','asdfghjkl','↵zxcvbnm⌫']){const keyrow=el('div','keyrow');for(const ch of line)keyrow.append(button(ch==='↵'?'ENTER':ch==='⌫'?'⌫':ch.toUpperCase(),()=>wordKey(ch),'key'+(ch==='↵'||ch==='⌫'?' wide':'')+(used[ch]?' '+used[ch]:'')));keyboard.append(keyrow);}const keySlot=$('keys-slot');if(keySlot)keySlot.replaceChildren(keyboard);else stage.append(keyboard);
     if(flipping>=0){revealRow=-1;if(!reduced()){revealUntil=Date.now()+1350;const token=revision;setTimeout(()=>{if(token===revision)renderWord();},1400);}}
     shake=false;
-    const won=s.guesses.includes(s.answer),bits=[];
+    const won=s.guesses.includes(s.answer),bits=[];colourBlind();
+    if(mode==='past'){const pick=el('label','day-pick');const d=el('input');d.type='date';d.min=FIRST_DAY;d.max=new Date(Date.now()-864e5).toISOString().slice(0,10);d.value=s.day;d.onchange=()=>{if(d.value&&d.value>=FIRST_DAY&&d.value<today()){opts.pastDay=d.value;saveOpts();start();}};const step=k=>()=>{const n=new Date(Date.parse(s.day+'T12:00:00Z')+k*864e5).toISOString().slice(0,10);if(n>=FIRST_DAY&&n<today()){opts.pastDay=n;saveOpts();start();}};pick.append(el('span','sr-only','Day'),d);bits.push(button('◀',step(-1),'day-step'),pick,button('▶',step(1),'day-step'));}
     if(!s.guesses.length&&!finished)bits.push(button('Hard mode: '+(s.hard?'on':'off'),()=>{s.hard=opts.hard=!s.hard;saveOpts();saveDaily();renderWord();},s.hard?'on':''));
+    if(mode==='practice'&&!finished)bits.push(button('Hint: a letter',wordHint));
+    bits.push(button('Colour-blind: '+(opts.contrast?'on':'off'),()=>{opts.contrast=!opts.contrast;saveOpts();renderWord();},opts.contrast?'on':''));
     if(finished)bits.push(button('Share',shareWordle));
-    if(finished&&won&&!s.submitted)bits.push(button('Add your initials',()=>{if(pending){$('result-dialog').showModal();return;}finished=false;finish('You found it.',`The word was ${s.answer.toUpperCase()}. ${s.guesses.length} of 6 guesses.`,s.guesses.length);}));
+    if(finished&&won&&!s.submitted&&mode!=='past'&&!s.hints?.length)bits.push(button('Add your initials',()=>{if(pending){$('result-dialog').showModal();return;}finished=false;finish('You found it.',`The word was ${s.answer.toUpperCase()}. ${s.guesses.length} of 6 guesses.`,s.guesses.length);}));
     tools.replaceChildren(...bits);
-    status(finished?(won?'Solved in '+s.guesses.length+'/6':'The word was '+s.answer.toUpperCase()):(mode==='daily'?'Daily word · '+dailyDate+' UTC':'Practice · guess '+(s.guesses.length+1)+' of 6')+(s.hard?' · hard mode':''));
+    status(finished?(won?'Solved in '+s.guesses.length+'/6':'The word was '+s.answer.toUpperCase()):(mode==='daily'?'Daily word · '+dailyDate+' UTC':mode==='past'?'The word for '+new Date(s.day+'T12:00:00Z').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'Practice · guess '+(s.guesses.length+1)+' of 6')+(s.hard?' · hard mode':''));
+    const day=$('word-day');if(day)day.textContent=mode==='practice'?'Practice':new Date((s.day||dailyDate)+'T12:00:00Z').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
     clearInterval(ticker);
     if(finished&&mode==='daily'){const tick=()=>hint('Next daily word in '+untilNext()+'. Practice is always open.');tick();ticker=setInterval(tick,1000);}
-    else if(finished)hint('New game for another word.');
-    else hint('Green: right spot · Gold: elsewhere · Gray: not this letter');
+    else if(finished)hint(mode==='past'?'Pick another day, or play today’s word.':'New game for another word.');
+    else if(!s.hints?.length||s.guesses.length)hint(wordLegend());
     persist();
   }
   function shareWordle(){
-    const sq={correct:'🟩',present:'🟨',absent:'⬛'},won=s.guesses.includes(s.answer);
-    const text=`RIC//NET Wordle ${mode==='daily'?dailyDate:'practice'} ${won?s.guesses.length:'X'}/6${s.hard?'*':''}\n\n`+s.guesses.map(g=>E.Word.feedback(g,s.answer).map(c=>sq[c]).join('')).join('\n');
+    const sq=opts.contrast?{correct:'🟧',present:'🟦',absent:'⬛'}:{correct:'🟩',present:'🟨',absent:'⬛'},won=s.guesses.includes(s.answer);
+    const text=`RIC//NET Wordle ${mode==='practice'?'practice':s.day||dailyDate} ${won?s.guesses.length:'X'}/6${s.hard?'*':''}\n\n`+s.guesses.map(g=>E.Word.feedback(g,s.answer).map(c=>sq[c]).join('')).join('\n');
     const done=()=>{hint('Copied. Paste it anywhere: no letters, no spoilers.');if($('result-dialog').open)$('save-message').textContent='Copied to your clipboard.';};
     const fallback=()=>{const t=document.createElement('textarea');t.value=text;document.body.append(t);t.select();try{document.execCommand('copy');done();}catch{hint('Couldn’t copy here.');}t.remove();};
     if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
@@ -1211,7 +1242,7 @@
       const won=s.guesses.at(-1)===s.answer,out=won||s.guesses.length===6;
       if(out){finished=true;lastFinish={guesses:won?s.guesses.length:null};record(won?'won':'lost',won?s.guesses.length:null);}
       renderWord();
-      if(won){finished=false;setTimeout(celebrate,reduced()?0:1300);finish('You found it.',`The word was ${s.answer.toUpperCase()}. ${s.guesses.length} of 6 guesses.`,s.guesses.length);}
+      if(won){finished=false;setTimeout(celebrate,reduced()?0:1300);finish('You found it.',`The word was ${s.answer.toUpperCase()}. ${s.guesses.length} of 6 guesses.`+(s.hints?.length?' With a hint, so it stays off the board.':''),mode==='past'||s.hints?.length?null:s.guesses.length);}
       else if(out){finished=false;setTimeout(()=>sfx('lose'),reduced()?0:1300);finish('One word got away.',`The word was ${s.answer.toUpperCase()}. ${mode==='daily'?'Another daily word arrives at midnight UTC.':'Try another whenever you like.'}`);}
       return;
     }
@@ -1416,7 +1447,7 @@
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
     if(game&&['snake','tetris'].includes(game.id))drawAction();
     // Board games whose pieces are drawn differently per style redraw the same position.
-    else if(game&&s&&['checkers','chess','solitaire','minesweeper'].includes(game.id)){render();renderStats();}
+    else if(game&&s&&['checkers','chess','solitaire','minesweeper','wordle'].includes(game.id)){render();renderStats();}
   }
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';

@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="viewport" content="width=device-width,initial-scale=1,interactive-widget=resizes-content">
+  <meta name="theme-color" content="#16181b">
   <title>Wordle — RIC//NET</title>
-  <meta name="description" content="Play Wordle in the Arcade. Five letters. Six chances.. Three styles to choose from, with touch and keyboard controls.">
+  <meta name="description" content="Play Wordle in the Arcade: a daily word, practice, past days, hard mode and a colour-blind mode. Six styles, from a split-flap board to neon to a terminal.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Wordle — RIC//NET">
-  <meta property="og:description" content="Play Wordle in the Arcade. Five letters. Six chances.. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:description" content="Play Wordle in the Arcade: a daily word, practice, past days, hard mode and a colour-blind mode. Six styles, from a split-flap board to neon to a terminal.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/wordle/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/wordle.jpg">
@@ -18,37 +18,189 @@
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
+/* Wordle has its own page (round three, 2026-11-21, TODO.md): one narrow
+   column. The day (or Practice) over the tiles, the tiles, a few quiet
+   switches, and the keyboard, which docks to the bottom of the screen on a
+   phone. Your stats, the guess chart and the scoreboard open in their own
+   sheet. Each of the six styles has its own colours for right spot /
+   elsewhere / not in the word (never the usual green and yellow); the
+   colour-blind switch replaces them with orange and blue plus a mark on each
+   tile. app.js only needs the ids. */
 
-/* This page owns its theme; layout and rules stay inside the Arcade games. */
-body{background-color:var(--paper);color:var(--ink)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
-dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+/* ---- layout ------------------------------------------------------------------ */
+body{background:var(--wall);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif);min-height:100svh;display:flex;flex-direction:column}
+.wd-bar{display:flex;align-items:center;gap:8px;min-height:52px;padding:6px max(2.5vw,12px);background:var(--bar,transparent);color:var(--bar-ink,var(--ink));border-bottom:var(--bar-rule,0)}
+.wd-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.wd-back:hover{background:#80808030}
+.wd-name{margin:0 auto 0 0;font:var(--title-font,800 22px/1 var(--body-font));letter-spacing:var(--title-spacing,.04em);text-transform:var(--title-case,uppercase);color:var(--title-ink,inherit);white-space:nowrap}
+.wd-bar .game-actions{position:relative;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;max-width:none;padding:0;justify-content:flex-end}
+:is(.wd-bar,.wd-col,dialog) :is(button,select,input){min-height:36px;padding:5px 12px;font-size:13px;white-space:nowrap;background:var(--btn,#ffffff14);color:var(--btn-ink,var(--ink));border:var(--btn-border,1px solid #ffffff33);border-radius:var(--radius,6px);font-family:var(--body-font,inherit)}
+button.solid{background:var(--accent)!important;color:var(--on-accent,#fff)!important;border-color:var(--accent)!important}
+@media(max-width:720px){.wd-bar{flex-wrap:wrap;row-gap:6px}.wd-bar .game-actions{order:3;flex-basis:100%;min-width:0;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.wd-bar .game-actions>*{flex:none}.wd-bar .game-actions label{width:auto;display:block}.wd-bar #new-game{order:-1}}
+.wd-col{flex:1;width:min(100%,440px);margin:0 auto;padding:clamp(10px,2.4vh,26px) 12px 0;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;max-width:none}
+.wd-day{margin:0 0 4px;font:var(--day-font,700 12px/1.3 var(--body-font));letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center}
+.wd-col #status{margin:0 0 clamp(8px,1.8vh,16px);font-size:13px;color:var(--muted);text-align:center}
+.wd-col .stage{min-height:0;padding:0;width:100%;align-items:center}
+.wd-col .tools{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:12px 0 0}
+.wd-col .tools button{min-height:32px;padding:3px 10px;font-size:12px}
+.wd-col .tools button.on{background:var(--on-bg,var(--accent));color:var(--on-ink,#fff);border-color:var(--on-bg,var(--accent))}
+.wd-col .tools .day-pick input{min-height:32px;padding:2px 8px;font-size:13px;color-scheme:var(--scheme,dark)}
+.wd-col .hint{min-height:0;padding:8px 0 0;font-size:12.5px;color:var(--muted);text-align:center}
+/* ---- the tiles ---------------------------------------------------------------- */
+.wd-col .word-board{width:min(100%,330px,max(210px,calc((100svh - 470px)*.83)));gap:var(--tile-gap,6px);perspective:600px}
+.letter{background:var(--tile,transparent);border:var(--tile-border,2px solid #ffffff2a);color:var(--tile-ink,var(--ink));font:var(--tile-font,800 clamp(22px,6vw,30px)/1 var(--body-font));border-radius:var(--tile-radius,4px);box-shadow:var(--tile-shadow,none);position:relative;text-transform:var(--tile-case,uppercase)}
+.letter.typed{border:var(--typed-border,2px solid #ffffff80)}
+.letter.ghost{color:var(--ghost,#ffffff40)}
+.letter.correct{background:var(--ok)!important;color:var(--ok-ink,#fff)!important;border:var(--ok-border,2px solid transparent)!important;box-shadow:var(--ok-shadow,none)!important}
+.letter.present{background:var(--near)!important;color:var(--near-ink,#fff)!important;border:var(--near-border,2px solid transparent)!important;box-shadow:var(--near-shadow,none)!important}
+.letter.absent{background:var(--miss)!important;color:var(--miss-ink,#fff)!important;border:var(--miss-border,2px solid transparent)!important;box-shadow:var(--miss-shadow,none)!important}
+/* ---- the keyboard: docked to the bottom on a phone ----------------------------- */
+.keys-slot{position:sticky;bottom:0;z-index:5;width:100%;margin-top:auto}
+.wd-col .keyboard{position:relative;bottom:0;z-index:5;width:calc(100% + 24px);margin:auto -12px 0;padding:12px 6px calc(10px + env(safe-area-inset-bottom));gap:6px;background:var(--dock,var(--wall));box-sizing:border-box}
+.wd-col .keyboard{margin-top:clamp(14px,3vh,28px)}
+.keyrow{gap:var(--key-gap,5px)}
+.keyrow button{min-height:54px;max-width:46px;padding:0;background:var(--key,#ffffff1f);color:var(--key-ink,var(--ink));border:var(--key-border,0);border-radius:var(--key-radius,6px);box-shadow:var(--key-shadow,none);font:var(--key-font,700 14px/1 var(--body-font));text-transform:uppercase}
+.keyrow button.wide{max-width:70px;font-size:11px}
+.keyrow button.correct{background:var(--ok)!important;color:var(--ok-ink,#fff)!important}
+.keyrow button.present{background:var(--near)!important;color:var(--near-ink,#fff)!important}
+.keyrow button.absent{background:var(--miss-key,var(--miss))!important;color:var(--miss-key-ink,#ffffff80)!important}
+@media(min-width:721px) and (min-height:760px){.keys-slot{position:static}.wd-col .keyboard{background:none}}
+/* ---- colour-blind: orange and blue, and a mark on every tile ---------------------- */
+body[data-contrast="on"]{--ok:#f5793a!important;--ok-ink:#111!important;--near:#4aa3f0!important;--near-ink:#111!important}
+body[data-contrast="on"]:not([data-look="terminal"]):not([data-look="crossword"]) .letter.correct::after,body[data-contrast="on"]:not([data-look="terminal"]):not([data-look="crossword"]) .letter.present::after{position:absolute;right:5%;bottom:3%;font:700 11px/1 system-ui;color:inherit;opacity:.85}
+body[data-contrast="on"]:not([data-look="terminal"]):not([data-look="crossword"]) .letter.correct::after{content:'●'}
+body[data-contrast="on"]:not([data-look="terminal"]):not([data-look="crossword"]) .letter.present::after{content:'○'}
+/* ---- the stats sheet ---------------------------------------------------------------- */
+#stats-dialog{max-width:420px;width:calc(100% - 32px)}
+#stats-dialog .stats{margin:0}#stats-dialog .stats h2{display:none}
+#stats-dialog #score-panel{margin-top:16px;padding-top:12px;border-top:1px solid #8884}
+#stats-dialog .score-heading{display:flex;justify-content:space-between;align-items:center}#stats-dialog .score-heading h2{margin:0;font-size:17px}
+#stats-dialog .dist-bar{background:var(--miss,#555);color:#fff}#stats-dialog .dist-bar.now{background:var(--ok,#2a7)}
+dialog{background:var(--sheet,#1d1f23);color:var(--sheet-ink,var(--ink));border:1px solid #8884;border-radius:var(--radius,10px)}
+dialog .muted{color:var(--muted)}
+#help-dialog{max-width:520px}#help-dialog p{line-height:1.5}
 
-body{--paper:#fff;--ink:#202224;--muted:#606569;--green:#356b44;--panel:#f2f3f1;--edge:#c0c5bf;--display-font:'Arial Black',sans-serif;--radius:0px}
-body[data-skin="1"]{--paper:#141517;--ink:#f5f5ef;--muted:#bcc0ba;--green:#426d4d;--panel:#232629;--edge:#656a64;color-scheme:dark}
-body[data-skin="2"]{--paper:#fff1e8;--ink:#4d3434;--muted:#795958;--green:#8c5149;--panel:#f7e2d6;--edge:#bf9283;--display-font:Georgia,serif;--radius:8px}
-.game-heading h1{font-size:54px;letter-spacing:-3px}.letter{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}.keyrow button{background:var(--panel);border-color:var(--edge);color:var(--ink);border-radius:var(--radius)}.table-wrap{background:transparent!important;border:0!important}.table-head{background:transparent!important;border-bottom:1px solid var(--edge)}.page-mark .emblem{border:2px solid var(--ink);font:bold 22px Georgia;padding:0 6px}.correct{background:#356b44!important}.present{background:#8c6b18!important}
+/* =====================================================================================
+   1. Flip board: a split-flap departures board. Each tile is a flap split across
+   the middle; a guess clatters over to blue (right spot) and orange (elsewhere).
+   ===================================================================================== */
+body[data-look="flip"]{--wall:#16181b;--ink:#f2f2ee;--muted:#9a9c9f;--accent:#f2b134;--on-accent:#16181b;--body-font:'Helvetica Neue','Arial Narrow',Arial,sans-serif;--radius:4px;--scheme:dark;
+  --bar:#0e0f11;--bar-rule:1px solid #2c2f33;--title-font:700 20px/1 'Helvetica Neue',Arial,sans-serif;--title-spacing:.28em;--title-ink:#f2b134;
+  --tile:linear-gradient(#2c2f33 0 49%,#0e0f11 49% 51%,#25282c 51%);--tile-border:0;--tile-radius:4px;--tile-shadow:inset 0 1px 0 #ffffff14,0 3px 0 #000;--tile-font:700 clamp(24px,6.4vw,32px)/1 'Helvetica Neue',Arial,sans-serif;--typed-border:0;--ghost:#ffffff40;
+  --ok:linear-gradient(#2468b8 0 49%,#0e2a4d 49% 51%,#1f5ea8 51%);--near:linear-gradient(#e0782a 0 49%,#5c2c0a 49% 51%,#d46e22 51%);--miss:linear-gradient(#3a3d42 0 49%,#16181b 49% 51%,#33363b 51%);--miss-ink:#8f9297;--miss-key:#2a2d31;
+  --key:#2c2f33;--key-ink:#f2f2ee;--key-radius:3px;--key-shadow:0 2px 0 #000;--key-font:700 14px/1 'Helvetica Neue',Arial,sans-serif;--dock:#0e0f11;--sheet:#1d1f23;--on-bg:#f2b134;--on-ink:#16181b}
+body[data-look="flip"] .letter.typed{box-shadow:inset 0 1px 0 #ffffff14,0 3px 0 #000,0 0 0 2px #f2b13466}
+body[data-look="flip"] .wd-col::before{content:'DEPARTURES';font:700 11px/1 'Helvetica Neue',Arial,sans-serif;letter-spacing:.4em;color:#f2b134;margin-bottom:8px}
 
-@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+/* =====================================================================================
+   2. Letterpress: wooden type, inked on cream stock. Red ink for the right
+   spot, blue ink for elsewhere; the keyboard is a type case.
+   ===================================================================================== */
+body[data-look="letterpress"]{--wall:#efe7d6;--ink:#2a2520;--muted:#7a6f61;--accent:#b3261e;--on-accent:#fff;--body-font:'Rockwell','Courier New',Georgia,serif;--radius:2px;--scheme:light;
+  --bar:#e6dcc6;--bar-rule:2px solid #2a2520;--title-font:800 24px/1 'Rockwell',Georgia,serif;--title-spacing:.12em;
+  --btn:#f7f1e3;--btn-ink:#2a2520;--btn-border:1px solid #2a252066;
+  --tile:#f7f1e3;--tile-border:2px solid #2a25202e;--tile-radius:2px;--tile-shadow:inset 0 0 0 4px #f7f1e3,inset 0 0 0 5px #2a25201a;--tile-font:800 clamp(24px,6.4vw,32px)/1 'Rockwell',Georgia,serif;--typed-border:2px solid #2a2520;--ghost:#2a252040;
+  --ok:#b3261e;--ok-ink:#f7f1e3;--near:#2f4b8f;--near-ink:#f7f1e3;--miss:#cfc6b4;--miss-ink:#7a6f61;--miss-key:#d9cfba;--miss-key-ink:#9a8f7e;
+  --key:linear-gradient(#a37a4f,#8a6640);--key-ink:#f7f1e3;--key-radius:3px;--key-shadow:inset 0 1px 0 #c49a6a,0 2px 0 #5a3d20;--key-font:800 15px/1 'Rockwell',Georgia,serif;--dock:#e6dcc6;--sheet:#f7f1e3;--sheet-ink:#2a2520;--on-bg:#2a2520}
+body[data-look="letterpress"] .letter.correct,body[data-look="letterpress"] .letter.present{background-image:radial-gradient(#ffffff1a 1px,#0000 1.5px)!important;background-size:4px 4px!important;text-shadow:0 0 1px #0004!important}
+
+/* =====================================================================================
+   3. Typewriter: a sheet in the platen, letters struck in black ribbon, round
+   keys with chrome rims.
+   ===================================================================================== */
+body[data-look="typewriter"]{--wall:linear-gradient(#3f3a36 0 220px,#2c2926) fixed,#2c2926;--ink:#1e1c1a;--muted:#6d665e;--accent:#b8312f;--on-accent:#fff;--body-font:'Courier New',Courier,monospace;--radius:2px;--scheme:light;
+  --bar:#e9e4d8;--bar-rule:0;--title-font:700 22px/1 'Courier New',monospace;--title-spacing:.18em;
+  --btn:#fbf8f0;--btn-ink:#1e1c1a;--btn-border:1px solid #1e1c1a66;
+  --tile:transparent;--tile-border:0;--tile-radius:0;--tile-shadow:inset 0 -2px 0 #1e1c1a40;--tile-font:700 clamp(25px,6.6vw,34px)/1 'Courier New',monospace;--typed-border:0;--ghost:#1e1c1a40;
+  --ok:#1e1c1a;--ok-ink:#fbf8f0;--near:transparent;--near-ink:#b8312f;--near-shadow:inset 0 -4px 0 #b8312f;--miss:transparent;--miss-ink:#1e1c1a55;
+  --key:radial-gradient(circle,#2a2725 0 58%,#c9c3b8 60% 66%,#6d665e 68%);--key-ink:#f4f0e6;--key-radius:50%;--key-shadow:0 3px 0 #0008;--key-font:700 14px/1 'Courier New',monospace;--miss-key:radial-gradient(circle,#5a5550 0 58%,#c9c3b8 60% 66%,#6d665e 68%);--miss-key-ink:#bdb6aa;--dock:#2c2926;--sheet:#fbf8f0;--sheet-ink:#1e1c1a;--on-bg:#1e1c1a}
+body[data-look="typewriter"] .wd-col{background:#fbf8f0;box-shadow:0 0 0 1px #0002,0 20px 40px -20px #000;margin-top:10px;color:#1e1c1a;--muted:#6d665e}
+body[data-look="typewriter"] .keyrow button{aspect-ratio:1;min-height:0;max-width:40px;width:100%;flex:1}
+body[data-look="typewriter"] .keyrow button.wide{aspect-ratio:auto;border-radius:20px;max-width:64px;min-height:40px}
+body[data-look="typewriter"] .keyrow button.correct{background:radial-gradient(circle,#1e1c1a 0 58%,#e8c86a 60% 66%,#6d665e 68%)!important}
+body[data-look="typewriter"] .keyrow button.present{background:radial-gradient(circle,#b8312f 0 58%,#c9c3b8 60% 66%,#6d665e 68%)!important}
+body[data-look="typewriter"] .letter.correct{text-shadow:none!important}
+body[data-look="typewriter"] .letter{text-shadow:0 0 1px #1e1c1a66}
+
+/* =====================================================================================
+   4. Neon: glowing tubes on a brick wall. Pink for the right spot, cyan for
+   elsewhere, unlit glass for the rest.
+   ===================================================================================== */
+body[data-look="neon"]{--wall:linear-gradient(#0000 0 0),repeating-linear-gradient(0deg,#0000 0 22px,#00000080 22px 24px),repeating-linear-gradient(90deg,#0000 0 46px,#00000080 46px 48px) 0 0/48px 48px,#3a1f22;--ink:#ffe9f4;--muted:#c79aa8;--accent:#ff3ea5;--on-accent:#1a0b10;--body-font:'Segoe UI','Trebuchet MS',sans-serif;--radius:10px;--scheme:dark;
+  --bar:#1a0b10cc;--bar-rule:0;--title-font:400 26px/1 'Brush Script MT','Segoe Script',cursive;--title-case:none;--title-spacing:.02em;--title-ink:#ff8fd0;
+  --btn:#1a0b10;--btn-ink:#ffe9f4;--btn-border:1px solid #ff3ea566;
+  --tile:#1a0b10b3;--tile-border:2px solid #5a3a44;--tile-radius:10px;--tile-font:600 clamp(24px,6.4vw,32px)/1 'Segoe UI',sans-serif;--typed-border:2px solid #ffe9f4aa;--ghost:#ffe9f450;
+  --ok:#1a0b10;--ok-ink:#fff;--ok-border:2px solid #ff3ea5;--ok-shadow:0 0 12px #ff3ea5,inset 0 0 10px #ff3ea5aa;--near:#1a0b10;--near-ink:#fff;--near-border:2px solid #23e6ff;--near-shadow:0 0 12px #23e6ff,inset 0 0 10px #23e6ffaa;--miss:#140809;--miss-ink:#6d4a55;--miss-border:2px solid #3a252b;
+  --key:#1a0b10;--key-ink:#ffe9f4;--key-border:1px solid #5a3a44;--key-radius:8px;--key-font:600 14px/1 'Segoe UI',sans-serif;--miss-key:#120708;--miss-key-ink:#5a3a44;--dock:#1a0b10e6;--sheet:#1a0b10;--on-bg:#ff3ea5;--on-ink:#1a0b10}
+body[data-look="neon"] .wd-name{text-shadow:0 0 6px #ff3ea5,0 0 18px #ff3ea5}
+body[data-look="neon"] .letter.correct,body[data-look="neon"] .letter.present{text-shadow:0 0 6px currentColor,0 0 14px currentColor!important}
+body[data-look="neon"] .letter.correct{color:#ffd2ec!important}body[data-look="neon"] .letter.present{color:#c9fbff!important}
+body[data-look="neon"] .keyrow button.correct{background:#1a0b10!important;color:#ff8fd0!important;border:1px solid #ff3ea5!important;box-shadow:0 0 8px #ff3ea5!important}
+body[data-look="neon"] .keyrow button.present{background:#1a0b10!important;color:#9ff4ff!important;border:1px solid #23e6ff!important;box-shadow:0 0 8px #23e6ff!important}
+body[data-contrast="on"][data-look="neon"]{--ok-border:2px solid #f5793a;--near-border:2px solid #4aa3f0}
+
+/* =====================================================================================
+   5. Crossword: a newspaper grid filled in with a pen. Circled: right spot.
+   Shaded: elsewhere. Struck out: not in the word. No colour needed at all.
+   ===================================================================================== */
+body[data-look="crossword"]{--wall:#e9e6dc;--ink:#151515;--muted:#5d5a52;--accent:#151515;--on-accent:#f4f2ea;--body-font:'Times New Roman',Times,serif;--radius:0;--scheme:light;
+  --bar:#e9e6dc;--bar-rule:3px double #151515;--title-font:900 26px/1 'Times New Roman',serif;--title-spacing:0;--title-case:none;
+  --btn:#f4f2ea;--btn-ink:#151515;--btn-border:1px solid #151515;
+  --tile:#fff;--tile-border:1.5px solid #151515;--tile-radius:0;--tile-gap:0;--tile-font:400 clamp(24px,6.4vw,32px)/1 'Segoe Print','Bradley Hand',cursive;--typed-border:1.5px solid #151515;--ghost:#1f3b9c55;
+  --ok:radial-gradient(circle,#0000 0 52%,#1f3b9c 53% 57%,#0000 58%),#fff;--ok-ink:#1f3b9c;--ok-border:1.5px solid #151515;--near:repeating-linear-gradient(-45deg,#15151522 0 2px,#fff 2px 6px);--near-ink:#1f3b9c;--near-border:1.5px solid #151515;--miss:#fff;--miss-ink:#1f3b9c88;--miss-border:1.5px solid #151515;
+  --key:#f4f2ea;--key-ink:#151515;--key-border:1px solid #151515;--key-radius:0;--key-font:700 15px/1 'Times New Roman',serif;--miss-key:#d6d2c6;--miss-key-ink:#8a867a;--dock:#e9e6dc;--sheet:#f4f2ea;--sheet-ink:#151515;--on-bg:#151515}
+body[data-look="crossword"] .word-board{border:3px solid #151515;background:#151515;gap:1.5px!important}
+body[data-look="crossword"] .letter{border:0}
+body[data-look="crossword"] .letter.absent{text-decoration:line-through 2px #b3261e!important}
+body[data-look="crossword"] .letter::before{content:attr(data-n);position:absolute;top:2px;left:3px;font:10px 'Times New Roman',serif;color:#151515}
+body[data-look="crossword"] .keyrow button.correct{background:#1f3b9c!important;color:#fff!important}
+body[data-look="crossword"] .keyrow button.present{background:repeating-linear-gradient(-45deg,#15151533 0 2px,#f4f2ea 2px 6px)!important;color:#151515!important}
+body[data-look="crossword"] .wd-col::before{content:'ACROSS — five letters, six tries';font:italic 13px 'Times New Roman',serif;color:#5d5a52;margin-bottom:8px}
+
+/* =====================================================================================
+   6. Terminal: [A] right spot, (a) elsewhere, a not in the word.
+   ===================================================================================== */
+body[data-look="terminal"]{--wall:#040904;--ink:#8dffa6;--muted:#4fae66;--accent:#8dffa6;--on-accent:#040904;--body-font:var(--term-font);--radius:0;--scheme:dark;
+  --bar:#040904;--bar-rule:1px dashed #2c6b3a;--title-font:400 18px/1 var(--term-font);--title-case:lowercase;--title-spacing:0;
+  --btn:#040904;--btn-ink:#8dffa6;--btn-border:1px dashed #2c6b3a;
+  --tile:transparent;--tile-border:1px dashed #1d4a28;--tile-radius:0;--tile-font:400 clamp(22px,6vw,28px)/1 var(--term-font);--typed-border:1px solid #8dffa6;--ghost:#8dffa650;
+  --ok:#8dffa6;--ok-ink:#040904;--near:transparent;--near-ink:#ffc56b;--near-border:1px solid #ffc56b;--miss:transparent;--miss-ink:#2f7a42;--miss-border:1px dashed #1d4a28;
+  --key:#040904;--key-ink:#8dffa6;--key-border:1px dashed #2c6b3a;--key-radius:0;--key-font:400 14px/1 var(--term-font);--miss-key:#040904;--miss-key-ink:#2f7a42;--dock:#040904;--sheet:#061206;--on-bg:#8dffa6;--on-ink:#040904}
+body[data-look="terminal"] .wd-name::before{content:'$ ./';color:#4fae66}
+body[data-look="terminal"] .letter.present::before{content:'(';position:absolute;left:8%}body[data-look="terminal"] .letter.present::after{content:')';position:absolute;right:8%}
+body[data-look="terminal"] .letter.correct::before{content:'[';position:absolute;left:8%}body[data-look="terminal"] .letter.correct::after{content:']';position:absolute;right:8%}
+body[data-look="terminal"] .letter.present,body[data-look="terminal"] .letter.absent{text-transform:lowercase!important}
+body[data-look="terminal"] .keyrow button.present{color:#ffc56b!important;border-color:#ffc56b!important}
   </style>
 </head>
-<body data-game="wordle" data-skin="0">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">W</span>Wordle</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Wordle</h1><p id="game-subtitle">Five letters. Six chances.</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Daily paper</option><option value="1">After dark</option><option value="2">Peach edition</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>Six chances</h2><p id="rules"></p></section></aside></div>
-    </section>
+<body data-game="wordle" data-skin="0" data-look="flip">
+  <header class="wd-bar">
+    <a href="../../gaming.html" class="wd-back" aria-label="Back to the Arcade">←</a>
+    <h1 class="wd-name" id="game-title">Wordle</h1><p id="game-subtitle" hidden></p>
+    <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Which word</span><select id="mode"></select></label><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Style"><option value="0" data-look="flip">Flip board</option><option value="1" data-look="letterpress">Letterpress</option><option value="2" data-look="typewriter">Typewriter</option><option value="3" data-look="neon">Neon</option><option value="4" data-look="crossword">Crossword</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="stats-open" type="button">Stats</button><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New word</button><button id="pause" hidden>Pause</button></div>
+  </header>
+  <main id="playroom" class="wd-col" aria-labelledby="game-title">
+    <p class="wd-day" id="word-day"></p>
+    <p id="status" role="status" aria-live="polite"></p><span id="metric" hidden></span>
+    <div id="stage" class="stage"></div>
+    <div id="tools" class="tools"></div>
+    <p id="hint" class="hint"></p>
+    <div id="keys-slot" class="keys-slot"></div>
     <noscript><p>Wordle needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
+  <dialog id="stats-dialog" aria-labelledby="stats-title"><h2 id="stats-title">Your games</h2><div id="stats-slot"></div>
+    <section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
+    <div class="dialog-actions"><button type="button" id="stats-close" class="solid">Back to the word</button></div></dialog>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p>
+    <p><strong>Colours.</strong> Each style has its own colours for a letter in the right spot, a letter elsewhere in the word, and one not in it; the line under the keyboard says which. <em>Colour-blind</em> switches every style to orange and blue, with ● and ○ marks on the tiles.</p>
+    <p><strong>Past daily words.</strong> Pick "Past daily words" and a date to play a day you missed. It counts as that day's game, but stays off the scoreboard.</p>
+    <p><strong>Hint.</strong> In practice, <em>Hint: a letter</em> shows one right letter in its place. A hinted game stays off the board.</p>
+    <button id="close-help" class="solid">Got it</button></dialog>
+  <script>
+    document.getElementById('stats-open').onclick=()=>document.getElementById('stats-dialog').showModal();
+    document.getElementById('stats-close').onclick=()=>document.getElementById('stats-dialog').close();
+  </script>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/words.js"></script>
   <script src="../arcade/app.js"></script>
