@@ -3,7 +3,7 @@
    published. Separate D1 tables: this handler never reads visitor records. */
 /* 2026-11-21: mines-expert (30 × 16, 99 mines), and dated boards for the daily
    Sudoku puzzle and Solitaire deal beside the daily word. */
-const FIXED = new Set(['solitaire','snake','tetris','wordle-practice','mines-expert','sudoku-expert',...['easy','medium','hard'].flatMap(d=>['sudoku-'+d,'mines-'+d])]);
+const FIXED = new Set(['solitaire','snake','tetris','tetris-sprint','tetris-timed','wordle-practice','mines-expert','sudoku-expert',...['easy','medium','hard'].flatMap(d=>['sudoku-'+d,'mines-'+d])]);
 const DATED = /^(wordle|sudoku-daily|solitaire-daily)-(\d{4}-\d{2}-\d{2})$/;
 const dateOf = board => DATED.exec(board || '')?.[2] || null;
 const ORIGIN = /^(https:\/\/(www\.)?ricmassey\.com|https:\/\/ric-massey\.github\.io|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
@@ -18,7 +18,7 @@ export function validBoard(board) {
 export function validScore(board, score) {
   if (!Number.isSafeInteger(score) || score < 1) return false;
   if (board === 'snake') return score <= 3970 && score % 10 === 0;
-  if (board === 'tetris') return score <= 10000000;
+  if (board === 'tetris' || board === 'tetris-timed') return score <= 10000000;
   if (board.startsWith('wordle-')) return score <= 6;
   return score <= 86400;
 }
@@ -69,7 +69,7 @@ export async function arcadeRoute(request, env, parts, url, {json,cors}) {
       await db.prepare('DELETE FROM arcade_rate WHERE expires < ?').bind(now).run();
       const rate=await db.prepare('INSERT INTO arcade_rate (key,count,expires) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count').bind(key,now+600000).first();
       if(rate.count>10)return json({error:'too many scores — wait a minute'},429,origin,{'retry-after':'60'});
-      const order=board==='snake'||board==='tetris'?-body.score:body.score;
+      const order=board==='snake'||board==='tetris'||board==='tetris-timed'?-body.score:body.score;
       await db.batch([
         db.prepare('INSERT OR IGNORE INTO arcade_scores (id,board,initials,score,sort_score,at) VALUES (?,?,?,?,?,?)').bind(body.id,board,body.initials,body.score,order,now),
         db.prepare('DELETE FROM arcade_scores WHERE board = ? AND id NOT IN (SELECT id FROM arcade_scores WHERE board = ? ORDER BY sort_score, at, id LIMIT 100)').bind(board,board),

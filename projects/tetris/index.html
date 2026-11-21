@@ -3,52 +3,206 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#110b22">
+  <meta name="theme-color" content="#0d0b14">
   <title>Tetris — RIC//NET</title>
-  <meta name="description" content="Play Tetris in the Arcade. One more line. Three styles to choose from, with touch and keyboard controls.">
+  <meta name="description" content="Play falling blocks in the Arcade: Marathon, a 40-line Sprint and a two-minute Timed game, a ghost piece, and controls you can set. Six styles, from an arcade cabinet to toy blocks to a vector screen.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Tetris — RIC//NET">
-  <meta property="og:description" content="Play Tetris in the Arcade. One more line. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:description" content="Play falling blocks in the Arcade: Marathon, a 40-line Sprint and a two-minute Timed game, a ghost piece, and controls you can set. Six styles, from an arcade cabinet to toy blocks to a vector screen.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/tetris/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/tetris.jpg">
-  <meta property="og:image:alt" content="Tetris in play in the Arcade.">
+  <meta property="og:image:alt" content="The falling-block game in play in the Arcade.">
   <link rel="canonical" href="https://ricmassey.com/projects/tetris/">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
+/* The falling-block game has its own page (round three, 2026-11-21, TODO.md):
+   an arcade cabinet. A lit marquee, the well in the middle of the screen with
+   Hold on the left panel and the next pieces on the right, the numbers under
+   Hold, the controls as a deck below, and the high scores beside the cabinet
+   like its attract screen. Six styles restyle the cabinet and draw the blocks
+   their own way (app.js block()): all original looks, not copies of any
+   official version of the game. app.js only needs the ids. */
 
-/* This page owns its theme; layout and rules stay inside the Arcade games. */
-body{background-color:var(--paper);color:var(--ink)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
-dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+/* ---- layout ------------------------------------------------------------------ */
+body{background:var(--room);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif);min-height:100svh}
+.tt-bar{display:flex;align-items:center;gap:8px;min-height:52px;padding:6px max(2.5vw,12px);background:var(--bar,transparent);color:var(--bar-ink,var(--ink));border-bottom:var(--bar-rule,0)}
+.tt-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.tt-back:hover{background:#80808030}
+.tt-name{margin:0 auto 0 0;font:var(--title-font,800 18px/1 var(--body-font));letter-spacing:var(--title-spacing,.12em);text-transform:uppercase;white-space:nowrap}
+.tt-bar .game-actions{position:relative;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;max-width:none;padding:0;justify-content:flex-end}
+:is(.tt-bar,.tt-room,dialog) :is(button,select){min-height:36px;padding:5px 12px;font-size:13px;white-space:nowrap;background:var(--btn,#ffffff14);color:var(--btn-ink,var(--ink));border:var(--btn-border,1px solid #ffffff33);border-radius:var(--radius,6px);font-family:var(--body-font,inherit)}
+button.solid{background:var(--accent)!important;color:var(--on-accent,#fff)!important;border-color:var(--accent)!important}
+@media(max-width:760px){.tt-bar{flex-wrap:wrap;row-gap:6px}.tt-bar .game-actions{order:3;flex-basis:100%;min-width:0;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.tt-bar .game-actions>*{flex:none}.tt-bar .game-actions label{width:auto;display:block}.tt-bar #new-game{order:-1}}
+.tt-room{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:clamp(16px,3vw,36px);padding:clamp(10px,2.4vh,26px) 10px 50px;max-width:none;margin:0}
+/* ---- the cabinet --------------------------------------------------------------- */
+.cabinet{position:relative;padding:var(--cab-pad,14px 18px 16px);background:var(--cab);border:var(--cab-border,0);border-radius:var(--cab-radius,14px 14px 6px 6px);box-shadow:var(--cab-shadow,0 30px 50px -24px #000);max-width:100%;box-sizing:border-box}
+.marquee{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:52px;margin:0 0 12px;padding:6px 16px;background:var(--marquee);color:var(--marquee-ink,#fff);border-radius:var(--marquee-radius,8px);box-shadow:var(--marquee-shadow,none);text-align:center}
+.marquee strong{font:var(--marquee-font,900 26px/1 var(--display-font,Impact,sans-serif));letter-spacing:var(--marquee-spacing,.14em);text-transform:uppercase;text-shadow:var(--marquee-glow,none)}
+.marquee small{font:600 10px/1.4 var(--body-font);letter-spacing:.22em;text-transform:uppercase;opacity:.8}
+.screen{padding:var(--screen-pad,12px);background:var(--screen);border:var(--screen-border,0);border-radius:var(--screen-radius,10px);box-shadow:var(--screen-shadow,inset 0 0 0 2px #000,inset 0 0 30px #000a);position:relative;overflow:hidden}
+.screen .stage{min-height:0;padding:0}
+.tt-room .action-row{display:grid;grid-template-columns:auto auto auto;grid-template-areas:"hold well next" "stats well next";grid-template-rows:auto 1fr;gap:12px 14px;align-items:start;justify-content:center;width:auto}
+.tt-room .tetris-side{display:contents}
+.tt-room .canvas-wrap.tetris{grid-area:well;width:min(calc(100vw - 210px),300px,max(160px,calc((100svh - 260px)/2)));min-width:0;max-width:none}
+.tt-room .tetris-side .side-box:nth-child(1){grid-area:hold}
+.tt-room .tetris-side .side-box:nth-child(2){grid-area:next}
+.tt-room .side-stats{grid-area:stats;margin:0}
+.tt-room .side-box{color:var(--panel-label,var(--muted));font-family:var(--body-font)}
+.tt-room .side-box span{font:var(--label-font,700 10px/1 var(--body-font));letter-spacing:.16em}
+.tt-room .side-box canvas{width:74px;background:var(--well-bg,#0006);border:var(--panel-border,1px solid #ffffff26);border-radius:var(--panel-radius,6px)}
+.tt-room .side-stats dt{color:var(--panel-label,var(--muted));font-family:var(--body-font)}
+.tt-room .side-stats dd{color:var(--num-ink,var(--ink));font:var(--num-font,700 17px/1.1 var(--mono,monospace));text-shadow:var(--num-glow,none)}
+.tt-room canvas.game-canvas{background:var(--well-bg,#000);border:var(--well-border,1px solid #ffffff26);border-radius:var(--well-radius,4px);box-shadow:var(--well-shadow,none)}
+.tt-room .start-overlay,.tt-room .paused-cover{background:var(--overlay,#000c);color:var(--overlay-ink,#fff);border-radius:var(--well-radius,4px)}
+.tt-room .start-overlay .overlay-title{font:var(--marquee-font,900 26px/1 Impact,sans-serif);letter-spacing:.08em;text-transform:uppercase}
+.tt-room .start-overlay .overlay-play{background:var(--accent);color:var(--on-accent,#fff);border:0}
+.deck{margin-top:12px;padding:10px 12px;background:var(--deck,transparent);border-radius:var(--deck-radius,8px);box-shadow:var(--deck-shadow,none);text-align:center}
+.deck #status{margin:0;font:var(--status-font,700 13px/1.3 var(--body-font));letter-spacing:.06em;color:var(--deck-ink,var(--ink))}
+.deck .hint{margin:4px 0 0;padding:0;min-height:0;font-size:12px;color:var(--muted)}
+.deck kbd,.start-overlay kbd{font:11px var(--mono,monospace);padding:1px 5px;border:1px solid currentColor;border-radius:3px;margin:0 1px}
+.tt-room .tetris-controls{margin-top:10px}
+.tt-room .tetris-controls button{min-height:52px;background:var(--pad,#ffffff1a);color:var(--pad-ink,var(--ink));border:var(--pad-border,1px solid #ffffff33);border-radius:var(--pad-radius,10px);font-size:16px}
+/* the attract screen: high scores and your games */
+.attract{width:min(100%,280px);padding:16px;background:var(--attract,#000a);color:var(--attract-ink,var(--ink));border:var(--attract-border,1px solid #ffffff22);border-radius:var(--attract-radius,10px);box-shadow:var(--attract-shadow,none)}
+.attract h2{margin:0 0 6px;font:var(--marquee-font,900 18px/1 Impact,sans-serif);font-size:18px;letter-spacing:.14em;text-transform:uppercase;text-align:center;text-shadow:var(--marquee-glow,none)}
+.attract .score-heading{display:flex;justify-content:space-between;align-items:center}.attract .score-heading h2{margin:0}
+.attract .scores{font:var(--num-font,700 15px var(--mono,monospace));font-size:14px}
+.attract .muted,.attract .score-source{color:var(--muted);font-size:11px;text-align:center}
+.attract .stats{margin:16px 0 0;padding-top:12px;border-top:1px solid #8885}.attract .stats h2{font-size:13px}.attract .stats .muted{margin:0 0 8px}
+.attract .stat-grid dd{font:var(--num-font,700 17px var(--mono,monospace));font-size:17px}
+/* the Controls sheet */
+#controls-dialog{max-width:440px;width:calc(100% - 32px)}
+#controls-dialog h3{margin:16px 0 6px;font-size:14px;letter-spacing:.08em;text-transform:uppercase}
+.control-rows{display:grid;gap:14px}
+.control-range{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;font-size:13px}
+.control-range input{grid-column:1/2}.control-range output{font:600 13px var(--mono,monospace);min-width:64px;text-align:right}
+.control-range small{grid-column:1/-1;font-size:11px}
+.control-check{display:flex;gap:8px;align-items:center;font-size:13px}.control-check input{width:18px;height:18px;flex:none;margin:0}
+.key-map{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.key-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.key-row .key-bind{min-width:74px;min-height:32px;font:600 13px var(--mono,monospace)}
+.key-row .key-bind.listening{background:var(--accent);color:var(--on-accent,#fff)}
+#controls-dialog .text-button{margin-top:12px;border:0;background:none;text-decoration:underline;padding:0}
+dialog{background:var(--sheet,#17151f);color:var(--sheet-ink,var(--ink));border:1px solid #8884;border-radius:var(--radius,10px)}
+dialog .muted{color:var(--muted)}
+#help-dialog{max-width:520px}#help-dialog p{line-height:1.5}
+@media(max-width:760px){.tt-room{padding-left:6px;padding-right:6px}.tt-room .action-row{gap:6px}.tt-room .side-box canvas{width:46px}.tt-room .side-stats dt{font-size:8px;letter-spacing:.04em}.tt-room .canvas-wrap.tetris{width:min(calc(100vw - 150px),300px,max(150px,calc((100svh - 330px)/2)))}.cabinet{padding:8px!important;width:100%}.tt-room .tetris-controls{gap:4px}.tt-room .tetris-controls button{min-height:46px;font-size:14px;padding:4px 0}.marquee{min-height:40px;margin-bottom:8px}.marquee strong{font-size:20px}.screen{padding:8px}.tt-room .side-stats dd{font-size:13px}.key-map{grid-template-columns:1fr}}
 
-body{--paper:#110b22;--ink:#f7eafa;--muted:#c7b6d9;--green:#7642a6;--panel:#211532;--edge:#785294;--display-font:'Arial Black',sans-serif;--radius:0px;--canvas-bg:#100a20;--canvas-grid:#302041;--block-1:#68d6ef;--block-2:#f7d962;--block-3:#c48cf1;--block-4:#a1d871;--block-5:#f585a6;--block-6:#7eaaed;--block-7:#f1aa66;color-scheme:dark;background-image:linear-gradient(#27173380 1px,transparent 1px);background-size:100% 4px}
-body[data-skin="1"]{--paper:#b9bf95;--ink:#253923;--muted:#34432c;--green:#426341;--panel:#a4ae82;--edge:#536b49;--canvas-bg:#b1bc8c;--canvas-grid:#9ea97a;--block-1:#243b29;--block-2:#35503a;--block-3:#4b6144;--block-4:#3c5138;--block-5:#526641;--block-6:#29462f;--block-7:#38492d;color-scheme:light;background-image:none;--radius:12px}
-body[data-skin="2"]{--paper:#111315;--ink:#f1f2f0;--muted:#b6bdb6;--green:#47564e;--panel:#222824;--edge:#6c7a70;--canvas-bg:#111613;--canvas-grid:#303b34;--block-1:#e1e9df;--block-2:#b8c8b8;--block-3:#8fa58f;--block-4:#c2c6b0;--block-5:#a5baaf;--block-6:#d5dfc9;--block-7:#849b8b;background-image:none}
-.game-heading h1{font-size:58px;font-weight:900;text-transform:uppercase;letter-spacing:-2px}.game-canvas{border:3px solid var(--edge)!important;box-shadow:0 0 0 5px var(--paper)}.page-mark{font-family:var(--display-font);text-transform:uppercase}.table-head{font-family:Consolas,monospace}.topbar{border-bottom:2px solid var(--edge)}
+/* =====================================================================================
+   1. Arcade cabinet: a stand-up cabinet in a dark arcade. Lit marquee, striped
+   side art, a black bezel, bright bevelled blocks.
+   ===================================================================================== */
+body[data-look="cabinet"]{--room:radial-gradient(circle at 20% 30%,#ff3e9a14 0 2px,#0000 3px) 0 0/34px 34px,radial-gradient(circle at 70% 60%,#3ec5ff14 0 2px,#0000 3px) 0 0/46px 46px,#0d0b14;--ink:#f4f0ff;--muted:#a49fbf;--accent:#ffcf3e;--on-accent:#1b1430;--body-font:'Segoe UI',system-ui,sans-serif;--display-font:Impact,'Arial Black',sans-serif;--mono:Consolas,monospace;--radius:6px;
+  --bar:#0d0b14;--bar-rule:1px solid #2a2440;
+  --cab:repeating-linear-gradient(115deg,#ff3e9a 0 10px,#0000 10px 26px,#3ec5ff 26px 34px,#0000 34px 60px) left/14px 100% no-repeat,repeating-linear-gradient(115deg,#ff3e9a 0 10px,#0000 10px 26px,#3ec5ff 26px 34px,#0000 34px 60px) right/14px 100% no-repeat,linear-gradient(#2b2146,#16112a);--cab-shadow:0 0 0 2px #000,0 30px 60px -20px #000;--cab-pad:14px 26px 18px;
+  --marquee:linear-gradient(#ffe48a,#ffb43e);--marquee-ink:#3a1d00;--marquee-shadow:0 0 24px #ffcf3e88,inset 0 -3px 0 #c97f10;--marquee-glow:0 2px 0 #fff8;
+  --screen:#05040a;--screen-shadow:inset 0 0 0 3px #000,inset 0 0 0 5px #2a2440,0 0 0 2px #000;
+  --well-bg:#07060f;--canvas-bg:#07060f;--canvas-grid:#141128;--ghost-line:#ffffffaa;
+  --block-1:#3ee6ff;--block-2:#ffd93e;--block-3:#c06bff;--block-4:#52e07a;--block-5:#ff5a6b;--block-6:#4d7dff;--block-7:#ff9a3e;
+  --num-ink:#ffcf3e;--num-glow:0 0 8px #ffcf3e66;--deck:linear-gradient(#2b2146,#1e1736);--deck-shadow:inset 0 2px 0 #3a2f5c;--sheet:#17121f;--attract:#05040acc;--attract-border:2px solid #2a2440}
+body[data-look="cabinet"] .attract h2{color:#ffcf3e;text-shadow:0 0 10px #ffcf3e88}
 
-@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+/* =====================================================================================
+   2. Toy blocks: rounded wooden blocks in a wooden toy box, on a playroom rug.
+   ===================================================================================== */
+body[data-look="toy"]{--room:radial-gradient(circle,#0000 0 40%,#f4d3a1 41% 44%,#0000 45%) 0 0/60px 60px,radial-gradient(circle,#e98a6a33 0 18%,#0000 19%) 30px 30px/60px 60px,#f2e6cf;--ink:#3a2a1a;--muted:#7b6650;--accent:#e2483d;--on-accent:#fff;--body-font:'Trebuchet MS','Segoe UI',sans-serif;--display-font:'Arial Rounded MT Bold','Trebuchet MS',sans-serif;--mono:'Trebuchet MS',sans-serif;--radius:12px;
+  --bar:#fff7ea;--bar-rule:2px solid #e9d5b1;--btn:#fff;--btn-ink:#3a2a1a;--btn-border:2px solid #c9a477;
+  --cab:repeating-linear-gradient(90deg,#0000 0 30px,#00000010 30px 32px),linear-gradient(#d9a463,#b9844a);--cab-radius:18px;--cab-shadow:inset 0 3px 0 #f0c88c,inset 0 -4px 0 #8a5c2c,0 20px 30px -16px #6b4a2a99;
+  --marquee:#fff7ea;--marquee-ink:#e2483d;--marquee-font:800 26px/1 'Arial Rounded MT Bold','Trebuchet MS',sans-serif;--marquee-spacing:.06em;--marquee-radius:12px;--marquee-shadow:0 3px 0 #8a5c2c;
+  --screen:#f6ead2;--screen-radius:12px;--screen-shadow:inset 0 3px 8px #8a5c2c66;
+  --well-bg:repeating-linear-gradient(90deg,#0000 0 29px,#c9a47733 29px 30px),#f9eed9;--canvas-bg:transparent;--canvas-grid:transparent;--ghost-line:#7b6650;--well-border:0;--panel-border:0;
+  --block-1:#3fa9e0;--block-2:#f4c430;--block-3:#9b59b6;--block-4:#4caf50;--block-5:#e2483d;--block-6:#2e5fa8;--block-7:#f08a24;
+  --num-ink:#3a2a1a;--panel-label:#7b6650;--deck:#fff7ea;--deck-shadow:0 3px 0 #8a5c2c;--overlay:#f6ead2e6;--overlay-ink:#3a2a1a;--sheet:#fff7ea;--sheet-ink:#3a2a1a;--attract:#fff7ea;--attract-border:3px solid #d9a463;--attract-ink:#3a2a1a;
+  --pad:#fff;--pad-ink:#3a2a1a;--pad-border:2px solid #c9a477}
+body[data-look="toy"] .attract h2{color:#e2483d}
+
+/* =====================================================================================
+   3. Glass: see-through panes that glow, on a deep gradient.
+   ===================================================================================== */
+body[data-look="glass"]{--room:radial-gradient(circle at 20% 15%,#4a2a8a,#0000 45%),radial-gradient(circle at 85% 80%,#0f5a6a,#0000 45%),#0a0c18;--ink:#eef0ff;--muted:#a3a9cc;--accent:#8b7cff;--on-accent:#fff;--body-font:'Segoe UI',system-ui,sans-serif;--display-font:'Segoe UI',system-ui,sans-serif;--mono:'Segoe UI',system-ui,sans-serif;--radius:14px;
+  --cab:#ffffff0d;--cab-border:1px solid #ffffff22;--cab-radius:26px;--cab-shadow:0 30px 60px -30px #000;--cab-pad:16px;
+  --marquee:#ffffff10;--marquee-ink:#fff;--marquee-font:200 26px/1 'Segoe UI',sans-serif;--marquee-spacing:.4em;--marquee-radius:16px;
+  --screen:#00000040;--screen-radius:18px;--screen-shadow:inset 0 0 0 1px #ffffff1a;
+  --well-bg:#050714b3;--canvas-bg:transparent;--canvas-grid:#ffffff08;--ghost-line:#ffffffaa;--well-radius:12px;--well-border:1px solid #ffffff1a;--panel-radius:12px;
+  --block-1:#5ee7ff;--block-2:#ffe066;--block-3:#c08bff;--block-4:#6dffa8;--block-5:#ff6b9a;--block-6:#6b8bff;--block-7:#ffa86b;
+  --num-font:300 18px/1.1 'Segoe UI',sans-serif;--deck:#ffffff0a;--sheet:#14162a;--attract:#ffffff0d;--attract-radius:20px}
+body[data-look="glass"] .cabinet,body[data-look="glass"] .attract{backdrop-filter:blur(14px)}
+
+/* =====================================================================================
+   4. Vector: a 70s vector monitor. Green line-work on black, phosphor glow, a
+   grey CRT bezel.
+   ===================================================================================== */
+body[data-look="vector"]{--room:#0b0d0b;--ink:#8dff9e;--muted:#4ea85c;--accent:#8dff9e;--on-accent:#041006;--body-font:'Lucida Console',Consolas,monospace;--display-font:'Lucida Console',Consolas,monospace;--mono:'Lucida Console',Consolas,monospace;--radius:4px;
+  --bar:#0b0d0b;--bar-rule:1px solid #1d3a22;--btn:#0b0d0b;--btn-ink:#8dff9e;--btn-border:1px solid #2f6b3a;
+  --cab:linear-gradient(#6b6e6b,#3c3f3c);--cab-radius:22px;--cab-shadow:inset 0 2px 0 #9a9d9a,0 20px 40px -18px #000;--cab-pad:18px;
+  --marquee:#0b0d0b;--marquee-ink:#8dff9e;--marquee-font:400 22px/1 'Lucida Console',monospace;--marquee-spacing:.5em;--marquee-glow:0 0 8px #8dff9e;--marquee-radius:6px;
+  --screen:radial-gradient(ellipse at center,#061006,#000 80%);--screen-radius:28px;--screen-shadow:inset 0 0 40px #000,inset 0 0 0 4px #1a1c1a;--screen-pad:18px;
+  --well-bg:#000;--canvas-bg:transparent;--canvas-grid:transparent;--ghost-line:#8dff9e88;--well-border:1px solid #2f6b3a;--panel-border:1px solid #2f6b3a;
+  --block-1:#8dff9e;--block-2:#b9ffc4;--block-3:#6bf07f;--block-4:#9dffd0;--block-5:#c8ff8d;--block-6:#5fe0a0;--block-7:#a4ff7a;
+  --num-ink:#8dff9e;--num-glow:0 0 6px #8dff9e;--panel-label:#4ea85c;--deck:#0b0d0b;--overlay:#000d;--overlay-ink:#8dff9e;--sheet:#041006;--attract:#000;--attract-border:1px solid #2f6b3a;--pad:#000;--pad-ink:#8dff9e;--pad-border:1px solid #2f6b3a}
+body[data-look="vector"] canvas.game-canvas{filter:drop-shadow(0 0 2px #8dff9e66)}
+body[data-look="vector"] .screen::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:repeating-linear-gradient(#0000 0 2px,#00000033 2px 3px)}
+body[data-look="vector"] .attract h2{color:#8dff9e;text-shadow:0 0 8px #8dff9e}
+
+/* =====================================================================================
+   5. Paper cut: layered cut paper on kraft. Muted paper colours, each block a
+   cut-out with a soft shadow.
+   ===================================================================================== */
+body[data-look="paper"]{--room:radial-gradient(#00000008 1px,#0000 1.5px) 0 0/5px 5px,#c9a67a;--ink:#2e2a26;--muted:#6e655a;--accent:#2e2a26;--on-accent:#f7efe2;--body-font:Georgia,'Book Antiqua',serif;--display-font:Georgia,serif;--mono:Georgia,serif;--radius:2px;
+  --bar:#f7efe2;--bar-rule:0;--btn:#f7efe2;--btn-ink:#2e2a26;--btn-border:1px solid #2e2a2655;
+  --cab:#e9dcc6;--cab-radius:4px;--cab-shadow:6px 8px 0 #a8845a,12px 16px 0 #8f6c45,0 20px 30px -10px #0005;--cab-pad:16px;
+  --marquee:#d65f48;--marquee-ink:#f7efe2;--marquee-font:italic 700 26px/1 Georgia,serif;--marquee-spacing:.04em;--marquee-radius:2px;--marquee-shadow:4px 4px 0 #a8452f;
+  --screen:#f7efe2;--screen-radius:2px;--screen-shadow:inset 3px 3px 0 #d8c8ad;
+  --well-bg:#fbf6ec;--canvas-bg:transparent;--canvas-grid:transparent;--ghost-line:#6e655a;--well-border:0;--well-shadow:3px 3px 0 #d8c8ad;--panel-border:0;
+  --block-1:#4f9ea8;--block-2:#e3b54a;--block-3:#8c5a8f;--block-4:#7aa06a;--block-5:#d65f48;--block-6:#3e5a85;--block-7:#d98a4e;
+  --num-ink:#2e2a26;--num-font:700 18px/1.1 Georgia,serif;--deck:#f7efe2;--deck-shadow:3px 3px 0 #d8c8ad;--overlay:#fbf6ece6;--overlay-ink:#2e2a26;--sheet:#f7efe2;--sheet-ink:#2e2a26;--attract:#f7efe2;--attract-border:0;--attract-shadow:6px 8px 0 #a8845a;--attract-ink:#2e2a26;--pad:#f7efe2;--pad-ink:#2e2a26;--pad-border:1px solid #2e2a2655}
+
+/* =====================================================================================
+   6. Terminal: the well as text. Each block is [] in its colour; the ghost is ::.
+   ===================================================================================== */
+body[data-look="terminal"]{--room:#040904;--ink:#8dffa6;--muted:#4fae66;--accent:#8dffa6;--on-accent:#040904;--body-font:var(--term-font);--display-font:var(--term-font);--mono:var(--term-font);--radius:0;
+  --bar:#040904;--bar-rule:1px dashed #2c6b3a;--btn:#040904;--btn-ink:#8dffa6;--btn-border:1px dashed #2c6b3a;
+  --cab:#040904;--cab-border:1px dashed #2c6b3a;--cab-radius:0;--cab-shadow:none;
+  --marquee:none;--marquee-ink:#8dffa6;--marquee-font:400 18px/1 var(--term-font);--marquee-spacing:.1em;
+  --screen:#040904;--screen-shadow:none;--screen-radius:0;--well-bg:#040904;--canvas-bg:transparent;--canvas-grid:transparent;--ghost-line:#8dffa6;--well-border:1px solid #2c6b3a;--well-radius:0;--panel-border:1px dashed #2c6b3a;--panel-radius:0;
+  --block-1:#8dffa6;--block-2:#ffc56b;--block-3:#d8ffe0;--block-4:#6bdc84;--block-5:#ff8a6b;--block-6:#7fd6ff;--block-7:#ffe07a;
+  --num-ink:#d8ffe0;--deck:none;--overlay:#040904e6;--overlay-ink:#8dffa6;--sheet:#061206;--attract:#040904;--attract-border:1px dashed #2c6b3a;--attract-radius:0;--pad:#040904;--pad-ink:#8dffa6;--pad-border:1px dashed #2c6b3a;--pad-radius:0}
+body[data-look="terminal"] .tt-name::before,body[data-look="terminal"] .marquee strong::before{content:'$ ./';color:#4fae66}
+body[data-look="terminal"] .tt-name,body[data-look="terminal"] .marquee strong{text-transform:lowercase}
   </style>
 </head>
-<body data-game="tetris" data-skin="0">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">▟</span>Tetris</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Tetris</h1><p id="game-subtitle">One more line</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Neon arcade</option><option value="1">Pocket console</option><option value="2">Monochrome</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>Controls</h2><p id="rules"></p></section></aside></div>
+<body data-game="tetris" data-skin="0" data-look="cabinet">
+  <header class="tt-bar">
+    <a href="../../gaming.html" class="tt-back" aria-label="Back to the Arcade">←</a>
+    <span class="tt-name">The Arcade</span>
+    <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Game</span><select id="mode"></select></label><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Style"><option value="0" data-look="cabinet">Arcade cabinet</option><option value="1" data-look="toy">Toy blocks</option><option value="2" data-look="glass">Glass</option><option value="3" data-look="vector">Vector</option><option value="4" data-look="paper">Paper cut</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="controls-open" type="button">Controls</button><button id="soundless" type="button">Rules</button><button id="pause" hidden>Pause</button><button id="new-game" class="solid">New game</button></div>
+  </header>
+  <main id="playroom" class="tt-room" aria-labelledby="game-title">
+    <section class="cabinet" aria-label="The game">
+      <div class="marquee"><strong id="game-title">Tetris</strong><small id="mode-name"></small><p id="game-subtitle" hidden></p></div>
+      <div class="screen"><div id="stage" class="stage"></div></div>
+      <div class="deck"><p id="status" role="status" aria-live="polite"></p><span id="metric" hidden></span><p id="hint" class="hint"></p><div id="tools" class="tools" hidden></div></div>
     </section>
-    <noscript><p>Tetris needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
+    <aside class="attract" aria-label="High scores">
+      <section id="score-panel"><div class="score-heading"><h2>High scores</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
+      <div id="stats-slot"></div>
+    </aside>
+    <noscript><p>The game needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
+  <dialog id="controls-dialog" aria-labelledby="controls-title"><h2 id="controls-title">Controls</h2><div id="controls-slot"></div><div class="dialog-actions"><button type="button" id="controls-close" class="solid">Done</button></div></dialog>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p>
+    <p><strong>Three games.</strong> Marathon goes on until the blocks reach the top, faster every ten lines. Sprint: clear 40 lines as fast as you can. Timed: as many points as you can in two minutes.</p>
+    <p><strong>The ghost.</strong> The outline at the bottom shows where the falling piece will land. Turn it off in Controls.</p>
+    <p><strong>Controls.</strong> Set how long a held key waits before it repeats and how fast it repeats, and change any key. On a phone: drag to move, tap to turn, flick down to drop, or use the buttons.</p>
+    <button id="close-help" class="solid">Got it</button></dialog>
+  <script>
+    (function(){const d=document.getElementById('controls-dialog');document.getElementById('controls-open').onclick=()=>d.showModal();document.getElementById('controls-close').onclick=()=>d.close();
+      const m=document.getElementById('mode'),n=document.getElementById('mode-name'),set=()=>{n.textContent=m.selectedOptions[0]?.textContent||'';};m.addEventListener('change',set);setTimeout(set,0);})();
+  </script>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>

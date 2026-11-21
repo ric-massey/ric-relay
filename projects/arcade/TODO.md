@@ -193,7 +193,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
   centred, the number pad as a tray beside it, notes and checks as pencil tools.
 - [x] **Wordle:** one narrow column: tiles, then the keyboard docked to the bottom on a
   phone; stats and share in their own sheet.
-- [ ] **Tetris:** an arcade cabinet: the well in the middle, hold and next on the
+- [x] **Tetris:** an arcade cabinet: the well in the middle, hold and next on the
   cabinet's side panels, the high scores as an attract screen.
 - [x] **Snake** (built 2026-11-21): a handheld: the screen in a device body with its d-pad and buttons,
   score on the LCD, high scores on the device's menu screen.
@@ -327,6 +327,22 @@ into the help dialog wherever the page has no room for them. Page concepts:
       green and yellow: Flip board (split-flap departures board), Letterpress
       (wooden type, inked), Typewriter (struck letters, round keys), Neon (tubes
       on brick), Crossword (a newspaper grid in pen), Terminal (ASCII).
+
+### Tetris: what players want (Ric, 2026-11-21: "Yep. Tetris", then his answers) — built the same day
+- [x] The page is an arcade cabinet (concept above): a marquee, the well in the
+      middle, hold on the left panel and the next pieces on the right, the high
+      scores on the cabinet like an attract screen, the controls as a deck below.
+- [x] Ghost piece (Ric picked it; it was a faint fill): an outline where the
+      piece will land, drawn in each style's way, with a switch to turn it off.
+- [x] Sprint (40 lines, fastest time) and Timed (2 minutes, most points) beside
+      Marathon (Ric picked them), each with its own board: `tetris-sprint`,
+      `tetris-timed` on the Worker (needs Deploy Worker).
+- [x] Control settings (Ric picked them): how long a held key waits before it
+      repeats and how fast it repeats, and every key remappable; kept in this
+      browser.
+- [x] Six styles (Ric: "Yes, those six"), original looks, not copies of any
+      official version: Arcade cabinet, Toy blocks (wooden blocks on a rug),
+      Glass, Vector (green-line 70s screen), Paper cut, Terminal ([] blocks).
 
 ### Online play, Chess and Checkers (Ric, 2026-11-21: "multiplayer for chess and checkers needs to be in")
 Two players on one device was already there, so this is playing a friend on their

@@ -28,7 +28,7 @@
     sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['expert','Expert'],['daily','Daily puzzle']],
     minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines'],['expert','Expert · 99 mines'],['custom','Custom size']],
     snake:[['classic','Classic'],['slow','Slow'],['walls','Through walls']],
-    tetris:[]
+    tetris:[['','Marathon'],['sprint','Sprint · 40 lines'],['timed','Timed · 2 minutes']]
   };
   /* How far the computer looks ahead at each level (plies), or Tic-tac-toe's style. */
   const LEVELS = {chess:{easy:1,medium:2,hard:3},checkers:{easy:2,medium:5,hard:8},tictactoe:{easy:'easy',medium:'medium',hard:'hard'}};
@@ -43,6 +43,7 @@
   const storage={get(k,fallback=null){try{const v=localStorage.getItem('classics:'+k);return v===null?fallback:JSON.parse(v);}catch{return fallback;}},set(k,v){try{localStorage.setItem('classics:'+k,JSON.stringify(v));return true;}catch{return false;}},remove(k){try{localStorage.removeItem('classics:'+k);}catch{}}};
   const remote = location.protocol === 'file:' ? null : /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin : 'https://training-log.rmbuster82.workers.dev';
   const fmtTime=n=>`${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`;
+  const fmtClockMs=ms=>{const t=Math.floor(ms/100);return `${Math.floor(t/600)}:${String(Math.floor(t/10)%60).padStart(2,'0')}.${t%10}`;};
   const status=t=>{$('status').textContent=t;};
   const hint=t=>{$('hint').textContent=t;};
   const button=(text,fn,cls='')=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.className=cls;b.onclick=fn;return b;};
@@ -66,16 +67,16 @@
     if(id==='solitaire')parts.push((s.score||0)+' points',s.moves+(s.moves===1?' move':' moves'));
     if(id==='snake'){parts.push(s.score+' points',`best ${Math.max(s.score,bestScore)}`);const sc=$('lcd-score'),hi=$('lcd-hi');if(sc)sc.textContent=String(s.score).padStart(4,'0');if(hi)hi.textContent=String(Math.max(s.score,bestScore)).padStart(4,'0');}
     // Tetris shows its numbers in the panel beside the well instead.
-    if(id==='tetris'){const set=(k,v)=>{const e=$(k);if(e&&e.textContent!==v)e.textContent=v;};set('t-score',s.score.toLocaleString());set('t-lines',String(s.lines));set('t-level',String(1+Math.floor(s.lines/10)));set('t-best',Math.max(s.score,bestScore).toLocaleString());}
+    if(id==='tetris'){const set=(k,v)=>{const e=$(k);if(e&&e.textContent!==v)e.textContent=v;};set('t-score',s.score.toLocaleString());set('t-lines',String(s.lines));set('t-level',mode==='sprint'?`${Math.min(40,s.lines)}/40`:mode==='timed'?fmtTime(Math.max(0,Math.ceil((120000-(s.ms||0))/1000))):String(1+Math.floor(s.lines/10)));set('t-best',mode==='sprint'?(bestScore?fmtTime(bestScore):'—'):Math.max(s.score,bestScore).toLocaleString());const lv=$('t-level')?.previousElementSibling;if(lv)lv.textContent=mode==='sprint'?'Goal':mode==='timed'?'Left':'Level';const tm=$('t-time');if(tm)tm.textContent=fmtClockMs(s.ms||0);}
     $('metric').textContent=parts.join(' · ');
   }
 
   // ---- scoreboards (shared Worker, unchanged keys) -------------------------
   /* Only the original game of each kind has a board: Draw one, Classic Snake.
      New boards would need the Worker's allowlist changed and redeployed. */
-  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':mode==='daily'?'solitaire-daily-'+dailyDate:null;case 'sudoku':return mode==='daily'?'sudoku-daily-'+dailyDate:'sudoku-'+mode;case 'minesweeper':return mode==='custom'?null:'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return 'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:mode==='past'?null:'wordle-practice';default:return null;}}
-  function scoreText(score,key=board()){return key?.startsWith('wordle-')?score+' / 6':key==='snake'||key==='tetris'?score.toLocaleString():fmtTime(score);}
-  function sorted(rows,key){return rows.slice().sort((a,b)=>(key==='snake'||key==='tetris'?b.score-a.score:a.score-b.score)||(a.at||0)-(b.at||0)).slice(0,10);}
+  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':mode==='daily'?'solitaire-daily-'+dailyDate:null;case 'sudoku':return mode==='daily'?'sudoku-daily-'+dailyDate:'sudoku-'+mode;case 'minesweeper':return mode==='custom'?null:'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return mode==='sprint'?'tetris-sprint':mode==='timed'?'tetris-timed':'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:mode==='past'?null:'wordle-practice';default:return null;}}
+  function scoreText(score,key=board()){return key?.startsWith('wordle-')?score+' / 6':key==='snake'||key==='tetris'||key==='tetris-timed'?score.toLocaleString():fmtTime(score);}
+  function sorted(rows,key){return rows.slice().sort((a,b)=>(key==='snake'||key==='tetris'||key==='tetris-timed'?b.score-a.score:a.score-b.score)||(a.at||0)-(b.at||0)).slice(0,10);}
   async function request(path,options){if(!remote)throw Error('offline');const res=await fetch(remote+'/arcade/scores'+path,{...options,signal:AbortSignal.timeout(6000)});if(!res.ok)throw Error(res.status===429?'Please wait a minute before submitting again.':'Shared scoreboard is unavailable.');return res.json();}
   function showRows(rows,key){$('scores').replaceChildren();if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent='The board is open. Put your initials up here.';$('scores').append(li);return;}for(const row of sorted(rows,key)){const li=document.createElement('li'),name=document.createElement('strong'),score=document.createElement('span');name.textContent=row.initials;score.textContent=scoreText(row.score,key);li.append(name,score);$('scores').append(li);}}
   async function refreshScores(){const key=board(),version=++boardRefresh;$('score-panel').hidden=!key;if(!key)return;$('score-kind').textContent=key.startsWith('wordle-')?(mode==='daily'?'Today · '+dailyDate+' · fewest guesses':'Practice · fewest guesses'):key.includes('-daily-')?'Today · '+dailyDate+' · fastest wins':key==='snake'||key==='tetris'?'Top ten · highest score':'Top ten · fastest wins';$('score-source').textContent='Loading shared board…';try{const data=await request('?board='+encodeURIComponent(key));if(version!==boardRefresh)return;showRows(data.scores,key);$('score-source').textContent='Everyone · shared scoreboard';}catch{if(version!==boardRefresh)return;showRows(storage.get('scores:'+key,[]),key);$('score-source').textContent='This browser only · shared board unavailable';}}
@@ -91,7 +92,7 @@
     const st=stats();st.played=(st.played||0)+1;
     if(mode==='two'||mode==='table'){st.sides=st.sides||{};st.sides[outcome]=(st.sides[outcome]||0)+1;}
     else if(outcome){st[outcome]=(st[outcome]||0)+1;st.streak=outcome==='won'?(st.streak||0)+1:outcome==='drawn'?(st.streak||0):0;st.bestStreak=Math.max(st.bestStreak||0,st.streak);}
-    if(value!==null){const higher=action();if(st.best==null||(higher?value>st.best:value<st.best))st.best=value;st.last=value;}
+    if(value!==null){const higher=action()&&!(game.id==='tetris'&&mode==='sprint');if(st.best==null||(higher?value>st.best:value<st.best))st.best=value;st.last=value;}
     if(game.id==='wordle'){st.dist=st.dist||[0,0,0,0,0,0];if(outcome==='won')st.dist[value-1]++;}
     storage.set(statsKey(),st);renderStats();
   }
@@ -102,6 +103,7 @@
     const st=stats(),rows=[],id=game.id,p=st.played||0;bestScore=action()?st.best||0:0;
     if((mode==='two'||mode==='table')&&id==='checkers'){const [a,b]=sides();rows.push([a+' wins',(st.sides?.w||0)+(st.sides?.Light||0)],[b+' wins',(st.sides?.b||0)+(st.sides?.Dark||0)]);rows.push(['Draws',st.sides?.draw||0]);}
     else if(mode==='two'||mode==='table'){const names=id==='tictactoe'?['X','O']:['White','Black'];for(const n of names)rows.push([n+' wins',st.sides?.[n]||0]);rows.push(['Draws',st.sides?.draw||0]);}
+    else if(game.id==='tetris'&&mode==='sprint'){rows.push(['Runs',p],['Finished',st.won||0],['Fastest',st.best!=null?fmtTime(st.best):'—']);}
     else if(action()){rows.push(['Games',p],['Best',(st.best||0).toLocaleString()],['Last',(st.last||0).toLocaleString()]);}
     else if(['chess','checkers','tictactoe'].includes(id)){rows.push(['You won',st.won||0],[mode==='online'?'Friend won':'Computer won',st.lost||0],['Draws',st.drawn||0],['Streak',st.streak||0]);}
     else{rows.push(['Played',p],['Won',p?`${st.won||0} · ${Math.round(100*(st.won||0)/p)}%`:'0'],['Streak',st.streak||0],['Best streak',st.bestStreak||0]);if(st.best!=null)rows.push([id==='wordle'?'Fewest guesses':'Fastest',id==='wordle'?st.best+' / 6':fmtTime(st.best)]);if(id==='solitaire'&&st.points)rows.push(['Best points',st.points]);}
@@ -1267,12 +1269,12 @@
     stage.className='stage action-stage'+(game.id==='snake'?' snake-stage':' tetris-stage');stage.replaceChildren();
     const row=el('div','action-row'),wrap=el('div','canvas-wrap'+(game.id==='tetris'?' tetris':''));
     const c=document.createElement('canvas');c.width=game.id==='tetris'?300:500;c.height=game.id==='tetris'?600:500;c.id='game-canvas';c.className='game-canvas';c.setAttribute('role','img');c.setAttribute('aria-label',game.name+' game board. Use the controls below or your keyboard.');wrap.append(c);row.append(wrap);
-    if(game.id==='tetris'){const side=el('div','tetris-side');for(const [label,id,h] of [['Hold','hold-canvas',60],['Next','next-canvas',170]]){const box=el('div','side-box');box.append(el('span',null,label));const cv=document.createElement('canvas');cv.width=100;cv.height=h;cv.id=id;box.append(cv);side.append(box);}const nums=el('dl','side-stats');for(const [k,id] of [['Score','t-score'],['Lines','t-lines'],['Level','t-level'],['Best','t-best']]){const d=el('div');const dd=el('dd');dd.id=id;d.append(el('dt',null,k),dd);nums.append(d);}side.append(nums);row.append(side);}
+    if(game.id==='tetris'){const side=el('div','tetris-side');for(const [label,id,h] of [['Hold','hold-canvas',60],['Next','next-canvas',170]]){const box=el('div','side-box');box.append(el('span',null,label));const cv=document.createElement('canvas');cv.width=100;cv.height=h;cv.id=id;box.append(cv);side.append(box);}const nums=el('dl','side-stats');for(const [k,id] of [['Score','t-score'],['Lines','t-lines'],['Level','t-level'],['Best','t-best'],['Time','t-time']]){const d=el('div');const dd=el('dd');dd.id=id;d.append(el('dt',null,k),dd);nums.append(d);}side.append(nums);row.append(side);}
     stage.append(row);
     const overlay=el('div','start-overlay');overlay.id='action-overlay';
     const how=el('p','overlay-keys');
     // Static, trusted markup: keycaps for the controls.
-    how.innerHTML=resumed?'Saved right where you left it.':game.id==='snake'?'<span class="key-only"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> steer · <kbd>P</kbd> pause</span><span class="touch-only">Swipe anywhere to steer</span>':'<span class="key-only"><kbd>←</kbd><kbd>→</kbd> move · <kbd>↑</kbd> turn · <kbd>Space</kbd> drop · <kbd>C</kbd> hold</span><span class="touch-only">Drag to move · tap to turn · flick down to drop</span>';
+    how.innerHTML=resumed?'Saved right where you left it.':game.id==='snake'?'<span class="key-only"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> steer · <kbd>P</kbd> pause</span><span class="touch-only">Swipe anywhere to steer</span>':(()=>{const m=tetrisKeys(),k=a=>`<kbd>${keyName(m[a]).replace(/[<>&]/g,'')}</kbd>`;return `<span class="key-only">${k('left')}${k('right')} move · ${k('cw')} turn · ${k('hard')} drop · ${k('hold')} hold</span><span class="touch-only">Drag to move · tap to turn · flick down to drop</span>`;})();
     overlay.append(el('strong','overlay-title',resumed?'Welcome back':game.name),button(resumed?'Resume':'Play',beginAction,'overlay-play'),how);
     wrap.append(overlay);
     if(game.id==='snake'){
@@ -1285,7 +1287,7 @@
       const a=$('btn-a'),b=$('btn-b');if(a)a.onclick=primaryAction;if(b)b.onclick=()=>start();
     }
     else{const pad=el('div','tetris-controls');for(const [label,fn,name]of [['←',()=>actionMove(-1,0),'Left'],['↻',()=>rotate(),'Rotate'],['→',()=>actionMove(1,0),'Right'],['↓',()=>softDrop(),'Soft drop'],['Drop',()=>hardDrop(),'Hard drop'],['Hold',()=>holdPiece(),'Hold']]){const k=button(label,fn);k.setAttribute('aria-label',name);pad.append(k);}stage.append(pad);tetrisTouch(c);}
-    const touch=matchMedia('(any-pointer:coarse)').matches;hint(game.id==='snake'?(touch?'Swipe anywhere on the screen to steer, or use the buttons.':'Arrows, WASD or 2 4 6 8 to steer · Enter or A to start and pause'):(touch?'Drag to move · tap to turn · flick down to drop':'← → move · ↑ / X rotate · Z reverse · ↓ soft · Space drop · C hold · P pause'));
+    const touch=matchMedia('(any-pointer:coarse)').matches;hint(game.id==='snake'?(touch?'Swipe anywhere on the screen to steer, or use the buttons.':'Arrows, WASD or 2 4 6 8 to steer · Enter or A to start and pause'):(touch?'Drag to move · tap to turn · flick down to drop':(()=>{const m=tetrisKeys();return `${keyName(m.left)} ${keyName(m.right)} move · ${keyName(m.cw)} turn · ${keyName(m.ccw)} back · ${keyName(m.soft)} soft · ${keyName(m.hard)} drop · ${keyName(m.hold)} hold · ${keyName(m.pause)} pause`;})()));
     status(resumed?'Saved game · ready when you are.':'Ready when you are.');drawAction();updateMetric();
   }
   /* Snake on a phone (Ric, 2026-11-21: "swiping needs to be a way you can play
@@ -1317,34 +1319,65 @@
   /* A landed piece waits half a second before it locks; moving or turning it
      restarts the wait, up to 15 times, so it can't hover forever. */
   function nudgeLock(){if(lockAt!==null&&lockResets<15){lockAt=performance.now();lockResets++;}}
-  function lockPiece(){const rows=E.Tetris.fullRows(s);E.Tetris.lock(s);sfx(rows.length?'clear':'tap');lockAt=null;lockResets=0;if(rows.length&&!reduced())flash={rows,at:performance.now()};}
+  function lockPiece(){const rows=E.Tetris.fullRows(s);E.Tetris.lock(s);if(game.id==='tetris')tetrisGoal();sfx(rows.length?'clear':'tap');lockAt=null;lockResets=0;if(rows.length&&!reduced())flash={rows,at:performance.now()};}
   function actionMove(x,y){if(!running&&!finished&&game.id==='snake'&&$('action-overlay'))beginAction();if(!running||paused||finished)return;if(game.id==='snake')E.Snake.turn(s,x,y);else if(E.Tetris.move(s,x,y))nudgeLock();drawAction();}
   function rotate(reverse=false){if(game.id!=='tetris'||!running||paused||finished)return;if(E.Tetris.rotate(s,reverse))nudgeLock();drawAction();}
   function holdPiece(){if(game.id!=='tetris'||!running||paused||finished)return;if(E.Tetris.hold(s)){lockAt=null;lockResets=0;sfx('flip');}drawAction();actionEnd();}
   function softDrop(){if(game.id!=='tetris'||!running||paused||finished)return;if(E.Tetris.move(s,0,1)){s.score++;lockAt=null;}else lockPiece();updateMetric();drawAction();actionEnd();}
   function hardDrop(){if(game.id!=='tetris'||!running||paused||finished)return;while(E.Tetris.move(s,0,1))s.score+=2;lockPiece();accumulator=0;updateMetric();drawAction();actionEnd();}
-  function actionEnd(){if(!s.over||finished)return;const newBest=s.score>0&&s.score>bestScore;if(!newBest)sfx('lose');record(null,s.score);finish(game.id==='snake'?'That’s a wrap.':'Stacked to the rafters.',`${s.score.toLocaleString()} points. ${game.id==='tetris'?s.lines+' lines cleared.':'Another apple is waiting.'}${newBest?' A new personal best.':''}`,s.score>0&&board()?s.score:null);if(newBest)celebrate();}
+  function actionEnd(){if(!s.over||finished)return;
+    if(game.id==='tetris'&&mode==='sprint'){const t=Math.max(1,Math.ceil((s.ms||0)/1000));if(s.won){const nb=!bestScore||t<bestScore;record('won',t);if(nb)celebrate();else sfx('clear');finish('Forty lines.',`${fmtClockMs(s.ms)} for 40 lines.${nb?' A new personal best.':''}`,board()?t:null);}else{sfx('lose');record('lost');finish('Topped out.',`${s.lines} of 40 lines, ${fmtClockMs(s.ms)}. Try again.`);}return;}
+    if(game.id==='tetris'&&mode==='timed'&&s.timeUp){const nb=s.score>0&&s.score>bestScore;record(null,s.score);if(nb)celebrate();else sfx('clear');finish('Time.',`${s.score.toLocaleString()} points in two minutes, ${s.lines} lines.${nb?' A new personal best.':''}`,s.score>0&&board()?s.score:null);return;}
+    const newBest=s.score>0&&s.score>bestScore;if(!newBest)sfx('lose');record(null,s.score);finish(game.id==='snake'?'That’s a wrap.':'Stacked to the rafters.',`${s.score.toLocaleString()} points. ${game.id==='tetris'?s.lines+' lines cleared.':'Another apple is waiting.'}${newBest?' A new personal best.':''}`,s.score>0&&board()?s.score:null);if(newBest)celebrate();}
+  let tickDt=0;
+  /* Sprint ends at 40 lines, Timed at two minutes (Ric picked both, 2026-11-21). */
+  function tetrisGoal(){if(s.over)return;if(mode==='sprint'&&s.lines>=40){s.over=true;s.won=true;}else if(mode==='timed'&&s.ms>=120000){s.over=true;s.timeUp=true;}}
   function tick(now){
-    if(!running||paused||finished)return;accumulator+=Math.min(now-lastFrame,250);lastFrame=now;
+    if(!running||paused||finished)return;tickDt=Math.min(now-lastFrame,250);accumulator+=tickDt;lastFrame=now;
     const delay=game.id==='snake'?(mode==='slow'?Math.max(110,240-Math.floor(s.score/10)*3):Math.max(65,160-Math.floor(s.score/10)*4)):Math.max(80,800*Math.pow(.82,Math.floor(s.lines/10)));
     stepDelay=delay;
     while(accumulator>=delay&&!s.over){accumulator-=delay;if(game.id==='snake'){const food=s.food,score=s.score;E.Snake.step(s);if(s.score>score){sfx('eat');navigator.vibrate?.(12);}if(s.over){deathAt=now;const blink=t=>{drawAction();if(t-deathAt<950&&game.id==='snake')requestAnimationFrame(blink);};requestAnimationFrame(blink);}if(s.score>score&&!reduced())for(let k=0;k<12;k++){const a=Math.PI*2*k/12;particles.push({x:food.x,y:food.y,vx:Math.cos(a),vy:Math.sin(a),at:now});}}else if(E.Tetris.move(s,0,1))lockAt=null;else if(lockAt===null)lockAt=now;}
     if(game.id==='tetris'&&lockAt!==null){if(E.Tetris.fits(s,s.piece,s.x,s.y+1))lockAt=null;else if(now-lockAt>=500)lockPiece();}
+    if(game.id==='tetris'){s.ms=(s.ms||0)+tickDt;tetrisGoal();}
     drawAction();updateMetric();actionEnd();if(running&&!finished)frame=requestAnimationFrame(tick);
   }
-  function drawPiece(cv,piece,unit,ox,oy){const nx=cv.getContext('2d');piece.forEach((row,r)=>row.forEach((v,c)=>{if(v){nx.fillStyle=blockColors[v];nx.fillRect(ox+c*unit+1,oy+r*unit+1,unit-2,unit-2);}}));}
+  function drawPiece(cv,piece,unit,ox,oy){const nx=cv.getContext('2d');piece.forEach((row,r)=>row.forEach((v,c)=>{if(v)block(nx,v,ox+c*unit,oy+r*unit,unit,1);}));}
+  /* One block, drawn the way each style draws it (round three, 2026-11-21):
+     cabinet = lit bevelled tiles; toy = rounded wooden blocks; glass =
+     see-through panes with a glow; vector = green line-work; paper = cut
+     shapes with a drop shadow; terminal = [] in a monospace font. A ghost is
+     the outline where the piece will land. */
+  function block(x,v,px,py,u,alpha=1,ghost=false){
+    const L=look(),color=blockColors[v];x.save();x.globalAlpha=alpha;
+    const rr=(a,b,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(a,b,w,h,r);else x.rect(a,b,w,h);};
+    if(ghost){
+      x.strokeStyle=L==='vector'||L==='terminal'?paint.ghost:color;x.globalAlpha=L==='paper'?.55:.7;x.lineWidth=Math.max(1.5,u/14);x.setLineDash(L==='paper'||L==='toy'?[u/6,u/8]:[]);
+      if(L==='terminal'){x.fillStyle=paint.ghost;x.font=`${u*.78}px ${getComputedStyle(document.body).getPropertyValue('--term-font')||'monospace'}`;x.textAlign='center';x.textBaseline='middle';x.globalAlpha=.45;x.fillText('::',px+u/2,py+u/2);}
+      else{rr(px+u*.12,py+u*.12,u*.76,u*.76,L==='toy'?u*.2:L==='glass'?u*.14:2);x.stroke();}
+      x.restore();return;
+    }
+    if(L==='terminal'){x.fillStyle=color;x.font=`700 ${u*.78}px ${getComputedStyle(document.body).getPropertyValue('--term-font')||'monospace'}`;x.textAlign='center';x.textBaseline='middle';x.shadowColor=color;x.shadowBlur=u*.3;x.fillText('[]',px+u/2,py+u/2+1);}
+    else if(L==='vector'){x.strokeStyle=color;x.lineWidth=Math.max(1.5,u/16);x.shadowColor=color;x.shadowBlur=u*.35;x.strokeRect(px+u*.14,py+u*.14,u*.72,u*.72);x.strokeRect(px+u*.36,py+u*.36,u*.28,u*.28);}
+    else if(L==='glass'){x.shadowColor=color;x.shadowBlur=u*.45;x.fillStyle=color;x.globalAlpha=alpha*.38;rr(px+2,py+2,u-4,u-4,u*.16);x.fill();x.globalAlpha=alpha;x.shadowBlur=0;x.strokeStyle=color;x.lineWidth=1.5;rr(px+2.5,py+2.5,u-5,u-5,u*.16);x.stroke();const g=x.createLinearGradient(px,py,px,py+u*.5);g.addColorStop(0,'#ffffff80');g.addColorStop(1,'#ffffff00');x.fillStyle=g;rr(px+4,py+4,u-8,u*.36,u*.1);x.fill();}
+    else if(L==='toy'){x.shadowColor='#0005';x.shadowOffsetY=u*.08;x.shadowBlur=u*.12;x.fillStyle=color;rr(px+1.5,py+1.5,u-3,u-3,u*.2);x.fill();x.shadowColor='transparent';x.fillStyle='#ffffff2e';rr(px+u*.18,py+u*.14,u*.64,u*.22,u*.1);x.fill();x.strokeStyle='#00000026';x.lineWidth=1;for(const k of [.48,.62,.76]){x.beginPath();x.moveTo(px+u*.2,py+u*k);x.quadraticCurveTo(px+u*.5,py+u*(k-.06),px+u*.8,py+u*k);x.stroke();}}
+    else if(L==='paper'){x.shadowColor='#00000059';x.shadowOffsetX=u*.07;x.shadowOffsetY=u*.1;x.shadowBlur=u*.14;x.fillStyle=color;x.fillRect(px+1,py+1,u-2,u-2);x.shadowColor='transparent';x.fillStyle='#ffffff1f';x.fillRect(px+1,py+1,u-2,u*.12);}
+    else{x.fillStyle=color;x.fillRect(px+1,py+1,u-2,u-2);x.fillStyle='#ffffff40';x.fillRect(px+3,py+3,u-6,u*.12);x.fillStyle='#00000033';x.fillRect(px+3,py+u-3-u*.1,u-6,u*.1);}
+    x.restore();
+  }
   function drawAction(){
     const c=$('game-canvas');if(!c||!s)return;const x=c.getContext('2d'),now=performance.now();x.fillStyle=paint.bg;x.fillRect(0,0,c.width,c.height);
     const box=(px,py,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(px,py,w,h,r);else x.rect(px,py,w,h);x.fill();};
     if(game.id==='snake'){drawSnake(c,x,now);
     }else{
-      const unit=30,tile=(v,col,r,alpha=1)=>{x.globalAlpha=alpha;x.fillStyle=blockColors[v];x.fillRect(col*unit+1,r*unit+1,unit-2,unit-2);x.fillStyle='#ffffff33';x.fillRect(col*unit+3,r*unit+3,unit-6,3);x.globalAlpha=1;};
-      x.strokeStyle=paint.grid;for(let r=0;r<=20;r++){x.beginPath();x.moveTo(0,r*unit);x.lineTo(300,r*unit);x.stroke();}for(let col=0;col<=10;col++){x.beginPath();x.moveTo(col*unit,0);x.lineTo(col*unit,600);x.stroke();}
+      const unit=30,tile=(v,col,r,alpha=1)=>block(x,v,col*unit,r*unit,unit,alpha);
+      if(paint.bg==='transparent')x.clearRect(0,0,c.width,c.height);
+      if(paint.grid!=='transparent'){x.strokeStyle=paint.grid;for(let r=0;r<=20;r++){x.beginPath();x.moveTo(0,r*unit);x.lineTo(300,r*unit);x.stroke();}for(let col=0;col<=10;col++){x.beginPath();x.moveTo(col*unit,0);x.lineTo(col*unit,600);x.stroke();}}
       s.b.forEach((row,r)=>row.forEach((v,col)=>{if(v)tile(v,col,r);}));
       if(flash){const k=(now-flash.at)/220;if(k>=1)flash=null;else{x.fillStyle=`rgba(255,255,255,${.85*(1-k)})`;for(const r of flash.rows)x.fillRect(0,r*unit,300,unit);}}
       let ghost=s.y;while(E.Tetris.fits(s,s.piece,s.x,ghost+1))ghost++;
       const settling=lockAt!==null?Math.min(1,(now-lockAt)/500):0;
-      s.piece.forEach((row,r)=>row.forEach((v,col)=>{if(v){tile(v,s.x+col,ghost+r,.2);tile(v,s.x+col,s.y+r,1-settling*.3);}}));
+      if(opts.ghost!==false&&ghost>s.y)s.piece.forEach((row,r)=>row.forEach((v,col)=>{if(v)block(x,v,(s.x+col)*unit,(ghost+r)*unit,unit,1,true);}));
+      s.piece.forEach((row,r)=>row.forEach((v,col)=>{if(v)tile(v,s.x+col,s.y+r,1-settling*.3);}));
       const hc=$('hold-canvas');if(hc){const hx=hc.getContext('2d');hx.clearRect(0,0,100,60);if(s.hold){const p=E.Tetris.shapes[s.hold-1];hx.globalAlpha=s.held?.35:1;drawPiece(hc,p,18,(100-p[0].length*18)/2,(60-p.length*18)/2);hx.globalAlpha=1;}}
       const nc=$('next-canvas');if(nc){nc.getContext('2d').clearRect(0,0,100,170);[s.next,...(s.queue||[])].slice(0,3).forEach((p,k)=>{if(!p)return;const u=k?14:18;drawPiece(nc,p,u,(100-p[0].length*u)/2,k?k*56+10:4);});}
     }
@@ -1428,11 +1461,42 @@
     if(game.id==='wordle'){if(/^[a-z]$/.test(k)||['enter','backspace'].includes(k)){e.preventDefault();wordKey(k==='enter'?'Enter':k==='backspace'?'Backspace':k);}return;}
     if(game.id==='sudoku'){if(k==='escape'){brush=0;selected=null;renderSudoku();return;}if(/^[1-9]$/.test(k)){e.preventDefault();if(brush||selected===null)sudokuPad(+k);else sudokuEntry(+k);}else if(['backspace','delete','0'].includes(k)){e.preventDefault();sudokuEntry(0);}else if(k==='n'){notesMode=!notesMode;renderSudoku();}else if(k.startsWith('arrow')){e.preventDefault();const offset={arrowleft:-1,arrowright:1,arrowup:-9,arrowdown:9}[k];selected=Math.min(80,Math.max(0,(selected??0)+offset));renderSudoku();}return;}
     if(!action())return;
-    if(k==='p'){e.preventDefault();togglePause();return;}
+    if(k==='p'&&game.id!=='tetris'){e.preventDefault();togglePause();return;}
     const dirs={arrowup:[0,-1],w:[0,-1],arrowleft:[-1,0],a:[-1,0],arrowdown:[0,1],s:[0,1],arrowright:[1,0],d:[1,0]};
     if(game.id==='snake'){const num={'2':[0,-1],'4':[-1,0],'6':[1,0],'8':[0,1]}[k];if(dirs[k]||num){e.preventDefault();actionMove(...(dirs[k]||num));}else if(k==='enter'||k===' '||k==='5'){e.preventDefault();if(!e.repeat)primaryAction();}}
-    if(game.id==='tetris'){if(['arrowleft','arrowright','arrowdown','arrowup','x','z',' ','c','shift'].includes(k))e.preventDefault();if(!running&&!finished&&!paused&&$('action-overlay')&&(k===' '||k==='enter')){beginAction();return;}if(k==='arrowleft')actionMove(-1,0);if(k==='arrowright')actionMove(1,0);if(k==='arrowdown')softDrop();if(k==='arrowup'||k==='x')rotate();if(k==='z')rotate(true);if((k==='c'||k==='shift')&&!e.repeat)holdPiece();if(k===' '&&!e.repeat)hardDrop();}
+    if(game.id==='tetris'){if(!running&&!finished&&!paused&&$('action-overlay')&&(k===' '||k==='enter')){e.preventDefault();beginAction();return;}const act=tetrisAction(k);if(!act)return;e.preventDefault();if(e.repeat)return;tetrisPress(act,k);}
   });
+  /* Tetris controls (Ric, 2026-11-21, "Control settings"): every action has a
+     key you can change, and moving and soft drop repeat on our own timing: a
+     wait (DAS) before the first repeat, then a repeat every ARR ms (0 = straight
+     to the wall). Kept in the options (classics:opt:tetris). */
+  const TETRIS_KEYS={left:'arrowleft',right:'arrowright',soft:'arrowdown',hard:' ',cw:'arrowup',ccw:'z',hold:'c',pause:'p'};
+  const TETRIS_ALSO={cw:'x',hold:'shift'};
+  const tetrisKeys=()=>({...TETRIS_KEYS,...(opts.keys||{})});
+  function tetrisAction(k){const m=tetrisKeys();for(const [a,key] of Object.entries(m))if(key===k)return a;for(const [a,key] of Object.entries(TETRIS_ALSO))if(key===k&&!Object.values(m).includes(k))return a;return null;}
+  const held=new Map();
+  function tetrisPress(act,k){
+    const das=opts.das??170,arr=opts.arr??50;
+    const fire={left:()=>actionMove(-1,0),right:()=>actionMove(1,0),soft:()=>softDrop(),hard:()=>hardDrop(),cw:()=>rotate(),ccw:()=>rotate(true),hold:()=>holdPiece(),pause:()=>togglePause()}[act];fire();
+    if(!['left','right','soft'].includes(act))return;
+    clearTimeout(held.get(k)?.t);clearInterval(held.get(k)?.i);
+    const rec={};rec.t=setTimeout(()=>{if(act!=='soft'&&arr===0){for(let n=0;n<10;n++)fire();return;}rec.i=setInterval(fire,act==='soft'?Math.max(20,arr):Math.max(16,arr));},act==='soft'?0:das);held.set(k,rec);
+  }
+  document.addEventListener('keyup',e=>{const k=e.key.toLowerCase(),r=held.get(k);if(r){clearTimeout(r.t);clearInterval(r.i);held.delete(k);}});
+  addEventListener('blur',()=>{for(const r of held.values()){clearTimeout(r.t);clearInterval(r.i);}held.clear();});
+  const keyName=k=>({' ':'Space',arrowleft:'←',arrowright:'→',arrowup:'↑',arrowdown:'↓',shift:'Shift',enter:'Enter',escape:'Esc'}[k]||k.toUpperCase());
+  /* The Controls sheet: the page gives a <dialog id="controls-dialog"> with a #controls-slot. */
+  function controlsSheet(){
+    const slot=$('controls-slot');if(!slot)return;slot.replaceChildren();
+    const rows=el('div','control-rows');
+    const range=(label,key,min,max,step,def,unit,help)=>{const l=el('label','control-range');const v=el('output');const i=el('input');i.type='range';i.min=min;i.max=max;i.step=step;i.value=opts[key]??def;const show=()=>{v.textContent=key==='arr'&&+i.value===0?'instant':i.value+' '+unit;};show();i.oninput=()=>{opts[key]=+i.value;saveOpts();show();};l.append(el('span',null,label),i,v,el('small','muted',help));return l;};
+    rows.append(range('Wait before repeating','das',50,400,10,170,'ms','How long a held ← or → waits before it starts sliding.'),range('Repeat speed','arr',0,150,5,50,'ms','The gap between slides once it repeats. 0 slides straight to the wall.'));
+    const g=el('label','control-check');const cb=el('input');cb.type='checkbox';cb.checked=opts.ghost!==false;cb.onchange=()=>{opts.ghost=cb.checked;saveOpts();drawAction();};g.append(cb,el('span',null,'Show the ghost piece (where it will land)'));rows.append(g);
+    const table=el('div','key-map');const names={left:'Move left',right:'Move right',soft:'Soft drop',hard:'Hard drop',cw:'Turn',ccw:'Turn back',hold:'Hold',pause:'Pause'};
+    for(const [a,label] of Object.entries(names)){const b=button(keyName(tetrisKeys()[a]),()=>{b.textContent='Press a key…';b.classList.add('listening');const take=e=>{e.preventDefault();e.stopPropagation();document.removeEventListener('keydown',take,true);const k=e.key.toLowerCase();if(k!=='escape'){const m=tetrisKeys();for(const [o,key] of Object.entries(m))if(key===k&&o!==a){m[o]=m[a];}m[a]=k;opts.keys=m;saveOpts();}controlsSheet();};document.addEventListener('keydown',take,true);},'key-bind');b.setAttribute('aria-label',label+': '+keyName(tetrisKeys()[a])+'. Press to change.');const row=el('div','key-row');row.append(el('span',null,label),b);table.append(row);}
+    const reset=button('Back to the usual keys',()=>{delete opts.keys;delete opts.das;delete opts.arr;opts.ghost=true;saveOpts();controlsSheet();},'text-button');
+    slot.append(rows,el('h3',null,'Keys'),table,reset);
+  }
   // Preserve the original score/daily keys so existing records survive the
   // move to individual pages. Style is a preference, never a game reset.
   let paint={};
@@ -1443,9 +1507,9 @@
     storage.set('style:'+document.body.dataset.game,value);
     const css=getComputedStyle(document.body),read=(name,fallback)=>css.getPropertyValue(name).trim()||fallback;
     document.querySelector('meta[name="theme-color"]').setAttribute('content',css.backgroundColor);
-    paint={bg:read('--canvas-bg','#102c24'),grid:read('--canvas-grid','#143428'),head:read('--snake-head','#f5da83'),body:read('--snake-body','#90bd81'),food:read('--snake-food','#edaa70'),eyes:read('--snake-eyes','#183425')};
+    paint={bg:read('--canvas-bg','#102c24'),grid:read('--canvas-grid','#143428'),ghost:read('--ghost-line','#ffffffaa'),head:read('--snake-head','#f5da83'),body:read('--snake-body','#90bd81'),food:read('--snake-food','#edaa70'),eyes:read('--snake-eyes','#183425')};
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
-    if(game&&['snake','tetris'].includes(game.id))drawAction();
+    if(game&&['snake','tetris'].includes(game.id)){drawAction();if(game.id==='tetris'){const nc=$('next-canvas'),hc=$('hold-canvas');if(nc&&hc)drawAction();}}
     // Board games whose pieces are drawn differently per style redraw the same position.
     else if(game&&s&&['checkers','chess','solitaire','minesweeper','wordle'].includes(game.id)){render();renderStats();}
   }
@@ -1455,4 +1519,5 @@
   if(document.body.dataset.game==='chess')pieceSprites();
   applyStyle();
   route();
+  if(document.body.dataset.game==='tetris')controlsSheet();
 })();
