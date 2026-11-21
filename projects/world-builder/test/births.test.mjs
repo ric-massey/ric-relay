@@ -41,7 +41,7 @@ const People = createRequire(import.meta.url)("../people.js");
 //    (seed 9 crosses within five days), audited all the way. It was seed 1, crossing on its 14th
 //    day; after TODO 15.5a seed 1 had one birth in thirty days. Births are few in all of these
 //    worlds — four in thirty days in seed 1 before 15.5a, a tenth of a real birth rate — which is a
-//    question for 15b, not this test.
+//    question for 15.5k, not this test.
 {
   const w = People.create(People.clean({ seed: 9, people: 2999, map: 45, plague: "none", births: 1, rich: 2, life: 100, stored: 1 }), { audit: true });
   let crossed = false, above = 0, last = w.stats().births;

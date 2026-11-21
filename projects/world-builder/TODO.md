@@ -2688,7 +2688,7 @@ season and a half of use, against 38–54 before; 37 → 0 dead of cold and 7 �
 seeds, because crafters no longer burn the wood and hours the village needs. Also: households
 start owning goods, the levy calls any trade, and a rumour of sickness keeps people from going to
 load there (a 12b gap). Left: births in big worlds are about a tenth of a real rate in the old
-engine too (`test/births.test.mjs`) — for 15b. README, "Made to order". A village store holds
+engine too (`test/births.test.mjs`) — for 15.5k. README, "Made to order". A village store holds
 hundreds of goods that are never spent. 15f's jobs and workplaces stand on this economy, so it
 must make sense first. Find out where goods come in and why nothing draws them down (what
 households want, what crafters use, what wears out). Done when: a default year's store holds
