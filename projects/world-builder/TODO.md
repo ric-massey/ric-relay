@@ -2956,7 +2956,21 @@ waits). A setting of its own, so that at nothing the world is as it was. (2) The
 then reads both. (3) Whether the start's 8% under arms stays is Ric's: it is eight times Rome's share.
 Measured after: the ledger again, the tax over a year of peace, the starting city.
 
-**[ ] 15.5b3. Food riots** (Ric: "Yes they should"; who riots and why in the notes below).
+**[x] 15.5b3. Food riots** (Ric: "Yes they should"; who riots and why in the notes below).
+*Done 2026-11-21:* once a day, in a village where more than one in seven go hungry with food in sight
+(a store, rich larders, carts leaving), the hungry come out by Granovetter's threshold model, each at
+their own share of the village already out (higher for the patient, the loyal, under soldiers at hand;
+lower for the hot-tempered, the well-friended, those who buy their food, where food is plainly kept
+from them); the weak stay home and nothing in sight brings nobody out. They take four days' food each
+and pay a coin a day's food; a hot-tempered crowd pays nothing. The leader answers by whichever way
+they lean further: soldiers sent (half taken back, the crowd holds it against them by name) or a
+week's grain; or nothing, and that weighs on loyalty (`p.wronged`). Setting "Food riots" (off = the
+world 15.5t left, fingerprinted). **Measured**, a year each against 15.5t: six default worlds 3 riots,
+starved 13 → 12; three starting cities 3, 18 and 3 riots (9 broken up, 2 fed, 13 left), starved
+1 → 1; bench within drift. `test/riots.test.mjs`. README, "Food riots". **Left out:** riots over
+anything but food; riots spreading by news in waves; a price fixed by law afterwards; hangings.
+A first build checked soldiers before kindness and broke up 13 of 26 riots, fed none (measured): now
+whichever the leader leans to more.
 
 **[ ] 15.5b4. Bandits on land** (Ric, from 15i's research).
 
@@ -4063,4 +4077,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-20 | 15.25 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× (2.15 before) | 12.3 s a day, 24× (14.8 before) | 6.7 MB, 1.30 KB | **faster, the same world**: passes 1, 2, 4, 5 against 15a, alternated twice, nothing else running: 400 0.13/0.13 → 0.11/0.11 s, 2,000 0.69/0.68 → 0.60/0.60 s, 5,000 2.14/2.16 → 1.94/1.99 s, 20,000 14.83/14.85 → 12.27/15.16 s (the second an outlier; 12.46/12.47 with births), 400 on 500 km 0.16/0.15 → 0.14/0.15 s; a 400-person world 2.5 → 3.3 MB (the search workspace). **Births past 3,000 and the listening fix, measured apart**: 5,000 1.94/1.99 → 2.09/2.04 s (people are born now), 20,000 12.27 → 12.46/12.47 s. Land update for the page, 400 on 500 km: 21 → 11 ms, 12.4 MB → a few KB |
 | 2026-11-21 | 15.5a | Intel Xeon (cloud), 4 cores | 2.51 / 2.65 s a day (2.63 / 2.53 before, same machine) | *not run* | 7.0 MB, 1.37 KB | **made to order**, a different world (who takes which trade). `--quick` two runs each; 400 people timed alone for ten days 0.17 → 0.15 s a day; none of the new code in the profile |
 | 2026-11-21 | 15.5b2 | AMD Ryzen 5 3600, 24 GB | 2.12 / 2.33 s a day (2.12 / 2.13 before) | *not run* | 6.8 MB, 1.32 KB | **the government's grain**: public orders, rations, forced sales, laying in; a different world where a village goes hungry. `--quick` alternated old/new twice: 400 0.17/0.17 → 0.15/0.15 s, 2,000 0.67/0.73 → 0.71/0.73 s, 5,000 2.12/2.13 → 2.33/2.12 s: within the drift. Cost: one pass over a faction's villages a day; forced sales only in hungry villages |
+| 2026-11-21 | 15.5b3 | AMD Ryzen 5 3600, 24 GB | 2.15 / 2.20 s a day (2.10 / 2.16 before) | *not run* | 7.3 MB, 1.43 KB | **food riots**: a different world only where a village goes hungry with food in sight (3 riots in six default world-years). `--quick` alternated old/new twice: 400 0.16/0.16 → 0.16/0.16 s, 2,000 0.71/0.70 → 0.72/0.70 s; within drift |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

@@ -1901,6 +1901,54 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Food riots (2026-11-21)
+
+TODO item 15.5b3. Ric (2026-11-20): "Yes they should", after asking "is it really just a hot
+tempered thing?" The research says it is not. Riots came where people went short while they could
+see food that was not theirs, among neighbours who knew each other, and most among those who bought
+their bread. Most crowds took the grain and paid what they called a fair price (E. P. Thompson,
+"The Moral Economy of the English Crowd", 1971; Bohstedt, *Riots and Community Politics*; the
+research notes under 15.5b in `TODO.md`, with links).
+
+- **Who comes out** is Granovetter's threshold model (*American Journal of Sociology*, 1978). Once a
+  day, in a village where more than one in seven are going hungry, each hungry grown-up has their own
+  share of the village that must be out before they join. It is higher for the patient, the loyal and
+  where soldiers stand ready under a bold leader. It is lower for the hot-tempered, the well-friended,
+  those who buy their food, and where the food is plainly being kept from them (carts of food leaving,
+  the faction's grain in the store, rich larders). Counting up from the readiest, a riot happens only
+  if enough come out to bring out the next, at least five and one in twelve of the grown-ups. Nothing
+  starts one on a timer. The weak (half their strength gone) stay home, as famine riots faded once
+  hunger had gone on too long (Ó Gráda on Ireland, 1846–47). With nothing in sight, hunger alone
+  brings nobody out.
+- **What they do.** Each takes four days' food, from carts setting off first, then the store, then
+  larders holding more than a winter's need. They pay the owner a coin a day's food, the store's price
+  in plenty, as far as their purse goes. A hot-tempered crowd (mean temper over 0.62) pays nothing,
+  and those whose larders it opens hold it against them; now and then somebody is bruised, never
+  killed. No coin or food is made or lost.
+- **The leader answers by their nature** (`ruling`), whichever way they lean further. **Force** (as
+  bold as they are past warm): soldiers sent from anywhere in the faction break it up, half of what was
+  taken goes back into the store, some are bruised, and the crowd holds it against the leader by name.
+  **Kindness** (as warm as they are past greedy): a week's food each from the store, the faction's
+  grain first, then the treasury paying. **Neither**: nothing. What a leader does weighs on the
+  crowd's loyalty (`p.wronged`, half gone in a season, as a forced sale weighs), and the engine
+  already turns lost loyalty into a vote, an overthrow or a breakaway. A visitor ruling a faction
+  answers by its relief.
+- **A setting**, "Food riots", under Power (with coins only; a shared store has nothing to riot
+  over). Off, the world is the one 15.5t left, step for step (`test/riots.test.mjs` holds a
+  fingerprint of it).
+
+**Measured** (a year each, against 15.5t). Six default worlds: 3 riots in all (seed 5: one, broken up
+by soldiers; seed 11: two, both fed), none in the other four; starved 13 → 12 in all six, loyalty about
+the same. Three starting-city worlds of 1,000: 3, 18 and 3 riots (seed 3's farming hamlets riot every
+few weeks in the hungry months), 5 of them rough; soldiers broke up 9, leaders sent grain for 2, and 13
+were left alone; starved 1 → 1. Speed: `bench.mjs --quick` alternated old and new twice, 400 and
+2,000 the same, 5,000 2.10/2.16 → 2.15/2.20 s a day (within drift). The check is once a day and only
+in a village already going hungry.
+
+**Left out:** riots over anything but food (taxes, a leader's choice); a riot spreading by news to the
+next town (riots came in waves); a leader fixing the price by law afterwards (the "assize of bread");
+hangings. Bandits are 15.5b4.
+
 ### Treasuries that can pay: the harvest tax (2026-11-21)
 
 TODO item 15.5t, found by 15.5b2. A ledger of every coin in and out of the treasuries (default world,

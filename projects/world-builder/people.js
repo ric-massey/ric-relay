@@ -321,6 +321,9 @@
       { key: "rebel", label: "Breaking away", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["never", "only in despair", "when a village has had enough", "at the first grievance"]),
         help: "How unhappy a village has to be before it declares itself its own faction." },
+      /* TODO 15.5b3 (Ric, 2026-11-20: "Yes they should"). */
+      { key: "riots", when: s => s.money === "coins", label: "Food riots", type: "toggle", def: true,
+        help: "When enough of a village's hungry can see food that is not theirs — a full store, a rich family's larder, a cart leaving — they take it together and pay what they think fair, as most food riots did. Each leader answers by their nature: grain, soldiers, or nothing." },
     ]},
     { title: "War", items: [
       { key: "neighbours", label: "How the factions start", type: "select", def: "strangers",   // TODO 13
@@ -693,7 +696,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1326,6 +1329,7 @@
                   raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined,   // TODO 10: the last time enemies struck here, and the year last looked back on
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
+                  riotAt: -1e9, putDown: -1e9,   // TODO 15.5b3: the last riot here, and the last one soldiers broke up
                   heldTo: -1e9, wall: 0 };   // wall: TODO 14e, 0 none to 1 its full height   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
@@ -1538,7 +1542,7 @@
                   hp: 1, bold: nature(R(), ownOf(v.f, "bold")), warm: nature(R(), ownOf(v.f, "warm")), greed: nature(R(), ownOf(v.f, "greedy")), stub: clamp(ownOf(v.f, "stubborn") + (R() - 0.5) * S.differ, 0, 1), loyal: clamp(0.35 + ownOf(v.f, "loyalty") * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, sick: 0, immune: false,
-                  unpaid: 0, forced: 0, hit: 0, from: v.f, ate: -999, at: v.id,
+                  unpaid: 0, forced: 0, wronged: 0, hit: 0, from: v.f, ate: -999, at: v.id,
                   /* What they need besides food, which `p.food` already holds.
                      Rest rises with the hours awake, falls while asleep; alone
                      counts the hours since anybody spoke to them; fear comes
@@ -2065,6 +2069,7 @@
     const atWar = (a, b) => a !== b && factions[a].rel[b] && factions[a].rel[b].war;
     const shared = S.money === "shared";
     const HARVEST_TAX = !shared && (S.harvestTax || 0) > 0;   // TODO 15.5t: none at the start means none ever
+    const RIOTS = !shared && S.riots !== false;   // TODO 15.5b3
 
     function note(kind, text, weight, x, y, f) {
       const e = { id: events.length ? events[events.length - 1].id + 1 : 0, t: t, year: Math.floor(year()), kind: kind, text: text,
@@ -5674,10 +5679,12 @@
       const lead = byId.get(f.leader);
       const far = lead ? Math.abs(viewOf(p) - viewOf(lead)) : 0.5;
       const wantLoyal = p.mood * 0.85 + (S.loyalty - 0.5) * 0.7 + 0.2 - far * 0.22 - taxOf(v) * 0.4 -
-                        (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06) - p.forced * 0.4 - (HARVEST_TAX && p.job === "farmer" ? f.harvest * 0.4 : 0);
+                        (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06) - p.forced * 0.4 - p.wronged * 0.4 - (HARVEST_TAX && p.job === "farmer" ? f.harvest * 0.4 : 0);
       p.loyal += (clamp(wantLoyal, 0, 1) - p.loyal) * 0.05;
       /* Grain a leader made them sell weighs as a tax on it would (TODO 15.5b2), and is half forgotten in a season. */
       if (p.forced > 0) { p.forced *= FORCED_FADE; if (p.forced < 0.005) p.forced = 0; }
+      /* A riot broken up, or left unanswered (TODO 15.5b3): held against the leader as long. */
+      if (p.wronged > 0) { p.wronged *= FORCED_FADE; if (p.wronged < 0.005) p.wronged = 0; }
 
       if (!adult(p)) return;
       /* Wages. */
@@ -5867,6 +5874,7 @@
       /* Behind a wall the same people count for more (TODO 14e). */
       const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + WAR_ERA.wallWorth * v.wall);
       v.foes = attackers;
+      if (RIOTS && attackers === 0) riot(v, ours);   // not with an enemy at the edge: then the doors are barred
       /* A wall raised in wartime by the people of the place, out of what is in its store (murage, asked
          for when the enemy was near or had just struck): after enemy soldiers were at its edge in the
          last two months, or it was raided in the last year; let go in a long peace. Raised by every
@@ -6535,6 +6543,139 @@
         q.food -= amount; v.food += amount; need -= amount; count.forcedGrain += amount;
         q.forced = Math.min(1, q.forced + amount / (amount + q.food));
       }
+    }
+    /* ── food riots (TODO 15.5b3) ─────────────────────────────────────────
+       Not hunger alone and not temper (Ric, 2026-11-20: "is it really just a hot tempered thing?"):
+       riots came where people went short while they could see food that was not theirs — a store, a
+       larder, a cart leaving — among neighbours who knew each other, and most among those who bought
+       their bread; most crowds took the grain and paid what they called a fair price (Thompson's
+       "moral economy"; Bohstedt; Wrigley). Who joins is Granovetter's threshold model (1978): each
+       hungry person comes out once enough of the village is out already, and that share is their own —
+       higher for the patient and the loyal and where soldiers stand ready, lower for the hot-tempered,
+       the well-friended, those who buy their food, and where the food in sight is plainly being kept
+       from them. A riot happens only if, counting up from the readiest, enough come out to bring out the
+       next; never on a timer. The weak (half their strength gone) stay home, as famine riots faded
+       once hunger had gone on too long (Ó Gráda). The leader answers by their nature (`ruling`):
+       the bold, with soldiers enough to send, break it up, the warm feed the crowd from the treasury, and the
+       rest do nothing; what they do is held against them, or for them, in their people's loyalty. */
+    const RIOT_GAP = 7 * DAY_HOURS;     // a crowd once fed and gone home is not out again within the week
+    const RIOT_FEAR = 60 * DAY_HOURS;   // a riot broken up by soldiers is remembered for two months
+    const RIOT_TAKE = 4;                // days of food each takes: a sack's worth, what one can carry home
+    const FAIR_FOOD = 1;                // what a crowd pays: a day's food a coin, the store's price in plenty
+    const GROWERS = new Set(["farmer", "herder", "fisher", "hunter"]);
+    function riot(v, ours) {
+      if (v.pop <= 8 || v.hungry <= v.pop * 0.15 || t < 30 * DAY_HOURS || t - v.riotAt < RIOT_GAP) return;
+      const f = factions[v.f], lead = byId.get(f.leader);
+      const here = PLAIN ? people.filter(q => q.home === v.id) : residents(v.id);
+      /* What is in sight: the store, what households hold beyond their winter's need, and carts of food
+         setting off from here for somewhere else. */
+      let adults = 0, carts = 0;
+      const ready = [];
+      for (const q of here) {
+        if (q.hp <= 0 || !adult(q)) continue;
+        adults++;
+        if (q.cargo && q.cargo.what === "food" && !q.cargo.gift && q.at !== v.id && dist(q, v) < v.radius + 1) carts += q.cargo.amount;
+        if (q.hungry > 0 && q.hp > 0.5 && q.job !== "soldier" && q.id !== f.leader) ready.push(q);
+      }
+      if (ready.length < 5 || ready.length < adults * 0.08) return;
+      let need = 0; for (const q of ready) need += RIOT_TAKE * dailyNeed(q);
+      if (v.food + (v.spare || 0) + carts < need * 0.25) return;   // nothing to take: hunger alone does not riot
+      /* What makes it plain that the food is being kept from them: grain leaving, the faction's grain
+         in the store, rich larders. And soldiers at hand, under a leader who would use them. */
+      const unfair = (carts > 0.5 ? 0.08 : 0) + (v.levy > v.pop * 0.5 ? 0.06 : 0) + ((v.spare || 0) > v.pop ? 0.06 : 0);
+      const fear = (lead ? Math.min(0.3, ours / ready.length * 0.5 * ruling(lead, "bold", f)) : 0) + (t - v.putDown < RIOT_FEAR ? 0.25 : 0);
+      const thr = new Map();
+      for (const q of ready) thr.set(q, -0.08 + q.patient * 0.25 + q.loyal * 0.25 + fear - q.temper * 0.2 - Math.min(0.12, circle(q) * 0.02) - unfair - (GROWERS.has(q.job) ? 0 : 0.06));
+      ready.sort((a, b) => thr.get(a) - thr.get(b));
+      let k = 0;
+      while (k < ready.length && thr.get(ready[k]) <= k / adults) k++;
+      if (k < 5 || k < adults * 0.08) return;
+      const crowd = ready.slice(0, k);
+      v.riotAt = t; count.riots++;
+      let temper = 0; for (const q of crowd) temper += q.temper;
+      const rough = temper / k > 0.62;
+      if (rough) count.riotsRough++;
+      /* Where they take it from: carts first, then the store, then the larders, as the crowds of the
+         past stopped wagons and went to the market and the mill before the farmers' barns. */
+      const larders = here.filter(q => q.hp > 0 && adult(q) && !thr.has(q) && q.food - reserve(q) > 1);
+      let took = 0, fromCart = 0, fromStore = 0, fromHouse = 0;
+      const got = new Map();
+      for (const r of crowd) {
+        let want = RIOT_TAKE * dailyNeed(r) - r.food;
+        const take = (amount, payTo) => {
+          const cost = rough ? 0 : Math.min(funds(r), amount * FAIR_FOOD);
+          if (cost > 0) pay(r, cost);
+          r.food += amount; want -= amount; took += amount; got.set(r, (got.get(r) || 0) + amount);
+          payTo(cost);
+        };
+        for (const q of here) {
+          if (want <= 0.05) break;
+          if (!(q.cargo && q.cargo.what === "food" && !q.cargo.gift && q.at !== v.id && q.cargo.amount > 0.05 && dist(q, v) < v.radius + 1)) continue;
+          const a = Math.min(want, q.cargo.amount), share = a / q.cargo.amount;
+          if (q.cargo.paid) q.cargo.paid *= 1 - share;
+          q.cargo.amount -= a; fromCart += a;
+          take(a, c => { q.coins += c; });
+          if (rough) feelFor(q, r, -0.3);
+        }
+        if (want > 0.05 && v.food > 0.05) {
+          const a = Math.min(want, v.food), mine = v.levy > 0 ? Math.min(1, v.levy / Math.max(v.food, 1e-9)) : 0;
+          v.food -= a; if (mine > 0) v.levy = Math.max(0, v.levy - a * mine); fromStore += a;
+          take(a, c => { v.till += c * (1 - mine); f.treasury += c * mine; });
+        }
+        for (const q of larders) {
+          if (want <= 0.05) break;
+          const extra = q.food - reserve(q) - 0.5;
+          if (extra <= 0.05) continue;
+          const a = Math.min(want, extra);
+          q.food -= a; fromHouse += a;
+          take(a, c => { q.coins += c; });
+          feelFor(q, r, rough ? -0.4 : -0.15);
+          if (rough) { shaken(q, LIFE.robbed); if (R() < 0.25) { q.hp = Math.max(0.05, q.hp - 0.1); q.hit = TK(6); wakeUp(q); } }   // bruises: a crowd that came for bread did not come to kill
+        }
+      }
+      count.riotGrain += took;
+      /* The leader's answer. A visitor ruling the faction answers by its relief. */
+      let answer = "none";
+      if (lead) {
+        const warm = ruling(lead, "warm", f), greed = ruling(lead, "greed", f), bold = ruling(lead, "bold", f);
+        if (f.yours) answer = (v.relief != null ? v.relief : f.relief) && f.treasury > 0 ? "fed" : "none";
+        else {
+          /* Whichever way the leader leans further: force (as bold as they are past warm) or kindness (as
+             warm as they are past greedy). Soldiers at hand keep a crowd home (`fear`); these are sent. */
+          const force = bold - Math.max(0.5, warm), kind = warm - greed;
+          if (force > 0.1 && force >= kind && f.soldiers >= Math.max(2, k * 0.2)) answer = "put";
+          else if (kind > 0.05 && f.treasury > 0) answer = "fed";
+        }
+      }
+      if (answer === "put") {
+        /* Broken up: half of what they carried off taken back into the store, some hurt, and the
+           leader who sent the soldiers held to blame. */
+        v.putDown = t; count.riotsPut++;
+        for (const r of crowd) {
+          const back = Math.min(r.food, (got.get(r) || 0) * 0.5);
+          r.food -= back; v.food += back;
+          if (R() < 0.2) { r.hp = Math.max(0.05, r.hp - 0.12); r.hit = TK(6); }
+          r.wronged = Math.min(1, r.wronged + 0.5); r.fear = clamp(r.fear + 0.3, 0, 1);
+          if (lead) feelFor(r, lead, -0.3);
+        }
+      } else if (answer === "fed") {
+        /* Fed: a week's food each from the store at the treasury's cost, the faction's own grain first. */
+        count.riotsFed++;
+        for (const r of crowd) {
+          let want = Math.max(0, 7 * dailyNeed(r) - r.food);
+          const own = Math.min(want, v.levy, v.food);
+          if (own > 0) { v.levy -= own; v.food -= own; r.food += own; want -= own; count.levyEaten += own; }
+          const a = Math.min(want, v.food, f.treasury / Math.max(v.priceFood, 0.01));
+          if (a > 0.01) { f.treasury -= a * v.priceFood; v.till += a * v.priceFood; v.food -= a; r.food += a; }
+          r.wronged = Math.max(0, r.wronged - 0.3); r.loyal = clamp(r.loyal + 0.05, 0, 1);
+        }
+      } else for (const r of crowd) r.wronged = Math.min(1, r.wronged + 0.2);   // nobody came
+      const r0 = crowd[0];
+      wakeUp(r0); r0.say = rough ? "Take it! They'd let us starve." : "Bread at a fair price!"; r0.sayT = TK(60);
+      const what = took < 0.5 ? "gathered at the store and found nothing in it" : fromCart >= fromStore && fromCart >= fromHouse ? "stopped a cart of grain" : fromStore >= fromHouse ? "emptied the store" : "opened the rich families' larders";
+      const how = took < 0.5 ? "" : rough ? " and taken what they wanted" : " and paid what they call a fair price";
+      const then = answer === "put" ? " Soldiers sent by " + lead.name + " broke it up." : answer === "fed" ? " " + (lead ? lead.name : f.name) + " has sent grain." : "";
+      note("riot", "The hungry of " + v.name + " have " + what + how + "." + then, rough || answer === "put" ? 2.5 : 2, v.x, v.y, v.f);
     }
     /* The harvest tax as the leader sees fit (TODO 15.5t; Ric, 2026-11-21: "they can tax what they want
        lol just like real life", moved "By the leader's traits"). The harvest comes once a year and
