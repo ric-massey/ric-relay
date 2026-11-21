@@ -2894,8 +2894,24 @@ in villages going short.
   households hold above their own winter, as any trader's does. Measured after: a starting city (rich land, several seeds) with and
 without, and the default world unchanged where nobody is short.
 
-**[ ] 15.5t. Treasuries that can never pay** (found by 15.5b2, 2026-11-21; placed here because b2's
-grain trade and b3's answer to riots both need a leader with money). *Now:* in the default world at
+**[x] 15.5t. Treasuries that can never pay** (found by 15.5b2, 2026-11-21; placed here because b2's
+grain trade and b3's answer to riots both need a leader with money).
+*Done 2026-11-21:* a tax on the harvest (a new start setting, a tenth by default; none = the world
+before), taken in kind into the village store as the faction's grain, sold for the treasury, paying
+soldiers in food when coin runs out and feeding them on campaign; the leader sets the share once a
+year as the reaping begins, from a chest of a year's wages (more for the greedy) and what the fields
+gave; farmers' loyalty feels it; a ruled faction sets it on the page. **Measured**, six seeds a year,
+against 15.5b2: sales tax 0.49–0.55 → 0.14–0.33, treasuries empty 61–85% → 14–34% of days, loyalty
+0.62–0.66 → 0.76–0.89, starved the same; **but the leaders take 26–38% of the harvest** to keep 8 in
+100 under arms (Rome about 1 in 100 on perhaps a twentieth of output) — what that army costs, written
+down, not tuned. Still short before the harvest in some years, when the fighting season (14e) nearly
+doubles the army. A starting city still empties (140–305 of 1,000), by moving out, starving 2 against
+10. Left out: taxing herds, fish and crafts as the tithe did (only what is reaped is taxed); whether
+the start's 8% under arms should stay (Ric unsure, 2026-11-21: "im not sure how ti give the leaders
+the olption to choose what they want and not let it go badly lol" — kept, and let go badly as it
+would). README, "Treasuries that can pay".
+**Ric's answers (2026-11-21):** harvest tax "yes they can tax what they want lol just like real
+life"; army size as above; who sets it: "By the leader's traits now". *Now:* in the default world at
 peace, every faction's tax climbs from 0.12 to its top of 0.6 within about 90 days and stays there,
 with the treasury at 0 to 95 coins (seed 11: four peoples of about 100, 4 to 9 soldiers at 1 coin a
 day); the same in a starting city's world (a year's mean tax 0.45–0.56, old engine and new). The
@@ -2906,6 +2922,39 @@ treasury takes in and pays out in a day (which sales are taxed now that crafters
 in tax (a share of output, by era). *Done when:* a default world at peace keeps a tax near where it
 started, or the run shows why it cannot, written down rather than tuned; then 15.5b2's starting city
 measured again.
+
+*Measured 2026-11-21 (a ledger of every treasury change, the default world, seed 11, 120 days, four
+peoples of about 100):* in, about 1,950 coins, all of it tax on sales in the village stores (food 550,
+wool 490, ore 410, wood 210, the rest small) — even with the tax at 0.6 from day 90; out, soldiers'
+wages 1,752 and the leaders' keep 84. The soldiers, 28 at the start (8% of everybody, the "Soldiers
+at the start" default), were owed about 3,400 at a coin a day each, so about half went unpaid. **The
+tax falls only on what passes through a store, and most food never does**: a farming household eats
+what it grows. Nothing else was spent: no relief, no gear, no rations, nothing sent back to the tills.
+
+*Research notes.*
+- *What states taxed.* Agrarian states took most of what they took from the land and its harvest —
+  the Byzantine land tax "the backbone" of revenue, England's geld a land tax; the church's tithe a
+  tenth of the produce, mostly in kind (the tenth sheaf, lamb, cheese: *Leges Edwardis Confessoris*,
+  [Fordham](https://sourcebooks.web.fordham.edu/source/1115Ledwtith.html); [Tax in kind](https://en.wikipedia.org/wiki/Tax_in_kind)).
+  In kind because little money circulated; it was commuted to coin as money spread, and grain in kind
+  was hard to store and carry ([Slantchev, "Revenue"](https://pages.ucsd.edu/~bslantchev/courses/ps143a/05%20Revenue.pdf)).
+- *How much.* Pre-modern states commonly took about 5–7% of output; Song China perhaps 12–15%, the
+  most of any; England by the early 1800s 15–20%
+  ([Warwick CAGE transcript](https://warwick.ac.uk/fac/soc/economics/research/centres/cage/news/podcasts/ma-east.pdf);
+  [Michigan, critique of the Song figures](https://deepblue.lib.umich.edu/bitstream/handle/2027.42/43641/11186_2004_Article_BF00213228.pdf%3Fsequence=1)).
+- *What armies cost.* Rome's army took about 60–80% of the empire's spending (Duncan-Jones, about 670
+  million sesterces about AD 150), with about half to one per cent of the people under arms (item 15's
+  notes); a legionary's pay was 225 denarii a year under Augustus
+  ([Economics of the Roman army](https://en.wikipedia.org/wiki/Economics_of_the_Roman_army)).
+  So a state of the past spent most of a twentieth of the harvest keeping one person in a hundred
+  under arms. The engine keeps eight in a hundred and taxes no harvest at all.
+
+*Approach proposed.* (1) **A tax on the harvest**, as states took it: at the reaping a share of what is
+reaped goes into the village store, and the store's till pays the treasury for it at what the store
+pays a farmer (so no coin is made: if the till is empty the grain is the village's and the treasury
+waits). A setting of its own, so that at nothing the world is as it was. (2) The leader's tax rule
+then reads both. (3) Whether the start's 8% under arms stays is Ric's: it is eight times Rome's share.
+Measured after: the ledger again, the tax over a year of peace, the starting city.
 
 **[ ] 15.5b3. Food riots** (Ric: "Yes they should"; who riots and why in the notes below).
 

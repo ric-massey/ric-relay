@@ -1901,6 +1901,58 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Treasuries that can pay: the harvest tax (2026-11-21)
+
+TODO item 15.5t, found by 15.5b2. A ledger of every coin in and out of the treasuries (default world,
+seed 11, 120 days) showed why every treasury was empty: the only tax was on sales through a village
+store, and most food never passes through one — a farming household eats what it grows. Even at its
+top of 60%, reached by day 90 of peace, it brought in about half the soldiers' wages. Ric: leaders
+"can tax what they want lol just like real life", the share moved "By the leader's traits".
+
+- **A tax on the harvest** ("Tax on the harvest at the start", default a tenth; none means none,
+  ever, and then the world is the one before). A share of everything reaped goes into the village
+  store as **the faction's grain** (`v.levy`, days of food). States of the past took most of what they
+  took from the land, in kind where little money ran: the tithe was the tenth sheaf, lamb and cheese
+  ([*Leges Edwardis Confessoris*](https://sourcebooks.web.fordham.edu/source/1115Ledwtith.html);
+  [Tax in kind](https://en.wikipedia.org/wiki/Tax_in_kind)), the land tax the "backbone" of Byzantine
+  revenue, and in kind because coin was scarce ([Slantchev, "Revenue"](https://pages.ucsd.edu/~bslantchev/courses/ps143a/05%20Revenue.pdf)).
+- **What it pays for.** The faction's grain sold from the store pays the treasury, not the till (its
+  share of every sale of food, in proportion); a soldier the treasury cannot pay in coin is paid a
+  day's food from it; soldiers going on campaign are fed from it first, for nothing; and so is
+  relief for those who cannot pay (added after the measurements below, found reading the diff:
+  the treasury had been paying the till for its own grain). Its grain
+  is never more than the store holds. (Owed to the treasury as coin instead, it was never paid: by
+  day 300 every till was empty, all 4,200 coins in the world were in people's purses, and the stores
+  held 18,700 days of food nobody needed to buy. Measured.)
+- **The leader decides it once a year, as the reaping begins**: a chest (`f.chest`) of a year's
+  soldiers' wages, more by as much as they are greedier than warm (up to a year and a half), less
+  what is in hand — coins, and the faction's grain at what the store pays for it — over what the
+  fields gave since the last reaping; at most half. (Moved a point a day, it rose to half the harvest
+  in winter, with nothing to reap; a warm leader content with a quarter of a year's wages could not
+  pay their own army by spring; and grain counted at a coin a day, when year-old grain sold at a
+  third of that, made leaders think themselves rich. All measured.) The coins in that chest are not
+  "spare" for the daily rule that sends a treasury's spare coins back to the tills.
+- **Felt by those who pay it**: a farmer's loyalty falls with the share as everybody's does with the
+  tax on sales. A leader may take half the harvest; their people answer as they would.
+- **A faction you rule** has "Tax on every harvest" beside "Tax on every sale"; the faction list
+  shows both.
+
+**Measured, a year each, six seeds, against the engine before (15.5b2).** The default world: tax on
+sales, the year's mean, 0.49–0.55 → 0.14–0.33; days a treasury held less than a coin 61–85% →
+14–34%; loyalty 0.62–0.66 → 0.76–0.89; soldiers kept 6–8 → 8.5–9.5; starved 0 in five seeds either
+way, 9 → 10 in the sixth. **The price of it: the leaders took 26–38% of the harvest**, to keep
+eight in every hundred under arms. Rome kept about one in a hundred and took perhaps a twentieth of
+output (Duncan-Jones: the army 60–80% of the empire's spending; pre-modern states commonly 5–7% of
+output, Song China 12–15%, [Economics of the Roman army](https://en.wikipedia.org/wiki/Economics_of_the_Roman_army);
+[Warwick CAGE](https://warwick.ac.uk/fac/soc/economics/research/centres/cage/news/podcasts/ma-east.pdf)).
+So the share is what that army costs, not a number tuned; the start's 8% under arms is a setting.
+The treasuries still run short before the harvest in some years, when the fighting season (14e)
+nearly doubles the army each autumn. A starting city (as 15.5b2): it ended with 140–305 people
+against 172–404, starved 2 against 10 in all six, tax 0.17–0.29 against 0.50–0.56, grain carted in
+103–1,826 days against 0–388; it empties by people moving out, and few stay hungry long enough for
+a public order (0–475 days bought). `test/treasury.test.mjs`; with no harvest tax, `rivers` and
+`wartime` hold the world as it was.
+
 ### The government's grain (2026-11-21)
 
 TODO item 15.5b2, the second of four parts of 15.5b. Before this a leader's only help to the hungry

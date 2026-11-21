@@ -2247,7 +2247,7 @@
       keeper.send({ t: "do", seq: ++seq, what: "wed", a: [c.f, c.o, pa.id, pb.id] });
       wedPick = null; return;
     }
-    if (mode === "people" && ["rule", "ftax", "army", "relief", "land", "vtax", "vrelief", "vreset", "war", "peace", "ally", "trade", "tribute", "stop", "live"].includes(a[0])) {
+    if (mode === "people" && ["rule", "ftax", "fharvest", "army", "relief", "land", "vtax", "vrelief", "vreset", "war", "peace", "ally", "trade", "tribute", "stop", "live"].includes(a[0])) {
       /* A decision is the keeper's to carry out, from what stands in the
          world at that moment; the panel is drawn again when it says it has
          (`hear`, "did"), with whatever the other side answered. */
@@ -2483,6 +2483,7 @@
       (coins ? " Treasury: " + Math.round(f.treasury) + " coins." : "") + "</p>" +
       (ruleMsg ? "<p class='small rule-msg'>" + esc(ruleMsg) + "</p>" : "") +
       (coins ? stepRow("Tax on every sale", pctOf(f.yours.tax), "ftax:" + f.id) : "") +
+      (coins && d.harvestTax > 0 ? stepRow("Tax on every harvest", pctOf(f.yours.harvest), "fharvest:" + f.id) : "") +
       stepRow("Under arms", pctOf(f.yours.army) + " (" + f.soldiers + ")", "army:" + f.id) +
       "<div class='row'><span class='lbl'>Who holds the land</span><button class='btn' data-go='land:" + f.id + "'>" + (LAND[f.yours.land] || LAND.family) + "</button></div>" +
       (coins ? "<div class='row'><span class='lbl'>Treasury buys bread for the hungry</span><button class='btn' data-go='relief:" + f.id + "' aria-pressed='" + f.yours.relief + "'>" + (f.yours.relief ? "Yes" : "No") + "</button></div>" : "") +
@@ -2562,7 +2563,7 @@
           return "<button class='fac' data-go='" + (big ? "at:" + big.x + ":" + big.y : "") + "'><span class='nm'>" + fname(f) + "</span>" +
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
-            (coins ? " · tax " + Math.round(f.tax * 100) + "%" : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
+            (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
             (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +

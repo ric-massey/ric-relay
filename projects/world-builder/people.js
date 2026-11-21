@@ -242,6 +242,10 @@
       { key: "tax", when: s => s.money === "coins", label: "Tax at the start", type: "range", min: 0, max: 0.6, step: 0.02, def: 0.12,
         say: v => (v === 0 ? "none" : pct(v) + " of every sale"),
         help: "What each faction takes to pay its soldiers to begin with. After that it is each leader's call — or yours, if you rule a faction." },
+      /* TODO 15.5t: states of the past took most of what they took from the harvest (the tithe a tenth). */
+      { key: "harvestTax", when: s => s.money === "coins", label: "Tax on the harvest at the start", type: "range", min: 0, max: 0.5, step: 0.01, def: 0.1,
+        say: v => (v === 0 ? "none, ever" : pct(v) + " of what is reaped"),
+        help: "A share of every harvest goes into the village store and is paid for to the faction, as tithes and land taxes were. After that each leader's nature moves it — or you, if you rule a faction. None leaves every harvest untaxed." },
       { key: "inherit", when: s => s.money === "coins", label: "When somebody dies", type: "select", def: "kids",
         options: [["kids", "Their children get their coins"], ["faction", "Their faction takes them"], ["village", "Shared round the village"]],
         help: "Who gets a person's coins. A child's share is kept for them until they are grown." },
@@ -689,7 +693,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1293,7 +1297,7 @@
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
       const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
-                  leader: 0, treasury: 0, tax: S.tax, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
+                  leader: 0, treasury: 0, tax: S.tax, harvest: S.harvestTax || 0, chest: 0, reaping: false, reapedYear: 0, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9,
                   mean: new Float64Array(TRAITS.length),   // TODO 15a: its grown-ups' average of each trait, at the last census
@@ -1314,6 +1318,7 @@
                   /* A public order for grain (TODO 15.5b2): coins the treasury has set aside here, the days of food
                      they are for, and whether for people going short now or to lay in after the harvest. */
                   bid: 0, bidWant: 0, bidFor: "",
+                  levy: 0,   // TODO 15.5t: days of food in the store that are the faction's, taken from the harvest
                   /* Wood, stone and ore in store, what each fetches and how much the village wants (TODO 9a). */
                   wood: 0, stone: 0, iron: 0, priceWood: 1, priceStone: 1, priceIron: 2, wantWood: 1, wantStone: 1, wantIron: 1, mats: undefined,
                   wool: 0, hide: 0, priceWool: 1.5, priceHide: 1.5, wantWool: 1, wantHide: 1,   // TODO 9b
@@ -2059,6 +2064,7 @@
     const adult = p => p.age >= S.grown;
     const atWar = (a, b) => a !== b && factions[a].rel[b] && factions[a].rel[b].war;
     const shared = S.money === "shared";
+    const HARVEST_TAX = !shared && (S.harvestTax || 0) > 0;   // TODO 15.5t: none at the start means none ever
 
     function note(kind, text, weight, x, y, f) {
       const e = { id: events.length ? events[events.length - 1].id + 1 : 0, t: t, year: Math.floor(year()), kind: kind, text: text,
@@ -2763,7 +2769,10 @@
         amount = Math.min(amount, funds(p) / price);
         if (amount <= 0.01) return 0;
         const cost = amount * price, tax = cost * taxFor(v, p);
-        pay(p, cost); v.till += cost - tax; factions[v.f].treasury += tax;
+        /* Grain that is the faction's (TODO 15.5t) is sold for the treasury, not the till. */
+        const mine = what === "food" && v.levy > 0 ? Math.min(1, v.levy / Math.max(v.food, 1e-9)) : 0;
+        if (mine > 0) v.levy = Math.max(0, v.levy - amount * mine);
+        pay(p, cost); v.till += (cost - tax) * (1 - mine); factions[v.f].treasury += tax + (cost - tax) * mine;
       }
       if (what === "food") { v.food -= amount; p.food += amount; } else if (what === "goods") { v.goods -= amount; p.goods += amount; tookGoods(p, v, amount); } else v[what] -= amount;   // a load of wood, stone or ore goes on the cart
       return amount;
@@ -2845,8 +2854,13 @@
         else buy(p, v, "food", 1.1 - p.food);
         if (p.food < 0.2 && !shared && (v.relief != null ? v.relief : f.relief) && v.f === p.f) {
           /* Relief: the treasury buys bread for somebody who cannot. */
-          const amount = Math.min(0.6, v.food), cost = amount * v.priceFood;
-          if (amount > 0.05 && f.treasury >= cost) { f.treasury -= cost; v.till += cost; v.food -= amount; p.food += amount; }
+          /* From the faction's own grain first, for nothing (TODO 15.5t): paying for it was the treasury paying itself into the till. */
+          const own = Math.min(0.6, v.levy, v.food);
+          if (own > 0.05) { v.levy -= own; v.food -= own; p.food += own; count.levyEaten += own; }
+          else {
+            const amount = Math.min(0.6, v.food), cost = amount * v.priceFood;
+            if (amount > 0.05 && f.treasury >= cost) { f.treasury -= cost; v.till += cost; v.food -= amount; p.food += amount; }
+          }
         }
       }
       outfit(p, v);
@@ -3610,6 +3624,14 @@
           stock[ti] -= got; need -= got;
         }
         p.food += capacity - need; count.reaped += capacity - need;   // TODO 14b: the harvest, in days of food
+        /* The faction's share of it (TODO 15.5t), into the village store as the faction's grain, as
+           tithes and land taxes were taken in kind: sold from the store for the treasury, and the
+           soldiers fed and paid from it. */
+        if (HARVEST_TAX && !shared) {
+          const hv = villages[p.home], hf = factions[hv.f], cut = (capacity - need) * hf.harvest;
+          if (hv.f === p.f) hf.reapedYear += capacity - need;
+          if (cut > 0.001 && hv.alive && hv.f === p.f) { p.food -= cut; hv.food += cut; hv.levy += cut; count.harvestTax += cut; }
+        }
         if (p.dwelling >= 0) homes[p.dwelling].farmed++;          // the household farms (TODO 7c)
         /* Another household's field: half of it is theirs. */
         const holder = held.size ? held.get(fy * cols + fx) : undefined;
@@ -3895,7 +3917,9 @@
       if (shared) {
         const take = Math.min(want, v.food * 0.5); v.food -= take; p.food += take; return;
       }
-      const fromStore = Math.min(want, v.food, f.treasury / Math.max(0.3, v.priceFood));
+      /* The faction's own grain first, for nothing (TODO 15.5t). */
+      if (v.f === p.f && v.levy > 0.01) { const own = Math.min(want, v.levy, v.food); v.levy -= own; v.food -= own; p.food += own; got += own; count.levyEaten += own; }
+      const fromStore = Math.min(want - got, v.food, f.treasury / Math.max(0.3, v.priceFood));
       if (fromStore > 0.01) { const cost = fromStore * v.priceFood; f.treasury -= cost; v.till += cost; v.food -= fromStore; p.food += fromStore; got += fromStore; }
       if (got < want - 0.2 && f.treasury > 0.5) {
         for (const q of PLAIN ? people : residents(v.id)) {
@@ -5650,7 +5674,7 @@
       const lead = byId.get(f.leader);
       const far = lead ? Math.abs(viewOf(p) - viewOf(lead)) : 0.5;
       const wantLoyal = p.mood * 0.85 + (S.loyalty - 0.5) * 0.7 + 0.2 - far * 0.22 - taxOf(v) * 0.4 -
-                        (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06) - p.forced * 0.4;
+                        (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06) - p.forced * 0.4 - (HARVEST_TAX && p.job === "farmer" ? f.harvest * 0.4 : 0);
       p.loyal += (clamp(wantLoyal, 0, 1) - p.loyal) * 0.05;
       /* Grain a leader made them sell weighs as a tax on it would (TODO 15.5b2), and is half forgotten in a season. */
       if (p.forced > 0) { p.forced *= FORCED_FADE; if (p.forced < 0.005) p.forced = 0; }
@@ -5659,6 +5683,9 @@
       /* Wages. */
       if (p.job === "soldier" && !shared && t % DAY_HOURS === 0) {
         if (f.treasury >= WAGE) { f.treasury -= WAGE; p.coins += WAGE; p.unpaid = Math.max(0, p.unpaid - 1); }
+        /* Or in grain, from the faction's share of their village store (TODO 15.5t): a day's food a day,
+           as soldiers' pay so often was. */
+        else if (v.f === p.f && v.levy >= WAGE && v.food >= WAGE) { v.levy -= WAGE; v.food -= WAGE; p.food += WAGE; p.unpaid = Math.max(0, p.unpaid - 1); count.levyEaten += WAGE; }
         else if (++p.unpaid > 6 && !anyWar) { p.job = "farmer"; p.unpaid = 0; p.task = "idle"; }
       }
       if (lead === p && !shared && t % DAY_HOURS === 0 && f.treasury >= 0.3) { f.treasury -= 0.3; p.coins += 0.3; }
@@ -5764,6 +5791,8 @@
         return;
       }
       v.empty = 0;
+      /* The faction's grain is never more than the store holds (TODO 15.5t): what was eaten, spoiled or taken went first from it. */
+      if (v.levy > v.food) v.levy = Math.max(0, v.food);
       /* A raid here since yesterday, or a year gone by without want or raids (TODO 10). */
       const yr = Math.floor(t / YEAR);
       if (v.raidAt > v.raidSeen || v.yearSeen !== yr) {
@@ -5952,7 +5981,7 @@
       const names = new Set(factions.map(o => o.name));
       let name; do { name = R() < 0.5 ? "Free " + v.name : pick(F_FIRST) + " " + pick(F_LAST); } while (names.has(name) && names.size < 150);
       const nf = newFaction(name, viewOf(head));
-      nf.treasury = 0; nf.tax = Math.min(f.tax, S.tax); nf.leader = head.id; nf.rule = f.rule === "elected" ? "elected" : "chief";
+      nf.treasury = 0; nf.tax = Math.min(f.tax, S.tax); nf.harvest = Math.min(f.harvest, S.harvestTax || 0); nf.leader = head.id; nf.rule = f.rule === "elected" ? "elected" : "chief";
       v.f = nf.id; v.broke = t; v.siege = 0;
       const refuge = villages.filter(o => o.alive && o.f === f.id).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
       let stayed = 0, leftN = 0;
@@ -6507,6 +6536,35 @@
         q.forced = Math.min(1, q.forced + amount / (amount + q.food));
       }
     }
+    /* The harvest tax as the leader sees fit (TODO 15.5t; Ric, 2026-11-21: "they can tax what they want
+       lol just like real life", moved "By the leader's traits"). The harvest comes once a year and
+       must pay the soldiers until the next, so a leader wants a chest (`f.chest`) of a year's wages,
+       and the greedier than warm more (up to a year and a half). (A warm leader content with a quarter
+       of a year could not pay their own army by spring and put the tax on sales to its top instead,
+       measured; a warm leader's kindness is relief, rations and grain bought in, 15.5b2.) They sets the share once a year, as the reaping begins, to what fills that chest from
+       what the fields gave last year. (Moving it a point a day took it to half the harvest in winter,
+       with nothing to reap, and to nothing in a reaping that began with last year's coins still in
+       hand; measured.) Nothing stops a greedy leader taking half the harvest but their people:
+       the tax weighs on the farmers' loyalty as the sales tax does (`reflect`), and the disloyal
+       overthrow chiefs and break away. */
+    function harvestRule(f, lead, wages) {
+      f.chest = wages * 52 * (1 + clamp(ruling(lead, "greed", f) - ruling(lead, "warm", f), 0, 0.5));
+      if (f.yours) { f.harvest = f.yours.harvest; return; }
+      const reaping = season().ripe >= 1.2;
+      if (!reaping) { f.reaping = false; return; }
+      if (f.reaping) return;
+      /* The reaping begins: the year's budget. What is still in hand (coins, and the faction's grain at what
+         the store would pay for it — at a day's food a coin, year-old grain selling at a third of that
+         made leaders think themselves rich, measured) against the chest wanted, over what the fields
+         gave in the year since the last reaping began. The first year, the share it started with. */
+      f.reaping = true;
+      if (f.reapedYear > 0) {
+        let have = f.treasury;
+        for (const v of villages) if (v.alive && v.f === f.id) have += v.levy * v.priceFood * 0.85;
+        f.harvest = clamp((f.chest - have) / f.reapedYear, 0, 0.5);
+      }
+      f.reapedYear = 0;
+    }
     function decide(f) {
       const lead = byId.get(f.leader);
       if (!lead || lead.hp === -99 || lead.f !== f.id) { succeed(f, "left"); return; }
@@ -6583,11 +6641,13 @@
              who does not waits until the treasury is overflowing. */
           f.relief = viewOf(lead) > 0.1 || f.treasury > wages * 2 + f.pop * 1.5;
         }
+        if (HARVEST_TAX) harvestRule(f, lead, wages);
         grainPolicy(f, lead, wages);
         /* Coins a treasury has no use for go back into the tills of its
            villages — it buys from them — or every coin in the world would end
            up in a chest and nobody could pay a farmer. */
-        const spare = f.treasury - (wages * 4 + f.pop);
+        /* A chest kept from the harvest for the year's wages is not spare (TODO 15.5t). */
+        const spare = f.treasury - Math.max(wages * 4 + f.pop, HARVEST_TAX ? f.chest : 0);
         if (spare > 0) {
           const mine = villages.filter(v => v.alive && v.f === f.id);
           for (const v of mine) { v.till += spare * 0.5 / mine.length; }
@@ -6914,7 +6974,7 @@
       const f = factions[fid]; if (!f || !f.alive) return false;
       const at = villages.find(v => v.alive && v.f === f.id) || { x: 0, y: 0 };
       if (on && !f.yours) {
-        f.yours = { tax: f.tax, army: f.army, relief: !!f.relief, land: f.land };
+        f.yours = { tax: f.tax, harvest: f.harvest, army: f.army, relief: !!f.relief, land: f.land };
         note("rule", "You have taken the decisions of " + f.name + " into your own hands.", 2, at.x, at.y, f.id);
       } else if (!on && f.yours) {
         f.yours = null;
@@ -6927,6 +6987,7 @@
       openUp();
       const f = factions[fid]; if (!f || !f.yours) return false;
       if ("tax" in o) f.yours.tax = f.tax = clamp(+o.tax || 0, 0, 0.6);
+      if ("harvest" in o && HARVEST_TAX) f.yours.harvest = f.harvest = clamp(+o.harvest || 0, 0, 0.5);   // TODO 15.5t
       if ("army" in o) f.yours.army = f.army = clamp(+o.army || 0, 0, 0.6);
       if ("relief" in o) f.yours.relief = f.relief = !!o.relief;
       if ("land" in o && ["family", "village", "leader"].includes(o.land)) { f.yours.land = o.land; if (o.land !== f.land) setLand(f, o.land); }
