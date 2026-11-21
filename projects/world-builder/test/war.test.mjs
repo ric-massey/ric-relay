@@ -69,8 +69,6 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
    frightened a whole faction, so it sat at home however far off the fighting was. */
 {
   const w = People.create({ ...base, villages: 4 });
-  const peace = w.people.filter(p => w.adult(p) && p.f === 0 && p.job !== "soldier");
-  const calm = peace.map(p => w.urgency(p));
   war(w);
   w.step(24 * 4);
   const quiet = w.villages.filter(v => v.alive && v.f === 0 && v.siege === 0 && v.foes === 0 && w.stats().tick - v.raidAt > 4 * 24);
@@ -80,10 +78,16 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
   const fear = home.reduce((s, p) => s + p.fear, 0) / home.length;
   assert.ok(fear < 0.2, "a war elsewhere does not frighten people at home (mean fear " + fear.toFixed(2) + ")");
   /* The same people want to provide more and rest less than before the war. */
-  const i = peace.findIndex(p => home.includes(p));
-  assert.ok(i >= 0, "somebody seen before and during the war");
-  const p = peace[i], was = calm[i], now = w.urgency(p);
-  assert.ok(now.provide > was.provide * 1.05 || now.provide >= 1.3, "at war, they want to provide more (" + was.provide.toFixed(3) + " -> " + now.provide.toFixed(3) + ")");
+  /* Against the same people in the same world left at peace, on average: one person before and
+     after four days moved with their own larder and goods as much as with the war (after TODO 15.5h,
+     when the loyal give their spare goods at war: 0.931 -> 0.946). */
+  const still = People.create({ ...base, villages: 4 });
+  still.step(24 * 4);
+  const pairs = home.map(p => [p, still.byId.get(p.id)]).filter(([, q]) => q && q.hp > 0);
+  assert.ok(pairs.length > 5, "the same people in a world at peace");
+  const mean = (list, k) => list.reduce((s, x) => s + x[k], 0) / list.length;
+  const atWar = mean(pairs.map(([p]) => w.urgency(p)), "provide"), atPeace = mean(pairs.map(([, q]) => still.urgency(q)), "provide");
+  assert.ok(atWar > atPeace * 1.05, "at war, they want to provide more (" + atPeace.toFixed(3) + " at peace, " + atWar.toFixed(3) + " at war)");
   /* A place under siege is frightened. */
   const v = quiet[0]; v.siege = 6;
   w.step(6);
