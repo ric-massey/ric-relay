@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#174b36">
+  <meta name="theme-color" content="#1d5a3c">
   <title>Solitaire — RIC//NET</title>
-  <meta name="description" content="Play Solitaire in the Arcade. Klondike · draw one. Three styles to choose from, with touch and keyboard controls.">
+  <meta name="description" content="Play Klondike Solitaire in the Arcade: draw one or three, a daily deal, standard points and winnable deals only. Six decks, from a card room to a parlour to a terminal.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Solitaire — RIC//NET">
-  <meta property="og:description" content="Play Solitaire in the Arcade. Klondike · draw one. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:description" content="Play Klondike Solitaire in the Arcade: draw one or three, a daily deal, standard points and winnable deals only. Six decks, from a card room to a parlour to a terminal.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/solitaire/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/solitaire.jpg">
@@ -18,39 +18,242 @@
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
+/* Solitaire has its own page (round three, 2026-11-21, TODO.md). The page is
+   the table: the playing surface fills the window, a slim toolbar runs along
+   its top edge, the points and time sit on the table's near edge, and your
+   record and the scoreboard open in their own sheet. Each of the six decks
+   restyles the table, the cards (faces, pips, courts, backs) and the toolbar.
+   app.js only needs the ids. */
 
-/* This page owns its theme; layout and rules stay inside the Arcade games. */
-body{background-color:var(--paper);color:var(--ink)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
-dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+/* ---- the room --------------------------------------------------------------- */
+html{background:var(--table-color,#1d5a3c)}
+body{margin:0;min-height:100svh;display:flex;flex-direction:column;background:var(--table);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif)}
+.st-bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;min-height:54px;padding:6px max(2vw,12px);background:var(--bar,#0000002e);color:var(--bar-ink,#fff);border-bottom:var(--bar-rule,1px solid #ffffff1f);backdrop-filter:var(--bar-blur,blur(6px))}
+.st-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.st-back:hover{background:#ffffff1f}
+.st-name{display:flex;align-items:baseline;gap:10px;margin-right:6px;flex:none}
+.st-title{margin:0;font:var(--title-font,italic 700 22px/1 Georgia,serif);letter-spacing:var(--title-spacing,0);text-transform:var(--title-case,none);white-space:nowrap;color:var(--title-ink,inherit)}
+.st-bar .game-actions{position:relative;display:flex;align-items:center;gap:6px;flex:1;max-width:none;padding:0;justify-content:flex-start;flex-wrap:nowrap}
+.st-bar .game-actions .push{margin-left:auto}
+.st-bar :is(button,select){min-height:36px;padding:5px 12px;font-size:13px;white-space:nowrap;background:var(--bar-btn,#ffffff1a);color:var(--bar-ink,#fff);border:1px solid var(--bar-btn-edge,#ffffff33);border-radius:var(--radius,6px);font-family:var(--body-font,inherit)}
+.st-bar select option{color:#111;background:#fff}
+.st-bar :is(button,select):hover:not(:disabled){background:var(--bar-btn-hover,#ffffff2e)}
+.st-bar button.solid{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:700}
+.st-bar .tools{display:flex;gap:6px;padding:0;flex-wrap:nowrap}
+.st-bar .tools .break{display:none}
+.st-bar .tools button.minor{font-size:12px;background:var(--bar-btn,#ffffff1a);color:var(--bar-ink,#fff);border:1px solid var(--bar-btn-edge,#ffffff33);opacity:1;min-height:36px;padding:5px 10px}
+.st-bar .tools button.on{background:var(--bar-on,#ffffff40);border-color:var(--bar-on-edge,#ffffffaa)}
+@media(max-width:1240px){
+  .st-bar{flex-wrap:wrap;row-gap:6px;padding-bottom:8px}
+  .st-bar .game-actions{order:3;flex-basis:100%;min-width:0;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .st-bar .game-actions>*{flex:none}
+  .st-bar .game-actions label{width:auto;display:block}
+  .st-bar #new-game{order:-1}
+  .st-bar .game-actions .push{margin-left:0}
+}
 
-body{--paper:#eee4d0;--ink:#173b2d;--muted:#52624b;--green:#235a39;--table:#174b36;--panel:#e5dbc4;--edge:#b7ab8f;--display-font:Georgia,serif;--radius:9px}
-body[data-skin="1"]{--paper:#171d2a;--ink:#f7ebd2;--muted:#c5bda9;--green:#655397;--table:#272337;--panel:#242d40;--edge:#576075;--felt:#272337;color-scheme:dark}
-body[data-skin="2"]{--paper:#e7f0ef;--ink:#123d48;--muted:#47636a;--green:#236778;--table:#19596b;--panel:#d7e6e7;--edge:#87afb8;--felt:#19596b}
-.game-heading h1{font-style:italic}.solitaire-stage{background:var(--table)}.topbar{border-bottom:3px double var(--edge)}.card{box-shadow:0 2px 2px #0003}.page-mark{font-family:Georgia,serif}.page-mark .emblem{font-size:36px}
+/* ---- the table -------------------------------------------------------------------- */
+.st-table{flex:1;width:100%;max-width:none;margin:0;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;padding:clamp(10px,2.4vw,26px) max(2vw,8px) 24px;position:relative}
+.st-table .stage.solitaire-stage{width:100%;max-width:min(1000px,calc((100svh - 150px)*1.25));min-height:0;padding:0;background:none;color:inherit;position:relative}
+.solitaire-top,.tableau{gap:clamp(4px,1.2vw,14px);max-width:none;container-type:inline-size}
+.solitaire-top{margin-bottom:clamp(12px,2.6vw,26px)}
+.tableau{--down-step:1.5cqw;--up-step:4.7cqw}
+.tableau .card{top:calc(var(--d,0)*var(--down-step) + var(--u,0)*var(--up-step))}
+/* The near edge of the table: where you are in the game, and the points. */
+.st-edge{position:sticky;bottom:0;z-index:15;width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;padding:10px max(2vw,12px) calc(10px + env(safe-area-inset-bottom));margin-top:auto;background:var(--edge-bg,linear-gradient(transparent,#00000040 40%));color:var(--edge-ink,#fff)}
+.st-edge #status{font:var(--status-font,600 13px var(--body-font));order:1}
+.st-edge #metric{font:var(--metric-font,700 15px var(--mono));font-variant-numeric:tabular-nums;order:2;padding:3px 10px;border-radius:var(--radius,6px);background:var(--metric-bg,#00000033)}
+.st-edge .hint{flex-basis:100%;order:3;margin:0;padding:0;min-height:0;font-size:12.5px;color:var(--edge-muted,#ffffffb3);text-align:center}
+.dealing-cover{position:absolute;inset:-6px;z-index:12;display:grid;place-items:center;background:var(--table-color,#1d5a3c)d0;backdrop-filter:blur(2px)}
+.dealing-cover{background:color-mix(in srgb,var(--table-color,#1d5a3c) 82%,transparent)}
+.dealing-text{font:var(--status-font,600 15px var(--body-font));padding:10px 18px;border-radius:999px;background:#00000040;animation:deal-pulse 1.2s ease-in-out infinite}
+@keyframes deal-pulse{50%{opacity:.55}}
 
-@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+/* ---- the cards ------------------------------------------------------------------------ */
+.solitaire-stage .card,.solitaire-stage .card-space{container-type:inline-size;border-radius:var(--card-radius,7%/5%)}
+.solitaire-stage .card{background:var(--card-bg,#fffdf7);border:var(--card-border,1px solid #00000026);box-shadow:var(--card-shadow,0 1px 1px #0003,0 3px 8px -3px #0006);color:var(--ink-black,#16181b);font-family:var(--card-font,Georgia,serif);transform:rotate(var(--tilt,0deg))}
+.solitaire-stage .card.red{color:var(--ink-red,#c4202f)}
+.solitaire-stage .card .idx{display:flex;flex-direction:column;align-items:center;gap:0;font:var(--idx-weight,700) var(--idx-size,19cqw)/0.95 var(--idx-font,var(--card-font,Georgia,serif));letter-spacing:var(--idx-spacing,-.04em);min-width:1em}
+.solitaire-stage .card .idx.tl{top:5cqw;left:5cqw}
+.solitaire-stage .card .idx.br{bottom:5cqw;right:5cqw;top:auto;left:auto}
+.solitaire-stage .card .idx .suit{font-size:.82em;line-height:1}
+.solitaire-stage .card .middle{position:absolute;inset:0;display:block;font-size:inherit;opacity:1}
+.pips{position:absolute;left:30%;right:30%;top:18%;bottom:18%}
+.pips .pip{position:absolute;transform:translate(-50%,-50%);font-size:var(--pip-size,21cqw);line-height:1}
+.pips .pip.flip{transform:translate(-50%,-50%) rotate(180deg)}
+.pips.ace .pip{font-size:var(--ace-size,52cqw)}
+.court{position:absolute;inset:15% 18%;display:flex}
+.court-frame{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6cqw 0;border:var(--court-border,2px solid currentColor);border-radius:var(--court-radius,3cqw);background:var(--court-bg,transparent);box-shadow:var(--court-shadow,none)}
+.court-frame .suit{font-size:16cqw;line-height:1}
+.court-frame .suit:last-child{transform:rotate(180deg)}
+.court-letter{font:var(--court-font,700 40cqw/1 Georgia,serif);color:var(--court-ink,inherit)}
+.px-suit{width:1em;height:1em;display:block}
+.idx .px-suit{width:.78em;height:.78em;margin-top:.08em}
+/* A back: the card's border colour, and the pattern inset inside it. */
+.solitaire-stage .card.down{background:var(--back-edge,#fff);border:var(--card-border,1px solid #00000026);box-shadow:var(--card-shadow,0 1px 1px #0003,0 3px 8px -3px #0006)}
+.solitaire-stage .card.down::after{content:'';position:absolute;inset:var(--back-inset,6%);border-radius:var(--back-radius,4%/3%);background:var(--back,repeating-linear-gradient(45deg,#8b1d24 0 3px,#a8323a 3px 6px));box-shadow:var(--back-ring,none)}
+.solitaire-stage .card-space{background:var(--space-bg,#00000014);border:var(--space-border,1.5px dashed #ffffff55);color:var(--space-ink,#ffffff8c);font-size:6.4cqw;display:flex;align-items:center;justify-content:center}
+.solitaire-stage .card.selected{outline:var(--select,3px solid #ffd84a);outline-offset:1px}
+.solitaire-stage .hinted{outline:var(--hint-ring,3px solid #5fc1f0)!important;outline-offset:1px}
+.tableau .card:not(:last-child) .middle,.tableau .card:not(:last-child) .br{display:none}
+.drag-ghost .card{container-type:inline-size}
+@media(max-width:640px){.solitaire-stage .card .idx{--idx-size:28cqw}.solitaire-stage .card .idx.tl{top:4cqw;left:4cqw}.pips .pip{font-size:24cqw}.tableau{--up-step:6.2cqw;--down-step:1.8cqw}}
 
-.card-space{background:var(--table);border-color:#8cae98}.card.down{background:repeating-linear-gradient(45deg,var(--card-back,#315b7a),var(--card-back,#315b7a) 3px,#ffffff22 3px,#ffffff22 5px)}body[data-skin="1"]{--card-back:#5c3c7e}body[data-skin="2"]{--card-back:#246f87}
+/* ---- your record (a sheet, not a sidebar) --------------------------------------- */
+#record-dialog{max-width:440px;width:calc(100% - 32px)}
+#record-dialog .stats{margin:0}
+#record-dialog .stats h2{display:none}
+#record-dialog #score-panel{margin-top:18px;padding-top:14px;border-top:1px solid var(--dialog-rule,#0000001f)}
+#record-dialog .score-heading{display:flex;justify-content:space-between;align-items:center}
+#record-dialog .score-heading h2{font-size:18px;margin:0}
+dialog{background:var(--dialog-bg,#fffdf7);color:var(--dialog-ink,#1b1d1f);border:1px solid var(--dialog-edge,#0000002a);border-radius:var(--radius,8px)}
+dialog :is(button,input){background:var(--dialog-btn,#f2efe6);color:inherit;border:1px solid var(--dialog-edge,#0000002a);border-radius:var(--radius,6px)}
+dialog button.solid{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+dialog h2{font-family:var(--display-font,Georgia,serif)}
+dialog .muted{color:var(--dialog-muted,#5d6166)}
+#help-dialog{max-width:540px}#help-dialog p{line-height:1.5}
+
+/* =====================================================================================
+   1. Card room: a green baize table under a lamp, crisp casino cards with red
+   lattice backs, brass-gold accents.
+   ===================================================================================== */
+body[data-look="cardroom"]{--table-color:#1d5a3c;--table:radial-gradient(ellipse at 50% 18%,#2f7a52,#1d5a3c 55%,#123d29) fixed,#1d5a3c;--ink:#fff;--accent:#d8b04a;--on-accent:#1d2a20;--body-font:'Segoe UI',system-ui,sans-serif;--mono:Consolas,monospace;--radius:6px;
+  --card-font:Georgia,'Times New Roman',serif;--card-bg:#fffef9;--ink-red:#c51f2d;--ink-black:#14171a;
+  --back:repeating-linear-gradient(45deg,#0000 0 4px,#ffffff2b 4px 5px),repeating-linear-gradient(-45deg,#0000 0 4px,#ffffff2b 4px 5px),#a11d2b;--back-edge:#fffef9;--back-ring:inset 0 0 0 2px #a11d2b,inset 0 0 0 3px #fffef988;
+  --court-border:2px solid currentColor;--court-bg:linear-gradient(#0000 0 70%,#d8b04a26);--court-shadow:inset 0 0 0 2px #fffef9,inset 0 0 0 3px #d8b04a;
+  --space-border:1.5px solid #ffffff3a;--space-bg:#0000001f;
+  --dialog-bg:#fffef9}
+body[data-look="cardroom"] .st-bar{--bar:#0d2b1dcc;--bar-rule:1px solid #d8b04a55}
+body[data-look="cardroom"] .st-title::after{content:'Klondike';margin-left:10px;font:600 10px/1 var(--body-font);letter-spacing:.16em;text-transform:uppercase;color:#d8b04a;vertical-align:middle}
+
+/* =====================================================================================
+   2. Parlour: patience laid out on a mahogany table in a Victorian parlour.
+   Engraved-looking cards with ornate dark-green backs and gilt borders.
+   ===================================================================================== */
+body[data-look="parlour"]{--table-color:#3a1712;--table:repeating-linear-gradient(92deg,#0000 0 7px,#00000012 7px 9px,#0000 9px 23px),radial-gradient(ellipse at 50% 25%,#6d2a1d,#3a1712 70%) fixed,#3a1712;--ink:#f3e3c3;--accent:#c9a24a;--on-accent:#2a120c;--body-font:Georgia,'Palatino Linotype',serif;--mono:Georgia,serif;--radius:2px;
+  --title-font:400 24px/1 'Palatino Linotype',Georgia,serif;--title-spacing:.14em;--title-case:uppercase;--title-ink:#e3c37a;
+  --card-font:'Palatino Linotype','Book Antiqua',Georgia,serif;--card-bg:#fbf4e2;--ink-red:#9d1b1b;--ink-black:#1e1a16;--card-radius:5%/3.5%;--card-border:1px solid #8a6d3b;--card-shadow:0 1px 0 #0004,0 6px 12px -6px #000a;--idx-weight:400;
+  --back:radial-gradient(circle,#c9a24a 0 1.2px,#0000 1.6px) 0 0/7px 7px,radial-gradient(ellipse at center,#24503d,#123226),#123226;--back-edge:#fbf4e2;--back-inset:5%;--back-ring:inset 0 0 0 1px #c9a24a,inset 0 0 0 3px #123226,inset 0 0 0 4px #c9a24a88;
+  --court-border:1px solid #8a6d3b;--court-shadow:inset 0 0 0 3px #fbf4e2,inset 0 0 0 4px #c9a24a;--court-font:italic 400 40cqw/1 'Palatino Linotype',Georgia,serif;
+  --space-border:1px solid #e3c37a55;--space-bg:#00000026;--space-ink:#e3c37a80;
+  --bar:#24100bdd;--bar-rule:1px solid #c9a24a66;--bar-ink:#f3e3c3;--bar-btn:#ffffff10;--bar-btn-edge:#c9a24a55;
+  --edge-ink:#f3e3c3;--metric-bg:#00000040;--dialog-bg:#fbf4e2;--dialog-ink:#2a120c}
+body[data-look="parlour"] .solitaire-stage .card.down{box-shadow:inset 0 0 0 1px #c9a24a,0 1px 0 #0004,0 6px 12px -6px #000a}
+body[data-look="parlour"] .st-title::before{content:'❦ ';color:#c9a24a}
+
+/* =====================================================================================
+   3. Kitchen table: a worn pine table and a well-loved deck. Soft corners,
+   cream cards slightly yellowed, faded blue backs, each card a touch askew.
+   ===================================================================================== */
+body[data-look="kitchen"]{--table-color:#b98a57;--table:repeating-linear-gradient(90deg,#0000 0 2px,#5a3a1c14 2px 3px,#0000 3px 11px),repeating-linear-gradient(90deg,#0000 0 31%,#4a2e1424 31% 31.4%),linear-gradient(#c49562,#b07e4b),#b98a57;--ink:#3b2614;--accent:#3f6e8c;--on-accent:#fff;--body-font:'Trebuchet MS','Segoe UI',sans-serif;--mono:'Trebuchet MS',sans-serif;--radius:10px;
+  --title-font:700 23px/1 'Trebuchet MS',sans-serif;--title-ink:#3b2614;
+  --card-font:'Trebuchet MS','Segoe UI',sans-serif;--card-bg:linear-gradient(160deg,#fffaf0,#f3e6c8);--ink-red:#b8443a;--ink-black:#2c2a28;--card-radius:10%/7%;--card-border:1px solid #c9b38c;--card-shadow:0 1px 0 #6b4a2a55,0 4px 7px -3px #4a2e1466;
+  --back:radial-gradient(circle at 30% 20%,#ffffff22,#0000 40%),repeating-linear-gradient(0deg,#0000 0 5px,#ffffff1c 5px 6px),repeating-linear-gradient(90deg,#0000 0 5px,#ffffff1c 5px 6px),#5d87a6;--back-edge:#f6ecd5;--back-radius:8%/6%;
+  --court-border:1.5px dashed currentColor;--court-radius:6cqw;--court-font:700 40cqw/1 'Trebuchet MS',sans-serif;
+  --space-border:2px dashed #3b261455;--space-bg:#3b26140f;--space-ink:#3b261466;
+  --bar:#f6ecd5e6;--bar-ink:#3b2614;--bar-rule:1px solid #3b261426;--bar-btn:#fff;--bar-btn-edge:#3b261433;--bar-btn-hover:#fdf6e8;--bar-on:#3f6e8c;--bar-on-edge:#3f6e8c;
+  --edge-bg:linear-gradient(transparent,#f6ecd5d9 45%);--edge-ink:#3b2614;--edge-muted:#3b2614b3;--metric-bg:#fff;--select:3px solid #3f6e8c;--hint-ring:3px solid #e07a2f;--dialog-bg:#fffaf0;--dialog-ink:#3b2614}
+body[data-look="kitchen"] .st-bar .tools button.on{color:#fff}
+body[data-look="kitchen"] .solitaire-stage .card:not(.down){filter:sepia(.12)}
+
+/* =====================================================================================
+   4. Large print: made to be read on a phone at arm's length. Big indexes,
+   one large suit instead of pips, four-colour suits (spades black, hearts red,
+   diamonds blue, clubs green), plain navy backs, a calm dark table.
+   ===================================================================================== */
+body[data-look="large"]{--table-color:#1f2a33;--table:#1f2a33;--ink:#fff;--accent:#ffcc33;--on-accent:#111;--body-font:'Segoe UI',system-ui,sans-serif;--mono:'Segoe UI',system-ui,sans-serif;--radius:10px;
+  --title-font:800 22px/1 'Segoe UI',system-ui,sans-serif;
+  --card-font:'Segoe UI','Arial',sans-serif;--card-bg:#fff;--ink-black:#111;--ink-red:#d0021b;--card-radius:6%/4.4%;--card-border:2px solid #fff;--card-shadow:0 2px 0 #0006;--idx-size:36cqw;--idx-weight:800;--idx-spacing:-.06em;
+  --back:#2b4b8c;--back-edge:#fff;
+  --space-border:2px solid #ffffff40;--space-bg:#ffffff0d;
+  --select:4px solid #ffcc33;--hint-ring:4px solid #4fd1ff;--metric-font:800 17px 'Segoe UI',sans-serif;--status-font:700 15px 'Segoe UI',sans-serif}
+body[data-look="large"] .card.s-2{color:#1456d6}
+body[data-look="large"] .card.s-3{color:#118a3a}
+body[data-look="large"] .solitaire-stage .card .idx.tl{top:3cqw;left:5cqw;flex-direction:row;align-items:baseline;gap:.04em}
+body[data-look="large"] .solitaire-stage .card .idx.br{display:none}
+body[data-look="large"] .pips,body[data-look="large"] .court{display:none}
+body[data-look="large"] :is(.tableau .card:last-child,.solitaire-top .card,.waste .card:last-child) .middle{display:flex;align-items:flex-end;justify-content:center;padding-bottom:8cqw;box-sizing:border-box}
+body[data-look="large"] .solitaire-stage .card .middle::before{content:var(--big-suit);font:800 56cqw/1 'Segoe UI Symbol','Segoe UI',sans-serif}
+body[data-look="large"] .card.s-0{--big-suit:'♠'}body[data-look="large"] .card.s-1{--big-suit:'♥'}body[data-look="large"] .card.s-2{--big-suit:'♦'}body[data-look="large"] .card.s-3{--big-suit:'♣'}
+body[data-look="large"] .tableau{--up-step:6.4cqw;--down-step:2cqw}
+@media(max-width:640px){body[data-look="large"] .solitaire-stage .card .idx{--idx-size:44cqw}body[data-look="large"] .tableau{--up-step:8.2cqw}}
+
+/* =====================================================================================
+   5. Pixel: early-90s pixel-art cards on a dithered green table. Hard edges, a
+   one-pixel black outline, chunky checker backs, a blocky font.
+   ===================================================================================== */
+body[data-look="pixel"]{--table-color:#007f3f;--table:repeating-conic-gradient(#007f3f 0 25%,#0a8a48 0 50%) 0 0/4px 4px,#007f3f;--ink:#fff;--accent:#ffff55;--on-accent:#000;--px-font:'Lucida Console',Consolas,'Courier New',monospace;--body-font:var(--px-font);--mono:var(--px-font);--radius:0;
+  --title-font:700 20px/1 var(--px-font);--title-spacing:.08em;--title-case:uppercase;
+  --card-font:var(--px-font);--card-bg:#fff;--ink-black:#000;--ink-red:#d40000;--card-radius:0;--card-border:2px solid #000;--card-shadow:3px 3px 0 #003d1e;--idx-weight:700;--idx-spacing:0;
+  --back:repeating-conic-gradient(#2020c0 0 25%,#ffffff 0 50%) 0 0/6px 6px;--back-edge:#fff;--back-inset:3px;--back-radius:0;--back-ring:0 0 0 1px #000;
+  --court-border:2px solid currentColor;--court-radius:0;--court-font:700 38cqw/1 var(--px-font);--court-bg:repeating-conic-gradient(#ffff5555 0 25%,#0000 0 50%) 0 0/4px 4px;
+  --space-border:2px dotted #ffffff99;--space-bg:#00000026;
+  --bar:#000;--bar-rule:2px solid #ffff55;--bar-btn:#000;--bar-btn-edge:#fff;--bar-btn-hover:#2020c0;--bar-on:#2020c0;--bar-on-edge:#ffff55;--bar-blur:none;
+  --select:3px solid #ffff55;--hint-ring:3px dashed #55ffff;--edge-bg:#000;--metric-bg:#2020c0;--dialog-bg:#fff;--dialog-ink:#000}
+body[data-look="pixel"]{text-transform:uppercase}
+body[data-look="pixel"] .pips .pip{font-size:19cqw}
+body[data-look="pixel"] .pips.ace .pip{font-size:46cqw}
+body[data-look="pixel"] .court-frame .suit{font-size:14cqw}
+body[data-look="pixel"] .solitaire-stage .card{image-rendering:pixelated}
+body[data-look="pixel"] dialog{border:3px solid #000;box-shadow:6px 6px 0 #000}
+
+/* =====================================================================================
+   6. Terminal: the game as text. Cards are [K♠], face-down cards [###], piles
+   are columns of text, the deck is [DECK].
+   ===================================================================================== */
+body[data-look="terminal"]{--table-color:#040904;--table:#040904;--ink:#8dffa6;--accent:#8dffa6;--on-accent:#040904;--radius:0;--mono:var(--term-font);--body-font:var(--term-font);
+  --title-font:400 17px/1 var(--term-font);--bar:#040904;--bar-rule:1px dashed #2c6b3a;--bar-ink:#8dffa6;--bar-btn:#040904;--bar-btn-edge:#2c6b3a;--bar-btn-hover:#0c240f;--bar-on:#0c240f;--bar-on-edge:#8dffa6;--bar-blur:none;
+  --edge-bg:#040904;--edge-ink:#8dffa6;--edge-muted:#4fae66;--metric-bg:none;--dialog-bg:#061206;--dialog-ink:#8dffa6;--dialog-edge:#2c6b3a;--dialog-btn:#040904;--dialog-muted:#4fae66}
+body[data-look="terminal"] .st-title::before{content:'$ ./';color:#4fae66}
+body[data-look="terminal"] .st-title{text-transform:lowercase}
+body[data-look="terminal"] .tableau{--up-step:1.25em;--down-step:1.25em;font:clamp(11px,2.2vw,17px)/1.25 var(--term-font)}
+body[data-look="terminal"] .solitaire-top{font:clamp(11px,2.2vw,17px)/1.25 var(--term-font)}
+body[data-look="terminal"] .solitaire-stage :is(.card,.card-space){aspect-ratio:auto;height:1.3em;container-type:normal;background:none;border:0;box-shadow:none;border-radius:0;transform:none;font:inherit;color:#8dffa6;overflow:visible;justify-content:center!important;align-items:center!important}
+body[data-look="terminal"] .solitaire-stage .card.red{color:#ffc56b}
+body[data-look="terminal"] .solitaire-stage .card .idx.tl{position:static;display:block;font:inherit;letter-spacing:0}
+body[data-look="terminal"] .solitaire-stage .card .idx.tl::before{content:'['}
+body[data-look="terminal"] .solitaire-stage .card .idx.tl::after{content:']'}
+body[data-look="terminal"] .solitaire-stage .card .idx .suit{display:inline;font-size:1em}
+body[data-look="terminal"] .solitaire-stage .card :is(.middle,.br){display:none!important}
+body[data-look="terminal"] .solitaire-stage .card.down::after{display:none}
+body[data-look="terminal"] .solitaire-stage .card.down::before{content:'[###]';color:#2f7a42}
+body[data-look="terminal"] .solitaire-top>.card.down::before{content:'[DECK]';color:#8dffa6}
+body[data-look="terminal"] .solitaire-stage .card-space{color:#2f7a42;font:inherit}
+body[data-look="terminal"] .solitaire-stage .card-space:empty::before{content:'[   ]'}
+body[data-look="terminal"] .solitaire-stage .card.selected{outline:0;background:#8dffa6;color:#040904}
+body[data-look="terminal"] .solitaire-stage .hinted{outline:0!important;background:#ffc56b;color:#040904}
+body[data-look="terminal"] .waste.fan>.card{left:calc(var(--f)*34%)}
+body[data-look="terminal"] .waste{aspect-ratio:auto;height:1.3em}
+body[data-look="terminal"] .pile .card-space:not(:only-child){visibility:hidden}
+body[data-look="terminal"] .st-bar .tools button::before{content:'['}body[data-look="terminal"] .st-bar .tools button::after{content:']'}
   </style>
 </head>
-<body data-game="solitaire" data-skin="0">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">♠</span>Solitaire</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Solitaire</h1><p id="game-subtitle">Klondike · draw one</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Card table</option><option value="1">Midnight velvet</option><option value="2">Ocean deck</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>At the card table</h2><p id="rules"></p></section></aside></div>
-    </section>
+<body data-game="solitaire" data-skin="0" data-look="cardroom">
+  <header class="st-bar">
+    <a href="../../gaming.html" class="st-back" aria-label="Back to the Arcade">←</a>
+    <div class="st-name"><h1 class="st-title" id="game-title">Solitaire</h1><p id="game-subtitle" hidden>Klondike</p></div>
+    <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Game</span><select id="mode"></select></label><div id="tools" class="tools"></div><label class="theme-picker push"><span class="sr-only">Deck</span><select id="style-switch" aria-label="Deck"><option value="0" data-look="cardroom">Card room</option><option value="1" data-look="parlour">Parlour</option><option value="2" data-look="kitchen">Kitchen table</option><option value="3" data-look="large">Large print</option><option value="4" data-look="pixel">Pixel</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="record-open" type="button">Your games</button><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
+  </header>
+  <main id="playroom" class="st-table" aria-labelledby="game-title">
+    <div id="stage" class="stage"></div>
     <noscript><p>Solitaire needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
+  <footer class="st-edge"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span><p id="hint" class="hint"></p></footer>
+  <dialog id="record-dialog" aria-labelledby="record-title"><h2 id="record-title">Your games</h2><div id="stats-slot"></div>
+    <section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
+    <div class="dialog-actions"><button type="button" id="record-close" class="solid">Back to the table</button></div></dialog>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p>
+    <p><strong>Moving.</strong> Drag a card or a run of cards, or tap it and then where it goes. Tap a card twice (or double-click) to send it where it fits, home first. Tap the deck to turn cards over.</p>
+    <p><strong>Points.</strong> 5 for moving a card from the deck to the table, 10 for each card sent home, 5 for turning a card face up. Taking a card back off a suit pile costs 15, going through the deck again costs 100 (20 when drawing three). Points never go below zero.</p>
+    <p><strong>Winnable deals.</strong> With it on, a solver plays each deal out before you see it and only deals one it can win. It doesn't change the daily deal, which is the same for everyone.</p>
+    <p>Your game is saved in this browser. Changing the deck keeps the game in place.</p>
+    <button id="close-help" class="solid">Got it</button></dialog>
+  <script>
+    // Your record lives in its own sheet: the table keeps the whole page.
+    document.getElementById('record-open').onclick=()=>document.getElementById('record-dialog').showModal();
+    document.getElementById('record-close').onclick=()=>document.getElementById('record-dialog').close();
+  </script>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>

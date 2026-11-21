@@ -63,7 +63,7 @@
   function updateMetric(){
     if(!game||!s)return;const id=game.id,parts=[];
     if(clockShown())parts.push(fmtTime(clockStart||elapsed?seconds():0));
-    if(id==='solitaire')parts.push(s.moves+' moves');
+    if(id==='solitaire')parts.push((s.score||0)+' points',s.moves+(s.moves===1?' move':' moves'));
     if(id==='snake'){parts.push(s.score+' points',`best ${Math.max(s.score,bestScore)}`);const sc=$('lcd-score'),hi=$('lcd-hi');if(sc)sc.textContent=String(s.score).padStart(4,'0');if(hi)hi.textContent=String(Math.max(s.score,bestScore)).padStart(4,'0');}
     // Tetris shows its numbers in the panel beside the well instead.
     if(id==='tetris'){const set=(k,v)=>{const e=$(k);if(e&&e.textContent!==v)e.textContent=v;};set('t-score',s.score.toLocaleString());set('t-lines',String(s.lines));set('t-level',String(1+Math.floor(s.lines/10)));set('t-best',Math.max(s.score,bestScore).toLocaleString());}
@@ -104,7 +104,7 @@
     else if(mode==='two'||mode==='table'){const names=id==='tictactoe'?['X','O']:['White','Black'];for(const n of names)rows.push([n+' wins',st.sides?.[n]||0]);rows.push(['Draws',st.sides?.draw||0]);}
     else if(action()){rows.push(['Games',p],['Best',(st.best||0).toLocaleString()],['Last',(st.last||0).toLocaleString()]);}
     else if(['chess','checkers','tictactoe'].includes(id)){rows.push(['You won',st.won||0],[mode==='online'?'Friend won':'Computer won',st.lost||0],['Draws',st.drawn||0],['Streak',st.streak||0]);}
-    else{rows.push(['Played',p],['Won',p?`${st.won||0} · ${Math.round(100*(st.won||0)/p)}%`:'0'],['Streak',st.streak||0],['Best streak',st.bestStreak||0]);if(st.best!=null)rows.push([id==='wordle'?'Fewest guesses':'Fastest',id==='wordle'?st.best+' / 6':fmtTime(st.best)]);}
+    else{rows.push(['Played',p],['Won',p?`${st.won||0} · ${Math.round(100*(st.won||0)/p)}%`:'0'],['Streak',st.streak||0],['Best streak',st.bestStreak||0]);if(st.best!=null)rows.push([id==='wordle'?'Fewest guesses':'Fastest',id==='wordle'?st.best+' / 6':fmtTime(st.best)]);if(id==='solitaire'&&st.points)rows.push(['Best points',st.points]);}
     panel.replaceChildren();
     const label=MODES[id].find(m=>m[0]===mode)?.[1];
     const dl=el('dl','stat-grid');for(const [k,v] of rows){const d=el('div');d.append(el('dt',null,k),el('dd',null,String(v)));dl.append(d);}
@@ -226,7 +226,7 @@
       case 'tictactoe':s=Array(9).fill('');break;
       case 'chess':s=E.Chess.create();keys=[E.Chess.key(s)];clockNew();if(mode==='online'){renderStats();netResume();refreshScores();return;}break;
       case 'checkers':s=E.Checkers.create();keys=[checkerKey()];if(mode==='online'){renderStats();netResume();refreshScores();return;}break;
-      case 'solitaire':s=mode==='daily'?E.Solitaire.create(dailyRandom()):E.Solitaire.create();s.draw=mode==='draw3'?3:1;break;
+      case 'solitaire':s=mode==='daily'?E.Solitaire.create(dailyRandom()):E.Solitaire.create();s.draw=mode==='draw3'?3:1;if(opts.winnable&&mode!=='daily')winnableDeal();break;
       case 'sudoku':s=mode==='daily'?E.Sudoku.create('medium',dailyRandom()):E.Sudoku.create(mode);s.given=s.b.slice();if(opts.mistakes)eligible=false;break;
       // Expert is 30 × 16; on a screen taller than it is wide it stands upright (16 across).
       case 'minesweeper':s=mode==='expert'?(innerWidth<innerHeight?E.Mines.create(30,99,16):E.Mines.create(16,99,30)):E.Mines.create(...({easy:[9,10],medium:[12,25],hard:[16,40]}[mode]));break;
@@ -915,7 +915,41 @@
   // ---- Solitaire -----------------------------------------------------------
   const suits=['♠','♥','♦','♣'];
   const cardId=c=>c.suit+'-'+c.rank;
-  function cardElement(c,fn,idx){const e=button('',fn,'card'+(!c.up?' down':'')+(E.Solitaire.red(c)?' red':'')+(moved.has(cardId(c))&&c.up&&!reduced()?' land':''));e.style.setProperty('--i',idx||0);const rank={1:'A',11:'J',12:'Q',13:'K'}[c.rank]||c.rank;const corner=cls=>{const k=el('span','idx '+cls,String(rank));k.append(el('span','suit',suits[c.suit]));return k;};const mid=el('span','middle',c.rank>10?String(rank):suits[c.suit]);if(c.rank>10)mid.classList.add('face');e.append(corner('tl'),mid,corner('br'));e.setAttribute('aria-label',c.up?rank+' of '+['spades','hearts','diamonds','clubs'][c.suit]:'Face-down card');return e;}
+  /* Real cards (round three, 2026-11-21): number cards carry their pips laid
+     out as on a printed deck, picture cards a framed court, the ace one big
+     suit. Each style draws them its own way through CSS; Pixel swaps the suit
+     glyphs for pixel-art ones and Terminal shows only the [K♠] index. */
+  const PIPS={1:[[50,50]],2:[[50,0],[50,100]],3:[[50,0],[50,50],[50,100]],4:[[25,0],[75,0],[25,100],[75,100]],5:[[25,0],[75,0],[50,50],[25,100],[75,100]],6:[[25,0],[75,0],[25,50],[75,50],[25,100],[75,100]],7:[[25,0],[75,0],[50,25],[25,50],[75,50],[25,100],[75,100]],8:[[25,0],[75,0],[50,25],[25,50],[75,50],[50,75],[25,100],[75,100]],9:[[25,0],[75,0],[25,33],[75,33],[50,50],[25,67],[75,67],[25,100],[75,100]],10:[[25,0],[75,0],[50,17],[25,33],[75,33],[25,67],[75,67],[50,83],[25,100],[75,100]]};
+  const PIXEL_SUITS=['...#...|..###..|.#####.|#######|#######|..#.#..|.#####.','.##.##.|#######|#######|#######|.#####.|..###..|...#...','...#...|..###..|.#####.|#######|.#####.|..###..|...#...','..###..|..###..|##.#.##|#######|##.#.##|...#...|.#####.'];
+  const pixelSuitPath=[];
+  function suitGlyph(suit){
+    if(look()!=='pixel')return el('span','suit',suits[suit]);
+    if(!pixelSuitPath[suit]){let d='';PIXEL_SUITS[suit].split('|').forEach((row,y)=>[...row].forEach((ch,x)=>{if(ch==='#')d+=`M${x} ${y}h1v1h-1z`;}));pixelSuitPath[suit]=d;}
+    const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.setAttribute('class','suit px-suit');svg.setAttribute('viewBox','0 0 7 7');svg.setAttribute('shape-rendering','crispEdges');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(NS,'path');path.setAttribute('d',pixelSuitPath[suit]);path.setAttribute('fill','currentColor');svg.append(path);return svg;
+  }
+  function cardElement(c,fn,idx){
+    const e=button('',fn,'card s-'+c.suit+(!c.up?' down':'')+(E.Solitaire.red(c)?' red':'')+(moved.has(cardId(c))&&c.up&&!reduced()?' land':''));e.style.setProperty('--i',idx||0);
+    if(look()==='kitchen')e.style.setProperty('--tilt',((((c.suit*13+c.rank)*37)%9)-4)*.18+'deg');
+    const rank={1:'A',11:'J',12:'Q',13:'K'}[c.rank]||String(c.rank);
+    if(!c.up){e.setAttribute('aria-label','Face-down card');return e;}
+    const corner=cls=>{const k=el('span','idx '+cls,rank);k.append(suitGlyph(c.suit));return k;};
+    const mid=el('span','middle');
+    if(c.rank>10){const court=el('span','court');const frame=el('span','court-frame');frame.append(suitGlyph(c.suit),el('span','court-letter',rank),suitGlyph(c.suit));court.append(frame);mid.append(court);mid.classList.add('face');}
+    else{const area=el('span','pips'+(c.rank===1?' ace':''));for(const [x,y] of PIPS[c.rank]){const pip=suitGlyph(c.suit);pip.classList.add('pip');if(y>50)pip.classList.add('flip');pip.style.left=x+'%';pip.style.top=y+'%';area.append(pip);}mid.append(area);}
+    e.append(corner('tl'),mid,corner('br'));e.setAttribute('aria-label',rank+' of '+['spades','hearts','diamonds','clubs'][c.suit]);return e;
+  }
+  /* "Winnable deals only" (Ric, 2026-11-21): the solver plays each deal out in
+     chess-worker.js before it's shown; on a file:// page it searches here. */
+  let dealing=0;
+  function winnableDeal(){
+    const token=++dealing,draw=s.draw;s.dealing=true;
+    const take=deal=>{if(token!==dealing||game?.id!=='solitaire')return;dealing=0;if(deal){s=deal;s.draw=draw;}delete s.dealing;history=[];renderSolitaire();hint(s.winnable?'A winnable deal: the solver won it before you saw it.':'No winnable deal found in time; this one may not come out.');};
+    if(chessWorker===null){try{chessWorker=new Worker('../arcade/chess-worker.js');chessWorker.onerror=()=>{chessWorker=false;};}catch{chessWorker=false;}}
+    if(!chessWorker){setTimeout(()=>take(E.Solitaire.winnable(draw,2500)),40);return;}
+    const id=++workerJob,guard=setTimeout(()=>take(E.Solitaire.winnable(draw,1500)),9000);
+    const prev=chessWorker.onmessage;chessWorker.onmessage=e=>{if(e.data.id===id){clearTimeout(guard);chessWorker.onmessage=prev;take(e.data.deal);}else prev?.(e);};
+    chessWorker.postMessage({kind:'solitaire',id,draw,ms:4000});
+  }
   function solitaireMove(from,to){
     const pile=E.Solitaire.pile(s,from),stack=pile.slice(from.index??pile.length-1),old=E.copy(s);
     if(!E.Solitaire.move(s,from,to))return false;
@@ -927,12 +961,14 @@
     if(E.Solitaire.won(s)){solitaireWon();return;}
     if(E.Solitaire.autoReady(s)&&!autoTimer){hint('Every card is showing. Carrying them home…');autoTimer=setInterval(()=>{const step=E.Solitaire.autoStep(s);if(!step){clearInterval(autoTimer);autoTimer=null;renderSolitaire();return;}moved=new Set([cardId(step.card)]);renderSolitaire();if(E.Solitaire.won(s)){clearInterval(autoTimer);autoTimer=null;solitaireWon();}},reduced()?10:110);}
   }
-  function solitaireWon(){const t=seconds(),post=(mode==='draw1'||mode==='daily')&&eligible;record('won',mode!=='draw3'?t:null);celebrate();dailyDone(t);finish('A clean table.',`All four suits, home. ${s.moves} moves in ${fmtTime(t)}.`,post?t:null);}
+  function solitaireWon(){const t=seconds(),post=(mode==='draw1'||mode==='daily')&&eligible;record('won',mode!=='draw3'?t:null);const st=stats();if((s.score||0)>(st.points||0)){st.points=s.score;storage.set(statsKey(),st);renderStats();}celebrate();dailyDone(t);finish('A clean table.',`All four suits, home. ${s.score||0} points, ${s.moves} moves, ${fmtTime(t)}.`,post?t:null);}
+  /* Applies from the next deal; a fresh table with nothing played is redealt now. */
+  function winnableToggle(){const b=button(opts.winnable?'Winnable deals: on':'Winnable deals: off',()=>{opts.winnable=!opts.winnable;saveOpts();if(!history.length&&!finished&&!s.dealing){start();return;}renderSolitaire();hint(opts.winnable?'From your next deal, only deals the solver can win.':'From your next deal, any shuffle.');});b.setAttribute('aria-pressed',!!opts.winnable);if(opts.winnable)b.classList.add('on');return b;}
   /* Tapping the selected card again sends it where it fits: home first, then
      the first column that takes it. A double-click does the same. */
   function sendAnywhere(p){const pile=E.Solitaire.pile(s,p),at=p.index??pile.length-1,c=pile[at];if(!c)return false;if(at===pile.length-1&&p.type!=='foundation'&&solitaireMove(p,{type:'foundation',col:c.suit}))return true;for(let col=0;col<7;col++)if(!(p.type==='tableau'&&p.col===col)&&E.Solitaire.copyTry(s,p,{type:'tableau',col}))return solitaireMove(p,{type:'tableau',col});return false;}
   function solitaireTap(p){
-    if(finished||autoTimer||dragJustEnded)return;
+    if(finished||autoTimer||dragJustEnded||s.dealing)return;
     if(selected){
       const same=selected.type===p.type&&selected.col===p.col&&(p.type!=='tableau'||selected.index===p.index);
       if(same){if(!sendAnywhere(selected)){selected=null;renderSolitaire();hint('That card has nowhere to go yet.');}return;}
@@ -940,7 +976,7 @@
     }
     const pile=E.Solitaire.pile(s,p),index=p.index??pile.length-1;selected=pile[index]?.up?{...p,index}:null;if(p.type!=='tableau'&&selected)delete selected.index;renderSolitaire();
   }
-  function solitaireDraw(){if(finished||autoTimer)return;const old=E.copy(s);if(E.Solitaire.draw(s)){sfx('flip');history.push(old);selected=null;hintMove=null;moved=new Set(s.waste.slice(-(s.draw||1)).map(cardId));beginClock();renderSolitaire();}}
+  function solitaireDraw(){if(finished||autoTimer||s.dealing)return;const old=E.copy(s);if(E.Solitaire.draw(s)){sfx('flip');history.push(old);selected=null;hintMove=null;moved=new Set(s.waste.slice(-(s.draw||1)).map(cardId));beginClock();renderSolitaire();}}
   function renderSolitaire(){
     stage.className='stage solitaire-stage';stage.replaceChildren();
     const top=el('div','solitaire-top');
@@ -961,15 +997,16 @@
       table.append(wrap);
     });
     stage.append(table);
+    if(s.dealing){const cover=el('div','dealing-cover');cover.append(el('span','dealing-text','Shuffling for a winnable deal…'));stage.append(cover);}
     // The table is as tall as its longest column (cards are absolutely placed).
     let deepest=0;for(const c of table.querySelectorAll('.card'))deepest=Math.max(deepest,c.offsetTop+c.offsetHeight);const cardH=table.querySelector('.card-space')?.offsetHeight||100;table.style.height=Math.max(deepest,cardH*2.3)+'px';
     toolRow([
       button('↶ Undo',()=>{if(!history.length||finished||autoTimer)return;s=history.pop();selected=null;hintMove=null;moved=new Set();renderSolitaire();}),
       button('Hint',()=>{if(finished||autoTimer)return;const o=E.Solitaire.options(s)[0];hintMove=o||(E.Solitaire.stuck(s)?null:'draw');selected=null;renderSolitaire();hint(o?'Try the glowing cards.':hintMove==='draw'?'Nothing on the table. Draw from the deck.':'No moves left. Undo a few, or deal again.');})
-    ],[button(opts.showTimer?'Hide timer':'Show timer',()=>{opts.showTimer=!opts.showTimer;saveOpts();renderSolitaire();})]);
+    ],[button(opts.showTimer?'Hide timer':'Show timer',()=>{opts.showTimer=!opts.showTimer;saveOpts();renderSolitaire();}),...(mode==='daily'?[]:[winnableToggle()])]);
     const stuck=!finished&&E.Solitaire.stuck(s);
-    status(stuck?'No moves left · Undo or deal again':s.waste.length+' in waste · '+s.foundation.reduce((n,p)=>n+p.length,0)+'/52 home');
-    if(!hintMove&&!autoTimer)hint('Drag a card or stack, or tap it then where it goes. Tap a card twice to send it where it fits.');
+    status(s.dealing?'Shuffling…':stuck?'No moves left · Undo or deal again':s.foundation.reduce((n,p)=>n+p.length,0)+' of 52 home'+(s.winnable?' · a winnable deal':''));
+    if(!hintMove&&!autoTimer&&!s.dealing)hint('Drag a card or stack, or tap it then where it goes. Tap a card twice to send it where it fits.');
     hintMove=null;moved=new Set();updateMetric();persist();
   }
   /* Drag and drop: pointer events on face-up cards. A drag shows a floating
@@ -977,7 +1014,7 @@
      still goes through the click handlers above. */
   let drag=null,dragJustEnded=false;
   stage.addEventListener('pointerdown',e=>{
-    if(game?.id!=='solitaire'||finished||autoTimer||e.button>0)return;const card=e.target.closest('[data-from]');if(!card)return;
+    if(game?.id!=='solitaire'||finished||autoTimer||s.dealing||e.button>0)return;const card=e.target.closest('[data-from]');if(!card)return;
     const parts=card.dataset.from.split(':'),from=parts[0]==='waste'?{type:'waste'}:{type:'tableau',col:+parts[1],index:+parts[2]};
     drag={from,x:e.clientX,y:e.clientY,card,active:false,id:e.pointerId};
   });
@@ -1328,7 +1365,7 @@
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
     if(game&&['snake','tetris'].includes(game.id))drawAction();
     // Board games whose pieces are drawn differently per style redraw the same position.
-    else if(game&&s&&['checkers','chess'].includes(game.id)){render();renderStats();}
+    else if(game&&s&&['checkers','chess','solitaire'].includes(game.id)){render();renderStats();}
   }
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';

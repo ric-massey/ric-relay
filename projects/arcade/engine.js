@@ -277,10 +277,12 @@
   };
 
   const Solitaire = {
-    create(random=Math.random){const deck=shuffle(Array.from({length:52},(_,i)=>({rank:i%13+1,suit:Math.floor(i/13),up:false})),random),tableau=[];for(let col=0;col<7;col++){const pile=deck.splice(0,col+1);pile[col].up=true;tableau.push(pile);}return{tableau,stock:deck,waste:[],foundation:[[],[],[],[]],moves:0};},
+    create(random=Math.random){const deck=shuffle(Array.from({length:52},(_,i)=>({rank:i%13+1,suit:Math.floor(i/13),up:false})),random),tableau=[];for(let col=0;col<7;col++){const pile=deck.splice(0,col+1);pile[col].up=true;tableau.push(pile);}return{tableau,stock:deck,waste:[],foundation:[[],[],[],[]],moves:0,score:0};},
     red:c=>c.suit===1||c.suit===2,
     /* s.draw is 1 (the scoreboard game) or 3; older saves have none and draw one. */
-    draw(s){if(s.stock.length){for(let k=0;k<(s.draw||1)&&s.stock.length;k++){const c=s.stock.pop();c.up=true;s.waste.push(c);}}else if(s.waste.length){s.stock=s.waste.reverse().map(c=>({...c,up:false}));s.waste=[];}else return false;s.moves++;return true;},
+    draw(s){if(s.stock.length){for(let k=0;k<(s.draw||1)&&s.stock.length;k++){const c=s.stock.pop();c.up=true;s.waste.push(c);}}else if(s.waste.length){s.stock=s.waste.reverse().map(c=>({...c,up:false}));s.waste=[];Solitaire.points(s,(s.draw||1)===3?-20:-100);}else return false;s.moves++;return true;},
+    /* Standard points (2026-11-21, Ric: "Standard points"), never below 0. */
+    points(s,n){s.score=Math.max(0,(s.score||0)+n);},
     /* Every legal non-draw move, most useful first: home moves, then moves that
        turn over a card or empty a column, then waste to table. */
     options(s){const out=[],home=c=>({type:'foundation',col:c.suit});
@@ -307,9 +309,54 @@
       if(to.type==='foundation'){if(stack.length!==1||c.suit!==to.col||c.rank!==(top?top.rank+1:1))return false;}
       else if(to.type==='tableau'){if(top?(!top.up||top.rank!==c.rank+1||Solitaire.red(top)===Solitaire.red(c)):c.rank!==13)return false;}
       else return false;
-      b.push(...a.splice(i));if(from.type==='tableau'&&a.length)a[a.length-1].up=true;s.moves++;return true;
+      b.push(...a.splice(i));let pts=to.type==='foundation'?10:from.type==='waste'?5:from.type==='foundation'?-15:0;if(from.type==='tableau'&&a.length&&!a[a.length-1].up){a[a.length-1].up=true;pts+=5;}Solitaire.points(s,pts);s.moves++;return true;
     },
-    won:s=>s.foundation.every(p=>p.length===13)
+    won:s=>s.foundation.every(p=>p.length===13),
+    /* Can this deal be won? (2026-11-21, Ric picked "Winnable deals only".)
+       Plays the deal out knowing every card, depth first: safe cards go home at
+       once, then moves that turn a card over, then the rest, then the deck.
+       Positions already seen are skipped. Returns true (won), false (every
+       line tried) or null (gave up after `budget` positions: count it as no). */
+    solve(s,budget=150000){
+      const k=s.draw||1,id=c=>c.suit*13+c.rank-1,rk=x=>x%13+1,su=x=>(x/13)|0,red=x=>su(x)===1||su(x)===2;
+      const start={t:s.tableau.map(p=>p.map(id)),d:s.tableau.map(p=>p.filter(c=>!c.up).length),st:s.stock.map(id),w:s.waste.map(id),f:s.foundation.map(p=>p.length)};
+      const seen=new Set();let nodes=0;
+      const clone=n=>({t:n.t.map(p=>p.slice()),d:n.d.slice(),st:n.st.slice(),w:n.w.slice(),f:n.f.slice()});
+      const fits=(c,col,n)=>{const p=n.t[col];if(!p.length)return rk(c)===13;const top=p[p.length-1];return n.d[col]<p.length&&rk(top)===rk(c)+1&&red(top)!==red(c);};
+      const reveal=(n,col)=>{if(n.d[col]>=n.t[col].length&&n.d[col]>0)n.d[col]=n.t[col].length-1;};
+      const homeOk=(c,n)=>n.f[su(c)]===rk(c)-1;
+      const safe=(c,n)=>{const r=rk(c);if(r<=2)return true;const o=red(c)?[0,3]:[1,2];return n.f[o[0]]>=r-1&&n.f[o[1]]>=r-1;};
+      const settle=n=>{let again=true;while(again){again=false;for(let col=0;col<7;col++){const p=n.t[col];if(p.length&&n.d[col]<p.length){const c=p[p.length-1];if(homeOk(c,n)&&safe(c,n)){p.pop();n.f[su(c)]++;reveal(n,col);again=true;}}}if(n.w.length){const c=n.w[n.w.length-1];if(homeOk(c,n)&&safe(c,n)){n.w.pop();n.f[su(c)]++;again=true;}}}};
+      const key=n=>n.f.join(',')+'|'+n.t.map((p,i)=>n.d[i]+':'+p.join('.')).sort().join('/')+'|'+n.st.join('.')+'^'+n.w.join('.');
+      const go=n=>{
+        settle(n);
+        if(n.f.every(x=>x===13))return true;
+        if(++nodes>budget)throw Solitaire.GAVE_UP;
+        const kk=key(n);if(seen.has(kk))return false;seen.add(kk);
+        const next=[];
+        // home from a column or the waste
+        for(let col=0;col<7;col++){const p=n.t[col];if(p.length&&n.d[col]<p.length&&homeOk(p[p.length-1],n)){const m=clone(n);const c=m.t[col].pop();m.f[su(c)]++;reveal(m,col);next.push([4,m]);}}
+        if(n.w.length&&homeOk(n.w[n.w.length-1],n)){const m=clone(n);const c=m.w.pop();m.f[su(c)]++;next.push([3,m]);}
+        // column to column: the whole face-up run, or part of it when the card it uncovers can go home
+        for(let col=0;col<7;col++){const p=n.t[col];for(let i=n.d[col];i<p.length;i++){const c=p[i];
+          const whole=i===n.d[col];if(!whole&&!(homeOk(p[i-1],n)))continue;
+          if(whole&&i===0&&rk(c)===13)continue; // a king already at the bottom
+          for(let dest=0;dest<7;dest++){if(dest===col||!fits(c,dest,n))continue;if(!n.t[dest].length&&!whole)continue;
+            const m=clone(n);m.t[dest].push(...m.t[col].splice(i));reveal(m,col);next.push([whole&&i>0?5:whole?1:2,m]);if(!n.t[dest].length)break;}}}
+        // waste to a column
+        if(n.w.length){const c=n.w[n.w.length-1];for(let dest=0;dest<7;dest++){if(!fits(c,dest,n))continue;const m=clone(n);m.t[dest].push(m.w.pop());next.push([2,m]);if(!n.t[dest].length)break;}}
+        // the deck: draw, or turn the waste over
+        if(n.st.length){const m=clone(n);for(let j=0;j<k&&m.st.length;j++)m.w.push(m.st.pop());next.push([0,m]);}
+        else if(n.w.length){const m=clone(n);m.st=m.w.reverse();m.w=[];next.push([-1,m]);}
+        next.sort((a,b)=>b[0]-a[0]);
+        for(const [,m] of next)if(go(m))return true;
+        return false;
+      };
+      try{return go(clone(start));}catch(e){if(e===Solitaire.GAVE_UP)return null;throw e;}
+    },
+    GAVE_UP:{gaveUp:true},
+    /* Deal until the solver wins one (or time runs out: then the last deal, marked unproven). */
+    winnable(draw=1,ms=2500,random=Math.random){const until=Date.now()+ms;let s;do{s=Solitaire.create(random);s.draw=draw;if(Solitaire.solve(s)===true){s.winnable=true;return s;}}while(Date.now()<until);return s;}
   };
 
   const Snake = {

@@ -186,7 +186,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
   scoresheet beside the board like paper on the table, with your record at its foot.
 - [x] **Chess:** a club board between two player plates (with captured material), the
   move list as a scoresheet column beside it.
-- [ ] **Solitaire:** the whole page is the table; a slim toolbar; no sidebar.
+- [x] **Solitaire:** the whole page is the table; a slim toolbar; no sidebar.
 - [ ] **Minesweeper:** the page is a desktop window: title bar, menu, counter / face /
   clock panel, the field; best times in their own window.
 - [ ] **Sudoku:** a puzzle-book page: puzzle number and date as a header, the grid
@@ -254,6 +254,29 @@ into the help dialog wherever the page has no room for them. Page concepts:
 - [x] The whole page designed for chess (Ric: "the actual page itself needs to be
       catered towards chess like the entire design. not a template look at all"):
       no shared heading/sidebar; each style restyles everything on the page.
+
+### Solitaire: what players want (Ric, 2026-11-21: "Do solitaire", then his answers) — built the same day
+- [x] The page is the table (concept above): the felt fills the page, a slim
+      toolbar along the top, the score on the table's edge, your record and the
+      scoreboard in their own sheet instead of a sidebar.
+- [x] Standard points (Ric: "Standard points"): +5 waste to a column, +10 to a
+      suit pile, +5 for turning a card over, −15 for taking a card back off a
+      pile, −100 (draw one) / −20 (draw three) for going through the deck again,
+      never below 0. Points on the table edge; best points kept with your games.
+- [x] Winnable deals only (Ric picked it): an option; a solver plays each deal out
+      before you see it and only deals one it can win. Off the page's thread.
+- [x] Real cards: number cards laid out in pips like a printed deck, picture
+      cards framed, so each style can draw its own deck.
+- [x] Classic layout kept (Ric: "Keep the classic layout"): stock top left.
+- [x] Six styles (Ric: "Yes, those six"): Card room (green baize, crisp casino
+      cards), Parlour (Victorian patience on mahogany, ornate backs), Kitchen
+      table (worn wood, a well-loved deck), Large print (big, high-contrast cards
+      for phones, four-colour suits), Pixel (early-90s pixel-art cards on a
+      dithered table), Terminal (ASCII cards like [K♠]). Card table, Midnight
+      velvet and Ocean deck go.
+- [x] The solver wins about two deals in three within its budget (a deal it can't
+      settle in time counts as no), so a winnable deal takes about a second to find,
+      in chess-worker.js. The daily deal is left as it is, the same for everyone.
 
 ### Online play, Chess and Checkers (Ric, 2026-11-21: "multiplayer for chess and checkers needs to be in")
 Two players on one device was already there, so this is playing a friend on their
