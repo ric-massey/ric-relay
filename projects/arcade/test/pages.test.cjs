@@ -17,7 +17,7 @@ test('nine games have independent, directly playable Arcade entries with three p
     assert(page.includes(`data-game="${id}"`));
     assert(page.includes('<style>'),`${id} owns its look`);
     assert(page.includes('body[data-skin="1"]')&&page.includes('body[data-skin="2"]'));
-    assert(page.includes('<section id="playroom" aria-'),`${id} opens on its game`);
+    assert(/<(section|main) id="playroom"[^>]*aria-label/.test(page),`${id} opens on its game`);
     assert(!/Classics|catalog|lobby-title/.test(page));
     const styles=page.match(/<select id="style-switch"[^>]*>(.*?)<\/select>/s)[1];
     // Three styles each until a game's round-three pass (TODO.md) gives it six

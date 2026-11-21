@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f3f0e6">
+  <meta name="theme-color" content="#e8e5dc">
   <title>Checkers — RIC//NET</title>
-  <meta name="description" content="Play Checkers in the Arcade. American checkers · 8 × 8. Six styles, from a tournament board to a park table to a terminal, with touch, drag and keyboard controls.">
+  <meta name="description" content="Play Checkers in the Arcade. American checkers · 8 × 8. Six sets, from a tournament board to a park table to a terminal, with touch, drag and keyboard controls.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Checkers — RIC//NET">
-  <meta property="og:description" content="Play Checkers in the Arcade. American checkers · 8 × 8. Six styles, from a tournament board to a park table to a terminal, with touch, drag and keyboard controls.">
+  <meta property="og:description" content="Play Checkers in the Arcade. American checkers · 8 × 8. Six sets, from a tournament board to a park table to a terminal, with touch, drag and keyboard controls.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/checkers/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/checkers.jpg">
@@ -18,38 +18,78 @@
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
-/* Checkers owns its six styles (round three, 2026-11-21, TODO.md). Each one is a
-   real object — a tournament board, a diner set, an heirloom, a newspaper
-   problem, a park table, a terminal — and restyles the whole page, not just
-   the squares. Layout and rules stay in the Arcade's shared files. */
-body{background-color:var(--paper);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700;font-family:var(--display-font)}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--panel);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px);font-family:var(--body-font,inherit)}button:hover{background:var(--paper)}button.solid{background:var(--green);border-color:var(--green);color:var(--on-accent,#fff)}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules,.stats{border-color:var(--edge)}
-.sidebar h2,dialog h2{font-family:var(--display-font)}
-dialog{background:var(--panel);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--paper);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.game-heading{flex-wrap:wrap;gap:0}.game-heading>div:first-child{flex:1;min-width:150px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.game-actions button,.game-actions select{padding:8px}.sidebar{gap:18px}.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark .emblem{font-size:20px}}
+/* Checkers is a game at a table (round three, 2026-11-21, TODO.md). Ric: "each
+   page for the game needs to be catered to it". So this page has its own
+   layout, not the Arcade's heading/status/sidebar template: a slim bar, the
+   board on the table between two player plates, and the scoresheet lying
+   beside it. Each of the six sets restyles all of it, down to what the
+   scoresheet is made of. app.js only needs the ids. */
 
-/* ---- the table: trays, board, scoresheet --------------------------------- */
-.stage{gap:10px}
-.checkerboard{position:relative;width:min(100%,520px,max(270px,calc(100svh - 360px)));border:var(--frame-width,10px) solid var(--frame,#163d26);box-shadow:var(--board-shadow,0 10px 26px -12px #0008);background:var(--frame,#163d26);border-radius:var(--board-radius,2px);gap:0}
+/* ---- layout ---------------------------------------------------------------- */
+body{background:var(--table,#e8e5dc);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif)}
+.ck-bar{display:flex;align-items:center;gap:14px;min-height:60px;padding:8px max(3vw,16px);background:var(--bar,transparent);color:var(--bar-ink,var(--ink));border-bottom:var(--bar-rule,1px solid var(--edge))}
+.ck-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.ck-back:hover{background:#0000000f}
+.ck-name{display:flex;align-items:baseline;gap:12px;min-width:0;margin-right:auto}
+.ck-title{margin:0;font:var(--title-font,700 24px/1 var(--display-font,Georgia,serif));letter-spacing:var(--title-spacing,0);text-transform:var(--title-case,none);white-space:nowrap}
+.ck-sub{margin:0;font-size:12px;color:var(--bar-muted,var(--muted));white-space:nowrap}
+.ck-bar .game-actions{gap:6px}
+.ck-bar .theme-picker{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--bar-muted,var(--muted))}
+.ck-bar select{min-height:38px;font-size:13px;max-width:170px}
+.ck-bar button{min-height:38px;padding:6px 14px;font-size:13px}
+button,select,input{background:var(--panel);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px);font-family:var(--body-font,inherit)}
+button:hover{background:var(--paper)}button.solid{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.ck-room{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:36px;max-width:1120px;margin:0 auto;padding:22px max(3vw,16px) 90px;align-items:start}
+.ck-table{display:flex;flex-direction:column;align-items:center;min-width:0}
+.ck-table .stage{min-height:0;padding:0;gap:10px;width:100%}
+.ck-status{margin:12px 0 0;font-size:13px;font-weight:600;min-height:20px;text-align:center;color:var(--ink)}
+.ck-table .tools{padding:10px 0 0}
+.ck-table .hint{padding:6px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
+.ck-sheet{position:sticky;top:16px;display:grid;gap:18px}
+.sheet{background:var(--sheet,#fff);color:var(--sheet-ink,var(--ink));padding:16px 18px 18px;box-shadow:var(--sheet-shadow,0 2px 0 #00000014,0 14px 28px -18px #0007);border-radius:var(--sheet-radius,2px);position:relative}
+.sheet-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.sheet-title{font:var(--sheet-title,700 13px/1.2 var(--display-font));text-transform:uppercase;letter-spacing:.08em}
+.sheet-meta{font-size:11px;color:var(--sheet-muted,var(--muted))}
+.sheet .movelist{display:block;overflow:auto;max-height:min(46svh,420px);padding:0;margin:0;border:0;white-space:normal;font:var(--sheet-font,13px var(--mono))}
+.sheet .movelist li{display:grid;grid-template-columns:2.2em 1fr 1fr;gap:6px;padding:4px 0;border-bottom:1px solid var(--sheet-rule,#0000001f)}
+.sheet .movelist li:before{color:var(--sheet-muted,var(--muted))}
+.sheet .movelist li.empty{display:block;font:italic 13px var(--body-font);color:var(--sheet-muted,var(--muted));border:0}
+.sheet .stats{margin:16px 0 0;padding:14px 0 0;border-top:1px solid var(--sheet-rule,#0000001f)}
+.sheet .stats h2{font:var(--sheet-title,700 13px/1.2 var(--display-font));text-transform:uppercase;letter-spacing:.08em;margin:0}
+.sheet .stats .muted{font-size:11px;color:var(--sheet-muted,var(--muted))}
+.sheet .stat-grid dd{font-size:18px}
+.sheet .stat-grid dt{color:var(--sheet-muted,var(--muted))}
+dialog{background:var(--panel);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--paper);color:var(--ink)}
+dialog h2{font-family:var(--display-font)}
+#help-dialog{max-width:520px}#help-dialog #rules{color:var(--ink)}
+@media(max-width:860px){
+  .ck-room{grid-template-columns:1fr;gap:22px;padding-top:14px}
+  .ck-sheet{position:static}
+  .sheet .movelist{max-height:220px}
+  .ck-bar{flex-wrap:wrap;row-gap:6px}
+  .ck-bar .game-actions{width:100%;max-width:none;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:0 0 2px;scrollbar-width:none}
+  .ck-bar .game-actions label{width:auto;flex:none}
+  .ck-bar .game-actions>*{flex:none}
+  .ck-bar select{max-width:140px}
+  .ck-bar #new-game{order:-1}
+  .ck-sub{display:none}
+}
+
+/* ---- the board and the plates ------------------------------------------------ */
+.ck-table .board.checkerboard{position:relative;width:min(100%,560px,max(280px,calc(100svh - 270px)));border:var(--frame-width,10px) solid var(--frame,#163d26);box-shadow:var(--board-shadow,0 18px 34px -16px #0009);background:var(--frame,#163d26);border-radius:var(--board-radius,2px);gap:0}
 .checkerboard .square{border-radius:0}
 .checkerboard .light{background:var(--sq-light)}
 .checkerboard .dark{background:var(--sq-dark)}
 .checkerboard .square.occupied,.checkerboard .square.legal{touch-action:none}
 .checkerboard .num{position:absolute;left:4%;top:3%;font:600 clamp(8px,1.3vw,11px)/1 var(--num-font,system-ui);color:var(--num-color,#fff9);display:var(--show-num,block);pointer-events:none}
 .checkerboard .square.light:focus-visible{outline:none}
-/* Highlights, colored per style */
 .checkerboard .square.last:before{background:var(--hl-last,#f3d55a44)}
 .checkerboard .square.chosen{box-shadow:inset 0 0 0 3px var(--hl-chosen,#f3d55a)}
 .checkerboard .square.legal:after{width:26%;height:26%;background:var(--hl-legal,#ffffff66);border:0}
 .checkerboard .square.hinted{box-shadow:inset 0 0 0 3px var(--hl-hint,#5fc1f0)}
 .checkerboard .square.must .checker{animation:must-glow 1.4s ease-in-out infinite}
 @keyframes must-glow{0%,100%{filter:drop-shadow(0 0 0 transparent)}50%{filter:drop-shadow(0 0 7px var(--hl-must,#ffd84a)) drop-shadow(0 0 2px var(--hl-must,#ffd84a))}}
-
-/* A checker: one disc, or two stacked for a king. Each style paints .disc and .face. */
+/* A checker: one disc, or two stacked for a king. Each set paints .disc and .face. */
 .checker{position:relative;display:block;width:76%;height:76%;background:none!important;border:0!important;box-shadow:none!important;border-radius:50%}
 .checker .disc{position:absolute;inset:0;border-radius:50%;background:var(--a-rim);box-shadow:0 var(--thick,3px) 0 var(--a-edge),0 calc(var(--thick,3px) + 4px) 8px -2px #0007}
 .checker .face{position:absolute;inset:16%;border-radius:50%;background:var(--a-face)}
@@ -61,73 +101,115 @@ dialog{background:var(--panel);color:var(--ink);border-color:var(--edge);border-
 .checker .crown svg{width:100%;height:100%;fill:var(--crown,#e9b94a);stroke:var(--crown-line,#7a5410);stroke-width:1.2;stroke-linejoin:round}
 .drag-piece{position:fixed;z-index:999;pointer-events:none;display:flex;align-items:center;justify-content:center;transition:none}
 .drag-piece .checker{filter:drop-shadow(0 12px 10px #0006)}
+/* Player plates: a chip in your color, who you are, a turn light, your takings. */
+.plate{display:flex;align-items:center;gap:12px;width:min(100%,560px,max(280px,calc(100svh - 270px)));min-height:52px;padding:8px 14px;background:var(--plate,transparent);color:var(--plate-ink,var(--ink));border:var(--plate-border,0);border-radius:var(--plate-radius,0);box-shadow:var(--plate-shadow,none);position:relative;transition:box-shadow .2s,background .2s}
+.plate-chip{width:30px;height:30px;flex:none;display:grid;place-items:center}
+.plate-chip .checker{width:100%;height:100%}
+.plate-chip .checker .disc{--thick:2px}
+.plate-who{display:flex;flex-direction:column;line-height:1.15;min-width:84px}
+.plate-name{font:var(--plate-name,700 15px var(--display-font))}
+.plate-sub{font-size:11.5px;color:var(--plate-muted,var(--muted))}
+.plate .tray-pile{display:flex;flex:1;align-items:center;justify-content:flex-end;padding-left:12px;min-width:0;overflow:hidden}
+.plate .tray-pile .checker{width:22px;height:22px;margin-left:-13px;flex:none}
+.plate .tray-pile .checker .disc{--thick:2px}
+.plate-count{font:700 13px var(--mono);min-width:1.5em;text-align:right;font-variant-numeric:tabular-nums;color:var(--plate-muted,var(--muted))}
+.plate.to-move{box-shadow:var(--plate-turn,inset 4px 0 0 var(--accent))}
+.plate.to-move .plate-chip{animation:turn-bob 1.6s ease-in-out infinite}
+@keyframes turn-bob{50%{transform:translateY(-2px)}}
 
-.tray{display:flex;align-items:center;gap:10px;width:min(100%,520px,max(270px,calc(100svh - 360px)));min-height:30px;font:600 12px var(--body-font,system-ui);color:var(--muted)}
-.tray-label{min-width:56px;text-transform:var(--label-case,none);letter-spacing:var(--label-spacing,0)}
-.tray-pile{display:flex;flex:1;align-items:center;padding-left:12px}
-.tray-pile .checker{width:24px;height:24px;margin-left:-12px;flex:none}
-.tray-pile .checker .disc{--thick:2px}
-.tray-count{font-variant-numeric:tabular-nums}
-.scoresheet{width:min(100%,520px,max(270px,calc(100svh - 360px)))}
-
-/* ---- 0 · Tournament: the official green-and-buff board, red and white ridged
-   checkers, numbered squares, a scoresheet. Clean and sporting. ------------- */
-body{--paper:#f3f0e6;--ink:#17231b;--muted:#4b574e;--green:#1f6b3a;--panel:#fbfaf5;--edge:#c8c0aa;--display-font:'Franklin Gothic Medium','Arial Narrow',Arial,sans-serif;--radius:3px;
+/* =========================================================================
+   0 · TOURNAMENT — the official green-and-buff board, red and white checkers,
+   numbered squares, name cards, and the official score sheet. A tournament
+   hall: linen tablecloth, printed forms, condensed sans. */
+body{--paper:#f6f4ee;--ink:#17231b;--muted:#4b574e;--accent:#1f6b3a;--green:#1f6b3a;--panel:#fbfaf6;--edge:#c8c0aa;--display-font:'Franklin Gothic Medium','Arial Narrow',Arial,sans-serif;--radius:3px;
+  --table:repeating-linear-gradient(0deg,#00000008 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,#ffffff1a 0 1px,transparent 1px 3px) #e9e6dc;
+  --bar:#fbfaf6;--bar-rule:3px solid #1f6b3a;--title-case:uppercase;--title-spacing:.05em;--title-font:600 24px/1 var(--display-font);
   --frame:#173d27;--sq-light:#efe2c1;--sq-dark:#3f7c4d;--num-color:#e7f0dc;--show-num:block;--show-crown:none;
   --a-face:repeating-radial-gradient(circle,#c22c25 0 2.2px,#a9221c 2.2px 3.4px);--a-rim:radial-gradient(circle at 45% 38%,#e5544a,#b4261f 62%,#8f1c17);--a-edge:#741713;
   --b-face:repeating-radial-gradient(circle,#f1ebdc 0 2.2px,#dcd3bf 2.2px 3.4px);--b-rim:radial-gradient(circle at 45% 38%,#fffefa,#e8e1cf 62%,#cdc3ac);--b-edge:#a1967e;
-  --hl-last:#f2d65c4d;--hl-chosen:#f4d24c;--hl-legal:#f6f0d8aa;--hl-must:#ffe066}
-body[data-look="tournament"] .game-heading h1{text-transform:uppercase;letter-spacing:.04em;font-weight:600}
-body[data-look="tournament"] .topbar{border-bottom:3px solid var(--green)}
-body[data-look="tournament"] .table-head{background:var(--green);color:#f3f0e6;border-bottom:0}
-body[data-look="tournament"] .table-head #metric{color:#f3f0e6}
-body[data-look="tournament"] .tray-label{text-transform:uppercase;letter-spacing:.08em;font-size:11px}
-body[data-look="tournament"] .scoresheet{border-top:2px solid var(--ink)}
+  --hl-last:#f2d65c4d;--hl-chosen:#f4d24c;--hl-legal:#f6f0d8aa;--hl-must:#ffe066;
+  --plate:#fff;--plate-radius:2px;--plate-shadow:0 1px 0 #0000000d;--plate-name:600 15px/1.1 var(--display-font);
+  --sheet:#fffffd;--sheet-rule:#9bb8a2;--sheet-title:600 13px/1.2 var(--display-font)}
+body[data-look="tournament"] .plate{border:1px solid #d6cfbb}
+body[data-look="tournament"] .plate-name{text-transform:uppercase;letter-spacing:.06em}
+body[data-look="tournament"] .sheet{padding-top:0;border-top:0}
+body[data-look="tournament"] .sheet-head{margin:0 -18px 10px;padding:9px 18px;background:#1f6b3a;color:#f6f4ee}
+body[data-look="tournament"] .sheet-head .sheet-meta{color:#d7e8da}
+body[data-look="tournament"] .sheet .movelist li{border-bottom-color:#9bb8a280}
+body[data-look="tournament"] .sheet .movelist li:nth-child(odd){background:#1f6b3a08}
 
-/* ---- 1 · Diner: red and black squares, glossy plastic checkers, chrome edges
-   and a mint formica counter. -------------------------------------------- */
-body[data-skin="1"]{--paper:#dcefeb;--ink:#191d20;--muted:#465257;--green:#c41f2e;--panel:#f7fbfa;--edge:#97aba8;--display-font:'Trebuchet MS','Arial Black',sans-serif;--radius:999px;
-  --frame:linear-gradient(#f7f9fa,#9aa4a8 40%,#e9eef0 60%,#7e888c);--frame-width:12px;--sq-light:#c9252f;--sq-dark:#1c1c1d;--show-num:none;--show-crown:flex;
+/* =========================================================================
+   1 · DINER — a red-and-black board in a chrome frame on a mint formica
+   counter, glossy plastic checkers, red vinyl buttons, and the moves written
+   on a guest check. */
+body[data-skin="1"]{--paper:#dcefeb;--ink:#191d20;--muted:#465257;--accent:#c41f2e;--green:#c41f2e;--panel:#f7fbfa;--edge:#97aba8;--display-font:'Trebuchet MS','Arial Black',sans-serif;--radius:999px;
+  --table:radial-gradient(#9bc5be 1px,transparent 1.5px) 0 0/22px 22px,radial-gradient(#f7fffd 1px,transparent 1.5px) 9px 11px/17px 17px #dcefeb;
+  --bar:linear-gradient(#ffffff,#cfd8da 45%,#f5f8f8 55%,#b9c3c6);--bar-rule:4px solid #c41f2e;--title-font:italic 900 30px/1 var(--display-font);--title-case:none;--title-spacing:-.01em;
+  --frame:#1c1c1d;--frame-width:12px;--sq-light:#c9252f;--sq-dark:#1c1c1d;--show-num:none;--show-crown:flex;
   --a-face:repeating-radial-gradient(circle,#1c1c1f 0 2.6px,#0c0c0d 2.6px 4px);--a-rim:radial-gradient(circle at 38% 30%,#6a6a70 0,#222225 38%,#0a0a0b 75%);--a-edge:#000;
   --b-face:repeating-radial-gradient(circle,#cf2230 0 2.6px,#a5121d 2.6px 4px);--b-rim:radial-gradient(circle at 38% 30%,#ff9a92 0,#d7232f 40%,#8f0e17 80%);--b-edge:#5d0910;--thick:4px;
   --hl-last:#fff3a840;--hl-chosen:#fff3a8;--hl-legal:#fff7c9cc;--hl-must:#fff3a8;
-  background-image:radial-gradient(#9bc5be 1px,transparent 1.5px),radial-gradient(#f7fffd 1px,transparent 1.5px);background-size:22px 22px,17px 17px;background-position:0 0,9px 11px}
+  --plate:#c41f2e;--plate-ink:#fff;--plate-muted:#ffd6d9;--plate-radius:999px;--plate-shadow:inset 0 2px 0 #ff6b76,0 4px 0 #8e0d16,0 10px 16px -8px #0008;--plate-turn:inset 0 2px 0 #ff6b76,0 4px 0 #8e0d16,0 0 0 4px #fff3a8;--plate-name:italic 900 16px/1.1 var(--display-font);
+  --sheet:#e9f3e4;--sheet-ink:#2c4a2f;--sheet-muted:#5d7a5f;--sheet-rule:#8fb593;--sheet-font:15px/1.4 'Segoe Print','Bradley Hand','Comic Sans MS',cursive;--sheet-title:900 15px/1 var(--display-font);--sheet-radius:0}
+body[data-look="diner"] .ck-title{color:#c41f2e;text-shadow:2px 2px 0 #fff,4px 4px 0 #1b1f22}
 body[data-look="diner"] .checkerboard{border:12px solid transparent;background:linear-gradient(#1c1c1d,#1c1c1d) padding-box,linear-gradient(135deg,#fdfefe,#8d979b 30%,#eef3f4 50%,#7b858a 75%,#f4f7f8) border-box;border-radius:10px;overflow:hidden}
-body[data-look="diner"] .topbar{background:linear-gradient(#ffffff,#cfd8da 45%,#f5f8f8 55%,#b9c3c6);border-bottom:4px solid #c41f2e}
-body[data-look="diner"] .game-heading h1{color:#c41f2e;font-style:italic;font-weight:900;letter-spacing:-.01em;text-shadow:2px 2px 0 #fff,4px 4px 0 #1b1f22}
-body[data-look="diner"] .table-wrap{border-radius:16px;border:3px solid #c41f2e;box-shadow:0 0 0 5px #f7fbfa,0 0 0 7px #97aba8,0 18px 30px -16px #0008}
-body[data-look="diner"] .table-head{background:#c41f2e;color:#fff;border:0}
-body[data-look="diner"] .table-head #metric{color:#fff}
-body[data-look="diner"] .tools button:not(.minor){background:#c41f2e;color:#fff;border:2px solid #8e0d16;box-shadow:inset 0 1px 0 #ff8d85}
 body[data-look="diner"] .checker .face{box-shadow:inset 0 0 0 2px #0000002e}
-body[data-look="diner"] :is(dialog,select,.sidebar section){border-radius:12px}
-/* A glossy highlight across the top of each diner checker. */
 body[data-look="diner"] .checker .disc::after{content:'';position:absolute;left:18%;top:10%;width:46%;height:26%;border-radius:50%;background:linear-gradient(#ffffff73,#ffffff00);pointer-events:none}
+body[data-look="diner"] .ck-table .tools button:not(.minor){background:#c41f2e;color:#fff;border:2px solid #8e0d16;box-shadow:inset 0 1px 0 #ff8d85}
+body[data-look="diner"] :is(dialog,select){border-radius:12px}
+/* The guest check: a perforated top edge, a red number, green rules. */
+body[data-look="diner"] .sheet{padding-top:22px;-webkit-mask:radial-gradient(circle 5px at 8px 0,transparent 98%,#000) 0 0/16px 100% repeat-x;mask:radial-gradient(circle 5px at 8px 0,transparent 98%,#000) 0 0/16px 100% repeat-x;background:#e9f3e4 repeating-linear-gradient(#e9f3e4 0 27px,#8fb593 27px 28px) 0 64px/100% calc(100% - 64px) no-repeat}
+body[data-look="diner"] .sheet-head{border-bottom:2px solid #2c4a2f;padding-bottom:6px}
+body[data-look="diner"] .sheet-title::before{content:'Guest check';}
+body[data-look="diner"] .sheet-title span{display:none}
+body[data-look="diner"] .sheet-meta{color:#c41f2e;font:700 14px var(--mono)}
+body[data-look="diner"] .sheet-meta::before{content:'No. 0471'}
+body[data-look="diner"] .sheet-meta span{display:none}
+body[data-look="diner"] .sheet .movelist li{border:0;min-height:28px;padding:2px 0}
 
-/* ---- 2 · Heirloom: a maple-and-walnut inlaid board with a brass line, turned
-   ebony and boxwood checkers with grooves, on a walnut table. ------------- */
-body[data-skin="2"]{--paper:#24170f;--ink:#f3e6cc;--muted:#d2bd97;--green:#a8823f;--panel:#32221a;--edge:#6d5034;--display-font:'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif;--body-font:'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif;--radius:2px;color-scheme:dark;
-  --frame:#3b2414;--frame-width:16px;--sq-light:#d9b47c;--sq-dark:#6a4026;--show-num:none;--show-crown:flex;--crown:#d9b46a;--crown-line:#5c3c14;--on-accent:#1d130b;
+/* =========================================================================
+   2 · HEIRLOOM — an inlaid maple-and-walnut board with a brass line, turned
+   ebony and boxwood checkers, brass nameplates on a walnut table, and the
+   game written into a leather-bound record book. */
+body[data-skin="2"]{--paper:#24170f;--ink:#f3e6cc;--muted:#d2bd97;--accent:#a8823f;--green:#a8823f;--panel:#32221a;--edge:#6d5034;--display-font:'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif;--body-font:'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif;--radius:2px;color-scheme:dark;--on-accent:#1d130b;
+  --table:#24170f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.22' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.09 0 0 0 0 0.05 0 0 0 0 0.02 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --bar:#1a100a;--bar-rule:1px solid #a8823f66;--title-case:none;--title-font:400 26px/1 var(--display-font);--title-spacing:.05em;
+  --frame:#3b2414;--frame-width:16px;--sq-light:#d9b47c;--sq-dark:#6a4026;--show-num:none;--show-crown:flex;--crown:#d9b46a;--crown-line:#5c3c14;
   --a-face:repeating-radial-gradient(circle,#2b1b11 0 3px,#1a0f09 3px 4px);--a-rim:radial-gradient(circle,#3a2517 60%,#1b100a 100%);--a-edge:#0d0805;
   --b-face:repeating-radial-gradient(circle,#ead09a 0 3px,#c9a467 3px 4px);--b-rim:radial-gradient(circle,#e8cb92 60%,#b38a4e 100%);--b-edge:#7a5a2c;--thick:4px;
-  --hl-last:#f5d38a33;--hl-chosen:#e8c46a;--hl-legal:#f6dfa999;--hl-must:#ffd27a}
-body[data-look="heirloom"]{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.22' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.09 0 0 0 0 0.05 0 0 0 0 0.02 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E")}
+  --hl-last:#f5d38a33;--hl-chosen:#e8c46a;--hl-legal:#f6dfa999;--hl-must:#ffd27a;
+  --plate:linear-gradient(#e7c97f,#b8893c 55%,#d8b466);--plate-ink:#2a1a0c;--plate-muted:#4d3517;--plate-radius:3px;--plate-shadow:inset 0 1px 0 #fff4c9,inset 0 -1px 0 #7a5418,0 6px 14px -6px #000c;--plate-turn:inset 0 1px 0 #fff4c9,inset 0 -1px 0 #7a5418,0 0 0 2px #24170f,0 0 0 3px #e8c46a,0 0 18px #e8c46a55;--plate-name:400 16px/1.1 var(--display-font);
+  --sheet:#efe3c6;--sheet-ink:#3a2a18;--sheet-muted:#7a6447;--sheet-rule:#b9a27c80;--sheet-font:italic 15px/1.5 var(--display-font);--sheet-title:400 15px/1.2 var(--display-font);--sheet-radius:1px;--sheet-shadow:-6px 0 0 #5a2f1c,-7px 0 0 #2a160c,0 18px 30px -16px #000}
+body[data-look="heirloom"] .ck-title{font-variant:small-caps;color:#f0dcae}
 body[data-look="heirloom"] .checkerboard{box-shadow:0 0 0 2px #c9a35a,0 0 0 9px #3b2414,0 0 0 10px #c9a35a33,0 22px 40px -16px #000c}
 body[data-look="heirloom"] .checkerboard .square{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015 0.32' numOctaves='3' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.17 0 0 0 0 0.07 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E")}
 body[data-look="heirloom"] .checkerboard .square.dark{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.3 0.015' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.06 0 0 0 0 0.02 0 0 0 0.45 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E")}
-body[data-look="heirloom"] .game-heading h1{font-variant:small-caps;letter-spacing:.04em;font-weight:400;color:#f0dcae}
-body[data-look="heirloom"] .table-wrap{background:#2c1d14;border:1px solid #6d5034;box-shadow:inset 0 0 0 4px #24170f,inset 0 0 0 5px #a8823f55,0 20px 40px -20px #000}
-body[data-look="heirloom"] .table-head{background:transparent;border-bottom:1px solid #a8823f55;font-style:italic}
-body[data-look="heirloom"] .topbar{border-bottom:1px solid #a8823f66}
 body[data-look="heirloom"] .checker .disc{border:1px solid #0000004d}
+/* Brass nameplates carry two screw heads. */
+body[data-look="heirloom"] .plate::before,body[data-look="heirloom"] .plate::after{content:'';position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff1c2,#8a6224);box-shadow:inset 0 0 0 .5px #5a3c12}
+body[data-look="heirloom"] .plate::before{left:5px}body[data-look="heirloom"] .plate::after{right:5px}
+body[data-look="heirloom"] .plate-name{font-variant:small-caps;letter-spacing:.06em}
+body[data-look="heirloom"] .sheet{background:#efe3c6 repeating-linear-gradient(transparent 0 25px,#b9a27c66 25px 26px) 0 52px/100% calc(100% - 52px) no-repeat}
+body[data-look="heirloom"] .sheet::before{content:'';position:absolute;right:22px;top:-6px;width:12px;height:56px;background:#7a1f1f;clip-path:polygon(0 0,100% 0,100% 100%,50% 84%,0 100%)}
+body[data-look="heirloom"] .sheet-title{font-style:italic;text-transform:none;letter-spacing:.02em}
+body[data-look="heirloom"] .sheet .movelist li{border:0;min-height:26px;padding:0}
+body[data-look="heirloom"] .ck-table .tools button:not(.minor){background:#32221a;border-color:#a8823f88;color:#f0dcae}
 
-/* ---- 3 · Newsprint: the checkers problem from a Sunday paper. White squares,
-   hatched dark squares, engraved pieces, headline type, no color at all. -- */
-body[data-skin="3"]{--paper:#ece8dd;--ink:#121212;--muted:#3a3a38;--green:#121212;--panel:#f5f2ea;--edge:#1d1d1d;--display-font:'Times New Roman',Times,Georgia,serif;--body-font:Georgia,'Times New Roman',serif;--radius:0px;
+/* =========================================================================
+   3 · NEWSPRINT — the checkers problem from the Sunday paper: a masthead,
+   a hatched diagram, engraved pieces, captions, and the play set as a
+   column of type. No colour. */
+body[data-skin="3"]{--paper:#ece8dd;--ink:#121212;--muted:#3a3a38;--accent:#121212;--green:#121212;--panel:#f5f2ea;--edge:#1d1d1d;--display-font:'Times New Roman',Times,Georgia,serif;--body-font:Georgia,'Times New Roman',serif;--radius:0px;
+  --table:#ece8dd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.28 0 0 0 0 0.24 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --bar:transparent;--bar-rule:0;--title-case:none;--title-spacing:0;--title-font:400 36px/1 'Old English Text MT','UnifrakturMaguntia','Times New Roman',serif;
   --frame:#121212;--frame-width:3px;--sq-light:#fbf9f3;--sq-dark:#fbf9f3;--num-color:#121212;--num-font:Georgia,serif;--show-num:block;--show-crown:flex;--crown:#fbf9f3;--crown-line:#121212;
   --a-face:#141414;--a-rim:#141414;--a-edge:transparent;--b-face:#fbf9f3;--b-rim:#141414;--b-edge:transparent;--thick:0px;
   --hl-last:transparent;--hl-chosen:#121212;--hl-legal:#121212;--hl-must:#121212;--board-shadow:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.28 0 0 0 0 0.24 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  --plate:transparent;--plate-name:700 14px/1.1 var(--display-font);
+  --sheet:transparent;--sheet-shadow:none;--sheet-rule:#12121233;--sheet-font:14px/1.5 Georgia,serif;--sheet-title:900 20px/1 var(--display-font)}
+body[data-look="newsprint"] .ck-bar{border-top:1px solid #121212;border-bottom:4px double #121212;margin:10px max(3vw,16px) 0;padding:6px 0}
+body[data-look="newsprint"] .ck-back:hover{background:#12121214}
+body[data-look="newsprint"] .ck-sub{font:italic 13px Georgia,serif;color:#121212}
 body[data-look="newsprint"] .checkerboard{box-shadow:0 0 0 4px var(--paper),0 0 0 5px #121212}
 body[data-look="newsprint"] .checkerboard .dark{background:repeating-linear-gradient(135deg,#1a1a1a 0 1.1px,#fbf9f3 1.1px 4.2px)}
 body[data-look="newsprint"] .checkerboard .num{background:#fbf9f3;padding:1px 2px;top:2px;left:2px;font-size:clamp(8px,1.2vw,10px)}
@@ -140,24 +222,39 @@ body[data-look="newsprint"] .checker.side-b .crown svg{fill:#141414;stroke:none}
 body[data-look="newsprint"] .checkerboard .square.last:before{background:none;outline:1.5px dashed #121212;outline-offset:-5px}
 body[data-look="newsprint"] .checkerboard .square.legal:after{width:16%;height:16%;background:#121212;box-shadow:0 0 0 3px #fbf9f3}
 body[data-look="newsprint"] .checkerboard .square.chosen{box-shadow:inset 0 0 0 2px #121212,inset 0 0 0 4px #fbf9f3,inset 0 0 0 5px #121212}
-body[data-look="newsprint"] .game-heading h1{text-transform:uppercase;font-weight:900;letter-spacing:-.02em;font-size:46px;border-bottom:4px double #121212;padding-bottom:2px}
-body[data-look="newsprint"] .game-heading p{font-style:italic}
-body[data-look="newsprint"] .topbar{border-bottom:1px solid #121212;box-shadow:0 3px 0 -2px #121212,0 4px 0 -1px #ece8dd,0 5px 0 -1px #121212}
-body[data-look="newsprint"] .table-wrap{box-shadow:none;border:1px solid #121212}
-body[data-look="newsprint"] .table-head{background:transparent;border-bottom:1px solid #121212;font-family:var(--display-font);text-transform:uppercase;letter-spacing:.06em}
-body[data-look="newsprint"] .tools button:not(.minor),body[data-look="newsprint"] .game-actions button,body[data-look="newsprint"] select{background:transparent;border:1px solid #121212;font-variant:small-caps;letter-spacing:.04em}
-body[data-look="newsprint"] button.solid{background:#121212;color:#f5f2ea}
 body[data-look="newsprint"] .must .checker{animation:none!important}
 body[data-look="newsprint"] .checkerboard .square.must:before{content:'';position:absolute;inset:8%;border:1.5px solid #121212;border-radius:50%;background:none}
+/* Plates are diagram captions: small caps under a hairline. */
+body[data-look="newsprint"] .plate{border-top:1px solid #121212;border-radius:0;padding:6px 0;min-height:44px}
+body[data-look="newsprint"] .plate-far{border-top:0;border-bottom:1px solid #121212}
+body[data-look="newsprint"] .plate-name{font-variant:small-caps;letter-spacing:.06em;font-size:15px}
+body[data-look="newsprint"] .plate-sub{font-style:italic}
+body[data-look="newsprint"] .plate.to-move{box-shadow:none}
+body[data-look="newsprint"] .plate.to-move .plate-name::after{content:' — to play';font-variant:normal;font-style:italic;font-weight:400;letter-spacing:0}
+body[data-look="newsprint"] .plate.to-move .plate-chip{animation:none}
+body[data-look="newsprint"] .sheet{border-top:3px solid #121212;padding:10px 0 0}
+body[data-look="newsprint"] .sheet-title{text-transform:uppercase;letter-spacing:-.01em}
+body[data-look="newsprint"] .sheet .movelist{column-count:2;column-rule:1px solid #12121244;column-gap:18px}
+body[data-look="newsprint"] .sheet .movelist li{break-inside:avoid;border-bottom:0;padding:1px 0;grid-template-columns:1.8em 1fr 1fr}
+body[data-look="newsprint"] button,body[data-look="newsprint"] select{background:transparent;border:1px solid #121212;font-variant:small-caps;letter-spacing:.04em}
+body[data-look="newsprint"] button.solid{background:#121212;color:#f5f2ea}
 
-/* ---- 4 · Park table: a board painted on a concrete table, worn at the edges,
-   played with bottle caps. Two caps stacked make a king. ----------------- */
-body[data-skin="4"]{--paper:#c3c1bb;--ink:#202326;--muted:#3f4346;--green:#2c5e44;--panel:#dcdad4;--edge:#8a8882;--display-font:Stencil,'Arial Black',Impact,sans-serif;--radius:3px;
+/* =========================================================================
+   4 · PARK TABLE — a board painted on a concrete table, worn at the edges,
+   played with bottle caps; a green park sign for a header, and the moves
+   kept in marker on a flap of cardboard. */
+body[data-skin="4"]{--paper:#c3c1bb;--ink:#202326;--muted:#3f4346;--accent:#2c5e44;--green:#2c5e44;--panel:#dcdad4;--edge:#8a8882;--display-font:Stencil,'Arial Black',Impact,sans-serif;--radius:3px;
+  --table:#c3c1bb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' seed='11'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --bar:#2c5e44;--bar-ink:#eef2ea;--bar-muted:#c9dccf;--bar-rule:0;--title-font:400 26px/1 var(--display-font);--title-case:uppercase;--title-spacing:.08em;
   --frame:#2c5e44;--frame-width:12px;--sq-light:#e2d7bd;--sq-dark:#963a2e;--show-num:none;--show-crown:none;--thick:2px;
   --a-face:radial-gradient(circle at 42% 38%,#ff5a4f,#d0182a 55%,#9c0e1c);--a-rim:conic-gradient(from 20deg,#e2343d,#a50d1b,#ff7a6e,#b81222,#e2343d);--a-edge:#6d0912;
   --b-face:radial-gradient(circle at 42% 38%,#ffffff,#c9ced3 50%,#8f969c);--b-rim:conic-gradient(from 20deg,#e9ecef,#8e959b,#fbfcfd,#9aa1a7,#e9ecef);--b-edge:#5f666b;
   --hl-last:#fff6c43d;--hl-chosen:#fff3b0;--hl-legal:#fff8d9bb;--hl-must:#fff3b0;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' seed='11'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  --plate:transparent;--plate-name:700 18px/1 'Segoe Print','Bradley Hand','Comic Sans MS',cursive;--plate-ink:#f7f7f2;--plate-muted:#e9e9e2;
+  --sheet:#c8a26a;--sheet-ink:#1d1a16;--sheet-muted:#4a3d2c;--sheet-rule:transparent;--sheet-font:16px/1.45 'Segoe Print','Bradley Hand','Comic Sans MS',cursive;--sheet-title:700 18px/1 'Segoe Print','Bradley Hand','Comic Sans MS',cursive;--sheet-radius:2px}
+body[data-look="park"] .ck-back:hover{background:#ffffff1f}
+body[data-look="park"] .ck-bar select,body[data-look="park"] .ck-bar button:not(.solid){background:#3a6f54;color:#eef2ea;border-color:#6f9a82}
+body[data-look="park"] .ck-bar button.solid{background:#eef2ea;color:#2c5e44;border-color:#eef2ea}
 body[data-look="park"] .checkerboard{border-radius:4px;box-shadow:0 0 0 14px #b9b7b0,0 0 0 15px #9d9b95,0 20px 30px -14px #0008}
 body[data-look="park"] .checkerboard .square{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='3' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 0.78 0 0 0 0 0.77 0 0 0 0 0.74 0 0 0 1.6 -0.95'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E")}
 /* A bottle cap: a crimped skirt (the mask's teeth), a domed top. */
@@ -166,16 +263,26 @@ body[data-look="park"] .checker{filter:drop-shadow(0 3px 2px #0007)}
 body[data-look="park"] .checker .face{inset:13%;box-shadow:inset 0 0 0 1.5px #ffffff55,inset 0 -2px 3px #0005}
 body[data-look="park"] .checker.king .disc:first-child{transform:translate(9%,12%) rotate(13deg)}
 body[data-look="park"] .checker.king .disc.top{transform:translate(-4%,-6%)}
-body[data-look="park"] .game-heading h1{text-transform:uppercase;letter-spacing:.06em;color:#2c5e44;font-weight:400}
-body[data-look="park"] .topbar{background:#2c5e44;color:#eef2ea;border:0}
-body[data-look="park"] .topbar a,body[data-look="park"] .topbar button{color:#eef2ea}
-body[data-look="park"] .table-wrap{border:0;background:#d4d2cc;box-shadow:0 2px 0 #9d9b95,0 16px 30px -18px #000a}
-body[data-look="park"] .table-head{background:#2c5e44;color:#eef2ea;border:0;font-family:var(--display-font);letter-spacing:.05em;text-transform:uppercase}
-body[data-look="park"] .table-head #metric{color:#eef2ea}
+/* Plates are chalk on the concrete. */
+body[data-look="park"] .plate{text-shadow:0 0 1px #fff8,1px 1px 0 #0000001f}
+body[data-look="park"] .plate-name{color:#fbfbf6;filter:url(#chalk)}
+body[data-look="park"] .plate-sub{color:#2f3336;text-shadow:none;font-size:12px}
+body[data-look="park"] .plate.to-move{box-shadow:none}
+body[data-look="park"] .plate.to-move .plate-name::before{content:'→ ';}
+/* The cardboard flap: corrugation lines, a torn edge, marker. */
+body[data-look="park"] .sheet{background:#c8a26a repeating-linear-gradient(90deg,#00000010 0 2px,transparent 2px 7px);clip-path:polygon(0 2%,6% 0,14% 1.5%,23% 0,35% 1.2%,48% 0,60% 1.6%,72% .2%,85% 1.4%,100% 0,100% 98%,92% 100%,80% 98.6%,66% 100%,52% 98.4%,37% 100%,22% 98.8%,10% 100%,0 98%);transform:rotate(-1.2deg)}
+body[data-look="park"] .sheet-title{text-transform:none;letter-spacing:0}
+body[data-look="park"] .sheet .movelist li{border:0;padding:0}
 
-/* ---- 5 · Terminal: the board is ASCII text. Shared terminal chrome is in
-   style.css (body[data-look="terminal"]); the board's own text is here. --- */
-body[data-skin="5"]{--paper:#040904;--ink:#8dffa6;--muted:#58c472;--green:#8dffa6;--panel:#071107;--edge:#1f5d2d;--radius:0px;color-scheme:dark}
+/* =========================================================================
+   5 · TERMINAL — the board is ASCII text and the whole page is a session.
+   The shared terminal chrome is in style.css; this is the table's part. */
+body[data-skin="5"]{--paper:#040904;--ink:#8dffa6;--muted:#58c472;--accent:#8dffa6;--plate:transparent;--plate-shadow:none;--green:#8dffa6;--panel:#071107;--edge:#1f5d2d;--radius:0px;color-scheme:dark;--table:#040904;--bar:#040904;--bar-rule:1px dashed #1f5d2d;--title-font:700 20px/1 var(--term-font);
+  --sheet:transparent;--sheet-shadow:none;--sheet-rule:transparent;--sheet-font:13px/1.6 var(--term-font);--sheet-title:700 13px/1.2 var(--term-font)}
+body[data-look="terminal"] .ck-title::before{content:'$ ./';color:var(--muted);font-weight:400}
+body[data-look="terminal"] .ck-title{text-transform:lowercase}
+body[data-look="terminal"] .ck-sub::before{content:'# '}
+body[data-look="terminal"] .ck-back{border-radius:0}
 body[data-look="terminal"] .ascii-board{margin:0;font:clamp(11px,min(4.3vw,2.3vh),18px)/1.15 var(--term-font);color:var(--ink);text-shadow:0 0 6px #8dffa673;user-select:none;white-space:pre}
 body[data-look="terminal"] .ascii-board .cell{all:unset;cursor:pointer;white-space:pre;color:var(--ink)}
 body[data-look="terminal"] .ascii-board .cell:focus-visible{background:#8dffa633;outline:none}
@@ -189,22 +296,45 @@ body[data-look="terminal"] .ascii-board .chosen{background:var(--ink);color:var(
 body[data-look="terminal"] .ascii-board .must{animation:term-blink 1s steps(1) infinite}
 body[data-look="terminal"] .ascii-board .hinted{background:#ffc56b;color:var(--paper);text-shadow:none}
 @keyframes term-blink{50%{background:var(--ink);color:var(--paper);text-shadow:none}}
-body[data-look="terminal"] .tray{font:13px var(--term-font);white-space:pre;color:var(--muted);min-height:0;justify-content:flex-start}
-body[data-look="terminal"] .tray-far{color:#ffc56b}
+body[data-look="terminal"] .plate{font:13px/1.4 var(--term-font);white-space:pre;min-height:0;padding:2px 0;width:auto;color:var(--muted);overflow:hidden}
+body[data-look="terminal"] .plate.to-move{color:var(--ink);box-shadow:none}
+body[data-look="terminal"] .plate-far{color:#c49445}
+body[data-look="terminal"] .plate-far.to-move{color:#ffc56b}
+body[data-look="terminal"] .sheet{border:1px dashed var(--edge);padding:12px 14px}
+body[data-look="terminal"] .sheet-title{text-transform:lowercase;letter-spacing:0}
+body[data-look="terminal"] .sheet-title::before{content:'$ tail -f '}
+body[data-look="terminal"] .sheet-title span{display:none}
+body[data-look="terminal"] .sheet-title::after{content:'moves.log'}
+body[data-look="terminal"] .sheet .movelist li{border:0;padding:0}
+body[data-look="terminal"] .sheet .stats{border:0;border-top:1px dashed var(--edge);padding-left:0;padding-right:0}
   </style>
 </head>
 <body data-game="checkers" data-skin="0" data-look="tournament">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">●</span>Checkers</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Checkers</h1><p id="game-subtitle">American checkers · 8 × 8</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0" data-look="tournament" data-sides="Red,White">Tournament</option><option value="1" data-look="diner" data-sides="Black,Red">Diner</option><option value="2" data-look="heirloom" data-sides="Ebony,Boxwood">Heirloom</option><option value="3" data-look="newsprint" data-sides="Black,White">Newsprint</option><option value="4" data-look="park" data-sides="Red,Silver">Park table</option><option value="5" data-look="terminal" data-sides="o,x">Terminal</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>At the board</h2><p id="rules"></p></section></aside></div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="chalk"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/></filter></svg>
+  <header class="ck-bar">
+    <a href="../../gaming.html" class="ck-back" aria-label="Back to the Arcade">←</a>
+    <div class="ck-name"><h1 class="ck-title" id="game-title">Checkers</h1><p class="ck-sub" id="game-subtitle">American checkers · 8 × 8</p></div>
+    <div class="game-actions"><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Visual style"><option value="0" data-look="tournament" data-sides="Red,White">Tournament</option><option value="1" data-look="diner" data-sides="Black,Red">Diner</option><option value="2" data-look="heirloom" data-sides="Ebony,Boxwood">Heirloom</option><option value="3" data-look="newsprint" data-sides="Black,White">Newsprint</option><option value="4" data-look="park" data-sides="Red,Silver">Park table</option><option value="5" data-look="terminal" data-sides="o,x">Terminal</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
+  </header>
+  <main id="playroom" class="ck-room" aria-labelledby="game-title">
+    <section class="ck-table" aria-label="The board">
+      <div id="stage" class="stage"></div>
+      <p id="status" class="ck-status" role="status" aria-live="polite"></p><span id="metric" hidden></span>
+      <div id="tools" class="tools"></div>
+      <p id="hint" class="hint"></p>
     </section>
+    <aside class="ck-sheet" aria-label="Scoresheet and your record">
+      <div class="sheet">
+        <div class="sheet-head"><span class="sheet-title"><span>Score sheet</span></span><span class="sheet-meta"><span>American</span></span></div>
+        <div id="sheet-slot"></div>
+        <div id="stats-slot"></div>
+      </div>
+      <section id="score-panel" hidden><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
+    </aside>
     <noscript><p>Checkers needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules are beside the board. Tap a piece and then a square, or drag it. When a jump is available it has to be taken, and the pieces that can jump glow. Choose a style above; changing it keeps your game in place.</p><p>Your games are saved in this browser, so you can leave and come back. Undo takes back your last turn; Hint suggests a move.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p><p>Your game is saved in this browser, so you can leave and come back. Undo takes back your last turn; Hint suggests a move. Changing the set keeps your game in place.</p><button id="close-help" class="solid">Got it</button></dialog>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>

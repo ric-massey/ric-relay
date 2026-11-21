@@ -97,7 +97,8 @@
   }
   function renderStats(){
     let panel=$('stats-panel');
-    if(!panel){panel=el('section','stats');panel.id='stats-panel';const rules=document.querySelector('.sidebar .rules');rules.parentNode.insertBefore(panel,rules);}
+    // A page says where its record goes with #stats-slot; older pages put it above the rules.
+    if(!panel){panel=el('section','stats');panel.id='stats-panel';const slot=$('stats-slot'),rules=document.querySelector('.sidebar .rules');if(slot)slot.append(panel);else if(rules)rules.parentNode.insertBefore(panel,rules);else return;}
     const st=stats(),rows=[],id=game.id,p=st.played||0;bestScore=action()?st.best||0:0;
     if(mode==='two'&&id==='checkers'){const [a,b]=sides();rows.push([a+' wins',(st.sides?.w||0)+(st.sides?.Light||0)],[b+' wins',(st.sides?.b||0)+(st.sides?.Dark||0)]);rows.push(['Draws',st.sides?.draw||0]);}
     else if(mode==='two'){const names=id==='tictactoe'?['X','O']:['White','Black'];for(const n of names)rows.push([n+' wins',st.sides?.[n]||0]);rows.push(['Draws',st.sides?.draw||0]);}
@@ -413,13 +414,23 @@
     stage.replaceChildren(pre);
     if(lastMove)lastMove.fresh=false;
   }
-  /* Captured pieces sit in a tray on the side of whoever took them. */
-  function checkerTrays(){
+  /* A player plate on each side of the board (2026-11-21, the page built as a
+     table): who sits there, a light when it's their turn, and the pieces they
+     have taken in their tray. */
+  function checkerPlates(result,thinking){
     const left={w:0,b:0};for(const p of s.b)if(p)left[p.toLowerCase()]++;
-    const tray=(taker,lost)=>{const taken=12-left[lost],t=el('div','tray tray-'+(taker==='w'?'near':'far'));t.setAttribute('aria-label',`${sideName(taker)} has taken ${taken}`);
-      if(look()==='terminal'){t.textContent=`${sideName(taker).toLowerCase()} took ${String(taken).padStart(2,' ')}  ${(lost==='w'?'o':'x').repeat(taken)}`;return t;}
-      const pile=el('span','tray-pile');for(let k=0;k<taken;k++)pile.append(checkerPiece(lost));t.append(el('span','tray-label',sideName(taker)),pile,el('span','tray-count',String(taken)));return t;};
-    return [tray('b','w'),tray('w','b')];
+    const level={easy:'Easy',medium:'Medium',hard:'Hard'}[opts.level||'medium'];
+    const plate=side=>{
+      const lost=side==='w'?'b':'w',taken=12-left[lost],turn=!result&&s.turn===side;
+      const name=vsCpu()?(side==='w'?'You':'Computer'):sideName(side),sub=vsCpu()?sideName(side)+(side==='b'?' · '+level:''):(side==='w'?'Moves first':'Moves second');
+      const t=el('div','plate plate-'+(side==='w'?'near':'far')+(turn?' to-move':''));t.setAttribute('aria-label',`${name}, ${sideName(side)}, has taken ${taken}${turn?', to move':''}`);
+      if(look()==='terminal'){const g=side==='w'?'o':'x';t.textContent=`${turn?'>':' '} [${g}] ${name.toLowerCase()}${vsCpu()&&side==='b'?' ('+level.toLowerCase()+')':''}${turn&&thinking?' thinking...':''}`.padEnd(30,' ')+`took ${String(taken).padStart(2,'0')} ${(lost==='w'?'o':'x').repeat(taken)}`;return t;}
+      const chip=el('span','plate-chip');chip.append(checkerPiece(side));
+      const who=el('span','plate-who');who.append(el('strong','plate-name',name),el('span','plate-sub',turn&&thinking?'Thinking…':sub));
+      const pile=el('span','tray-pile');for(let k=0;k<taken;k++)pile.append(checkerPiece(lost));
+      t.append(chip,who,pile,el('span','plate-count',taken?String(taken):''));return t;
+    };
+    return [plate('b'),plate('w')];
   }
   function renderCheckers(){
     const moves=E.Checkers.moves(s),winner=!moves.length?(s.turn==='w'?'b':'w'):null;
@@ -441,8 +452,9 @@
       if(checkerNote)sfx('error');if(s.chain<0)selected=null;renderCheckers();
     };
     checkerBoard(moves,onClick,must);
-    const [far,near]=checkerTrays();stage.prepend(far);stage.append(near);
-    const sheet=moveList();sheet.classList.add('scoresheet');stage.append(sheet);
+    const [far,near]=checkerPlates(result,thinking);stage.prepend(far);stage.append(near);
+    // The scoresheet goes where the page keeps it (beside the board), else under it.
+    const sheet=moveList();sheet.classList.add('scoresheet');const slot=$('sheet-slot');if(slot)slot.replaceChildren(sheet);else stage.append(sheet);
     tools.replaceChildren(button('↶ Undo',undoBoard),button('Hint',()=>{if(finished||cpuBusy||thinking||result)return;hintMove=E.Checkers.best(s,5);selected=hintMove?.from??null;renderCheckers();hint('Try this move.');}));
     hint(checkerNote||(s.chain>=0?'Keep jumping with the same piece.':must.size?'A jump is required. The glowing pieces can take.':'Tap or drag a piece to move it. Reach the far side to crown a king.'));checkerNote=null;
     if(result){

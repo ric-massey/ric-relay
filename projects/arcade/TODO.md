@@ -171,6 +171,35 @@ and phone size, and pushed before the next:
 Order: Checkers → Chess → Solitaire → Minesweeper → Sudoku → Wordle → Tetris →
 Snake → Tic-tac-toe.
 
+**Each page is built around its game, not one template** (Ric, 2026-11-21, after
+seeing Checkers: "its not the board each page for the game needs to be catered to
+it rn the snake game has the same look as the checkers and check a sudoku … the
+page for each [game] needs to be catered to the game"). Every page had the same
+heading, status bar and Scoreboard/Your games/Rules sidebar. Now each page has its
+own markup and layout; app.js only needs the element ids (`stage`, `tools`,
+`status`, `hint`, `mode`, `new-game`, `style-switch`, …), and optional slots
+(`stats-slot`, `sheet-slot`) say where the stats and move list go. The rules move
+into the help dialog wherever the page has no room for them. Page concepts:
+
+- [x] **Checkers** (built 2026-11-21): a game at a table. The board in the middle of the table surface;
+  a player plate above and below it (name, captured pieces, a turn light), and the
+  scoresheet beside the board like paper on the table, with your record at its foot.
+- [ ] **Chess:** a club board between two player plates (with captured material), the
+  move list as a scoresheet column beside it.
+- [ ] **Solitaire:** the whole page is the table; a slim toolbar; no sidebar.
+- [ ] **Minesweeper:** the page is a desktop window: title bar, menu, counter / face /
+  clock panel, the field; best times in their own window.
+- [ ] **Sudoku:** a puzzle-book page: puzzle number and date as a header, the grid
+  centred, the number pad as a tray beside it, notes and checks as pencil tools.
+- [ ] **Wordle:** one narrow column: tiles, then the keyboard docked to the bottom on a
+  phone; stats and share in their own sheet.
+- [ ] **Tetris:** an arcade cabinet: the well in the middle, hold and next on the
+  cabinet's side panels, the high scores as an attract screen.
+- [ ] **Snake:** a handheld: the screen in a device body with its d-pad and buttons,
+  score on the LCD, high scores on the device's menu screen.
+- [ ] **Tic-tac-toe:** a page of paper, the grid drawn on it, the tally kept in the
+  margin.
+
 ### Checkers: what players want (built 2026-11-21)
 - [x] The dark side moves first, as in real American checkers, and the sides are
       named by the set's colors (Red and White, Black and Red…), not Light and Dark.

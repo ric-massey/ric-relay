@@ -154,6 +154,13 @@ Round three (2026-11-21) moves each game to six styles, one game at a time. Each
 page and may draw the board its own way: Terminal draws Checkers as an ASCII `<pre>`.
 The shared Terminal chrome is `body[data-look="terminal"]` in `style.css`.
 
+Pages are also no longer one template (Ric, 2026-11-21: "the page for each [game]
+needs to be catered to the game"). A game page may use any markup as long as it keeps
+the ids app.js uses; `#stats-slot` and `#sheet-slot` place the record and the move list,
+and `#rules` may live in the help dialog. Checkers is the first: a table with player
+plates and a scoresheet (`projects/checkers/index.html`). The others still use the
+shared heading/sidebar layout until their turn in TODO.md.
+
 `data-game` selects the engine; `data-skin` and each page’s own inline CSS select
 the appearance. `classics:style:<game>` stores the preference alongside the retained
 legacy storage keys. `applyStyle()` changes CSS and canvas colors only. **Do not call
