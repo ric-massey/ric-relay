@@ -159,7 +159,7 @@
       if (opt.prune) { // a narrowing window at the root: exact best, faster, no ties kept
         let bestM, bestV = -Infinity, a = -Infinity, b = Infinity;
         for (const m of rootMoves) { const v = sign * search(Chess.apply(s,m), depth-1, sign > 0 ? Math.max(a, bestV) : a, sign < 0 ? Math.min(b, -bestV) : b); if (v > bestV) { bestV = v; bestM = m; } }
-        return bestM;
+        return opt.score ? { move: bestM, v: sign * bestV } : bestM;
       }
       const scored = rootMoves.map(m => ({ m, v: search(Chess.apply(s,m), depth-1, -Infinity, Infinity) }));
       if (!scored.length) return undefined;
@@ -178,6 +178,23 @@
         try { move = Chess.best(s, d, Math.random, { quiet: true, prune: true, deadline, first: move }) || move; } catch (e) { if (e !== Chess.TIMEOUT) throw e; break; }
       }
       return move;
+    },
+    /* How the position stands, in centipawns from White's side (+ good for
+       White), after a short search. The computer uses it to answer a draw offer. */
+    score(s, depth = 2) {
+      if (!Chess.moves(s).length) return Chess.check(s) ? (s.turn === 'w' ? -100000 : 100000) : 0;
+      return Chess.best(s, depth, Math.random, { quiet: true, prune: true, score: true }).v;
+    },
+    /* A move written by a player: SAN (Nf3, exd5, O-O, e8=Q) or squares
+       (e2e4, e7e8q). Returns the legal move it names, or null. */
+    parse(s, text) {
+      const raw = String(text || '').trim().replace(/[+#!?]+$/, ''), moves = Chess.moves(s);
+      const sq = /^([a-h][1-8])-?([a-h][1-8])=?([qrbn])?$/i.exec(raw);
+      if (sq) { const at = x => 'abcdefgh'.indexOf(x[0].toLowerCase()) + (8 - +x[1]) * 8, f = at(sq[1]), t = at(sq[2]), pr = (sq[3] || '').toLowerCase();
+        const hit = moves.filter(m => m.from === f && m.to === t && (!m.promote || m.promote === (pr || 'q'))); if (hit.length) return hit[0]; }
+      const norm = x => x.replace(/0/g, 'O').replace(/[+#]/g, '').replace(/=/g, '');
+      const want = norm(raw);
+      return moves.find(m => norm(Chess.san(s, m)) === want) || moves.find(m => norm(Chess.san(s, m)).toLowerCase() === want.toLowerCase() && !/^[a-h]/.test(want) === !/^[a-h]/.test(norm(Chess.san(s, m)))) || null;
     }
   };
 

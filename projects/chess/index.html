@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#201b17">
+  <meta name="theme-color" content="#e4e2dc">
   <title>Chess — RIC//NET</title>
-  <meta name="description" content="Play Chess in the Arcade. A game of quiet decisions. Three styles to choose from, with touch and keyboard controls.">
+  <meta name="description" content="Play Chess in the Arcade: against the computer, a friend on the same device, or a friend online. Six sets, from a club tournament board to a chess book diagram to a terminal.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Chess — RIC//NET">
-  <meta property="og:description" content="Play Chess in the Arcade. A game of quiet decisions. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:description" content="Play Chess in the Arcade: against the computer, a friend on the same device, or a friend online. Six sets, from a club tournament board to a chess book diagram to a terminal.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/chess/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/chess.jpg">
@@ -18,40 +18,388 @@
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
+/* Chess has its own page (round three, 2026-11-21, TODO.md). Ric: "the actual
+   page itself needs to be catered towards chess like the entire design. not a
+   template look at all." So: the board between two player plates (captured
+   pieces, material, the clock), and beside it the scoresheet, the opening
+   being played and the things a chess player does (resign, offer a draw, flip,
+   copy the game). Each of the six sets restyles all of it: a club tournament,
+   an heirloom set in a study, a marble hall, a chess book's diagram, an 80s
+   home computer, a terminal. app.js only needs the ids. */
 
-/* This page owns its theme; layout and rules stay inside the Arcade games. */
-body{background-color:var(--paper);color:var(--ink)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
-dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+/* ---- layout ------------------------------------------------------------------ */
+body{background:var(--hall);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif);--rail:22px;--bw:min(100%,640px,max(290px,calc(100svh - 280px)))}
+.cz-bar{display:flex;align-items:center;gap:14px;min-height:60px;padding:8px max(3vw,16px);background:var(--bar,transparent);color:var(--bar-ink,var(--ink));border-bottom:var(--bar-rule,1px solid var(--edge))}
+.cz-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.cz-back:hover{background:#80808024}
+.cz-name{display:flex;align-items:baseline;gap:12px;min-width:0;margin-right:auto}
+.cz-title{margin:0;font:var(--title-font,700 24px/1 var(--display-font,Georgia,serif));letter-spacing:var(--title-spacing,0);text-transform:var(--title-case,none);white-space:nowrap;color:var(--title-ink,inherit)}
+.cz-sub{margin:0;font-size:12px;color:var(--bar-muted,var(--muted));white-space:nowrap}
+.cz-bar .game-actions{gap:6px;flex-wrap:nowrap;max-width:none;padding:0}
+.cz-bar select{min-height:38px;font-size:13px;max-width:200px}
+.cz-bar button{min-height:38px;padding:6px 14px;font-size:13px;white-space:nowrap}
+@media(max-width:1180px){.cz-sub{display:none}}
+button,select,input{background:var(--panel);color:var(--ink);border:1px solid var(--edge);border-radius:var(--radius,4px);font-family:var(--body-font,inherit)}
+button:hover:not(:disabled){background:var(--panel-hover,var(--panel))}button.solid{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+button:disabled{opacity:.45;cursor:default}
+.cz-hall{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:34px;max-width:1180px;margin:0 auto;padding:18px max(3vw,16px) 80px;align-items:start}
+.cz-board{display:flex;flex-direction:column;align-items:center;min-width:0}
+.cz-board .stage{min-height:0;padding:0;gap:8px;width:100%}
+.cz-status{margin:12px 0 0;font-size:13px;font-weight:600;min-height:20px;text-align:center;color:var(--ink)}
+.cz-board .tools{padding:8px 0 0}
+.cz-board .tools button{min-height:38px;padding:6px 16px}
+.cz-board .hint{padding:6px 0 0;text-align:center;font-size:12.5px;color:var(--muted);min-height:0}
+.cz-side{position:sticky;top:14px;display:grid;gap:16px}
+@media(max-width:900px){
+  .cz-hall{grid-template-columns:1fr;gap:20px;padding-top:12px}
+  .cz-side{position:static}
+  .cz-bar{flex-wrap:wrap;row-gap:6px}
+  .cz-bar .game-actions{width:100%;max-width:none;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:0 0 2px;scrollbar-width:none}
+  .cz-bar .game-actions label{width:auto;flex:none}
+  .cz-bar .game-actions>*{flex:none}
+  .cz-bar select{max-width:150px}
+  .cz-bar #new-game{order:-1}
+  .cz-sub{display:none}
+  body{--bw:min(100%,560px);--rail:16px}
+}
 
-body{--paper:#201b17;--ink:#f2e4c7;--muted:#c6b79e;--green:#795231;--panel:#30271f;--edge:#6b5742;--display-font:Georgia,serif;--light-square:#e6cb96;--dark-square:#8b5e3c;--radius:0px;color-scheme:dark}
-body[data-skin="1"]{--paper:#f2f1ed;--ink:#252d32;--muted:#576168;--green:#3e565d;--panel:#e4e6e4;--edge:#9ca8a7;--light-square:#f5f3ea;--dark-square:#819895;color-scheme:light}
-body[data-skin="2"]{--paper:#111827;--ink:#e5edf6;--muted:#abb9d2;--green:#405779;--panel:#1a2537;--edge:#58657d;--light-square:#bac9d8;--dark-square:#4a6585;color-scheme:dark}
-.chess{border:8px solid var(--edge);box-shadow:0 8px 22px #0003}.chess .light{background:var(--light-square)}.chess .dark{background:var(--dark-square)}.game-heading h1{font-variant:small-caps;letter-spacing:2px}.square .white-piece{color:#fff8e6}.square .black-piece{color:#151413}.coord{color:#0a110d}.page-mark .emblem{font-size:34px}.topbar{border-bottom:1px solid var(--edge)}
+/* ---- the board ---------------------------------------------------------------- */
+.board-wrap{position:relative;width:var(--bw);padding:var(--rail);background:var(--frame);border:var(--frame-border,0);border-radius:var(--board-radius,3px);box-shadow:var(--board-shadow,0 16px 34px -18px #0009);box-sizing:border-box}
+.board-wrap .board.chess{width:100%;max-width:none;border:0;box-shadow:var(--inner-shadow,none);gap:0;position:relative;background:var(--sq-dark)}
+.rail{position:absolute;display:grid;font:var(--rail-font,600 11px/1 var(--body-font));color:var(--rail-ink,#fff);pointer-events:none;place-items:center;user-select:none}
+.rail-ranks{left:0;top:var(--rail);bottom:var(--rail);width:var(--rail);grid-template-rows:repeat(8,1fr)}
+.rail-files{left:var(--rail);right:var(--rail);bottom:0;height:var(--rail);grid-template-columns:repeat(8,1fr)}
+.board.chess .coord{display:none}
+.board.chess .square{border-radius:0;touch-action:none}
+.board.chess .light{background:var(--sq-light)}
+.board.chess .dark{background:var(--sq-dark)}
+.board.chess .square.last:before{background:var(--hl-last,#f3d55a59)}
+.board.chess .square.chosen{box-shadow:inset 0 0 0 3px var(--hl-chosen,#f3d55a)}
+.board.chess .square.legal:after{width:28%;height:28%;background:var(--hl-legal,#0000002e);border:0;border-radius:var(--dot-radius,50%);z-index:2}
+.board.chess .square.legal.occupied:after{width:92%;height:92%;background:transparent;border:var(--ring-width,4px) solid var(--hl-legal,#0000002e);box-sizing:border-box}
+.board.chess .square.hinted{box-shadow:inset 0 0 0 3px var(--hl-hint,#4fb6ea)}
+.board.chess .square.in-check{background-image:var(--check,radial-gradient(circle,#ff3b30d9 0,#ff3b3080 38%,transparent 72%))}
+.board.chess .square:focus-visible{outline:3px solid var(--hl-hint,#4fb6ea);outline-offset:-3px;z-index:4}
+.board.chess .pc{width:90%;height:90%;filter:var(--pc-shadow,drop-shadow(0 2px 1.5px #0007))}
+.board.chess .pc use{stroke-width:var(--pc-stroke,1.4)}
+.pc.w{fill:var(--pc-white);stroke:var(--pc-white-line);color:var(--pc-white-detail,var(--pc-white-line))}
+.pc.b{fill:var(--pc-black);stroke:var(--pc-black-line);color:var(--pc-black-detail)}
+.px{width:86%;height:86%;overflow:visible}
+.px.w .px-body{fill:var(--px-white,#fff)}.px.w .px-line{fill:var(--px-white-line,#000)}
+.px.b .px-body{fill:var(--px-black,#111)}.px.b .px-line{fill:var(--px-black-line,#fff)}
+.arrows{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:visible}
+.arrows .arrow{stroke:var(--arrow,#e8862acc);stroke-width:.17;stroke-linecap:round}
+.arrows .ring{fill:none;stroke:var(--arrow,#e8862acc);stroke-width:.07}
+.drag-piece{position:fixed;z-index:999;pointer-events:none;display:flex;align-items:center;justify-content:center;transition:none}
+.drag-piece .pc{width:90%;height:90%;filter:drop-shadow(0 12px 10px #0006)}
+.drag-piece .px{width:86%;height:86%}
+/* Promotion and the online invitation sit over the board. */
+.promo-pick{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;display:flex;align-items:center;gap:6px;padding:10px 12px;background:var(--panel);color:var(--ink);border:1px solid var(--edge);border-radius:var(--radius,6px);box-shadow:0 18px 40px -10px #000a}
+.promo-label{font-size:12px;color:var(--muted);margin-right:4px;white-space:nowrap}
+.promo-pick .promo{width:58px;height:58px;padding:4px;display:grid;place-items:center}
+.promo-pick .promo :is(.pc,.px){width:46px;height:46px}
+.promo-pick .promo-cancel{width:34px;height:34px;padding:0}
 
-@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+/* ---- the player plates ---------------------------------------------------------- */
+.plate{display:flex;align-items:center;gap:10px;width:var(--bw);min-height:48px;padding:6px 12px;box-sizing:border-box;background:var(--plate,transparent);color:var(--plate-ink,var(--ink));border:var(--plate-border,0);border-radius:var(--plate-radius,0);box-shadow:var(--plate-shadow,none);position:relative;flex-wrap:wrap}
+.plate-chip{width:32px;height:32px;flex:none;display:grid;place-items:center}
+.plate-chip :is(.pc,.px){width:100%;height:100%;filter:none}
+.plate-who{display:flex;flex-direction:column;line-height:1.15;min-width:80px}
+.plate-name{font:var(--plate-name,700 15px var(--display-font))}
+.plate-sub{font-size:11.5px;color:var(--plate-muted,var(--muted))}
+.plate .tray-pile{display:flex;flex:1;align-items:center;min-width:0;overflow:hidden;padding-left:4px}
+.plate .tray-pile :is(.pc,.px){width:20px;height:20px;margin-right:-7px;flex:none;filter:none}
+.plate .tray-pile .pc use{stroke-width:1.8}
+.plate-adv{margin-left:14px;font:700 12px var(--mono);color:var(--plate-muted,var(--muted))}
+.plate-clock{margin-left:auto;min-width:78px;padding:5px 10px;text-align:right;font:var(--clock-font,700 20px/1 var(--mono));font-variant-numeric:tabular-nums;background:var(--clock-bg,transparent);color:var(--clock-ink,var(--plate-ink,var(--ink)));border-radius:var(--clock-radius,4px);box-shadow:var(--clock-shadow,none)}
+.plate.to-move .plate-clock{background:var(--clock-run-bg,var(--clock-bg,transparent));color:var(--clock-run-ink,var(--clock-ink,inherit))}
+.plate-clock.low{color:var(--warn,#c62828)!important}
+.plate.to-move{box-shadow:var(--plate-turn,inset 4px 0 0 var(--accent)),var(--plate-shadow,0 0 #0000)}
+.plate.to-move .plate-chip{animation:turn-bob 1.6s ease-in-out infinite}
+@keyframes turn-bob{50%{transform:translateY(-2px)}}
 
-.coord{background:#fff8df;color:#151413;padding:0 2px;line-height:13px;border-radius:1px}
+/* ---- the scoresheet column ------------------------------------------------------ */
+.sheet{background:var(--sheet,#fff);color:var(--sheet-ink,var(--ink));padding:14px 16px 12px;box-shadow:var(--sheet-shadow,0 2px 0 #00000014,0 14px 28px -18px #0007);border:var(--sheet-border,0);border-radius:var(--sheet-radius,2px);position:relative}
+.sheet-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sheet-title{font:var(--sheet-title,700 12px/1.2 var(--display-font));text-transform:uppercase;letter-spacing:.08em}
+.sheet-meta{font-size:11px;color:var(--sheet-muted,var(--muted))}
+.opening{margin:6px 0 8px;font:var(--opening-font,italic 14px/1.3 var(--display-font));color:var(--sheet-ink,var(--ink));min-height:1.3em}
+.sheet .movelist{display:block;overflow:auto;max-height:min(44svh,400px);padding:0;margin:0;border:0;white-space:normal;font:var(--sheet-font,14px var(--mono));counter-reset:mv}
+.sheet .movelist li{display:grid;grid-template-columns:2.4em 1fr 1fr;align-items:center;gap:2px;padding:0;border-bottom:1px solid var(--sheet-rule,#0000001a);min-height:28px}
+.sheet .movelist li:before{color:var(--sheet-muted,var(--muted));font-size:.86em}
+.sheet .movelist li.empty,.sheet .movelist li.result{display:block;font:italic 13px var(--body-font);color:var(--sheet-muted,var(--muted));border:0;padding:6px 0}
+.sheet .movelist li.empty:before,.sheet .movelist li.result:before{content:none}
+.sheet .movelist li.result{font:700 14px var(--mono);font-style:normal;color:var(--sheet-ink,var(--ink))}
+.sheet .mv{all:unset;cursor:pointer;padding:3px 6px;border-radius:3px;font:inherit;color:inherit;font-family:var(--hand,inherit)}
+.sheet .mv:hover{background:var(--sheet-hover,#0000000d)}
+.sheet .mv.now{background:var(--sheet-now,#f3d55a73)}
+.sheet .mv:focus-visible{outline:2px solid var(--hl-hint,#4fb6ea)}
+.review-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px}
+.review-nav button{min-height:34px;padding:0;font-size:13px;background:var(--nav-bg,transparent);color:var(--sheet-ink,var(--ink));border-color:var(--sheet-rule,#0000002a)}
+.cz-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cz-actions button{min-height:38px;font-size:13px}
+.cz-actions .resign.armed{background:var(--warn,#b3261e);border-color:var(--warn,#b3261e);color:#fff}
+.clock-pick{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted)}
+.clock-pick select{min-height:36px;flex:1;max-width:60%}
+.pgn-out{width:100%;font:12px var(--mono)}
+.cz-side .stats{padding:12px 16px;background:var(--stats-bg,transparent);border:var(--stats-border,1px solid var(--edge));border-radius:var(--radius,4px);color:var(--stats-ink,var(--ink))}
+.cz-side .stats h2{margin:0;font:var(--sheet-title,700 12px/1.2 var(--display-font));text-transform:uppercase;letter-spacing:.08em}
+.cz-side .stats .muted{margin:2px 0 10px;font-size:11px}
+.cz-side .stat-grid dd{font-size:18px}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--edge);border-radius:var(--radius)}dialog input{background:var(--hall);color:var(--ink)}
+#help-dialog{max-width:540px}#help-dialog p{line-height:1.5}
+#help-dialog kbd{font:12px var(--mono);padding:1px 5px;border:1px solid var(--edge);border-radius:3px}
+.only{display:none}
+body[data-look="club"] .only.club,body[data-look="heirloom"] .only.heirloom,body[data-look="marble"] .only.marble,body[data-look="book"] .only.book,body[data-look="bit"] .only.bit,body[data-look="terminal"] .only.terminal{display:inline}
+@media(max-width:900px){.sheet .movelist{max-height:200px}.plate{min-height:42px;padding:4px 10px}.plate-chip{width:26px;height:26px}.plate-clock{font-size:17px;min-width:64px}}
+
+/* =====================================================================================
+   1. Club: Thursday night at the chess club. A green and buff roll-up vinyl board
+   with its coordinates printed in the white margin, plastic Staunton pieces, a
+   digital clock, name cards, and the official score sheet filled in by hand.
+   ===================================================================================== */
+body[data-look="club"]{--hall:#e4e2dc;--ink:#1d232b;--muted:#5c6570;--edge:#b9bcc0;--panel:#fff;--panel-hover:#f3f3f1;--accent:#1f3a5f;--display-font:'Segoe UI','Helvetica Neue',Arial,sans-serif;--body-font:'Segoe UI','Helvetica Neue',Arial,sans-serif;--radius:5px;
+  --bar:#1f3a5f;--bar-ink:#fff;--bar-muted:#b9c7da;--bar-rule:0;--title-font:800 22px/1 var(--display-font);--title-spacing:.02em;--title-case:uppercase;
+  --frame:#fafaf6;--rail-ink:#4c7a3c;--rail-font:700 11px/1 var(--display-font);--board-radius:6px;--board-shadow:0 1px 0 #0000001a,0 10px 22px -14px #0007;--sq-light:#eeecd2;--sq-dark:#66934f;
+  --hl-last:#f6ec5c80;--hl-chosen:#e7d63c;--hl-legal:#20351a40;--arrow:#2c74c9cc;
+  --pc-white:url(#g-plastic-w);--pc-white-line:#2a2826;--pc-black:url(#g-plastic-b);--pc-black-line:#050505;--pc-black-detail:#a39d95;
+  --plate:#fff;--plate-border:1px solid #cfd1d3;--plate-radius:4px;--plate-name:800 14px var(--display-font);--plate-turn:inset 0 -3px 0 #e7c52c;--plate-shadow:0 1px 0 #0000000d;
+  --clock-font:700 21px/1 'Consolas','Lucida Console',monospace;--clock-bg:#b9c2a2;--clock-ink:#1c2316;--clock-run-bg:#d9e3b8;--clock-shadow:inset 0 2px 3px #0005;--clock-radius:3px;
+  --sheet:#fff;--sheet-ink:#1d232b;--sheet-rule:#9ab1cf80;--sheet-muted:#4a6b95;--sheet-title:800 12px/1.2 var(--display-font);--sheet-shadow:0 1px 0 #0000001a,0 12px 22px -16px #0007;--hand:'Segoe Print','Bradley Hand','Comic Sans MS',cursive;--sheet-font:15px var(--hand);--sheet-now:#f6ec5c99;--opening-font:700 13px/1.3 var(--display-font);--stats-bg:#fff;--stats-border:1px solid #cfd1d3}
+body[data-look="club"] .cz-bar select,body[data-look="club"] .cz-bar button:not(.solid){background:#2c4d77;color:#fff;border-color:#3e628f}
+body[data-look="club"] .cz-bar button.solid{background:#e7c52c;border-color:#e7c52c;color:#1d232b;font-weight:700}
+body[data-look="club"] .cz-sub::before{content:'Club night · Board 1 · '}
+body[data-look="club"] .sheet{border-top:6px solid #1f3a5f}
+body[data-look="club"] .sheet .movelist li .mv{border-left:1px solid #9ab1cf80;border-radius:0;padding-left:8px;color:#303a8c}
+body[data-look="club"] .sheet .movelist li:before{font:600 11px var(--display-font);color:#4a6b95}
+body[data-look="club"] .sheet-head{padding-bottom:6px;border-bottom:2px solid #1f3a5f}
+body[data-look="club"] .plate-name{text-transform:uppercase;letter-spacing:.04em}
+body[data-look="club"] .plate{padding-left:16px}
+body[data-look="club"] .plate::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:4px 0 0 4px}
+body[data-look="club"] .plate-w::before{background:#f3f1ea;box-shadow:inset -1px 0 #0002}
+body[data-look="club"] .plate-b::before{background:#26231f}
+body[data-look="club"] .cz-actions .resign:not(.armed){color:#9b1c1c}
+
+/* =====================================================================================
+   2. Heirloom: a grandfather's set in a study. Inlaid walnut and maple, the grain
+   turning with each square; boxwood and ebony pieces; brass name plaques; the
+   moves written in ink in a ruled notebook.
+   ===================================================================================== */
+body[data-look="heirloom"]{--hall:radial-gradient(ellipse at 50% 30%,#2f4335,#18241c 70%) fixed #1b281f;--ink:#f1e6cf;--muted:#c0b393;--edge:#6b5a3c;--panel:#2a2219;--panel-hover:#352b20;--accent:#b88a3b;--on-accent:#1b130a;--display-font:Georgia,'Palatino Linotype',serif;--body-font:Georgia,'Palatino Linotype',serif;--radius:3px;color-scheme:dark;
+  --bar-rule:1px solid #ffffff14;--title-font:400 26px/1 var(--display-font);--title-spacing:.12em;--title-case:uppercase;--title-ink:#d9b56d;
+  --frame:linear-gradient(135deg,#4a2c17,#2e1a0d 60%,#4a2c17);--rail:24px;--rail-ink:#d9b56d;--rail-font:italic 12px/1 Georgia,serif;--board-radius:4px;--board-shadow:0 0 0 1px #000,0 30px 50px -20px #000,inset 0 1px 0 #ffffff1f;--inner-shadow:0 0 0 2px #e3c48f,0 0 0 4px #2e1a0d;
+  --sq-light:repeating-linear-gradient(87deg,#0000 0 2px,#7a4f2112 2px 4px,#0000 4px 9px),linear-gradient(160deg,#ecd3a2,#dcb97f);--sq-dark:repeating-linear-gradient(3deg,#0000 0 2px,#00000021 2px 3px,#0000 3px 7px),linear-gradient(160deg,#7a4b2a,#5b351b);
+  --hl-last:#ffd88a40;--hl-chosen:#ffd88a;--hl-legal:#2e1a0d59;--arrow:#7fbf6bcc;
+  --pc-white:url(#g-boxwood);--pc-white-line:#4a2e14;--pc-white-detail:#4a2e14;--pc-black:url(#g-ebony);--pc-black-line:#000;--pc-black-detail:#c9a46a;--pc-shadow:drop-shadow(0 3px 2px #000a);
+  --plate:linear-gradient(180deg,#e7c87c,#c39a48 50%,#a47b31);--plate-ink:#2b1d08;--plate-muted:#5a4116;--plate-radius:3px;--plate-name:700 15px Georgia,serif;--plate-shadow:0 2px 0 #00000080,inset 0 1px 0 #fff6;--plate-turn:0 0 0 2px #ffe7a6,0 0 18px #ffd88a55;
+  --clock-font:700 20px/1 Georgia,serif;--clock-bg:#2b1d08;--clock-ink:#e7c87c;--clock-radius:2px;
+  --sheet:repeating-linear-gradient(#0000 0 27px,#9fb4d266 27px 28px),#f7efdc;--sheet-ink:#1d2a4a;--sheet-rule:transparent;--sheet-muted:#8a6f4a;--sheet-title:italic 400 17px/1.2 Georgia,serif;--sheet-font:italic 15px Georgia,serif;--sheet-now:#e9c46a80;--sheet-shadow:0 18px 30px -16px #000,0 0 0 1px #00000030;--opening-font:italic 14px/1.3 Georgia,serif;--stats-border:1px solid #ffffff1a;--stats-bg:#00000026}
+body[data-look="heirloom"] .cz-sub{font-style:italic}
+body[data-look="heirloom"] .plate{text-shadow:0 1px 0 #fff5;padding-left:22px;padding-right:22px}
+body[data-look="heirloom"] .plate::before,body[data-look="heirloom"] .plate::after{content:'';position:absolute;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3c4,#8a6526);box-shadow:0 1px 0 #0006}
+body[data-look="heirloom"] .plate::before{left:7px}body[data-look="heirloom"] .plate::after{right:7px}
+body[data-look="heirloom"] .plate .offer button{background:#2b1d08;color:#e7c87c;border-color:#2b1d08}
+body[data-look="heirloom"] .sheet{padding-left:44px}
+body[data-look="heirloom"] .sheet::before{content:'';position:absolute;left:32px;top:0;bottom:0;width:1px;background:#c9524a88}
+body[data-look="heirloom"] .sheet .movelist li{border:0;min-height:28px}
+body[data-look="heirloom"] .sheet .movelist li:before{font:italic 13px Georgia,serif}
+body[data-look="heirloom"] .sheet-title{text-transform:none;letter-spacing:0}
+body[data-look="heirloom"] .review-nav button{border-color:#8a6f4a66}
+
+/* =====================================================================================
+   3. Marble hall: a set in a palace gallery. Carrara and verde marble in a gilt
+   frame, alabaster and onyx pieces, names cut into stone, the game on vellum.
+   ===================================================================================== */
+body[data-look="marble"]{--hall:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .012' numOctaves='4' seed='8'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .5 0 0 0 0 .44 0 0 0 -2.4 1.25'/%3E%3C/filter%3E%3Crect width='600' height='600' fill='%23efe9df'/%3E%3Crect width='600' height='600' filter='url(%23v)' opacity='.16'/%3E%3C/svg%3E") #efe9df;
+  --ink:#2c2a26;--muted:#6f675a;--edge:#c9bfa9;--panel:#fbf8f2;--panel-hover:#f4efe5;--accent:#8c6a24;--display-font:'Times New Roman',Times,serif;--body-font:'Segoe UI',system-ui,sans-serif;--radius:2px;
+  --bar:#fbf8f2e6;--bar-rule:1px solid #c9a24a;--title-font:400 25px/1 var(--display-font);--title-spacing:.32em;--title-case:uppercase;--title-ink:#8c6a24;
+  --frame:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .03' numOctaves='4' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .86 0 0 0 0 .78 0 0 0 -3 1.4'/%3E%3C/filter%3E%3Crect width='300' height='300' fill='%23161a18'/%3E%3Crect width='300' height='300' filter='url(%23v)' opacity='.5'/%3E%3C/svg%3E") #161a18;
+  --frame-border:3px solid #c9a24a;--rail:24px;--rail-ink:#d8b765;--rail-font:400 12px/1 'Times New Roman',serif;--board-radius:0;--board-shadow:0 0 0 1px #6d521a,0 0 0 6px #e3cf98,0 0 0 7px #8c6a24,0 34px 50px -24px #0009;--inner-shadow:0 0 0 2px #c9a24a;
+  --sq-light:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.018 .045' numOctaves='5' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .46 0 0 0 0 .48 0 0 0 -4.2 2'/%3E%3C/filter%3E%3Crect width='160' height='160' fill='%23f5f2ec'/%3E%3Crect width='160' height='160' filter='url(%23v)' opacity='1'/%3E%3C/svg%3E") center/cover #f5f2ec;
+  --sq-dark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02 .05' numOctaves='5' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 .75 0 0 0 0 .85 0 0 0 0 .78 0 0 0 -4 1.9'/%3E%3C/filter%3E%3Crect width='160' height='160' fill='%232c4a3e'/%3E%3Crect width='160' height='160' filter='url(%23v)' opacity='.6'/%3E%3C/svg%3E") center/cover #2c4a3e;
+  --hl-last:#e9c66a55;--hl-chosen:#d8b765;--hl-legal:#8c6a2470;--arrow:#9b2c2ccc;
+  --pc-white:url(#g-alabaster);--pc-white-line:#6f675b;--pc-white-detail:#8c6a24;--pc-black:url(#g-onyx);--pc-black-line:#020303;--pc-black-detail:#d8b765;--pc-shadow:drop-shadow(0 3px 2px #0008);
+  --plate:#fbf8f2;--plate-border:1px solid #d9cdb2;--plate-radius:0;--plate-name:400 15px/1.1 'Times New Roman',serif;--plate-shadow:inset 0 0 0 4px #fbf8f2,inset 0 0 0 5px #c9a24a;--plate-turn:inset 0 0 0 4px #fbf8f2,inset 0 0 0 6px #8c6a24;
+  --clock-font:400 22px/1 'Times New Roman',serif;--clock-ink:#8c6a24;
+  --sheet:#fbf7ee;--sheet-ink:#2c2a26;--sheet-rule:#c9a24a40;--sheet-muted:#8c7a55;--sheet-title:400 13px/1.2 'Times New Roman',serif;--sheet-font:15px 'Times New Roman',serif;--sheet-border:1px solid #c9a24a;--sheet-shadow:inset 0 0 0 4px #fbf7ee,inset 0 0 0 5px #c9a24a80,0 18px 30px -20px #0006;--sheet-radius:0;--sheet-now:#e9c66a66;--opening-font:italic 15px/1.3 'Times New Roman',serif;--stats-bg:#fbf8f2;--stats-border:1px solid #d9cdb2}
+body[data-look="marble"] .cz-bar{backdrop-filter:blur(4px)}
+body[data-look="marble"] .cz-bar button:not(.solid){background:var(--panel);color:var(--ink);border-color:var(--edge)}
+body[data-look="marble"] .plate-name,body[data-look="marble"] .sheet-title{text-transform:uppercase;letter-spacing:.22em}
+body[data-look="marble"] :is(.cz-bar,.cz-actions,.tools) :is(button,select){text-transform:uppercase;letter-spacing:.12em;font-size:11.5px}
+body[data-look="marble"] button.solid{background:linear-gradient(#a8853a,#7d5d1c);border-color:#6d521a}
+body[data-look="marble"] .sheet{padding:18px 20px 16px}
+body[data-look="marble"] .sheet-head{justify-content:center;border-bottom:1px solid #c9a24a80;padding-bottom:8px}
+body[data-look="marble"] .opening{text-align:center}
+body[data-look="marble"] .sheet-meta{display:none}
+
+/* =====================================================================================
+   4. Book diagram: the page is a page from a chess book. The board is a printed
+   diagram (hatched dark squares, figurine pieces), the status its caption, the
+   moves set as text in figurine notation, the buttons small-caps marginalia.
+   ===================================================================================== */
+body[data-look="book"]{--hall:#f3eee2;--ink:#1d1b17;--muted:#6b645a;--edge:#1d1b1766;--panel:#f3eee2;--panel-hover:#e9e2d2;--accent:#1d1b17;--on-accent:#f3eee2;--display-font:Georgia,'Book Antiqua',serif;--body-font:Georgia,'Book Antiqua',serif;--radius:0;
+  --bar-rule:1px solid #1d1b17;--title-font:italic 400 26px/1 Georgia,serif;
+  --frame:#fffdf8;--frame-border:2px solid #1d1b17;--rail:18px;--rail-ink:#1d1b17;--rail-font:italic 11px/1 Georgia,serif;--board-radius:0;--board-shadow:0 0 0 3px #fffdf8,0 0 0 4px #1d1b17;--inner-shadow:0 0 0 1px #1d1b17;
+  --sq-light:#fffdf8;--sq-dark:repeating-linear-gradient(-45deg,#1d1b17 0 .9px,#fffdf8 .9px 3.4px);
+  --hl-last:#a8322a1f;--hl-chosen:#a8322a;--hl-legal:#a8322a;--hl-hint:#2f5d8a;--arrow:#a8322ad9;--ring-width:2px;
+  --pc-white:#fff;--pc-white-line:#111;--pc-black:#111;--pc-black-line:#111;--pc-black-detail:#fff;--pc-shadow:none;--pc-stroke:1.5;
+  --plate-name:600 13px Georgia,serif;--plate-turn:none;
+  --clock-font:400 18px/1 Georgia,serif;
+  --sheet:transparent;--sheet-shadow:none;--sheet-ink:#1d1b17;--sheet-muted:#6b645a;--sheet-title:italic 400 18px/1.2 Georgia,serif;--sheet-font:15px/1.75 Georgia,serif;--sheet-now:#a8322a26;--opening-font:600 12px/1.3 Georgia,serif;--stats-border:0;--stats-bg:transparent}
+body[data-look="book"] .cz-bar{box-shadow:0 3px 0 -2px #1d1b17}
+body[data-look="book"] .cz-sub{font-variant:small-caps;letter-spacing:.06em;font-size:13px}
+body[data-look="book"] :is(.cz-bar,.cz-actions,.tools) :is(button,select){background:transparent;border:0;border-bottom:1px solid #1d1b1755;border-radius:0;font-variant:small-caps;letter-spacing:.06em;font-size:14px;padding-left:6px;padding-right:6px}
+body[data-look="book"] :is(.cz-bar,.cz-actions,.tools) button.solid{color:#1d1b17;border-bottom:2px solid #1d1b17;font-weight:700}
+body[data-look="book"] .cz-actions .resign.armed{color:#fff}
+body[data-look="book"] .cz-hall{max-width:1060px}
+body[data-look="book"] .cz-status{font:italic 400 15px Georgia,serif;margin-top:10px}
+body[data-look="book"] .cz-status::before{content:'Diagram · '}
+body[data-look="book"] .plate{min-height:30px;padding:2px 0;border-bottom:1px solid #1d1b1733}
+body[data-look="book"] .plate-chip{width:22px;height:22px}
+body[data-look="book"] .plate-name{font-variant:small-caps;letter-spacing:.06em;font-size:15px}
+body[data-look="book"] .plate-who{flex-direction:row;align-items:baseline;gap:8px}
+body[data-look="book"] .plate-sub{font-style:italic}
+body[data-look="book"] .plate.to-move .plate-name::before{content:'▸ ';color:#a8322a}
+body[data-look="book"] .plate.to-move .plate-chip{animation:none}
+body[data-look="book"] .board.chess .square.legal:after{width:18%;height:18%}
+body[data-look="book"] .board.chess .square.last{box-shadow:inset 0 0 0 2px #a8322a99}
+body[data-look="book"] .board.chess .square.chosen{box-shadow:inset 0 0 0 3px #a8322a}
+body[data-look="book"] .board.chess .square.in-check{background-image:none;box-shadow:inset 0 0 0 3px #a8322a}
+body[data-look="book"] .sheet{padding:0}
+body[data-look="book"] .sheet-head{border-bottom:1px solid #1d1b17;padding-bottom:4px}
+body[data-look="book"] .sheet-title{text-transform:none;letter-spacing:0}
+body[data-look="book"] .opening{font-variant:small-caps;letter-spacing:.08em;font-size:14px;margin:10px 0 6px}
+body[data-look="book"] .sheet .movelist{text-align:justify}
+body[data-look="book"] .sheet .movelist li{display:inline;border:0;padding:0}
+body[data-look="book"] .sheet .movelist li:before{color:#1d1b17;font-weight:700;font-size:1em;margin-right:2px}
+body[data-look="book"] .sheet .mv{padding:0 3px 0 1px;font-weight:700}
+body[data-look="book"] .sheet .mv+.mv{font-weight:400}
+body[data-look="book"] .sheet .movelist li.result{display:inline;font:700 15px Georgia,serif;margin-left:4px}
+body[data-look="book"] .review-nav button{border:0;font-size:15px}
+body[data-look="book"] .cz-side .stats{padding:12px 0 0;border-top:1px solid #1d1b17}
+body[data-look="book"] .cz-side .stats h2{font:italic 400 17px Georgia,serif;text-transform:none;letter-spacing:0}
+body[data-look="book"] .cz-side .stat-grid dd{font:400 18px Georgia,serif}
+body[data-look="book"] :is(.promo-pick,.online-card){box-shadow:none;border:1px solid #1d1b17;background:#fffdf8}
+body[data-look="book"] .plate-clock{min-width:0}
+body[data-look="book"] .plate-clock::before{content:'('}body[data-look="book"] .plate-clock::after{content:')'}
+
+/* =====================================================================================
+   5. 8-bit computer: a chess program on a 1980s home computer. Blue screen in a
+   light frame, pixel pieces, a chunky board, inverse-video bars and a scanline glow.
+   ===================================================================================== */
+body[data-look="bit"]{--hall:#1c1f86;--ink:#b8c4ff;--muted:#8592e6;--edge:#8592e6;--panel:#1c1f86;--panel-hover:#2b2fa8;--accent:#b8c4ff;--on-accent:#1c1f86;--bit-font:'Lucida Console','Consolas','Courier New',monospace;--display-font:var(--bit-font);--body-font:var(--bit-font);--mono:var(--bit-font);--radius:0;color-scheme:dark;
+  --bar:#b8c4ff;--bar-ink:#1c1f86;--bar-muted:#3a3fae;--bar-rule:0;--title-font:700 22px/1 var(--bit-font);--title-spacing:.18em;--title-case:uppercase;
+  --frame:#b8c4ff;--rail:22px;--rail-ink:#1c1f86;--rail-font:700 12px/1 var(--bit-font);--board-radius:0;--board-shadow:8px 8px 0 #0a0c4f;
+  --sq-light:#8f9cf2;--sq-dark:#3d45c9;
+  --hl-last:#ffd23f4d;--hl-chosen:#ffd23f;--hl-legal:#ffd23f;--hl-hint:#5df2c4;--dot-radius:0;--ring-width:3px;--arrow:#5df2c4e6;--check:linear-gradient(#e0405d,#e0405d);
+  --px-white:#ffffff;--px-white-line:#0a0c4f;--px-black:#0b0b16;--px-black-line:#ffffff;
+  --plate:#0a0c4f;--plate-ink:#b8c4ff;--plate-muted:#8592e6;--plate-name:700 14px var(--bit-font);--plate-turn:inset 0 0 0 2px #ffd23f;
+  --clock-font:700 20px/1 var(--bit-font);--clock-bg:#b8c4ff;--clock-ink:#1c1f86;--clock-radius:0;--clock-run-bg:#ffd23f;
+  --sheet:#0a0c4f;--sheet-ink:#b8c4ff;--sheet-rule:#3a3fae;--sheet-muted:#8592e6;--sheet-title:700 13px/1.2 var(--bit-font);--sheet-font:700 14px var(--bit-font);--sheet-shadow:8px 8px 0 #05062e;--sheet-border:3px solid #b8c4ff;--sheet-radius:0;--sheet-now:#ffd23f;--opening-font:700 12px/1.3 var(--bit-font);--stats-border:3px solid #b8c4ff;--stats-bg:#0a0c4f;--warn:#ff6b81}
+body[data-look="bit"]{text-transform:uppercase}
+body[data-look="bit"]::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:900;background:repeating-linear-gradient(to bottom,transparent 0 2px,#00000026 2px 3px)}
+body[data-look="bit"] .cz-bar select,body[data-look="bit"] .cz-bar button{background:#1c1f86;color:#b8c4ff;border:0;font-weight:700}
+body[data-look="bit"] .cz-bar button.solid{background:#ffd23f;color:#1c1f86}
+body[data-look="bit"] .cz-bar button:hover:not(:disabled){background:#0a0c4f}
+body[data-look="bit"] .cz-sub::before{content:'(C) 1984 · '}
+body[data-look="bit"] .cz-title::after{content:'█';margin-left:4px;animation:term-blink 1.1s steps(1) infinite}
+body[data-look="bit"] .board.chess .square.last:before{background:none;box-shadow:inset 0 0 0 3px #ffd23f99}
+body[data-look="bit"] .board.chess .square.legal:after{width:22%;height:22%}
+body[data-look="bit"] .board.chess .square.legal.occupied:after{width:100%;height:100%}
+body[data-look="bit"] .plate-chip{width:28px;height:28px}
+body[data-look="bit"] .plate .tray-pile .px{width:18px;height:18px;margin-right:-3px}
+body[data-look="bit"] .plate.to-move .plate-name::after{content:' ◄';color:#ffd23f}
+body[data-look="bit"] .plate.to-move .plate-chip{animation:term-blink 1s steps(1) infinite}
+body[data-look="bit"] :is(.cz-actions,.tools,.review-nav,.online-card,.promo-pick,.offer) button{background:#b8c4ff;color:#1c1f86;border:0;font-weight:700}
+body[data-look="bit"] :is(.cz-actions,.tools,.review-nav) button:hover:not(:disabled){background:#ffd23f}
+body[data-look="bit"] .sheet .mv.now{color:#1c1f86}
+body[data-look="bit"] .sheet .movelist li{border-bottom:1px dashed #3a3fae}
+body[data-look="bit"] .sheet-title::before{content:'► '}
+body[data-look="bit"] .cz-status{color:#ffd23f}
+body[data-look="bit"] .arrows .arrow{stroke-linecap:square}
+body[data-look="bit"] dialog{border:3px solid #b8c4ff}
+
+/* =====================================================================================
+   6. Terminal: the board in ASCII, as a command-line chess program prints it.
+   Click a square, or type a move at the prompt (Ric: "Yes, type moves too").
+   ===================================================================================== */
+body[data-look="terminal"]{--hall:#040904;--ink:#8dffa6;--muted:#4fae66;--edge:#2c6b3a;--panel:#061206;--panel-hover:#0c240f;--accent:#8dffa6;--on-accent:#040904;--radius:0;--mono:var(--term-font);--bar-rule:1px dashed #2c6b3a;--title-font:400 18px/1 var(--term-font);color-scheme:dark;
+  --plate-name:400 13px var(--term-font);--sheet:transparent;--sheet-ink:#8dffa6;--sheet-rule:transparent;--sheet-muted:#4fae66;--sheet-font:14px var(--term-font);--sheet-title:400 13px var(--term-font);--sheet-shadow:none;--sheet-now:#8dffa6;--opening-font:400 13px var(--term-font);--stats-border:1px dashed #2c6b3a;--warn:#ff6b6b}
+body[data-look="terminal"] .cz-title::before{content:'$ ./';color:var(--muted)}
+body[data-look="terminal"] .cz-title{text-transform:lowercase}
+body[data-look="terminal"] .cz-sub::before{content:'# '}
+body[data-look="terminal"] .cz-back{border-radius:0}
+body[data-look="terminal"] .board-wrap{width:auto;max-width:100%;padding:0;background:none;box-shadow:none;border:0}
+body[data-look="terminal"] .ascii-board{margin:0;font:clamp(9px,min(3.6vw,2.15vh),17px)/1.12 var(--term-font);color:var(--ink);text-shadow:0 0 6px #8dffa673;user-select:none;white-space:pre}
+body[data-look="terminal"] .ascii-board .cell{all:unset;cursor:pointer;white-space:pre;color:#2f7a42}
+body[data-look="terminal"] .ascii-board .cell:focus-visible{background:#8dffa633;outline:none}
+body[data-look="terminal"] .ascii-board .side-w{color:#d8ffe0;font-weight:700}
+body[data-look="terminal"] .ascii-board .side-b{color:#ffc56b;text-shadow:0 0 6px #ffb84d80;font-weight:700}
+body[data-look="terminal"] .ascii-board .legal{color:#e8ffee;font-weight:700}
+body[data-look="terminal"] .ascii-board .last{text-decoration:underline;text-underline-offset:3px}
+body[data-look="terminal"] .ascii-board .chosen{background:var(--ink);color:var(--hall);text-shadow:none}
+body[data-look="terminal"] .ascii-board .hinted{background:#ffc56b;color:var(--hall);text-shadow:none}
+body[data-look="terminal"] .plate{font:13px/1.4 var(--term-font);white-space:pre;min-height:0;padding:2px 0;width:auto;max-width:100%;color:var(--muted);overflow:hidden;box-shadow:none;background:none;border:0}
+body[data-look="terminal"] .plate.to-move{color:var(--ink);box-shadow:none}
+body[data-look="terminal"] .plate-b{color:#c49445}
+body[data-look="terminal"] .plate-b.to-move{color:#ffc56b}
+body[data-look="terminal"] .plate-clock{all:unset;font:inherit}
+body[data-look="terminal"] .plate .offer button{background:none;border:1px dashed var(--edge);color:var(--ink)}
+body[data-look="terminal"] .term-prompt{width:min(100%,560px);font:13px/1.4 var(--term-font)}
+body[data-look="terminal"] .term-log{margin:4px 0;min-height:1.4em;white-space:pre-wrap;color:var(--muted);font:inherit}
+body[data-look="terminal"] .term-row{display:flex;align-items:center;gap:0;border-top:1px dashed var(--edge);padding-top:6px}
+body[data-look="terminal"] .term-row .ps1{color:var(--ink);white-space:pre}
+body[data-look="terminal"] .term-row input{flex:1;min-width:0;background:none;border:0;outline:none;color:#d8ffe0;font:inherit;caret-color:#8dffa6;padding:4px 0}
+body[data-look="terminal"] .sheet{border:1px dashed var(--edge);padding:12px 14px}
+body[data-look="terminal"] .sheet-title{text-transform:lowercase;letter-spacing:0}
+body[data-look="terminal"] .sheet .movelist li{border:0;min-height:22px}
+body[data-look="terminal"] .sheet .mv.now{color:var(--hall)}
+body[data-look="terminal"] :is(.review-nav,.cz-actions) button{background:none;border:1px dashed var(--edge)}
+body[data-look="terminal"] .cz-actions button::before{content:'['}body[data-look="terminal"] .cz-actions button::after{content:']'}
+body[data-look="terminal"] .tools{display:none}
+body[data-look="terminal"] .online-card{position:static;margin-top:8px;border:1px dashed var(--edge);box-shadow:none}
+body[data-look="terminal"] .promo-pick{position:static;transform:none;margin:8px auto 0;width:max-content;border-radius:0;box-shadow:none;border:1px dashed var(--edge)}
+body[data-look="terminal"] .promo-pick .promo{font:700 18px var(--term-font)}
+@keyframes term-blink{50%{opacity:0}}
+@media(max-width:600px){body[data-look="terminal"] .plate{font-size:11px}}
   </style>
 </head>
-<body data-game="chess" data-skin="0">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">♞</span>Chess</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Chess</h1><p id="game-subtitle">A game of quiet decisions</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Walnut club</option><option value="1">Marble hall</option><option value="2">Midnight match</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>At the board</h2><p id="rules"></p></section></aside></div>
+<body data-game="chess" data-skin="0" data-look="club">
+  <header class="cz-bar">
+    <a href="../../gaming.html" class="cz-back" aria-label="Back to the Arcade">←</a>
+    <div class="cz-name"><h1 class="cz-title" id="game-title">Chess</h1><p class="cz-sub" id="game-subtitle">The whole board. All the rules.</p></div>
+    <div class="game-actions"><label class="theme-picker"><span class="sr-only">Set</span><select id="style-switch" aria-label="Chess set"><option value="0" data-look="club">Club</option><option value="1" data-look="heirloom">Heirloom</option><option value="2" data-look="marble">Marble hall</option><option value="3" data-look="book">Book diagram</option><option value="4" data-look="bit">8-bit computer</option><option value="5" data-look="terminal">Terminal</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Who you play</span><select id="mode"></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
+  </header>
+  <main id="playroom" class="cz-hall" aria-labelledby="game-title">
+    <section class="cz-board" aria-label="The board">
+      <div id="stage" class="stage"></div>
+      <p id="status" class="cz-status" role="status" aria-live="polite"></p><span id="metric" hidden></span>
+      <div id="tools" class="tools"></div>
+      <p id="hint" class="hint"></p>
     </section>
+    <aside class="cz-side" aria-label="Score sheet and game">
+      <div class="sheet">
+        <div class="sheet-head"><span class="sheet-title"><span class="only club">Official score sheet</span><span class="only heirloom">Game record</span><span class="only marble">Partie</span><span class="only book">The game</span><span class="only bit">Moves</span><span class="only terminal">$ cat game.pgn</span></span><span class="sheet-meta"><span class="only club">White · Black</span><span class="only heirloom">in ink</span><span class="only book">figurine notation</span><span class="only bit">Keys ◄ ►</span></span></div>
+        <p id="opening" class="opening"></p>
+        <div id="sheet-slot"></div>
+      </div>
+      <div id="chess-actions" class="cz-actions"></div>
+      <div id="stats-slot"></div>
+      <section id="score-panel" hidden><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
+    </aside>
     <noscript><p>Chess needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p>
+    <p><strong>Moving.</strong> Tap a piece, then a marked square, or drag it. Castle by moving the king two squares. A pawn reaching the far rank asks what it becomes.</p>
+    <p><strong>Looking back.</strong> Tap any move on the score sheet, or use <kbd>←</kbd> <kbd>→</kbd>, to see the board at that point. Tap the board to come back.</p>
+    <p><strong>Drawing on the board.</strong> Right-drag from one square to another for an arrow, right-click a square for a ring. Your next move clears them.</p>
+    <p><strong>Who you play.</strong> The computer (three levels), a friend on this device (pass it across, or sit opposite with the board between you), or a friend online: start a game and send them the link.</p>
+    <p><strong>Terminal.</strong> Type moves at the prompt: <kbd>e4</kbd>, <kbd>Nf3</kbd>, <kbd>e7e5</kbd>, <kbd>O-O</kbd>. Type <kbd>help</kbd> for the commands.</p>
+    <p>Your game is saved in this browser. Changing the set keeps the game in place.</p>
+    <button id="close-help" class="solid">Got it</button></dialog>
   <script src="../arcade/engine.js"></script>
+  <script src="../arcade/openings.js"></script>
   <script src="../arcade/app.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
 </body>

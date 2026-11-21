@@ -7,6 +7,7 @@ is historical — every room that writes anything writes here:
 | Route | Room | What it holds |
 |---|---|---|
 | `/arcade/scores` | Gaming → browser games | public initials and scoreboards for the nine individual browser games; separate D1 tables, highest points or lowest time/guesses; `arcade.mjs` |
+| `/arcade/rooms` | Gaming → Chess, Checkers | online games with a friend: a 4-letter code, two hashed seat tokens and the list of moves; `arcade.mjs` |
 | `/log` | Training | ticks and notes against the plan |
 | `/strava` | Training | runs pushed by Strava's webhook |
 | `/board` | Training / Climbing | board-night dates from `projects/climbing/board-tick.mjs` |
@@ -78,6 +79,26 @@ its localStorage fallback as browser-only and does not silently upload it later.
 the quick checks and **Deploy Worker**. `dev.mjs` routes `/arcade` locally so a test
 score never lands on production. Deploy the existing **Deploy Worker** workflow
 after publishing; there is no new secret, binding or manual migration.
+
+## Arcade online rooms (Chess and Checkers)
+
+Added 2026-11-21 (Ric: "multiplayer for chess and checkers needs to be in").
+`POST /arcade/rooms {game:'chess'|'checkers', color:'w'|'b'}` starts a room and
+returns `{code, token, seat:'h'}`; `POST /arcade/rooms/<CODE>/join {}` gives the
+second seat once (`409` after); `GET /arcade/rooms/<CODE>?from=n` returns
+`{game, hostColor, guest, n, events}`; `POST /arcade/rooms/<CODE>/events
+{token, n, t, v?}` appends one event (`m` with a move, `resign`, `offer`, `accept`,
+`decline`, `again`). `n` is the count the sender last saw, so a write against a room
+that has moved on is refused with `409` and the page catches up and retries.
+
+The Worker doesn't know the rules: both pages replay the same event list with
+`engine.js`, so they agree, and a move that isn't legal there is skipped by both.
+Seat tokens are random; only their SHA-256 is stored. No accounts, no lobby, nothing
+listed publicly; a code is the only way in. Rooms idle for 14 days are deleted when a
+new one starts; starting rooms is throttled to 30 per ten minutes per address (the
+same hashed-address table as scores). Table: `arcade_rooms`, created automatically
+in `STATS`. Tests are in `arcade.test.mjs`. Deploy with **Deploy Worker**; nothing
+else to set up.
 
 ## The visitor counter
 

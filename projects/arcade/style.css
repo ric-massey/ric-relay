@@ -287,3 +287,31 @@ body[data-look="terminal"] ::selection{background:var(--ink);color:var(--paper)}
 body[data-look="terminal"] .game-actions .sound-toggle svg{display:none}
 body[data-look="terminal"] .game-actions .sound-toggle::before{content:'[ ' attr(data-label)}
 body[data-look="terminal"] .game-actions .sound-toggle{min-width:0;font-size:14px}
+
+/* Online play and face-to-face games, Chess and Checkers (2026-11-21, TODO.md "Online play"):
+   the invitation card over the board, draw offers on a player's plate, and across
+   the table the far player's plate and pieces turned to face them. */
+.online-card{position:absolute;inset:12%;z-index:9;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:22px;background:var(--panel);color:var(--ink);border:1px solid var(--edge);border-radius:var(--radius,8px);box-shadow:0 24px 60px -16px #000c;overflow:auto}
+.online-card h3{margin:0;font:var(--plate-name,700 20px var(--display-font));font-size:20px}
+.online-card p{margin:0;font-size:13px;line-height:1.45;color:var(--muted)}
+.online-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:4px}
+.online-card .seg{display:flex;gap:4px}.online-card .seg button{flex:1;min-height:36px}
+.online-card .seg button.on{background:var(--accent);color:var(--on-accent,#fff);border-color:var(--accent)}
+.online-card .solid{min-height:42px}
+.online-card .join{display:flex;gap:6px}.online-card .join input{flex:1;min-width:0;min-height:38px;padding:0 10px;font:600 16px var(--mono);letter-spacing:.2em;text-transform:uppercase}
+.online-card .online-code{font:700 40px/1 var(--mono);letter-spacing:.25em;color:var(--ink)}
+.online-card .online-link{min-height:36px;padding:0 10px;font:12px var(--mono);width:100%;box-sizing:border-box}
+.online-row{display:flex;gap:6px}.online-row button{flex:1;min-height:38px}
+.online-card .online-error{color:var(--warn,#b3261e);font-weight:600}
+.online-card .text-button{align-self:center;border:0;background:none;text-decoration:underline;color:var(--muted)}
+@media(max-width:520px){.online-card{inset:3%;padding:14px;gap:7px}.online-card .online-code{font-size:30px}}
+
+body[data-mode="table"] .board .pb>svg{transform:rotate(180deg)}
+body[data-mode="table"] .plate.upside{transform:rotate(180deg)}
+.plate .offer{flex-basis:100%;display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0 2px}
+.plate .offer span{margin-right:auto;font-weight:600}
+.plate .offer button{min-height:30px;padding:2px 12px;font-size:12.5px}
+
+body[data-mode="table"] .checkerboard .side-b .crown{transform:rotate(180deg)}
+.tools .resign.armed{background:var(--warn,#b3261e);border-color:var(--warn,#b3261e);color:#fff}
+.plate:has(.offer){flex-wrap:wrap}

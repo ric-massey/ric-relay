@@ -184,7 +184,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
 - [x] **Checkers** (built 2026-11-21): a game at a table. The board in the middle of the table surface;
   a player plate above and below it (name, captured pieces, a turn light), and the
   scoresheet beside the board like paper on the table, with your record at its foot.
-- [ ] **Chess:** a club board between two player plates (with captured material), the
+- [x] **Chess:** a club board between two player plates (with captured material), the
   move list as a scoresheet column beside it.
 - [ ] **Solitaire:** the whole page is the table; a slim toolbar; no sidebar.
 - [ ] **Minesweeper:** the page is a desktop window: title bar, menu, counter / face /
@@ -233,6 +233,44 @@ into the help dialog wherever the page has no room for them. Page concepts:
       Candy (a see-through coloured handheld, the full-colour snake gliding
       smoothly), Calculator (a graphing calculator's dot-matrix screen and key
       grid), Terminal (the snake as ASCII text: @ head, o body, * apple).
+
+### Chess: what players want (Ric, 2026-11-21, answering the questions for Chess; built the same day)
+- [x] Review the game: click any move in the list (or ← →) to see the board then.
+- [x] Resign and offer a draw; the computer takes a draw only when it's level.
+- [x] Opening name as you play, and +N material on the plate of whoever is ahead.
+- [x] Draw arrows and circles (right-drag / right-click); copy the game as PGN.
+- [x] Optional chess clock (Ric: "Optional clock"): off by default, 5 / 10 / 15
+      minutes, shown on each player plate.
+- [x] Terminal: type moves (e2e4, Nf3) at a prompt under the ASCII board, as well
+      as clicking (Ric: "Yes, type moves too").
+- [x] Six styles (Ric: "Yes, those six"): Club (green and buff roll-up board,
+      plastic Staunton pieces, scoresheet), Heirloom (walnut and maple, boxwood and
+      ebony pieces), Marble hall (stone board, carved pieces), Book diagram (a chess
+      book's diagram: hatched squares, printed figurines), 8-bit computer (an 80s
+      home-computer chess program, pixel pieces), Terminal (ASCII). Walnut club and
+      Midnight match go.
+- [x] The computer accepts a draw only from move ten on, and only when it isn't
+      better (a short search from its side); otherwise it says why it declines.
+- [x] The whole page designed for chess (Ric: "the actual page itself needs to be
+      catered towards chess like the entire design. not a template look at all"):
+      no shared heading/sidebar; each style restyles everything on the page.
+
+### Online play, Chess and Checkers (Ric, 2026-11-21: "multiplayer for chess and checkers needs to be in")
+Two players on one device was already there, so this is playing a friend on their
+own device: start a game, send the invite link (or its code), moves appear on both
+screens. Moves go through the site's Worker. No accounts and no open lobby.
+Then, Ric: "oh and both for the online thing" → online with a friend *and* a better
+same-device game: a "Across the table" mode where the board turns to face whoever
+is to move (or stays put with the far side's pieces upside down for sitting
+opposite).
+- [x] Same device: board faces the player to move, or sit-opposite mode.
+- [x] Worker: game rooms (create, join, post a move, read moves). The Worker keeps
+      the list; each page checks the moves with engine.js (worker/README.md).
+- [ ] **Deploy Worker** (Actions) so the live site has `/arcade/rooms`; until then
+      the online option says it can't reach the game.
+- [x] Chess online.
+- [x] Checkers online, with resign and draw offers (also across the table).
+- [ ] Online games have no clock; a clock for them would need the Worker to keep time.
 
 ## Ideas not built yet
 

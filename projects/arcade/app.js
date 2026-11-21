@@ -21,8 +21,8 @@
   ];
   const MODES = {
     solitaire:[['draw1','Draw one'],['draw3','Draw three'],['daily','Daily deal']],
-    chess:[['cpu','Vs computer · you’re White'],['cpu-black','Vs computer · you’re Black'],['two','Two players']],
-    checkers:[['cpu','Vs computer'],['two','Two players']],
+    chess:[['cpu','Vs computer · you’re White'],['cpu-black','Vs computer · you’re Black'],['two','Two players · pass the device'],['table','Two players · across the table'],['online','Play a friend online']],
+    checkers:[['cpu','Vs computer'],['two','Two players · pass the device'],['table','Two players · across the table'],['online','Play a friend online']],
     tictactoe:[['cpu','Vs computer'],['two','Two players']],
     wordle:[['daily','Daily word'],['practice','Practice']],
     sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['daily','Daily puzzle']],
@@ -89,7 +89,7 @@
      value: a time, guess count or score, for "best". */
   function record(outcome,value=null){
     const st=stats();st.played=(st.played||0)+1;
-    if(mode==='two'){st.sides=st.sides||{};st.sides[outcome]=(st.sides[outcome]||0)+1;}
+    if(mode==='two'||mode==='table'){st.sides=st.sides||{};st.sides[outcome]=(st.sides[outcome]||0)+1;}
     else if(outcome){st[outcome]=(st[outcome]||0)+1;st.streak=outcome==='won'?(st.streak||0)+1:outcome==='drawn'?(st.streak||0):0;st.bestStreak=Math.max(st.bestStreak||0,st.streak);}
     if(value!==null){const higher=action();if(st.best==null||(higher?value>st.best:value<st.best))st.best=value;st.last=value;}
     if(game.id==='wordle'){st.dist=st.dist||[0,0,0,0,0,0];if(outcome==='won')st.dist[value-1]++;}
@@ -100,10 +100,10 @@
     // A page says where its record goes with #stats-slot; older pages put it above the rules.
     if(!panel){panel=el('section','stats');panel.id='stats-panel';const slot=$('stats-slot'),rules=document.querySelector('.sidebar .rules');if(slot)slot.append(panel);else if(rules)rules.parentNode.insertBefore(panel,rules);else return;}
     const st=stats(),rows=[],id=game.id,p=st.played||0;bestScore=action()?st.best||0:0;
-    if(mode==='two'&&id==='checkers'){const [a,b]=sides();rows.push([a+' wins',(st.sides?.w||0)+(st.sides?.Light||0)],[b+' wins',(st.sides?.b||0)+(st.sides?.Dark||0)]);rows.push(['Draws',st.sides?.draw||0]);}
-    else if(mode==='two'){const names=id==='tictactoe'?['X','O']:['White','Black'];for(const n of names)rows.push([n+' wins',st.sides?.[n]||0]);rows.push(['Draws',st.sides?.draw||0]);}
+    if((mode==='two'||mode==='table')&&id==='checkers'){const [a,b]=sides();rows.push([a+' wins',(st.sides?.w||0)+(st.sides?.Light||0)],[b+' wins',(st.sides?.b||0)+(st.sides?.Dark||0)]);rows.push(['Draws',st.sides?.draw||0]);}
+    else if(mode==='two'||mode==='table'){const names=id==='tictactoe'?['X','O']:['White','Black'];for(const n of names)rows.push([n+' wins',st.sides?.[n]||0]);rows.push(['Draws',st.sides?.draw||0]);}
     else if(action()){rows.push(['Games',p],['Best',(st.best||0).toLocaleString()],['Last',(st.last||0).toLocaleString()]);}
-    else if(['chess','checkers','tictactoe'].includes(id)){rows.push(['You won',st.won||0],['Computer won',st.lost||0],['Draws',st.drawn||0],['Streak',st.streak||0]);}
+    else if(['chess','checkers','tictactoe'].includes(id)){rows.push(['You won',st.won||0],[mode==='online'?'Friend won':'Computer won',st.lost||0],['Draws',st.drawn||0],['Streak',st.streak||0]);}
     else{rows.push(['Played',p],['Won',p?`${st.won||0} · ${Math.round(100*(st.won||0)/p)}%`:'0'],['Streak',st.streak||0],['Best streak',st.bestStreak||0]);if(st.best!=null)rows.push([id==='wordle'?'Fewest guesses':'Fastest',id==='wordle'?st.best+' / 6':fmtTime(st.best)]);}
     panel.replaceChildren();
     const label=MODES[id].find(m=>m[0]===mode)?.[1];
@@ -118,7 +118,8 @@
     if(game.id==='wordle'&&mode==='daily')return; // the daily word has its own record
     if(finished){storage.remove('save:'+game.id);return;}
     if(action()&&!s.started)return;
-    storage.set('save:'+game.id,{v:1,mode,s,history:history.slice(-300),keys,elapsed:elapsed+(clockStart?Date.now()-clockStart:0),eligible,notes,lastMove,sanList,input,beforeReveal});
+    if(mode==='online')return; // an online game lives in its room
+    storage.set('save:'+game.id,{v:1,mode,chess:game.id==='chess'?{moveLog,clock:chessClock&&{...chessClock,w:clockLeft('w'),b:clockLeft('b'),since:chessClock.since?1:0}}:undefined,s,history:history.slice(-300),keys,elapsed:elapsed+(clockStart?Date.now()-clockStart:0),eligible,notes,lastMove,sanList,input,beforeReveal});
   }
   function restore(){
     const d=storage.get('save:'+game.id);
@@ -127,6 +128,12 @@
       resetRun();
       s=d.s;history=d.history||[];keys=d.keys||[];elapsed=d.elapsed||0;eligible=d.eligible!==false;notes=d.notes||{};lastMove=d.lastMove||null;sanList=d.sanList||[];input=d.input||'';beforeReveal=d.beforeReveal||null;
       if(lastMove)lastMove.fresh=false;
+      if(game.id==='chess'){
+        moveLog=d.chess?.moveLog||[];
+        // Saves from before moveLog: rebuild it from the move list.
+        if(moveLog.length!==sanList.length){moveLog=[];let p=E.Chess.create();for(const san of sanList){const m=E.Chess.parse(p,san);if(!m)break;moveLog.push({from:m.from,to:m.to,promote:m.promote||''});p=E.Chess.apply(p,m);}}
+        const c=d.chess?.clock;chessClock=c?{...c,since:c.since?Date.now():0}:null;facing=s.turn;
+      }
       if(game.id==='wordle')dailyDate=new Date().toISOString().slice(0,10);
       if(game.id==='sudoku'&&!s.given)return false;
       if(isDaily()){dailyDate=new Date().toISOString().slice(0,10);if(s.day!==dailyDate){storage.remove('save:'+game.id);resetRun();return false;}}
@@ -151,14 +158,14 @@
     const actions=document.querySelector('#result-dialog .dialog-actions');
     let again=$('play-again');if(!again){again=button('Play again',()=>{$('result-dialog').close();start();});again.id='play-again';actions.prepend(again);}
     let share=$('share-result');if(!share){share=button('Share',shareWordle);share.id='share-result';actions.prepend(share);}
-    share.hidden=game.id!=='wordle';again.hidden=game.id==='wordle'&&mode==='daily';
+    again.textContent='Play again';again.onclick=()=>{$('result-dialog').close();start();};share.hidden=game.id!=='wordle';again.hidden=game.id==='wordle'&&mode==='daily';
   }
   $('score-form').onsubmit=async e=>{e.preventDefault();if(!pending)return;const initials=$('initials').value.trim().toUpperCase();if(!/^[A-Z]{1,3}$/.test(initials)){$('initials').reportValidity();return;}const row={...pending,initials},key=row.board,token=revision;boardRefresh++;$('save-score').disabled=true;storage.set('initials',initials);try{const data=await request('',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(row)});if(token!==revision)return;showRows(data.scores,key);$('score-source').textContent='Everyone · shared scoreboard';$('save-message').textContent='Your initials are on the board.';}catch(error){if(token!==revision)return;if(error.message.includes('wait a minute')){$('save-message').textContent=error.message;$('save-score').disabled=false;return;}const rows=storage.get('scores:'+key,[]).filter(r=>r.id!==row.id);rows.push({...row,at:Date.now()});const saved=storage.set('scores:'+key,sorted(rows,key));showRows(saved?sorted(rows,key):[],key);$('score-source').textContent='This browser only · shared board unavailable';$('save-message').textContent=saved?'Saved on this browser only. The shared board couldn’t be reached.':'Your browser couldn’t save this score. Please try again.';if(!saved){$('save-score').disabled=false;return;}}pending=null;$('save-score').hidden=true;$('initials-wrap').hidden=true;if(game.id==='wordle'){s.submitted=true;saveDaily();renderWord();}};
   $('close-result').onclick=()=>$('result-dialog').close();
   $('soundless').onclick=()=>$('help-dialog').showModal();$('close-help').onclick=()=>$('help-dialog').close();
   $('refresh-scores').onclick=refreshScores;
   /* The top bar's "← The Arcade" is the one way back; a second "← All games" link under it came out 2026-11-14. */
-  $('new-game').onclick=()=>start();
+  $('new-game').onclick=()=>{if(mode==='online'&&net.code){netLeave();return;}start();};
   $('mode').onchange=()=>{mode=$('mode').value;storage.set('mode:'+game.id,mode);start();};
 
   // ---- sound (off unless turned on) -----------------------------------------
@@ -192,8 +199,8 @@
   }
 
   // ---- game lifecycle ------------------------------------------------------
-  function cleanup(){revision++;counting=0;deathAt=0;stopClock();cancelAnimationFrame(frame);clearInterval(ticker);clearInterval(autoTimer);autoTimer=null;running=false;paused=false;cpuBusy=false;pending=null;if($('result-dialog').open)$('result-dialog').close();}
-  function modes(){const options=MODES[game.id];$('mode-wrap').hidden=!options.length;$('mode').replaceChildren();for(const [value,text]of options){const o=document.createElement('option');o.value=value;o.textContent=text;$('mode').append(o);}const saved=storage.get('mode:'+game.id);mode=options.some(o=>o[0]===saved)?saved:options[0]?.[0]||'';$('mode').value=mode;}
+  function cleanup(){revision++;clearTimeout(net?.timer);counting=0;deathAt=0;stopClock();cancelAnimationFrame(frame);clearInterval(ticker);clearInterval(autoTimer);autoTimer=null;running=false;paused=false;cpuBusy=false;pending=null;if($('result-dialog').open)$('result-dialog').close();}
+  function modes(){const options=MODES[game.id];$('mode-wrap').hidden=!options.length;$('mode').replaceChildren();for(const [value,text]of options){const o=document.createElement('option');o.value=value;o.textContent=text;$('mode').append(o);}const joining=new URLSearchParams(location.search).get('join')&&options.some(o=>o[0]==='online');if(joining)storage.set('mode:'+game.id,'online');const saved=storage.get('mode:'+game.id);mode=options.some(o=>o[0]===saved)?saved:options[0]?.[0]||'';$('mode').value=mode;}
   /* A second select for the computer's strength, beside the mode. A change
      applies from the computer's next move; it never restarts a game. */
   function levelPicker(){
@@ -212,13 +219,13 @@
   }
   /* Main actions in one row; quieter toggles (timer, helpers) on a smaller second row. */
   function toolRow(main,minor=[]){tools.replaceChildren(...main);if(minor.length){tools.append(el('span','break'));for(const b of minor){b.classList.add('minor');tools.append(b);}}}
-  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='🙂';lastFinish=null;hint('');$('pause').hidden=true;$('pause').textContent='Pause';status('');syncLevel();}
+  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='🙂';lastFinish=null;moveLog=[];reviewAt=null;arrows=[];chessEnd=null;drawOffer=null;resignArmed=0;facing='w';clearInterval(chessTick);hint('');$('pause').hidden=true;$('pause').textContent='Pause';status('');syncLevel();}
   function start(){
     resetRun();storage.remove('save:'+game.id);
     switch(game.id){
       case 'tictactoe':s=Array(9).fill('');break;
-      case 'chess':s=E.Chess.create();keys=[E.Chess.key(s)];break;
-      case 'checkers':s=E.Checkers.create();keys=[checkerKey()];break;
+      case 'chess':s=E.Chess.create();keys=[E.Chess.key(s)];clockNew();if(mode==='online'){renderStats();netResume();refreshScores();return;}break;
+      case 'checkers':s=E.Checkers.create();keys=[checkerKey()];if(mode==='online'){renderStats();netResume();refreshScores();return;}break;
       case 'solitaire':s=mode==='daily'?E.Solitaire.create(dailyRandom()):E.Solitaire.create();s.draw=mode==='draw3'?3:1;break;
       case 'sudoku':s=mode==='daily'?E.Sudoku.create('medium',dailyRandom()):E.Sudoku.create(mode);s.given=s.b.slice();if(opts.mistakes)eligible=false;break;
       // Expert is 30 × 16; on a screen taller than it is wide it stands upright (16 across).
@@ -278,60 +285,9 @@
     q:'<path d="M14.6 30.5l-3.3-14.6 5.6 6.4-.2-10 4.3 9.3 1.5-10.2 1.5 10.2 4.3-9.3-.2 10 5.6-6.4-3.3 14.6z"/><path d="M13.6 34.5c1-1.4 1.2-2.6 1-4h15.8c-.2 1.4 0 2.6 1 4z"/><circle cx="11" cy="14.6" r="2.1"/><circle cx="16.6" cy="10.6" r="2.1"/><circle cx="22.5" cy="9" r="2.1"/><circle cx="28.4" cy="10.6" r="2.1"/><circle cx="34" cy="14.6" r="2.1"/>',
     k:'<path d="M21.1 4h2.8v3h3v2.8h-3v4.4h-2.8V9.8h-3V7h3z"/><path d="M14.6 30.5c-2.6-1.5-4.6-4-4.4-7.4.3-4.6 5.4-8.2 12.3-8.2s12 3.6 12.3 8.2c.2 3.4-1.8 5.9-4.4 7.4z"/><path d="M13.6 34.5c1-1.4 1.2-2.6 1-4h15.8c-.2 1.4 0 2.6 1 4z"/><path fill="none" stroke="currentColor" d="M22.5 15.4v14.6M14 23.4c5.6-2 11.4-2 17 0"/>'
   };
-  function pieceSprites(){if($('piece-sprites'))return;const holder=document.createElement('div');holder.innerHTML=`<svg id="piece-sprites" width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${Object.entries(PIECES).filter(([k])=>k!=='base').map(([k,v])=>`<symbol id="pc-${k}" viewBox="0 0 45 45">${PIECES.base}${v}</symbol>`).join('')}</defs></svg>`;document.body.prepend(holder.firstChild);}
+  function pieceSprites(){if($('piece-sprites'))return;const holder=document.createElement('div');holder.innerHTML=`<svg id="piece-sprites" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="g-boxwood" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#f6e2b8"/><stop offset=".55" stop-color="#ddb87e"/><stop offset="1" stop-color="#b3864b"/></linearGradient><linearGradient id="g-ebony" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#5a473a"/><stop offset=".45" stop-color="#241a14"/><stop offset="1" stop-color="#0b0806"/></linearGradient><linearGradient id="g-alabaster" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eee8de"/><stop offset="1" stop-color="#c7bfb2"/></linearGradient><linearGradient id="g-onyx" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#5d666c"/><stop offset=".4" stop-color="#22292e"/><stop offset="1" stop-color="#06080a"/></linearGradient><linearGradient id="g-plastic-w" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#fffdf6"/><stop offset="1" stop-color="#e4dccb"/></linearGradient><linearGradient id="g-plastic-b" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#3d3a37"/><stop offset="1" stop-color="#141312"/></linearGradient></defs><defs>${Object.entries(PIECES).filter(([k])=>k!=='base').map(([k,v])=>`<symbol id="pc-${k}" viewBox="0 0 45 45">${PIECES.base}${v}</symbol>`).join('')}</defs></svg>`;document.body.prepend(holder.firstChild);}
   function pieceSvg(p){const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.setAttribute('class','pc '+(p===p.toUpperCase()?'w':'b'));svg.setAttribute('viewBox','0 0 45 45');svg.setAttribute('aria-hidden','true');const use=document.createElementNS(NS,'use');use.setAttribute('href','#pc-'+p.toLowerCase());svg.append(use);return svg;}
-  const flipped=()=>game.id==='chess'&&mode==='cpu-black';
-  const human=()=>game.id==='chess'&&mode==='cpu-black'?'b':'w';
-  const cpuTurn=()=>vsCpu()&&s.turn!==human();
-  function squareGrid(moves,onClick,checker=false){
-    const b=grid(8,'chess'),flip=flipped(),checkAt=!checker&&E.Chess.check(s)?s.b.indexOf(s.turn==='w'?'K':'k'):-1;
-    for(let d=0;d<64;d++){
-      const i=flip?63-d:d,p=s.b[i],legal=moves.some(m=>m.from===selected&&m.to===i);
-      const cls=['square',((i>>3)+i%8)%2?'dark':'light'];if(selected===i)cls.push('chosen');if(legal)cls.push('legal');if(p)cls.push('occupied');if(lastMove&&(lastMove.from===i||lastMove.to===i||lastMove.path?.includes(i)))cls.push('last');if(i===checkAt)cls.push('in-check');if(hintMove&&(hintMove.from===i||hintMove.to===i))cls.push('hinted');
-      const sq=button('',()=>onClick(i),cls.join(' '));
-      sq.setAttribute('aria-label',squareName(i)+(p?': '+(checker?(p.toLowerCase()==='w'?'Light':'Dark')+' '+(p===p.toUpperCase()?'king':'man'):(p===p.toUpperCase()?'White ':'Black ')+pieceName[p.toLowerCase()]):': empty')+(legal?', legal destination':''));
-      if(p){
-        const wrap=el('span','piece');
-        if(checker){const k=el('span','checker'+(p.toLowerCase()==='b'?' black':'')+(p===p.toUpperCase()?' king':''));if(p===p.toUpperCase())k.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18l-1.6-9-4.4 3.8L12 5.5 9 12.8 4.6 9z"/></svg>';wrap.append(k);}else wrap.append(pieceSvg(p));
-        // The piece that just moved slides in from where it was.
-        if(lastMove?.fresh&&lastMove.to===i&&!reduced()){const at=x=>{const dd=flip?63-x:x;return[dd%8,dd>>3];};const [fc,fr]=at(lastMove.from),[tc,tr]=at(i);wrap.style.setProperty('--dx',fc-tc);wrap.style.setProperty('--dy',fr-tr);wrap.classList.add('slide');sq.classList.add('moving');}
-        sq.append(wrap);
-      }
-      if(d>=56)sq.append(el('small','coord','abcdefgh'[i%8]));
-      if(d%8===0)sq.append(el('small','coord rank',String(8-(i>>3))));
-      b.append(sq);
-    }
-    if(lastMove)lastMove.fresh=false;
-  }
-  function capturedLine(){
-    const start={p:8,n:2,b:2,r:2,q:1},have={w:{},b:{}};for(const p of s.b)if(p){const t=p===p.toUpperCase()?'w':'b';have[t][p.toLowerCase()]=(have[t][p.toLowerCase()]||0)+1;}
-    const val={p:1,n:3,b:3,r:5,q:9},wrap=el('div','captures'),score={w:0,b:0},rows={};
-    for(const [taker,lost] of [['w','b'],['b','w']]){const row=el('div','cap-row');row.append(el('span','cap-label',taker==='w'?'White took':'Black took'));for(const k of ['q','r','b','n','p']){const n=Math.max(0,start[k]-(have[lost][k]||0));for(let j=0;j<n;j++){row.append(pieceSvg(lost==='w'?k.toUpperCase():k));score[taker]+=val[k];}}rows[taker]=row;wrap.append(row);}
-    const diff=score.w-score.b;if(diff)rows[diff>0?'w':'b'].append(el('span','cap-adv','+'+Math.abs(diff)));
-    return wrap;
-  }
   function moveList(){const ol=el('ol','movelist');ol.setAttribute('aria-label','Moves');if(!sanList.length)ol.append(el('li','empty','Moves appear here.'));for(let i=0;i<sanList.length;i+=2){const li=el('li');li.append(el('span',null,sanList[i]));if(sanList[i+1])li.append(el('span',null,sanList[i+1]));ol.append(li);}requestAnimationFrame(()=>{ol.scrollLeft=ol.scrollWidth;});return ol;}
-  function renderChess(){
-    const moves=E.Chess.moves(s),result=E.Chess.result(s,keys),thinking=cpuTurn()&&!result;
-    status(result||(s.turn==='w'?'White':'Black')+' to move'+(E.Chess.check(s)?' · check':'')+(thinking?' · computer thinking…':''));
-    squareGrid(moves,i=>{
-      if(finished||cpuBusy||promotion||cpuTurn())return;
-      const options=moves.filter(m=>m.from===selected&&m.to===i);
-      if(options.length){if(options.length>1){promotion=options;tools.replaceChildren(el('p',null,'Promote to:'));for(const m of options){const pb=button('',()=>{promotion=null;playChess(m);},'promo');pb.append(pieceSvg(s.turn==='w'?m.promote.toUpperCase():m.promote));pb.setAttribute('aria-label',pieceName[m.promote]);tools.append(pb);}hint('Choose your promotion piece.');return;}playChess(options[0]);return;}
-      selected=moves.some(m=>m.from===i)?i:null;hintMove=null;renderChess();
-    });
-    const info=el('div','chess-info');info.append(capturedLine(),moveList());stage.append(info);
-    tools.replaceChildren(button('↶ Undo',undoBoard),button('Hint',()=>{if(finished||cpuBusy||cpuTurn())return;hintMove=E.Chess.best(s,2);selected=hintMove?.from??null;renderChess();hint('Try this move.');}));
-    if(!hintMove)hint(vsCpu()?`Tap a piece, then a marked square. You play ${human()==='w'?'White':'Black'}.`:'Tap a piece, then a marked square. Pass the screen after your move.');
-    if(result){
-      const winner=result.startsWith('White')?'White':result.startsWith('Black')?'Black':null;
-      if(vsCpu())record(!winner?'drawn':(winner==='White')===(human()==='w')?'won':'lost');else record(winner||'draw');
-      if(winner&&(!vsCpu()||(winner==='White')===(human()==='w')))celebrate();
-      finish(result,'The board is settled. Play another whenever you like.');return;
-    }
-    persist();
-    if(thinking&&!cpuBusy){if(opts.level==='hard'){const token=revision;cpuBusy=true;hardMove(E.copy(s),m=>{if(token!==revision||finished)return;cpuBusy=false;if(m)playChess(m,true);});}else cpu(()=>{const m=E.Chess.best(s,LEVELS.chess[opts.level||'medium']);if(m)playChess(m,true);});}
-  }
   /* Hard thinks in chess-worker.js for up to ~2 s, deeper as time allows. Where a
      worker can't start (file:// pages) it falls back to a shorter search here. */
   let chessWorker=null,workerJob=0;
@@ -345,14 +301,442 @@
     chessWorker.onerror=()=>{chessWorker=false;give(E.Chess.best(state,2));};
     chessWorker.postMessage({id,state,ms:1800});
   }
-  function playChess(m,ai=false){sfx(s.b[m.to]||m.enpassant?'capture':'tap');history.push({state:E.copy(s),keyCount:keys.length,san:sanList.length,last:lastMove});sanList.push(E.Chess.san(s,m));s=E.Chess.apply(s,m);keys.push(E.Chess.key(s));selected=null;hintMove=null;lastMove={from:m.from,to:m.to,fresh:true};if(ai)cpuBusy=false;renderChess();}
+  // ---- Chess (round three, 2026-11-21: TODO.md "Chess: what players want") ----
+  /* moveLog keeps every move of the game (from, to, promotion) so any earlier
+     position can be rebuilt for review, written out as PGN, or sent to a friend
+     online. reviewAt = how many moves the board is showing while reviewing
+     (null = the live game). chessEnd = a result the rules don't produce
+     themselves: a resignation, a draw agreed, a flag fallen. */
+  let endWinner=null,termFocus=false,moveLog=[],reviewAt=null,arrows=[],arrowFrom=null,chessClock=null,chessEnd=null,drawOffer=null,facing='w',chessTick=null,termLines=[],termForm=null,resignArmed=0;
+  const look8=()=>look()==='bit';
+  /* Which side sits at the bottom. Vs computer and online: yours. Pass the
+     device: whoever is to move (the board turns a moment after each move).
+     Across the table: White stays at the bottom. Flip turns any of them round. */
+  const flipped=()=>{if(game.id!=='chess')return false;let f=mode==='cpu-black'||(mode==='online'&&net.color==='b')||(mode==='two'&&facing==='b');return opts.flip?!f:f;};
+  const human=()=>game.id!=='chess'?'w':mode==='cpu-black'?'b':mode==='online'?net.color||'w':'w';
+  const cpuTurn=()=>vsCpu()&&s.turn!==human();
+  const myMove=()=>mode==='online'?!!net.started&&s.turn===net.color:!cpuTurn();
+  const twoish=()=>mode==='two'||mode==='table';
+  const sideWord=t=>t==='w'?'White':'Black';
+  function positionAt(k){let p=E.Chess.create();for(let j=0;j<k&&j<moveLog.length;j++){const m=E.Chess.moves(p).find(x=>x.from===moveLog[j].from&&x.to===moveLog[j].to&&(x.promote||'')===(moveLog[j].promote||''));if(!m)break;p=E.Chess.apply(p,m);}return p;}
+  const FIG={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘'};
+  const notation=san=>look()==='book'?san.replace(/[KQRBN]/g,c=>FIG[c]):san;
+
+  /* Pixel pieces for the 8-bit style: 12 × 12 bitmaps, drawn as one path of
+     squares with a one-pixel outline around them, crisp at any size. */
+  const BITS={
+    p:'.....##.....|....####....|....####....|.....##.....|....####....|.....##.....|.....##.....|....####....|...######...|..########..',
+    r:'..##.##.##..|..########..|...######...|....####....|....####....|....####....|....####....|...######...|..########..|..########..',
+    n:'......##....|.....####...|....######..|...###.####.|..#########.|..##..#####.|.....######.|....######..|...######...|..########..',
+    b:'.....##.....|....##.#....|...##.###...|...#.####...|...######...|....####....|.....##.....|....####....|...######...|..########..',
+    q:'.#..#..#..#.|.#.##..##.#.|.##########.|..########..|...######...|....####....|....####....|...######...|..########..|..########..',
+    k:'.....##.....|....####....|.....##.....|..##.##.##..|.##########.|.##########.|..########..|...######...|...######...|..########..'
+  };
+  const bitPaths={};
+  function bitPiece(p){
+    const k=p.toLowerCase();
+    if(!bitPaths[k]){const rows=BITS[k].split('|'),on=(x,y)=>rows[y]?.[x]==='#';let body='',line='';
+      for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=12;x++){const at=`M${x+1} ${y+2}h1v1h-1z`;if(on(x,y))body+=at;else if([[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>on(x+a,y+b)))line+=at;}
+      bitPaths[k]={body,line};}
+    const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.setAttribute('class','px '+(p===p.toUpperCase()?'w':'b'));svg.setAttribute('viewBox','0 0 14 14');svg.setAttribute('shape-rendering','crispEdges');svg.setAttribute('aria-hidden','true');
+    for(const [cls,d] of [['px-line',bitPaths[k].line],['px-body',bitPaths[k].body]]){const path=document.createElementNS(NS,'path');path.setAttribute('class',cls);path.setAttribute('d',d);svg.append(path);}
+    return svg;
+  }
+  const chessPiece=p=>look8()?bitPiece(p):pieceSvg(p);
+  const ASCII=p=>p;
+
+  /* ---- the board ---- */
+  function chessBoardEl(view,moves,lm){
+    const flip=flipped(),wrap=el('div','board-wrap'),b=el('div','board chess');b.style.gridTemplateColumns='repeat(8,1fr)';
+    const checkAt=E.Chess.check(view)?view.b.indexOf(view.turn==='w'?'K':'k'):-1;
+    for(let d=0;d<64;d++){
+      const i=flip?63-d:d,p=view.b[i],legal=moves.some(m=>m.from===selected&&m.to===i);
+      const cls=['square',((i>>3)+i%8)%2?'dark':'light'];if(selected===i)cls.push('chosen');if(legal)cls.push('legal');if(p)cls.push('occupied');if(lm&&(lm.from===i||lm.to===i))cls.push('last');if(i===checkAt)cls.push('in-check');if(hintMove&&(hintMove.from===i||hintMove.to===i))cls.push('hinted');
+      const sq=button('',()=>{if(!dragJustEnded)boardClick?.(i);},cls.join(' '));sq.dataset.i=i;
+      sq.setAttribute('aria-label',squareName(i)+(p?': '+sideWord(p===p.toUpperCase()?'w':'b')+' '+pieceName[p.toLowerCase()]:': empty')+(legal?', legal destination':''));
+      if(p){const pw=el('span','piece '+(p===p.toUpperCase()?'pw':'pb'));pw.append(chessPiece(p));
+        if(lastMove?.fresh&&reviewAt===null&&lastMove.to===i&&!reduced()&&!noSlide){const at=x=>{const dd=flip?63-x:x;return[dd%8,dd>>3];};const [fc,fr]=at(lastMove.from),[tc,tr]=at(i);pw.style.setProperty('--dx',fc-tc);pw.style.setProperty('--dy',fr-tr);pw.classList.add('slide');sq.classList.add('moving');}
+        sq.append(pw);}
+      if(d>=56)sq.append(el('small','coord','abcdefgh'[i%8]));
+      if(d%8===0)sq.append(el('small','coord rank',String(8-(i>>3))));
+      b.append(sq);
+    }
+    b.append(arrowLayer(flip));
+    // Coordinates in the board's margin too, as printed on a roll-up board or a book diagram; each style shows one kind.
+    const files=el('div','rail rail-files'),ranks=el('div','rail rail-ranks');for(let c=0;c<8;c++){files.append(el('span',null,'abcdefgh'[flip?7-c:c]));ranks.append(el('span',null,String(flip?c+1:8-c)));}
+    wrap.append(ranks,b,files);
+    if(lastMove)lastMove.fresh=false;noSlide=false;
+    return wrap;
+  }
+  function arrowLayer(flip){
+    const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.setAttribute('class','arrows');svg.setAttribute('viewBox','0 0 8 8');svg.setAttribute('aria-hidden','true');
+    const at=i=>{const d=flip?63-i:i;return[d%8+.5,(d>>3)+.5];};
+    svg.innerHTML='<defs><marker id="arrowhead" viewBox="0 0 4 4" refX="2.2" refY="2" markerWidth="3.2" markerHeight="3.2" orient="auto"><path d="M0 0L4 2L0 4z" fill="context-stroke"/></marker></defs>';
+    for(const a of arrows){
+      if(a.from===a.to){const [x,y]=at(a.from),c=document.createElementNS(NS,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',.44);c.setAttribute('class','ring');svg.append(c);continue;}
+      const [x1,y1]=at(a.from),[x2,y2]=at(a.to),len=Math.hypot(x2-x1,y2-y1),ux=(x2-x1)/len,uy=(y2-y1)/len,l=document.createElementNS(NS,'line');
+      l.setAttribute('x1',x1+ux*.2);l.setAttribute('y1',y1+uy*.2);l.setAttribute('x2',x2-ux*.38);l.setAttribute('y2',y2-uy*.38);l.setAttribute('marker-end','url(#arrowhead)');l.setAttribute('class','arrow');svg.append(l);
+    }
+    return svg;
+  }
+  /* Terminal style: the board is text, as an old command-line chess program
+     printed it. Each square is a 3-character button inside a <pre>. */
+  function asciiChess(view,moves,lm){
+    const flip=flipped(),pre=el('pre','ascii-board chess-ascii');pre.setAttribute('role','group');pre.setAttribute('aria-label','Chess board');
+    const files=(flip?'hgfedcba':'abcdefgh').split(''),rule='    +'+'---+'.repeat(8)+'\n';
+    pre.append('      '+files.join('   ')+'\n',rule);
+    for(let r=0;r<8;r++){
+      const rank=flip?r+1:8-r;pre.append(`  ${rank} |`);
+      for(let c=0;c<8;c++){
+        const i=flip?63-(r*8+c):r*8+c,p=view.b[i],dark=((i>>3)+i%8)%2===1,legal=moves.some(m=>m.from===selected&&m.to===i);
+        let text=p?' '+p+' ':legal?' * ':dark?' . ':'   ';
+        if(p&&legal)text='('+p+')';if(p&&selected===i)text='['+p+']';
+        const cls=['cell',dark?'dark':'light'];if(p)cls.push(p===p.toUpperCase()?'side-w':'side-b');if(legal)cls.push('legal');if(selected===i)cls.push('chosen');if(lm&&(lm.from===i||lm.to===i))cls.push('last');if(hintMove&&(hintMove.from===i||hintMove.to===i))cls.push('hinted');
+        const cell=button(text,()=>boardClick?.(i),cls.join(' '));cell.dataset.i=i;cell.setAttribute('aria-label',squareName(i)+(p?': '+sideWord(p===p.toUpperCase()?'w':'b')+' '+pieceName[p.toLowerCase()]:': empty'));pre.append(cell,'|');
+      }
+      pre.append(` ${rank}\n`,rule);
+    }
+    pre.append('      '+files.join('   ')+'\n');
+    const wrap=el('div','board-wrap ascii-wrap');wrap.append(pre);if(lastMove)lastMove.fresh=false;return wrap;
+  }
+
+  /* ---- the player plates: name, captured pieces, material, clock, turn light ---- */
+  function chessPlates(result,thinking,view){
+    const start={p:8,n:2,b:2,r:2,q:1},have={w:{},b:{}},val={p:1,n:3,b:3,r:5,q:9},score={w:0,b:0};
+    for(const p of view.b)if(p){const t=p===p.toUpperCase()?'w':'b';have[t][p.toLowerCase()]=(have[t][p.toLowerCase()]||0)+1;}
+    for(const t of ['w','b'])for(const k in val)score[t]+=(have[t][k]||0)*val[k];
+    const level={easy:'Easy',medium:'Medium',hard:'Hard'}[opts.level||'medium'];
+    const plate=side=>{
+      const lost=side==='w'?'b':'w',adv=score[side]-score[lost],turn=!result&&reviewAt===null&&s.turn===side;
+      const name=vsCpu()?(side===human()?'You':'Computer'):mode==='online'?(side===net.color?'You':net.started?'Your friend':'Waiting for a friend…'):sideWord(side);
+      const sub=vsCpu()?sideWord(side)+(side!==human()?' · '+level:''):mode==='online'?sideWord(side):(side==='w'?'Moves first':'Moves second');
+      const t=el('div','plate plate-'+side+(turn?' to-move':'')+(mode==='table'&&side==='b'?' upside':''));
+      const taken=[];for(const k of ['q','r','b','n','p'])for(let j=0;j<Math.max(0,start[k]-(have[lost][k]||0));j++)taken.push(lost==='w'?k.toUpperCase():k);
+      const offer=drawOffer&&drawOffer!==side&&!result&&(twoish()||(mode==='online'&&side===net.color));
+      if(look()==='terminal'){
+        t.append(`${turn?'>':' '} ${sideWord(side).toLowerCase().padEnd(5)} ${name.toLowerCase()}${vsCpu()&&side!==human()?' ('+level.toLowerCase()+')':''}${turn&&thinking?' thinking...':''}`.padEnd(34,' ')+(taken.length?'x '+taken.join(''):'')+(adv>0?' +'+adv:''));
+        if(chessClock){const c=el('span','plate-clock');c.id='clock-'+side;c.textContent=' ['+fmtClock(clockLeft(side))+']';t.append(c);}
+      }else{
+        const chip=el('span','plate-chip');chip.append(chessPiece(side==='w'?'K':'k'));
+        const who=el('span','plate-who');who.append(el('strong','plate-name',name),el('span','plate-sub',turn&&thinking?'Thinking…':sub));
+        const tray=el('span','tray-pile');for(const p of taken)tray.append(chessPiece(p));if(adv>0)tray.append(el('span','plate-adv','+'+adv));
+        t.append(chip,who,tray);
+        if(chessClock){const c=el('span','plate-clock');c.id='clock-'+side;c.textContent=fmtClock(clockLeft(side));if(clockLeft(side)<20000)c.classList.add('low');t.append(c);}
+      }
+      if(offer){const box=el('span','offer');box.append(el('span',null,(mode==='online'?'Your friend':sideWord(drawOffer))+' offers a draw'),button('Accept',()=>acceptDraw()),button('Decline',()=>declineDraw()));t.append(box);}
+      t.setAttribute('aria-label',`${name}, ${sideWord(side)}${adv>0?', ahead by '+adv:''}${turn?', to move':''}`);
+      return t;
+    };
+    const top=flipped()?'w':'b';return [plate(top),plate(top==='w'?'b':'w')];
+  }
+
+  /* ---- the clock (optional, off by default; Ric: "Optional clock") ---- */
+  /* Each side's time left in ms; since = when the side to move started using
+     theirs (0 until the first move, so nobody loses time reading the board). */
+  const fmtClock=ms=>{const t=Math.ceil(ms/100)/10;if(ms<20000)return`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;const n=Math.ceil(ms/1000);return fmtTime(n);};
+  function clockLeft(side){if(!chessClock)return 0;let v=chessClock[side];if(chessClock.since&&s.turn===side&&!finished&&reviewAt===null)v-=Date.now()-chessClock.since;return Math.max(0,v);}
+  function clockNew(){const m=+(opts.clock||0);chessClock=m&&mode!=='online'?{w:m*60000,b:m*60000,since:0,min:m}:null;}
+  function clockAfterMove(mover){if(!chessClock)return;const now=Date.now();if(chessClock.since)chessClock[mover]=Math.max(0,chessClock[mover]-(now-chessClock.since));chessClock.since=now;}
+  function clockRun(){
+    clearInterval(chessTick);chessTick=null;if(!chessClock||finished)return;
+    chessTick=setInterval(()=>{
+      if(!chessClock||finished){clearInterval(chessTick);return;}
+      for(const side of ['w','b']){const c=$('clock-'+side);if(c){const left=clockLeft(side);c.textContent=look()==='terminal'?' ['+fmtClock(left)+']':fmtClock(left);c.classList.toggle('low',left<20000);}}
+      if(chessClock.since&&clockLeft(s.turn)<=0){
+        chessClock[s.turn]=0;chessClock.since=0;const win=s.turn==='w'?'b':'w';
+        // A flag only wins if the other side could still mate.
+        const men=s.b.filter(p=>p&&(win==='w'?p===p.toUpperCase():p===p.toLowerCase())&&p.toLowerCase()!=='k');
+        chessEnd=!men.length||(men.length===1&&/[bn]/i.test(men[0]))?'Draw · '+sideWord(s.turn)+' ran out of time, but '+sideWord(win)+' can’t mate':sideWord(win)+' wins on time';
+        sfx('lose');renderChess();
+      }
+    },100);
+  }
+
+  /* ---- drawing on the board: right-drag for an arrow, right-click for a ring ---- */
+  stage.addEventListener('contextmenu',e=>{if(game?.id==='chess'&&e.target.closest('.board'))e.preventDefault();});
+  stage.addEventListener('pointerdown',e=>{if(game?.id!=='chess'||e.button!==2)return;const sq=e.target.closest('.board .square[data-i]');if(sq)arrowFrom=+sq.dataset.i;});
+  addEventListener('pointerup',e=>{
+    if(arrowFrom===null||e.button!==2)return;const from=arrowFrom;arrowFrom=null;
+    const sq=document.elementFromPoint(e.clientX,e.clientY)?.closest('.board .square[data-i]');if(!sq)return;const to=+sq.dataset.i;
+    const k=arrows.findIndex(a=>a.from===from&&a.to===to);if(k>=0)arrows.splice(k,1);else arrows.push({from,to});
+    const old=stage.querySelector('.board .arrows');if(old)old.replaceWith(arrowLayer(flipped()));
+  });
+
+  /* ---- playing ---- */
+  function renderChess(){
+    document.body.dataset.mode=mode;
+    const result=chessEnd||E.Chess.result(s,keys),live=reviewAt===null,view=live?s:positionAt(reviewAt);
+    const moves=live&&!result&&!finished?E.Chess.moves(s):[],thinking=cpuTurn()&&!result;
+    const lm=live?lastMove:reviewAt>0?moveLog[reviewAt-1]:null;
+    const waitingFriend=mode==='online'&&!result&&net.started&&s.turn!==net.color;
+    status(result||(!live?`Reviewing · after ${reviewAt?Math.ceil(reviewAt/2)+(reviewAt%2?'.':'…')+' '+notation(sanList[reviewAt-1]):'the start'}`:
+      mode==='online'&&!net.started?(net.code?'Waiting for your friend to join…':'Play a friend online'):
+      (mode==='online'?(s.turn===net.color?'Your move':'Your friend’s move'):sideWord(s.turn)+' to move')+(E.Chess.check(s)?' · check':'')+(thinking?' · computer thinking…':'')+(waitingFriend?'…':'')));
+    boardClick=i=>{
+      if(!live){reviewAt=null;renderChess();return;}
+      if(finished||cpuBusy||promotion||!myMove())return;
+      if(arrows.length){arrows=[];}
+      const options=moves.filter(m=>m.from===selected&&m.to===i);
+      if(options.length){if(options.length>1){promotion=options;renderChess();return;}playChess(options[0]);return;}
+      selected=moves.some(m=>m.from===i)?i:null;hintMove=null;renderChess();
+    };
+    const board=look()==='terminal'?asciiChess(view,moves,lm):chessBoardEl(view,moves,lm);
+    if(promotion){const pick=el('div','promo-pick');pick.setAttribute('role','dialog');pick.setAttribute('aria-label','Promote to');pick.append(el('span','promo-label','Promote to'));for(const m of promotion){const pb=button('',()=>{promotion=null;playChess(m);},'promo');pb.append(chessPiece(s.turn==='w'?m.promote.toUpperCase():m.promote));pb.setAttribute('aria-label',pieceName[m.promote]);pick.append(pb);}pick.append(button('✕',()=>{promotion=null;selected=null;renderChess();},'promo-cancel'));board.append(pick);}
+    if(mode==='online'&&!net.started)board.append(onlineCard());
+    const [far,near]=chessPlates(result,thinking,view);
+    termFocus=!!termForm&&termForm.contains(document.activeElement);
+    stage.replaceChildren(far,board,near);
+    if(look()==='terminal')stage.append(terminalPrompt());
+    chessSheet(result);chessActions(result);
+    const op=$('opening');if(op){const o=window.ChessOpenings?.opening(sanList.slice(0,live?sanList.length:reviewAt));op.textContent=o?o.name:sanList.length?'':'Starting position';op.hidden=!o&&!!sanList.length;}
+    tools.replaceChildren(button('↶ Undo',undoBoard),button('Hint',()=>{if(finished||cpuBusy||!myMove()||mode==='online'||!live)return;hintMove=E.Chess.best(s,2);selected=hintMove?.from??null;renderChess();hint('Try this move.');}));
+    for(const b of tools.querySelectorAll('button'))b.disabled=mode==='online';
+    // Looking back: the row under the board steps through the game and leads back to it.
+    if(!live){const step=k=>{reviewAt=k>=moveLog.length?null:Math.max(0,k);renderChess();};tools.replaceChildren(button('◀',()=>step(reviewAt-1),'step'),button('Back to the game',()=>step(moveLog.length),'solid'),button('▶',()=>step(reviewAt+1),'step'));tools.firstChild.setAttribute('aria-label','Back one move');tools.lastChild.setAttribute('aria-label','Forward one move');}
+    if(!hintMove)hint(promotion?'Choose the piece your pawn becomes.':!live?'← → step through the game. Tap the board to go back to it.':mode==='online'?(net.started?'Moves show up on both screens.':''):vsCpu()?(look()==='terminal'?`Type a move at the prompt, or click a piece. You play ${sideWord(human()).toLowerCase()}.`:`Tap or drag a piece. Right-drag draws an arrow. You play ${sideWord(human())}.`):mode==='two'?'Pass the device after your move; the board turns to face whoever is to move.':'Sit across from each other: Black’s pieces face the far side.');
+    if(result){
+      clearInterval(chessTick);
+      if(!finished){
+        const winner=result.startsWith('White')?'w':result.startsWith('Black')?'b':null;
+        // An online game is replayed from its room on every visit: count it once.
+        const once=mode==='online'?'netdone:'+net.code+':'+net.game:null;
+        if(once&&storage.get(once)){}else if(vsCpu()||mode==='online'){record(!winner?'drawn':winner===human()?'won':'lost');if(once)storage.set(once,1);}else record(winner?sideWord(winner):'draw');
+        if(winner&&(twoish()||winner===human()))celebrate();else if(winner)sfx('lose');
+        finish(result,winner?(mode==='online'||vsCpu()?(winner===human()?'Well played. The board is yours.':'Not this time. Rematch?'):sideWord(winner)+' takes the game.'):'Honours even.');
+        if(mode==='online')netAfterEnd();
+      }
+      return;
+    }
+    persist();clockRun();
+    if(mode==='two'&&facing!==s.turn&&!cpuBusy){const token=revision,turn=s.turn;setTimeout(()=>{if(token!==revision||s.turn!==turn||facing===turn)return;facing=turn;renderChess();},reduced()?0:650);}
+    if(thinking&&!cpuBusy){if(opts.level==='hard'){const token=revision;cpuBusy=true;hardMove(E.copy(s),m=>{if(token!==revision||finished)return;cpuBusy=false;if(m)playChess(m,true);});}else cpu(()=>{const m=E.Chess.best(s,LEVELS.chess[opts.level||'medium']);if(m)playChess(m,true);});}
+  }
+  /* The scoresheet: every move a button, to look back at the board then. */
+  function chessSheet(result){
+    const slot=$('sheet-slot');if(!slot)return;const at=reviewAt??moveLog.length;
+    const ol=el('ol','movelist scoresheet');ol.setAttribute('aria-label','Moves');
+    if(!sanList.length)ol.append(el('li','empty',look()==='terminal'?'no moves yet':'Moves appear here.'));
+    for(let i=0;i<sanList.length;i+=2){const li=el('li');for(const k of [i,i+1]){if(k>=sanList.length)break;const b=button(notation(sanList[k]),()=>{reviewAt=k+1===moveLog.length?null:k+1;selected=null;promotion=null;renderChess();},'mv'+(k+1===at?' now':''));b.setAttribute('aria-label',`${Math.floor(k/2)+1}${k%2?'… Black':'. White'} ${sanList[k]}`);li.append(b);}ol.append(li);}
+    if(result){const r=result.startsWith('White')?'1-0':result.startsWith('Black')?'0-1':'½-½';ol.append(el('li','result',r));}
+    const nav=el('div','review-nav');nav.setAttribute('aria-label','Step through the game');
+    for(const [t,label,go] of [['⏮','First position',()=>0],['◀','Back one move',()=>Math.max(0,at-1)],['▶','Forward one move',()=>Math.min(moveLog.length,at+1)],['⏭','Latest position',()=>moveLog.length]]){const b=button(t,()=>{const k=go();reviewAt=k>=moveLog.length?null:k;selected=null;promotion=null;renderChess();});b.setAttribute('aria-label',label);b.disabled=!moveLog.length;nav.append(b);}
+    slot.replaceChildren(ol,nav);
+    requestAnimationFrame(()=>{const now=ol.querySelector('.now')||ol.lastElementChild;if(now&&ol.scrollHeight>ol.clientHeight)ol.scrollTop=now.offsetTop-ol.clientHeight/2;});
+  }
+  /* Resign, offer a draw, flip, copy PGN, the clock: in the page's actions slot. */
+  function chessActions(result){
+    const slot=$('chess-actions')||tools;const over=!!result||finished;
+    const resign=button(resignArmed>Date.now()?'Resign? Tap again':'Resign',()=>{if(over||mode==='online'&&!net.started)return;if(resignArmed<Date.now()){resignArmed=Date.now()+3000;renderChess();setTimeout(()=>{if(resignArmed&&resignArmed<=Date.now()){resignArmed=0;if(game?.id==='chess'&&!finished)renderChess();}},3100);return;}resignArmed=0;resignNow();},'resign'+(resignArmed>Date.now()?' armed':''));
+    const draw=button(drawOffer&&(vsCpu()||drawOffer===myOfferSide())?'Draw offered':'Offer draw',()=>offerDraw(),'draw');draw.disabled=over||!!drawOffer||(mode==='online'&&(!net.started||s.turn!==net.color))||(vsCpu()&&cpuTurn())||sanList.length<2;
+    resign.disabled=over||(mode==='online'&&!net.started)||!sanList.length;
+    const flip=button('Flip board',()=>{opts.flip=!opts.flip;saveOpts();renderChess();},'flip');
+    const pgn=button('Copy PGN',copyPgn,'pgn');pgn.disabled=!sanList.length;
+    const clockSel=el('select');clockSel.setAttribute('aria-label','Chess clock');for(const [v,t] of [['0','No clock'],['5','5 min'],['10','10 min'],['15','15 min']]){const o=el('option',null,t);o.value=v;clockSel.append(o);}
+    clockSel.value=String(opts.clock||0);clockSel.disabled=mode==='online';clockSel.onchange=()=>{opts.clock=+clockSel.value;saveOpts();if(!sanList.length&&!finished){clockNew();renderChess();}else hint(opts.clock?`A ${opts.clock}-minute clock from your next game.`:'No clock from your next game.');};
+    const cl=el('label','clock-pick');cl.append(el('span',null,'Clock'),clockSel);
+    if(slot===tools){tools.append(resign,draw,flip,pgn,cl);return;}
+    slot.replaceChildren(resign,draw,flip,pgn,cl);
+  }
+  const myOfferSide=()=>mode==='online'?net.color:s.turn;
+  const sideLabel=t=>game.id==='chess'?sideWord(t):sideName(t);
+  function resignNow(){
+    if(finished)return;const who=mode==='online'?net.color:vsCpu()?human():s.turn;
+    if(mode==='online')netSend('resign');
+    endWinner=who==='w'?'b':'w';chessEnd=sideLabel(endWinner)+' wins · '+sideLabel(who)+' resigned';renderCurrent();
+  }
+  function offerDraw(){
+    if(finished||drawOffer)return;
+    if(vsCpu()){
+      // The computer takes a draw only when it isn't better: a short look at the position from its side.
+      const mine=human()==='w'?'b':'w',v=E.Chess.score(s,2)*(mine==='w'?1:-1);
+      if(v<=30&&sanList.length>=20){chessEnd='Draw agreed';sfx('flip');renderChess();}
+      else{drawOffer=human();hint(v>300?'The computer declines. It thinks it’s winning.':sanList.length<20?'The computer declines. It’s early; it wants to play on.':'The computer declines. It would rather play on.');sfx('error');const d=$('chess-actions')?.querySelector('.draw');if(d){d.textContent='Declined';d.disabled=true;}setTimeout(()=>{drawOffer=null;},0);}
+      return;
+    }
+    drawOffer=myOfferSide();if(mode==='online')netSend('offer');renderCurrent();hint(mode==='online'?'Draw offered. Your friend can accept it or play on.':sideLabel(drawOffer)+' offers a draw. '+sideLabel(drawOffer==='w'?'b':'w')+' can accept it, or decline by making a move.');
+  }
+  function acceptDraw(){if(finished)return;if(mode==='online')netSend('accept');drawOffer=null;endWinner=null;chessEnd='Draw agreed';renderCurrent();}
+  function declineDraw(){if(mode==='online')netSend('decline');drawOffer=null;renderCurrent();}
+  function pgnText(){
+    const result=chessEnd||E.Chess.result(s,keys),r=!result?'*':result.startsWith('White')?'1-0':result.startsWith('Black')?'0-1':'1/2-1/2';
+    const level={easy:'Easy',medium:'Medium',hard:'Hard'}[opts.level||'medium'],names={w:'White',b:'Black'};
+    if(vsCpu()){names[human()]='You';names[human()==='w'?'b':'w']='Computer ('+level+')';}else if(mode==='online'){names[net.color]='You';names[net.color==='w'?'b':'w']='Friend';}
+    const date=new Date().toISOString().slice(0,10).replace(/-/g,'.'),o=window.ChessOpenings?.opening(sanList);
+    let body='';sanList.forEach((m,i)=>{body+=(i%2?'':(i/2+1)+'. ')+m+' ';});
+    const head=[['Event','Casual game'],['Site','ricmassey.com'],['Date',date],['White',names.w],['Black',names.b],['Result',r],...(o?[['Opening',o.name]]:[]),...(chessClock?[['TimeControl',chessClock.min*60+'']]:[])].map(([k,v])=>`[${k} "${v}"]`).join('\n');
+    return head+'\n\n'+(body+r).replace(/(.{1,78})(\s|$)/g,'$1\n').trim()+'\n';
+  }
+  async function copyPgn(){const text=pgnText();try{await navigator.clipboard.writeText(text);hint('PGN copied. Paste it into any chess site to look at the game.');}catch{const ta=el('textarea','pgn-out');ta.value=text;ta.rows=6;ta.readOnly=true;tools.append(ta);ta.select();hint('Select and copy the PGN below.');}}
+  function playChess(m,ai=false,remote=false){
+    const mover=s.turn;
+    sfx(s.b[m.to]||m.enpassant?'capture':'tap');history.push({state:E.copy(s),keyCount:keys.length,san:sanList.length,last:lastMove,clock:chessClock&&{...chessClock}});
+    sanList.push(E.Chess.san(s,m));moveLog.push({from:m.from,to:m.to,promote:m.promote||''});s=E.Chess.apply(s,m);keys.push(E.Chess.key(s));
+    selected=null;hintMove=null;promotion=null;reviewAt=null;arrows=[];resignArmed=0;if(drawOffer&&drawOffer!==mover)drawOffer=null;else if(drawOffer&&vsCpu())drawOffer=null;
+    lastMove={from:m.from,to:m.to,fresh:true};clockAfterMove(mover);if(ai)cpuBusy=false;
+    if(E.Chess.check(s)&&!ai)sfx('flag');
+    if(mode==='online'&&!remote)netSend('m',squareName(m.from)+squareName(m.to)+(m.promote||''));
+    renderChess();
+  }
+
+  /* ---- Terminal: type moves at a prompt (Ric: "Yes, type moves too") ---- */
+  function terminalPrompt(){
+    const had=termFocus;
+    if(!termForm){
+      termForm=el('form','term-prompt');const log=el('pre','term-log');log.setAttribute('aria-live','polite');const row=el('label','term-row');const ps=el('span','ps1');const inp=el('input');inp.type='text';inp.autocomplete='off';inp.spellcheck=false;inp.setAttribute('autocapitalize','off');inp.setAttribute('aria-label','Type a move or a command');inp.placeholder='e2e4, Nf3, help';
+      row.append(ps,inp);termForm.append(log,row);
+      termForm.onsubmit=e=>{e.preventDefault();const v=inp.value.trim();inp.value='';if(v)termCommand(v);inp.focus();};
+    }
+    termForm.querySelector('.ps1').textContent=(mode==='online'&&!net.started?'online':sideWord(s.turn).toLowerCase())+'> ';
+    termForm.querySelector('.term-log').textContent=termLines.slice(-6).join('\n');
+    if(had)requestAnimationFrame(()=>termForm.querySelector('input').focus());
+    return termForm;
+  }
+  function termSay(...lines){termLines.push(...lines);if(termLines.length>40)termLines=termLines.slice(-40);}
+  function termCommand(v){
+    termSay((sideWord(s.turn).toLowerCase())+'> '+v);const c=v.toLowerCase();
+    if(c==='help'||c==='?'){termSay('  moves: e2e4  Nf3  exd5  O-O  e8=Q','  commands: undo hint flip moves resign draw pgn new');}
+    else if(c==='new'){termLines=[];start();return;}
+    else if(c==='undo')undoBoard();
+    else if(c==='flip'){opts.flip=!opts.flip;saveOpts();}
+    else if(c==='hint'){if(myMove()&&mode!=='online'&&!finished){hintMove=E.Chess.best(s,2);selected=hintMove?.from??null;termSay('  try '+(hintMove?E.Chess.san(s,hintMove):'-'));}}
+    else if(c==='moves'){termSay('  '+E.Chess.moves(s).map(m=>E.Chess.san(s,m)).join(' '));}
+    else if(c==='resign'){resignNow();return;}
+    else if(c==='draw'){offerDraw();termSay('  '+$('hint').textContent);}
+    else if(c==='pgn'){termSay(...pgnText().split('\n'));}
+    else{
+      if(finished){termSay('  game over. type new');}
+      else if(!myMove()){termSay(cpuTurn()?'  wait: the computer is thinking':'  wait: it is not your move');}
+      else{const m=E.Chess.parse(s,v);if(!m){sfx('error');termSay('  illegal move: '+v+'   (type moves for a list)');}else{termSay('  '+E.Chess.san(s,m));playChess(m);return;}}
+    }
+    renderChess();
+  }
+  document.addEventListener('keydown',e=>{
+    if(game?.id!=='chess'||e.ctrlKey||e.metaKey||e.altKey||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||$('result-dialog').open||$('help-dialog').open)return;
+    const at=reviewAt??moveLog.length,go={arrowleft:at-1,arrowright:at+1,home:0,end:moveLog.length}[e.key.toLowerCase()];
+    if(go===undefined||!moveLog.length)return;e.preventDefault();const k=Math.max(0,Math.min(moveLog.length,go));reviewAt=k>=moveLog.length?null:k;selected=null;renderChess();
+  });
+
+  /* ---- online: play a friend on their own device (Ric, 2026-11-21) ----
+     A room on the site's Worker holds the game as a list of events (moves,
+     resign, draw offers, rematch). Each device replays the same list, so both
+     always agree. Polled every second or two; no accounts. The host's seat
+     plays the colour they chose; each rematch swaps colours. */
+  let net={};
+  const netKey=()=>'net:'+game.id;
+  async function netFetch(path,body){if(!remote)throw Error('offline');const res=await fetch(remote+'/arcade/rooms'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});const data=await res.json().catch(()=>({}));if(!res.ok){const err=Error(data.error||'failed');err.status=res.status;throw err;}return data;}
+  function netReset(){clearTimeout(net.timer);net={};}
+  function inviteUrl(){const u=new URL(location.href);u.search='?join='+net.code;u.hash='';return u.toString();}
+  function onlineCard(){
+    const card=el('div','online-card');
+    if(!remote){card.append(el('h3',null,'Online play'),el('p',null,'Online games need the live site. Open this page on ricmassey.com to play a friend.'));return card;}
+    if(net.error)card.append(el('p','online-error',net.error));
+    if(!net.code){
+      card.append(el('h3',null,'Play a friend'),el('p',null,'Start a game and send your friend the link. They open it, and you play on your own screens.'));
+      const colors=el('div','seg');colors.setAttribute('role','group');colors.setAttribute('aria-label','Your colour');
+      const pick=opts.netColor||'w';for(const [v,t] of [['w',sideLabel('w')],['b',sideLabel('b')],['r','Random']]){const b=button(t,()=>{opts.netColor=v;saveOpts();renderCurrent();},v===pick?'on':'');b.setAttribute('aria-pressed',v===pick);colors.append(b);}
+      const go=button('Start a game',netCreate,'solid');go.disabled=!!net.busy;
+      const join=el('form','join');const code=el('input');code.placeholder='CODE';code.maxLength=6;code.setAttribute('aria-label','Game code');code.autocapitalize='characters';code.spellcheck=false;join.append(code,button('Join','',''));join.querySelector('button').type='submit';join.onsubmit=e=>{e.preventDefault();netJoin(code.value.trim().toUpperCase());};
+      card.append(el('span','online-label','You play'),colors,go,el('span','online-label','Or join with a code'),join);
+    }else{
+      card.append(el('h3',null,'Send this to your friend'),el('p','online-code',net.code));
+      const link=el('input','online-link');link.readOnly=true;link.value=inviteUrl();link.onclick=()=>link.select();
+      const copy=button('Copy link',async()=>{try{await navigator.clipboard.writeText(inviteUrl());copy.textContent='Copied';}catch{link.select();}},'solid');
+      const row=el('div','online-row');row.append(copy);if(navigator.share)row.append(button('Share…',()=>navigator.share({title:game.name,text:`Play ${game.name.toLowerCase()} with me`,url:inviteUrl()}).catch(()=>{})));
+      card.append(link,row,el('p','muted','Waiting for them to open it… This page checks every couple of seconds.'),button('Cancel',netLeave,'text-button'));
+    }
+    return card;
+  }
+  const renderCurrent=()=>game.id==='chess'?renderChess():renderCheckers();
+  async function netCreate(){
+    net.busy=true;net.error='';renderCurrent();
+    try{const pick=opts.netColor||'w',color=pick==='r'?(Math.random()<.5?'w':'b'):pick;const d=await netFetch('',{game:game.id,color});
+      net={code:d.code,token:d.token,seat:'h',hostColor:color,n:0,events:[]};storage.set(netKey(),{code:net.code,token:net.token,seat:'h'});netApply(true);netPoll();}
+    catch(e){net.busy=false;net.error=e.status===429?'Too many new games just now. Try again in a minute.':'Couldn’t start a game. Check your connection and try again.';renderCurrent();}
+  }
+  async function netJoin(code){
+    if(!/^[A-Z]{4,6}$/.test(code)){net.error='That code doesn’t look right: it’s 4 letters.';renderCurrent();return;}
+    try{const d=await netFetch('/'+code+'/join',{});net={code,token:d.token,seat:'g',n:0,events:[]};storage.set(netKey(),{code,token:d.token,seat:'g'});await netRefresh();netPoll();}
+    catch(e){netReset();net.error=e.status===404?'No game with that code. It may have expired.':e.status===409?'That game already has two players.':'Couldn’t join. Check your connection and try again.';renderCurrent();}
+  }
+  function netLeave(){storage.remove(netKey());netReset();history=[];start();}
+  /* Rebuild the whole game from the room's events: the same list gives the same board on both screens. */
+  function netApply(fresh=false){
+    const ev=net.events||[],me=net.seat;let g=0,color=net.hostColor,mine=me==='h'?color:(color==='w'?'b':'w');
+    // A rematch (both seats sent 'again' since the last game began) starts the next game with colours swapped.
+    let begin=0,want=new Set();for(let k=0;k<ev.length;k++){if(ev[k].t==='again'){want.add(ev[k].s);if(want.size===2){g++;begin=k+1;want=new Set();}}}
+    if(g%2)mine=mine==='w'?'b':'w';
+    const before=moveLog.length,beforeGame=net.game;
+    net.color=mine;net.game=g;net.started=!!net.guest;net.rematch=[...want];
+    const wasFinished=finished;resetChessGame();if(beforeGame===g)finished=wasFinished;
+    for(const e of ev.slice(begin)){
+      if(e.t==='m'){if(game.id==='chess'){const m=E.Chess.parse(s,e.v);if(m)applyQuiet(m);}else netCheckerTurn(e.v);}
+      else if(e.t==='resign'){const loser=seatColor(e.s);endWinner=loser==='w'?'b':'w';chessEnd=sideLabel(endWinner)+' wins · '+sideLabel(loser)+' resigned';}
+      else if(e.t==='offer')drawOffer=seatColor(e.s);
+      else if(e.t==='decline')drawOffer=null;
+      else if(e.t==='accept'&&drawOffer){endWinner=null;chessEnd='Draw agreed';}
+    }
+    if(moveLog.length>before&&!fresh&&lastMove)lastMove.fresh=true;
+    renderCurrent();
+  }
+  const seatColor=seat=>{const hc=net.game%2?(net.hostColor==='w'?'b':'w'):net.hostColor;return seat==='h'?hc:(hc==='w'?'b':'w');};
+  function applyQuiet(m){history.push({state:E.copy(s),keyCount:keys.length,san:sanList.length,last:lastMove});sanList.push(E.Chess.san(s,m));moveLog.push({from:m.from,to:m.to,promote:m.promote||''});s=E.Chess.apply(s,m);keys.push(E.Chess.key(s));lastMove={from:m.from,to:m.to,fresh:false};if(drawOffer&&drawOffer!==sideWordInv(s.turn))drawOffer=null;}
+  const sideWordInv=t=>t==='w'?'b':'w';
+  async function netRefresh(){
+    const d=await netFetch('/'+net.code+'?from='+(net.events?.length||0));
+    const changed=d.events.length>0||net.guest!==d.guest||net.hostColor!==d.hostColor;
+    net.hostColor=d.hostColor;net.guest=d.guest;net.events=[...(net.events||[]),...d.events];net.n=d.n;
+    if(changed){if(d.events.some(e=>e.t==='m'&&e.s!==net.seat))sfx('tap');netApply();}
+  }
+  function netPoll(){
+    clearTimeout(net.timer);const code=net.code;if(!code)return;
+    const wait=document.hidden?8000:net.started&&s.turn===net.color&&!finished?4000:1500;
+    net.timer=setTimeout(async()=>{if(net.code!==code||game?.id===undefined||mode!=='online')return;try{await netRefresh();net.error='';}catch(e){if(e.status===404){storage.remove(netKey());netReset();net.error='That game has ended or expired.';start();return;}}netPoll();},wait);
+  }
+  async function netSend(t,v,tries=0){
+    if(!net.code)return;const body={token:net.token,n:net.n,t,...(v!==undefined?{v}:{})};
+    net.events.push({s:net.seat,t,...(v!==undefined?{v}:{})});net.n++;
+    try{await netFetch('/'+net.code+'/events',body);if(tries)netApply();}
+    catch(e){
+      // Someone else wrote first (or the send failed): take the room's version, and send again if it still makes sense there.
+      net.events=[];net.n=0;try{await netRefresh();}catch{}
+      if(e.status===409&&tries<3&&netStillWanted(t,v)){await netSend(t,v,tries+1);return;}
+      netApply();hint(e.status===409?'The game moved on at the other end; this board has caught up.':'That didn’t reach your friend. Check your connection.');
+    }
+  }
+  function netStillWanted(t,v){
+    const over=finished||!!chessEnd;
+    if(t==='again')return !net.rematch?.includes(net.seat);
+    if(t==='m')return !over&&net.started&&s.turn===net.color&&(game.id==='chess'?!!E.Chess.parse(s,v):netCheckerLegal(v));
+    if(t==='resign')return !over;
+    if(t==='offer')return !over&&!drawOffer;
+    if(t==='accept')return !over&&!!drawOffer&&drawOffer!==net.color;
+    return true;
+  }
+  function netAfterEnd(){
+    const again=$('play-again');if(again&&mode==='online'){again.textContent=net.rematch?.includes(net.seat)?'Waiting for rematch…':'Rematch';again.onclick=()=>{if(!net.rematch?.includes(net.seat))netSend('again');again.textContent='Waiting for rematch…';$('result-dialog').close();netPoll();};}
+  }
+  /* Called when the mode becomes online, or the page opens with ?join=CODE. */
+  function netResume(){
+    const join=new URLSearchParams(location.search).get('join');
+    const saved=storage.get(netKey());
+    if(join)window.history.replaceState?.(null,'',location.pathname);
+    if(join&&(!saved||saved.code!==join.toUpperCase())){history=[];netReset();resetChessGame();renderCurrent();netJoin(join.toUpperCase());return true;}
+    if(saved?.code){net={code:saved.code,token:saved.token,seat:saved.seat,n:0,events:[]};resetChessGame();netRefresh().then(()=>netPoll()).catch(e=>{if(e.status===404){storage.remove(netKey());netReset();}renderCurrent();});renderCurrent();return true;}
+    netReset();resetChessGame();renderCurrent();return true;
+  }
+  function resetChessGame(){
+    history=[];finished=false;selected=null;promotion=null;hintMove=null;reviewAt=null;arrows=[];chessEnd=null;drawOffer=null;sanList=[];moveLog=[];lastMove=null;
+    if(game.id==='chess'){s=E.Chess.create();keys=[E.Chess.key(s)];chessClock=null;}else{s=E.Checkers.create();keys=[checkerKey()];}
+  }
   function undoBoard(){
-    if(cpuBusy||!history.length)return;finished=false;
+    if(cpuBusy||!history.length||mode==='online')return;finished=false;
     const mine=human();
     // Against the computer, step back to the start of your own last turn (all of a multi-jump).
-    do{const last=history.pop();s=last.state;keys.length=last.keyCount;if(last.san!==undefined){sanList.length=last.san;if(last.sanText!==undefined&&last.san>0)sanList[last.san-1]=last.sanText;}lastMove=last.last||null;}while(history.length&&((vsCpu()&&s.turn!==mine)||(game.id==='checkers'&&s.chain>=0)));
+    let lastUndone=null;
+    do{const last=history.pop();lastUndone=last;s=last.state;keys.length=last.keyCount;if(last.san!==undefined){sanList.length=last.san;if(last.sanText!==undefined&&last.san>0)sanList[last.san-1]=last.sanText;}lastMove=last.last||null;}while(history.length&&((vsCpu()&&s.turn!==mine)||(game.id==='checkers'&&s.chain>=0)));
     if(lastMove)lastMove.fresh=false;selected=null;promotion=null;hintMove=null;
-    if(game.id==='chess')renderChess();else renderCheckers();
+    chessEnd=null;drawOffer=null;
+    if(game.id==='chess'){moveLog.length=sanList.length;drawOffer=null;reviewAt=null;arrows=[];facing=s.turn;const c=lastUndone?.clock;if(c)chessClock={...c,since:c.since?Date.now():0};renderChess();}else renderCheckers();
   }
   function checkerKey(){return s.b.join(',')+s.turn;}
   // ---- Checkers (round three, 2026-11-21: TODO.md "Checkers: what players want") ----
@@ -377,15 +761,15 @@
   function checkerBoard(moves,onClick,must){
     boardClick=onClick;
     if(look()==='terminal'){asciiCheckers(moves,onClick,must);return;}
-    const b=grid(8,'chess checkerboard');
-    for(let i=0;i<64;i++){
-      const p=s.b[i],n=checkerNum(i),legal=moves.some(m=>m.from===selected&&m.to===i),cls=['square',n?'dark':'light'];
+    const b=grid(8,'chess checkerboard'),flip=checkerFlip();
+    for(let d=0;d<64;d++){
+      const i=flip?63-d:d,p=s.b[i],n=checkerNum(i),legal=moves.some(m=>m.from===selected&&m.to===i),cls=['square',n?'dark':'light'];
       if(selected===i)cls.push('chosen');if(legal)cls.push('legal');if(p)cls.push('occupied');if(must.has(i))cls.push('must');
       if(lastMove&&(lastMove.from===i||lastMove.to===i||lastMove.path?.includes(i)))cls.push('last');if(hintMove&&(hintMove.from===i||hintMove.to===i))cls.push('hinted');
       const sq=button('',()=>{if(!dragJustEnded)onClick(i);},cls.join(' '));sq.dataset.i=i;sq.setAttribute('aria-label',checkerLabel(i,legal,must.has(i)));if(!n){sq.tabIndex=-1;sq.setAttribute('aria-hidden','true');}
       if(n)sq.append(el('small','num',String(n)));
       if(p){const wrap=el('span','piece');wrap.append(checkerPiece(p));
-        if(lastMove?.fresh&&lastMove.to===i&&!reduced()&&!noSlide){wrap.style.setProperty('--dx',lastMove.from%8-i%8);wrap.style.setProperty('--dy',(lastMove.from>>3)-(i>>3));wrap.classList.add('slide');sq.classList.add('moving');}
+        if(lastMove?.fresh&&lastMove.to===i&&!reduced()&&!noSlide){const k=flip?-1:1;wrap.style.setProperty('--dx',k*(lastMove.from%8-i%8));wrap.style.setProperty('--dy',k*((lastMove.from>>3)-(i>>3)));wrap.classList.add('slide');sq.classList.add('moving');}
         sq.append(wrap);}
       b.append(sq);
     }
@@ -396,10 +780,11 @@
   function asciiCheckers(moves,onClick,must){
     const pre=el('pre','ascii-board');pre.setAttribute('role','group');pre.setAttribute('aria-label','Checkers board');
     const rule='+'+'---+'.repeat(8)+'\n';
+    const flip=checkerFlip();
     for(let r=0;r<8;r++){
       pre.append(rule,'|');
       for(let c=0;c<8;c++){
-        const i=r*8+c,p=s.b[i],n=checkerNum(i),legal=moves.some(m=>m.from===selected&&m.to===i);
+        const i=flip?63-(r*8+c):r*8+c,p=s.b[i],n=checkerNum(i),legal=moves.some(m=>m.from===selected&&m.to===i);
         let text=!n?'///':p?(' '+(p.toLowerCase()==='w'?'o':'x')+' '):legal?' * ':String(n).padStart(2,' ')+' ';
         if(p&&p===p.toUpperCase())text=' '+(p.toLowerCase()==='w'?'O':'X')+' ';
         if(p&&selected===i)text='['+text[1]+']';else if(p&&must.has(i))text='<'+text[1]+'>';
@@ -422,25 +807,29 @@
     const level={easy:'Easy',medium:'Medium',hard:'Hard'}[opts.level||'medium'];
     const plate=side=>{
       const lost=side==='w'?'b':'w',taken=12-left[lost],turn=!result&&s.turn===side;
-      const name=vsCpu()?(side==='w'?'You':'Computer'):sideName(side),sub=vsCpu()?sideName(side)+(side==='b'?' · '+level:''):(side==='w'?'Moves first':'Moves second');
-      const t=el('div','plate plate-'+(side==='w'?'near':'far')+(turn?' to-move':''));t.setAttribute('aria-label',`${name}, ${sideName(side)}, has taken ${taken}${turn?', to move':''}`);
+      const name=vsCpu()?(side==='w'?'You':'Computer'):mode==='online'?(side===net.color?'You':net.started?'Your friend':'Waiting for a friend…'):sideName(side),sub=vsCpu()?sideName(side)+(side==='b'?' · '+level:''):mode==='online'?sideName(side):(side==='w'?'Moves first':'Moves second');
+      const near=checkerFlip()?side==='b':side==='w';
+      const t=el('div','plate plate-'+(near?'near':'far')+(turn?' to-move':'')+(mode==='table'&&side==='b'?' upside':''));t.setAttribute('aria-label',`${name}, ${sideName(side)}, has taken ${taken}${turn?', to move':''}`);
       if(look()==='terminal'){const g=side==='w'?'o':'x';t.textContent=`${turn?'>':' '} [${g}] ${name.toLowerCase()}${vsCpu()&&side==='b'?' ('+level.toLowerCase()+')':''}${turn&&thinking?' thinking...':''}`.padEnd(30,' ')+`took ${String(taken).padStart(2,'0')} ${(lost==='w'?'o':'x').repeat(taken)}`;return t;}
       const chip=el('span','plate-chip');chip.append(checkerPiece(side));
       const who=el('span','plate-who');who.append(el('strong','plate-name',name),el('span','plate-sub',turn&&thinking?'Thinking…':sub));
       const pile=el('span','tray-pile');for(let k=0;k<taken;k++)pile.append(checkerPiece(lost));
-      t.append(chip,who,pile,el('span','plate-count',taken?String(taken):''));return t;
+      t.append(chip,who,pile,el('span','plate-count',taken?String(taken):''));
+      if(drawOffer&&drawOffer!==side&&!result&&(twoish()||(mode==='online'&&side===net.color))){const box=el('span','offer');box.append(el('span',null,(mode==='online'?'Your friend':sideName(drawOffer))+' offers a draw'),button('Accept',()=>acceptDraw()),button('Decline',()=>declineDraw()));t.append(box);}
+      return t;
     };
-    return [plate('b'),plate('w')];
+    return checkerFlip()?[plate('w'),plate('b')]:[plate('b'),plate('w')];
   }
   function renderCheckers(){
     const moves=E.Checkers.moves(s),winner=!moves.length?(s.turn==='w'?'b':'w'):null;
-    const result=winner?sideName(winner)+' wins':s.quiet>=80?'Draw · no progress':keys.filter(k=>k===checkerKey()).length>=3?'Draw by repetition':null;
-    const thinking=vsCpu()&&s.turn==='b'&&!result,capture=moves.some(m=>m.capture!==undefined);
-    const must=new Set(!result&&!thinking&&capture?moves.map(m=>m.from):[]);
-    status(result||sideName(s.turn)+' to move'+(s.chain>=0?' · keep jumping':capture?' · a jump is required':'')+(thinking?' · computer thinking…':''));
+    const result=chessEnd?chessEnd:winner?sideName(winner)+' wins':s.quiet>=80?'Draw · no progress':keys.filter(k=>k===checkerKey()).length>=3?'Draw by repetition':null;
+    const thinking=vsCpu()&&s.turn==='b'&&!result,capture=moves.some(m=>m.capture!==undefined),waiting=mode==='online'&&!result&&!(net.started&&s.turn===net.color);
+    const must=new Set(!result&&!thinking&&!waiting&&capture?moves.map(m=>m.from):[]);
+    document.body.dataset.mode=mode;
+    status(result||(mode==='online'&&!net.started?(net.code?'Waiting for your friend to join…':'Play a friend online'):'')||(mode==='online'?(s.turn===net.color?'Your move':'Your friend’s move…'):sideName(s.turn)+' to move')+(waiting?'':s.chain>=0?' · keep jumping':capture?' · a jump is required':'')+(thinking?' · computer thinking…':''));
     if(s.chain>=0)selected=s.chain;
     const onClick=i=>{
-      if(finished||cpuBusy||thinking)return;
+      if(finished||cpuBusy||thinking||waiting)return;
       const m=moves.find(m=>m.from===selected&&m.to===i);if(m){playChecker(m);return;}
       if(moves.some(m=>m.from===i)){selected=i;hintMove=null;renderCheckers();return;}
       const own=s.b[i]&&s.b[i].toLowerCase()===s.turn;
@@ -452,13 +841,25 @@
       if(checkerNote)sfx('error');if(s.chain<0)selected=null;renderCheckers();
     };
     checkerBoard(moves,onClick,must);
+    if(mode==='online'&&!net.started)(stage.querySelector('.board')||stage).append(onlineCard());
     const [far,near]=checkerPlates(result,thinking);stage.prepend(far);stage.append(near);
     // The scoresheet goes where the page keeps it (beside the board), else under it.
     const sheet=moveList();sheet.classList.add('scoresheet');const slot=$('sheet-slot');if(slot)slot.replaceChildren(sheet);else stage.append(sheet);
-    tools.replaceChildren(button('↶ Undo',undoBoard),button('Hint',()=>{if(finished||cpuBusy||thinking||result)return;hintMove=E.Checkers.best(s,5);selected=hintMove?.from??null;renderCheckers();hint('Try this move.');}));
+    tools.replaceChildren(button('↶ Undo',undoBoard),button('Hint',()=>{if(finished||cpuBusy||thinking||result||mode==='online')return;hintMove=E.Checkers.best(s,5);selected=hintMove?.from??null;renderCheckers();hint('Try this move.');}));
+    // Online and face to face: resign and draw offers, as at a real board.
+    if(mode==='online'){for(const b of tools.querySelectorAll('button'))b.disabled=true;}
+    if(mode==='online'||twoish()){const over=!!result||finished||(mode==='online'&&!net.started);const r=button(resignArmed>Date.now()?'Resign? Tap again':'Resign',()=>{if(over)return;if(resignArmed<Date.now()){resignArmed=Date.now()+3000;renderCheckers();setTimeout(()=>{if(resignArmed&&resignArmed<=Date.now()){resignArmed=0;if(game?.id==='checkers'&&!finished)renderCheckers();}},3100);return;}resignArmed=0;resignNow();},'resign'+(resignArmed>Date.now()?' armed':''));r.disabled=over;
+      const d=button(drawOffer?'Draw offered':'Offer draw',()=>offerDraw(),'draw');d.disabled=over||!!drawOffer||(mode==='online'&&s.turn!==net.color)||sanList.length<2;tools.append(r,d);}
     hint(checkerNote||(s.chain>=0?'Keep jumping with the same piece.':must.size?'A jump is required. The glowing pieces can take.':'Tap or drag a piece to move it. Reach the far side to crown a king.'));checkerNote=null;
     if(result){
-      if(!finished){if(vsCpu())record(!winner?'drawn':winner==='w'?'won':'lost');else record(winner||'draw');if(winner&&(winner==='w'||mode==='two'))celebrate();finish(result,winner?(vsCpu()?(winner==='w'?'Every one of their pieces, taken or trapped.':'The computer took this one. Rematch?'):sideName(winner)+' takes the game.'):'Nobody could break through.');}
+      const won=chessEnd?endWinner:winner;
+      if(!finished){
+        const once=mode==='online'?'netdone:'+net.code+':'+net.game:null;
+        if(once&&storage.get(once)){}else if(vsCpu())record(!won?'drawn':won==='w'?'won':'lost');else if(mode==='online'){record(!won?'drawn':won===net.color?'won':'lost');storage.set(once,1);}else record(won||'draw');
+        if(won&&(vsCpu()?won==='w':mode==='online'?won===net.color:true))celebrate();
+        finish(result,won?(vsCpu()?(won==='w'?'Every one of their pieces, taken or trapped.':'The computer took this one. Rematch?'):mode==='online'?(won===net.color?'Well played. The board is yours.':'Not this time. Rematch?'):sideName(won)+' takes the game.'):'Nobody could break through.');
+        if(mode==='online')netAfterEnd();
+      }
       return;
     }
     persist();
@@ -473,12 +874,27 @@
     if(chained&&sanList.length)sanList[sanList.length-1]+='x'+checkerNum(m.to);else sanList.push(checkerNum(m.from)+(m.capture!==undefined?'x':'-')+checkerNum(m.to));
     s=E.Checkers.apply(s,m);if(s.chain<0)keys.push(checkerKey());
     lastMove={from:m.from,to:m.to,path:chained?[...(lastMove.path||[]),lastMove.from]:[],fresh:true};
-    selected=s.chain>=0?s.chain:null;hintMove=null;renderCheckers();
+    selected=s.chain>=0?s.chain:null;hintMove=null;if(drawOffer&&s.chain<0&&drawOffer===s.turn)drawOffer=null;
+    if(mode==='online'&&s.chain<0)netSend('m',sanList.at(-1));
+    renderCheckers();
   }
+  /* Online: a whole turn arrives as its scoresheet entry (11-15, 9x18x27). */
+  function checkerHops(v){const sq=String(v).split(/[x-]/).map(Number);const out=[];let p=s;for(let k=0;k+1<sq.length;k++){const m=E.Checkers.moves(p).find(m=>checkerNum(m.from)===sq[k]&&checkerNum(m.to)===sq[k+1]);if(!m)return null;out.push(m);p=E.Checkers.apply(p,m);}return out.length&&p.chain<0?out:null;}
+  function netCheckerLegal(v){return !!checkerHops(v);}
+  function netCheckerTurn(v){const hops=checkerHops(v);if(hops)for(const m of hops)playCheckerQuiet(m);}
+  function playCheckerQuiet(m){
+    const chained=s.chain>=0&&lastMove&&lastMove.to===m.from;
+    history.push({state:E.copy(s),keyCount:keys.length,last:lastMove,san:sanList.length,sanText:sanList.at(-1)});
+    if(chained&&sanList.length)sanList[sanList.length-1]+='x'+checkerNum(m.to);else sanList.push(checkerNum(m.from)+(m.capture!==undefined?'x':'-')+checkerNum(m.to));
+    s=E.Checkers.apply(s,m);if(s.chain<0)keys.push(checkerKey());
+    lastMove={from:m.from,to:m.to,path:chained?[...(lastMove.path||[]),lastMove.from]:[],fresh:false};
+    if(drawOffer&&s.chain<0&&drawOffer===s.turn)drawOffer=null;
+  }
+  const checkerFlip=()=>mode==='online'&&net.color==='b';
   /* Drag a checker: pick it up past a few pixels, drop it on a square. Uses the
      same click handler as tapping, so the rules are checked in one place. */
   let bdrag=null;
-  stage.addEventListener('pointerdown',e=>{if(game?.id!=='checkers'||e.button>0||finished)return;const sq=e.target.closest('.board .square[data-i]');if(!sq||!sq.querySelector('.piece'))return;bdrag={from:+sq.dataset.i,x:e.clientX,y:e.clientY,id:e.pointerId,active:false};});
+  stage.addEventListener('pointerdown',e=>{if(!['checkers','chess'].includes(game?.id)||e.button>0||finished||(game.id==='chess'&&reviewAt!==null))return;const sq=e.target.closest('.board .square[data-i]');if(!sq||!sq.querySelector('.piece'))return;bdrag={from:+sq.dataset.i,x:e.clientX,y:e.clientY,id:e.pointerId,active:false};});
   addEventListener('pointermove',e=>{
     if(!bdrag||e.pointerId!==bdrag.id)return;const dx=e.clientX-bdrag.x,dy=e.clientY-bdrag.y;
     if(!bdrag.active){
@@ -912,7 +1328,7 @@
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
     if(game&&['snake','tetris'].includes(game.id))drawAction();
     // Board games whose pieces are drawn differently per style redraw the same position.
-    else if(game&&s&&game.id==='checkers'){render();renderStats();}
+    else if(game&&s&&['checkers','chess'].includes(game.id)){render();renderStats();}
   }
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';
