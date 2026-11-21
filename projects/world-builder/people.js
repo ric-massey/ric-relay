@@ -3611,6 +3611,10 @@
          within reach, but go nowhere they have heard has a sickness, and food goes half as willingly
          again to where they have heard it is dear, starving, or had a dry year. */
       const rum = rumours(p);
+      /* Nor to load at a village they have heard has a sickness, unless they are already there
+         (found by test/heard.test.mjs after TODO 15.5a: hunters of other peoples kept going to the
+         village named, to pick up a load for somewhere else). */
+      if (rum && here.id !== p.home && heardSick.includes(here.id) && Math.hypot(p.x - here.x, p.y - here.y) > here.radius + 1) return { best: null, gain: 0, what: "food" };
       for (const o of villages) {
         if (!o.alive || o === here) continue;
         if (o.f !== p.f && (atWar(o.f, p.f) || shared || hostile(o.f, p.f))) continue;

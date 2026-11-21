@@ -34,7 +34,11 @@ for (const v of base) for (const [k, share] of Object.entries(v.act)) mix[k] = (
 const share = (...names) => names.reduce((sum, n) => sum + (mix[n] || 0), 0);
 
 const asleep = share("Asleep", "Going home to sleep");
-const working = share("Harvesting", "Making goods", "Bringing food home", "Patrolling", "Standing guard", "Carrying goods", "Trading");
+/* The trades of item 9 and the building work count too: they were left off this list, which went
+   unnoticed while making goods nobody used filled the hours (TODO 15.5a: 8.2% without them). */
+const working = share("Harvesting", "Making goods", "Bringing food home", "Patrolling", "Standing guard", "Carrying goods", "Trading",
+                      "Fishing", "Cutting wood", "Quarrying stone", "Mining ore", "Herding", "Hunting",
+                      "Digging a well", "Building a bridge", "Building a boat", "Building their house", "Building a house");
 const walking = share("Walking", "Walking to field", "Walking to workshop", "Going to eat", "Going home",
                       "Going to see somebody", "Going for tools", "Travelling to trade", "Going to ask for food");
 
