@@ -16,7 +16,7 @@
     {id:'sudoku',name:'Sudoku',tag:'Everything in its place.',sub:'One solution. Take your time.',rules:'Fill every row, column and 3×3 box with 1–9, once each. Tap a square, then a number, or use your keyboard and arrow keys (N toggles notes). Notes writes small pencil marks, and placing a number clears it from the notes around it. Every generated puzzle has one solution. There is no clock unless you want one. Reveal a square or Show mistakes if you need a hand; either keeps that puzzle off the fastest-times board.'},
     {id:'minesweeper',name:'Minesweeper',tag:'Tread lightly.',sub:'A small field of calculated risks',rules:'Open every safe square. A number counts mines in its eight neighboring squares. Right-click, press and hold, or use Flag mode to flag a mine. Tap an open number with the right number of flags around it to open its remaining neighbors. Your first click and its neighbors are safe. Hit a mine and you can take the click back or play the same board again, but those games stay off the board. Fastest wins are ranked separately for each field.'},
     {id:'tetris',name:'Tetris',tag:'Make a little room.',sub:'Seven shapes. One more line.',rules:'Fill a horizontal line to clear it. Left/Right moves, Up or X rotates clockwise, Z rotates the other way, Down drops softly, Space drops all the way, and C or Shift holds a piece for later. On a phone, drag to move, tap to rotate and flick down to drop. A landed piece can still slide for half a second. A seven-piece bag keeps the shapes fair. Line clears score 100/300/500/800 × level; soft and hard drops add points. The level rises every ten lines. P pauses.'},
-    {id:'checkers',name:'Checkers',tag:'Jump at the chance.',sub:'American checkers · 8 × 8',rules:'Light moves first. Men move and capture diagonally forward; kings go both ways, one square at a time. Captures are compulsory and a jump must continue when possible. Reaching the far edge makes a king and ends that turn. Win by capturing or blocking every opposing piece. Threefold repetition or 80 turns without a capture or crowning draws. The computer plays dark at three levels.'},
+    {id:'checkers',name:'Checkers',tag:'Jump at the chance.',sub:'American checkers · 8 × 8',rules:'The darker side moves first, from the bottom of the board. Men move and capture diagonally forward; kings, two checkers stacked, go both ways, one square at a time. Jumps are compulsory: when one is open the pieces that can take glow, and a jump must keep going while it can. Reaching the far side crowns a king and ends that turn. Win by taking or blocking every one of the other side’s pieces. Three repeats of a position, or 80 turns without a capture or crowning, is a draw. Drag a piece or tap it and then a square. The scoresheet uses the standard square numbers, 1 to 32. The computer plays the second side at three levels.'},
     {id:'snake',name:'Snake',tag:'An appetite for trouble.',sub:'Eat. Grow. Mind the walls.',rules:'Use the arrow keys, WASD, swipe anywhere on the board, or tap the direction buttons. Eat an apple for ten points and grow one segment. The walls and your own body end the game. You cannot reverse into yourself. The pace picks up as you eat. Slow is gentler and Through walls lets you wrap around the edges; only Classic goes on the board. P pauses, and changing tabs pauses automatically.'}
   ];
   const MODES = {
@@ -99,7 +99,8 @@
     let panel=$('stats-panel');
     if(!panel){panel=el('section','stats');panel.id='stats-panel';const rules=document.querySelector('.sidebar .rules');rules.parentNode.insertBefore(panel,rules);}
     const st=stats(),rows=[],id=game.id,p=st.played||0;bestScore=action()?st.best||0:0;
-    if(mode==='two'){const names=id==='tictactoe'?['X','O']:id==='chess'?['White','Black']:['Light','Dark'];for(const n of names)rows.push([n+' wins',st.sides?.[n]||0]);rows.push(['Draws',st.sides?.draw||0]);}
+    if(mode==='two'&&id==='checkers'){const [a,b]=sides();rows.push([a+' wins',(st.sides?.w||0)+(st.sides?.Light||0)],[b+' wins',(st.sides?.b||0)+(st.sides?.Dark||0)]);rows.push(['Draws',st.sides?.draw||0]);}
+    else if(mode==='two'){const names=id==='tictactoe'?['X','O']:['White','Black'];for(const n of names)rows.push([n+' wins',st.sides?.[n]||0]);rows.push(['Draws',st.sides?.draw||0]);}
     else if(action()){rows.push(['Games',p],['Best',(st.best||0).toLocaleString()],['Last',(st.last||0).toLocaleString()]);}
     else if(['chess','checkers','tictactoe'].includes(id)){rows.push(['You won',st.won||0],['Computer won',st.lost||0],['Draws',st.drawn||0],['Streak',st.streak||0]);}
     else{rows.push(['Played',p],['Won',p?`${st.won||0} · ${Math.round(100*(st.won||0)/p)}%`:'0'],['Streak',st.streak||0],['Best streak',st.bestStreak||0]);if(st.best!=null)rows.push([id==='wordle'?'Fewest guesses':'Fastest',id==='wordle'?st.best+' / 6':fmtTime(st.best)]);}
@@ -179,7 +180,7 @@
     win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.25,{type:'triangle',vol:.09,at:i*.09}))
   };
   function sfx(name){if(!soundOn)return;try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();SOUNDS[name]?.();}catch{}}
-  function soundButton(){const b=button('',()=>{soundOn=!soundOn;storage.set('sound',soundOn);paint();if(soundOn)sfx('flip');},'sound-toggle');b.id='sound-toggle';const paint=()=>{b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>'+(soundOn?'<path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>':'<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>')+'</svg>';b.setAttribute('aria-label',soundOn?'Sound on':'Sound off');b.setAttribute('aria-pressed',String(soundOn));b.title=soundOn?'Sound on':'Sound off';};paint();$('new-game').before(b);}
+  function soundButton(){const b=button('',()=>{soundOn=!soundOn;storage.set('sound',soundOn);paint();if(soundOn)sfx('flip');},'sound-toggle');b.id='sound-toggle';const paint=()=>{b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>'+(soundOn?'<path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>':'<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>')+'</svg>';b.setAttribute('aria-label',soundOn?'Sound on':'Sound off');b.dataset.label=soundOn?'sound on':'sound off';b.setAttribute('aria-pressed',String(soundOn));b.title=soundOn?'Sound on':'Sound off';};paint();$('new-game').before(b);}
 
   // ---- celebration ---------------------------------------------------------
   function celebrate(){
@@ -348,33 +349,140 @@
     if(cpuBusy||!history.length)return;finished=false;
     const mine=human();
     // Against the computer, step back to the start of your own last turn (all of a multi-jump).
-    do{const last=history.pop();s=last.state;keys.length=last.keyCount;if(last.san!==undefined)sanList.length=last.san;lastMove=last.last||null;}while(history.length&&((vsCpu()&&s.turn!==mine)||(game.id==='checkers'&&s.chain>=0)));
+    do{const last=history.pop();s=last.state;keys.length=last.keyCount;if(last.san!==undefined){sanList.length=last.san;if(last.sanText!==undefined&&last.san>0)sanList[last.san-1]=last.sanText;}lastMove=last.last||null;}while(history.length&&((vsCpu()&&s.turn!==mine)||(game.id==='checkers'&&s.chain>=0)));
     if(lastMove)lastMove.fresh=false;selected=null;promotion=null;hintMove=null;
     if(game.id==='chess')renderChess();else renderCheckers();
   }
   function checkerKey(){return s.b.join(',')+s.turn;}
+  // ---- Checkers (round three, 2026-11-21: TODO.md "Checkers: what players want") ----
+  /* The engine's 'w' side starts at the bottom and moves first. In American
+     checkers the dark side moves first, so each style names and colors 'w' as
+     its dark side: <option data-sides="Red,White"> = first mover, second. */
+  const look=()=>document.body.dataset.look||'';
+  const sides=()=>(document.querySelector('#style-switch option:checked')?.dataset.sides||'Red,White').split(',');
+  const sideName=t=>sides()[t==='w'?0:1];
+  /* Standard numbering: 1–32 over the playable squares, 1–4 on the first mover's
+     back rank (seen from its side, right to left), so openings read 11-15, 22-18. */
+  const checkerNum=i=>{const r=i>>3,c=i%8;return (r+c)%2===0?0:(7-r)*4+Math.floor((7-c)/2)+1;};
+  let boardClick=null,noSlide=false,checkerNote=null;
+  function checkerPiece(p){
+    const king=p===p.toUpperCase(),k=el('span','checker side-'+(p.toLowerCase()==='w'?'a':'b')+(king?' king':''));
+    const disc=()=>{const d=el('span','disc');d.append(el('span','face'));return d;};
+    // A king is two checkers, one on top of the other, as on a real board.
+    k.append(disc());if(king){const top=disc();top.classList.add('top');const crown=el('span','crown');crown.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18l-1.6-9-4.4 3.8L12 5.5 9 12.8 4.6 9z"/></svg>';top.append(crown);k.append(top);}
+    return k;
+  }
+  const checkerLabel=(i,legal,must)=>{const p=s.b[i],n=checkerNum(i);return (n?'Square '+n:'Light square')+(p?': '+sideName(p.toLowerCase())+' '+(p===p.toUpperCase()?'king':'man'):n?': empty':'')+(legal?', you can move here':'')+(must?', must jump':'');};
+  function checkerBoard(moves,onClick,must){
+    boardClick=onClick;
+    if(look()==='terminal'){asciiCheckers(moves,onClick,must);return;}
+    const b=grid(8,'chess checkerboard');
+    for(let i=0;i<64;i++){
+      const p=s.b[i],n=checkerNum(i),legal=moves.some(m=>m.from===selected&&m.to===i),cls=['square',n?'dark':'light'];
+      if(selected===i)cls.push('chosen');if(legal)cls.push('legal');if(p)cls.push('occupied');if(must.has(i))cls.push('must');
+      if(lastMove&&(lastMove.from===i||lastMove.to===i||lastMove.path?.includes(i)))cls.push('last');if(hintMove&&(hintMove.from===i||hintMove.to===i))cls.push('hinted');
+      const sq=button('',()=>{if(!dragJustEnded)onClick(i);},cls.join(' '));sq.dataset.i=i;sq.setAttribute('aria-label',checkerLabel(i,legal,must.has(i)));if(!n){sq.tabIndex=-1;sq.setAttribute('aria-hidden','true');}
+      if(n)sq.append(el('small','num',String(n)));
+      if(p){const wrap=el('span','piece');wrap.append(checkerPiece(p));
+        if(lastMove?.fresh&&lastMove.to===i&&!reduced()&&!noSlide){wrap.style.setProperty('--dx',lastMove.from%8-i%8);wrap.style.setProperty('--dy',(lastMove.from>>3)-(i>>3));wrap.classList.add('slide');sq.classList.add('moving');}
+        sq.append(wrap);}
+      b.append(sq);
+    }
+    if(lastMove)lastMove.fresh=false;noSlide=false;
+  }
+  /* Terminal style: the board is text. Each cell is a 3-character button inside
+     a <pre>, between +---+ rules, so it reads (and copies) as an ASCII board. */
+  function asciiCheckers(moves,onClick,must){
+    const pre=el('pre','ascii-board');pre.setAttribute('role','group');pre.setAttribute('aria-label','Checkers board');
+    const rule='+'+'---+'.repeat(8)+'\n';
+    for(let r=0;r<8;r++){
+      pre.append(rule,'|');
+      for(let c=0;c<8;c++){
+        const i=r*8+c,p=s.b[i],n=checkerNum(i),legal=moves.some(m=>m.from===selected&&m.to===i);
+        let text=!n?'///':p?(' '+(p.toLowerCase()==='w'?'o':'x')+' '):legal?' * ':String(n).padStart(2,' ')+' ';
+        if(p&&p===p.toUpperCase())text=' '+(p.toLowerCase()==='w'?'O':'X')+' ';
+        if(p&&selected===i)text='['+text[1]+']';else if(p&&must.has(i))text='<'+text[1]+'>';
+        const cls=['cell',n?'dark':'light'];if(p)cls.push(p.toLowerCase()==='w'?'side-a':'side-b');if(!p&&n&&!legal)cls.push('dim');if(legal)cls.push('legal');if(selected===i)cls.push('chosen');if(must.has(i))cls.push('must');if(lastMove&&(lastMove.from===i||lastMove.to===i||lastMove.path?.includes(i)))cls.push('last');if(hintMove&&(hintMove.from===i||hintMove.to===i))cls.push('hinted');
+        if(!n){pre.append(el('span',cls.join(' '),text));}
+        else{const cell=button(text,()=>onClick(i),cls.join(' '));cell.dataset.i=i;cell.setAttribute('aria-label',checkerLabel(i,legal,must.has(i)));pre.append(cell);}
+        pre.append('|');
+      }
+      pre.append('\n');
+    }
+    pre.append(rule);
+    stage.replaceChildren(pre);
+    if(lastMove)lastMove.fresh=false;
+  }
+  /* Captured pieces sit in a tray on the side of whoever took them. */
+  function checkerTrays(){
+    const left={w:0,b:0};for(const p of s.b)if(p)left[p.toLowerCase()]++;
+    const tray=(taker,lost)=>{const taken=12-left[lost],t=el('div','tray tray-'+(taker==='w'?'near':'far'));t.setAttribute('aria-label',`${sideName(taker)} has taken ${taken}`);
+      if(look()==='terminal'){t.textContent=`${sideName(taker).toLowerCase()} took ${String(taken).padStart(2,' ')}  ${(lost==='w'?'o':'x').repeat(taken)}`;return t;}
+      const pile=el('span','tray-pile');for(let k=0;k<taken;k++)pile.append(checkerPiece(lost));t.append(el('span','tray-label',sideName(taker)),pile,el('span','tray-count',String(taken)));return t;};
+    return [tray('b','w'),tray('w','b')];
+  }
   function renderCheckers(){
-    const moves=E.Checkers.moves(s),result=!moves.length?(s.turn==='w'?'Dark':'Light')+' wins':s.quiet>=80?'Draw · no progress':keys.filter(k=>k===checkerKey()).length>=3?'Draw by repetition':null;
-    const thinking=vsCpu()&&s.turn==='b'&&!result;
-    status(result||(s.turn==='w'?'Light':'Dark')+' to move'+(s.chain>=0?' · keep jumping':moves.some(m=>m.capture!==undefined)?' · capture required':'')+(thinking?' · computer thinking…':''));
+    const moves=E.Checkers.moves(s),winner=!moves.length?(s.turn==='w'?'b':'w'):null;
+    const result=winner?sideName(winner)+' wins':s.quiet>=80?'Draw · no progress':keys.filter(k=>k===checkerKey()).length>=3?'Draw by repetition':null;
+    const thinking=vsCpu()&&s.turn==='b'&&!result,capture=moves.some(m=>m.capture!==undefined);
+    const must=new Set(!result&&!thinking&&capture?moves.map(m=>m.from):[]);
+    status(result||sideName(s.turn)+' to move'+(s.chain>=0?' · keep jumping':capture?' · a jump is required':'')+(thinking?' · computer thinking…':''));
     if(s.chain>=0)selected=s.chain;
-    squareGrid(moves,i=>{if(finished||cpuBusy||thinking)return;const m=moves.find(m=>m.from===selected&&m.to===i);if(m){playChecker(m);return;}selected=moves.some(m=>m.from===i)?i:null;renderCheckers();},true);
-    let w=0,dk=0;for(const p of s.b){if(p.toLowerCase()==='w')w++;else if(p)dk++;}
-    const info=el('div','checker-info');info.append(el('span',null,`Light: ${w} left · ${12-w} taken`),el('span',null,`Dark: ${dk} left · ${12-dk} taken`));stage.append(info);
-    tools.replaceChildren(button('↶ Undo',undoBoard));
-    hint('Captures are compulsory. Reach the far edge to become a king.');
-    if(result){const winner=result.startsWith('Light')?'Light':result.startsWith('Dark')?'Dark':null;if(vsCpu())record(!winner?'drawn':winner==='Light'?'won':'lost');else record(winner||'draw');if(winner==='Light'||(mode==='two'&&winner))celebrate();finish(result,'Another round is a click away.');return;}
+    const onClick=i=>{
+      if(finished||cpuBusy||thinking)return;
+      const m=moves.find(m=>m.from===selected&&m.to===i);if(m){playChecker(m);return;}
+      if(moves.some(m=>m.from===i)){selected=i;hintMove=null;renderCheckers();return;}
+      const own=s.b[i]&&s.b[i].toLowerCase()===s.turn;
+      // Say why a tap did nothing, instead of silently ignoring it.
+      if(s.chain>=0)checkerNote='Keep jumping: the same piece must take again.';
+      else if(own&&capture)checkerNote='A jump is required. One of the glowing pieces has to take.';
+      else if(own)checkerNote='That piece has nowhere to go.';
+      else if(selected!==null&&!s.b[i]&&checkerNum(i))checkerNote='It can’t go there. The marked squares are its moves.';
+      if(checkerNote)sfx('error');if(s.chain<0)selected=null;renderCheckers();
+    };
+    checkerBoard(moves,onClick,must);
+    const [far,near]=checkerTrays();stage.prepend(far);stage.append(near);
+    const sheet=moveList();sheet.classList.add('scoresheet');stage.append(sheet);
+    tools.replaceChildren(button('↶ Undo',undoBoard),button('Hint',()=>{if(finished||cpuBusy||thinking||result)return;hintMove=E.Checkers.best(s,5);selected=hintMove?.from??null;renderCheckers();hint('Try this move.');}));
+    hint(checkerNote||(s.chain>=0?'Keep jumping with the same piece.':must.size?'A jump is required. The glowing pieces can take.':'Tap or drag a piece to move it. Reach the far side to crown a king.'));checkerNote=null;
+    if(result){
+      if(!finished){if(vsCpu())record(!winner?'drawn':winner==='w'?'won':'lost');else record(winner||'draw');if(winner&&(winner==='w'||mode==='two'))celebrate();finish(result,winner?(vsCpu()?(winner==='w'?'Every one of their pieces, taken or trapped.':'The computer took this one. Rematch?'):sideName(winner)+' takes the game.'):'Nobody could break through.');}
+      return;
+    }
     persist();
     if(thinking&&!cpuBusy)cpu(()=>{const m=E.Checkers.best(s,LEVELS.checkers[opts.level||'medium']);if(m){cpuBusy=false;playChecker(m);}});
   }
   /* lastMove.path keeps the squares a multi-jump passed through, so the whole
-     route stays highlighted; each hop slides from the square it just left. */
+     route stays highlighted; each hop slides from the square it just left. The
+     scoresheet writes a multi-jump as one move: 9x18x27. */
   function playChecker(m){
     const chained=s.chain>=0&&lastMove&&lastMove.to===m.from;
-    sfx(m.capture!==undefined?'capture':'tap');history.push({state:E.copy(s),keyCount:keys.length,last:lastMove});s=E.Checkers.apply(s,m);if(s.chain<0)keys.push(checkerKey());
+    sfx(m.capture!==undefined?'capture':'tap');history.push({state:E.copy(s),keyCount:keys.length,last:lastMove,san:sanList.length,sanText:sanList.at(-1)});
+    if(chained&&sanList.length)sanList[sanList.length-1]+='x'+checkerNum(m.to);else sanList.push(checkerNum(m.from)+(m.capture!==undefined?'x':'-')+checkerNum(m.to));
+    s=E.Checkers.apply(s,m);if(s.chain<0)keys.push(checkerKey());
     lastMove={from:m.from,to:m.to,path:chained?[...(lastMove.path||[]),lastMove.from]:[],fresh:true};
-    selected=s.chain>=0?s.chain:null;renderCheckers();
+    selected=s.chain>=0?s.chain:null;hintMove=null;renderCheckers();
   }
+  /* Drag a checker: pick it up past a few pixels, drop it on a square. Uses the
+     same click handler as tapping, so the rules are checked in one place. */
+  let bdrag=null;
+  stage.addEventListener('pointerdown',e=>{if(game?.id!=='checkers'||e.button>0||finished)return;const sq=e.target.closest('.board .square[data-i]');if(!sq||!sq.querySelector('.piece'))return;bdrag={from:+sq.dataset.i,x:e.clientX,y:e.clientY,id:e.pointerId,active:false};});
+  addEventListener('pointermove',e=>{
+    if(!bdrag||e.pointerId!==bdrag.id)return;const dx=e.clientX-bdrag.x,dy=e.clientY-bdrag.y;
+    if(!bdrag.active){
+      if(Math.hypot(dx,dy)<8)return;
+      if(selected!==bdrag.from)boardClick?.(bdrag.from);
+      const piece=selected===bdrag.from&&stage.querySelector(`.square[data-i="${bdrag.from}"] .piece`);if(!piece){bdrag=null;return;}
+      const r=piece.getBoundingClientRect(),ghost=piece.cloneNode(true);ghost.classList.remove('slide');ghost.classList.add('drag-piece');Object.assign(ghost.style,{position:'fixed',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});document.body.append(ghost);piece.style.visibility='hidden';bdrag.ghost=ghost;bdrag.active=true;
+    }
+    bdrag.ghost.style.transform=`translate(${dx}px,${dy}px) scale(1.1)`;e.preventDefault();
+  },{passive:false});
+  addEventListener('pointerup',e=>{
+    if(!bdrag||e.pointerId!==bdrag.id)return;const d=bdrag;bdrag=null;if(!d.active)return;d.ghost.remove();dragJustEnded=true;setTimeout(()=>{dragJustEnded=false;},0);
+    const sq=document.elementFromPoint(e.clientX,e.clientY)?.closest('.board .square[data-i]'),to=sq?+sq.dataset.i:-1;
+    if(to>=0&&to!==d.from){noSlide=true;boardClick?.(to);}else render();
+  });
+  addEventListener('pointercancel',()=>{if(bdrag?.ghost){bdrag.ghost.remove();render();}bdrag=null;});
 
   // ---- Solitaire -----------------------------------------------------------
   const suits=['♠','♥','♦','♣'];
@@ -709,15 +817,18 @@
   function applyStyle(){
     const value=$('style-switch').value;
     document.body.dataset.skin=value;
+    document.body.dataset.look=$('style-switch').selectedOptions[0]?.dataset.look||'';
     storage.set('style:'+document.body.dataset.game,value);
     const css=getComputedStyle(document.body),read=(name,fallback)=>css.getPropertyValue(name).trim()||fallback;
     document.querySelector('meta[name="theme-color"]').setAttribute('content',css.backgroundColor);
     paint={bg:read('--canvas-bg','#102c24'),grid:read('--canvas-grid','#143428'),head:read('--snake-head','#f5da83'),body:read('--snake-body','#90bd81'),food:read('--snake-food','#edaa70'),eyes:read('--snake-eyes','#183425')};
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
     if(game&&['snake','tetris'].includes(game.id))drawAction();
+    // Board games whose pieces are drawn differently per style redraw the same position.
+    else if(game&&s&&game.id==='checkers'){render();renderStats();}
   }
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
-  $('style-switch').value=['0','1','2'].includes(savedStyle)?savedStyle:'0';
+  $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';
   $('style-switch').onchange=applyStyle;
   if(document.body.dataset.game==='chess')pieceSprites();
   applyStyle();

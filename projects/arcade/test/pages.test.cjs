@@ -20,7 +20,11 @@ test('nine games have independent, directly playable Arcade entries with three p
     assert(page.includes('<section id="playroom" aria-'),`${id} opens on its game`);
     assert(!/Classics|catalog|lobby-title/.test(page));
     const styles=page.match(/<select id="style-switch"[^>]*>(.*?)<\/select>/s)[1];
-    assert.equal((styles.match(/<option /g)||[]).length,3);
+    // Three styles each until a game's round-three pass (TODO.md) gives it six
+    // real ones, each named by data-look and one of them Terminal.
+    const count=(styles.match(/<option /g)||[]).length;
+    assert(count===3||count===6,`${id} has 3 or 6 styles`);
+    if(count===6){const looks=[...styles.matchAll(/data-look="([a-z-]+)"/g)].map(m=>m[1]);assert.equal(new Set(looks).size,6,`${id}: six distinct looks`);assert(looks.includes('terminal'),`${id}: a Terminal style`);}
     for(const [,src] of page.matchAll(/<(?:script|link)\b[^>]*(?:src|href)="([^"]+)"/g)){
       if(/^(https?:|data:)/.test(src))continue;
       assert(fs.existsSync(path.resolve(ROOT,'projects',id,src)),`${id}: ${src} exists`);
@@ -38,13 +42,14 @@ test('old shared links resolve only to known game pages or the Arcade',()=>{
   for(const hash of ['','#unknown','#https://other.invalid','#../../admin/']){let result;vm.runInNewContext(script,{location:{hash,replace:url=>result=url}});assert.equal(result,'../../gaming.html');}
 });
 
-test('all 27 page palettes keep body and panel text above 4.5:1',()=>{
+test('every page palette keeps body and panel text above 4.5:1',()=>{
   const properties=s=>Object.fromEntries([...s.matchAll(/--([a-z-]+):(#[a-f\d]{3,6})\b/gi)].map(m=>[m[1],m[2]]));
   const light=h=>{if(h.length===4)h='#'+[...h.slice(1)].map(c=>c+c).join('');return h.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((a,b,i)=>a+b*[.2126,.7152,.0722][i],0);};
   const contrast=(a,b)=>{a=light(a);b=light(b);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
   for(const id of ids){
     const page=read(`projects/${id}/index.html`),base=properties(page.match(/body\{--paper:[^}]+\}/)[0]);
-    for(const skin of ['0','1','2']){
+    const skins=[...page.match(/<select id="style-switch"[^>]*>(.*?)<\/select>/s)[1].matchAll(/<option value="(\d+)"/g)].map(m=>m[1]);
+    for(const skin of skins){
       const extra=skin==='0'?'':page.match(new RegExp('body\\[data-skin="'+skin+'"\\]\\{[^}]+\\}'))[0];
       const v={...base,...properties(extra)};
       // Minesweeper's chrome and prose sit on its panel; the teal desktop

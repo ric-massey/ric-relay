@@ -146,6 +146,48 @@ second); 4 plies was stronger but took up to a few seconds and froze the page.
 **Worker deployed 2026-11-21** (Ric ran Actions → Deploy Worker): the live scoreboard
 answers `mines-expert`, `sudoku-daily-<date>` and `solitaire-daily-<date>`.
 
+## Round three: six real styles, one game at a time (started 2026-11-21)
+
+Ric, 2026-11-21: "i would like it way more high quality like terminal style should
+look like a terminal you know? like completey terminal style. like ascII style as
+well." Then: "i want like 6 styles. but each of the styles even the original looks
+like an ai made it how do we make it higher quality. like each game needs to be
+looked at individually and though about what would people want when playing this
+game. like checkers. then look deep into checkers and how to improve it but do that
+to all of them … not just all uncompasing."
+
+So, per game, Checkers first (his example), each one finished, checked at desktop
+and phone size, and pushed before the next:
+
+1. **What players of this game want**, worked out for that game alone, written under
+   its heading below, then built.
+2. **Six styles that are each a real thing**, not a palette: each restyles the whole
+   page (type, buttons, panels, result card) and draws the board and pieces its own
+   way. A Terminal style is ASCII text all the way down. Each style is an
+   `<option data-look="…">`; `body[data-look]` carries it for CSS and rendering.
+3. Old styles stay only if they can be made genuinely good; otherwise replaced. A
+   saved style number that no longer exists falls back to the first style.
+
+Order: Checkers → Chess → Solitaire → Minesweeper → Sudoku → Wordle → Tetris →
+Snake → Tic-tac-toe.
+
+### Checkers: what players want (built 2026-11-21)
+- [x] The dark side moves first, as in real American checkers, and the sides are
+      named by the set's colors (Red and White, Black and Red…), not Light and Dark.
+- [x] See your options: when a jump is required, the pieces that must jump glow, and
+      trying any other move says why it isn't allowed.
+- [x] Drag a piece as well as tap it.
+- [x] Kings are two checkers stacked, as on a real board.
+- [x] Captured pieces go to trays beside the board, not a line of text.
+- [x] Squares numbered 1–32 and a scoresheet in standard notation (11-15, 22x15,
+      9x18x27), shown in the styles where players expect them.
+- [x] Hint.
+- [x] Six styles: Tournament (green and buff board, red and white pieces, numbered
+      squares, scoresheet), Diner (red and black, chrome and formica), Heirloom
+      (inlaid wood board, turned wooden pieces), Newsprint (a newspaper checkers
+      problem: hatched squares, engraved pieces), Park table (painted concrete board,
+      bottle-cap checkers), Terminal (the board in ASCII).
+
 ## Ideas not built yet
 
-- [ ] (none yet; add the next ones here)
+- [ ] Checkers variants (Russian/Brazilian flying kings, international 10 × 10).

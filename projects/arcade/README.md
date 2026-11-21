@@ -145,8 +145,14 @@ directly, with their own identity. The Style selector has three choices on each:
 | Sudoku | Sunday print, Sepia journal, Night desk |
 | Minesweeper | Desktop 95, Terminal, Ice field |
 | Tetris | Neon arcade, Pocket console, Monochrome |
-| Checkers | Diner table, Tournament, Lakeside |
+| Checkers | Tournament, Diner, Heirloom, Newsprint, Park table, Terminal (six since 2026-11-21; see TODO.md round three) |
 | Snake | Pocket LCD, Night drive, Candy pixels |
+
+Round three (2026-11-21) moves each game to six styles, one game at a time. Each
+`<option>` carries `data-look` (copied to `body[data-look]`) and, for Checkers,
+`data-sides` (the two sides' names, first mover first). A look restyles the whole
+page and may draw the board its own way: Terminal draws Checkers as an ASCII `<pre>`.
+The shared Terminal chrome is `body[data-look="terminal"]` in `style.css`.
 
 `data-game` selects the engine; `data-skin` and each page’s own inline CSS select
 the appearance. `classics:style:<game>` stores the preference alongside the retained
