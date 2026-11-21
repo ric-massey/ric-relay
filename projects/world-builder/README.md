@@ -1934,7 +1934,8 @@ Measured: the default world, which has no big river, is the same world (`test/ri
 On the longest big river of a 60 km land, a boat takes 1.9 hours down and 5.3 back up. **In a year
 of three river worlds (60 km, 1,500 people, 16 villages) no village built a boat**, before or after:
 few villages stand on water a boat can use (two to five of sixteen), and grain moved between
-villages only 0 to 101 days' food in a year, none of it between two that a boat joins. So this part
+villages only 0 to 101 days' food in a year, and no village came to want a boat the three times it
+takes to build one (how often it came close was not counted). So this part
 changes nothing yet in an ordinary world. It is the transport the next parts stand on: a leader
 buying grain from far off (15.5b2), and villages that grow where water is (the vision's "Water as
 the reason places are where they are"). `test/rivers.test.mjs` holds the way down and up, the
