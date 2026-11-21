@@ -3,7 +3,7 @@
    published. Separate D1 tables: this handler never reads visitor records. */
 /* 2026-11-21: mines-expert (30 × 16, 99 mines), and dated boards for the daily
    Sudoku puzzle and Solitaire deal beside the daily word. */
-const FIXED = new Set(['solitaire','snake','tetris','wordle-practice','mines-expert',...['easy','medium','hard'].flatMap(d=>['sudoku-'+d,'mines-'+d])]);
+const FIXED = new Set(['solitaire','snake','tetris','wordle-practice','mines-expert','sudoku-expert',...['easy','medium','hard'].flatMap(d=>['sudoku-'+d,'mines-'+d])]);
 const DATED = /^(wordle|sudoku-daily|solitaire-daily)-(\d{4}-\d{2}-\d{2})$/;
 const dateOf = board => DATED.exec(board || '')?.[2] || null;
 const ORIGIN = /^(https:\/\/(www\.)?ricmassey\.com|https:\/\/ric-massey\.github\.io|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;

@@ -246,9 +246,31 @@
       const solve = () => { let at=-1, options; for(let i=0;i<81;i++) if(!b[i]) { const v = Sudoku.candidates(b,i); if (!v.length) return; if (!options || v.length < options.length) { at=i; options=v; if(v.length===1) break; } } if(at<0) {count++;return;} for(const n of options) { b[at]=n; solve(); b[at]=0; if(count>=limit)return; } }; solve(); return count;
     },
     create(difficulty = 'easy', random = Math.random) {
+      if (difficulty === 'expert') return Sudoku.expert(random);
       const order = () => shuffle([0,1,2],random), rows = order().flatMap(g => order().map(i => g*3+i)), cols = order().flatMap(g => order().map(i => g*3+i)), nums=shuffle([1,2,3,4,5,6,7,8,9],random);
-      const answer = rows.flatMap(r => cols.map(c => nums[(r*3+Math.floor(r/3)+c)%9])), b=answer.slice(); let left = {easy:40,medium:48,hard:54}[difficulty] || 40;
+      const answer = rows.flatMap(r => cols.map(c => nums[(r*3+Math.floor(r/3)+c)%9])), b=answer.slice(); let left = {easy:40,medium:48,hard:54,'hard-max':64}[difficulty] || 40;
       for(const i of shuffle([...b.keys()],random)) { const n=b[i]; b[i]=0; if(Sudoku.count(b)!==1)b[i]=n;else if(!--left)break; } return {b,answer};
+    },
+    /* Can this be finished by singles alone: a square with one candidate, or a
+       number with one place left in a row, column or box? Easy to hard can. */
+    singles(board) {
+      const b = board.slice(), units = [];
+      for (let k=0;k<9;k++) { units.push([...Array(9)].map((_,j)=>k*9+j), [...Array(9)].map((_,j)=>j*9+k), [...Array(9)].map((_,j)=>(Math.floor(k/3)*3+Math.floor(j/3))*9+(k%3)*3+j%3)); }
+      let progress = true;
+      while (progress) {
+        progress = false;
+        for (let i=0;i<81;i++) if (!b[i]) { const c = Sudoku.candidates(b,i); if (!c.length) return false; if (c.length===1) { b[i]=c[0]; progress=true; } }
+        for (const u of units) for (let n=1;n<=9;n++) { if (u.some(i=>b[i]===n)) continue; const spots=u.filter(i=>!b[i]&&Sudoku.candidates(b,i).includes(n)); if (spots.length===1) { b[spots[0]]=n; progress=true; } }
+      }
+      return b.every(Boolean);
+    },
+    /* Expert (2026-11-21, Ric picked it): as few clues as the shuffle allows, and
+       not finishable by singles, so it needs pairs, pointing and the like. The
+       first deal that qualifies wins; after ~1.5 s the sparsest one so far. */
+    expert(random = Math.random) {
+      const until = Date.now() + 1500; let best = null;
+      do { const p = Sudoku.create('hard-max', random); const clues = p.b.filter(Boolean).length; if (!Sudoku.singles(p.b)) return { ...p, expert: true }; if (!best || clues < best.b.filter(Boolean).length) best = p; } while (Date.now() < until);
+      return best;
     },
     valid(b) { return b.length === 81 && b.every((n,i) => n >= 1 && n <= 9 && Sudoku.candidates(b.map((v,j) => j===i?0:v),i).includes(n)); }
   };

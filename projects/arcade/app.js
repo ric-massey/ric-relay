@@ -25,7 +25,7 @@
     checkers:[['cpu','Vs computer'],['two','Two players · pass the device'],['table','Two players · across the table'],['online','Play a friend online']],
     tictactoe:[['cpu','Vs computer'],['two','Two players']],
     wordle:[['daily','Daily word'],['practice','Practice']],
-    sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['daily','Daily puzzle']],
+    sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['expert','Expert'],['daily','Daily puzzle']],
     minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines'],['expert','Expert · 99 mines'],['custom','Custom size']],
     snake:[['classic','Classic'],['slow','Slow'],['walls','Through walls']],
     tetris:[]
@@ -219,7 +219,7 @@
   }
   /* Main actions in one row; quieter toggles (timer, helpers) on a smaller second row. */
   function toolRow(main,minor=[]){tools.replaceChildren(...main);if(minor.length){tools.append(el('span','break'));for(const b of minor){b.classList.add('minor');tools.append(b);}}}
-  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='idle';lastFinish=null;moveLog=[];reviewAt=null;arrows=[];chessEnd=null;drawOffer=null;resignArmed=0;facing='w';clearInterval(chessTick);hint('');$('pause').hidden=true;$('pause').textContent='Pause';status('');syncLevel();}
+  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='idle';lastFinish=null;brush=0;moveLog=[];reviewAt=null;arrows=[];chessEnd=null;drawOffer=null;resignArmed=0;facing='w';clearInterval(chessTick);hint('');$('pause').hidden=true;$('pause').textContent='Pause';status('');syncLevel();}
   function start(){
     resetRun();storage.remove('save:'+game.id);
     switch(game.id){
@@ -1041,17 +1041,20 @@
   // ---- Sudoku --------------------------------------------------------------
   const peersOf=i=>{const r=Math.floor(i/9),c=i%9,out=[];for(let j=0;j<81;j++){const rr=Math.floor(j/9),cc=j%9;if(j!==i&&(rr===r||cc===c||(Math.floor(rr/3)===Math.floor(r/3)&&Math.floor(cc/3)===Math.floor(c/3))))out.push(j);}return out;};
   function renderSudoku(){
-    const b=grid(9,'sudoku'),sameN=selected!==null?s.b[selected]:0,peers=selected!==null?new Set(peersOf(selected)):new Set();
+    const b=grid(9,'sudoku'+(brush?' brushing':'')),sameN=brush||(selected!==null?s.b[selected]:0),peers=selected!==null&&!brush?new Set(peersOf(selected)):new Set();
+    puzzleHeader();
     s.b.forEach((n,i)=>{
       const r=Math.floor(i/9),c=i%9,conflict=n&&!E.Sudoku.candidates(s.b.map((v,j)=>j===i?0:v),i).includes(n),wrong=opts.mistakes&&n&&!s.given[i]&&n!==s.answer[i];
       const cls=['square'];if(s.given[i])cls.push('given');if(conflict)cls.push('conflict');if(wrong)cls.push('wrong');if(peers.has(i))cls.push('peer');if(sameN&&n===sameN&&i!==selected)cls.push('same');if(selected===i)cls.push('chosen');if(c===2||c===5)cls.push('box-right');if(r===2||r===5)cls.push('box-bottom');if(moved.has(i)&&!reduced())cls.push('drop');
-      const sq=button(n?String(n):'',()=>{if(finished)return;selected=i;renderSudoku();},cls.join(' '));
+      const sq=button(n?String(n):'',()=>sudokuTap(i),cls.join(' '));if(!n)sq.classList.add('empty');
       sq.setAttribute('aria-label',`Row ${r+1}, column ${c+1}, ${n||'empty'}${s.given[i]?', given':''}`);
       if(!n&&notes[i]?.length){const marks=el('span','notes-grid');for(let v=1;v<=9;v++)marks.append(el('span',sameN===v&&notes[i].includes(v)?'hot':'',notes[i].includes(v)?String(v):' '));sq.append(marks);}
       b.append(sq);
     });
     const count=Array(10).fill(0);for(const n of s.b)count[n]++;
-    const pad=el('div','numpad');for(let n=1;n<=9;n++){const k=button('',()=>sudokuEntry(n),count[n]>=9?'done':'');k.append(el('span',null,String(n)),el('small',null,count[n]>=9?'✓':String(9-count[n])));k.setAttribute('aria-label',`${n}, ${Math.max(0,9-count[n])} left`);pad.append(k);}stage.append(pad);
+    const pad=el('div','numpad');for(let n=1;n<=9;n++){const k=button('',()=>sudokuPad(n),(count[n]>=9?'done':'')+(brush===n?' held':''));k.setAttribute('aria-pressed',brush===n);k.append(el('span',null,String(n)),el('small',null,count[n]>=9?'✓':String(9-count[n])));k.setAttribute('aria-label',`${n}, ${Math.max(0,9-count[n])} left`);pad.append(k);}
+    // A page with a tray (#pad-slot) keeps the pad beside the grid.
+    const padSlot=$('pad-slot');if(padSlot)padSlot.replaceChildren(pad);else stage.append(pad);
     toolRow([
       button('↶ Undo',()=>{if(finished||!history.length)return;const h=history.pop();s.b=h.b;notes=h.notes;selected=h.selected;renderSudoku();}),
       button('Erase',()=>sudokuEntry(0)),
@@ -1063,7 +1066,32 @@
       button(opts.showTimer?'Hide timer':'Show timer',()=>{opts.showTimer=!opts.showTimer;saveOpts();updateMetric();renderSudoku();})
     ]);
     status(s.b.filter(Boolean).length+'/81 filled'+(!eligible?' · helped':''));
-    hint('Choose a square, then 1–9. N for notes; Backspace to erase.');moved=new Set();persist();
+    hint(brush?`Placing ${brush}s: tap each square it goes in. Tap ${brush} again to stop.`:selected===null?'Tap a square then a number, or pick a number first and tap every square it goes in.':'Now a number (N for notes, Backspace to erase). Tap the square again to let go of it.');moved=new Set();persist();
+  }
+  /* Both ways in (Ric, 2026-11-21: "Both ways"): with a square chosen, a number
+     goes into it; with none chosen, the number is held and every square you tap
+     gets it (or its note). Tapping the held number again lets it go. */
+  let brush=0;
+  function sudokuPad(n){
+    if(finished)return;
+    if(brush){brush=brush===n?0:n;renderSudoku();return;}
+    if(selected===null){brush=n;renderSudoku();return;}
+    sudokuEntry(n);
+  }
+  function sudokuTap(i){
+    if(finished)return;
+    if(brush){
+      if(s.given[i]||(s.b[i]&&s.b[i]!==brush)){brush=s.b[i];renderSudoku();return;}
+      const keep=selected;selected=i;sudokuEntry(notesMode?brush:s.b[i]===brush?0:brush);if(!finished)selected=keep===null?null:keep;if(!finished)renderSudoku();return;
+    }
+    selected=selected===i?null:i;renderSudoku();
+  }
+  /* The puzzle-book header: its number, level and date. */
+  function puzzleHeader(){
+    if(!s.no){let h=7;for(const v of s.given)h=(h*31+v)%9973;s.no=mode==='daily'?Math.floor((Date.parse(s.day||dailyDate||new Date().toISOString().slice(0,10))-Date.UTC(2026,0,1))/864e5)+1:1000+h%9000;}
+    const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+    set('puzzle-no',String(s.no).padStart(4,'0'));set('puzzle-level',MODES.sudoku.find(m=>m[0]===mode)?.[1]||'');
+    set('puzzle-date',new Date((mode==='daily'&&s.day?s.day:new Date().toISOString().slice(0,10))+'T12:00:00Z').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'}));
   }
   function sudokuHistory(){history.push({b:s.b.slice(),notes:JSON.parse(JSON.stringify(notes)),selected});if(history.length>300)history.shift();}
   function sudokuEntry(n){
@@ -1367,7 +1395,7 @@
   document.addEventListener('keydown',e=>{
     if(!game||e.ctrlKey||e.metaKey||e.altKey||$('result-dialog').open||$('help-dialog').open||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
     if(game.id==='wordle'){if(/^[a-z]$/.test(k)||['enter','backspace'].includes(k)){e.preventDefault();wordKey(k==='enter'?'Enter':k==='backspace'?'Backspace':k);}return;}
-    if(game.id==='sudoku'){if(/^[1-9]$/.test(k)){e.preventDefault();sudokuEntry(+k);}else if(['backspace','delete','0'].includes(k)){e.preventDefault();sudokuEntry(0);}else if(k==='n'){notesMode=!notesMode;renderSudoku();}else if(k.startsWith('arrow')){e.preventDefault();const offset={arrowleft:-1,arrowright:1,arrowup:-9,arrowdown:9}[k];selected=Math.min(80,Math.max(0,(selected??0)+offset));renderSudoku();}return;}
+    if(game.id==='sudoku'){if(k==='escape'){brush=0;selected=null;renderSudoku();return;}if(/^[1-9]$/.test(k)){e.preventDefault();if(brush||selected===null)sudokuPad(+k);else sudokuEntry(+k);}else if(['backspace','delete','0'].includes(k)){e.preventDefault();sudokuEntry(0);}else if(k==='n'){notesMode=!notesMode;renderSudoku();}else if(k.startsWith('arrow')){e.preventDefault();const offset={arrowleft:-1,arrowright:1,arrowup:-9,arrowdown:9}[k];selected=Math.min(80,Math.max(0,(selected??0)+offset));renderSudoku();}return;}
     if(!action())return;
     if(k==='p'){e.preventDefault();togglePause();return;}
     const dirs={arrowup:[0,-1],w:[0,-1],arrowleft:[-1,0],a:[-1,0],arrowdown:[0,1],s:[0,1],arrowright:[1,0],d:[1,0]};

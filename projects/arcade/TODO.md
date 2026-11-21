@@ -189,7 +189,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
 - [x] **Solitaire:** the whole page is the table; a slim toolbar; no sidebar.
 - [x] **Minesweeper:** the page is a desktop window: title bar, menu, counter / face /
   clock panel, the field; best times in their own window.
-- [ ] **Sudoku:** a puzzle-book page: puzzle number and date as a header, the grid
+- [x] **Sudoku:** a puzzle-book page: puzzle number and date as a header, the grid
   centred, the number pad as a tray beside it, notes and checks as pencil tools.
 - [ ] **Wordle:** one narrow column: tiles, then the keyboard docked to the bottom on a
   phone; stats and share in their own sheet.
@@ -297,6 +297,21 @@ into the help dialog wherever the page has no room for them. Page concepts:
       paper), Terminal (ASCII). Desktop 95, Ice field and the old Terminal go.
 - Not wanted this round: no-guess boards. Chording was already in (click a
   number whose flags are all placed).
+
+### Sudoku: what players want (Ric, 2026-11-21: "So duly" [Sudoku], then his answers) — built the same day
+- [x] The page is a puzzle-book page (concept above): the puzzle's number, level
+      and date as a header, the grid centred, the number pad as a tray beside it,
+      notes and checks as pencil tools.
+- [x] Expert level (Ric picked it): fewer clues, and a puzzle that can't be done by
+      filling in singles alone (checked by a solver that knows only singles).
+      Board `sudoku-expert` on the Worker.
+- [x] Both ways to enter numbers (Ric: "Both ways"): tap a square then a number, as
+      before, or pick a number first and tap every square it goes in.
+- [x] Six styles (Ric: "Yes, those six"): Puzzle book, Newspaper, Washi (Japanese
+      paper, brush-style numerals), Chalkboard, Glass (calm, modern, dark),
+      Terminal (ASCII).
+- [ ] **Deploy Worker** again: the live scoreboard needs `sudoku-expert` (added in
+      worker/arcade.mjs with this round).
 
 ### Online play, Chess and Checkers (Ric, 2026-11-21: "multiplayer for chess and checkers needs to be in")
 Two players on one device was already there, so this is playing a friend on their
