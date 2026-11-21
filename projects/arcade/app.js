@@ -26,7 +26,7 @@
     tictactoe:[['cpu','Vs computer'],['two','Two players']],
     wordle:[['daily','Daily word'],['practice','Practice']],
     sudoku:[['easy','Easy'],['medium','Medium'],['hard','Hard'],['daily','Daily puzzle']],
-    minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines'],['expert','Expert · 99 mines']],
+    minesweeper:[['easy','9 × 9 · 10 mines'],['medium','12 × 12 · 25 mines'],['hard','16 × 16 · 40 mines'],['expert','Expert · 99 mines'],['custom','Custom size']],
     snake:[['classic','Classic'],['slow','Slow'],['walls','Through walls']],
     tetris:[]
   };
@@ -37,7 +37,7 @@
 
   // ---- state -------------------------------------------------------------
   let game=null, mode='', s=null, selected=null, history=[], keys=[], revision=0, clockStart=0, elapsed=0, clock=null, frame=null, running=false, paused=false, pending=null, eligible=true, finished=false, flagMode=false, notesMode=false, notes={}, dailyDate='', input='', promotion=null, cpuBusy=false, boardRefresh=0, lastFrame=0, accumulator=0;
-  let opts={}, lastMove=null, sanList=[], hintMove=null, moved=new Set(), flash=null, particles=[], lockAt=null, lockResets=0, ticker=null, autoTimer=null, revealRow=-1, revealUntil=0, shake=false, beforeReveal=null, face='🙂', lastFinish=null, bestScore=0;
+  let opts={}, lastMove=null, sanList=[], hintMove=null, moved=new Set(), flash=null, particles=[], lockAt=null, lockResets=0, ticker=null, autoTimer=null, revealRow=-1, revealUntil=0, shake=false, beforeReveal=null, face='idle', lastFinish=null, bestScore=0;
 
   // ---- storage -----------------------------------------------------------
   const storage={get(k,fallback=null){try{const v=localStorage.getItem('classics:'+k);return v===null?fallback:JSON.parse(v);}catch{return fallback;}},set(k,v){try{localStorage.setItem('classics:'+k,JSON.stringify(v));return true;}catch{return false;}},remove(k){try{localStorage.removeItem('classics:'+k);}catch{}}};
@@ -73,7 +73,7 @@
   // ---- scoreboards (shared Worker, unchanged keys) -------------------------
   /* Only the original game of each kind has a board: Draw one, Classic Snake.
      New boards would need the Worker's allowlist changed and redeployed. */
-  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':mode==='daily'?'solitaire-daily-'+dailyDate:null;case 'sudoku':return mode==='daily'?'sudoku-daily-'+dailyDate:'sudoku-'+mode;case 'minesweeper':return 'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return 'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:'wordle-practice';default:return null;}}
+  function board(){if(!game)return null;switch(game.id){case 'solitaire':return mode==='draw1'?'solitaire':mode==='daily'?'solitaire-daily-'+dailyDate:null;case 'sudoku':return mode==='daily'?'sudoku-daily-'+dailyDate:'sudoku-'+mode;case 'minesweeper':return mode==='custom'?null:'mines-'+mode;case 'snake':return mode==='classic'?'snake':null;case 'tetris':return 'tetris';case 'wordle':return mode==='daily'?'wordle-'+dailyDate:'wordle-practice';default:return null;}}
   function scoreText(score,key=board()){return key?.startsWith('wordle-')?score+' / 6':key==='snake'||key==='tetris'?score.toLocaleString():fmtTime(score);}
   function sorted(rows,key){return rows.slice().sort((a,b)=>(key==='snake'||key==='tetris'?b.score-a.score:a.score-b.score)||(a.at||0)-(b.at||0)).slice(0,10);}
   async function request(path,options){if(!remote)throw Error('offline');const res=await fetch(remote+'/arcade/scores'+path,{...options,signal:AbortSignal.timeout(6000)});if(!res.ok)throw Error(res.status===429?'Please wait a minute before submitting again.':'Shared scoreboard is unavailable.');return res.json();}
@@ -219,7 +219,7 @@
   }
   /* Main actions in one row; quieter toggles (timer, helpers) on a smaller second row. */
   function toolRow(main,minor=[]){tools.replaceChildren(...main);if(minor.length){tools.append(el('span','break'));for(const b of minor){b.classList.add('minor');tools.append(b);}}}
-  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='🙂';lastFinish=null;moveLog=[];reviewAt=null;arrows=[];chessEnd=null;drawOffer=null;resignArmed=0;facing='w';clearInterval(chessTick);hint('');$('pause').hidden=true;$('pause').textContent='Pause';status('');syncLevel();}
+  function resetRun(){cleanup();stage.replaceChildren();tools.replaceChildren();stage.className='stage';selected=null;history=[];keys=[];elapsed=0;finished=false;eligible=true;flagMode=false;notesMode=false;notes={};input='';promotion=null;lastMove=null;sanList=[];hintMove=null;moved=new Set();flash=null;particles=[];lockAt=null;lockResets=0;revealRow=-1;revealUntil=0;shake=false;beforeReveal=null;face='idle';lastFinish=null;moveLog=[];reviewAt=null;arrows=[];chessEnd=null;drawOffer=null;resignArmed=0;facing='w';clearInterval(chessTick);hint('');$('pause').hidden=true;$('pause').textContent='Pause';status('');syncLevel();}
   function start(){
     resetRun();storage.remove('save:'+game.id);
     switch(game.id){
@@ -229,7 +229,7 @@
       case 'solitaire':s=mode==='daily'?E.Solitaire.create(dailyRandom()):E.Solitaire.create();s.draw=mode==='draw3'?3:1;if(opts.winnable&&mode!=='daily')winnableDeal();break;
       case 'sudoku':s=mode==='daily'?E.Sudoku.create('medium',dailyRandom()):E.Sudoku.create(mode);s.given=s.b.slice();if(opts.mistakes)eligible=false;break;
       // Expert is 30 × 16; on a screen taller than it is wide it stands upright (16 across).
-      case 'minesweeper':s=mode==='expert'?(innerWidth<innerHeight?E.Mines.create(30,99,16):E.Mines.create(16,99,30)):E.Mines.create(...({easy:[9,10],medium:[12,25],hard:[16,40]}[mode]));break;
+      case 'minesweeper':if(mode==='custom'){const c=customSize();s=E.Mines.create(c.rows,c.mines,c.cols);break;}s=mode==='expert'?(innerWidth<innerHeight?E.Mines.create(30,99,16):E.Mines.create(16,99,30)):E.Mines.create(...({easy:[9,10],medium:[12,25],hard:[16,40]}[mode]));break;
       case 'wordle':initWord();break;
       case 'snake':s=E.Snake.create();s.wrap=mode==='walls';break;
       case 'tetris':s=E.Tetris.create();break;
@@ -1076,31 +1076,54 @@
 
   // ---- Minesweeper (keeps its clock) ---------------------------------------
   let pressTimer=null,pressFired=0;
-  const setFace=f=>{face=f;const b=$('mine-face');if(b)b.textContent=f;};
+  const setFace=f=>{face=f;const b=$('mine-face');if(b){b.textContent=faceFor(f);b.className='mine-face face-'+f;}};
+  /* Each style draws the field with its own marks (round three, 2026-11-21). */
+  const MINE_GLYPHS={terminal:{mine:'*',flag:'F',q:'?',wrong:'x',cover:'#',empty:'.'},sonar:{mine:'◉',flag:'◆',q:'?',wrong:'✕',cover:'',empty:''},blueprint:{mine:'⊗',flag:'△',q:'?',wrong:'✕',cover:'',empty:''},meadow:{mine:'✹',flag:'⚑',q:'?',wrong:'✕',cover:'',empty:''}};
+  const MINE_FACES={retro:['🙂','😮','😎','😵'],sonar:['◎','◉','✓','✕'],graph:[':)',':O','B)','X('],meadow:['🌼','🌸','🌻','🥀'],blueprint:['OK','··','✓','✗'],terminal:['[:)]','[:O]','[B)]','[X(]']};
+  const faceFor=state=>{const set=MINE_FACES[look()]||MINE_FACES.retro;return set[{idle:0,press:1,win:2,lose:3}[state]];};
+  let markMode=false;
+  /* Custom size (Ric, 2026-11-21): kept with the options; at least one safe 3 × 3 opening. */
+  function customSize(){const c=opts.custom||{},rows=Math.max(5,Math.min(30,+c.rows||10)),cols=Math.max(5,Math.min(30,+c.cols||10));return{rows,cols,mines:Math.max(1,Math.min(rows*cols-9,+c.mines||15))};}
+  function customForm(){
+    const c=customSize(),f=el('form','ms-custom');f.setAttribute('aria-label','Custom field');
+    const num=(name,label,v,min,max)=>{const l=el('label',null,label);const i=el('input');i.type='number';i.name=name;i.value=v;i.min=min;i.max=max;i.inputMode='numeric';l.append(i);return l;};
+    f.append(num('rows','Rows',c.rows,5,30),num('cols','Columns',c.cols,5,30),num('mines','Mines',c.mines,1,891));const go=button('Deal','','solid');go.type='submit';f.append(go);
+    f.onsubmit=e=>{e.preventDefault();opts.custom={rows:+f.rows.value,cols:+f.cols.value,mines:+f.mines.value};saveOpts();start();const n=customSize();hint(`A custom field: ${n.rows} × ${n.cols}, ${n.mines} mines. Custom games stay off the scoreboard.`);};
+    return f;
+  }
   function renderMines(){
     const {rows,cols}=E.Mines.size(s),b=grid(cols,'mines'+(rows!==cols?' wide':''));if(rows!==cols){b.style.aspectRatio=`${cols}/${rows}`;b.style.width=`min(100%,${cols*34}px)`;}
+    b.style.setProperty('--cols',cols);b.style.setProperty('--rows',rows);
+    const g=MINE_GLYPHS[look()]||{mine:'✹',flag:'⚑',q:'?',wrong:'✕',cover:'',empty:''},marks=s.marks||[];
     s.b.forEach((v,i)=>{
-      const revealed=s.open[i]||(s.over&&v===-1),wrongFlag=s.over&&!s.won&&s.flags[i]&&v!==-1;
-      const sq=button(revealed?(v===-1?'✹':v||''):wrongFlag?'✕':s.flags[i]?'⚑':'',()=>mineTap(i),'square'+(revealed?' revealed v'+v:'')+(s.over&&v===-1?' bomb':'')+(s.flags[i]?' flag':'')+(wrongFlag?' wrong':'')+(moved.has(i)?' boom':''));
-      sq.setAttribute('aria-label',`Row ${Math.floor(i/cols)+1}, column ${i%cols+1}: ${revealed?(v===-1?'mine':v+' neighboring mines'):s.flags[i]?'flag':'covered'}`);
-      sq.oncontextmenu=e=>{e.preventDefault();if(Date.now()-pressFired<800)return;mineFlag(i);};
+      const revealed=s.open[i]||(s.over&&v===-1),wrongFlag=s.over&&!s.won&&s.flags[i]&&v!==-1,q=!revealed&&!s.flags[i]&&marks[i];
+      const text=revealed?(v===-1?g.mine:v||g.empty):wrongFlag?g.wrong:s.flags[i]?g.flag:q?g.q:g.cover;
+      const sq=button(String(text),()=>mineTap(i),'square'+(revealed?' revealed v'+v:'')+(s.over&&v===-1?' bomb':'')+(s.flags[i]?' flag':'')+(q?' qmark':'')+(wrongFlag?' wrong':'')+(moved.has(i)?' boom':''));
+      sq.setAttribute('aria-label',`Row ${Math.floor(i/cols)+1}, column ${i%cols+1}: ${revealed?(v===-1?'mine':v+' neighboring mines'):s.flags[i]?'flag':q?'question mark':'covered'}`);
+      // Right-click flags, as always; Shift+right-click puts a question mark instead.
+      sq.oncontextmenu=e=>{e.preventDefault();if(Date.now()-pressFired<800)return;if(e.shiftKey)mineMark(i);else mineFlag(i);};
+      sq.onauxclick=e=>{if(e.button===1){e.preventDefault();mineMark(i);}};
       // Press and hold flags a square, on a phone or with a mouse.
-      sq.onpointerdown=e=>{if(finished||s.open[i]||e.button>0)return;setFace('😮');const x=e.clientX,y=e.clientY;clearTimeout(pressTimer);pressTimer=setTimeout(()=>{pressFired=Date.now();navigator.vibrate?.(15);setFace('🙂');mineFlag(i);},420);sq.onpointermove=m=>{if(Math.hypot(m.clientX-x,m.clientY-y)>10)clearTimeout(pressTimer);};};
-      sq.onpointerup=sq.onpointerleave=()=>{clearTimeout(pressTimer);if(face==='😮'&&!finished)setFace('🙂');};
+      sq.onpointerdown=e=>{if(finished||s.open[i]||e.button>0)return;setFace('press');const x=e.clientX,y=e.clientY;clearTimeout(pressTimer);pressTimer=setTimeout(()=>{pressFired=Date.now();navigator.vibrate?.(15);setFace('idle');mineFlag(i);},420);sq.onpointermove=m=>{if(Math.hypot(m.clientX-x,m.clientY-y)>10)clearTimeout(pressTimer);};};
+      sq.onpointerup=sq.onpointerleave=()=>{clearTimeout(pressTimer);if(face==='press'&&!finished)setFace('idle');};
       b.append(sq);
     });
-    const faceBtn=button(face,()=>start(),'mine-face');faceBtn.id='mine-face';faceBtn.setAttribute('aria-label','New field');
-    const bits=[faceBtn,button(flagMode?'Flag mode: on':'Flag mode: off',()=>{flagMode=!flagMode;renderMines();},flagMode?'on':'')];
-    if(finished&&!s.won&&beforeReveal)bits.push(button('Take back that click',()=>{s=beforeReveal;beforeReveal=null;finished=false;eligible=false;face='🙂';status('');renderMines();updateMetric();}));
-    if(finished&&!s.won)bits.push(button('Same board again',()=>{const again=E.Mines.replay(s);resetRun();s=again;eligible=false;renderMines();updateMetric();hint('Same mines as last time. This one stays off the board.');}));
+    const faceBtn=button(faceFor(face),()=>start(),'mine-face face-'+face);faceBtn.id='mine-face';faceBtn.setAttribute('aria-label','New field');
+    const slot=$('face-slot');if(slot)slot.replaceChildren(faceBtn);
+    const count=$('mine-count');if(count){const left=s.mines-s.flags.filter(Boolean).length;count.textContent=look()==='terminal'?String(left).padStart(3,'0'):String(left);}
+    const bits=[...(slot?[]:[faceBtn]),button(flagMode?'Flag mode: on':'Flag mode: off',()=>{flagMode=!flagMode;if(flagMode)markMode=false;renderMines();},flagMode?'on':''),button(markMode?'? mode: on':'? mode: off',()=>{markMode=!markMode;if(markMode)flagMode=false;renderMines();},markMode?'on':'')];
+    if(finished&&!s.won&&beforeReveal)bits.push(button('Take back that click',()=>{s=beforeReveal;beforeReveal=null;finished=false;eligible=false;face='idle';status('');renderMines();updateMetric();}));
+    if(finished&&!s.won)bits.push(button('Same board again',()=>{const again=E.Mines.replay(s);resetRun();face='idle';s=again;eligible=false;renderMines();updateMetric();hint('Same mines as last time. This one stays off the board.');}));
     tools.replaceChildren(...bits);
-    if(!finished)status((s.mines-s.flags.filter(Boolean).length)+' mines left'+(!eligible?' · practice':''));
-    hint(flagMode?'Tap a covered square to place or remove a flag.':'Tap to reveal. Right-click, press and hold, or Flag mode to mark a mine.');moved=new Set();persist();
+    if(mode==='custom')tools.append(customForm());
+    if(!finished)status((s.mines-s.flags.filter(Boolean).length)+' mines left'+(!eligible?' · practice':mode==='custom'?' · custom':''));
+    hint(flagMode?'Tap a covered square to place or remove a flag.':markMode?'Tap a covered square to place or remove a question mark.':'Tap to reveal. Right-click, press and hold, or Flag mode to flag a mine. ? mode or Shift+right-click for a question mark.');moved=new Set();persist();
   }
-  function mineFlag(i){if(finished||s.open[i])return;s.flags[i]=!s.flags[i];sfx('flag');renderMines();}
+  function mineMark(i){if(finished||s.open[i]||s.flags[i])return;if(E.Mines.mark(s,i)){sfx('tap');renderMines();}}
+  function mineFlag(i){if(finished||s.open[i])return;s.flags[i]=!s.flags[i];if(s.flags[i]&&s.marks)s.marks[i]=false;sfx('flag');renderMines();}
   function mineTap(i){
-    if(finished||Date.now()-pressFired<600)return;if(flagMode){mineFlag(i);return;}if(s.flags[i])return;
-    beforeReveal=s.started?E.copy(s):null;beginClock();E.Mines.reveal(s,i);face=s.over?(s.won?'😎':'😵'):'🙂';if(!s.won)sfx(s.over?'boom':'tap');if(s.over&&!s.won)moved=new Set([i]);renderMines();
+    if(finished||Date.now()-pressFired<600)return;if(flagMode){mineFlag(i);return;}if(markMode){mineMark(i);return;}if(s.flags[i])return;
+    beforeReveal=s.started?E.copy(s):null;beginClock();E.Mines.reveal(s,i);face=s.over?(s.won?'win':'lose'):'idle';if(!s.won)sfx(s.over?'boom':'tap');if(s.over&&!s.won)moved=new Set([i]);renderMines();
     if(s.over){const t=seconds();record(s.won?'won':'lost',s.won&&eligible?t:null);if(s.won)celebrate();finish(s.won?'A clean sweep.':'That was a mine.',s.won?`Every safe square, in ${fmtTime(t)}.`+(eligible?'':' A practice run, so it stays off the board.'):'Take that click back, try the same board again, or start a fresh field.',s.won&&eligible?t:null);renderMines();}
   }
 
@@ -1365,7 +1388,7 @@
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
     if(game&&['snake','tetris'].includes(game.id))drawAction();
     // Board games whose pieces are drawn differently per style redraw the same position.
-    else if(game&&s&&['checkers','chess','solitaire'].includes(game.id)){render();renderStats();}
+    else if(game&&s&&['checkers','chess','solitaire','minesweeper'].includes(game.id)){render();renderStats();}
   }
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';

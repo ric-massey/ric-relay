@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#117d79">
+  <meta name="theme-color" content="#4d3f5e">
   <title>Minesweeper — RIC//NET</title>
-  <meta name="description" content="Play Minesweeper in the Arcade. A field of calculated risks. Three styles to choose from, with touch and keyboard controls.">
+  <meta name="description" content="Play Minesweeper in the Arcade: four fields plus a custom size, flags and question marks, best times. Six styles, from a retro desktop to a sonar screen to a blueprint.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Minesweeper — RIC//NET">
-  <meta property="og:description" content="Play Minesweeper in the Arcade. A field of calculated risks. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:description" content="Play Minesweeper in the Arcade: four fields plus a custom size, flags and question marks, best times. Six styles, from a retro desktop to a sonar screen to a blueprint.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/minesweeper/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/minesweeper.jpg">
@@ -18,43 +18,235 @@
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
+/* Minesweeper has its own page (round three, 2026-11-21, TODO.md). The game is
+   a window: a title bar, the panel with the mines left, the face and the clock,
+   then the field. Your best times sit in a window of their own. Each of the six
+   styles turns that window into its own object: a beveled 90s desktop window
+   (its own colours, not a copy of Windows'), a sonar console, a sheet of graph
+   paper, a meadow with a wooden sign, a blueprint, a terminal. app.js only
+   needs the ids (#face-slot, #mine-count, #metric for the clock). */
 
-/* This page owns its theme; layout and rules stay inside the Arcade games. */
-body{background-color:var(--paper);color:var(--ink)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
-dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+/* ---- layout ------------------------------------------------------------------ */
+body{background:var(--desk);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif);min-height:100svh}
+.ms-bar{display:flex;align-items:center;gap:10px;min-height:54px;padding:6px max(2.5vw,14px);background:var(--bar,transparent);color:var(--bar-ink,var(--ink));border-bottom:var(--bar-rule,0)}
+.ms-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.ms-back:hover{background:#80808030}
+.ms-name{margin:0 auto 0 0;font:var(--title-font,700 20px/1 var(--body-font));letter-spacing:var(--title-spacing,0);white-space:nowrap;color:var(--title-ink,inherit)}
+.ms-bar .game-actions{position:relative;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;max-width:none;padding:0}
+.ms-bar :is(button,select){min-height:36px;padding:5px 12px;font-size:13px;white-space:nowrap;background:var(--btn,#fff);color:var(--btn-ink,var(--ink));border:var(--btn-border,1px solid #0003);border-radius:var(--radius,4px);box-shadow:var(--btn-shadow,none);font-family:var(--body-font,inherit)}
+.ms-bar button.solid{background:var(--accent);color:var(--on-accent,#fff);border-color:var(--accent)}
+@media(max-width:820px){.ms-bar{flex-wrap:wrap;row-gap:6px}.ms-bar .game-actions{order:3;flex-basis:100%;min-width:0;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.ms-bar .game-actions>*{flex:none}.ms-bar .game-actions label{width:auto;display:block}.ms-bar #new-game{order:-1}}
+.ms-desk{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:clamp(16px,3vw,34px);padding:clamp(14px,3vw,34px) max(2vw,10px) 60px;max-width:none;margin:0}
 
-body{--paper:#117d79;--ink:#171c20;--muted:#485254;--green:#253d89;--panel:#c2c5c7;--edge:#6d7477;--display-font:'Courier New',monospace;--radius:0px;--mine-covered:#c3c7c9;--mine-open:#e0e2dc;--mine-ink:#173674;--heading:#fff;color-scheme:light}
-body[data-skin="1"]{--paper:#081c14;--ink:#c9edbd;--muted:#a7c69b;--green:#315e39;--panel:#173222;--edge:#537b55;--mine-covered:#264c32;--mine-open:#10291b;--mine-ink:#d3eac5;--heading:#c9edbd;color-scheme:dark}
-body[data-skin="2"]{--paper:#dceaf2;--ink:#253d51;--muted:#43586b;--green:#346480;--panel:#cbdde8;--edge:#8da6bb;--mine-covered:#a9c8df;--mine-open:#f0f6f8;--mine-ink:#204466;--heading:#253d51;--radius:6px}
-.topbar{background:var(--panel);border-bottom:2px solid var(--edge)}.game-heading>div:first-child{color:var(--heading)}.game-heading p,.game-heading .text-button{color:inherit}.game-heading h1{font-family:var(--display-font);font-size:40px;font-weight:700}.table-wrap{border:3px outset #e0e3e3!important}.table-head{background:var(--green)!important;color:white!important;border:2px inset var(--edge);font-family:var(--display-font)}.sidebar{background:var(--panel);padding:18px}.mines .square{border:3px outset #edf0e8;background:var(--mine-covered);color:var(--mine-ink);border-radius:var(--radius)}.mines .revealed{background:var(--mine-open);border:1px solid var(--edge)}.mines .bomb{background:#e7a29c;color:#15222a}.mines .flag{color:#a72637}.mines .v2,.mines .v3,.mines .v4{color:var(--mine-ink)}.mines{gap:0;border:3px inset #cfd4ce}.page-mark{font-family:var(--display-font)}
+/* ---- the game window ---------------------------------------------------------------- */
+.ms-window{background:var(--win);color:var(--win-ink,var(--ink));border:var(--win-border,1px solid #0003);border-radius:var(--win-radius,6px);box-shadow:var(--win-shadow,0 18px 40px -18px #0009);padding:var(--win-pad,4px);position:relative;max-width:100%;box-sizing:border-box}
+.ms-game{width:max-content;max-width:100%}
+/* The window is as wide as its field: the text under it wraps instead of widening it. */
+.ms-game :is(.hint,.tools,.ms-status,.ms-titlebar){width:0;min-width:100%;box-sizing:border-box}
+.ms-game .ms-titlebar{overflow:hidden;white-space:nowrap}
+.ms-titlebar{display:flex;align-items:center;gap:10px;min-height:28px;padding:var(--tb-pad,4px 8px);background:var(--tb,transparent);color:var(--tb-ink,inherit);border-radius:var(--tb-radius,3px);font:var(--tb-font,700 13px/1 var(--body-font));letter-spacing:var(--tb-spacing,0);text-transform:var(--tb-case,none)}
+.ms-titlebar .ms-wsub{font-weight:400;opacity:.8;margin-right:auto}
+.ms-dots{display:var(--dots,flex);gap:4px}.ms-dots i{width:15px;height:13px;display:block;background:var(--dot-bg,#ffffff30);border:var(--dot-border,1px solid #0003);border-radius:var(--dot-radius,2px)}
+.ms-panel{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:var(--panel-margin,6px 0);padding:var(--panel-pad,6px 8px);background:var(--panel,transparent);border:var(--panel-border,0);box-shadow:var(--panel-shadow,none);border-radius:var(--panel-radius,0)}
+.ms-counter{display:flex;flex-direction:column;align-items:center;min-width:70px}
+.ms-label{font:var(--label-font,600 10px/1.2 var(--body-font));text-transform:uppercase;letter-spacing:.12em;color:var(--label-ink,var(--muted))}
+.ms-counter>span:last-child{min-width:3.2ch;text-align:center;padding:var(--lcd-pad,3px 8px);font:var(--lcd-font,700 22px/1 Consolas,monospace);font-variant-numeric:tabular-nums;color:var(--lcd-ink,var(--ink));background:var(--lcd-bg,transparent);border:var(--lcd-border,0);border-radius:var(--lcd-radius,2px);box-shadow:var(--lcd-shadow,none);text-shadow:var(--lcd-glow,none)}
+#face-slot .mine-face{width:46px;height:46px;padding:0;font:var(--face-font,26px/1 'Segoe UI Emoji','Apple Color Emoji',sans-serif);display:grid;place-items:center;background:var(--face-bg,transparent);color:var(--face-ink,var(--ink));border:var(--face-border,0);border-radius:var(--face-radius,6px);box-shadow:var(--face-shadow,none)}
+#face-slot .mine-face:active{box-shadow:var(--face-pressed,var(--face-shadow,none))}
+.ms-field{padding:var(--field-pad,0);background:var(--field-frame,transparent);border:var(--field-border,0);box-shadow:var(--field-shadow,none);border-radius:var(--field-radius,0);position:relative;overflow:hidden}
+.ms-field .stage{min-height:0;padding:0;display:block}
+.ms-field .stage .board.mines{width:min(calc(100vw - 48px),var(--fit,460px),max(250px,calc(100svh - 300px)));gap:var(--gap,0);background:var(--grid-line,transparent);margin:0 auto}
+.ms-field .stage .board.mines.wide{width:min(calc(100vw - 48px),calc(var(--cols)*30px))!important}
+.ms-game .tools{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:10px 4px 2px}
+.ms-game .tools button{min-height:34px;padding:4px 12px;font-size:12.5px;background:var(--btn,#fff);color:var(--btn-ink,var(--ink));border:var(--btn-border,1px solid #0003);border-radius:var(--radius,4px);box-shadow:var(--btn-shadow,none);font-family:var(--body-font,inherit)}
+.ms-game .tools button.on{background:var(--on-bg,var(--accent));color:var(--on-ink,#fff)}
+.ms-game .tools .mine-face{display:none}
+.ms-custom{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:8px;padding:8px 0 2px}
+.ms-custom label{display:flex;flex-direction:column;font-size:11px;gap:2px;color:var(--muted)}
+.ms-custom input{width:64px;min-height:32px;padding:2px 6px;font:14px var(--mono,monospace);background:var(--input-bg,#fff);color:var(--btn-ink,#111);border:var(--btn-border,1px solid #0003);border-radius:var(--radius,4px)}
+.ms-status{margin:8px 0 0;text-align:center;font:var(--status-font,600 13px var(--body-font))}
+.ms-game .hint{margin:4px 0 6px;padding:0 6px;min-height:0;font-size:12px;text-align:center;color:var(--muted);max-width:520px;margin-inline:auto}
+/* the field: covered and open squares, numbers, flags, marks */
+.ms-field .mines .square{border-radius:var(--sq-radius,0);font:var(--num-font,700 clamp(12px,2.6vw,20px)/1 var(--mono,monospace));background:var(--cover);border:var(--cover-border,0);box-shadow:var(--cover-shadow,none);color:var(--cover-ink,var(--ink));padding:0;min-height:0}
+.ms-field .mines .square:hover:not(.revealed){background:var(--cover-hover,var(--cover))}
+.ms-field .mines .square.revealed{background:var(--open);border:var(--open-border,0);box-shadow:var(--open-shadow,none)}
+.ms-field .mines .square.bomb{background:var(--bomb-bg,var(--open));color:var(--bomb-ink,#111)}
+.ms-field .mines .square.boom{background:var(--boom-bg,#e23b3b)}
+.ms-field .mines .square.flag{color:var(--flag-ink,#c62828)}
+.ms-field .mines .square.qmark{color:var(--q-ink,var(--ink))}
+.ms-field .mines .square.wrong{color:var(--wrong-ink,#c62828);background:var(--open)}
+body[data-look] .ms-field .board.mines .square.v1{color:var(--n1)}body[data-look] .ms-field .board.mines .square.v2{color:var(--n2)}body[data-look] .ms-field .board.mines .square.v3{color:var(--n3)}body[data-look] .ms-field .board.mines .square.v4{color:var(--n4)}body[data-look] .ms-field .board.mines .square.v5{color:var(--n5)}body[data-look] .ms-field .board.mines .square.v6{color:var(--n6)}body[data-look] .ms-field .board.mines .square.v7{color:var(--n7)}body[data-look] .ms-field .board.mines .square.v8{color:var(--n8)}
+.ms-field .board.mines.wide .square{font-size:clamp(10px,1.6vw,16px);border-width:inherit}
+/* the records window */
+.ms-records{width:min(100%,300px)}
+.ms-records .ms-body{padding:10px 12px 12px}
+.ms-records .stats{margin:0}.ms-records .stats h2{display:none}.ms-records .stats .muted{margin:0 0 10px;font-size:11px}
+.ms-records .stat-grid dd{font:var(--lcd-font,700 20px/1 Consolas,monospace);font-size:18px}
+.ms-records #score-panel{margin-top:14px;padding-top:12px;border-top:var(--rule,1px solid #0002)}
+.ms-records .score-heading{display:flex;justify-content:space-between;align-items:center}.ms-records .score-heading h2{margin:0;font:var(--tb-font,700 13px var(--body-font));text-transform:var(--tb-case,none)}
+.ms-records .scores{font:13px var(--mono,monospace)}
+dialog{background:var(--win);color:var(--win-ink,var(--ink));border:var(--win-border,1px solid #0003);border-radius:var(--win-radius,6px)}
+dialog :is(button,input){background:var(--btn,#fff);color:var(--btn-ink,var(--ink));border:var(--btn-border,1px solid #0003);border-radius:var(--radius,4px)}
+dialog button.solid{background:var(--accent);color:var(--on-accent,#fff)}
+dialog .muted{color:var(--muted)}
+#help-dialog{max-width:520px}#help-dialog p{line-height:1.5}
+#help-dialog kbd{font:12px var(--mono,monospace);padding:1px 5px;border:1px solid #0003;border-radius:3px}
 
-@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+/* =====================================================================================
+   1. Retro desktop: a beveled 90s window on a plum desktop. Its own palette:
+   a dusk title bar, warm grey bevels, amber counters, its own number colours.
+   ===================================================================================== */
+body[data-look="retro"]{--desk:radial-gradient(circle,#ffffff14 1px,#0000 1.5px) 0 0/8px 8px,#5b4a72;--ink:#1d1a22;--muted:#4e4857;--accent:#b4472b;--body-font:Tahoma,'Segoe UI',Verdana,sans-serif;--mono:'Lucida Console',Consolas,monospace;--radius:0;
+  --bar:#d6d0c4;--bar-rule:2px solid #8f887b;--title-font:700 17px/1 Tahoma,'Segoe UI',sans-serif;
+  --bevel-out:inset -2px -2px 0 #6d675c,inset 2px 2px 0 #fffdf6,inset -3px -3px 0 #a39c8f,inset 3px 3px 0 #ece7dc;--bevel-in:inset 2px 2px 0 #6d675c,inset -2px -2px 0 #fffdf6;
+  --btn:#d6d0c4;--btn-border:0;--btn-shadow:var(--bevel-out);
+  --win:#d6d0c4;--win-border:0;--win-radius:0;--win-shadow:var(--bevel-out),6px 8px 0 #2b2236;--win-pad:5px;
+  --tb:linear-gradient(90deg,#7a2e44,#d0703a);--tb-ink:#fff;--tb-radius:0;--tb-font:700 13px/1 Tahoma,sans-serif;--dot-bg:#d6d0c4;--dot-border:0;--dot-radius:0;
+  --panel:#d6d0c4;--panel-shadow:var(--bevel-in);--panel-pad:7px 10px;
+  --lcd-bg:#2a2016;--lcd-ink:#ffb43a;--lcd-glow:0 0 6px #ff9a1a99;--lcd-font:700 22px/1 'Lucida Console',Consolas,monospace;--lcd-shadow:inset 1px 1px 0 #000;--label-ink:#4e4857;
+  --face-bg:#d6d0c4;--face-shadow:var(--bevel-out);--face-pressed:var(--bevel-in);--face-radius:0;
+  --field-pad:4px;--field-shadow:var(--bevel-in);
+  --cover:#d6d0c4;--cover-hover:#dfdace;--cover-shadow:inset -2px -2px 0 #8f887b,inset 2px 2px 0 #fffdf6;--open:#c8c2b5;--open-shadow:inset 1px 1px 0 #a39c8f;--bomb-bg:#c8c2b5;--boom-bg:#e0503a;--flag-ink:#b4472b;
+  --n1:#12808a;--n2:#5a7d1a;--n3:#c0392b;--n4:#6c3483;--n5:#8e5b12;--n6:#2c5f7c;--n7:#1d1a22;--n8:#7d776d;--rule:1px solid #8f887b;--on-bg:#7a2e44}
+body[data-look="retro"] .ms-bar :is(button,select):active,body[data-look="retro"] .ms-game .tools button:active{box-shadow:var(--bevel-in)}
+body[data-look="retro"] .ms-game .tools button.on{box-shadow:var(--bevel-in);color:#fff}
+body[data-look="retro"] .ms-records .ms-titlebar{background:linear-gradient(90deg,#3c5a46,#7fa06a)}
 
-.game-actions{background:var(--panel);padding:10px;border:2px outset var(--edge)}.game-actions .theme-picker{color:var(--ink)}button,select{background:var(--panel);color:var(--ink)}button.solid{background:var(--green);color:#fff}.sidebar .rules{border-top-color:var(--edge)}
+/* =====================================================================================
+   2. Sonar: a submarine's sonar console. Dark glass behind a metal bezel, a
+   sweep going round over the field, contacts (mines) as pings.
+   ===================================================================================== */
+body[data-look="sonar"]{--desk:radial-gradient(ellipse at 50% 0%,#1d2b30,#0b1114 70%) fixed,#0b1114;--ink:#9ff5c7;--muted:#5fa88a;--accent:#2fbf7f;--on-accent:#04130c;--body-font:'Segoe UI',system-ui,sans-serif;--mono:Consolas,'Lucida Console',monospace;--radius:3px;color-scheme:dark;
+  --bar:#0b1114;--bar-rule:1px solid #1f3a33;--title-font:600 16px/1 Consolas,monospace;--title-spacing:.18em;
+  --btn:#14221f;--btn-ink:#9ff5c7;--btn-border:1px solid #2a4a40;
+  --win:linear-gradient(160deg,#5a6468,#2c3336 40%,#41494c);--win-ink:#d8e6e0;--win-border:1px solid #000;--win-radius:16px;--win-shadow:inset 0 1px 0 #ffffff40,0 20px 40px -14px #000;--win-pad:12px;
+  --tb-font:600 11px/1 Consolas,monospace;--tb-spacing:.2em;--tb-case:uppercase;--tb-ink:#c8d4cf;--dots:none;
+  --panel:#071210;--panel-border:1px solid #000;--panel-shadow:inset 0 0 12px #000;--panel-radius:8px;--panel-margin:8px 0;
+  --lcd-ink:#9ff5c7;--lcd-glow:0 0 8px #3dffa0aa;--lcd-font:400 22px/1 Consolas,monospace;--label-ink:#5fa88a;
+  --face-bg:radial-gradient(circle at 40% 35%,#3dffa0,#0b6b3f 70%);--face-ink:#04130c;--face-radius:50%;--face-shadow:0 0 0 3px #1b2a26,0 0 14px #3dffa066;--face-font:700 22px/1 Consolas,monospace;
+  --field-pad:8px;--field-frame:#04100c;--field-radius:10px;--field-shadow:inset 0 0 0 2px #000,inset 0 0 30px #000;--grid-line:#0f3325;--gap:1px;
+  --cover:#06170f;--cover-hover:#0a2618;--open:#020906;--bomb-bg:#020906;--bomb-ink:#ff5a5a;--boom-bg:#3a0d0d;--flag-ink:#ffb43a;--q-ink:#7fd6ff;--wrong-ink:#ff5a5a;
+  --num-font:400 clamp(12px,2.6vw,20px)/1 Consolas,monospace;--n1:#3dffa0;--n2:#7fd6ff;--n3:#ffd34a;--n4:#ff9a4a;--n5:#ff5a8a;--n6:#c38cff;--n7:#fff;--n8:#8aa39a;--rule:1px solid #ffffff22;--on-bg:#2fbf7f;--on-ink:#04130c;--input-bg:#071210}
+body[data-look="sonar"] .ms-field .mines .square.revealed{text-shadow:0 0 6px currentColor}
+body[data-look="sonar"] .ms-field::after{content:'';position:absolute;inset:8px;border-radius:6px;pointer-events:none;background:conic-gradient(from 0deg,#3dffa000 0deg,#3dffa000 300deg,#3dffa026 350deg,#3dffa055 360deg);animation:sweep 4s linear infinite;mix-blend-mode:screen}
+@keyframes sweep{to{transform:rotate(360deg)}}
+body[data-look="sonar"] .ms-field .mines .square.bomb{animation:ping 1.4s ease-out infinite;text-shadow:0 0 8px #ff5a5a}
+@keyframes ping{0%{box-shadow:inset 0 0 0 0 #ff5a5a80}100%{box-shadow:inset 0 0 0 12px #ff5a5a00}}
+body[data-look="sonar"] .ms-window::before{content:'';position:absolute;top:8px;left:8px;width:6px;height:6px;border-radius:50%;background:#1b2224;box-shadow:inset 0 1px 1px #000,calc(100% + 0px) 0 0 #1b2224}
+body[data-look="sonar"] .ms-wsub{color:#3dffa0}
+@media (prefers-reduced-motion:reduce){body[data-look="sonar"] .ms-field::after{display:none}}
 
-body[data-skin="1"] .mines .flag{color:#f4cf82}
+/* =====================================================================================
+   3. Graph paper: the game drawn on a sheet of squared paper in pencil. Covered
+   squares shaded, numbers written by hand, flags inked in red.
+   ===================================================================================== */
+body[data-look="graph"]{--desk:#d9cdb6;--ink:#2d2d33;--muted:#6b6b74;--accent:#c62828;--hand:'Segoe Print','Bradley Hand','Comic Sans MS',cursive;--body-font:var(--hand);--mono:var(--hand);--radius:3px;
+  --bar:#efe6d3;--bar-rule:1px solid #b9ab8f;--title-font:700 20px/1 var(--hand);
+  --btn:#fffefa;--btn-border:1.5px solid #2d2d33;--btn-shadow:2px 2px 0 #2d2d3333;
+  --win:linear-gradient(#0000 0 0) ,repeating-linear-gradient(#0000 0 15px,#7fa7d433 15px 16px),repeating-linear-gradient(90deg,#0000 0 15px,#7fa7d433 15px 16px),#fffefa;--win-border:0;--win-radius:1px;--win-shadow:0 1px 0 #0002,0 14px 26px -12px #0007;--win-pad:14px 16px 10px;
+  --tb-font:700 18px/1 var(--hand);--tb-pad:2px 2px 8px;--dots:none;
+  --panel-border:0;--panel-pad:4px 2px;--label-font:400 12px/1.2 var(--hand);--label-ink:#6b6b74;
+  --lcd-font:700 24px/1 var(--hand);--lcd-ink:#2d2d33;--lcd-pad:0 4px;
+  --face-font:700 18px/1 var(--hand);--face-border:2px solid #2d2d33;--face-radius:50%;--face-bg:#fffefa;
+  --field-border:2px solid #2d2d33;--grid-line:#2d2d3355;--gap:1px;
+  --cover:repeating-linear-gradient(-45deg,#d9d9de 0 1.5px,#fffefa 1.5px 4px);--cover-hover:repeating-linear-gradient(-45deg,#c4c4cc 0 1.5px,#fffefa 1.5px 4px);--open:#fffefa;--bomb-bg:#fffefa;--boom-bg:#ffd5d0;--flag-ink:#c62828;--q-ink:#3967c5;
+  --num-font:700 clamp(13px,2.8vw,21px)/1 var(--hand);--n1:#3967c5;--n2:#2d7d46;--n3:#c62828;--n4:#2d2d33;--n5:#8a4b14;--n6:#3967c5;--n7:#2d2d33;--n8:#6b6b74;--rule:1.5px dashed #2d2d3355;--on-bg:#2d2d33}
+body[data-look="graph"] .ms-titlebar{text-decoration:underline wavy #c6282866 1.5px;text-underline-offset:6px}
+body[data-look="graph"] .ms-window{transform:rotate(-.4deg)}
+body[data-look="graph"] .ms-records{transform:rotate(.8deg)}
+body[data-look="graph"] .ms-records::before{content:'';position:absolute;top:-10px;left:50%;width:70px;height:22px;margin-left:-35px;background:#f3e7a2cc;transform:rotate(-3deg);box-shadow:0 1px 2px #0002}
+
+/* =====================================================================================
+   4. Meadow: the field is a field. Grass you dig up, soil underneath, little
+   red flags, and a wooden sign for the counters.
+   ===================================================================================== */
+body[data-look="meadow"]{--desk:linear-gradient(#9fd4f0,#d8f0f7 45%,#b9de8f 45.1%,#8cc463) fixed,#b9de8f;--ink:#2b3a1e;--muted:#4e6a35;--accent:#c8352b;--body-font:'Trebuchet MS','Segoe UI',sans-serif;--mono:'Trebuchet MS',sans-serif;--radius:10px;
+  --bar:#ffffffb3;--bar-rule:0;--title-font:800 20px/1 'Trebuchet MS',sans-serif;--title-ink:#3e6a24;
+  --btn:#fff;--btn-border:2px solid #6b4a2b;--btn-shadow:0 2px 0 #6b4a2b;
+  --win:#7a5432;--win-ink:#fff6e3;--win-border:0;--win-radius:14px;--win-shadow:inset 0 2px 0 #a37a4f,inset 0 -3px 0 #553a22,0 14px 24px -12px #2b3a1e99;--win-pad:10px;
+  --tb-font:800 14px/1 'Trebuchet MS',sans-serif;--tb-ink:#fff6e3;--dots:none;
+  --panel:repeating-linear-gradient(90deg,#0000 0 24px,#00000014 24px 25px),#c49a63;--panel-radius:8px;--panel-shadow:inset 0 2px 0 #e0b981,inset 0 -2px 0 #8d6a3e;--panel-margin:8px 0;
+  --label-ink:#5a3d20;--lcd-ink:#3a2612;--lcd-font:800 24px/1 'Trebuchet MS',sans-serif;
+  --face-bg:#fff6e3;--face-radius:50%;--face-shadow:0 2px 0 #8d6a3e;
+  --field-pad:6px;--field-frame:#5b8a32;--field-radius:10px;--field-shadow:inset 0 2px 6px #0004;--gap:2px;--sq-radius:4px;
+  --cover:radial-gradient(circle at 30% 25%,#ffffff2e 0 12%,#0000 13%),linear-gradient(#8fd15a,#6fb43f);--cover-hover:linear-gradient(#a3de70,#7fc24c);--cover-shadow:inset 0 -3px 0 #4f8a2a;
+  --open:#e2c79a;--open-shadow:inset 0 2px 3px #9b7a4c66;--bomb-bg:#b48a5a;--bomb-ink:#2b1d10;--boom-bg:#e0503a;--flag-ink:#c8352b;--q-ink:#fff;
+  --num-font:800 clamp(13px,2.8vw,21px)/1 'Trebuchet MS',sans-serif;--n1:#2f6db5;--n2:#3e7b23;--n3:#c8352b;--n4:#6b3a9e;--n5:#8a4b14;--n6:#1d7d7a;--n7:#2b1d10;--n8:#6b5a44;--rule:1px solid #fff6e333;--on-bg:#3e6a24;--input-bg:#fff6e3}
+body[data-look="meadow"] .ms-field .mines .square.flag{text-shadow:0 1px 0 #fff8}
+body[data-look="meadow"] .ms-field .mines .square.qmark{text-shadow:0 1px 1px #0006}
+body[data-look="meadow"] .ms-records{--win:#fff6e3;--win-ink:#2b3a1e;--tb-ink:#3e6a24;--win-shadow:0 3px 0 #c49a63,0 14px 24px -12px #2b3a1e99}
+
+/* =====================================================================================
+   5. Blueprint: drafting paper. White line-work on blue, covered squares
+   cross-hatched, a title block like a drawing sheet's.
+   ===================================================================================== */
+body[data-look="blueprint"]{--desk:repeating-linear-gradient(#0000 0 23px,#ffffff10 23px 24px),repeating-linear-gradient(90deg,#0000 0 23px,#ffffff10 23px 24px),#1c4a86;--ink:#eaf3ff;--muted:#a9c4e8;--accent:#ffd34a;--on-accent:#12305a;--body-font:'Courier New',Consolas,monospace;--mono:'Courier New',Consolas,monospace;--radius:0;color-scheme:dark;
+  --bar:#16407a;--bar-rule:1px solid #eaf3ff66;--title-font:700 18px/1 'Courier New',monospace;--title-spacing:.2em;
+  --btn:#1c4a86;--btn-ink:#eaf3ff;--btn-border:1px solid #eaf3ffaa;
+  --win:#1f5394;--win-border:2px solid #eaf3ff;--win-radius:0;--win-shadow:0 0 0 4px #1f5394,0 0 0 5px #eaf3ff88;--win-pad:10px;
+  --tb-font:700 12px/1 'Courier New',monospace;--tb-spacing:.22em;--tb-case:uppercase;--tb-pad:4px 2px 8px;--dots:none;
+  --panel-border:1px dashed #eaf3ff88;--panel-pad:6px 10px;--label-ink:#a9c4e8;--lcd-font:700 22px/1 'Courier New',monospace;--lcd-ink:#ffd34a;
+  --face-border:1.5px solid #eaf3ff;--face-font:700 15px/1 'Courier New',monospace;--face-radius:50%;
+  --field-border:2px solid #eaf3ff;--grid-line:#eaf3ff99;--gap:1px;
+  --cover:repeating-linear-gradient(45deg,#eaf3ff33 0 1px,#1f5394 1px 6px),#1f5394;--cover-hover:repeating-linear-gradient(45deg,#eaf3ff55 0 1px,#245ea6 1px 6px);--open:#1a4985;--bomb-bg:#1a4985;--bomb-ink:#ff8a7a;--boom-bg:#7a2a3a;--flag-ink:#ffd34a;--q-ink:#9fe6ff;--wrong-ink:#ff8a7a;
+  --num-font:700 clamp(13px,2.7vw,20px)/1 'Courier New',monospace;--n1:#eaf3ff;--n2:#9fe6ff;--n3:#ffd34a;--n4:#ff8a7a;--n5:#c9a8ff;--n6:#8affc1;--n7:#fff;--n8:#a9c4e8;--rule:1px dashed #eaf3ff66;--on-bg:#ffd34a;--on-ink:#12305a;--input-bg:#1c4a86}
+body[data-look="blueprint"] .ms-game::after{content:'SHEET 1 OF 1 · MINEFIELD · SCALE 1:1';display:block;margin-top:8px;padding:5px 8px;border:1px solid #eaf3ff88;font:700 10px/1 'Courier New',monospace;letter-spacing:.14em;color:#a9c4e8;text-align:right}
+body[data-look="blueprint"] .ms-counter{border-bottom:1px solid #eaf3ff66;padding-bottom:2px}
+
+/* =====================================================================================
+   6. Terminal: the field as text. # covered, . open, F a flag, * a mine.
+   ===================================================================================== */
+body[data-look="terminal"]{--desk:#040904;--ink:#8dffa6;--muted:#4fae66;--accent:#8dffa6;--on-accent:#040904;--radius:0;--mono:var(--term-font);--body-font:var(--term-font);
+  --bar:#040904;--bar-rule:1px dashed #2c6b3a;--title-font:400 17px/1 var(--term-font);
+  --btn:#040904;--btn-ink:#8dffa6;--btn-border:1px dashed #2c6b3a;
+  --win:#040904;--win-border:1px dashed #2c6b3a;--win-radius:0;--win-shadow:none;--win-pad:10px;
+  --tb-font:400 13px/1 var(--term-font);--dots:none;
+  --lcd-font:400 22px/1 var(--term-font);--lcd-ink:#d8ffe0;--face-font:400 15px/1 var(--term-font);
+  --cover:none;--open:none;--bomb-bg:none;--boom-bg:#3a0d0d;--cover-ink:#2f7a42;--flag-ink:#ffc56b;--q-ink:#7fd6ff;--wrong-ink:#ff6b6b;--bomb-ink:#ff6b6b;
+  --num-font:400 clamp(12px,2.6vw,19px)/1 var(--term-font);--n1:#8dffa6;--n2:#b6ffc6;--n3:#ffc56b;--n4:#ff9a6b;--n5:#ff6b9a;--n6:#7fd6ff;--n7:#fff;--n8:#4fae66;--rule:1px dashed #2c6b3a;--on-bg:#8dffa6;--on-ink:#040904;--input-bg:#040904}
+body[data-look="terminal"] .ms-name::before{content:'$ ./';color:#4fae66}
+body[data-look="terminal"] .ms-name{text-transform:lowercase}
+body[data-look="terminal"] .ms-field .mines .square.revealed:not(.bomb){color:var(--n1)}
+body[data-look="terminal"] .ms-field .mines .square.revealed.v0{color:#2f7a42}
+body[data-look="terminal"] .ms-titlebar::before{content:'┌─ '}
+body[data-look="terminal"] .ms-game .tools button::before{content:'['}body[data-look="terminal"] .ms-game .tools button::after{content:']'}
   </style>
 </head>
-<body data-game="minesweeper" data-skin="0">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">⚑</span>Minesweeper</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Minesweeper</h1><p id="game-subtitle">A field of calculated risks</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Desktop 95</option><option value="1">Terminal</option><option value="2">Ice field</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>Field manual</h2><p id="rules"></p></section></aside></div>
+<body data-game="minesweeper" data-skin="0" data-look="retro">
+  <header class="ms-bar">
+    <a href="../../gaming.html" class="ms-back" aria-label="Back to the Arcade">←</a>
+    <h1 class="ms-name" id="game-title">Minesweeper</h1><p id="game-subtitle" hidden></p>
+    <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Field</span><select id="mode"></select></label><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Style"><option value="0" data-look="retro">Retro desktop</option><option value="1" data-look="sonar">Sonar</option><option value="2" data-look="graph">Graph paper</option><option value="3" data-look="meadow">Meadow</option><option value="4" data-look="blueprint">Blueprint</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
+  </header>
+  <main id="playroom" class="ms-desk" aria-labelledby="game-title">
+    <section class="ms-window ms-game" aria-label="The field">
+      <div class="ms-titlebar"><span>Minesweeper</span><span class="ms-wsub" id="field-name"></span><span class="ms-dots" aria-hidden="true"><i></i><i></i></span></div>
+      <div class="ms-panel"><div class="ms-counter"><span class="ms-label">Mines</span><span id="mine-count">10</span></div><div id="face-slot"></div><div class="ms-counter"><span class="ms-label">Time</span><span id="metric" aria-live="off">0:00</span></div></div>
+      <div class="ms-field"><div id="stage" class="stage"></div></div>
+      <p id="status" class="ms-status" role="status" aria-live="polite"></p>
+      <div id="tools" class="tools"></div>
+      <p id="hint" class="hint"></p>
     </section>
+    <aside class="ms-window ms-records" aria-label="Best times">
+      <div class="ms-titlebar"><span>Best times</span><span class="ms-wsub"></span><span class="ms-dots" aria-hidden="true"><i></i></span></div>
+      <div class="ms-body"><div id="stats-slot"></div>
+      <section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section></div>
+    </aside>
     <noscript><p>Minesweeper needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p>
+    <p><strong>Flags.</strong> Right-click, press and hold, or turn on Flag mode, to flag a square you think is a mine.</p>
+    <p><strong>Question marks.</strong> Turn on <em>? mode</em>, or <kbd>Shift</kbd>+right-click (or middle-click) on a computer, for a square you're unsure about. A question mark is only a note: it doesn't count as a flag, and you can still open the square.</p>
+    <p><strong>Opening around a number.</strong> Once a number has all its flags, click it to open every other square around it.</p>
+    <p><strong>Custom size.</strong> Pick "Custom size" for your own rows, columns and mines. Custom games stay off the scoreboard.</p>
+    <button id="close-help" class="solid">Got it</button></dialog>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
+  <script>
+    // The window's title bar names the field being played.
+    (function(){const m=document.getElementById('mode'),n=document.getElementById('field-name'),set=()=>{n.textContent=m.selectedOptions[0]?.textContent||'';};m.addEventListener('change',set);set();})();
+  </script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
 </body>
 </html>

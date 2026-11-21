@@ -256,7 +256,10 @@
   const Mines = {
     /* rows × cols; a square field passes one size. Saves from before 2026-11-21
        have only n, so cols/rows fall back to it. */
-    create(n=9, mines=10, cols=n) { return { n,rows:n,cols,mines,b:Array(n*cols).fill(0),open:Array(n*cols).fill(false),flags:Array(n*cols).fill(false),started:false,over:false,won:false }; },
+    create(n=9, mines=10, cols=n) { return { n,rows:n,cols,mines,b:Array(n*cols).fill(0),open:Array(n*cols).fill(false),flags:Array(n*cols).fill(false),marks:Array(n*cols).fill(false),started:false,over:false,won:false }; },
+    /* A question mark (2026-11-21): a note only. It never blocks a click and never
+       counts as a flag; a flag placed on it replaces it. Older saves have no marks. */
+    mark(s,i){if(s.over||s.open[i]||s.flags[i])return false;s.marks=s.marks||Array(s.b.length).fill(false);s.marks[i]=!s.marks[i];return true;},
     size(s){return{rows:s.rows||s.n,cols:s.cols||s.n};},
     neighbors(s,i) {const {rows,cols}=Mines.size(s),r=Math.floor(i/cols),c=i%cols,out=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if((dr||dc)&&r+dr>=0&&r+dr<rows&&c+dc>=0&&c+dc<cols)out.push((r+dr)*cols+c+dc);return out;},
     reveal(s,i,random=Math.random) {
@@ -264,7 +267,7 @@
       if(!s.started){const safe=new Set([i,...Mines.neighbors(s,i)]),spots=shuffle([...s.b.keys()].filter(j=>!safe.has(j)),random);for(const j of spots.slice(0,s.mines))s.b[j]=-1;for(let j=0;j<s.b.length;j++)if(s.b[j]!==-1)s.b[j]=Mines.neighbors(s,j).filter(k=>s.b[k]===-1).length;s.started=true;}
       if(s.open[i]) {if(s.b[i]>0&&Mines.neighbors(s,i).filter(j=>s.flags[j]).length===s.b[i])for(const j of Mines.neighbors(s,i))if(!s.open[j]&&!s.flags[j])Mines.reveal(s,j,random);return;}
       if(s.b[i]===-1){s.open[i]=true;s.over=true;return;}
-      const pending=[i];while(pending.length){const j=pending.pop();if(s.open[j]||s.flags[j])continue;s.open[j]=true;if(!s.b[j])for(const k of Mines.neighbors(s,j))if(!s.open[k]&&!s.flags[k])pending.push(k);}
+      const pending=[i];while(pending.length){const j=pending.pop();if(s.open[j]||s.flags[j])continue;s.open[j]=true;if(s.marks)s.marks[j]=false;if(!s.b[j])for(const k of Mines.neighbors(s,j))if(!s.open[k]&&!s.flags[k])pending.push(k);}
       if(s.open.filter(Boolean).length===s.b.length-s.mines){s.over=true;s.won=true;}
     },
     /* The same mines again, everything covered: "play this board again". */

@@ -187,7 +187,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
 - [x] **Chess:** a club board between two player plates (with captured material), the
   move list as a scoresheet column beside it.
 - [x] **Solitaire:** the whole page is the table; a slim toolbar; no sidebar.
-- [ ] **Minesweeper:** the page is a desktop window: title bar, menu, counter / face /
+- [x] **Minesweeper:** the page is a desktop window: title bar, menu, counter / face /
   clock panel, the field; best times in their own window.
 - [ ] **Sudoku:** a puzzle-book page: puzzle number and date as a header, the grid
   centred, the number pad as a tray beside it, notes and checks as pencil tools.
@@ -277,6 +277,26 @@ into the help dialog wherever the page has no room for them. Page concepts:
 - [x] The solver wins about two deals in three within its budget (a deal it can't
       settle in time counts as no), so a winnable deal takes about a second to find,
       in chess-worker.js. The daily deal is left as it is, the same for everyone.
+
+### Minesweeper: what players want (Ric, 2026-11-21: "Yep minesweeper", then his answers) — built the same day
+- [x] The page is the game's window (concept above): a title bar, the counter /
+      face / clock panel, the field, and your best times in a window of their own.
+      Each style restyles the window into its own thing (a console, a sheet of
+      paper, a field, a drawing).
+- [x] Question marks (Ric: "The question marks work but they can't mess with the
+      flag buttons"): right-click, press-and-hold and Flag mode still only flag,
+      exactly as before. A ? goes on with its own ? mode button, or Shift+right-click
+      / middle-click on a computer.
+- [x] Custom size (Ric picked it): rows, columns and mines of your own; custom
+      games stay off the scoreboard.
+- [x] Expert stays fitted to the screen on a phone (Ric: "Keep it fitted").
+- [x] Six styles (Ric: "Yes, those six"): Retro desktop (a beveled 90s window in its
+      own colours and faces, not a copy of Windows'), Sonar (a submarine sonar
+      screen, mines as pings), Graph paper (pencil, flags inked in red), Meadow
+      (grass tiles, little red flags), Blueprint (white lines on blue drafting
+      paper), Terminal (ASCII). Desktop 95, Ice field and the old Terminal go.
+- Not wanted this round: no-guess boards. Chording was already in (click a
+  number whose flags are all placed).
 
 ### Online play, Chess and Checkers (Ric, 2026-11-21: "multiplayer for chess and checkers needs to be in")
 Two players on one device was already there, so this is playing a friend on their
