@@ -1937,14 +1937,27 @@ needed for that half.
 - **Goods are carried only where they are asked for** and can be paid for. Without that, a village
   with orders waiting looked dear, and carriers took packs there that its empty till could not
   buy, and kept them: 20 to 37 goods each by autumn.
+- **Households start owning goods**, of every age (a sixth to one good each, spread by id, so the
+  world's dice fall as before). Everybody starting with nothing sent every household to the store in
+  the first hours, and the orders it left set a season's stock several times what a village used.
+- **A levy calls up any trade**, farmers and crafters first. It took only those two, and once
+  crafters were few the faction in `test/rule.test.mjs` had taken to mining to a man and its army
+  stalled at 3 of 25.
+- **A rumour of sickness keeps people from going to load there**, not only from carrying there
+  (12b's gap, found by `test/heard.test.mjs` once trade moved: hunters of other peoples kept going
+  to the village named to pick up a load for somewhere else).
 - The village panel shows **On order** beside Goods.
 
-Measured, the default world over a year, after: seed 1 made 884 and took out 520, seed 2 made 808
-and took out 425; the stores ended the year at 0.86 and 0.46 goods a head and people held about
-0.7 each. That is 1.7 to 2.7 seasons' use, most of it made in the first weeks when every household
-bought at once, and slowly drawn down. Making goods fell from 4–7% of grown-ups' hours to about 1%,
-and no one keeps "crafter" as a trade in an ordinary year: the goods are made by people who farm,
-herd and hunt, in their spare hours, as Ric's answer expected. WORLDS_LINE
+Measured, the default world over a year, after: seed 1 made 496 and took out 165, seed 2 made 577
+and took out 177 (the rest is in households' hands, about 0.7 a head); the stores ended the year at
+0.14 and 0.16 goods a head, about a season and a half of what was taken. Making goods fell from 4–7%
+of grown-ups' hours to about 1%, and hardly anybody keeps "crafter" as a trade in an ordinary year:
+the goods are made in spare hours by people who farm, herd and hunt, as Ric's answer expected. The
+hours went to herding, hunting and rest. Over four seeds, a year each, old against new: 1,556 →
+1,601 alive, 88 → 98 born, 7 → 3 starved, 37 → 0 dead of cold (crafters had been burning the wood
+the fires needed: a batch takes wood), 8 → 15 in battle, 7 → 12 houses built, and the richest
+tenth's share of the money 0.82–0.90 → 0.61–0.73. A winter with little put by (`stored` 0.2, five
+seeds, thirty days) had a twentieth of the hungry hours.
 
 Found on the way: the engine already had a function named `askFor` (asking a neighbour for food),
 and the first version of this one had the same name; the later declaration won, and every order
@@ -1953,8 +1966,9 @@ this section.
 
 Cost: a few sums per purchase and per sale, and one pass over the houses being built per village
 an hour, which was already made for materials. `test/bench.mjs --quick`, two runs each, old then
-new: 400 people 0.14/0.15 → 0.17/0.16 s a day, 2,000 0.80/0.93 → 0.82/0.79, 5,000 2.50/2.47 →
-2.52/2.30 — within this machine's noise.
+new: 2,000 people 0.89/0.85 → 0.84/0.84 s a day, 5,000 2.63/2.53 → 2.51/2.65; the 400-person row
+read 0.16/0.13 → 0.18/0.19, but ten days of that world timed alone read 0.170/0.163 → 0.159/0.150
+s a day, and none of the new code is in its profile — the row is noise at 0.03 s.
 
 ### Faster, the same world; and children past 3,000 people (2026-11-20)
 

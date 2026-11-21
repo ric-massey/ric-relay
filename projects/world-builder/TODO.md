@@ -2442,7 +2442,14 @@ items 15–20 and `PEOPLE-VISION.md`. Parts a–h are things no later item picks
 that are in but hardly show in a normal world; part j is speed. Do the parts in order, one a
 session, the way any item is done; split further if one is too big.
 
-**15.5a. The store piles up goods nobody uses** (left open by item 9). A village store holds
+**[x] 15.5a. The store piles up goods nobody uses** (left open by item 9). *Done 2026-11-21:*
+crafters make to order (one order a person, a season's stock kept from what is taken, the bench
+paying only for what is asked); a default year's store ends at 0.14–0.16 goods a head, about a
+season and a half of use, against 38–54 before; 37 → 0 dead of cold and 7 → 3 starved over four
+seeds, because crafters no longer burn the wood and hours the village needs. Also: households
+start owning goods, the levy calls any trade, and a rumour of sickness keeps people from going to
+load there (a 12b gap). Left: births in big worlds are about a tenth of a real rate in the old
+engine too (`test/births.test.mjs`) — for 15b. README, "Made to order". A village store holds
 hundreds of goods that are never spent. 15f's jobs and workplaces stand on this economy, so it
 must make sense first. Find out where goods come in and why nothing draws them down (what
 households want, what crafters use, what wears out). Done when: a default year's store holds
@@ -3325,4 +3332,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-20 | 14d, 14e | AMD Ryzen 5 3600, 24 GB | 2.06 s a day, 146× | *not run* | 7.1 MB, 1.38 KB | **peace by marriage, trade deals, tribute; walls, raids, a fighting season**: a different world in a war. 14e against 14d, alternated: 400 0.13/0.14 → 0.13/0.13 s, 2,000 0.70/0.68 → 0.70/0.69 s, 5,000 2.01/2.06 → 2.06/2.06 s: the same |
 | 2026-11-20 | 15a | AMD Ryzen 5 3600, 24 GB | 2.25 s a day, 133× | *not run* | 6.6 MB, 1.29 KB | **each people's ways**: a faction's own nature, events by age and size, a war lost, elected leaders lean to their people; a different world. Against 14e, quick rows alternated new/old/new: 400 0.13/0.13/0.13 s, 2,000 0.68/0.68/0.71 s, 5,000 2.31/2.28/2.25 s — within the drift. Cost: ten adds per grown-up per census (every six hours), one pass over a faction's people per war lost. |
 | 2026-11-20 | 15.25 | AMD Ryzen 5 3600, 24 GB | 1.96 s a day, 153× (2.15 before) | 12.3 s a day, 24× (14.8 before) | 6.7 MB, 1.30 KB | **faster, the same world**: passes 1, 2, 4, 5 against 15a, alternated twice, nothing else running: 400 0.13/0.13 → 0.11/0.11 s, 2,000 0.69/0.68 → 0.60/0.60 s, 5,000 2.14/2.16 → 1.94/1.99 s, 20,000 14.83/14.85 → 12.27/15.16 s (the second an outlier; 12.46/12.47 with births), 400 on 500 km 0.16/0.15 → 0.14/0.15 s; a 400-person world 2.5 → 3.3 MB (the search workspace). **Births past 3,000 and the listening fix, measured apart**: 5,000 1.94/1.99 → 2.09/2.04 s (people are born now), 20,000 12.27 → 12.46/12.47 s. Land update for the page, 400 on 500 km: 21 → 11 ms, 12.4 MB → a few KB |
+| 2026-11-21 | 15.5a | Intel Xeon (cloud), 4 cores | 2.51 / 2.65 s a day (2.63 / 2.53 before, same machine) | *not run* | 7.0 MB, 1.37 KB | **made to order**, a different world (who takes which trade). `--quick` two runs each; 400 people timed alone for ten days 0.17 → 0.15 s a day; none of the new code in the profile |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

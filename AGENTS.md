@@ -693,6 +693,13 @@ nobody had linked was a page nobody could find.
   **Rain, fishing, crossing** (TODO 6b to 6d, 2026-11-16): a year's rain by place, dry years,
   river flats spared; villages by water fish; big rivers only at fords and bridges, villages
   build bridges and boats, armies are stopped by water. Each its own setting; off is as before.
+  **Crafters make to order** (TODO 15.5a, 2026-11-21; Ric: crafters make to order "yes", households
+  using goods up "no"): a crafter sells only what villagers have ordered plus about a season's
+  stock (`asked(v)`: orders + `v.used` − the shelf), the bench is worth only that, and goods are
+  carried only where `canBuy` says they are asked for and can be paid. Don't go back to selling
+  every batch into the store — a default year made 30,000 goods and used under 3,000, and the
+  crafters burned the wood the fires needed. A person holds one order (`p.order`, `p.orderV`);
+  `test/orders.test.mjs` checks a village's `wanted` is their sum.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer
