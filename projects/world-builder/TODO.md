@@ -1515,7 +1515,7 @@ Research notes:
 ### [ ] 15. Eras, old to modern — split into 15a to 15h
 
 **Split 2026-11-20** (Ric: "Split it"), because 15c and 15b stand on part of it. The order is
-**15a → 15c → 15g → 15b → 15e → 15f → 15h → 15d** (rearranged 2026-11-20, below; faith before marriage at Ric's word). This entry
+**15a → 15c → 15g → 15b → 15e → 15f → 15h → 15i → 15d** (rearranged 2026-11-20, below; faith before marriage at Ric's word; 15i added the same day). This entry
 keeps the research and Ric's answers for all of them; tick it when 15d is ticked.
 
 **Now:** one era, a farming village with hand weapons.
@@ -1974,6 +1974,17 @@ Research notes:
   ([*Collective Action in the Formation of Pre-Modern States*, 2008](https://link.springer.com/book/9780387738765);
   [2009 article](https://www.socionauki.ru/journal/files/seh/2009_2/collective_action_in_the_evolution_of_pre_modern_states.pdf)).
 
+**Kings** (Ric, 2026-11-20: "Why aren't kings a thing in the government plan? Or are they just not by
+that term?"). They are, not by that word: the engine's "A chief for life, then their child" is hereditary
+rule, which is what a kingship is; the research above has the king who must carry his great men (Magna
+Carta), and 15g's ruler who takes up a faith for the standing it gives is divine right. What the plan does
+not yet have is the *word* and what goes with it: a title by how much the ruler holds and how it is held —
+a chief of one people, a king over several chiefs' peoples, an emperor over kings (Flannery and Marcus:
+chiefdoms became states by taking in chiefdoms, states empires by swallowing states). *Proposed:* the title
+is read off what the ruler actually holds (one people or many, inherited or chosen), shown in the panel
+and the news, and never decides anything by itself. *Question for Ric:* titles shown that way?
+**Ric (2026-11-20): "We can show titles that way."**
+
 **Approach proposed (not agreed).** A faction's government becomes three things, all real people
 or records, never a label that decides by itself:
 1. *Who must agree* — the coalition: nobody (one ruler), the great families (the richest
@@ -2000,6 +2011,18 @@ per-faction *ways* record. Proposed: split 15 into **15a** (the *ways* record an
 the engine already has: war, walls, food, travel, news — the world unchanged until a value is
 changed), then **15c** and **15b** on top of it, then **15d** (towers, cars, building shapes,
 medicine, techniques spreading). Ric: "Split it" — done above.
+
+**Slavery and serfdom are in 15c too** (added 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built)). *Now:* nobody is unfree.
+*History:* Roman Italy's slaves were perhaps 1 to 1.5 million of 5 to 6 million in the late first
+century BC (20–30%), the empire as a whole about 10% (Scheidel, [2005](https://www.Gwern.net/doc/history/2005-scheidel.pdf));
+only a handful of societies ever passed 20% (Roman Italy, the US South, Brazil, the Caribbean);
+captives of war were a main source. *To read before building:* Domesday's *servi* (about a tenth of
+those counted), medieval serfdom, and Domar's argument that bound labour arises where land is plentiful
+and hands are few. *Proposed:* unfree people as a status a people's law allows or forbids (15c), from
+the stats of those with the say (15a): captives taken in war or raids may be kept and worked or sold,
+a debtor may be bound, a lord's tenants bound to the land; they work and live as others do but cannot
+leave or choose, and may flee or rise when they can. *Questions:* (1) In, as proposed? (2) Can a
+player-ruled faction keep, free or forbid it?
 
 ### [ ] 15g. Faith: peoples who come up with their own
 
@@ -2046,6 +2069,17 @@ to rites and rules.
 **Ric (2026-11-20): "Yes it can drive harsh things."** A faith's rules may call for sacrifice or
 holy war where its holders' stats lead there — never placed, and measured like any other custom.
 **Budget:** default.
+
+**Festivals and holy days are in 15g too** (added 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built)). *Now:* every day is a working day
+but for sleep and rest. *History:* the Church forbade work on Sundays and feast days; how many feasts
+were kept varied from a handful to about 30 a year even between neighbouring manors on one estate,
+negotiated between lords and tenants, and some lords allowed none
+([*Journal of Ecclesiastical History*, work and holy days](https://resolve.cambridge.org/core/journals/journal-of-ecclesiastical-history/article/work-and-festa-ferianda-in-medieval-england1/4732239CC2F61BA02104400C3C6F2754);
+[Durham, peasants' leave](https://dur.ac.uk/departments/academic/history/news/medieval-peasants-enjoyed-a-surprising-range-of-sick-annual-and-bereavement-leave-benefits/));
+popular figures of 40–60 feast days and 150–180 working days are loose. *Proposed:* a faith's rest days
+and festivals are its own (15g), kept or not by a people's customs and its lords (15a, 15c); a
+festival is a day people gather, eat, talk and pass news, so it does something. *Question:* in, as
+proposed?
 
 ### [ ] 15b. Who marries whom
 
@@ -2223,6 +2257,18 @@ Or towns. That's the thing about the jobs they have to match what the city needs
 where the place needs it and can pay for it — never placed, never a fixed share of the people.
 **Budget:** default.
 
+**Long-distance trade is in 15f too** (added 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built)). *Now:* traders carry within reach of
+their village. *History:* caravans went about 35 km a day, a camel carrying about 160 kg; over long,
+slow, unsafe routes mostly goods dear for their weight paid, though some routes carried ordinary goods
+too — wool, cloth, millstones, weapons, slaves; ships went far faster per day
+([UNESCO](https://en.unesco.org/silkroad/sites/default/files/knowledge-bank-article/the%20necessities%20of%20trade.pdf);
+[Transport Geography](https://transportgeography.org/?page_id=1042);
+[Bulliet interview](https://revistas.uniandes.edu.co/index.php/hiscrit/article/download/8485/8766/39075?inline=1)).
+*No share of trade by value found yet.* *Proposed:* goods carried between far places by traders who
+travel for weeks, worth it only for what is dear for its weight (finished goods, ore, wool), by land or
+by boat; a route grows where traders keep going, and bandits and pirates (15.5b, 15h) prey on it.
+*Question:* in, as proposed? On a 1,000 km land, far trade is within one world.
+
 ### [ ] 15h. Armies: what they carry, how far they go, and strategy
 
 Added 2026-11-20 (Ric: "we need to cover what it is carrying with it so it knows how far they can
@@ -2282,7 +2328,200 @@ to go round, wait for numbers, hold a river or a hill, cut the enemy's food, or 
 fought with the law for their weapons (15d).
 **Done when:** an army that outruns its food turns back or starves; a gathered army beats the same
 men arriving one by one; cutting a supply line makes an army withdraw — none of it scripted.
+**Also in 15h** (Ric, 2026-11-20, from 15i's research): **mercenaries** — soldiers whose living is war,
+hired from a treasury by contract, who plunder or turn bandit when nobody pays them (the free
+companies; about a third of armies in 1500 by one estimate; Thomson's *Mercenaries, Pirates, and
+Sovereigns* to read first) — and **pirates**, taking at sea from boats carrying goods (7d), run by
+their own rules (Leeson); Barbary captive numbers (Davis) to find first.
 **Budget:** default (one coarse map per side a day).
+
+### [ ] 15i. People who belong to no one place: foragers, herders who move, and travellers
+
+Added 2026-11-20 (Ric: "aren't their people who aren't part of a place? Depending on the era too? They
+travel?"). Before 15d, which makes "Foragers" one of the starting eras.
+**Now** (read from `people.js`): everybody belongs to a village from birth (`p.home`); a village
+never moves; traders, herders, hunters and soldiers go out and come back. Every grown-up takes a job
+(farmer, crafter, trader, fisher, woodcutter, miner, herder, hunter), farming is always there, there
+is no gathering of wild plants, and every faction has a leader (elected, a chief, or the richest).
+A band where everybody hunts, gathers and shares, with no jobs, no farming, no ruler and no fixed
+place, cannot be made.
+**What history has** (research begun 2026-11-20):
+- *Foragers.* Bands of a few families who moved camp: Binford's "foragers" moved often and stored
+  nothing, his "collectors" moved to a few key places (water) and sent parties out from them; how
+  often a band moves follows how fast it uses up the food round its camp; band size is strikingly
+  steady and changes with the season (Binford 1980, [pdf](https://edisciplinas.usp.br/pluginfile.php/4902707/mod_resource/content/1/Binford.pdf);
+  Kelly, *The Lifeways of Hunter-Gatherers*; Batek, [PNAS 2017](https://pmc.ncbi.nlm.nih.gov/articles/PMC5373393);
+  263 camps, [*American Antiquity* 2018](https://www.cambridge.org/core/journals/american-antiquity/article/scaling-the-size-structure-and-dynamics-of-residentially-mobile-huntergatherer-camps/3A1BC468ED01A37BA8FFCE003D1C7B44)).
+  No ruler, held down on purpose (Boehm, 15c's notes); work by age and sex, not by trade; food shared.
+  *Moves a year and camp sizes to read from Kelly's and Binford's tables before building.*
+- *Herders who move.* Pastoral nomads following grazing by season; about 30–40 million today, a
+  falling share where farms spread; 40% of Mongolia still; long pushed aside by farmers and towns
+  ([Nomadic pastoralism](https://en.wikipedia.org/wiki/Nomadic_pastoralism);
+  [Pastoralism journal 2015](https://core.ac.uk/download/70970062.pdf);
+  [FAO](https://www.fao.org/3/y2647e/y2647e02.htm)).
+- *Travellers inside a settled people.* Pedlars, tinkers and travelling craftsmen, players, pilgrims,
+  harvest workers on the road, and vagrants ([Nomad](https://en.wikipedia.org/wiki/Nomad); "weaver in
+  winter, bricklayer in summer", 15.5's notes). *No share of the population found yet; to find before
+  building.*
+**Proposed (not agreed).** A household's home can be a camp, not a village: a camp moves when the
+food round it runs down (the forager rule) or with the season and the grazing (herders), and takes
+its people, shelters and stores with it. What a people does comes from what it knows (15e: no
+farming known means gathering and hunting) and its customs and stats (15a), never from a switch;
+a forager band gets jobs only if a need makes them (15f) and a ruler only if 15c's needs make one.
+Travellers are people whose living keeps them on the road (pedlar, tinker, harvest hand), and the
+landless who have no place to go (after a famine, a war, 15.5b). Settled and moving peoples meet:
+trade, raids, marriage, and the old quarrel between the farmer's field and the herder's grazing.
+**Ric decides:** (1) which kinds — forager bands, herding nomads, travellers inside settled peoples,
+all three? (2) can a settled family take to the road and back (a vagrant after a famine; a herder
+family settling)? (3) is a moving people a faction of its own, or can it live inside a settled one's
+land?
+**Ric's answers (2026-11-20):** (1) **all of them**, "and if there are more ways of living we're
+missing"; (2) a settled family can take to the road and back: **yes**; (3) a moving people as its own
+faction or inside a settled one's land: "What is realistic. Probably both." And the figures: "yeah
+that stuff needs looked up".
+**Looked up (2026-11-20):**
+- *How often foragers moved, and how many.* Across 312 forager cases, a camp moved on average 7.4
+  times a year (median 5.5, from 0 to 58); a camp held on average 41 people (median 27) (Marlowe 2005,
+  summarised in [PMC table](https://pmc.ncbi.nlm.nih.gov/articles/PMC2999363/table/T3));
+  the Ache, in rich forest, moved 75–100 times a year in camps of about 43. Warm, productive places
+  mean shorter, more frequent moves ([PMC review](https://pmc.ncbi.nlm.nih.gov/articles/PMC5373393)).
+  *To read from Kelly's tables before building:* distance a move.
+- *Both, as Ric guessed.* Steppe peoples formed empires of their own beside settled ones and lived
+  off them by tribute, raiding and trade — the Xiongnu beside the Han, alternating war and peace to
+  raise the tribute and avoiding taking farmland — while many herding and travelling peoples lived
+  within a state's land and law (Barfield, *Shadow Empires*, [Princeton](https://press.princeton.edu/books/paperback/9780691278308/shadow-empires);
+  [review](https://asianreviewofbooks.com/content/shadow-empires-an-alternative-imperial-history-by-thomas-j-barfield/);
+  Golden, ["The stateless nomads of early medieval Central Eurasia"](https://cyberleninka.ru/article/n/the-stateless-nomads-of-early-medieval-central-eurasia)).
+  Nomads alone had few resources to build a state from, so their empires drew on settled neighbours.
+  *So:* a moving people is a faction when its own stats and needs make it one (15c), and otherwise
+  lives on a settled people's land, paying or not.
+- *Travellers in a settled land.* England licensed hawkers and pedlars in 1697 at £4 a year and £4 a
+  horse, treating the unlicensed as vagrants ([Hawkers Act 1697](https://vlex.co.uk/vid/hawkers-act-1697-808145973));
+  the fear of vagrants followed fast population growth in the sixteenth and seventeenth centuries,
+  which made a large underemployed migratory labour force, and many taken up as vagrants were simply
+  out of work ([*Rural History* 2013, poverty and mobility](https://resolve.cambridge.org/core/services/aop-cambridge-core/content/view/0918E97B5FE98C377E190988311860D1/S0956793312000180a.pdf/editorial-poverty-and-mobility-in-england-1600-1850.pdf);
+  [Sturdy beggar](https://en.wikipedia.org/wiki/Sturdy_beggar)). *No share of the people found yet;*
+  Beier's and Slack's work is where to look. That is the sim's own rule: people take to the road when
+  land and work run out, not by a quota.
+- *More ways of living than the three* (Ric: "if there are more ways of living we're missing"). The
+  usual classification runs foragers (most food from hunting, fishing and gathering), herders,
+  horticulturalists (gardens with long fallow — fields cleared, used, left, so villages may move
+  every some years) and farmers ([eHRAF, subsistence types](https://ehrafworldcultures.yale.edu/help/LearnMore/subsistence.html);
+  [CUNY, subsistence](https://pressbooks.cuny.edu/discoveringculturalanthropology/chapter/chapter-5/)),
+  with many peoples between them ([ANU, the middle ground](https://openresearch-repository.anu.edu.au/server/api/core/bitstreams/87962771-a5d0-41ae-a57f-828fa5545e0c/content)).
+  Ways the sim does not have, *to research before Ric chooses*: **shifting cultivation** (slash and
+  burn, the village moving when the soil tires — ties to 15.5d); **foragers who settle** where food is
+  rich enough (big fishing peoples, who stored food and had rank and slaves); **transhumance**
+  (the village stays, the herds and herders go up to summer grazing and back); **sea nomads** living
+  on boats; and livings from **taking** — raiders, bandits and pirates — and from **fighting for
+  pay** (mercenaries), which 14e's raiding bands and 15h's armies touch.
+**The other ways of living, researched (2026-11-20, Ric: "Research those").** For each: what it is,
+what the sim already has toward it, and whether it is worth having.
+- *Shifting cultivation (slash and burn).* Short spells of cropping, then long fallow while the
+  forest and the soil come back — 20 to 40 years in old Europe; shortening the fallow works only to a
+  point, then yields fall and the soil goes. Boserup: as people grow more crowded, fallow shortens,
+  from forest fallow to bush fallow to yearly cropping, and each step is more work for each meal; where
+  land is short, shifting cultivation cannot be kept up. The land is usually held by households
+  ([FAO](https://www.fao.org/4/r5265e/r5265e06.htm); [Shifting cultivation](https://en.wikipedia.org/wiki/Shifting_cultivation);
+  [Mertz and others, *Human Ecology*](https://link.springer.com/doi/10.1007/s10745-006-9014-4)).
+  *Have:* fields, forest, households holding land (7c); worn soil and regrowth are 15.5d. *Worth it:*
+  yes, and nearly free once 15.5d is in — it is clearing forest for a field and leaving it, and the
+  village moving when no forest is left near. Boserup's sequence then comes out of the run as people
+  grow crowded. *To find:* how often swidden villages moved.
+- *Foragers who settle.* Where food is rich and can be stored — the salmon of the North-West coast —
+  foragers lived in permanent winter villages, stored food, had hereditary nobles, commoners and
+  slaves, raided, and were denser than many farming peoples near them; storage was needed for this but
+  did not cause it alone, and crowding and war did not predict it ([PMC 2021](https://pmc.ncbi.nlm.nih.gov/articles/PMC8020663);
+  [Canadian Museum of History](https://historymuseum.ca/cmc/exhibitions/archeo/hnpc/npvol28e.html);
+  Wengrow and Graeber, [*American Anthropologist*](https://discovery-pp.ucl.ac.uk/10040342/1/Wengrow_Graeber_American%20Anthropologist_Rough.pdf)).
+  *Have:* fishing (6c), stores, ranks by wealth. *Worth it:* yes — it is the forager band of 15i
+  staying put where the fish are, with rank coming from 15c's stats, not from the fish. It shows that
+  settling does not need farming.
+- *Transhumance.* The village and most people stay; the herds and a few herders go up to summer
+  pasture (an alp, a shieling, a hafod) and come down in autumn — in the Alps in late September or
+  early October, and in the Alps since about 3000 BC ([Transhumance](https://en.wikipedia.org/wiki/Transhumance);
+  [Alpine transhumance](https://en.wikipedia.org/wiki/Alpine_transhumance);
+  [Almabtrieb](https://en.wikipedia.org/wiki/Almabtrieb)). *Have:* herders who go out and come back
+  each day (9b). *Worth it:* yes, small: herders sleeping at a summer hut for the season where grazing
+  is far and high, the herds grazing the hills in summer, and the village keeping hay for winter.
+- *Sea nomads.* The Sama-Bajau lived by fishing and trade from boats, many families keeping close to
+  shore in stilt houses or on their boats, diving for sea cucumber, shell and pearls for land patrons
+  who traded them on, and trading with land peoples for pottery and iron; now mostly settling
+  ([Bajau](https://en.wikipedia.org/wiki/Sama-Bajau); [ANU Press, Sather](https://press-files.anu.edu.au/downloads/press/p69411/html/ch13s04.html);
+  [National Geographic](https://www.nationalgeographic.com/photography/article/we-are-what-we-eat-diving-for-dinner-with-the-sea-gypsies)).
+  *Have:* boats (6d, 7d), fishing, coasts. *Worth it:* the least: a home that is a boat, which needs
+  long warm coasts the seed must make. Could come later, after boats as homes are natural.
+- *Bandits and pirates.* Hobsbawm's social bandits came from peasants in times of impoverishment,
+  economic crisis, war, conquest and foreign rule, and a few were remembered as noble; "in real life
+  most Robin Hoods were far from noble" ([Social banditry](https://en.wikipedia.org/wiki/Social_banditry);
+  [British Academy](https://www.britac.ac.uk/blog/eric-hobsbawm%E2%80%99s-%E2%80%98bandits%E2%80%99)). Pirates
+  ran their ships by written codes and rules because it paid them to (Leeson, *The Invisible Hook*,
+  [Princeton chapter](https://assets.press.princeton.edu/chapters/s8850.pdf)). *Have:* the landless
+  and the hungry (15.5b), the dishonest stealing (10), raiding bands (14e), roads and carts and boats
+  carrying goods (7d). *Worth it:* yes — a band taking from carts and villages is the landless,
+  hungry and dishonest choosing to take, a living weighed in `choose` like any other, and it rises
+  in hard times by itself. *To find:* Barbary corsairs' captive numbers (Davis) if piracy at sea goes in.
+- *Fighting for pay.* Free companies of the 12th–14th centuries fought for whoever hired them and
+  plundered between wars; Siena paid 291,379 florins in 1342–99 to buy them off; condottieri hired
+  out by contract and some became lords; the Swiss hired out by canton; by one estimate about a third
+  of European armies in 1500 were mercenaries; standing armies came partly in answer to the free
+  companies' plunder ([Free company](https://en.wikipedia.org/wiki/Free_company);
+  [Condottieri](https://en.wikipedia.org/wiki/Condottieri);
+  [War History, medieval mercenaries](https://warhistory.org/2017/10/20/mercenaries-during-the-middle-ages/)
+  — popular sources, the shares rough). *Have:* soldiers raised by a faction (14e), a treasury.
+  *Worth it:* yes, with 15h: soldiers whose living is war, hired from the treasury, who turn bandit
+  when nobody pays them. Janice Thomson's *Mercenaries, Pirates, and Sovereigns* to read before
+  building.
+**Questions for Ric:** which of these go in, and where? Recommendation: shifting cultivation with
+15.5d (it is that part's land change used as a way of farming); bandits with 15.5b (hunger and
+landlessness are what make them) or with 15i; foragers who settle and transhumance in 15i;
+mercenaries and pirates in 15h; sea nomads last, or not at all.
+**Ric (2026-11-20): "Yep"** — placed as recommended, with 15.5 done before 15, and none in 16–19.
+So nothing placed in 15.5 may lean on an item of 15: shifting cultivation needs only 15.5d's land,
+and bandits only what 15.5b and the engine already have (hunger, the landless, theft, raiding bands,
+carts and roads). Written into each item:
+- **15.5d** — shifting cultivation.
+- **15.5b** — bandits on land.
+- **15i** — foragers who settle, seasonal herding, and sea nomads as its last part.
+- **15h** — mercenaries, and pirates at sea.
+**Done when:** a people with no farming know-how lives by gathering and hunting, moves camp when the
+food runs down, and has no fixed jobs and no ruler unless its own needs make them; a herding people
+moves with the season; none of it is a switch.
+**Budget:** default (a camp moves rarely; nothing per person between moves).
+**How foragers' days differ** (added 2026-11-20, Ric: "do they sleep different do they actually live
+different? Are their responsibilities different?"; "didn't hunter gatherers live longer but couldn't
+support as many people as farmers?").
+- *Work and leisure.* Agta foragers: about 24 hours a week of work out of camp, 20 of chores, and a third
+  of daylight in leisure; neighbours who took up farming worked about 10 hours a week more, and the women
+  in the most farming communities had half the leisure (Dyble and others, *Nature Human Behaviour* 2019,
+  [paper](https://www.nature.com/articles/s41562-019-0614-6)); among the Tsimane and Hadza, farming gave
+  more food an hour for about the same hours, which may be why it was taken up (Kraft and others 2021,
+  [pdf](https://gurven.anth.ucsb.edu/sites/default/files/sitefiles/papers/kraft%20et%20al.%202021.pdf)).
+- *Children.* Raised by many hands: each couple with young children had help from about 1.3 other adults
+  in South American foragers, and older children did much of it; grandmothers were not the main helpers
+  there ([PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC2817285); [PMC 2024](https://pmc.ncbi.nlm.nih.gov/articles/PMC10955362)).
+- *Food.* Game divided across the band with no favour to kin; plant foods shared widely, a little more to
+  kin ([PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC4184416)).
+- *How long they lived.* Life expectancy at birth was low because so many children died, but those who
+  reached adulthood most often died at about 68–78: an adult forager could expect a long life (Gurven and
+  Kaplan, "Longevity among hunter-gatherers", 2007, [pdf](https://gurven.anth.ucsb.edu/sites/secure.lsit.ucsb.edu.anth.d7_gurven/files/sitefiles/papers/GurvenKaplan2007pdr.pdf)).
+  Early farmers were shorter and sicker than the foragers before them in 19 of 21 societies studied (Cohen
+  and Armelagos 1984), recovering later in some regions; the big change was more births, closer together,
+  rather than fewer deaths ([Mummert and others 2011](https://econpapers.repec.org/RePEc:eee:ehbiol:v:9:y:2011:i:3:p:284-301);
+  [PMC 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC9942808)).
+- *How many the land holds.* Foraging seldom supports more than about one person a square kilometre, from
+  0.01 up; shifting cultivation about 20–30 a square kilometre of farmland, farming far more
+  ([Foragers](https://en.wikipedia.org/wiki/Hunter-gatherer); [MIT Press excerpt](https://muse.jhu.edu/books/9780262312264/9780262312264-12.pdf)).
+  So Ric is right on both counts: fewer, healthier, longer-lived adults as foragers; many more people, more
+  crowded and sicker, as farmers.
+*None of it is set:* the hours come from how much work a day's food takes and what is shared; the health
+comes from a varied diet against a grain diet and from crowding (15.5r); the numbers from how much food
+the land gives each way; the sleep from 15.5s. Measured against these figures when 15i is built.
+
+**Also in 15i** (Ric, 2026-11-20): **foragers who settle** where food is rich and can be stored (the
+fishing peoples of the North-West coast), **seasonal herding** (herds and a few herders at summer
+pasture, the village keeping hay for winter), and, **as its last part**, **sea nomads** whose home is
+a boat. Research in the notes above.
 
 ### [ ] 15d. Eras as starting points; news by what is built; towers, cars, houses, medicine
 
@@ -2433,7 +2672,7 @@ after passes 1–5.
 ### [ ] 15.5. What items 1–14 missed, and what is weak
 
 **Order (Ric, 2026-11-20): 15.5 is done before 15** — "we should do 15.5 then 15". The
-whole order is now **15.5 → 15 (15a done; then 15c, 15g, 15b, 15e, 15f, 15h, 15d) → 16 → 17**.
+whole order is now **15.5 → 15 (15a done; then 15c, 15g, 15b, 15e, 15f, 15h, 15i, 15d) → 16 → 17**.
 15.25 was done by another session the same day.
 
 Added 2026-11-20 (Ric: "Look through 1-14 and see what we missed or where we need to improve",
@@ -2513,7 +2752,191 @@ after it.
 speed work itself is 15.25's five passes; j is only the 20,000-person measurement and, if it
 finds something 15.25 does not cover, a pass added there rather than here.
 
-**Budget:** default for a–i; j faster only.
+**15.5k. Babies, children and mothers dying, and the gap between births** (added 2026-11-20, Ric:
+"early humans … the baby infertility rate was low … is all that built in?"; "Write what you said
+down"). *Now* (read from `people.js`): each person's age of death is drawn at birth between 0.72 and
+1.28 of "How long they live" (default 60), so almost nobody dies of age before about 43; a child dies
+only of the sickness (three times likelier under five) or of cold. Nearly every child grows up. A
+fed couple at home has children at a steady rate, with no gap after a birth, and no mother dies in
+childbirth. *History:* about a quarter of babies died in their first year and nearly half of children
+before fifteen, among foragers and in historical populations alike (Volk and Atkinson 2013, item 15's
+notes); foragers had about six children each, about 3.7 years apart, the gap kept mostly by
+breastfeeding, and 60% reached fifteen (Kaplan, Hill, Lancaster and Hurtado 2000,
+[pdf](https://www.unm.edu/~jlancas/KaplanHillLancasterHurtado_2000_LHEvolution.pdf); forager and
+chimpanzee vital rates, [PNAS 2019](https://pmc.ncbi.nlm.nih.gov/articles/PMC6600907); Hill and
+Hurtado on the Ache's spacing); England's parish registers 1650–1800 give about 10 mothers dead per
+1,000 births, 17 at the mid-seventeenth-century peak, and with several births a woman's lifetime risk
+near one in sixteen ([Cambridge Group, childbirth in the past](https://www.campop.geog.cam.ac.uk/blog/2024/09/19/childbirth-in-the-past/);
+[*Medical History*](https://pubmed.ncbi.nlm.nih.gov/3511335/)). *Needed:* yes, for every era,
+today's village included. It is a missed piece of item 10's people, and it changes the default world:
+with children dying as they did, today's birth rate would shrink every world, so births rise to
+match — as they did in life — rather than a number being turned until the world holds.
+*Proposed:* children die of what killed them (sickness, hunger, cold, accident) at the historical
+strength by age, not of a fixed rate; a mother can die in childbirth; a mother nursing a baby is
+unlikely to conceive for a few years; how long people live and how many children they have stay
+settings. Each era's medicine (15d) then lowers these, as it really did.
+*Questions:* (1) Children dying of real causes at real rates, so a family loses some? (2) Mothers
+dying in childbirth? (3) The gap after a birth? (4) The default world's "Children" setting then means
+"as many as they had", with the world measured to see it holds?
+**Ric's answers (2026-11-20):** all four **yes**. Asked whether 15.5k belongs in 15.5 or elsewhere:
+it stays in 15.5 — it changes today's world in every era, and 15d's medicine stands on it — and runs
+right after 15.5e (wounds and old age), the other part about bodies.
+
+**Ten things history had that the plan missed** — checked against this file, `PEOPLE-VISION.md`
+and `people.js` on 2026-11-20 (added 2026-11-20, Ric: "I feel like there probably is something I'm missing historically" … "Keep languages all one language But add the other 10 please. And then research them"; read as search summaries; nothing built). **One language** for everybody, by Ric's word: no
+part for languages. Seven are parts of 15.5 below; slavery and serfdom go to 15c, long-distance
+trade to 15f, festivals and holy days to 15g.
+
+**15.5l. Men and women.** *Now:* the engine has no sex at all — any two grown-ups who are not kin may
+pair and have children. *History:* almost every people divided work by sex (Murdock and Provost's
+cross-cultural codes, 1973); where the plough was used men did the field work and women worked more
+at home, and peoples whose forebears ploughed still hold more unequal views of women's place today
+(Alesina, Giuliano and Nunn, "On the Origins of Gender Roles: Women and the Plough", *QJE* 2013,
+[NBER](https://www.nber.org/papers/w16718.pdf); [HRAF](https://hraf.yale.edu/documents/1096/hypotheses/3469)).
+*Needed:* yes, and first among these — 15.5k's mothers dying in childbirth, 15b's marriage and
+inheritance and 15.5n's house work all need it. *Proposed:* each person is a man or a woman at birth;
+a child needs a mother; who does which work is a people's custom from its stats (15a, already built),
+the plough leaning it one way as Boserup and Alesina found, never one rule for every people.
+*Questions:* (1) Who does which work: a custom per people from its stats, as proposed? (2) May two men
+or two women live as a couple (no children of their own; they may take in orphans, as 14b's orphans
+are taken in)?
+
+**15.5m. Children working.** *Now:* a child does nothing until "Grown up at" (default 14) but fetch
+water from six (6a). *History:* children did light farm and house work early — minding sheep and
+younger children, scaring birds, gleaning — and serious work from about twelve to fourteen (Pittsburgh,
+[the medieval child](https://representingchildhood.pitt.edu/medieval_child.htm)); children were a
+real part of the labour market, with wages that tracked the economy (Horrell and Humphries, "Children's
+work and wages in Britain, 1280–1860", [LSE](https://researchonline.lse.ac.uk/id/eprint/100510));
+pauper apprenticeship was allowed from seven, more usually in the teens. Popular sites put herding and
+weeding at seven but cite nothing; Hanawalt's *The Ties That Bind* to read before building.
+*Proposed:* light tasks from about six or seven (minding the young, herding near home, scaring birds,
+gleaning at harvest), more as they grow, full work at "Grown up at"; schooling, where a people has it
+(15e), takes hours from this. *Question:* children working, as proposed?
+
+**15.5n. Work in the house.** *Now:* none but fetching water. *History:* making cloth was one of
+the largest uses of a household's hours — spinning was about 85% of the work of cloth, and most women
+and many girls spun (a historian's blog, [ACOUP](https://acoup.blog/2021/03/19/collections-clothing-how-did-they-make-it-part-iii-spin-me-right-round/));
+by one table a pound of yarn took about 500 hours on an early wheel and 200 about 1700, 3 on a water
+frame by 1800 (unsourced blog; Humphries and Schneider, "Spinning the industrial revolution",
+[Oxford](https://ora.ox.ac.uk/objects/uuid:4f321519-a0b7-4879-a521-139cbca81b25/files/r0v8380664), to
+read for real figures). Cooking and minding small children took hours every day; no figure found yet.
+*Note:* Ric said no to tracking household goods wearing out (15.5a), so cloth is hours spent, not a
+stock to count — unless Ric wants clothes to matter (warmth, 9c's cold). *Questions:* (1) House work
+as hours a household must spend each day (cooking, minding children, spinning), so a household short of
+hands feels it? (2) Do clothes count for anything (keeping warm in the cold), or only the hours?
+
+**15.5o. Animals that work.** *Now:* none; "packhorse" is a word in a comment, and carts move without
+anything pulling them. *History:* a plough team was eight oxen and a carucate the land it could
+plough in a season; Domesday counted over 80,000 teams, about 650,000 oxen; horses came into farm work
+slowly, first in richer, market-minded places, two horses doing about the work of three oxen; horse
+hauling changed carting in the 12th–13th centuries (Langdon, *Horses, Oxen and Technological
+Innovation*, [Birmingham thesis](https://etheses.bham.ac.uk/id/eprint/14029);
+[Carucate](https://en.wikipedia.org/wiki/Carucate); [Domesday ploughs](https://sites.google.com/site/domesdaymaterials/domesday-book/data-terminology/manors/ploughs);
+[Medievalists, horse or ox](https://www.medievalists.net/2023/02/horse-ox-medieval-times/)).
+*Proposed:* oxen and horses as animals a household or village owns, bred from the herds (9b), fed on
+grazing and hay; a plough team sets how much land a household can work, a horse or ox pulls a cart
+(7d), horses carry riders and soldiers (15h later). *Questions:* (1) In, as proposed? (2) Animals as
+counted beasts that eat and die, or as part of what a household owns (cheaper)?
+
+**15.5p. Irrigation and big works.** *Now:* none; `PEOPLE-VISION.md` notes "irrigation is not built by
+anybody yet"; river flats are spared in dry years (6b). *History:* Wittfogel's claim that big
+irrigation made despots is widely rejected; Bali's rice terraces were run for a thousand years by
+local water-temple networks, Nepal's small canals by farmers; Hohokam canals were cleaned yearly in
+one to eight days by the villages that used them ([Arizona](https://open.uapress.arizona.edu/system/actioncallout/e/a/d/eade843d-73b8-4c98-a577-22e0eee3a4d6/attachment/d43f5c1a16aa22fcdf630239591b30fd.pdf);
+[Irrigation management](https://en.wikipedia.org/wiki/Irrigation_management)); irrigation raised
+yields round Assyrian canals ([PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC4811293)).
+*No figure for how much it raises a yield found yet.* *Proposed:* a ditch from a river is a thing a
+village (or a leader) builds with hours, that waters the fields along it so a dry year spares them as
+it spares river flats, and needs cleaning each year or silts up. *Question:* in, as proposed?
+
+**15.5q. Climate over centuries.** *Now:* each year's rain differs (6b) and winters vary, but nothing
+shifts over decades. *History:* the Little Ice Age cooled the northern hemisphere by under 1 °C on
+the whole (more in places, by some accounts 2 °C in northern Europe in the 16th–17th centuries), with
+longer winters and cool wet summers, shorter growing seasons and failed harvests (Parker, *Global
+Crisis*, [Yale](https://www.degruyterbrill.com/document/doi/10.12987/9780300189193/html);
+[PMC review](https://pmc.ncbi.nlm.nih.gov/articles/PMC3198350)); Kelly and Ó Gráda argue the
+smoothing of the data made the cycles look tidier than they were ([UCD](https://www.ucd.ie/t4cms/wp10_14.pdf)).
+*Proposed:* a slow swing in warmth and rain over decades and centuries, from the seed, under the
+year-to-year weather — never a scripted cold age. *Questions:* (1) In, from the seed? (2) A setting
+for how big the swings are, off by default so a world is as it was?
+
+**15.5r. Dirt and disease in towns.** *Now:* a town loses one more person in a hundred a year and a
+city a little over two, a fixed number (item 8). *History:* the town penalty came from crowding, waste
+and foul water; infants in English market towns of 2,000–3,000 died at 209–270 in 1,000 in 1675–1749
+against under 100 in remote country; it fell once water, sewers and public health came (from the 1870s
+in the US), and some argue it lasted into the 1930s where water and sewers lagged
+([*Continuity and Change*, Norway](https://www.cambridge.org/core/journals/continuity-and-change/article/urban-penalty-towns-and-mortality-in-nineteenthcentury-norway/E13CF2DD58DA5CBC98D2397FD32E9066);
+[PMC 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7186836); [Haines, NBER](https://www.nber.org/papers/h0134)).
+*Proposed:* replace the fixed number with its causes: how crowded a place is, whether its water is
+fouled (a well near houses, a river below a town), and later its sewers and clean water as things
+built (15d); the sickness (and item 18) spreads more where these are bad. *Question:* in, as
+proposed, measured so a default world's towns lose about what they do now?
+
+**Ric's answers on l–r and the three placed in 15 (2026-11-20):**
+- *l, who does which work:* "Yes? I mean pregnant women can't farm as well and might not be as strong.
+  And there should be some societal stuff too." So bodies differ as well as customs. *Looked up:* women
+  averaged about 52% of men's upper-body and 66% of lower-body strength in one study (Miller and
+  others 1993, [PubMed](https://pubmed.ncbi.nlm.nih.gov/8477683/)), the gap larger in the upper body
+  ([review 2023](https://pubmed.ncbi.nlm.nih.gov/36696264/)); a new mother was meant to lie in for about
+  a month, which poorer women could seldom afford ([LEMDO, pregnancy and childbirth](https://lemdo.uvic.ca/emee/childbirth.html));
+  women did a little over a third of farm tasks in early modern England
+  ([*The Experience of Work in Early Modern England*](https://resolve.cambridge.org/core/books/experience-of-work-in-early-modern-england/agriculture-and-food-production/756B4A05E951DAD3663CEE82452005B5)).
+  *No source found* on how late pregnancy cut field work; to look again before building.
+  *So:* each person has a strength that differs by sex and person; heavy work (ploughing, quarrying,
+  fighting) goes slower for the weaker; late pregnancy and the weeks after a birth cut heavy work, and
+  the lying-in lasts as long as the household can spare her; and on top of the bodies, each people's
+  customs (15a) say who is expected to do what — which may hold women back from work they could do, or
+  not — and those customs move as their people's stats do.
+- *l, couples of the same sex:* "Yeah. If society believes it's ok — people have died over that." So
+  such couples exist, and how a people treats them is its own custom from its stats (15a): accepted,
+  hidden, or punished — and where it is punished, by its law (15c) and its faith (15g), people can be
+  harmed or killed for it, as they have been. Never one rule for every people.
+- *m, children working:* yes.
+- *n, house work as hours:* yes. *Clothes:* "They should maybe matter? If it doesn't cost much for the
+  copy or gpu" — one number a person (how warm what they wear is), worn down by use and made good by
+  spinning hours, read only in the cold (9c): no drawing and no stock of goods. Kept only if it costs
+  next to nothing; measured.
+- *o, working animals:* yes, **the cheapest way to run** — counted as what a household or village owns,
+  not as animals that walk about, eat and die one by one.
+- *p, irrigation:* yes.
+- *q, climate over centuries:* yes, and **on by default** (Ric's choice: a default world changes with it).
+- *r, town deaths:* "There shouldn't be a town fixed death rate it should all be of actual causes." So
+  the fixed rate goes entirely; towns die of crowding, foul water and the sickness, measured.
+- *15c, slavery and serfdom:* yes, **with a setting to turn it off**; a ruled faction can keep, free or
+  forbid it: yes.
+- *15f, long-distance trade:* yes. *15g, festivals and holy days:* yes.
+**15.5s. Sleep that follows the way people live** (added 2026-11-20, Ric: "sleep should follow the way
+they live. Didn't foragers and even on slept in two 4hr segments. Until there was artificial light it
+wasn't like that right?"). *Now* (`sleepTicks` in `people.js`): somebody who goes to bed in the dark
+sleeps until dawn, one to ten hours, in one piece; nobody has a light. *History — partly right, and
+argued:* Ekirch found over 500 references to a "first sleep" and "second sleep" in pre-industrial
+Europe, with a waking hour between, and argues artificial light ended it
+([Scientific American](https://www.scientificamerican.com/article/ancient-sleep-in-modern-t);
+[National Geographic](https://www.nationalgeographic.com/science/article/polyphasic-biphasic-segmented-sleep));
+but three equatorial forager peoples measured with wrist monitors slept in one piece, about 6.4 hours,
+falling asleep some three hours after sunset, waking before sunrise, an hour longer in winter, timed by
+the night's cooling as much as the dark (Yetish and others, *Current Biology* 2015,
+[pdf](https://gurven.anth.ucsb.edu/sites/secure.lsit.ucsb.edu.anth.d7_gurven/files/sitefiles/papers/yetishetal2015.pdf));
+farmers in Madagascar did sleep in two pieces, and the Hadza showed a stir after midnight
+([PMC 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC4763365)); and a 2023 reading of the English sources
+questions how common it was ([PMC 2023](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10404514/)).
+Two pieces seem to come with **long nights and no light** — the far north in winter — more than with a
+way of life. *Proposed:* a person needs a night's sleep (about six to seven hours, a little more in
+winter); they lie down some hours after dark, not at dark, unless tired; where the night is much longer
+than the sleep they need, they wake in the middle and are up a while (tending the fire, talking) before a
+second sleep — so two sleeps appear on long winter nights without a rule saying so, and vanish where
+nights are short or (with 15e/15f) light is had: a fire, candles, lamps, then electric light, each letting
+people stay up. *Questions:* (1) As proposed — two sleeps arising from long nights, not set by era?
+(2) The waking hour does something (talking, passing news, minding the fire), not just shown?
+**Ric (2026-11-20):** "For the sleeps how close to the equator changes the nights which changes the
+sleep. So I think it should all be in there." Both yes: two sleeps arise from the length of the night,
+which the world already works out from its latitude and the day of the year (the sunrise equation,
+TODO "the year is settings"), so near the equator nights stay about twelve hours and sleep stays in one
+piece, as Yetish measured, and far north the long winter nights split it, as Ekirch's sources describe —
+by the same rule, with nothing set per place or era. The waking hour does something: people talk and
+pass news (item 12), tend the fire, see to children.
+
+**Budget:** default for a–s; j faster only.
 
 Research notes (2026-11-20, Ric: "research those and make sure all are needed first and the
 logistics of them. Like any questions that would pop up. Not coding questions"). For each part:
@@ -2588,6 +3011,12 @@ forest, over decades.
 should farmers rest land by their own choice (and is that a people's custom, 15a), or always?
 (3) Should herds manure fields, so herding and farming help each other? (4) Is it worth it before
 eras, given most runs are short?
+**Shifting cultivation is in 15.5d too** (Ric, 2026-11-20): with soil that wears and forest that
+grows back, farmers may clear forest for a field, crop it a few years and leave it to regrow (20 to 40
+years in old Europe), and a village with no forest left near may move. As people crowd, the rest
+grows shorter and the work for each meal longer, until fields are cropped every year (Boserup) —
+coming out of the run, not set. *To find before building:* how often such villages moved. Research
+in 15i's notes.
 
 **e. Wounds and old age.** *Now:* a wound lowers a person's health, which comes back at a fixed
 rate (if they have water) and always comes back in full. Old age only makes sickness and cold more
@@ -2779,11 +3208,20 @@ grain and sell or share it at a fair price; a hot-tempered crowd may burn or hur
 answers by their stats — relief, buying grain in, or soldiers — and that moves loyalty, which the
 engine already turns into an overthrow or a breakaway.
 **Ric (2026-11-20): "Yes they should"** — food riots are in 15.5b, as above.
+**Bandits are in 15.5b too** (Ric, 2026-11-20, from 15i's research): the hungry, the landless and the
+dishonest (item 10's honest trait) may choose to take for a living — from carts on the roads (7d) and
+from weakly held villages, as 14e's raiding bands do — weighed in `choose` like any living, rising by
+itself in hard times (Hobsbawm: impoverishment, crisis, war, conquest). Nothing starts a band;
+nobody is placed as a bandit. Those robbed hold it against them, as any theft (10, 12). Research in
+15i's notes.
 
-**Order of 15.5 after the answers:** a (made to order) → h (gear paid for; the button) → b (the
-government's grain trade; food riots; rivers with a direction; grain by boat) → e (lasting wounds; the old
-slowing) → d (clearing, wear, fallow by choice, manure) → f (household firewood) → g (news of
-plenty) → c (2 km², finer land, the edge as an option) → j, then i after 15.
+**Order of 15.5 after the answers** (with l–r added 2026-11-20): a (made to order) → h (gear paid
+for; the button) → b (the government's grain trade; food riots; bandits; rivers with a direction;
+grain by boat) → r (dirt and disease in towns) → e (lasting wounds; the old slowing) → l (men and
+women) → k (children and mothers dying; the gap between births) → m (children working) → n (work in
+the house) → d (clearing, wear, fallow by choice, manure, shifting cultivation) → o (animals that work)
+→ p (irrigation) → q (climate over centuries) → s (sleep) → f (household firewood) → g (news of plenty) → c (2 km²,
+finer land, the edge as an option) → j, then i after 15. l comes before k because k's mothers need it.
 
 ### [ ] 16. Ruins and scavenging
 
