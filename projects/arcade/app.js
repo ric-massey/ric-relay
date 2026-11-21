@@ -64,7 +64,7 @@
     if(!game||!s)return;const id=game.id,parts=[];
     if(clockShown())parts.push(fmtTime(clockStart||elapsed?seconds():0));
     if(id==='solitaire')parts.push(s.moves+' moves');
-    if(id==='snake')parts.push(s.score+' points',`best ${Math.max(s.score,bestScore)}`);
+    if(id==='snake'){parts.push(s.score+' points',`best ${Math.max(s.score,bestScore)}`);const sc=$('lcd-score'),hi=$('lcd-hi');if(sc)sc.textContent=String(s.score).padStart(4,'0');if(hi)hi.textContent=String(Math.max(s.score,bestScore)).padStart(4,'0');}
     // Tetris shows its numbers in the panel beside the well instead.
     if(id==='tetris'){const set=(k,v)=>{const e=$(k);if(e&&e.textContent!==v)e.textContent=v;};set('t-score',s.score.toLocaleString());set('t-lines',String(s.lines));set('t-level',String(1+Math.floor(s.lines/10)));set('t-best',Math.max(s.score,bestScore).toLocaleString());}
     $('metric').textContent=parts.join(' · ');
@@ -145,7 +145,7 @@
     $('result-title').textContent=title;$('result-description').textContent=description;$('initials-wrap').hidden=!pending;$('save-score').hidden=!pending;$('save-score').disabled=false;$('save-message').textContent='';$('initials').required=!!pending;$('initials').value=storage.get('initials','');$('result-eyebrow').textContent=pending?'Leave your mark.':'Good game.';
     dialogExtras();
     // Let the last move, the tile flip or the celebration be seen before the card covers it.
-    const token=revision;setTimeout(()=>{if(token!==revision||$('result-dialog').open)return;$('result-dialog').showModal();if(pending)$('initials').focus();},reduced()?0:game.id==='wordle'?1400:500);
+    const token=revision;setTimeout(()=>{if(token!==revision||$('result-dialog').open)return;$('result-dialog').showModal();if(pending)$('initials').focus();},reduced()?0:game.id==='wordle'?1400:game.id==='snake'?1000:500);
   }
   function dialogExtras(){
     const actions=document.querySelector('#result-dialog .dialog-actions');
@@ -192,7 +192,7 @@
   }
 
   // ---- game lifecycle ------------------------------------------------------
-  function cleanup(){revision++;stopClock();cancelAnimationFrame(frame);clearInterval(ticker);clearInterval(autoTimer);autoTimer=null;running=false;paused=false;cpuBusy=false;pending=null;if($('result-dialog').open)$('result-dialog').close();}
+  function cleanup(){revision++;counting=0;deathAt=0;stopClock();cancelAnimationFrame(frame);clearInterval(ticker);clearInterval(autoTimer);autoTimer=null;running=false;paused=false;cpuBusy=false;pending=null;if($('result-dialog').open)$('result-dialog').close();}
   function modes(){const options=MODES[game.id];$('mode-wrap').hidden=!options.length;$('mode').replaceChildren();for(const [value,text]of options){const o=document.createElement('option');o.value=value;o.textContent=text;$('mode').append(o);}const saved=storage.get('mode:'+game.id);mode=options.some(o=>o[0]===saved)?saved:options[0]?.[0]||'';$('mode').value=mode;}
   /* A second select for the computer's strength, beside the mode. A change
      applies from the computer's next move; it never restarts a game. */
@@ -716,7 +716,18 @@
 
   // ---- Snake & Tetris (canvas) ---------------------------------------------
   let blockColors=['','#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'];
-  function beginAction(){$('action-overlay')?.remove();if(running||finished)return;running=true;paused=false;s.started=true;$('pause').hidden=false;lastFrame=performance.now();accumulator=0;frame=requestAnimationFrame(tick);status('Good luck.');}
+  /* Snake counts 3-2-1 before it moves, on a new game and after a pause, so
+     nobody dies before their thumb is on the pad (round three, TODO.md). */
+  let counting=0,deathAt=0,stepDelay=160;
+  function countdown(go){
+    if(game.id!=='snake'||reduced()){go();return;}
+    const wrap=$('game-canvas')?.parentElement;if(!wrap){go();return;}
+    const token=++counting,cd=el('div','countdown');cd.setAttribute('aria-live','assertive');wrap.append(cd);let n=3;
+    const step=()=>{if(token!==counting||finished){cd.remove();return;}if(!n){cd.remove();counting=0;go();return;}cd.textContent=String(n);cd.classList.remove('beat');void cd.offsetWidth;cd.classList.add('beat');sfx('tap');n--;setTimeout(step,430);};step();
+  }
+  function beginAction(){$('action-overlay')?.remove();if(running||finished||counting)return;countdown(()=>{if(running||finished)return;running=true;paused=false;s.started=true;$('pause').hidden=false;lastFrame=performance.now();accumulator=0;frame=requestAnimationFrame(tick);status('Good luck.');});}
+  /* A device's A button: start, pause or resume; after a game, deal another. */
+  function primaryAction(){if(!game||!action())return;if(finished){start();return;}if(counting)return;if(!running)beginAction();else togglePause();}
   function renderAction(resumed=false){
     stage.className='stage action-stage'+(game.id==='snake'?' snake-stage':' tetris-stage');stage.replaceChildren();
     const row=el('div','action-row'),wrap=el('div','canvas-wrap'+(game.id==='tetris'?' tetris':''));
@@ -729,9 +740,17 @@
     how.innerHTML=resumed?'Saved right where you left it.':game.id==='snake'?'<span class="key-only"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> steer · <kbd>P</kbd> pause</span><span class="touch-only">Swipe anywhere to steer</span>':'<span class="key-only"><kbd>←</kbd><kbd>→</kbd> move · <kbd>↑</kbd> turn · <kbd>Space</kbd> drop · <kbd>C</kbd> hold</span><span class="touch-only">Drag to move · tap to turn · flick down to drop</span>';
     overlay.append(el('strong','overlay-title',resumed?'Welcome back':game.name),button(resumed?'Resume':'Play',beginAction,'overlay-play'),how);
     wrap.append(overlay);
-    if(game.id==='snake'){const pad=el('div','dpad');for(const [label,x,y,cls,name]of [['↑',0,-1,'up','Up'],['←',-1,0,'left','Left'],['↓',0,1,'down','Down'],['→',1,0,'right','Right']]){const k=button(label,()=>actionMove(x,y),cls);k.setAttribute('aria-label',name);pad.append(k);}stage.append(pad);}
+    if(game.id==='snake'){
+      // The Terminal device draws the snake as text in this <pre> instead of the canvas.
+      const pre=el('pre','ascii-snake');pre.id='ascii-snake';pre.setAttribute('aria-hidden','true');wrap.append(pre);
+      const pad=el('div','dpad');for(const [label,x,y,cls,name]of [['↑',0,-1,'up','Up'],['←',-1,0,'left','Left'],['↓',0,1,'down','Down'],['→',1,0,'right','Right']]){const k=button(label,()=>actionMove(x,y),cls);k.setAttribute('aria-label',name);pad.append(k);}
+      // A phone's number keys: 2 4 6 8 steer, 5 starts and pauses, as on the old phones.
+      const keys=el('div','keypad');keys.setAttribute('aria-label','Keypad');for(const [k,sub] of [['1',''],['2','up'],['3',''],['4','left'],['5','go'],['6','right'],['7',''],['8','down'],['9',''],['*',''],['0',''],['#','']]){const d={'2':[0,-1],'4':[-1,0],'6':[1,0],'8':[0,1]}[k],b=button('',()=>{if(d)actionMove(...d);else if(k==='5')primaryAction();},'key-'+(k==='*'?'star':k==='#'?'hash':k));b.append(el('span','kn',k),el('span','ks',sub));b.setAttribute('aria-label',d?sub[0].toUpperCase()+sub.slice(1):k==='5'?'Start or pause':'Key '+k);if(!d&&k!=='5')b.tabIndex=-1;keys.append(b);}
+      const slot=$('pad-slot');if(slot)slot.replaceChildren(pad,keys);else stage.append(pad);
+      const a=$('btn-a'),b=$('btn-b');if(a)a.onclick=primaryAction;if(b)b.onclick=()=>start();
+    }
     else{const pad=el('div','tetris-controls');for(const [label,fn,name]of [['←',()=>actionMove(-1,0),'Left'],['↻',()=>rotate(),'Rotate'],['→',()=>actionMove(1,0),'Right'],['↓',()=>softDrop(),'Soft drop'],['Drop',()=>hardDrop(),'Hard drop'],['Hold',()=>holdPiece(),'Hold']]){const k=button(label,fn);k.setAttribute('aria-label',name);pad.append(k);}stage.append(pad);tetrisTouch(c);}
-    const touch=matchMedia('(any-pointer:coarse)').matches;hint(game.id==='snake'?(touch?'Swipe anywhere on the board to steer, or use the arrows.':'Arrows / WASD to steer · P to pause'):(touch?'Drag to move · tap to turn · flick down to drop':'← → move · ↑ / X rotate · Z reverse · ↓ soft · Space drop · C hold · P pause'));
+    const touch=matchMedia('(any-pointer:coarse)').matches;hint(game.id==='snake'?(touch?'Swipe anywhere on the screen to steer, or use the buttons.':'Arrows, WASD or 2 4 6 8 to steer · Enter or A to start and pause'):(touch?'Drag to move · tap to turn · flick down to drop':'← → move · ↑ / X rotate · Z reverse · ↓ soft · Space drop · C hold · P pause'));
     status(resumed?'Saved game · ready when you are.':'Ready when you are.');drawAction();updateMetric();
   }
   /* Snake on a phone (Ric, 2026-11-21: "swiping needs to be a way you can play
@@ -773,7 +792,8 @@
   function tick(now){
     if(!running||paused||finished)return;accumulator+=Math.min(now-lastFrame,250);lastFrame=now;
     const delay=game.id==='snake'?(mode==='slow'?Math.max(110,240-Math.floor(s.score/10)*3):Math.max(65,160-Math.floor(s.score/10)*4)):Math.max(80,800*Math.pow(.82,Math.floor(s.lines/10)));
-    while(accumulator>=delay&&!s.over){accumulator-=delay;if(game.id==='snake'){const food=s.food,score=s.score;E.Snake.step(s);if(s.score>score)sfx('eat');if(s.score>score&&!reduced())for(let k=0;k<12;k++){const a=Math.PI*2*k/12;particles.push({x:food.x,y:food.y,vx:Math.cos(a),vy:Math.sin(a),at:now});}}else if(E.Tetris.move(s,0,1))lockAt=null;else if(lockAt===null)lockAt=now;}
+    stepDelay=delay;
+    while(accumulator>=delay&&!s.over){accumulator-=delay;if(game.id==='snake'){const food=s.food,score=s.score;E.Snake.step(s);if(s.score>score){sfx('eat');navigator.vibrate?.(12);}if(s.over){deathAt=now;const blink=t=>{drawAction();if(t-deathAt<950&&game.id==='snake')requestAnimationFrame(blink);};requestAnimationFrame(blink);}if(s.score>score&&!reduced())for(let k=0;k<12;k++){const a=Math.PI*2*k/12;particles.push({x:food.x,y:food.y,vx:Math.cos(a),vy:Math.sin(a),at:now});}}else if(E.Tetris.move(s,0,1))lockAt=null;else if(lockAt===null)lockAt=now;}
     if(game.id==='tetris'&&lockAt!==null){if(E.Tetris.fits(s,s.piece,s.x,s.y+1))lockAt=null;else if(now-lockAt>=500)lockPiece();}
     drawAction();updateMetric();actionEnd();if(running&&!finished)frame=requestAnimationFrame(tick);
   }
@@ -781,16 +801,7 @@
   function drawAction(){
     const c=$('game-canvas');if(!c||!s)return;const x=c.getContext('2d'),now=performance.now();x.fillStyle=paint.bg;x.fillRect(0,0,c.width,c.height);
     const box=(px,py,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(px,py,w,h,r);else x.rect(px,py,w,h);x.fill();};
-    if(game.id==='snake'){
-      const unit=25;for(let r=0;r<20;r++)for(let col=0;col<20;col++)if((r+col)%2){x.fillStyle=paint.grid;x.fillRect(col*unit,r*unit,unit,unit);}
-      const pulse=reduced()||!running?0:Math.sin(now/180)*1.2;x.fillStyle=paint.food;x.beginPath();x.arc(s.food.x*unit+unit/2,s.food.y*unit+unit/2,8+pulse,0,Math.PI*2);x.fill();
-      // One joined, rounded body reads better than separate squares.
-      x.fillStyle=paint.body;
-      s.body.forEach((p,i)=>{box(p.x*unit+3,p.y*unit+3,unit-6,unit-6,6);const q=s.body[i-1];if(q&&Math.abs(q.x-p.x)+Math.abs(q.y-p.y)===1)x.fillRect(Math.min(p.x,q.x)*unit+3,Math.min(p.y,q.y)*unit+3,(Math.abs(p.x-q.x)+1)*unit-6,(Math.abs(p.y-q.y)+1)*unit-6);});
-      const h=s.body[0];x.fillStyle=paint.head;box(h.x*unit+2,h.y*unit+2,unit-4,unit-4,8);
-      x.fillStyle=paint.eyes;for(const off of [-4,4]){const px=h.x*unit+12.5+(s.dir.x?5*s.dir.x:off),py=h.y*unit+12.5+(s.dir.y?5*s.dir.y:off);x.beginPath();x.arc(px,py,2,0,Math.PI*2);x.fill();}
-      particles=particles.filter(p=>now-p.at<380);for(const p of particles){const k=(now-p.at)/380;x.globalAlpha=1-k;x.fillStyle=paint.food;x.beginPath();x.arc(p.x*unit+unit/2+p.vx*k*30,p.y*unit+unit/2+p.vy*k*30,3*(1-k)+1,0,Math.PI*2);x.fill();}x.globalAlpha=1;
-      if(s.wrap){x.strokeStyle=paint.food;x.setLineDash([6,8]);x.lineWidth=2;x.strokeRect(1,1,c.width-2,c.height-2);x.setLineDash([]);x.lineWidth=1;}
+    if(game.id==='snake'){drawSnake(c,x,now);
     }else{
       const unit=30,tile=(v,col,r,alpha=1)=>{x.globalAlpha=alpha;x.fillStyle=blockColors[v];x.fillRect(col*unit+1,r*unit+1,unit-2,unit-2);x.fillStyle='#ffffff33';x.fillRect(col*unit+3,r*unit+3,unit-6,3);x.globalAlpha=1;};
       x.strokeStyle=paint.grid;for(let r=0;r<=20;r++){x.beginPath();x.moveTo(0,r*unit);x.lineTo(300,r*unit);x.stroke();}for(let col=0;col<=10;col++){x.beginPath();x.moveTo(col*unit,0);x.lineTo(col*unit,600);x.stroke();}
@@ -803,10 +814,74 @@
       const nc=$('next-canvas');if(nc){nc.getContext('2d').clearRect(0,0,100,170);[s.next,...(s.queue||[])].slice(0,3).forEach((p,k)=>{if(!p)return;const u=k?14:18;drawPiece(nc,p,u,(100-p[0].length*u)/2,k?k*56+10:4);});}
     }
   }
+  /* Snake is drawn the way the device it's played on would draw it (round three,
+     TODO.md): LED tabletop = a grid of LEDs; Pocket = a four-shade LCD that smears;
+     Brick phone = chunky dark pixels on a lit screen; Calculator = a dot-matrix;
+     Candy = a smooth gliding tube; Terminal = ASCII text in a <pre>. */
+  function drawSnake(c,x,now){
+    const L=look(),N=20,u=c.width/N,blink=s.over&&deathAt&&now-deathAt<950&&Math.floor((now-deathAt)/160)%2===0,body=blink?[]:s.body,food=s.food;
+    if(L==='terminal'){asciiSnake(blink);return;}
+    if(L==='led'){
+      x.fillStyle=paint.bg;x.fillRect(0,0,c.width,c.height);
+      const lit=new Map();lit.set(food.y*N+food.x,'food');body.forEach((p,i)=>lit.set(p.y*N+p.x,i?'body':'head'));
+      for(let r=0;r<N;r++)for(let col=0;col<N;col++){const k=lit.get(r*N+col),cx=col*u+u/2,cy=r*u+u/2;x.beginPath();x.arc(cx,cy,u*.33,0,Math.PI*2);
+        if(!k){x.fillStyle=paint.grid;x.fill();continue;}
+        const glow=k==='food'?paint.food:k==='head'?paint.head:paint.body;x.save();x.fillStyle=glow;x.shadowColor=glow;x.shadowBlur=u*.7;x.fill();x.restore();
+        x.beginPath();x.arc(cx-u*.1,cy-u*.11,u*.09,0,Math.PI*2);x.fillStyle='#ffffff8c';x.fill();}
+      return;
+    }
+    if(L==='pocket'||L==='phone'||L==='calc'){
+      // A slow LCD leaves a fading ghost of the last frame; the others redraw clean.
+      x.globalAlpha=L==='pocket'&&running&&!paused?.55:1;x.fillStyle=paint.bg;x.fillRect(0,0,c.width,c.height);x.globalAlpha=1;
+      if(L==='calc'){
+        const d=u/5,dots=(col,r,color)=>{x.fillStyle=color;for(let a=0;a<4;a++)for(let b=0;b<4;b++)x.fillRect(col*u+d*.6+a*d,r*u+d*.6+b*d,d*.78,d*.78);};
+        for(let r=0;r<N;r++)for(let col=0;col<N;col++)dots(col,r,paint.grid);
+        body.forEach((p,i)=>dots(p.x,p.y,i?paint.body:paint.head));
+        x.fillStyle=paint.food;for(const [a,b] of [[1,0],[2,0],[0,1],[3,1],[0,2],[3,2],[1,3],[2,3]])x.fillRect(food.x*u+d*.6+a*d,food.y*u+d*.6+b*d,d*.78,d*.78);
+      }else{
+        const g=L==='phone'?3:2;
+        for(let r=0;r<N;r++)for(let col=0;col<N;col++){x.fillStyle=paint.grid;x.fillRect(col*u+g,r*u+g,u-g*2,u-g*2);}
+        body.forEach((p,i)=>{x.fillStyle=i?paint.body:paint.head;x.fillRect(p.x*u+g,p.y*u+g,u-g*2,u-g*2);
+          // Joined segments on the phone: the classic chunky snake.
+          const q=body[i-1];if(L==='phone'&&q&&Math.abs(q.x-p.x)+Math.abs(q.y-p.y)===1)x.fillRect(Math.min(p.x,q.x)*u+g+(p.x!==q.x?u/2:0),Math.min(p.y,q.y)*u+g+(p.y!==q.y?u/2:0),p.x!==q.x?u-g*2:u-g*2,p.y!==q.y?u-g*2:u-g*2);});
+        const h=body[0];if(h){x.fillStyle=paint.bg;const e=u*.16;for(const off of [-1,1]){const ex=h.x*u+u/2+(s.dir.x?s.dir.x*u*.18:off*u*.2)-e/2,ey=h.y*u+u/2+(s.dir.y?s.dir.y*u*.18:off*u*.2)-e/2;x.fillRect(ex,ey,e,e);}}
+        x.fillStyle=paint.food;const fx=food.x*u,fy=food.y*u,q=u/5;
+        if(L==='phone')for(const [a,b] of [[2,1],[1,2],[3,2],[2,3]])x.fillRect(fx+a*q,fy+b*q,q,q);
+        else{for(const [a,b] of [[2,1],[1,2],[2,2],[3,2],[2,3]])x.fillRect(fx+a*q,fy+b*q,q,q);x.fillRect(fx+2*q,fy+.4*q,q*.6,q*.7);}
+        if(L==='phone'){x.strokeStyle=paint.body;x.lineWidth=3;x.strokeRect(1.5,1.5,c.width-3,c.height-3);}
+      }
+      if(s.wrap){x.strokeStyle=paint.food;x.setLineDash([u*.4,u*.4]);x.lineWidth=2;x.strokeRect(1,1,c.width-2,c.height-2);x.setLineDash([]);x.lineWidth=1;}
+      return;
+    }
+    // Candy (and any page without a device look): a smooth tube that glides between cells.
+    x.fillStyle=paint.bg;x.fillRect(0,0,c.width,c.height);
+    for(let r=0;r<N;r++)for(let col=0;col<N;col++)if((r+col)%2){x.fillStyle=paint.grid;x.fillRect(col*u,r*u,u,u);}
+    const pulse=reduced()||!running?0:Math.sin(now/180)*1.2;x.fillStyle=paint.food;x.beginPath();x.arc(food.x*u+u/2,food.y*u+u/2,u*.32+pulse,0,Math.PI*2);x.fill();
+    x.fillStyle='#ffffff99';x.beginPath();x.arc(food.x*u+u*.42,food.y*u+u*.38,u*.08,0,Math.PI*2);x.fill();
+    const k=running&&!paused&&!s.over&&!reduced()?Math.min(1,accumulator/stepDelay):1;
+    const pts=body.map((p,i)=>{const prev=body[i+1]||p,near=Math.abs(prev.x-p.x)+Math.abs(prev.y-p.y)===1;return near?{x:prev.x+(p.x-prev.x)*k,y:prev.y+(p.y-prev.y)*k}:{x:p.x,y:p.y};});
+    if(pts.length){
+      x.lineCap='round';x.lineJoin='round';
+      for(const [w,color] of [[u*.74,paint.body],[u*.24,'#ffffff40']]){x.lineWidth=w;x.strokeStyle=color;x.beginPath();pts.forEach((p,i)=>{const cx=p.x*u+u/2,cy=p.y*u+u/2,q=pts[i-1];if(!q||Math.abs(q.x-p.x)+Math.abs(q.y-p.y)>1.5)x.moveTo(cx,cy);else x.lineTo(cx,cy);});if(pts.length===1)x.lineTo(pts[0].x*u+u/2+.1,pts[0].y*u+u/2);x.stroke();}
+      const h=pts[0],hx=h.x*u+u/2,hy=h.y*u+u/2;x.fillStyle=paint.head;x.beginPath();x.arc(hx,hy,u*.44,0,Math.PI*2);x.fill();
+      x.fillStyle=paint.eyes;for(const off of [-1,1]){const ex=hx+(s.dir.x?s.dir.x*u*.16:off*u*.18),ey=hy+(s.dir.y?s.dir.y*u*.16:off*u*.18);x.beginPath();x.arc(ex,ey,u*.09,0,Math.PI*2);x.fill();}
+    }
+    particles=particles.filter(p=>now-p.at<380);for(const p of particles){const q=(now-p.at)/380;x.globalAlpha=1-q;x.fillStyle=paint.food;x.beginPath();x.arc(p.x*u+u/2+p.vx*q*30,p.y*u+u/2+p.vy*q*30,3*(1-q)+1,0,Math.PI*2);x.fill();}x.globalAlpha=1;
+    if(s.wrap){x.strokeStyle=paint.food;x.setLineDash([6,8]);x.lineWidth=2;x.strokeRect(1,1,c.width-2,c.height-2);x.setLineDash([]);x.lineWidth=1;}
+  }
+  /* Terminal: the field as text. @ head, o body, * apple, . empty; walls are a
+     solid box, or dashed when the snake can wrap through them. */
+  function asciiSnake(blink){
+    const pre=$('ascii-snake');if(!pre)return;const N=20,grid=Array.from({length:N},()=>Array(N).fill('<i>.</i>'));
+    grid[s.food.y][s.food.x]='<b class="f">*</b>';
+    s.body.forEach((p,i)=>{grid[p.y][p.x]=blink?'<b class="x">x</b>':i?'<b class="o">o</b>':'<b class="h">@</b>';});
+    const edge=s.wrap?':':'|',rule='+'+(s.wrap?'- '.repeat(N):'--'.repeat(N))+'+';
+    pre.innerHTML=rule+'\n'+grid.map(row=>edge+row.join(' ')+' '+edge).join('\n')+'\n'+rule;
+  }
   function togglePause(){
     if(!running||finished)return;paused=!paused;$('pause').textContent=paused?'Resume':'Pause';
     if(paused){cancelAnimationFrame(frame);const cover=el('div','paused-cover','Paused');cover.id='paused-cover';$('game-canvas').parentElement.append(cover);status('Paused. Your game is saved.');persist();}
-    else{$('paused-cover')?.remove();status('Back at it.');lastFrame=performance.now();frame=requestAnimationFrame(tick);}
+    else{$('paused-cover')?.remove();paused=true;countdown(()=>{paused=false;status('Back at it.');lastFrame=performance.now();frame=requestAnimationFrame(tick);});}
   }
   // Solitaire's table height is measured from the cards, so re-measure when the window changes.
   let resizeTimer=null;addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(game?.id==='solitaire'&&s&&!drag)renderSolitaire();},150);});
@@ -820,7 +895,7 @@
     if(!action())return;
     if(k==='p'){e.preventDefault();togglePause();return;}
     const dirs={arrowup:[0,-1],w:[0,-1],arrowleft:[-1,0],a:[-1,0],arrowdown:[0,1],s:[0,1],arrowright:[1,0],d:[1,0]};
-    if(game.id==='snake'&&dirs[k]){e.preventDefault();actionMove(...dirs[k]);}
+    if(game.id==='snake'){const num={'2':[0,-1],'4':[-1,0],'6':[1,0],'8':[0,1]}[k];if(dirs[k]||num){e.preventDefault();actionMove(...(dirs[k]||num));}else if(k==='enter'||k===' '||k==='5'){e.preventDefault();if(!e.repeat)primaryAction();}}
     if(game.id==='tetris'){if(['arrowleft','arrowright','arrowdown','arrowup','x','z',' ','c','shift'].includes(k))e.preventDefault();if(!running&&!finished&&!paused&&$('action-overlay')&&(k===' '||k==='enter')){beginAction();return;}if(k==='arrowleft')actionMove(-1,0);if(k==='arrowright')actionMove(1,0);if(k==='arrowdown')softDrop();if(k==='arrowup'||k==='x')rotate();if(k==='z')rotate(true);if((k==='c'||k==='shift')&&!e.repeat)holdPiece();if(k===' '&&!e.repeat)hardDrop();}
   });
   // Preserve the original score/daily keys so existing records survive the

@@ -146,7 +146,7 @@ directly, with their own identity. The Style selector has three choices on each:
 | Minesweeper | Desktop 95, Terminal, Ice field |
 | Tetris | Neon arcade, Pocket console, Monochrome |
 | Checkers | Tournament, Diner, Heirloom, Newsprint, Park table, Terminal (six since 2026-11-21; see TODO.md round three) |
-| Snake | Pocket LCD, Night drive, Candy pixels |
+| Snake | Pocket, Brick phone, LED tabletop, Candy, Calculator, Terminal (six handhelds since 2026-11-21; the page is the device) |
 
 Round three (2026-11-21) moves each game to six styles, one game at a time. Each
 `<option>` carries `data-look` (copied to `body[data-look]`) and, for Checkers,
@@ -158,7 +158,12 @@ Pages are also no longer one template (Ric, 2026-11-21: "the page for each [game
 needs to be catered to the game"). A game page may use any markup as long as it keeps
 the ids app.js uses; `#stats-slot` and `#sheet-slot` place the record and the move list,
 and `#rules` may live in the help dialog. Checkers is the first: a table with player
-plates and a scoresheet (`projects/checkers/index.html`). The others still use the
+plates and a scoresheet (`projects/checkers/index.html`). Snake is a handheld: the
+screen in a bezel with the score on its LCD (`#lcd-score`, `#lcd-hi`), the pad in
+`#pad-slot` (a d-pad and a phone keypad; each device shows one), A/B buttons
+(`#btn-a` starts and pauses, `#btn-b` deals a new game), and the high scores on a
+card; app.js draws the snake per device (LED grid, smearing LCD, dot-matrix, gliding
+tube, ASCII `<pre>`). The others still use the
 shared heading/sidebar layout until their turn in TODO.md.
 
 `data-game` selects the engine; `data-skin` and each page’s own inline CSS select

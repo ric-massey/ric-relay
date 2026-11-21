@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#bcc59b">
+  <meta name="theme-color" content="#d9d6cf">
   <title>Snake — RIC//NET</title>
-  <meta name="description" content="Play Snake in the Arcade. Eat. Grow. Mind the walls.. Three styles to choose from, with touch and keyboard controls.">
+  <meta name="description" content="Play Snake in the Arcade on six handhelds: a pocket console, a brick phone, an LED tabletop, a candy handheld, a calculator and a terminal. Swipe, d-pad, keypad or keyboard.">
   <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Snake — RIC//NET">
-  <meta property="og:description" content="Play Snake in the Arcade. Eat. Grow. Mind the walls.. Three styles to choose from, with touch and keyboard controls.">
+  <meta property="og:description" content="Play Snake in the Arcade on six handhelds: a pocket console, a brick phone, an LED tabletop, a candy handheld, a calculator and a terminal. Swipe, d-pad, keypad or keyboard.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ricmassey.com/projects/snake/">
   <meta property="og:image" content="https://ricmassey.com/assets/games/snake.jpg">
@@ -18,37 +18,274 @@
   <link rel="stylesheet" href="../arcade/style.css">
   <script src="../../assets/visit.js" defer></script>
   <style>
+/* Snake is a game in your hands (round three, 2026-11-21, TODO.md; Ric: "the
+   page for each [game] needs to be catered to the game"). The page is a
+   handheld lying on a surface: the screen in its bezel with the score on the
+   LCD, the d-pad and A/B on the body, and the high scores on a card beside
+   it. Each of the six devices is a different object, and app.js draws the
+   snake the way that device would. */
 
-/* This page owns its theme; layout and rules stay inside the Arcade games. */
-body{background-color:var(--paper);color:var(--ink)}
-.page-mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:17px;font-weight:700}.emblem{line-height:1}.topbar{background-color:var(--paper)}
-.game-heading h1{font-family:var(--display-font,Georgia,serif)}.game-heading p,.hint,.muted,.rules p,.score-source,.scores li:before,.game-subtitle{color:var(--muted)}
-button,select,input{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,4px)}button:hover{background:var(--panel)}button.solid{background:var(--green);border-color:var(--green);color:#fff}.text-button{background:transparent!important}
-.table-wrap{background:var(--panel);border-color:var(--edge);border-radius:var(--radius)}.table-head{background:var(--panel);border-bottom:1px solid var(--edge)}.scores li,.score-heading,.rules{border-color:var(--edge)}
-dialog{background:var(--paper);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--panel);color:var(--ink)}
-.theme-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.theme-picker select{font-size:13px;min-height:44px;max-width:170px}.table-wrap:focus-within{outline-offset:3px}
-@media(max-width:760px){.topbar{padding:0 14px}.page-mark{font-size:15px}.topbar .quiet{font-size:11px;padding:4px}.game-heading{flex-wrap:wrap;gap:0;padding-top:12px}.game-heading>div:first-child{flex:1;min-width:150px}.game-heading h1{font-size:36px!important;letter-spacing:-1px}.game-actions{max-width:none;justify-content:flex-start;padding:8px 0 0;width:100%;flex-wrap:wrap}.game-actions label{width:auto;text-align:left}.theme-picker select{max-width:150px;font-size:12px}.theme-picker{gap:5px}.game-actions button,.game-actions select{padding:8px}.game-heading p{font-size:12px}.action-stage .canvas-wrap.tetris{width:min(210px,calc((100svh - 480px)/2));min-width:130px}.sidebar{gap:18px}.sidebar .rules{min-width:0}.mines .square{border-width:2px}.mines .revealed{border-width:1px}}
+/* ---- the room ------------------------------------------------------------ */
+body{background:var(--surface,#d9d6cf);color:var(--ink);font-family:var(--body-font,system-ui,sans-serif)}
+.sn-bar{display:flex;align-items:center;gap:14px;min-height:56px;padding:8px max(3vw,16px);color:var(--ink)}
+.sn-back{font-size:20px;text-decoration:none;color:inherit;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;flex:none}
+.sn-back:hover{background:#0000000f}
+.sn-name{display:flex;align-items:baseline;gap:10px;margin-right:auto;min-width:0}
+.sn-title{margin:0;font:700 22px/1 var(--display-font,system-ui);letter-spacing:.02em}
+.sn-sub{margin:0;font-size:12px;color:var(--muted);white-space:nowrap}
+.sn-bar .game-actions{gap:6px}
+.sn-bar .theme-picker{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.sn-bar select{min-height:38px;font-size:13px;max-width:170px}
+.sn-bar button{min-height:38px;padding:6px 14px;font-size:13px}
+button,select,input{background:var(--panel);color:var(--ink);border-color:var(--edge);border-radius:var(--radius,6px);font-family:var(--body-font,inherit)}
+button.solid{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+#pause{display:none!important}
+.sn-room{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:40px;max-width:1080px;margin:0 auto;padding:18px max(3vw,16px) 90px;align-items:start}
+dialog{background:var(--panel);color:var(--ink);border-color:var(--edge);border-radius:var(--radius)}dialog input{background:var(--paper);color:var(--ink)}
+#help-dialog #rules{color:var(--ink)}
 
-body{--paper:#bcc59b;--ink:#273d26;--muted:#34462c;--green:#3d5f38;--panel:#a7b788;--edge:#5e754d;--display-font:'Courier New',monospace;--radius:16px;--canvas-bg:#a7b980;--canvas-grid:#a0b178;--snake-head:#243b25;--snake-body:#405932;--snake-food:#283d26;--snake-eyes:#cad5a2}
-body[data-skin="1"]{--paper:#102027;--ink:#e4f1e8;--muted:#b0c9bc;--green:#32685a;--panel:#19353c;--edge:#4c7d71;--canvas-bg:#0e2328;--canvas-grid:#132f30;--snake-head:#f1db86;--snake-body:#7eb8a2;--snake-food:#edaa77;--snake-eyes:#133125;--radius:4px;color-scheme:dark}
-body[data-skin="2"]{--paper:#f8e1e6;--ink:#653b59;--muted:#704960;--green:#8f4873;--panel:#efd0df;--edge:#be8ca8;--canvas-bg:#fbe7ef;--canvas-grid:#f3dce8;--snake-head:#8b3e73;--snake-body:#b95b91;--snake-food:#3c7c58;--snake-eyes:#fff3d3;--radius:22px}
-.game-heading h1{font-family:var(--display-font);font-weight:900;letter-spacing:-3px;text-transform:uppercase;font-size:60px}.table-wrap{border:5px solid var(--edge)!important;box-shadow:inset 0 0 0 3px var(--panel),0 5px 0 var(--edge)}.game-canvas{border:5px solid var(--edge)!important;image-rendering:pixelated}.dpad button{border-radius:50%;border-bottom-width:4px;background:var(--green);color:#fff}.page-mark{font-family:var(--display-font);font-weight:900}.page-mark .emblem{font-size:30px}.topbar{border-bottom:2px solid var(--edge)}
+/* ---- the device: shell, bezel, screen, controls ------------------------- */
+.device{position:relative;width:min(100%,440px);margin:0 auto;padding:16px 22px 26px;background:var(--shell);color:var(--shell-ink);border-radius:var(--shell-radius,16px 16px 64px 16px);box-shadow:var(--shell-shadow,inset 0 2px 0 #ffffff66,inset 0 -6px 0 #0000001f,0 26px 40px -22px #000a)}
+.device-top{display:flex;justify-content:space-between;align-items:center;margin:0 4px 12px;font:700 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--shell-print,#0000008c)}
+.brand::before{content:var(--brand,'RIC//NET')}
+.power{display:flex;align-items:center;gap:6px}
+.power i{width:7px;height:7px;border-radius:50%;background:var(--led,#e5283d);box-shadow:0 0 6px var(--led,#e5283d)}
+.bezel{background:var(--bezel);padding:14px 20px 18px;border-radius:var(--bezel-radius,10px 10px 34px 10px);box-shadow:inset 0 2px 6px #0007}
+.bezel-label{display:var(--show-label,flex);align-items:center;gap:8px;margin:0 0 9px;font:italic 700 9px/1 system-ui;letter-spacing:.08em;color:var(--bezel-print,#bfc0ca);text-transform:uppercase}
+.bezel-label::before,.bezel-label::after{content:'';flex:1;height:3px;background:var(--bezel-stripes,linear-gradient(#8c1d57 0 1px,transparent 1px 2px,#2a2a8c 2px))}
+.bezel-label span::before{content:var(--model,'Pocket · dot matrix')}
+.screen{position:relative;background:var(--canvas-bg);padding:var(--screen-pad,5px);box-shadow:var(--screen-shadow,inset 0 0 0 2px #00000026,inset 0 3px 8px #0000004d);border-radius:var(--screen-radius,2px)}
+.lcd-bar{display:flex;justify-content:space-between;padding:2px 4px 5px;font:700 12px/1 var(--lcd-font,var(--mono));letter-spacing:.08em;color:var(--snake-head);text-transform:uppercase}
+.lcd-bar b{font-weight:700}
+.screen .stage{min-height:0;padding:0;display:block}
+.screen .action-row{display:block}
+.screen .canvas-wrap{width:min(100%,calc(100svh - 360px));min-width:200px;max-width:100%;margin:0 auto}
+.screen canvas.game-canvas{border:0;border-radius:0;background:var(--canvas-bg)}
+.lcd-status{margin:5px 4px 0;min-height:14px;font:600 10.5px/1.2 var(--lcd-font,var(--mono));letter-spacing:.06em;color:var(--snake-body);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* The start screen, pause and count happen on the screen, in its own colours. */
+.screen .start-overlay{background:color-mix(in srgb,var(--canvas-bg) 88%,transparent);color:var(--snake-head);font-family:var(--lcd-font,var(--mono))}
+.screen .overlay-title{font:700 30px/1 var(--lcd-font,var(--mono));letter-spacing:.12em;text-transform:uppercase}
+.screen .start-overlay .overlay-play{background:var(--snake-head);color:var(--canvas-bg);border:0;border-radius:var(--radius,6px);box-shadow:none;min-height:40px;font-family:var(--lcd-font,var(--mono));letter-spacing:.1em;text-transform:uppercase}
+.screen .overlay-keys{color:var(--snake-body)}
+.screen kbd{border-color:currentColor}
+.screen .paused-cover{background:color-mix(in srgb,var(--canvas-bg) 85%,transparent);color:var(--snake-head);font:700 26px var(--lcd-font,var(--mono));letter-spacing:.2em;text-transform:uppercase}
+.countdown{position:absolute;inset:0;display:grid;place-items:center;font:700 clamp(60px,18vw,120px)/1 var(--lcd-font,var(--mono));color:var(--snake-head);pointer-events:none}
+.countdown.beat{animation:count-beat .42s ease-out}
+@keyframes count-beat{from{transform:scale(1.5);opacity:0}}
+.ascii-snake{display:none}
+/* Controls on the body */
+.controls{display:flex;justify-content:space-between;align-items:center;margin:24px 4px 0}
+#pad-slot{display:contents}
+.device .dpad{display:grid!important;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:0;margin:0;position:relative}
+.device .dpad::before{content:'';grid-area:2/2;background:var(--dpad,#26262b);border-radius:3px}
+.device .dpad button{min-height:0;padding:0;border:0;border-radius:4px;background:var(--dpad,#26262b);color:var(--dpad-ink,#5c5c66);font-size:14px;box-shadow:0 3px 0 var(--dpad-edge,#0a0a0c)}
+.device .dpad .up{grid-area:1/2;border-radius:5px 5px 0 0}.device .dpad .left{grid-area:2/1;border-radius:5px 0 0 5px}.device .dpad .right{grid-area:2/3;border-radius:0 5px 5px 0}.device .dpad .down{grid-area:3/2;border-radius:0 0 5px 5px}
+.device .dpad button:active,.device .dpad button.pressed{transform:translateY(2px);box-shadow:0 1px 0 var(--dpad-edge,#0a0a0c)}
+.ab{display:flex;gap:16px;transform:rotate(-24deg);margin-right:6px}
+.ab button{width:54px;height:54px;min-height:0;padding:0;border-radius:50%;border:0;background:var(--ab,#a32356);color:var(--ab-ink,#f6dbe6);font:700 16px/1 system-ui;box-shadow:0 4px 0 var(--ab-edge,#5e1131),inset 0 2px 0 #ffffff40;position:relative}
+.ab button small{position:absolute;left:50%;top:calc(100% + 9px);transform:translateX(-50%);font:700 9px/1 var(--mono);letter-spacing:.1em;color:var(--shell-print,#0000008c);white-space:nowrap}
+.ab button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ab-edge,#5e1131)}
+.ab .b{margin-top:22px}
+.pills{display:flex;justify-content:center;gap:22px;margin:28px 0 0}
+.pills span{display:flex;flex-direction:column;align-items:center;gap:6px;font:700 9px/1 var(--mono);letter-spacing:.12em;color:var(--shell-print,#0000008c)}
+.pills span::before{content:'';width:42px;height:10px;border-radius:6px;background:var(--pill,#8d8a95);transform:rotate(-24deg);box-shadow:inset 0 1px 0 #ffffff55}
+.grille{position:absolute;right:30px;bottom:28px;width:64px;height:46px;background:repeating-linear-gradient(-24deg,transparent 0 7px,var(--grille,#00000033) 7px 10px);border-radius:6px;transform:skewX(-8deg);display:var(--show-grille,block)}
+.keypad,.calc-keys,.term-title{display:none}
+.device-hint{text-align:center;font-size:12px;color:var(--muted);margin:14px 0 0}
 
-@media(max-width:760px){.topbar .back{white-space:nowrap;flex-shrink:0}.topbar .quiet{font-size:0!important;min-width:36px;padding:4px}.topbar .quiet::after{content:"?";font:700 16px system-ui}.page-mark{font-size:14px}.topbar{gap:10px}.page-mark .emblem{font-size:23px}}
+/* ---- the card beside it: high scores and your record -------------------- */
+.hi-card{background:var(--card,#fbfaf7);color:var(--card-ink,var(--ink));padding:16px 18px 18px;box-shadow:var(--card-shadow,0 1px 0 #0000001a,0 18px 30px -22px #000a);border-radius:var(--card-radius,4px);transform:var(--card-tilt,rotate(1.2deg))}
+.hi-card h2{margin:0;font:var(--card-title,700 15px/1.2 var(--display-font,system-ui));letter-spacing:.04em;text-transform:uppercase}
+.hi-card .score-heading{border:0;display:flex;justify-content:space-between;align-items:center}
+.hi-card .score-kind,.hi-card .score-source,.hi-card .muted{font-size:11px;color:var(--card-muted,var(--muted))}
+.hi-card .scores li{font:var(--card-font,14px var(--mono));border-bottom:1px dotted var(--card-rule,#0000002e);padding:7px 0}
+.hi-card .stats{margin-top:16px;padding-top:14px;border-top:1px solid var(--card-rule,#0000002e)}
+.hi-card .stats h2{font-size:13px}
+.hi-card .stat-grid dd{font-size:18px}
+.hi-card .stat-grid dt{color:var(--card-muted,var(--muted))}
+
+@media(max-width:860px){
+  .sn-room{grid-template-columns:1fr;gap:26px;padding-top:6px}
+  .hi-card{transform:none}
+  .sn-bar{flex-wrap:wrap;row-gap:6px}
+  .sn-bar .game-actions{width:100%;max-width:none;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:0 0 2px;scrollbar-width:none}
+  .sn-bar .game-actions label{width:auto;flex:none}
+  .sn-bar .game-actions>*{flex:none}
+  .sn-bar #new-game{order:-1}
+  .sn-sub{display:none}
+  .device{padding:12px 14px 22px}
+  .bezel{padding:10px 12px 14px}
+  .screen .canvas-wrap{width:100%;min-width:0}
+}
+
+/* ==========================================================================
+   0 · POCKET — a grey handheld with a four-shade green screen that smears,
+   a maroon A and B, a black cross pad, and speaker slots. On a desk. */
+body{--paper:#f2f0ea;--ink:#25252b;--muted:#55555f;--accent:#a32356;--green:#a32356;--panel:#fbfaf7;--edge:#b9b6ae;--display-font:'Arial Black','Segoe UI',system-ui,sans-serif;--radius:6px;
+  --surface:#d9d6cf;--shell:linear-gradient(160deg,#d6d3cc,#c3bfb7);--shell-ink:#25252b;--bezel:#5b5c68;--brand:'RIC//NET  pocket';--model:'dot matrix · stereo sound';
+  --canvas-bg:#9db85a;--canvas-grid:#94ae52;--snake-head:#243516;--snake-body:#3e5a24;--snake-food:#243516;--snake-eyes:#9db85a;--lcd-font:'Lucida Console',Consolas,monospace}
+body[data-look="pocket"]{background-image:radial-gradient(circle at 30% 20%,#ffffff40,transparent 60%)}
+
+/* ==========================================================================
+   1 · BRICK PHONE — a candybar phone: dark pixels on a lit green screen, a
+   chunky joined snake, played on the 2-4-6-8 keys of a real keypad. */
+body[data-skin="1"]{--paper:#1c2333;--ink:#e6ecf5;--muted:#a9b6c9;--accent:#4f7bd1;--green:#4f7bd1;--panel:#252e41;--edge:#4a5670;--display-font:'Segoe UI',system-ui,sans-serif;--radius:10px;color-scheme:dark;
+  --surface:#1c2333;--shell:linear-gradient(90deg,#2b3550,#3c4865 50%,#2b3550);--shell-ink:#e6ecf5;--shell-print:#c5cfe0;--shell-radius:48px 48px 40px 40px;--bezel:#0f1420;--bezel-radius:14px;--show-label:none;--brand:'RIC//NET  mobile';
+  --canvas-bg:#b5cb93;--canvas-grid:#adc38b;--snake-head:#1d2716;--snake-body:#28351e;--snake-food:#1d2716;--snake-eyes:#b5cb93;--lcd-font:'Lucida Console',Consolas,monospace;--show-grille:none}
+body[data-look="phone"] .device{width:min(100%,330px);padding:22px 20px 30px}
+body[data-look="phone"] .device-top{justify-content:center;margin-bottom:16px}
+body[data-look="phone"] .device-top .power{display:none}
+body[data-look="phone"] .device-top::before{content:'';position:absolute;top:12px;left:50%;width:54px;height:5px;margin-left:-27px;border-radius:3px;background:repeating-linear-gradient(90deg,#0f1420 0 3px,transparent 3px 6px)}
+body[data-look="phone"] .screen{box-shadow:inset 0 0 0 2px #00000026,inset 0 0 24px #e9ffd04d,0 0 18px #b5cb9333}
+body[data-look="phone"] .controls{flex-direction:column;margin-top:20px}
+body[data-look="phone"] .device .dpad,body[data-look="phone"] .ab,body[data-look="phone"] .pills{display:none!important}
+body[data-look="phone"] .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px 12px;width:100%}
+body[data-look="phone"] .keypad button{min-height:40px;padding:2px 0;border:0;border-radius:18px 18px 22px 22px;background:linear-gradient(#5b6886,#46526d);color:#eef2fa;box-shadow:0 3px 0 #1b2132,inset 0 1px 0 #8a97b5;display:flex;flex-direction:column;align-items:center;line-height:1}
+body[data-look="phone"] .keypad .kn{font:700 17px system-ui}
+body[data-look="phone"] .keypad .ks{font:700 8px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#b9c6e2;min-height:8px}
+body[data-look="phone"] .keypad .key-2,body[data-look="phone"] .keypad .key-4,body[data-look="phone"] .keypad .key-6,body[data-look="phone"] .keypad .key-8,body[data-look="phone"] .keypad .key-5{background:linear-gradient(#7a8fc2,#5e72a6)}
+body[data-look="phone"] .keypad button:active{transform:translateY(2px);box-shadow:0 1px 0 #1b2132}
+
+/* ==========================================================================
+   2 · LED TABLETOP — a 1980s tabletop game: a glossy orange case with racing
+   stripes, a smoked window over a grid of red LEDs, chunky yellow buttons. */
+body[data-skin="2"]{--paper:#201814;--ink:#f6e9dc;--muted:#d1bba6;--accent:#f0a020;--green:#f0a020;--panel:#2c211b;--edge:#6b5242;--display-font:'Arial Black',Impact,sans-serif;--radius:8px;color-scheme:dark;--on-accent:#201814;
+  --surface:#201814;--shell:linear-gradient(#ee6a24,#d94b16);--shell-ink:#2a1206;--shell-print:#3a1a0a;--shell-radius:28px;--bezel:#111;--bezel-radius:10px;--show-label:none;--brand:'RIC//NET  electronic';--led:#ffe14a;
+  --canvas-bg:#0b0606;--canvas-grid:#2a0b09;--snake-head:#ffd9cf;--snake-body:#ff2a1a;--snake-food:#3dff4a;--snake-eyes:#0b0606;--lcd-font:'Arial Black',Impact,sans-serif;--show-grille:none;--dpad:#f6c51c;--dpad-edge:#a87b06;--dpad-ink:#7a5404;--ab:#f6c51c;--ab-edge:#a87b06;--ab-ink:#5a3c02}
+body[data-look="led"] .device{width:min(100%,480px);background:linear-gradient(transparent 0 18px,#ffd43b 18px 24px,#ff9a1f 24px 30px,#c8320c 30px 36px,transparent 36px),linear-gradient(#ee6a24,#d94b16)}
+body[data-look="led"] .device-top{margin-top:30px}
+body[data-look="led"] .screen{box-shadow:inset 0 0 0 3px #000,inset 0 10px 30px #ffffff14}
+body[data-look="led"] .lcd-bar{color:#ff5a44;text-shadow:0 0 8px #ff2a1a}
+body[data-look="led"] .lcd-status{color:#ff5a44}
+body[data-look="led"] .device .dpad button{border-radius:50%;margin:3px}
+body[data-look="led"] .device .dpad::before{display:none}
+body[data-look="led"] .ab{transform:none}
+body[data-look="led"] .ab button{border-radius:8px;width:64px;height:44px}
+body[data-look="led"] .ab .b{margin-top:0}
+body[data-look="led"] .pills{display:none}
+
+/* ==========================================================================
+   3 · CANDY — a see-through coloured handheld (you can see the board
+   inside), a bright colour screen, and a snake that glides between squares. */
+body[data-skin="3"]{--paper:#f7eefb;--ink:#3b1d4a;--muted:#6b4a7a;--accent:#8b3fc4;--green:#8b3fc4;--panel:#fff9fe;--edge:#d6b8e6;--display-font:'Trebuchet MS','Segoe UI',system-ui,sans-serif;--radius:14px;
+  --surface:#f1e4f7;--shell:linear-gradient(160deg,#a35fd8d9,#7a35b3e6);--shell-ink:#fff;--shell-print:#f3e2ffcc;--bezel:#2b1640;--brand:'RIC//NET  color';--model:'color · rechargeable';--bezel-print:#e5c9ff;--bezel-stripes:linear-gradient(90deg,#ff5fa2,#ffd25f,#5fe3a8,#5fb8ff);
+  --canvas-bg:#fff6fb;--canvas-grid:#fde8f2;--snake-head:#e2337f;--snake-body:#ff74ad;--snake-food:#2fbf72;--snake-eyes:#2b1030;--lcd-font:'Trebuchet MS',system-ui,sans-serif;--dpad:#5a2c80;--dpad-edge:#3b1857;--dpad-ink:#c9a6e6;--ab:#ffd25f;--ab-edge:#c49a1f;--ab-ink:#6b4a00;--pill:#c28ce8;--grille:#ffffff38;--led:#5fe3a8}
+/* The board inside, seen through the plastic. */
+body[data-look="candy"] .device{isolation:isolate}
+body[data-look="candy"] .device::after{content:'';position:absolute;inset:18px;border-radius:inherit;pointer-events:none;opacity:.35;z-index:-1;background:linear-gradient(90deg,transparent 0 30%,#3a8a5c 30% 31%,transparent 31% 70%,#3a8a5c 70% 71%,transparent 71%),linear-gradient(transparent 0 62%,#3a8a5c 62% 63%,transparent 63% 84%,#3a8a5c 84% 85%,transparent 85%),radial-gradient(circle at 26% 72%,#c9a24a 0 6px,transparent 7px),radial-gradient(circle at 76% 88%,#c9a24a 0 6px,transparent 7px);mix-blend-mode:multiply}
+body[data-look="candy"] .ab .b{background:#5fe3a8;box-shadow:0 4px 0 #2a9a68,inset 0 2px 0 #ffffff60;color:#0f4d32}
+body[data-look="candy"] .lcd-bar{color:#8b3fc4}
+body[data-look="candy"] .lcd-status{color:#8b3fc4}
+
+/* ==========================================================================
+   4 · CALCULATOR — a graphing calculator: a slate case, a grey dot-matrix
+   screen, an arrow cluster and a grid of keys under it. Played in class. */
+body[data-skin="4"]{--paper:#e9ebe6;--ink:#1f2328;--muted:#4c535b;--accent:#2f6fb5;--green:#2f6fb5;--panel:#f7f8f5;--edge:#a9aea8;--display-font:'Segoe UI',system-ui,sans-serif;--radius:6px;
+  --surface:#e3e5df;--shell:linear-gradient(#3a3f47,#2a2e34);--shell-ink:#e6e8ea;--shell-print:#c7ccd2;--shell-radius:18px 18px 30px 30px;--bezel:#1d2025;--bezel-radius:8px;--show-label:none;--brand:'RIC//NET  graphing';--show-grille:none;
+  --canvas-bg:#bfc6a8;--canvas-grid:#b3ba9b;--snake-head:#151a10;--snake-body:#2a3020;--snake-food:#2a3020;--snake-eyes:#bfc6a8;--lcd-font:'Lucida Console',Consolas,monospace;--dpad:#585e68;--dpad-edge:#1c1f24;--dpad-ink:#e6e8ea;--ab:#2f6fb5;--ab-edge:#173d66;--ab-ink:#fff}
+/* Graph paper under it, on the school desk. */
+body[data-look="calc"]{background-image:linear-gradient(#9fb6cc33 1px,transparent 1px),linear-gradient(90deg,#9fb6cc33 1px,transparent 1px);background-size:22px 22px}
+body[data-look="calc"] .device{width:min(100%,380px)}
+body[data-look="calc"] .controls{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:16px 18px;align-items:start}
+body[data-look="calc"] .ab{transform:none;flex-direction:column;gap:10px;grid-column:1;grid-row:1;margin:0;align-self:center}
+body[data-look="calc"] .ab button{border-radius:6px;width:100%;min-width:118px;height:32px;font:700 12px var(--mono)}
+body[data-look="calc"] .ab button small{position:static;transform:none;color:#d8e6f6;margin-left:6px}
+body[data-look="calc"] .ab .b{margin:0;background:#585e68;box-shadow:0 3px 0 #1c1f24;color:#e6e8ea}
+body[data-look="calc"] .device .dpad{grid-column:2;grid-row:1;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px);border-radius:50%;padding:2px;background:#1f2329}
+body[data-look="calc"] .device .dpad::before{display:none}
+body[data-look="calc"] .device .dpad button{border-radius:8px}
+body[data-look="calc"] .calc-keys{display:grid;grid-column:1/-1;grid-template-columns:repeat(5,1fr);gap:8px 7px}
+body[data-look="calc"] .calc-keys span{display:grid;place-items:center;height:26px;border-radius:5px 5px 9px 9px;background:linear-gradient(#4d535d,#3c4149);box-shadow:0 2px 0 #1c1f24;font:600 10px var(--mono);color:#e6e8ea}
+body[data-look="calc"] .calc-keys .num{background:linear-gradient(#e9eaec,#cfd2d6);color:#20242a}
+body[data-look="calc"] .calc-keys .op{background:linear-gradient(#3b7cc4,#2a5f99);color:#fff}
+body[data-look="calc"] .pills{display:none}
+
+/* ==========================================================================
+   5 · TERMINAL — the snake as ASCII text in a terminal window. The shared
+   terminal chrome is in style.css; here is the window and the field. */
+body[data-skin="5"]{--paper:#040904;--ink:#8dffa6;--muted:#58c472;--accent:#8dffa6;--green:#8dffa6;--panel:#071107;--edge:#1f5d2d;--radius:0px;color-scheme:dark;
+  --surface:#040904;--shell:transparent;--shell-shadow:none;--shell-radius:0;--bezel:transparent;--bezel-radius:0;--show-label:none;--show-grille:none;--screen-shadow:none;--screen-pad:0;
+  --canvas-bg:#040904;--canvas-grid:#0b1a0d;--snake-head:#c8ffd4;--snake-body:#8dffa6;--snake-food:#ffc56b;--snake-eyes:#040904}
+body[data-look="terminal"] .device{border:1px solid var(--edge);padding:0 0 14px;width:min(100%,560px)}
+body[data-look="terminal"] .device-top{display:none}
+body[data-look="terminal"] .term-title{display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px dashed var(--edge);font:12px var(--term-font);color:var(--muted)}
+body[data-look="terminal"] .bezel{padding:10px 14px 0}
+body[data-look="terminal"] .lcd-bar{color:var(--ink);font:13px var(--term-font);text-transform:lowercase;padding:0 0 8px}
+body[data-look="terminal"] .lcd-status{color:var(--muted);font:12px var(--term-font);text-transform:none}
+body[data-look="terminal"] .lcd-status::before{content:'> '}
+body[data-look="terminal"] .screen canvas.game-canvas{display:none}
+body[data-look="terminal"] .ascii-snake{display:block;margin:0;font:clamp(9px,min(2.85vw,1.9vh),15px)/1.12 var(--term-font);color:var(--ink);text-shadow:0 0 6px #8dffa666;white-space:pre;text-align:center}
+body[data-look="terminal"] .ascii-snake i{font-style:normal;color:#1f5d2d}
+body[data-look="terminal"] .ascii-snake .h{color:#e8ffee}
+body[data-look="terminal"] .ascii-snake .o{color:#8dffa6;font-weight:400}
+body[data-look="terminal"] .ascii-snake .f{color:#ffc56b;text-shadow:0 0 6px #ffb84d99}
+body[data-look="terminal"] .ascii-snake .x{color:#ff6b6b}
+body[data-look="terminal"] .screen .canvas-wrap{width:auto}
+body[data-look="terminal"] .screen .start-overlay,body[data-look="terminal"] .screen .paused-cover{background:#040904e6;color:var(--ink);font-family:var(--term-font)}
+body[data-look="terminal"] .screen .overlay-title{font:700 22px var(--term-font);letter-spacing:0;text-transform:lowercase}
+body[data-look="terminal"] .screen .overlay-title::before{content:'$ ./'}
+body[data-look="terminal"] .screen .start-overlay .overlay-play{background:transparent;color:var(--ink);text-transform:lowercase}
+body[data-look="terminal"] .countdown{font-family:var(--term-font);color:var(--ink)}
+body[data-look="terminal"] .controls{justify-content:center;gap:40px}
+body[data-look="terminal"] .pills{display:none}
+body[data-look="terminal"] .device .dpad::before{display:none}
+body[data-look="terminal"] .device .dpad button,body[data-look="terminal"] .ab button{background:transparent;border:1px solid var(--edge);border-radius:0;box-shadow:none;color:var(--ink);font:14px var(--term-font)}
+body[data-look="terminal"] .ab{transform:none}
+body[data-look="terminal"] .ab .b{margin-top:0}
+body[data-look="terminal"] .ab button{width:auto;height:40px;padding:0 10px}
+body[data-look="terminal"] .ab button small{position:static;transform:none;margin-left:6px;color:var(--muted)}
+@media not all and (any-pointer:coarse){body[data-look="terminal"] .controls{display:none}}
+body[data-look="terminal"] .hi-card{border:1px dashed var(--edge);background:transparent;transform:none;box-shadow:none}
+body[data-look="terminal"] .hi-card h2::before{content:'$ cat ';color:var(--muted)}
+body[data-look="terminal"] .hi-card h2{text-transform:lowercase;letter-spacing:0}
+body[data-look="terminal"] .hi-card .stats{border:0;border-top:1px dashed var(--edge)}
+
+/* The cards that came in each box. */
+body[data-look="pocket"] .hi-card{--card:#f7f4ec;border-top:10px solid #2a2a8c;box-shadow:inset 0 -3px 0 #8c1d57,0 18px 30px -22px #000a}
+body[data-look="phone"] .hi-card{--card:#b5cb93;--card-ink:#1d2716;--card-muted:#3a4a2c;--card-rule:#1d27163d;--card-radius:10px;--card-tilt:none;font-family:'Lucida Console',Consolas,monospace;box-shadow:inset 0 0 0 2px #0000002e,0 0 0 8px #0f1420,0 0 0 10px #4a5670}
+body[data-look="led"] .hi-card{--card:#111;--card-ink:#f6e9dc;--card-muted:#d1bba6;--card-rule:#ffffff2e;background:linear-gradient(#ffd43b 0 5px,#ff9a1f 5px 10px,#c8320c 10px 15px,#111 15px);padding-top:28px}
+body[data-look="candy"] .hi-card{--card:#fff;--card-radius:18px;--card-tilt:rotate(-1.5deg);border:3px dashed #e5c9ff}
+body[data-look="calc"] .hi-card{--card:#fffef6;--card-radius:0;--card-tilt:none;font-family:'Lucida Console',Consolas,monospace;-webkit-mask:linear-gradient(#000,#000) 0 0/100% calc(100% - 8px) no-repeat,radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) 0 100%/16px 8px repeat-x;mask:linear-gradient(#000,#000) 0 0/100% calc(100% - 8px) no-repeat,radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) 0 100%/16px 8px repeat-x;padding-bottom:26px}
   </style>
 </head>
-<body data-game="snake" data-skin="0">
-  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="../../gaming.html" class="page-mark"><span class="emblem" aria-hidden="true">▰</span>Snake</a><button id="soundless" class="quiet" type="button">How to play</button></header>
-  <main>
-    <section id="playroom" aria-labelledby="game-title">
-      <div class="game-heading"><div><h1 id="game-title">Snake</h1><p id="game-subtitle">Eat. Grow. Mind the walls.</p></div><div class="game-actions"><label class="theme-picker">Style <select id="style-switch" aria-label="Visual style"><option value="0">Pocket LCD</option><option value="1">Night drive</option><option value="2">Candy pixels</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
-      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
-      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>Controls</h2><p id="rules"></p></section></aside></div>
-    </section>
+<body data-game="snake" data-skin="0" data-look="pocket">
+  <header class="sn-bar">
+    <a href="../../gaming.html" class="sn-back" aria-label="Back to the Arcade">←</a>
+    <div class="sn-name"><h1 class="sn-title" id="game-title">Snake</h1><p class="sn-sub" id="game-subtitle">Eat. Grow. Mind the walls.</p></div>
+    <div class="game-actions"><label class="theme-picker"><span class="sr-only">Device</span><select id="style-switch" aria-label="Device"><option value="0" data-look="pocket">Pocket</option><option value="1" data-look="phone">Brick phone</option><option value="2" data-look="led">LED tabletop</option><option value="3" data-look="candy">Candy</option><option value="4" data-look="calc">Calculator</option><option value="5" data-look="terminal">Terminal</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
+  </header>
+  <main id="playroom" class="sn-room" aria-label="Snake">
+    <div>
+      <div class="device">
+        <div class="device-top"><span class="brand"></span><span class="power"><i></i>Power</span></div>
+        <div class="term-title" aria-hidden="true"><span>tty1 — snake</span><span>42×22</span></div>
+        <div class="bezel">
+          <div class="bezel-label" aria-hidden="true"><span></span></div>
+          <div class="screen">
+            <div class="lcd-bar" aria-hidden="true"><span>Score <b id="lcd-score">0000</b></span><span>Hi <b id="lcd-hi">0000</b></span></div>
+            <div id="stage" class="stage"></div>
+            <p id="status" class="lcd-status" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+        <div class="controls">
+          <div id="pad-slot"></div>
+          <div class="ab"><button id="btn-b" class="b" type="button" aria-label="New game">B<small>new</small></button><button id="btn-a" class="a" type="button" aria-label="Start or pause">A<small>start</small></button></div>
+          <div class="calc-keys" aria-hidden="true"><span>2nd</span><span>f1</span><span>f2</span><span>f3</span><span>del</span><span class="num">7</span><span class="num">8</span><span class="num">9</span><span class="op">÷</span><span>sin</span><span class="num">4</span><span class="num">5</span><span class="num">6</span><span class="op">×</span><span>cos</span><span class="num">1</span><span class="num">2</span><span class="num">3</span><span class="op">−</span><span>tan</span><span class="num">0</span><span class="num">.</span><span class="num">(−)</span><span class="op">+</span><span class="op">=</span></div>
+        </div>
+        <div class="pills" aria-hidden="true"><span>select</span><span>start</span></div>
+        <div class="grille" aria-hidden="true"></div>
+      </div>
+      <span id="metric" hidden></span><div id="tools" hidden></div>
+      <p id="hint" class="device-hint"></p>
+    </div>
+    <aside class="hi-card" aria-label="High scores">
+      <section id="score-panel"><div class="score-heading"><h2>High scores</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted score-kind"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
+      <div id="stats-slot"></div>
+    </aside>
     <noscript><p>Snake needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
-  <dialog id="help-dialog"><h2>How to play</h2><p>The rules and controls are beside the board. Choose a visual style above; changing it keeps your game in place. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <dialog id="help-dialog"><h2>How to play</h2><p id="rules"></p><p>A starts and pauses; B deals a new game. On a phone, swipe anywhere on the screen. Your game is saved when you pause or leave.</p><button id="close-help" class="solid">Got it</button></dialog>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>

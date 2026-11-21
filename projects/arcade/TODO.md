@@ -195,7 +195,7 @@ into the help dialog wherever the page has no room for them. Page concepts:
   phone; stats and share in their own sheet.
 - [ ] **Tetris:** an arcade cabinet: the well in the middle, hold and next on the
   cabinet's side panels, the high scores as an attract screen.
-- [ ] **Snake:** a handheld: the screen in a device body with its d-pad and buttons,
+- [x] **Snake** (built 2026-11-21): a handheld: the screen in a device body with its d-pad and buttons,
   score on the LCD, high scores on the device's menu screen.
 - [ ] **Tic-tac-toe:** a page of paper, the grid drawn on it, the tally kept in the
   margin.
@@ -216,6 +216,23 @@ into the help dialog wherever the page has no room for them. Page concepts:
       (inlaid wood board, turned wooden pieces), Newsprint (a newspaper checkers
       problem: hatched squares, engraved pieces), Park table (painted concrete board,
       bottle-cap checkers), Terminal (the board in ASCII).
+
+### Snake: what players want (Ric, 2026-11-21: "Yes, do Snake next"; built the same day)
+- [x] The page is the game in your hands: a handheld with the screen in a bezel, a
+      d-pad and A/B buttons on the body (A starts and pauses, B deals a new game),
+      score and high score on the screen, and the high scores on the side like the
+      card that came in the box.
+- [x] No cheap deaths: a 3-2-1 count before a game starts and when it resumes.
+- [x] See what killed you: the snake blinks where it died before the result.
+- [x] On the phone, the controls sit under your thumbs and every turn you make
+      registers (two queued turns, swipe anywhere, a buzz on each apple).
+- [x] Six devices, each drawing the snake its own way: Pocket (a grey handheld
+      with a four-shade green screen that smears like a real slow LCD), Brick phone
+      (a candybar phone: dark pixels on a lit screen, played on the 2-4-6-8 keys),
+      LED tabletop (a 1980s tabletop game, a grid of red LEDs that light up),
+      Candy (a see-through coloured handheld, the full-colour snake gliding
+      smoothly), Calculator (a graphing calculator's dot-matrix screen and key
+      grid), Terminal (the snake as ASCII text: @ head, o body, * apple).
 
 ## Ideas not built yet
 
