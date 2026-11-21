@@ -143,10 +143,8 @@ second); 4 plies was stronger but took up to a few seconds and froze the page.
       off the board; a countdown shows the next one.
 - [x] Expert Minesweeper (above).
 
-**Worker deploy needed:** the new boards (`mines-expert`, `sudoku-daily-<date>`,
-`solitaire-daily-<date>`) are in `worker/arcade.mjs`, but Worker deploys are manual
-(Actions → Deploy Worker). Until it runs, those three save scores on this browser
-only, and the board says so.
+**Worker deployed 2026-11-21** (Ric ran Actions → Deploy Worker): the live scoreboard
+answers `mines-expert`, `sudoku-daily-<date>` and `solitaire-daily-<date>`.
 
 ## Ideas not built yet
 
