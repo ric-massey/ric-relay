@@ -123,9 +123,9 @@
 
   const SCHEMA = [
     { title: "The land", items: [
-      { key: "map", label: "How much land", type: "range", min: 5, max: 1000, step: 1, def: 17, curve: 2.5,   // 5: below it the default eight villages do not fit
-        say: v => v + " by " + Math.round(landHigh(v)) + " km — " + (v <= 12 ? "a valley" : v <= 20 ? "a district" : v <= 30 ? "a region" : v <= 300 ? "a small country" : "a state"),
-        help: "Measured in kilometres, east to west. A square of the map is 250 metres: a village's fields reach about two kilometres, as farming villages' did, and people walk four and a half kilometres an hour. Bigger land is slower to run." },
+      { key: "map", label: "How much land", type: "range", min: 1.5, max: 1000, step: 0.25, def: 17, curve: 2.5,   // TODO 15.5c: from about 2 km² (it was 5 km, where the default eight villages fit)
+        say: v => v + " by " + (Math.round(landHigh(v) * 4) / 4) + " km — " + (v <= 3 ? "one village's land" : v <= 12 ? "a valley" : v <= 20 ? "a district" : v <= 30 ? "a region" : v <= 300 ? "a small country" : "a state"),
+        help: "Measured in kilometres, east to west, from a village's own land (about 2 km², one village watched house by house) up. Under about 5 km not every village asked for may fit. A square of the map is 250 metres: a village's fields reach about two kilometres, as farming villages' did, and people walk four and a half kilometres an hour. Bigger land is slower to run." },
       { key: "rich", label: "How much it grows", type: "range", min: 0.2, max: 2, step: 0.05, def: 1,
         say: v => (v < 0.6 ? "thin soil" : v < 1.3 ? "decent land" : "it grows anything"),
         help: "How fast food grows, and grows back. On thin soil a day in the fields runs long; on rich land it is done by midday." },
@@ -144,6 +144,9 @@
       { key: "hills", label: "How hilly", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["flat", "rolling", "hilly", "rugged"]),
         help: "Steep ground is hills; steep and high is mountain. Hills farm worse than flat land, mountains not at all." },
+      { key: "edge", label: "Beyond the edge", type: "select", def: "closed",   // TODO 15.5c, 2026-11-22; Ric: "an option"
+        options: [["closed", "Nothing — nobody comes or goes"], ["open", "More of the world — strangers come, and some leave"]],
+        help: "Open, the land is a piece of a bigger world: now and then a stranger walks in from beyond the edge looking for a place, more when the land is short of people, and the hungry who live near the edge may leave it for good, taking what they have. Most useful on a small land." },
       { key: "landchange", label: "Land that changes", type: "select", def: "real",   // TODO 15.5d, 2026-11-21
         options: [["real", "Soil tires and rests; forest is cleared and grows back"], ["fixed", "The land never changes (as before)"]],
         help: "A field farmed year after year gives less, down to about half, and comes back when it is left to rest or is manured by the herds. Whether a people rests its land is its own custom: the patient do. Where people are short of land they clear forest for new fields, which start rich; a cleared field left alone is scrub in about 25 years and forest again in about 50." },
@@ -767,7 +770,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2170,6 +2173,7 @@
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
     const HEARTH = MATS && S.firewood !== "off" && S.hearth !== "village";   // TODO 15.5f: each household's own firewood
+    const OPEN = S.edge === "open";   // TODO 15.5c: people coming and going over the edge
     const PLENTY = S.plenty !== false;   // TODO 15.5g: news of a good harvest
     const SLEEP = S.sleep !== "simple";   // TODO 15.5s: sleep that follows the length of the night
     const BED_AFTER = 3, BED_DARK = 1.5, WATCH = 1, LIGHT_WOOD = 0.0004;   // TODO 15.5s (see "sleep")
@@ -3208,6 +3212,45 @@
       if (!CHILDWORK || p.age >= S.grown) return 1;
       return clamp((p.age - (CHILD_WORK_AGE - 1)) / Math.max(1, S.grown - (CHILD_WORK_AGE - 1)), 0, 1) * 0.7;
     }
+    /* ── beyond the edge (TODO 15.5c) ─────────────────────────────────────
+       Ric (2026-11-20): a land of about 2 km² is one village watched house by house; how many people
+       and groups, "whatever happens"; the world beyond the edge, "an option" — closed, or people
+       coming and going. Open: each week strangers may walk in from beyond, about one a month for each
+       ten kilometres of edge, more when the land holds fewer people than it could and none when its
+       villages are hungry; a stranger is a grown-up of 16 to 35 with a week's food and nothing else,
+       who joins the nearest village to where they came in. And the hungry who live within 2 km of the
+       edge may leave for good, a household at a time, a few in a hundred of them a week. No figure for
+       how often strangers came to a village was found; these are guesses, said as such. */
+    const EDGE_IN = 0.1 / 4.3, EDGE_OUT = 0.03;   // strangers a week for each kilometre of edge; the share of the hungry near it who leave a week
+    function overTheEdge() {
+      const km = 2 * (cols + rows) / SQUARES_PER_KM;
+      let fed = 0, pop = 0; for (const v of villages) if (v.alive) { pop += v.pop; fed += v.pop - v.hungry; }
+      const want = pop ? clamp(fed / pop, 0, 1) * clamp(1.5 - pop / Math.max(1, S.people), 0.2, 1.5) : 1;
+      let come = km * EDGE_IN * want; while (come > 0) { if (R() < Math.min(1, come)) stranger(); come -= 1; }
+      for (const p of people) {
+        if (p.hp <= 0 || !adult(p) || !(p.hungry > 72) || p.job === "soldier" || p.id === factions[p.f].leader) continue;
+        const e = Math.min(p.x, p.y, cols - p.x, rows - p.y); if (e > 2 * SQUARES_PER_KM) continue;
+        if (R() >= EDGE_OUT) continue;
+        const kids = residents(p.home).filter(q => q.hp > 0 && !adult(q) && (q.mum === p.id || q.dad === p.id || q.carer === p.id));
+        const mate = byId.get(p.partner), us = [p, ...kids];
+        if (mate && mate.hp > 0 && mate.home === p.home && mate.id !== factions[mate.f].leader) us.push(mate);
+        note("left", p.name + (us.length > 1 ? " and their household" : "") + " left " + villages[p.home].name + " for somewhere beyond.", 0.5, p.x, p.y, p.f);
+        for (const q of us) die(q, "left");
+      }
+    }
+    function stranger() {
+      const side = Math.floor(R() * 4), u = R();
+      const x = side === 0 ? 0.5 : side === 1 ? cols - 0.5 : u * cols, y = side === 2 ? 0.5 : side === 3 ? rows - 0.5 : u * rows;
+      let v = null, bd = Infinity;
+      for (const o of villages) if (o.alive) { const d = Math.hypot(o.x - x, o.y - y); if (d < bd) { bd = d; v = o; } }
+      if (!v) return;
+      const p = newPerson(v, 16 + R() * 19, null, null);
+      if (p.job === "child" && adult(p)) p.job = chooseJob(p);
+      p.food = 7 * dailyNeed(p); p.x = clamp(x, 0.5, cols - 0.5); p.y = clamp(y, 0.5, rows - 0.5); p.loyal = 0.4;
+      count.strangers++;
+      note("came", "A stranger came to " + v.name + " from beyond.", 0.4, v.x, v.y, v.f);
+    }
+
     /* ── a household's own firewood (TODO 15.5f) ───────────────────────────
        Ric (2026-11-20): keep — "firewood was important till the modern age no?" The right to take wood
        for the fire (firebote, one of the estovers) belonged to a holding, from the lord's or the
@@ -4631,6 +4674,8 @@
       count[why]++;
       dropOrder(p);
       const v = villages[p.home], f = factions[p.f];
+      /* Gone over the edge (TODO 15.5c): what they have goes with them, coins out of the world's sum. */
+      if (why === "left") { count.minted -= p.coins; p.coins = 0; p.food = 0; p.goods = 0; p.cargo = null; p.gear = {}; }
       if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else if (p.cargo.what === "goods") v.goods += p.cargo.amount; else v[p.cargo.what] += p.cargo.amount; }
       v.food += p.food; v.goods += p.goods;
       p.food = 0; p.goods = 0; p.cargo = null;
@@ -4652,7 +4697,7 @@
       if (mate) { wakeUp(mate); mate.partner = 0; mate.mood -= 0.2; mate.say = "I miss " + p.name + "."; mate.sayT = TK(80); }
       /* The family is changed by it, and by a killing more (TODO 10). Grief at a death in old
          age is grief too, but a lesser one, and left out. */
-      if (why !== "old") {
+      if (why !== "old" && why !== "left") {
         const kin = (PLAIN ? people : residents(p.home)).filter(q => q.hp > 0 && (q.mum === p.id || q.dad === p.id));
         for (const id of [p.partner, p.mum, p.dad]) { const q = id && byId.get(id); if (q && q.hp > 0) kin.push(q); }
         if (mate && mate.hp > 0 && !kin.includes(mate)) kin.push(mate);
@@ -7922,6 +7967,7 @@
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
         if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
         if (BEASTS && t % (30 * DAY_HOURS) === 0) for (const f of factions) ploughOf(f);   // TODO 15.5o
+        if (OPEN && t % (7 * DAY_HOURS) === 0 && t > 0) overTheEdge();   // TODO 15.5c
         for (const v of villages) if (v.alive) { market(v); if (t % DAY_HOURS === 0) villageTurn(v); }
         if (t % DAY_HOURS === 0 && acted.size) forgetActed();
         /* The newest thing that happened is known first where it happened. */

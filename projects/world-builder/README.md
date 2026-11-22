@@ -1901,6 +1901,38 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### A land of one village, and beyond its edge (2026-11-22)
+
+TODO item 15.5c. Ric asked for land of about 2 km²; the smallest was 5 km across (25 km²), where the
+default eight villages fit. Ric (2026-11-20): a 2 km² world is one village watched house by house;
+how many people and groups, "whatever happens" (no special rules for a small world); land "stored
+finer if the computer allows" (advice, not a block); and the world beyond the edge, "an option":
+closed, or people coming and going.
+
+- **How much land** now goes down to 1.5 km across (1.5 by 1 km, six squares by four), in quarter
+  kilometres, and says "one village's land" up to 3 km. Under about 5 km not every village asked for
+  fits; what does not fit is not made, as before.
+- **Squares stay 250 m.** The engine counts in squares throughout (how far people walk, a village's
+  reach, what a square holds), so finer squares would change every world. Since 7a houses stand and
+  are drawn at their true size inside the squares, and zoomed in the page draws the fine detail of
+  the ground from the seed (4a, 5), so a house is not a square; a square is about half a holding's
+  fields (6.25 ha). Said here so Ric can ask for finer squares if he still wants them.
+- **Beyond the edge** (setting, under The land, closed by default = the world before): open, each
+  week strangers may walk in from beyond, about one a month for each ten kilometres of edge, more
+  when the land holds fewer than it started with and none while it is hungry — a grown-up of 16 to
+  35 with a week's food, who joins the nearest village (`stranger`). And the hungry who live within
+  2 km of the edge may leave for good, a household at a time, three in a hundred of them a week,
+  taking their food, goods and coins out of the world (`overTheEdge`; the coins come off the world's
+  sum, so the money test still balances). Guesses, said as such.
+- Counts: `strangers`, `left` (also a way of leaving in `die`, with no grief).
+- `test/smallland.test.mjs`.
+
+**Measured** (a year each, one village of 60 on 1.75 km², four seeds): 30 to 36 starve, closed, as
+the fields round it feed about thirty (30 on the same land: none starve); open, 9 to 43 leave over
+the edge and 1 to 3 strangers come, and starving falls to 4 to 28. On 2.5 km² the same 60 are fed.
+
+**Left out:** squares finer than 250 m; strangers bringing coins or goods; whole bands arriving.
+
 ### News of plenty (2026-11-22)
 
 TODO item 15.5g. Ric (2026-11-20): "Not sure which is best. Do research." Merchants learned prices by

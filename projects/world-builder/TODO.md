@@ -2988,7 +2988,7 @@ land". **Left out:** leaders hunting bandits (15c's captain), camps in the hills
 hungry's whole living twelve times as often: eight cities starved twice as many (measured), so now
 robbing comes after the fields and the frequent rethink is only "rob or not".
 
-**15.5c. Land from about 2 km²** (left by item 4a, never done by item 5). The smallest land is 5 km
+**[x] 15.5c. Land from about 2 km²** *Done 2026-11-22:* the land goes down to 1.5 km across (six squares by four); squares stay 250 m (houses already stand at true size inside them; finer squares would change every world — said for Ric to ask again if he wants them); setting "Beyond the edge": closed (the world before) or open, strangers walking in now and then and the hungry near the edge leaving for good with what they have. One village of 60 on 1.75 km² starves half (the land feeds about thirty); open, many leave instead. `test/smallland.test.mjs`; README, "A land of one village, and beyond its edge". (left by item 4a, never done by item 5). The smallest land is 5 km
 across (25 km²); Ric asked for about 2 km². The square must get smaller as the land does, or a
 house and its field are one square. Ric decides: how few people and villages a land that small
 starts with.
