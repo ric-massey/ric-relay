@@ -2698,6 +2698,137 @@ paid army at war loses about a fifth a year. A setting whose old value is the wo
 desertion rises with hunger and unpaid days.
 **Budget:** default.
 
+### [ ] 15k. War and armies: what the research says is still missing
+
+Added 2026-11-22 (Ric: "do research on the war and armies stuff see if you missed something
+important"). Researched the same day from search summaries (the sources named are where to read
+before building); checked against the engine. Nothing built; Ric decides which go in, and which
+belong in his coming item on generals and strategy.
+
+**Already right.** Pitched battles were rare; raids (the chevauchée) and sieges were the usual war,
+and battles mostly came out of them — a raid met or a siege relieved (Swansea University's guide to
+warfare in the central Middle Ages; medievalists.net). The engine's wars look like that: few battle
+deaths, many villages ravaged, burned and besieged (14b, 14e).
+
+**Missing, most important first.**
+1. **Sickness in armies.** Before the 20th century disease killed more soldiers than the enemy: about
+   four to one in the Napoleonic wars, two to one in the American Civil War, seven to one in the
+   Spanish–American War; typhus in camp called off a whole campaign in 1566
+   ([Montana State, Napoleon](https://www.montana.edu/historybug/napoleon/index.html);
+   [National Museum of Health and Medicine](https://medicalmuseum.health.mil/index.cfm/visit/exhibits/past/nationswounds/page_03);
+   [PubMed 18192771](https://pubmed.ncbi.nlm.nih.gov/18192771/)). And armies carried it: in the
+   Thirty Years' War most of the dead were civilians, from hunger and from sickness spread by troops
+   and refugees — a third of the German states' people, half of Brandenburg's
+   ([German History in Documents](https://germanhistorydocs.org/en/from-the-reformations-to-the-thirty-years-war-1500-1648/estimated-casualties-during-the-thirty-years-war);
+   [Outram](https://eprints.whiterose.ac.uk/id/eprint/385/1/outramq1.pdf)). *The engine:* a sickness
+   starts only in a village, and how easily it passes depends on the home village's dirt (15.5r);
+   an army camp is neither crowded nor foul.
+2. **Morale, rout and pursuit.** A formation that held usually lost a few in a hundred; most of a
+   battle's dead fell when one side broke and was pursued, often by horsemen; Michael Howard called
+   failing to pursue "the most common of all military faults"
+   ([ACOUP, morale and cohesion](https://acoup.blog/2022/07/01/collections-total-generalship-commanding-pre-modern-armies-part-iiic-morale-and-cohesion/);
+   [DTIC, pursuit](https://apps.dtic.mil/sti/pdfs/ADA288947.pdf)). *The engine:* each soldier
+   fights on their own until wounded; nobody breaks, nobody pursues. This is the heart of a battle,
+   and of generals.
+3. **Not knowing where the enemy is.** Commanders knew the enemy from scouts (the Romans had three
+   kinds), deserters, prisoners and local informers, slowly and often wrongly; Trasimene was a march
+   into an unscouted valley ([ACOUP, reports](https://acoup.blog/2022/05/27/collections-total-generalship-commanding-pre-modern-armies-part-i-reports/)).
+   *The engine:* 15h's map sees every soldier of every side exactly. Generals choosing on what they
+   have been told (item 12's news, scouts, deserters) is what makes strategy more than arithmetic.
+4. **Horsemen as a kind of soldier.** Scouting, screening, foraging, raiding, pursuit, and the charge
+   ([National Army Museum, cavalry roles](https://www.nam.ac.uk/explore/cavalry-roles)). *The engine:*
+   horses only lengthen an army's reach (15d). Ties to 2 and 3. Share of armies and a horse's price
+   still to find.
+5. **Prisoners and ransom.** In the Hundred Years' War captives of every rank were ransomed by
+   contract, a living for common soldiers too, financed by kin and merchants, with set scales from
+   Agincourt (1415) on (Ambühl, [Southampton](https://www.southampton.ac.uk/news/2013/01/soliders-in-the-late-middle-ages.page);
+   [medievalists.net](https://www.medievalists.net/2013/01/ransoming-prisoners-of-war-became-widespread-in-the-hundred-years-war-new-book/)).
+   *The engine:* a captive can only be held unfree (15c); nobody is taken in battle, ransomed,
+   exchanged or killed.
+6. **Mutiny.** Unpaid armies rose together, not one by one: Spain's bankruptcy of 1575 left the Army
+   of Flanders unpaid and it sacked Antwerp in 1576; garrisons held forts as security for their
+   arrears ([Army of Flanders](https://en.wikipedia.org/wiki/Army_of_Flanders);
+   [Kattenberg, BMGN 2016](https://bmgn-lchr.nl/article/view/6451); Parker, *The Army of Flanders and
+   the Spanish Road*). *The engine:* desertion one by one (15j); food riots exist (15.5b3) and are the
+   shape a mutiny could take.
+7. **Paying for war by borrowing.** Rulers paid for wars with taxes and loans; borrowing lets wars
+   start that otherwise would not, last longer and end harder; a default leaves armies unpaid
+   ([Slantchev, *Borrowed Power*](https://pages.ucsd.edu/~bslantchev/published/pdf/BorrowedPower-W060.pdf);
+   [Queralt](https://www.scribd.com/document/634930084/Queralt)). *The engine:* a treasury and taxes
+   only; it cannot go into debt.
+8. **Wounds after the battle.** In 18th–19th-century battles about three or four were wounded for
+   each killed, and many of the wounded died later; in older battles victors often killed the
+   enemy's wounded ([Encyclopedia.com, casualty figures](https://www.encyclopedia.com/history/encyclopedias-almanacs-transcripts-and-maps/casualty-figures);
+   [ACOUP, February 2021](https://acoup.blog/2021/02/26/fireside-friday-february-26-2021/)).
+   *The engine:* lasting wounds exist (15.5e); measure the ratio against these figures.
+9. **Small war between bands.** Among foragers and tribes war was raids and ambushes, not battles; how
+   deadly is disputed — 15 to 25% of men in Keeley's reading, about 2% for bands and 8 to 9% for
+   chiefdoms in a later study ([Our World in Data](https://ourworldindata.org/ethnographic-and-archaeological-evidence-on-violent-deaths);
+   [Scientific American](https://www.scientificamerican.com/blog/cross-check/war-scholar-critiques-new-study-of-roots-of-violence/)).
+   *The engine:* 15i's bands go to war as states do, with armies and sieges.
+10. **War at sea.** Medieval naval war was coastal and amphibious: landings, supplying armies,
+    blockading ports, and piracy, the first reason warships were built in the north
+    ([EBSCO, medieval naval warfare](https://ebsco.com/research-starters/arts-and-entertainment/medieval-naval-warfare)).
+    *The engine:* boats ferry and carry grain; nobody fights from them (pirates were left out of 15h).
+
+**Before gunpowder: 1000 BC to the 1200s** (Ric, 2026-11-22: "your leaving out wars from like the
+1200s. or 1000bc and those eras and technologies"). Researched the same day; checked against the
+engine, whose weapons go hand weapons → iron → musket (15d) with nothing that shoots before
+gunpowder, and whose only armour is the shield bought as gear (7).
+11. **Weapons that shoot, before guns.** Bows, the composite bow, the crossbow and the longbow.
+    Archers were most of some armies: at Agincourt (1415) three or four archers to every
+    man-at-arms, nearly four in five of the army; at Crécy (1346) about half
+    ([Wikipedia, Agincourt](https://en.wikipedia.org/wiki/Battle_of_Agincourt);
+    [Country Life](https://www.countrylife.co.uk/country-life/the-story-of-agincourt-78607)). Dupuy's
+    1980 table, already in 15h, gives the bow 19 and the longbow 36 against a sword's 23. *The
+    engine:* none; 15d's `ARMS` jumps from iron to the musket. Bows would give ancient and medieval
+    armies the reach that only guns have now.
+12. **Armour, and what it costs.** Mail alone did not stop arrows; mail over a padded coat greatly
+    cut the risk; plate came over mail from the mid-1200s and by the late 1400s was nearly arrow-proof
+    (Journal of Medieval Military History, arrows against mail and padding; [ACOUP, armour
+    myths](https://acoup.blog/2019/06/21/collections-punching-through-some-armor-myths/); [World
+    History, the English knight's armour](https://www.worldhistory.org/article/1244/the-armour-of-an-english-medieval-knight/)).
+    It was dear: a horseman's body armour in early medieval prices was worth about twelve oxen, and
+    knights bought their own. *The engine:* a shield (25% less from a blow); no armour, so a rich
+    man-at-arms and a poor levy fight alike.
+13. **Chariots (the Bronze Age).** At Kadesh (about 1274 BC) perhaps 5,000 to 6,000 chariots;
+    they were moving platforms for archers and javelin men, not battering rams; Hittite chariots
+    carried three ([Battle of Kadesh](https://en.wikipedia.org/wiki/Battle_of_Kadesh); [National
+    Geographic](https://www.nationalgeographic.com/history/history-magazine/article/hittite-fast-war-chariots-threatened-egypt)).
+    *The engine:* nothing; the Bronze Age era (15d) fights as early farmers do.
+14. **Horse archers and the steppe.** The Mongols of the 1200s rode with two to four horses each,
+    changing as one tired, lived partly on mares' milk, swarmed, shot and drew back, pursued a
+    broken enemy to destruction (Mohi, 1241) — fast in bursts, but a great army moved slowly and
+    needed grazing ([Military of the Mongol Empire](https://en.wikipedia.org/wiki/Military_of_the_Mongol_Empire);
+    [World History, Mongol warfare](https://www.worldhistory.org/Mongol_Warfare/)). *The engine:*
+    15i's herding bands and 15d's horses exist, but a herding people fights on foot like anybody.
+15. **Siege engines and siegecraft.** Ramps, rams, sapping and engineers (the Assyrian ramp at
+    Lachish, about three million stones, likely built by prisoners —
+    [Hebrew University](https://en.huji.ac.il/news/siege-ramps-and-breached-walls-ancient-warfare-and-assyrian-conquest-lachish));
+    the trebuchet of the 1200s (first in England at Dover, 1216–17), mining and countermining,
+    and starvation as the slow last resort (Kenilworth, 1266, nearly six months)
+    ([English Heritage, siege warfare](https://english-heritage.org.uk/learn/story-of-england/medieval/siege-warfare);
+    [World History, medieval sieges](https://www.worldhistory.org/article/1230/siege-warfare-in-medieval-europe)).
+    *The engine:* a siege is attackers against defence counted daily (14e); nothing is built to
+    take a wall, and a place is not starved out.
+16. **How armies were raised.** Feudal service: a knight held land for forty days' service a year;
+    scutage let him pay instead, and the money hired soldiers for longer; by the later 1200s foot
+    soldiers mattered more and forty days less ([Knight-service](https://en.wikipedia.org/wiki/Knight-service);
+    [Britannica, scutage](https://www.britannica.com/money/scutage)). The Roman army instead was
+    paid and standing, marched about 20 miles a day, and dug a fortified camp every night, with
+    five or six hundred mules a legion ([Corinium Museum](https://coriniummuseum.org/roman-army/);
+    [Castra](https://en.wikipedia.org/wiki/Castra)). *The engine:* the levy is one way for every
+    people — called up two in a hundred a week and kept until stood down; 15c's land for service and
+    15h's hired men are pieces of the feudal and paid ways, not tied to how long service is owed.
+17. **Battle among equals was not bloody; defeat was.** Krentz found the reliable losses in hoplite
+    battles quite low; the slaughter came when a side broke ([Krentz, GRBS 26](https://grbs.library.duke.edu/article/viewFile/5321/5325)).
+    The same finding as 2, from the ancient world.
+
+**Proposed order:** 1 on its own (it is sickness, not command); 2, 3, 4 and 14 with Ric's generals
+and strategy, since they are what a general works with; 11, 12 and 13 together as weapons by era
+(they fill 15d's gap before gunpowder); 15 and 16 next; 5, 6 and 7 after; 8 a measurement; 9 and 10
+last. **Ric decides:** which go in, and whether 2–4 and 14 join his generals item.
+
 ### [x] 15.25. Faster People simulation without losing quality, and births without a population cap
 
 Added 2026-11-20 at Ric's request after a performance audit: "1-5 needs added in todo as
