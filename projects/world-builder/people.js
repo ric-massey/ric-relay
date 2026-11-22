@@ -414,6 +414,9 @@
         help: "Traders who go for weeks to places far beyond a village's own traders, with goods dear for their weight (finished goods, ore, wool) on pack animals: twice a pack on foot, four times with horses. Routes grow where they keep going; bandits wait on them." },
       { key: "armySick", label: "Sickness in armies", type: "toggle", def: true,   // TODO 15m, 2026-11-22
         help: "An army's camp is crowded and fouls its water as a town does, so sickness starts and spreads there, and kills more of its tired men; soldiers carry it to the places they pass and home. Before modern medicine sickness killed more soldiers than the enemy did." },
+      { key: "oldArms", label: "Bows, armour and chariots", type: "select", def: "real",   // TODO 15n, 2026-11-22
+        options: [["real", "By era"], ["plain", "Hand weapons alone (as before)"]],
+        help: "Before guns, a share of every army shoots: simple bows among early peoples, composite bows in the Bronze Age and antiquity, crossbows and longbows in the Middle Ages. Soldiers who can pay buy armour (padding, scale, mail, plate by era), dear and cutting blows and arrows as tested; the levy goes without. Bronze Age archers ride chariots." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -662,7 +665,10 @@
        little slower on a path or a village's lanes, and much slower over open ground, where a cart
        sticks and jolts. (Farmers' carts were tried, for bringing in the harvest: dragged home over
        the fields they starved more than twice as many in a year, six seeds; not kept.) */
-    cart: { name: "Cart", cost: 3, jobs: ["trader"], wear: 0.002, benefit: "Grain by the cartload (eight packs, not five); slow off roads" }
+    cart: { name: "Cart", cost: 3, jobs: ["trader"], wear: 0.002, benefit: "Grain by the cartload (eight packs, not five); slow off roads" },
+    /* TODO 15n: dear (a horseman's body armour was worth about twelve oxen) and bought by the soldier
+       out of their own purse, never by the treasury; what it is and what it stops goes by era (ARMOUR). */
+    armour: { name: "Armour", cost: 6, jobs: ["soldier"], wear: 0.002, benefit: "Blows and arrows do less harm, by what it is: padding, scale, mail, plate" }
   };
   /* With real materials (TODO 9a): what each piece of gear is made of, besides the crafter's work. */
   const GEAR_MAT = { tool: "iron", weapon: "iron", shield: "wood", cart: "wood", pack: "wool" };
@@ -811,7 +817,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2314,6 +2320,19 @@
        Peninsular army was sick, which with a week's illness is near three in a hundred a day. The camp
        fevers (dysentery, typhus) killed about three times as many of those who caught them as a
        village fever does (about one in ten). */
+    /* Weapons before gunpowder (TODO 15n). Dupuy's lethality (1980) against a sword's 23: a bow 19, a
+       crossbow 33, a longbow 36; the composite bow, between, is a guess. "reach" in squares, as ARMS. */
+    const OLD_ARMS = S.oldArms !== "plain";
+    const BOWS = { bow: { reach: 1.2, hit: 0.85, name: "bows" }, composite: { reach: 1.4, hit: 1.1, name: "composite bows" },
+                   crossbow: { reach: 1.3, hit: 1.4, name: "crossbows" }, longbow: { reach: 1.5, hit: 1.55, name: "longbows" } };
+    /* The share of an army that shoots: Crecy about half, Agincourt nearly four in five (the English
+       extreme); a guess elsewhere. With guns everybody has the musket's reach (15d). */
+    const ARCHERS = { foragers: 0.5, early: 0.3, bronze: 0.4, ancient: 0.25, medieval: 0.4 };
+    /* What armour stops of a blow and of an arrow: mail alone did not stop arrows, mail over a padded coat
+       greatly cut the risk, plate over mail was nearly arrow-proof by the late 1400s (JMMH; ACOUP). A bullet
+       goes through much of it: a blow's share, less than half. */
+    const ARMOUR = { padding: { blow: 0.2, arrow: 0.25, name: "padded coats" }, scale: { blow: 0.3, arrow: 0.3, name: "bronze scale" },
+                     mail: { blow: 0.45, arrow: 0.5, name: "mail over padding" }, plate: { blow: 0.6, arrow: 0.8, name: "plate" } };
     const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
@@ -3208,6 +3227,7 @@
       if (!adult(p) || p.hp <= 0 || p.food < 0.6 || dist(p, v) > 2.5 || atWar(p.f, v.f)) return;
       const army = p.job === "soldier" && v.f === p.f && atWarAnywhere(factions[p.f]);
       for (const [key, spec] of Object.entries(GEAR)) {
+        if (key === "armour") { if (OLD_ARMS && p.job === "soldier") buyArmour(p, v); continue; }   // TODO 15n
         if (!spec.jobs.includes(p.job) || (p.gear[key] || 0) > 0.25) continue;
         /* A cart only out of what is left after a winter's bread, or from a shared store with three carts' worth in it (TODO 7d). */
         if (key === "cart" && (shared ? v.goods < spec.cost * 3 : funds(p) - spec.cost * v.priceGoods < reserve(p) * v.priceFood)) continue;
@@ -3294,14 +3314,50 @@
       if (MATS) return (0.35 + (v.wood >= 0.5 ? 0.3 : 0) + (v.iron >= 0.3 ? 0.45 : 0) + (v.wool >= 0.3 ? 0.2 : 0)) * (equipped(p, "tool") ? 1.2 : 1) * hands;
       return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1) * hands;
     }
-    function strike(p, foe, base) {
-      const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1) * (p.vig < 1 ? 0.4 + 0.6 * p.vig : 1) * brawn(p);   // TODO 15.5e: the lame and the old strike weaker; 15.5l: and as strong as they are
+    function strike(p, foe, base, shot) {
+      let damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1) * (p.vig < 1 ? 0.4 + 0.6 * p.vig : 1) * brawn(p);   // TODO 15.5e: the lame and the old strike weaker; 15.5l: and as strong as they are
+      if (OLD_ARMS) { damage *= (1 - armourCut(foe, shot)) * (chariot(foe) ? 0.7 : 1); wear(foe, "armour"); }   // TODO 15n
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
       wound(foe, damage);
       /* Enemies striking in somebody's own village: a raid there (TODO 10). */
       const hv = villages[foe.home];
       if (hv && hv.f !== p.f && Math.hypot(foe.x - hv.x, foe.y - hv.y) < hv.radius + 1) hv.raidAt = t;
       return damage;
+    }
+
+    /* Bows, armour and chariots (TODO 15n). Whether somebody shoots is fixed by who they are (a hash of
+       their id, apart from the garrison's and the raiders' rules), so an army's share holds. */
+    const eraOf = f => (f && f.era) || "early";
+    const idHash = p => (Math.imul(p.id + 1, 2654435761) >>> 0) % 100;
+    function bowFor(p) {
+      const f = factions[p.f], era = eraOf(f), share = ARCHERS[era] || 0;
+      if (!share || idHash(p) >= share * 100 || (WIRED && has(f.id, "gunpowder"))) return null;
+      const b = era === "medieval" ? (f.mean && f.mean[TRAIT_AT.hard] > 0.55 ? BOWS.longbow : BOWS.crossbow) : era === "bronze" || era === "ancient" ? BOWS.composite : BOWS.bow;
+      return chariot(p) ? { reach: b.reach + 0.3, hit: b.hit * 1.2, name: "chariot archers" } : b;
+    }
+    /* A Bronze Age archer on a chariot, one soldier in ten: a moving platform, harder to hit and steadier to shoot from. */
+    function chariot(p) { return p.job === "soldier" && eraOf(factions[p.f]) === "bronze" && idHash(p) < 10; }
+    function armourOf(f) {
+      const era = eraOf(f);
+      return era === "medieval" || era === "earlymodern" ? ARMOUR.plate : era === "ancient" ? ARMOUR.mail : era === "bronze" ? ARMOUR.scale : ARMOUR.padding;
+    }
+    function armourCut(foe, shot) {
+      if (!equipped(foe, "armour")) return 0;
+      const a = armourOf(factions[foe.f]);
+      return shot === 1 ? a.arrow : shot === 2 ? a.blow * 0.4 : a.blow;
+    }
+    /* Out of their own purse, after a winter's bread, as a cart is; of hide where people have no iron to work. */
+    function buyArmour(p, v) {
+      const condition = p.gear.armour || 0;
+      if (condition > 0.25) return;
+      const needed = GEAR.armour.cost * (1 - condition);
+      if (shared || funds(p) - needed * v.priceGoods < reserve(p) * v.priceFood) return;
+      const era = eraOf(factions[p.f]), mat = MATS ? (era === "early" || era === "foragers" ? "hide" : "iron") : undefined;
+      if (mat && v[mat] < needed) return;
+      if (p.goods < needed) buy(p, v, "goods", needed - p.goods);
+      if (p.goods + 1e-10 < needed) return;
+      p.goods = Math.max(0, p.goods - needed); p.gear.armour = 1; count.armoured++;
+      if (mat) v[mat] -= needed;
     }
 
     /* ── wounds and old age (TODO 15.5e) ─────────────────────────────────
@@ -4229,7 +4285,7 @@
       });
 
       /* Fitting or mending the tools of their trade. */
-      if (Object.keys(GEAR).some(k => GEAR[k].jobs.includes(p.job) && (p.gear[k] || 0) <= 0.25) && !p.cargo)
+      if (Object.keys(GEAR).some(k => k !== "armour" && GEAR[k].jobs.includes(p.job) && (p.gear[k] || 0) <= 0.25) && !p.cargo)
         weigh("gear", 0.28 + n.provide * 0.3 - away(dist(p, v)) - n.food * 0.6 - dark * 0.4, () => {
           /* Tools are fitted at the middle: `outfit` wants them actually there. */
           const [x, y] = plaza(v, 1.6);
@@ -4898,7 +4954,8 @@
       }
       const foe = foeNear(p, 3);
       if (foe) {
-        const arms = WIRED ? armsOf(p.f) : ARMS.hand;   // TODO 15d: what reaches, and how hard
+        let arms = WIRED ? armsOf(p.f) : ARMS.hand, shot = arms.reach > 1 ? 2 : 0;   // TODO 15d: what reaches, and how hard
+        if (OLD_ARMS) { const b = bowFor(p); if (b) { arms = b; shot = 1; } }   // TODO 15n: a bow
         if (dist(p, foe) < arms.reach) {
           p.hit = TK(6);
           /* A fight is skirmishing, not a slaughter: about a one-in-four chance
@@ -4911,7 +4968,7 @@
              fed a soldier a day into the line all war, and a world lost a
              quarter of its people to battle in eleven days. */
           if (R() < 1 - Math.pow(1 - Math.min(0.95, 0.25 * S.deadly), 1 / ACTIONS_PER_HOUR)) {
-            strike(p, foe, (0.15 + R() * 0.3) * arms.hit);
+            strike(p, foe, (0.15 + R() * 0.3) * arms.hit, shot);
             if (foe.hp <= 0) die(foe, "battle", p);
           }
           p.task = "idle"; p.wait = 0;
@@ -9764,6 +9821,7 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      bowFor: p => OLD_ARMS ? bowFor(p) : null, armourOf: fid => armourOf(factions[fid]), strike: (p, foe, base, shot) => strike(p, foe, base, shot), outfit: (p, vid) => outfit(p, villages[vid]), chariot: p => OLD_ARMS && chariot(p),   // TODO 15n
       campSickness: fid => campSickness(factions[fid], true), campFoulOf: p => ARMY_SICK ? campFoulOf(p) : 0,   // TODO 15m
       routes: () => [...ROUTES].map(([k, r]) => ({ key: k, trips: r.n, last: r.last })), caravanRoute: (pid, vid) => CARAVANS ? caravanRoute(byId.get(pid), villages[vid]) : null,   // TODO 15l
       onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j

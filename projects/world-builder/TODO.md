@@ -2858,7 +2858,9 @@ carry it on. **Done when:** at war, more soldiers die of sickness than in battle
 ratios found (four to one Napoleonic, two to one in the American Civil War), and villages an army
 passes fall sick more than those it does not. **Budget:** default.
 
-### [ ] 15n. Weapons before gunpowder: bows, armour, chariots
+### [x] 15n. Weapons before gunpowder: bows, armour, chariots
+
+**Done 2026-11-22.** Setting Bows, armour and chariots ("Hand weapons alone" = the 15m world, fingerprinted). A share of each army shoots by era (early farmers 30%, Bronze Age 40%, antiquity 25%, Middle Ages 40%; none with guns): simple bow, composite bow, crossbow or, for a hard-working people, longbow, by Dupuy's values. Armour as gear, dear (6 goods), bought only from a soldier's own purse after a winter's bread, cutting blows and arrows by era (padding, scale, mail over padding, plate 60% of a blow and 80% of an arrow). Bronze Age chariot archers, one in ten, harder to hit. Found on the way: armour in the "go and buy gear" check sent every soldier who could not afford it to the shop again and again; it is left out of that check. Measured: a year of medieval war, wounds 473 vs 512, battle dead 7 vs 9; 32 to 50 armoured. `test/oldarms.test.mjs`; README, "Bows, armour and chariots". Left: horse archers (15o), formations and volleys, armour's weight.
 
 15k's gaps 11, 12 and 13. **Do:** bows, composite bows, crossbows and longbows as weapons that reach,
 by era and know-how (Dupuy's 1980 values); archers as a share of an army, as at Crécy and Agincourt;

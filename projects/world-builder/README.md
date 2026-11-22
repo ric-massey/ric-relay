@@ -2056,6 +2056,41 @@ an army; 4 to 12 fewer people alive at the year's end. **Left out:** refugees ca
 (they carry it now only as anybody does, by talk); camp hygiene by era (Roman latrines, modern medicine
 beyond the one `medicine` factor).
 
+### Bows, armour and chariots (2026-11-22)
+
+TODO item 15n, from 15k's research (Ric: "your leaving out wars from like the 1200s. or 1000bc and
+those eras and technologies"). Setting **Bows, armour and chariots** under War: "By era" (default) or
+"Hand weapons alone (as before)", which leaves the 15m world exactly as it was (fingerprinted).
+
+- **Who shoots.** Before guns a share of every army draws a bow, fixed by who they are (a hash of
+  their id): foragers half, early farmers three in ten, the Bronze Age two in five, antiquity a
+  quarter, the Middle Ages two in five (Crecy about half, Agincourt nearly four in five, the English
+  extreme; the other shares are guesses). With gunpowder nobody does (15d's muskets).
+- **Which bow** (Dupuy's lethality, 1980, against a sword's 23): a simple bow (19) for foragers and
+  early farmers, the composite bow (between; a guess) in the Bronze Age and antiquity, in the Middle
+  Ages the crossbow (33) or, for a hard-working people (mean `hard` over 0.55, the lifelong practice
+  it took), the longbow (36). A bow reaches 1.2 to 1.5 squares where a hand weapon reaches 0.8.
+- **Armour**, a piece of gear (cost 6 goods: a horseman's body armour was worth about twelve oxen),
+  bought by the soldier out of their own purse after a winter's bread, never by the treasury, of hide
+  among early peoples and of iron after: so the well-off are armoured and the levy is not. What it
+  stops, of a blow and of an arrow: padded coats 20% and 25%; bronze scale 30% and 30%; mail over
+  padding 45% and 50%; plate (Middle Ages, early modern) 60% and 80% (mail alone did not stop arrows,
+  mail over a padded coat greatly cut the risk, plate was nearly arrow-proof by the late 1400s:
+  *Journal of Medieval Military History*; ACOUP's armour myths). A bullet: less than half a blow's.
+  It wears slowly where it is struck.
+- **Chariots**: in the Bronze Age one soldier in ten is a chariot archer (Kadesh, about 1274 BC: 5,000
+  to 6,000 chariots, platforms for archers and javelin men): a steadier shot (a fifth harder, a
+  little further) and harder to hit (30% less).
+- Count `armoured`; hooks `w.bowFor(p)`, `w.armourOf(fid)`, `w.strike(p, foe, base, shot)`,
+  `w.outfit(p, vid)`, `w.chariot(p)`. Armour is left out of the "go and buy gear" choice, so a poor
+  soldier does not keep walking to the shop for armour they cannot afford. `test/oldarms.test.mjs`.
+
+**Measured** (a year of medieval war, 600 people, three old enemies, three seeds): 32 to 50 pieces
+of armour bought; wounds 473 against 512 and battle dead 7 against 9 with hand weapons alone; item
+14's skirmishes stay small either way. In one blow test: a blow 0.37 of a life, on plate 0.15; an
+arrow 0.37, on plate 0.075. **Left out:** horses and horse archers (15o), volleys and formations,
+armour's weight slowing its wearer.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

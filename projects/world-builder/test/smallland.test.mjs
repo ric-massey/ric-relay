@@ -16,7 +16,7 @@ const FINGERPRINT = 140974437;   // print() of 15.5g's engine, seed 2, 60 days
 
 // 1. Closed by default: the world before.
 {
-  const w = People.create({ seed: 2, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false });
+  const w = People.create({ seed: 2, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "a default world, the edge closed, is the world before 15.5c");
 }

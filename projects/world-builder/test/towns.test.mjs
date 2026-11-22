@@ -37,7 +37,7 @@ const placeFor = n => n >= 5000 ? "city" : n >= 400 ? "town" : "village";
 // 3. Market day.
 {
   /* dirt at the fixed toll (15.5r): six days of market from one seed swing with the dice (seeds 7, 8, 9: 135, 36, 62 days sold, and 0, 45, 253 with dirt from its causes), and this one was found in the world before it */
-  const w = People.create({ seed: 7, people: 3000, map: 40, places: "city", start: "winter", materials: "goods", dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false });   // market day alone, without wood and herds to tend
+  const w = People.create({ seed: 7, people: 3000, map: 40, places: "city", start: "winter", materials: "goods", dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain" });   // market day alone, without wood and herds to tend
   w.step(26);                                                      // a day, so every place knows where its market is
   const town = w.villages.reduce((a, b) => (b.pop > a.pop ? b : a));
   const before = town.importAvg;
