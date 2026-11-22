@@ -2091,6 +2091,60 @@ of armour bought; wounds 473 against 512 and battle dead 7 against 9 with hand w
 arrow 0.37, on plate 0.075. **Left out:** horses and horse archers (15o), volleys and formations,
 armour's weight slowing its wearer.
 
+### Generals and strategy (2026-11-22)
+
+TODO item 15o, Ric's own item, with 15k's gaps 2, 3, 4 and 14 in it. Ric (2026-11-22): who leads
+"Captain, else leader"; strategies "All five"; skill "Nature + experience". Setting **Generals** under
+War: "Led, scouted, and they break" (default) or "No general (as before)", which leaves the 15n world
+exactly as it was (fingerprinted).
+
+- **Who leads.** The captain (15c) if the people has one; the leader if not, or if the leader is bold
+  (over 0.75) and goes in person.
+- **Skill**: from the general's nature (patient, curious, bold) and five points in a hundred for each
+  battle seen, up to eight. A battle "seen" is a rout on either side.
+- **What they know** (15k gap 3: commanders knew the enemy from scouts, slowly and often wrongly;
+  Trasimene was a march into an unscouted valley; ACOUP on reports). Each day a general learns how
+  strongly an enemy place is held only if one of their soldiers is within 2 km of it (5 km for a
+  horseman) or one of their own places within 3 km; what is learned is off by up to half, less the
+  more skilled the general; a place nobody has seen is guessed from its size. Before, 15h's map saw
+  every soldier of every side exactly.
+- **The plan**, chosen when the army is first raised, with each new general, monthly, and at once
+  when a waiting army's enemy marches. Each is scored from the general's nature and the strength they
+  believe each side has:
+  - *seek a battle* (the bold, the skilled, the stronger): the army marches on the enemy place where
+    their soldiers are, not away from them;
+  - *raid and burn* (the greedy and hot-tempered, the weaker): the army goes out as raiding bands
+    (14e) instead of marching on a place;
+  - *besiege* (the patient, the much stronger): 15h's choice, the place worth most against what holds it;
+  - *wait and wear them down* (the patient and timid, the weaker): the army stays gathered at home;
+  - *lie in wait* (the curious and skilled, when the enemy is on the road): the army goes to a point
+    two-thirds along the enemy's road and waits there; enemies caught marching take half again as
+    much from each blow.
+  A change of plan is news ("…, at the head of …'s army, lays siege").
+- **Morale, rout and pursuit** (15k gaps 2 and 17: a formation that held lost a few in a hundred; most
+  of a battle's dead fell when one side broke and was pursued; Krentz; ACOUP on morale and cohesion;
+  Howard on pursuit). Every soldier knocked out of the line is a shock to their army that halves in
+  six hours; when the shock passes 10 to 30% of what marched (more for a skilled general and a loyal,
+  fed people) the army **breaks**: every soldier of it runs home for a day and fights nobody, the
+  wounded among them are no longer let go, and blows on the running do three times the harm, four
+  from a horseman. Then it gathers again. Both generals learn.
+- **Horsemen** (15k gap 4): where a people has horses (by its era, or held know-how, 15d, 15e), about
+  one soldier in seven rides: they see further as scouts and are deadliest in pursuit.
+- **Horse archers** (15k gap 14): a horseman of a herding people that does not farm (15i) shoots from
+  the saddle (a reach of 1.6, a fifth harder than a sword) and is harder to hit (30% less), as the
+  Mongols swarmed, shot and drew back.
+- Counts `routs`, `pursuitDead`, `plans`, `ambushes`; hooks `w.generalOf`, `w.skillOf`, `w.planOf`,
+  `w.choosePlan`, `w.scout`, `w.intelOf`, `w.rout`, `w.routing`, `w.horseman`, `w.horseArcher`,
+  `w.battlesOf`. `test/generals.test.mjs`.
+- Found on the way: `knows()` says yes to everything before a people's first count of know-how, so
+  15l's caravans loaded horses' weight for early farmers; both now ask `has()`.
+
+**Measured** (a year of medieval war, 600 people, three old enemies): battle dead 13 to 22 a world
+against 1 to 4 without generals; 5 to 16 routs; about half the battle dead (27 of 53) fell running;
+plans changed 8 to 21 times; 0 to 11 ambushes. War is far more decisive, as Ric's coming wars need.
+**Left out:** deserters and prisoners as a source of news (prisoners are 15q); screening (horsemen
+keeping the enemy's scouts off); formations; a general's own death in battle mattering more.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

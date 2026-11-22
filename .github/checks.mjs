@@ -192,6 +192,7 @@ const SUITES = [
   ['world-builder caravans', ['projects/world-builder/test/caravans.test.mjs']],   // TODO 15l
   ['world-builder sickness in armies', ['projects/world-builder/test/armysick.test.mjs']],   // TODO 15m
   ['world-builder bows, armour and chariots', ['projects/world-builder/test/oldarms.test.mjs']],   // TODO 15n
+  ['world-builder generals', ['projects/world-builder/test/generals.test.mjs']],   // TODO 15o
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

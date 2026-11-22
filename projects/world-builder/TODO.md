@@ -2869,7 +2869,9 @@ chariots for the Bronze Age, as platforms for archers. **Done when:** an ancient
 with bows and armour fights measurably differently from one with hand weapons alone, and the rich
 are better armoured than the levy. **Budget:** default.
 
-### [ ] 15o. Generals and strategy
+### [x] 15o. Generals and strategy
+
+**Done 2026-11-22.** Setting Generals ("No general" = the 15n world, fingerprinted). The captain leads, else the leader (a bold leader goes); skill from patience, curiosity and boldness plus each battle seen. A general knows enemy places only where their soldiers (horsemen further) or own places can see, off by up to half; five plans scored from nature and believed strength: seek battle, raid and burn, besiege, wait, lie in wait two-thirds along the enemy's road (marchers caught take half again). Losses that pass what morale bears break an army: it runs home a day, its wounded are no longer spared, blows on the running do three times the harm, four from horsemen. About one soldier in seven rides where there are horses; herding peoples' horsemen shoot from the saddle. Measured, a year of medieval war: battle dead 13 to 22 vs 1 to 4; half of them fell running; 5 to 16 routs. Found: `knows()` is yes before a people's first count, so 15l loaded horses for early farmers; fixed. `test/generals.test.mjs`; README, "Generals and strategy". Left: news from deserters, screening, formations.
 
 **Ric (2026-11-22):** who leads — "Captain, else leader" (the captain office from 15c leads if a people has one, else the leader; a bold leader may still go); strategies — "All five" (seek a battle; raid and burn; besiege; wait and wear them down; ambush on the march), picked from the general's nature and what scouts have told them; skill — "Nature + experience" (traits, and each battle fought teaches a little). And: build 15l to 15r in one session, in order, one commit each.
 
