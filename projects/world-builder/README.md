@@ -1901,6 +1901,50 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Men and women (2026-11-21)
+
+TODO item 15.5l. Until now the engine had no sex at all: any two grown-ups not kin could pair and
+have children. Ric (2026-11-20): who does which work, "Yes? I mean pregnant women can't farm as well
+and might not be as strong. And there should be some societal stuff too"; couples of two men or two
+women, "Yeah. If society believes it's ok". Women averaged about 52% of men's upper-body and 66% of
+lower-body strength in one study (Miller and others 1993); almost every people divided work by sex
+(Murdock and Provost 1973), and where the plough was used more unequally (Alesina, Giuliano and Nunn
+2013). Research notes under 15.5l in `TODO.md`.
+
+- **Each person is a man or a woman** at birth (`p.sex`, 0 a woman, 1 a man), half and half, with a
+  strength at heavy work of their own (`p.str`: about 1 for a man, 0.62 for a woman, each a little
+  either way). About four in a hundred are drawn to their own sex (`p.same`; a guess, said as one:
+  surveys today find 2 to 5, and the past cannot be asked). These are drawn from a stream of their own
+  (`RS`).
+- **Couples.** At the start a woman and a man; later, two people pair as before if they are a man and
+  a woman neither drawn to their own sex, or two of one sex both drawn to it, as far as their people
+  accepts it (`accepts`, from its warmth and how set in its ways it is: a warm, open people nearly
+  always, a cold, set one about one time in twenty). Couples of one sex have no child of their own.
+  Harm done to them for it is their people's law and faith (15c, 15g).
+- **A child is carried nine months** (`p.due`), conceived at the rate a couple had a child before,
+  by a woman neither carrying nor lying in. In the last two months her strength at heavy work is
+  four-tenths, and after the birth (`deliver`) she lies in a month where the household can spare her
+  (her larder half its winter's want or more), ten days where it cannot. A fifth of the couples at the
+  start are already carrying, so the first births are not nine months off.
+- **Bodies** (`brawn`): what a day of the heaviest work gives — reaping, cutting, quarrying, mining —
+  and a blow are times 0.55 + 0.45 × strength: a man about 1, a woman about 0.83.
+- **Customs** (`split`, each people's own, from its nature as its ways are, 15a): how far women are
+  kept from the fields, the hunt, the heavy trades and the army, from how set in its ways and how bold
+  it is (and the plough, when oxen come with 15.5o). A woman's wish to go to that work is times
+  1 − 0.3 × split; where split is a quarter or more, no woman is taken as a soldier.
+- Counts: `conceived`, `sameCouples`.
+- **A setting**, "Men and women", under Lives. "Nobody is either" is the world 15.5e left, step for
+  step (`test/sexes.test.mjs` holds its fingerprint; the older fingerprint tests now set it).
+
+**Measured** (a year each, six default worlds, against 15.5e): births 116 → 93 and conceived 92 (a
+child now takes nine months and its mother cannot conceive again while carrying or lying in; 15.5k is
+where births rise to match, as Ric answered), starved 16 → 2, 23 couples of one sex. A first build
+paired nobody at the start (an `else` that bound to the wrong `if`) and was caught by the measurement.
+
+**Left out:** who does the house work (15.5n), mothers dying in childbirth and the gap a nursing baby
+makes (15.5k), marriage by wealth and inheritance (15b), and laws and faiths about couples (15c, 15g).
+The marriages of 14d still match whoever each leader's heir is.
+
 ### Wounds and old age (2026-11-21)
 
 TODO item 15.5e. Ric (2026-11-20): a bad wound can leave lasting harm, yes; the old slow down, yes;

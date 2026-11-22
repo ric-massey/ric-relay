@@ -51,6 +51,7 @@
   const REFLECT_HOURS = 6;
   const NEW_TRAITS = ["patient", "temper", "hard", "curious", "honest"];   // TODO 10: the five added to the first five
   const TRAITS = ["bold", "warm", "greed", "stub", "patient", "temper", "hard", "curious", "honest"];
+  const TRAIT_AT = Object.fromEntries(TRAITS.map((k, i) => [k, i]));   // TODO 15.5l: a trait's place in a faction's means, before `TI` is made
   if (TRAITS.join() !== "bold,warm,greed,stub,patient,temper,hard,curious,honest") throw new Error("census adds the traits up by name, in this order");
   const TRAIT_FADE = Math.LN2 / (2 * 365 * 4);   // a look every six hours; half gone in two years
   const life = o => TRAITS.map(k => o[k] || 0);
@@ -231,6 +232,9 @@
       { key: "health", label: "Wounds and old age", type: "select", def: "real",   // TODO 15.5e, 2026-11-21
         options: [["real", "Bad wounds can last, and the old slow down"], ["simple", "Full strength until the day they die (as before)"]],
         help: "A bad blow in a fight or a battle heals over months, and now and then leaves somebody lame for good: slower, weaker at heavy work, no soldier. From about three-quarters of a lifetime people slow down, until the very old can no longer farm, and their family feeds them." },
+      { key: "sexes", label: "Men and women", type: "select", def: "real",   // TODO 15.5l, 2026-11-21
+        options: [["real", "Men and women, and each people's customs"], ["none", "Nobody is either (as before)"]],
+        help: "Each person is a man or a woman. A child needs a mother: she carries it nine months, works lighter at the end and lies in after the birth for as long as her household can spare her. Women are weaker at the heaviest work, as bodies are, and each people's customs, from its nature, say how far women are kept from the fields and the army. Couples of two men or two women form as far as their people accepts them, and have no children of their own." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -598,6 +602,9 @@
     const RD = rng((S.seed | 0) * 3266489917 + 11);
     /* Whether a wound lasts (TODO 15.5e), from its own stream for the same reason. */
     const RW = rng((S.seed | 0) * 2654435761 + 13);
+    /* Men and women (TODO 15.5l): who is which, how strong, and the dates of their children, from
+       their own stream, so a world with "Nobody is either" is the one before. */
+    const RS = rng((S.seed | 0) * 1597334677 + 17);
     /* The minds (TODO 11). Everybody's slots in four flat arrays, a block of MB a person, so a
        mind is no object of its own and is never copied: slot 0 is what they think about sharing
        (what was `views`), the rest whatever they hold. A dead person's block goes to the next
@@ -710,7 +717,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { wounds: 0, lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1596,11 +1603,21 @@
                   waitHouse: -1, buildAt: -1, shift: false,
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   vig: 1, harm: 0, lame: 0,   // TODO 15.5e: strength left (wounds and age), a wound still healing, and what of it never will
+                  /* TODO 15.5l: 0 a woman, 1 a man; strength at heavy work; drawn to their own sex; a child
+                     due (the hour), its father, and lying in until. */
+                  sex: 1, str: 1, same: false, due: 0, babyDad: 0, lying: 0,
                   gathering: undefined,   // TODO 9a: at the day's cutting, quarrying or mining
                   /* TODO 10: the other five of the ten, and what of the last hard times has yet to wear off. */
                   patient: nature(RT(), ownOf(v.f, "patient")), temper: nature(RT(), ownOf(v.f, "temper")), hard: nature(RT(), ownOf(v.f, "hardwork")),
                   curious: nature(RT(), ownOf(v.f, "curious")), honest: nature(RT(), ownOf(v.f, "honest")), fade: null, quarrelAt: undefined, stoleAt: undefined, leanYr: undefined,
                   mb: -1, mcap: clamp(Math.round(S.memory * (0.75 + RM() * 0.5)), 3, MB - 1) };   // TODO 11: the mind's block and size
+      if (SEXES) {   // TODO 15.5l
+        p.sex = RS() < 0.5 ? 0 : 1;
+        /* Women about two-thirds of men's strength at the heaviest work, each person their own
+           (Miller and others 1993: 52% of men's upper-body strength, 66% of lower). */
+        p.str = clamp((p.sex ? 1 : 0.62) + (RS() - 0.5) * 0.25, 0.4, 1.2);
+        p.same = RS() < SAME_SHARE;
+      }
       newMind(p);
       house(p, v, mum || dad);
       if (mum && dad) {
@@ -2091,6 +2108,11 @@
     const BANDITS = !shared && S.bandits !== false;   // TODO 15.5b4
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
+    const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
+    /* Drawn to their own sex: a few in a hundred. Surveys find 2 to 5 in a hundred today; no
+       figure for the past can be had, so a guess, said as one. */
+    const SAME_SHARE = 0.04;
+    const CARRY_DAYS = 266, LATE_DAYS = 60;   // TODO 15.5l: a child carried, and the last weeks, when the heaviest work is beyond her
     const riverDirt = DIRT ? new Float32Array(tiles) : null, dirtied = [];   // TODO 15.5r: people's waste in each river square, today
     const lurk = new Map();     // TODO 15.5b4: bandits lying in wait by a road, and since when
     const bandOf = new Map();   // TODO 15.5b4: a bandit out with a band: the place they ride for, and how many ride
@@ -2214,9 +2236,19 @@
       for (const v of villages) {
         const single = people.filter(p => p.home === v.id && adult(p) && p.age < p.dieAt * 0.7);
         const couples = [];
-        for (let i = 0; i + 1 < single.length; i += 2) if (R() < S.settled) {   // "How settled they are"; 0.5 as it always was
+        if (!SEXES) { for (let i = 0; i + 1 < single.length; i += 2) if (R() < S.settled) {   // "How settled they are"; 0.5 as it always was
           single[i].partner = single[i + 1].id; single[i + 1].partner = single[i].id;
           couples.push([single[i], single[i + 1]]);
+        } }
+        /* A woman and a man (TODO 15.5l), the woman first, so she is the children's mother; and some
+           of the women carrying a child already, so the first births are not nine months off. */
+        else {
+          const women = single.filter(p => p.sex === 0 && !p.same), men = single.filter(p => p.sex === 1 && !p.same);
+          for (let i = 0; i < women.length && i < men.length; i++) if (R() < S.settled) {
+            const a = women[i], b = men[i];
+            a.partner = b.id; b.partner = a.id; couples.push([a, b]);
+            if (RS() < S.births * 0.4) { a.due = t + Math.floor(RS() * CARRY_DAYS * DAY_HOURS) + 1; a.babyDad = b.id; }
+          }
         }
         /* And the children who are here on the first day belong to somebody,
            or nobody would feed them. */
@@ -2238,7 +2270,7 @@
           let lo = 0, hi = younger.length;                       // how many couples' younger partner is older than t
           while (lo < hi) { const m = (lo + hi) >> 1; if (younger[m][0] > t) lo = m + 1; else hi = m; }
           if (lo) asks.push([c, lo, Math.floor(R() * lo)]);       // what pick() drew from a list `lo` long
-          else if (grown.length) { const g = pick(grown); c.mum = g.id; g.kids++; }
+          else if (grown.length) { const g = pick(grown); if (SEXES && g.sex === 1) c.dad = g.id; else c.mum = g.id; g.kids++; }
         }
         if (asks.length) {
           const N = couples.length, tree = new Int32Array(N + 1);
@@ -2526,7 +2558,7 @@
 
     function chooseJob(p) {
       const v = villages[p.home], f = factions[p.f];
-      if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold + (p.temper - 0.5) * 0.3 > 0.35 && p.vig >= 0.6 && R() < 0.8) { f.soldiers++; return "soldier"; }   // p.vig: TODO 15.5e, no lame or old soldiers
+      if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold + (p.temper - 0.5) * 0.3 > 0.35 && p.vig >= 0.6 && (p.sex === 1 || !SEXES || split(f) < 0.25) && R() < 0.8) { f.soldiers++; return "soldier"; }   // p.vig: TODO 15.5e, no lame or old soldiers
       /* Robbing for a living (TODO 15.5b4), weighed against what honest work would bring: by the hungry,
          the landless and those the wars have ruined, the less honest the likelier, where there is
          something within reach to take and not too many taking it already (Hobsbawm: banditry rose
@@ -2972,7 +3004,7 @@
        (2.7%). Now it is the hours, which is how farming labour actually
        differs — capped at what daylight allows, after which they bring back
        what they managed. */
-    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig; }   // p.vig: TODO 15.5e
+    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p); }   // p.vig: TODO 15.5e; brawn: 15.5l
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
@@ -3008,7 +3040,7 @@
       return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1) * hands;
     }
     function strike(p, foe, base) {
-      const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1) * (p.vig < 1 ? 0.4 + 0.6 * p.vig : 1);   // TODO 15.5e: the lame and the old strike weaker
+      const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1) * (p.vig < 1 ? 0.4 + 0.6 * p.vig : 1) * brawn(p);   // TODO 15.5e: the lame and the old strike weaker; 15.5l: and as strong as they are
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
       wound(foe, damage);
       /* Enemies striking in somebody's own village: a raid there (TODO 10). */
@@ -3037,6 +3069,50 @@
       p.vig = (1 - p.harm) * ageVigour(p);
     }
     function ageVigour(p) { return 1 - clamp((p.age - S.life * 0.75) / (S.life * 0.5), 0, 0.8); }
+
+    /* ── men and women (TODO 15.5l) ───────────────────────────────────────
+       Ric (2026-11-20): "pregnant women can't farm as well and might not be as strong. And there
+       should be some societal stuff too"; couples of two men or two women "If society believes
+       it's ok". Bodies: strength at the heaviest work (`brawn`: ploughing, reaping, cutting,
+       quarrying, mining, a blow), and a woman's last weeks before a birth and her lying-in after it.
+       Customs: each people's own, from its nature, as its ways are (15a): `split` is how far it
+       keeps women from the fields, the hunt, the heavy trades and the army (the plough leaned
+       peoples this way: Boserup; Alesina, Giuliano and Nunn 2013 — oxen come with 15.5o), and
+       `accepts` how far it lets two men or two women live as a couple. Where they are not accepted
+       they mostly do not pair; harm done to them for it is law and faith (15c, 15g). */
+    function brawn(p) {
+      if (!SEXES) return 1;
+      let b = 0.55 + 0.45 * p.str;
+      if (p.due > 0 && p.due - t < LATE_DAYS * DAY_HOURS) b *= 0.4;
+      else if (p.lying > t) b *= 0.3;
+      return b;
+    }
+    function split(f) { return clamp(0.3 + (f.mean[TRAIT_AT.stub] - 0.5) * 0.8 + (f.mean[TRAIT_AT.bold] - 0.5) * 0.4 + (f.plough || 0) * 0.3, 0, 1); }
+    function accepts(f) { return clamp(0.5 + (f.mean[TRAIT_AT.warm] - 0.5) - (f.mean[TRAIT_AT.stub] - 0.5), 0.05, 1); }
+    /* What custom and the body leave of a woman's wish to do the heavy work, 1 for a man. */
+    function heavyWish(p) {
+      if (!SEXES || p.sex === 1) return 1;
+      return (1 - 0.3 * split(factions[p.f])) * (p.due > 0 && p.due - t < LATE_DAYS * DAY_HOURS || p.lying > t ? 0.4 : 1);
+    }
+    /* Whether two may pair: a man and a woman, or two of one sex drawn to it whose people accept it. */
+    function mayPair(a, b) {
+      if (!SEXES) return true;
+      if (a.sex !== b.sex) return !a.same && !b.same;
+      return a.same && b.same && RS() < accepts(factions[a.f]);
+    }
+    /* A child is born to the woman who carried it (TODO 15.5l). Its father may be dead or gone. */
+    function deliver(p) {
+      const v = villages[p.home], dad = byId.get(p.babyDad), alive = dad && dad.hp > 0;
+      const c = newPerson(v, 0, p, alive ? dad : p);
+      if (!alive) c.dad = 0;
+      c.x = p.x; c.y = p.y; c.from = p.f; c.f = p.f;
+      p.kids++; if (alive) dad.kids++; count.births++;
+      p.due = 0; p.babyDad = 0;
+      /* She lies in a month where the household can spare her, under a fortnight where it cannot. */
+      p.lying = t + (p.food > reserve(p) * 0.5 ? 28 : 10) * DAY_HOURS;
+      p.say = c.name + " was born today."; p.sayT = 90;
+      return c;
+    }
 
     /* ── what somebody needs ─────────────────────────────────────────────────
        How badly each thing is wanted, 0 to about 1.4. Food is allowed past 1
@@ -3254,7 +3330,7 @@
         if (w.tile >= 0)
           /* At harvest everybody helps: ripe grain left standing is lost to the
              frost, so bringing it in is worth a day whatever is in the larder. */
-          weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12 + 0.35 * (season().ripe - 1) / 3 + lay) * skilled(p, "farmer") * w.land
+          weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12 + 0.35 * (season().ripe - 1) / 3 + lay) * skilled(p, "farmer") * w.land * heavyWish(p)
                           - away(Math.hypot(w.tx + 0.5 - p.x, w.ty + 0.5 - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, w.tx + 0.2 + R() * 0.6, w.ty + 0.2 + R() * 0.6, "field"); p.wait = 0; });
 
@@ -3270,7 +3346,7 @@
         if (MATS) for (const k of MAT) {
           const i = matSpot(v, k); if (i < 0) continue;
           const sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5;
-          weigh(MAT_TASK[k], (n.provide * 0.95 + 0.1) * skilled(p, MAT_JOB[k]) * matWorth(v, k, i)
+          weigh(MAT_TASK[k], (n.provide * 0.95 + 0.1) * skilled(p, MAT_JOB[k]) * matWorth(v, k, i) * heavyWish(p)
                              - away(Math.hypot(sx - p.x, sy - p.y)) - n.food * 0.55 - n.rest * 0.45 - n.safety * 0.6 - dark * 0.5,
             () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, MAT_TASK[k]); p.wait = 0; });
         }
@@ -3278,7 +3354,7 @@
         if (MATS) for (const k of ["herd", "hunt"]) {
           const j = wildSpot(v, k); if (j < 0) continue;
           const i = wildList(v, k)[j], sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5;
-          weigh(k, (n.food * 0.8 + n.provide * 0.9 + 0.12 + lay) * skilled(p, k === "herd" ? "herder" : "hunter") * wildWorth(v, k, j)
+          weigh(k, (n.food * 0.8 + n.provide * 0.9 + 0.12 + lay) * skilled(p, k === "herd" ? "herder" : "hunter") * wildWorth(v, k, j) * (k === "hunt" ? heavyWish(p) : 1)
                    - away(Math.hypot(sx - p.x, sy - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
             () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, k); p.wait = 0; });
         }
@@ -3673,7 +3749,7 @@
         const k = p.task === "cut" ? "wood" : p.task === "quarry" ? "stone" : "iron", i = matSpot(v, k);
         let got = 0;
         if (i >= 0) {
-          got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1) * p.vig;
+          got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1) * p.vig * brawn(p);
           if (k === "wood") { const have = woodIn(i); got = Math.min(got, have); woodStock.set(i, [have - got, t]); }
           sellMat(p, v, k, got); count[k] += got; wear(p, "tool");
         }
@@ -4348,8 +4424,9 @@
       }
       /* 2 — two people with nobody. */
       if (adult(a) && adult(b) && !a.partner && !b.partner && !kin(a, b) && !war &&
-          a.age < a.dieAt * 0.75 && b.age < b.dieAt * 0.75 && (fr > 0.1 || like > 0.3) && R() < 0.5) {
+          a.age < a.dieAt * 0.75 && b.age < b.dieAt * 0.75 && (fr > 0.1 || like > 0.3) && mayPair(a, b) && R() < 0.5) {
         a.partner = b.id; b.partner = a.id; befriend(a, b, 0.6);
+        if (SEXES && a.sex === b.sex) count.sameCouples++;
         if (a.home !== b.home) {
           /* One of them moves, and if that crosses a border they change flags. */
           const mover = villages[a.home].pop <= villages[b.home].pop ? a : b, stay = mover === a ? b : a;
@@ -5835,7 +5912,10 @@
          stop they shouldn't"; TODO 15.25). What limits births now is only what always did: age, a
          partner at home, food, how crowded the village is, and the Children setting. */
       const mate = byId.get(p.partner);
-      if (mate && p.id < mate.id && mate.home === p.home && S.births > 0 &&
+      /* A child is carried nine months and born to its mother (TODO 15.5l); conceived by a woman and a
+         man at home together, she neither carrying nor lying in. */
+      if (SEXES && p.due > 0 && t >= p.due) deliver(p);
+      if (mate && (SEXES ? p.sex === 0 && mate.sex === 1 && !(p.due > 0) && !(p.lying > t) : p.id < mate.id) && mate.home === p.home && S.births > 0 &&
           p.age < p.dieAt * 0.7 && mate.age < mate.dieAt * 0.7 && p.food > 0.5 && mate.food > 0.5 && p.hungry === 0) {
         const room = clamp(1.6 - v.pop / (crowdOf(v) * 1.6), 0.15, 1) * (v.hungry > v.pop * 0.15 ? 0.3 : 1);
         /* This is a rate per calendar year, scaled to the six-hour reflection
@@ -5843,10 +5923,13 @@
            Short-lived settings still compress their reproductive span. */
         const span = Math.max(3, S.life * 0.7 - S.grown);
         if (R() < S.births * 14 * (REFLECT_HOURS / YEAR) * room / span / (1 + p.kids * 0.12)) {
+          if (SEXES) { p.due = t + CARRY_DAYS * DAY_HOURS; p.babyDad = mate.id; count.conceived++; }
+          else {
           const c = newPerson(v, 0, p, mate);
           c.x = p.x; c.y = p.y; c.from = p.f; c.f = p.f;
           p.kids++; mate.kids++; count.births++;
           p.say = c.name + " was born today."; p.sayT = 90;
+          }
         }
       }
       /* Now and then, think again about what to do for a living. */
@@ -7065,7 +7148,7 @@
            farmers alone stalled short of what its leader asked (4 of 23 wanted 6). Then any other
            trade (TODO 15.5a): once crafters made only to order there were few, and in rule.test's
            world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
-        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
+        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25)) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
@@ -7577,7 +7660,8 @@
       setView: setView, befriend: befriend,   // for the tests
       shaken: shaken, LIFE: LIFE, ruling: ruling,   // for the tests (TODO 15a)
       foulness: () => { if (DIRT) foulness(); },
-      wound: wound, ageVigour: ageVigour,   // for the tests (TODO 15.5e)   // for the tests (TODO 15.5r): work out each village's water now
+      wound: wound, ageVigour: ageVigour,   // for the tests (TODO 15.5e)
+      brawn: brawn, split: fid => split(factions[fid]), accepts: fid => accepts(factions[fid]),   // for the tests (TODO 15.5l)   // for the tests (TODO 15.5r): work out each village's water now
       living: p => chooseJob(p), roadOf: vid => roadOf(villages[vid]),   // for the tests (TODO 15.5b4): the living somebody would choose now, and where a village's bandits lie in wait
       /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
          the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */

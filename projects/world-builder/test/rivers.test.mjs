@@ -16,7 +16,7 @@ const People = createRequire(import.meta.url)("../people.js");
 
 // 1. No big river: nothing changes.
 {
-  const w = People.create({ seed: 1, harvestTax: 0, dirt: "fixed" });   // (and 15.5r's dirt) 15.5t's harvest tax changes the world; off, it is the world 15.5b2 left
+  const w = People.create({ seed: 1, harvestTax: 0, dirt: "fixed", health: "simple", sexes: "none" });   // (and 15.5r's dirt) 15.5t's harvest tax changes the world; off, it is the world 15.5b2 left
   w.step(24 * 30);
   let h = 0; const mix = x => { h = (h * 31 + (Math.round(x * 1e6) | 0)) % 2147483647; };
   for (const p of w.people) { mix(p.id); mix(p.x); mix(p.y); mix(p.food); mix(p.coins); mix(p.home); }

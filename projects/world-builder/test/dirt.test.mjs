@@ -19,7 +19,7 @@ const FINGERPRINT = 481523178;   // print() of 15.5b4's engine, seed 2, 60 days
 
 // 1. The fixed toll: the world before.
 {
-  const w = People.create({ seed: 2, dirt: "fixed" });
+  const w = People.create({ seed: 2, dirt: "fixed", health: "simple", sexes: "none" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "the fixed toll is the world before 15.5r");
 }

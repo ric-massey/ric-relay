@@ -3085,7 +3085,15 @@ and `people.js` on 2026-11-20 (added 2026-11-20, Ric: "I feel like there probabl
 part for languages. Seven are parts of 15.5 below; slavery and serfdom go to 15c, long-distance
 trade to 15f, festivals and holy days to 15g.
 
-**15.5l. Men and women.** *Now:* the engine has no sex at all — any two grown-ups who are not kin may
+**[x] 15.5l. Men and women.** *Done 2026-11-21:* each person a man or a woman with a strength of
+their own; couples a woman and a man, or two of one sex drawn to it as far as their people accepts
+it (from warmth and openness), no children of their own; a child carried nine months, the last two
+light work, a lying-in as long as the household can spare her; heavy work and blows by strength;
+each people's custom (from how set and how bold it is) keeps women from heavy work and the army by
+its own amount. Setting "Men and women" ("none" = the 15.5e world, fingerprinted). A year, six
+default worlds: births 116 → 93 (the nine months; k raises births), starved 16 → 2, 23 couples of one
+sex. `test/sexes.test.mjs`; README, "Men and women". Left out: house work (n), childbirth deaths and
+nursing (k), laws and faiths (15c, 15g). *Was:* the engine has no sex at all — any two grown-ups who are not kin may
 pair and have children. *History:* almost every people divided work by sex (Murdock and Provost's
 cross-cultural codes, 1973); where the plough was used men did the field work and women worked more
 at home, and peoples whose forebears ploughed still hold more unequal views of women's place today
