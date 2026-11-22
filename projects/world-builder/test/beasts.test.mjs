@@ -16,7 +16,7 @@ const FINGERPRINT = 2596476372;   // print() of 15.5d's engine, seed 2, 60 days
 
 // 1. None: the world before.
 {
-  const w = People.create({ seed: 2, beasts: "none" });
+  const w = People.create({ seed: 2, beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "\"None\" is the world before 15.5o");
 }

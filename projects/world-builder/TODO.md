@@ -2774,7 +2774,9 @@ after passes 1–5.
 
 **Done 2026-11-20:** passes 1, 2, 4 and 5 and the births, measured and held to the same world; pass 3 measured and not built; a passing-over bug found by the audit and fixed. Left: nothing of this item; the biggest costs now are `act` itself and the conversations' own work (`exchange`), which no pass here touched.
 
-### [ ] 15.5. What items 1–14 missed, and what is weak
+### [x] 15.5. What items 1–14 missed, and what is weak
+
+**Done 2026-11-22** (Ric: "finish 15.5 please. all of it then run tests"): every part but i, which waits for after item 15 by its own note. Each part has its own setting whose old value is the world before it, fingerprinted.
 
 **Order (Ric, 2026-11-20): 15.5 is done before 15** — "we should do 15.5 then 15". The
 whole order is now **15.5 → 15 (15a done; then 15c, 15g, 15b, 15e, 15f, 15h, 15i, 15d) → 16 → 17**.
@@ -3041,7 +3043,7 @@ the world, and only then decide whether it needs work; write what was found here
 - Even wars mostly outlast two years (3 of 13 ended, 14c, 14e).
 - Widows remarry no sooner or later for a war (14b); remarriage itself is 15b.
 
-**15.5j. Speed.** 20,000 people on 80 km ran at 52× after 2b and about 19× by item 13, a little
+**[x] 15.5j. Speed.** *Measured 2026-11-22* (speed log): 20,000 people on 80 km 10.8 → 11.7–12.9 s a day (28× → 23–26×), 5,000 on 40 km 1.71 → 2.06–2.17 s, against 15.5r, old and new alternated; nothing found that 15.25 does not cover, so no pass added. 20,000 people on 80 km ran at 52× after 2b and about 19× by item 13, a little
 lost with each item; the row has not been run since item 13, and the M1 rows for item 2 on were
 never filled in. Run the full bench, find what each item added at 20,000, and win back what does
 not change the world. Item 15 adds per-faction ways, offices and know-how, so this matters more
@@ -4118,4 +4120,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-21 | 15.5b3 | AMD Ryzen 5 3600, 24 GB | 2.15 / 2.20 s a day (2.10 / 2.16 before) | *not run* | 7.3 MB, 1.43 KB | **food riots**: a different world only where a village goes hungry with food in sight (3 riots in six default world-years). `--quick` alternated old/new twice: 400 0.16/0.16 → 0.16/0.16 s, 2,000 0.71/0.70 → 0.72/0.70 s; within drift |
 | 2026-11-21 | 15.5b4 | AMD Ryzen 5 3600, 24 GB | 1.81 / 1.84 s a day (1.80 / 1.81 before) | *not run* | 7.3 MB, 1.42 KB | **bandits**: a different world from day 30 wherever somebody hungry and dishonest weighs robbing. `--quick` alternated old/new twice: 400 0.15/0.15 → 0.15/0.16 s, 2,000 0.64/0.64 → 0.65/0.65 s; within drift |
 | 2026-11-21 | 15.5r | AMD Ryzen 5 3600, 24 GB | 2.81 / 2.76 s a day (2.71 / 2.97 before; a busy machine) | *not run* | 7.6 MB, 1.48 KB | **dirt and foul water**: a different world from the first death of it or the first sickness caught more readily for it. `--quick` alternated old/new twice: 400 0.17/0.18 → 0.16/0.17 s, 2,000 0.89/0.89 → 0.82/0.92 s; within drift |
+| 2026-11-22 | 15.5 (e to c, j) | AMD Ryzen 5 3600, 24 GB | 2.17 / 2.06 s a day (1.71 before, 15.5r) | 12.9 / 11.7 s a day, 23–26× (10.8 / 10.8 before, 28×) | 7.6 MB, 1.48 KB (5,000); 2.8 KB (20,000) | **15.5j**: the whole of 15.5 since 15.5r at once — wounds, men and women, children and mothers, children working, house work, land that changes, oxen, ditches, climate, sleep, household firewood, news of plenty, the edge. Old and new alternated at 20,000 and 5,000: about a tenth slower at 20,000 and a fifth at 5,000, every part a different world. Still well above the 16× Ric chose for item 3, and he set no floor ("it can go under in massive runs"). Not profiled part by part: for 15.25's passes if wanted |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

@@ -18,7 +18,7 @@ const FINGERPRINT = 3279161514;   // print() of 15.5t's engine, seed 2, 40 days
 
 // 1. Off: the world 15.5t left (fingerprint taken from 15.5t's engine, seed 2, 40 days).
 {
-  const w = People.create({ seed: 2, riots: false, bandits: false, dirt: "fixed", health: "simple", sexes: "none" });
+  const w = People.create({ seed: 2, riots: false, bandits: false, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false });
   w.step(24 * 40);
   assert.equal(print(w), FINGERPRINT, "riots off is the world before them");
 }

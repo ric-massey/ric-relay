@@ -19,7 +19,7 @@ const FINGERPRINT = 3273619856;   // print() of 15.5b3's engine, seed 2, 60 days
 
 // 1. Off: the world 15.5b3 left.
 {
-  const w = People.create({ seed: 2, bandits: false, dirt: "fixed", health: "simple", sexes: "none" });   // and 15.5r's dirt at the old fixed toll
+  const w = People.create({ seed: 2, bandits: false, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false });   // and 15.5r's dirt at the old fixed toll
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "bandits off is the world before them");
 }

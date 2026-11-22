@@ -763,8 +763,9 @@
       w.ground[i] = kind; w.fert[i] = f; changed = true;
       if (soil && soil.length === w.cols * w.rows * 3) { const c = groundColour(kind, f, w.shade ? w.shade[i] : null); soil[i * 3] = c[0]; soil[i * 3 + 1] = c[1]; soil[i * 3 + 2] = c[2]; }
     }
-    if (changed) { landStale = true; chunks.clear(); }
+    if (changed) { landStale = true; chunks.clear(); groundsTaken++; }
   }
+  let groundsTaken = 0;
   function takeLand(L) {
     bigAt = performance.now();
     if (!L.part) { landNow = L; landStale = true; landDirty = null; return; }
@@ -1883,6 +1884,7 @@
     const diff = (x, y) => { let n = 0, most = 0; for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) { n++; most = Math.max(most, Math.abs(x[i] - y[i])); } return [n, most]; };
     return { picture: diff(a, grab(tilesPic)), wash: diff(b, grab(washPic)), halved: m.map((x, i) => diff(x, grab(mips[i]))), at: landNow.at };
   };
+  window.__wbGrounds = () => groundsTaken;   // TODO 15.5d: how many times the page has taken changed ground
   window.__wbZoom = (z, x, y) => { cam.s = z; if (x != null) { cam.x = x; cam.y = y; } else if (vs[0]) { cam.x = vs[0].x; cam.y = vs[0].y; window.__px0 = cam.x; window.__py0 = cam.y; } cam.held = true; follow = false; return true; };
   /* A person's colour, from the number the keeper sent for the view it was
      asked for: a faction, or a place on one of the ramps. */
