@@ -166,6 +166,9 @@
       { key: "rain", label: "Rain", type: "select", def: "real",   // TODO 6b, 2026-11-16
         options: [["real", "By place and year — dry years thin the harvest"], ["off", "The same everywhere, every year"]],
         help: "Each year's rain differs from place to place, more on dry land than wet, by as much as Year to year says. A dry year thins the crops; fields beside a river or lake are spared, as river flats were. Rain also fills the water pots at home." },
+      { key: "climate", label: "Over the centuries", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,   // TODO 15.5q, 2026-11-22; Ric: on by default
+        say: scale(["every century alike", "small swings", "a little ice age now and then", "great swings"]),
+        help: "Under the year-to-year weather the climate itself drifts over decades and centuries, warmer and colder, wetter and drier, drawn from the seed: a cold spell of a few generations brings longer winters and poorer harvests, as the Little Ice Age did. Nothing is scripted; at the middle a cold age is about a degree colder." },
     ]},
     { title: "How it starts", items: [
       { key: "stored", label: "Food put by", type: "range", min: 0, max: 1, step: 0.05, def: 0,
@@ -532,6 +535,20 @@
   /* One year's own weather: how early its spring, how warm, how good the
      ground. A hash of the seed and the year, not the world's random stream,
      so asking about a year never changes anything else. */
+  /* The climate's slow swing (TODO 15.5q): how much warmer (in the units of `warmth`, where a year runs
+     from -1 to 1, about a tenth a degree) and wetter (a share of the rain) year `year` is than the
+     world's own climate, for a seed. Three waves of about 70, 210 and 600 years with phases from the
+     seed, so a cold age comes and goes over generations and nothing is scripted. At 0.5 a cold age is
+     about a degree (the Little Ice Age cooled the northern hemisphere under 1 °C on the whole, by some
+     accounts 2 °C in northern Europe), with its harvests a tenth worse. */
+  function climateOf(seed, year, size) {
+    if (!size) return CALM;
+    const r = rng((seed * 1103515245 + 12345) >>> 0), ph = [r(), r(), r(), r(), r(), r()].map(x => x * 2 * Math.PI);
+    const wave = (k, a, b, c) => 0.45 * Math.sin(2 * Math.PI * year / 70 + ph[a]) + 0.35 * Math.sin(2 * Math.PI * year / 210 + ph[b]) + 0.3 * Math.sin(2 * Math.PI * year / 600 + ph[c]);
+    const warm = wave(0, 0, 1, 2) * 0.2 * size, wet = wave(1, 3, 4, 5) * 0.15 * size;
+    return { warm: warm, wet: wet, yield: 1 + warm };
+  }
+  const CALM = { warm: 0, wet: 0, yield: 1 };
   function yearOf(seed, year, weather) {
     const r = rng((seed * 2654435761 + year * 40503 + 7) >>> 0);
     const u = () => r() * 2 - 1;
@@ -542,11 +559,11 @@
   function seasonAt(day, S) {
     const first = START_DOY[S.start] ?? START_DOY.spring;
     const abs = first + Math.floor(day), doy = ((abs % 365) + 365) % 365, year = Math.floor(abs / 365);
-    const y = yearOf(S.seed || 1, year, S.weather || 0);
-    const w = coldCurve(doy - y.shift) + y.warm, winter = S.winter;
+    const y = yearOf(S.seed || 1, year, S.weather || 0), c = climateOf(S.seed || 1, year, S.climate || 0);   // c: TODO 15.5q
+    const w = coldCurve(doy - y.shift) + y.warm + c.warm, winter = S.winter;
     const q = Math.floor(((doy + 365 - 79) % 365) / 91.25);    // spring starts at the equinox
     return { day: Math.floor(day), doy: doy, year: year, name: SEASONS[(q + 1) % 4], warmth: w,
-             growth: ((1 - winter) + winter * Math.max(0, w - GROW_LINE) / GROW_MEAN) * y.yield,
+             growth: ((1 - winter) + winter * Math.max(0, w - GROW_LINE) / GROW_MEAN) * y.yield * c.yield,
              daylight: daylightAt(doy, S.latitude ?? 45),
              /* The harvest. Around two months after the warmest day the grain
                 is ripe, and a day's reaping brings in up to four times what a
@@ -556,7 +573,7 @@
                 bring in more than they ate, the frost took the crop and a
                 hard-winter world starved to the last person by February. */
              ripe: 1 + 3 * winter * Math.min(1, Math.max(0, (Math.cos(2 * Math.PI * (doy - y.shift - WARM_PEAK - RIPE_AFTER) / 365) - 0.75) / 0.25)),
-             yearNote: y };
+             yearNote: y, climate: c };
   }
   /* War has to be fed (Ric, 2026-11-14: "military reach depend on food carried
      and access to resupply"). A soldier draws this many days of rations before
@@ -7666,6 +7683,7 @@
       m.push(sum / 3000); } return m; })();
     function rainField(year, out) {
       const r = rng((S.seed * 2246822519 + year * 3266489917 + 11) >>> 0);
+      const wetter = climateOf(S.seed || 1, year, S.climate || 0).wet;   // TODO 15.5q: the century's rain
       const zg = z3(r), cell = 100 * SQUARES_PER_KM, gw = Math.ceil(cols / cell) + 2, gh = Math.ceil(rows / cell) + 2;
       const g = new Float32Array(gw * gh); for (let k = 0; k < g.length; k++) g[k] = z3(r);
       for (let y = 0; y < rows; y++) {
@@ -7675,7 +7693,7 @@
           const fx = x / cell, ix = fx | 0, ux = fx - ix, k = iy * gw + ix;
           const zr = g[k] * (1 - ux) * (1 - uy) + g[k + 1] * ux * (1 - uy) + g[k + gw] * (1 - ux) * uy + g[k + gw + 1] * ux * uy;
           const cv = Math.min(1, (S.weather || 0) * (0.25 + 0.6 * (1 - wetQ[i] / 255)));
-          const R = Math.max(0.05, 1 + cv * (0.8 * zg + 0.6 * zr));
+          const R = Math.max(0.05, 1 + cv * (0.8 * zg + 0.6 * zr) + wetter);   // wetter: TODO 15.5q
           let short = Math.max(0, 1 - R);
           if (nearW[i] <= 4) short *= (nearW[i] - 1) / 4;           // river flats: none lost at the bank, a quarter 500 m off, all past a kilometre
           if (watered && watered[i]) short *= 0.15;                  // TODO 15.5p: a ditch brings the river to it, less what seeps away
@@ -8064,5 +8082,5 @@
     };
   }
 
-  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, HOUR_SECONDS, DAY_HOURS, ACTIONS_PER_HOUR, WALK, STEP: HOUR_SECONDS / ACTIONS_PER_HOUR, START_DOY, seasonAt, clean: clean, create: create };
+  return { climateOf: climateOf, SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, HOUR_SECONDS, DAY_HOURS, ACTIONS_PER_HOUR, WALK, STEP: HOUR_SECONDS / ACTIONS_PER_HOUR, START_DOY, seasonAt, clean: clean, create: create };
 });

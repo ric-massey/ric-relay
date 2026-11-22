@@ -3155,7 +3155,7 @@ yields round Assyrian canals ([PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC481
 village (or a leader) builds with hours, that waters the fields along it so a dry year spares them as
 it spares river flats, and needs cleaning each year or silts up. *Question:* in, as proposed?
 
-**15.5q. Climate over centuries.** *Now:* each year's rain differs (6b) and winters vary, but nothing
+**[x] 15.5q. Climate over centuries.** *Done 2026-11-22:* a slow swing in warmth and rain from the seed (three waves of about 70, 210 and 600 years), under the year-to-year weather; at the default middle about a degree either way and a cold age's harvests a tenth worse; setting "Over the centuries" on by default as Ric chose (0 = the 15.5p world, fingerprinted). `test/climate.test.mjs`; README, "Climate over centuries". Left out: volcanic winters, north-south differences. *Was:* each year's rain differs (6b) and winters vary, but nothing
 shifts over decades. *History:* the Little Ice Age cooled the northern hemisphere by under 1 °C on
 the whole (more in places, by some accounts 2 °C in northern Europe in the 16th–17th centuries), with
 longer winters and cool wet summers, shorter growing seasons and failed harvests (Parker, *Global

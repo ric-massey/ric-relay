@@ -1901,6 +1901,33 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Climate over centuries (2026-11-22)
+
+TODO item 15.5q. Ric (2026-11-20): yes, from the seed, and **on by default**, so a default world
+changes with it. Until now each year's weather differed (6b) but nothing shifted over decades. The
+Little Ice Age cooled the northern hemisphere by under 1 °C on the whole (by some accounts 2 °C in
+northern Europe in the 16th–17th centuries), with longer winters, cool wet summers and failed
+harvests (Parker, *Global Crisis*); Kelly and Ó Gráda argue the smoothing of the data made the cycles
+look tidier than they were (research notes under 15.5q in `TODO.md`).
+
+- **The swing** (`climateOf`, exported with `seasonAt`): three waves of about 70, 210 and 600 years
+  with phases from the seed, for warmth and, apart, for rain. A year is nearly the one before; a cold
+  age comes and goes over generations; nothing is scripted and no two seeds have the same centuries.
+- **Its size**, the setting "Over the centuries" (under The year), 0 to 1, at 0.5 by default: at
+  the middle the swing reaches about ±0.1 of `warmth` (whose year runs from −1 to 1; about a degree)
+  and ±7% of the rain; at 1, twice that.
+- **What it does**: added to each day's warmth (`seasonAt`), so a cold age has a later spring and an
+  earlier frost; growth times 1 + the swing (a cold age's harvests about a tenth worse at the middle);
+  and the century's rain added to each year's (`rainField`).
+- "Every century alike" (0) is the world 15.5p left, step for step (`test/climate.test.mjs`).
+
+**Measured** (a year each, six default worlds, against 15.5p): reaped 368,600 → 359,900 days of food
+(2% less: these seeds start a little cold), starved 0 → 0, people 2,398 → 2,391. A run of centuries is
+where it shows, and no world here has been run that long.
+
+**Left out:** volcanic winters (single cold years), a climate that differs north to south across a
+big land.
+
 ### Irrigation (2026-11-22)
 
 TODO item 15.5p. Ric (2026-11-20): yes. Until now nobody built irrigation; river flats were spared in
