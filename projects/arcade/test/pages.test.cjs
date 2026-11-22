@@ -16,7 +16,12 @@ test('nine games have independent, directly playable Arcade entries with three p
     const page=read(`projects/${id}/index.html`);
     assert(page.includes(`data-game="${id}"`));
     assert(page.includes('<style>'),`${id} owns its look`);
-    assert(page.includes('body[data-skin="1"]')&&page.includes('body[data-skin="2"]'));
+    // Pages either theme by number (body[data-skin="N"], Checkers and Snake) or,
+    // since their round-three rewrite, by name (body[data-look="name"]). Either
+    // way every style in the menu has rules of its own on the page.
+    const looks=[...page.match(/<select id="style-switch"[^>]*>(.*?)<\/select>/s)[1].matchAll(/data-look="([a-z-]+)"/g)].map(m=>m[1]);
+    if(page.includes('body[data-skin="1"]'))assert(page.includes('body[data-skin="2"]'),`${id}: numbered styles`);
+    else for(const look of looks)assert(page.includes(`body[data-look="${look}"]`),`${id}: the ${look} style has its own rules`);
     assert(/<(section|main) id="playroom"[^>]*aria-label/.test(page),`${id} opens on its game`);
     assert(!/Classics|catalog|lobby-title/.test(page));
     const styles=page.match(/<select id="style-switch"[^>]*>(.*?)<\/select>/s)[1];
@@ -47,7 +52,20 @@ test('every page palette keeps body and panel text above 4.5:1',()=>{
   const light=h=>{if(h.length===4)h='#'+[...h.slice(1)].map(c=>c+c).join('');return h.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((a,b,i)=>a+b*[.2126,.7152,.0722][i],0);};
   const contrast=(a,b)=>{a=light(a);b=light(b);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
   for(const id of ids){
-    const page=read(`projects/${id}/index.html`),base=properties(page.match(/body\{--paper:[^}]+\}/)[0]);
+    const page=read(`projects/${id}/index.html`),baseRule=page.match(/body\{--paper:[^}]+\}/);
+    if(!baseRule){
+      // Named styles (round three): each look sets its own palette, under the
+      // page's own names. Where a look declares a flat panel or paper colour,
+      // its ink and muted text must read on it.
+      const looks=[...page.match(/<select id="style-switch"[^>]*>(.*?)<\/select>/s)[1].matchAll(/data-look="([a-z-]+)"/g)].map(m=>m[1]);
+      for(const look of looks){
+        const rules=[...page.matchAll(new RegExp('body\\[data-look="'+look+'"\\]\\{([^}]*)\\}','g'))].map(m=>m[1]).join(';');
+        const v=properties(rules);
+        for(const text of ['ink','muted'])for(const bg of ['paper','panel'])if(v[text]&&v[bg])assert(contrast(v[text],v[bg])>=4.5,`${id}/${look}: ${text} on ${bg}`);
+      }
+      continue;
+    }
+    const base=properties(baseRule[0]);
     const skins=[...page.match(/<select id="style-switch"[^>]*>(.*?)<\/select>/s)[1].matchAll(/<option value="(\d+)"/g)].map(m=>m[1]);
     for(const skin of skins){
       const extra=skin==='0'?'':page.match(new RegExp('body\\[data-skin="'+skin+'"\\]\\{[^}]+\\}'))[0];

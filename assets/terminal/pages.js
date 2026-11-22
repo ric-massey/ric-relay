@@ -101,16 +101,16 @@ window.TERMINAL_PAGES = [
   "href": "projects/checkers/index.html",
   "title": "Checkers",
   "keys": "RIC//NET",
-  "body": "Play Checkers in the Arcade. American checkers · 8 × 8. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Checkers · Scoreboard · At the board · How to play",
+  "body": "Play Checkers in the Arcade. American checkers · 8 × 8. Six sets, from a tournament board to a park table to a terminal, with touch, drag and keyboard controls.",
+  "text": "Checkers · Scoreboard · How to play",
   "room": "gaming"
  },
  {
   "href": "projects/chess/index.html",
   "title": "Chess",
   "keys": "RIC//NET",
-  "body": "Play Chess in the Arcade. A game of quiet decisions. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Chess · Scoreboard · At the board · How to play",
+  "body": "Play Chess in the Arcade: against the computer, a friend on the same device, or a friend online. Six sets, from a club tournament board to a chess book diagram to a terminal.",
+  "text": "Chess · Scoreboard · How to play",
   "room": "gaming"
  },
  {
@@ -197,8 +197,8 @@ window.TERMINAL_PAGES = [
   "href": "projects/minesweeper/index.html",
   "title": "Minesweeper",
   "keys": "RIC//NET",
-  "body": "Play Minesweeper in the Arcade. A field of calculated risks. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Minesweeper · Scoreboard · Field manual · How to play",
+  "body": "Play Minesweeper in the Arcade: four fields plus a custom size, flags and question marks, best times. Six styles, from a retro desktop to a sonar screen to a blueprint.",
+  "text": "Minesweeper · Scoreboard · How to play",
   "room": "gaming"
  },
  {
@@ -229,16 +229,16 @@ window.TERMINAL_PAGES = [
   "href": "projects/snake/index.html",
   "title": "Snake",
   "keys": "RIC//NET",
-  "body": "Play Snake in the Arcade. Eat. Grow. Mind the walls.. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Snake · Scoreboard · Controls · How to play",
+  "body": "Play Snake in the Arcade on six handhelds: a pocket console, a brick phone, an LED tabletop, a candy handheld, a calculator and a terminal. Swipe, d-pad, keypad or keyboard.",
+  "text": "Snake · High scores · How to play",
   "room": "gaming"
  },
  {
   "href": "projects/solitaire/index.html",
   "title": "Solitaire",
   "keys": "RIC//NET",
-  "body": "Play Solitaire in the Arcade. Klondike · draw one. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Solitaire · Scoreboard · At the card table · How to play",
+  "body": "Play Klondike Solitaire in the Arcade: draw one or three, a daily deal, standard points and winnable deals only. Six decks, from a card room to a parlour to a terminal.",
+  "text": "Solitaire · Your games · Scoreboard · How to play",
   "room": "gaming"
  },
  {
@@ -309,24 +309,24 @@ window.TERMINAL_PAGES = [
   "href": "projects/sudoku/index.html",
   "title": "Sudoku",
   "keys": "RIC//NET",
-  "body": "Play Sudoku in the Arcade. One solution. No rush.. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Sudoku · Scoreboard · Puzzle notes · How to play",
+  "body": "Play Sudoku in the Arcade: easy to expert, a daily puzzle, notes, and numbers in either order. Six styles, from a puzzle book to a chalkboard to a terminal.",
+  "text": "Sudoku · Scoreboard · How to play",
   "room": "gaming"
  },
  {
   "href": "projects/tetris/index.html",
   "title": "Tetris",
   "keys": "RIC//NET",
-  "body": "Play Tetris in the Arcade. One more line. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Tetris · Scoreboard · Controls · How to play",
+  "body": "Play falling blocks in the Arcade: Marathon, a 40-line Sprint and a two-minute Timed game, a ghost piece, and controls you can set. Six styles, from an arcade cabinet to toy blocks to a vector screen.",
+  "text": "High scores · Controls · How to play",
   "room": "gaming"
  },
  {
   "href": "projects/tictactoe/index.html",
   "title": "Tic-tac-toe",
   "keys": "RIC//NET",
-  "body": "Play Tic-tac-toe in the Arcade. Three in a row. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Tic-tac-toe · Scoreboard · Rules · How to play",
+  "body": "Play Tic-tac-toe in the Arcade: classic or Ultimate, against the computer, a friend here or a friend online, single games or matches. Six styles, from a notebook to a steamed-up window to a beach.",
+  "text": "Tally · Tic-tac-toe · Scoreboard · How to play",
   "room": "gaming"
  },
  {
@@ -365,8 +365,8 @@ window.TERMINAL_PAGES = [
   "href": "projects/wordle/index.html",
   "title": "Wordle",
   "keys": "RIC//NET",
-  "body": "Play Wordle in the Arcade. Five letters. Six chances.. Three styles to choose from, with touch and keyboard controls.",
-  "text": "Wordle · Scoreboard · Six chances · How to play",
+  "body": "Play Wordle in the Arcade: a daily word, practice, past days, hard mode and a colour-blind mode. Six styles, from a split-flap board to neon to a terminal.",
+  "text": "Wordle · Your games · Scoreboard · How to play",
   "room": "gaming"
  },
  {
