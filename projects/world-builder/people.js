@@ -301,6 +301,8 @@
         say: v => v + " things", help: "Each friend, grudge, debt, piece of news, who has food to spare, and what they think about sharing takes one. When a mind is full the weakest thing goes. People differ a little: a quarter either way, taken after their parents." },
       { key: "wrong", label: "How often a tale changes in the telling", type: "range", min: 0, max: 0.3, step: 0.01, def: 0.05,   // TODO 12; Ric, 2026-11-18: "1 in 20"
         say: v => v <= 0 ? "never" : "1 telling in " + Math.round(1 / v), help: "Each time something is passed on, the chance it comes out changed: a number grows, the wrong village, the wrong side. Field studies of real rumours find them mostly right." },
+      { key: "faith", label: "Faith", type: "toggle", def: true,   // TODO 15g, 2026-11-22
+        help: "After something hard they cannot explain — a famine, a sickness, a drought, a war lost — now and then somebody makes up what lay behind it and what must be done. Their nature makes its rite, its rule and its holy days; it passes from friend to friend and to children, binds those who hold it, can become a people's own, and may call for sacrifice or holy war. It fades where life is safe." },
       { key: "plenty", label: "News of plenty", type: "toggle", def: true,   // TODO 15.5g, 2026-11-22
         help: "A village with grain to spare after the harvest becomes news, passed on by word of mouth like news of a famine. Traders who hear it go to load there, the hungry think of moving there, and a hungry household with coins goes there to buy." },
       { key: "switch", label: "Changing sides", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
@@ -358,6 +360,9 @@
       { key: "land", label: "Who holds the land", type: "select", def: "decide",   // TODO 7c; Ric, 2026-11-16
         options: [["decide", "Each faction decides"], ["family", "Families, each its own fields"], ["village", "The village, in common"], ["leader", "The leader, worked for a share"]],
         help: "Each faction's own rule, as Ric asked: a chief or the richest chooses by their own lights, a people who vote choose by what most of them want, and you choose for a faction you rule. Or set one rule for everybody here. Families hold one or two fields each near the house; common fields are worked by anybody of the village; a leader's land is worked by all, and a third of every harvest goes to the leader's barn, the village store." },
+      { key: "govern", label: "Government", type: "select", def: "deep",   // TODO 15c, 2026-11-22
+        options: [["deep", "Councils, officials and laws"], ["leader", "The leader alone (as before)"]],
+        help: "A ruler must carry those with the say: the great families, the elders, or everybody. Officials come only when the ruler cannot see to it all — a headman for a far village, a collector, a judge, a captain, a governor over a beaten people — paid a wage, a farm of the tax, land, or nothing, by lot, as the ruler's nature picks; and they may be honest or not. Laws on theft, killing and unfree people outlast the leader who made them. A beaten people may leave for open land, or stay itself and pay." },
       { key: "term", label: "A vote every", type: "range", min: 1, max: 20, step: 1, def: 6,
         say: v => v + (v === 1 ? " year" : " years"), help: "Wherever leaders are voted for — from the start, or after a revolution brings in votes." },
       { key: "rebel", label: "Breaking away", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
@@ -770,7 +775,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1379,6 +1384,8 @@
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9,
                   mean: new Float64Array(TRAITS.length),   // TODO 15a: its grown-ups' average of each trait, at the last census
+                  faith: null,   // TODO 15g: the faith its ruler holds, when enough hold it
+                  gov: null,   // TODO 15c: its council, officials and laws (see "government")
                   cheap: 0 };   // TODO 15.5b2: the share of a ration's price the treasury pays, in a village under a public order for grain
       factions.push(f);
       for (const o of factions) if (o !== f) { f.rel[o.id] = blankRel(); o.rel[f.id] = blankRel(); }
@@ -1662,6 +1669,8 @@
                   /* Building (TODO 7b): the house they are waiting for, which they are working on, and whether a shift is under way. */
                   waitHouse: -1, buildAt: -1, shift: false,
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
+                  unfree: undefined,   // TODO 15c: the id of whoever holds them, while they are unfree
+                  faith: undefined, zeal: undefined,   // TODO 15g: which faith they hold, and how hard
                   vig: 1, harm: 0, lame: 0,   // TODO 15.5e: strength left (wounds and age), a wound still healing, and what of it never will
                   /* TODO 15.5l: 0 a woman, 1 a man; strength at heavy work; drawn to their own sex; a child
                      due (the hour), its father, and lying in until. */
@@ -2028,6 +2037,7 @@
        the parent's newest news, a larder they know of, and their strongest feelings about
        others, grudges included but no deeper than a snub. */
     function inherit(p, par) {
+      if (FAITH && par.faith != null && p.faith == null && faiths[par.faith].alive) { p.faith = par.faith; p.zeal = par.zeal * 0.7; }   // TODO 15g: brought up in it
       if (par.mb < 0 || p.mb < 0) return;
       const o0 = par.mb * MB + 1, o1 = o0 + par.mcap, pick4 = [];
       for (let o = o0; o < o1; o++) {
@@ -2127,6 +2137,7 @@
     function quarrel(a, b) {
       wakeUp(b);
       count.quarrels++;
+      if (GOV && factions[a.f].gov && dispute(factions[a.f])) befriend(a, b, 0.05);   // heard, and a little settled (TODO 15c)
       const heat = (a.temper + b.temper) / 2;
       if (R() < heat * heat * 1.2) {
         count.fights++;
@@ -2140,6 +2151,7 @@
           const by = dead === a ? b : a;
           note("killing", by.name + " killed " + dead.name + " in a fight in " + villages[dead.home].name + ".", 1.5, dead.x, dead.y, dead.f);
           die(dead, "fight", by);
+          if (GOV) killingJudged(by, dead);   // TODO 15c
         }
         for (const q of [a, b]) if (q.hp !== -99 && q.hp < 0.02) q.hp = 0.02;   // hurt, not starved
       } else {
@@ -2159,6 +2171,7 @@
         wakeUp(q);
         befriend(q, p, -0.5);
         shaken(q, LIFE.robbed);
+        if (GOV) theftJudged(p, q, take);   // TODO 15c
         q.say = "Thief!"; q.sayT = TK(60); p.say = "I had to. My children are hungry."; p.sayT = TK(60);
       } else { p.say = "They won't miss it."; p.sayT = TK(40); }
     }
@@ -2170,6 +2183,15 @@
     const RIOTS = !shared && S.riots !== false;   // TODO 15.5b3
     const BANDITS = !shared && S.bandits !== false;   // TODO 15.5b4
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
+    const FAITH = S.faith !== false;   // TODO 15g (see "faith")
+    /* How often a hard event makes a faith (one in six, Ric: "Rare" for finds, said as a guess), how
+       readily it passes in one talk between people who trust each other, and how many make it a named faith. */
+    const FAITH_MAKE = 0.15, FAITH_PASS = 0.001, FAITH_NAMED = 10;
+    const faiths = [];
+    const GOV = S.govern !== "leader";   // TODO 15c: councils, offices and laws (see "government")
+    /* What one ruler can see to alone (TODO 15c): three villages, a dispute a day, and the tax of
+       about 480 people, which is the Western Han's one official for every 480 or so. */
+    const SEE_TO = 3, HEAR_A_MONTH = 30, COLLECT_FOR = 480, COUNCIL_N = 5;
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
     const HEARTH = MATS && S.firewood !== "off" && S.hearth !== "village";   // TODO 15.5f: each household's own firewood
@@ -2921,6 +2943,7 @@
         const mine = what === "food" && v.levy > 0 ? Math.min(1, v.levy / Math.max(v.food, 1e-9)) : 0;
         if (mine > 0) v.levy = Math.max(0, v.levy - amount * mine);
         pay(p, cost); v.till += (cost - tax) * (1 - mine); factions[v.f].treasury += tax + (cost - tax) * mine;
+        if (GOV && factions[v.f].gov) factions[v.f].gov.taxIn += tax;   // TODO 15c: for the collector
       }
       if (what === "food") { v.food -= amount; p.food += amount; } else if (what === "goods") { v.goods -= amount; p.goods += amount; tookGoods(p, v, amount); } else v[what] -= amount;   // a load of wood, stone or ore goes on the cart
       return amount;
@@ -3685,6 +3708,9 @@
         chosen(); p.chose = chosenTask; return;
       }
 
+      /* A holy day (TODO 15g): its holders gather in the village, and talk, rather than work. */
+      if (FAITH && p.faith != null && !dark && holyDay(faiths[p.faith]))
+        weigh("worship", 0.35 + p.zeal * 0.5 - n.food * 0.8 - n.water - n.rest * 0.5, () => { const [x, y] = plaza(v, 1.2); go(p, x, y, "idle"); p.wait = spell("visit"); count.holyDays++; });
       /* Water (TODO 6a): fetch it when the house runs low; and where it is far and there is no
          well, dig one. */
       if (THIRST && p.dwelling >= 0) {
@@ -3979,7 +4005,7 @@
           });
           /* Or take it, from their house, best by night (TODO 10): somebody hungry with nothing to pay
              with, from a house with plenty put by. The honest would sooner go hungry. */
-          if (p.hungry > 0 && !(t - (p.stoleAt ?? -1e9) < 3 * DAY_HOURS) && funds(p) < 1 && q.food > 10 * dailyNeed(q) && q.home === p.home && q.dwelling >= 0 && p.honest < 0.7) {
+          if (p.hungry > 0 && !(t - (p.stoleAt ?? -1e9) < 3 * DAY_HOURS) && funds(p) < 1 && q.food > 10 * dailyNeed(q) && q.home === p.home && q.dwelling >= 0 && p.honest < 0.7 && !(FAITH && p.faith != null && faiths[p.faith].rule === "theft" && p.zeal > 0.3)) {
             const h = homes[q.dwelling], crook = (1 - p.honest) * (1 - p.honest) * 2;   // 0.5 at an ordinary honesty
             weigh("steal", (n.food * 1.3 + 0.15) * crook - away(Math.hypot(h.x - p.x, h.y - p.y)) + dark * 0.15, () => {
               go(p, h.x + (R() - 0.5) * 0.4, h.y + (R() - 0.5) * 0.4, "steal"); p.askOf = q.id; p.stoleAt = t; p.wait = 0;
@@ -4066,7 +4092,8 @@
       if (got < want * 0.5) {
         /* A debt is paid back: somebody who owes the asker for food gives more readily (TODO 11). */
         const owed = mFind(q, M_DEBT, p.id), fq = feel(q, p.id);
-        const tie = (kin(p, q) ? 0.6 : 0) + fq + q.warm + (viewOf(q) > 0 ? 0.3 : 0) + (owed >= 0 ? mNow(owed) * 0.8 : 0);
+        const tie = (kin(p, q) ? 0.6 : 0) + fq + q.warm + (viewOf(q) > 0 ? 0.3 : 0) + (owed >= 0 ? mNow(owed) * 0.8 : 0)
+                  + (FAITH && q.faith != null ? (q.faith === p.faith ? 0.3 : 0) + (faiths[q.faith].rule === "refuse" ? 0.3 * q.zeal : 0) : 0);   // TODO 15g
         if (q.food > 1 && (q.home === p.home || kin(p, q) || fq > 0.2 || owed >= 0) && tie > 0.6 + R() * 0.7) {
           const give = Math.min(want - got, q.food * 0.25);
           q.food -= give; p.food += give; got += give; befriend(p, q, 0.3);
@@ -4869,6 +4896,7 @@
       /* Both of them have now had company. This is the only thing that clears
          it, so somebody nobody speaks to keeps going out to look for company. */
       a.alone = 0; b.alone = 0;
+      if (FAITH) faithTalk(a, b);   // TODO 15g
       if (S.records === "light") { exchange(a, b); return; }
       keepState(csWas[0], 0, a, b); keepState(csWas[1], 1, b, a);
       const previous = nextExchange, fa = a.f, fb = b.f, dipA = fa !== fb ? factions[fa].rel[fb].op : 0, dipB = fa !== fb ? factions[fb].rel[fa].op : 0;
@@ -6563,10 +6591,11 @@
       const odds = (S.plague === "none" ? 0 : S.plague === "rare" ? 0.004 : 0.02) * (DIRT ? 1 + v.foul * FOUL_OUTBREAK : 1);   // TODO 15.5r
       if (v.sick === 0 && R() < odds) {
         const here = people.filter(p => p.home === v.id && !p.immune);
-        if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; count.infected++; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); }
+        if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; count.infected++; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); if (FAITH) hardTimes(v, "sick", 1); }
       }
       if (v.hungry > v.pop * 0.4 && v.pop > 8 && (!v.famine || t - v.famine >= 30 * DAY_HOURS)) {
         v.famine = t; note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f);
+        if (FAITH) hardTimes(v, "famine", 1.5);   // TODO 15g
       }
       /* Word that food is dear (TODO 12b): one household in seven going hungry with money to pay, not
          in the first month (everybody is hungry on the first day, walking home), not while the place
@@ -6672,7 +6701,7 @@
         f.cramped = t;
         return;
       }
-      const goers = people.filter(p => p.home === v.id && adult(p) && p.id !== f.leader && p.job !== "soldier")
+      const goers = people.filter(p => p.home === v.id && adult(p) && p.id !== f.leader && p.job !== "soldier" && !p.unfree)
         .sort((a, b) => b.bold - a.bold).slice(0, Math.max(6, Math.floor(v.pop * 0.22)));
       if (goers.length < 4) return;
       const nv = newVillage(best.x, best.y, v.f);
@@ -6836,6 +6865,11 @@
     function capture(v, by, foes) {
       const old = factions[v.f];
       const refuge = villages.filter(o => o.alive && o.f === old.id && o !== v).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
+      /* Its last place, and a winner who would sooner have tribute: it stays itself and pays (TODO 15c). */
+      if (GOV && !refuge && wouldKeep(by, old, v)) { v.siege = 0; v.broke = t; submit(old, by, v); return; }
+      const out = GOV && !refuge ? wayOut(v, by) : null;   // TODO 15c: open land beyond the winner's reach
+      let nv = null, went = 0;
+      const captor = GOV && by.gov && by.gov.laws.unfree === "allowed" ? byId.get(by.leader) : null;
       v.f = by.id; v.siege = 0; v.broke = t;
       if (old.rel[by.id]) old.rel[by.id].lost++; if (by.rel[old.id]) by.rel[old.id].took++;   // TODO 14e
       v.wall *= 0.5;   // breached
@@ -6846,10 +6880,17 @@
       for (const p of people) {
         if (p.home !== v.id) continue;
         if (refuge && (p.job === "soldier" || p.id === old.leader || R() < 0.3 + p.loyal * 0.4)) { rehome(p, refuge, "fled"); fled++; }
+        else if (out && !p.unfree && (p.id === old.leader || R() < 0.3 + p.loyal * 0.4)) {   // TODO 15c: the way out
+          if (!nv) { nv = newVillage(out.x, out.y, old.id); nv.food = v.food * 0.15; v.food -= nv.food; }
+          if (p.job === "soldier") p.job = "farmer";
+          rehome(p, nv, "founded"); went++;
+        }
         else {
           if (p.id === old.leader) continue;
           if (p.job === "soldier") p.job = "farmer";
           p.f = by.id; p.loyal = 0.12 + R() * 0.15; p.mood -= 0.2; stayed++; count.switched++;
+          if (captor && p.unfree) p.unfree = 0;
+          if (captor && R() < 0.25 * (1.2 - p.bold)) bind(p, captor, "captive");   // TODO 15c: taken captive
         }
       }
       /* Held (TODO 14c): half of the soldiers who took it stay as its garrison for a year, as the
@@ -6863,6 +6904,8 @@
       old.rel[by.id].grief = clamp(old.rel[by.id].grief + 0.6, 0, 3);
       count.captures++;
       note("taken", by.name + " has taken " + v.name + " from " + old.name + "." + (fled ? " " + fled + " fled." : ""), 3.5, v.x, v.y, by.id);
+      if (FAITH) hardTimes(v, "taken", 1.5);   // TODO 15g
+      if (nv) { count.wayOut++; note("founded", went + " of " + old.name + " would not live under " + by.name + " and have gone to break new ground at " + nv.name + ".", 3, nv.x, nv.y, old.id); }
       if (!villages.some(o => o.alive && o.f === old.id)) fall(old, by.id);
       territory(); census();
     }
@@ -6963,7 +7006,446 @@
        other half is the people's own (TODO 15a; Ric, 2026-11-20: "Lean to the people"): their
        grown-ups' average at the last census, where until then it was the middle of the range. */
     const TI = Object.fromEntries(TRAITS.map((k, i) => [k, i]));
-    function ruling(lead, k, f) { return f.rule === "elected" ? (lead[k] + f.mean[TI[k]]) * 0.5 : lead[k]; }
+    function ruling(lead, k, f) { return f.rule === "elected" ? (lead[k] + f.mean[TI[k]]) * 0.5 : f.gov && f.gov.n ? (lead[k] + f.gov.mean[TI[k]]) * 0.5 : lead[k]; }   // and a council (TODO 15c)
+    /* ── government (TODO 15c, 2026-11-22) ─────────────────────────────────
+       Ric, 2026-11-20: "the governemnts need to go way deeper"; no office unlocked by size: "Which
+       ones exist shouldn't be how big the people is unless if that's how it would play out." So a
+       government is three things, all real people or records, none a label that decides by itself:
+       - who must agree (the council): nobody, the great families, the elders, or all grown-ups,
+         picked by the stats of those who already have the say (Flannery and Marcus: each people's
+         own logic of rank; the greedy and the bold make rank run in families, the warm and the
+         stubborn hold it open). A leader's decisions are then half theirs and half the council's
+         (`ruling`), as a people who vote already were; a small council is paid in gifts and a large
+         one in relief (Bueno de Mesquita's selectorate);
+       - officials, made only when the ruler has a need they cannot meet alone and the means to keep
+         somebody in it: a headman for a village past the three the ruler can see to (a konohiki, a
+         reeve), a collector past about 480 people's tax (the Han's ratio), a judge past a dispute a
+         day, a captain for a war or a held place, a governor over a people kept as subjects (an Ur
+         III ensi). Paid four ways, by the ruler's nature: a wage from the treasury, a farm (a fixed
+         sum owed, the rest kept, as England's sheriffs), land for service (a timar), or unpaid by
+         lot for a year (Athens); the honest take little, the rest skim, and an audit at the end of a
+         term catches some of it (the euthyna);
+       - laws that outlast a leader: what a theft costs (paid back twice, or a fine to the ruler),
+         what a killing costs (paid by the killer's kin to the dead's, a fine, or a death), and
+         whether people may be held unfree. Changed only when those with the say lean clearly the
+         other way. README, "Government". */
+    const SAYS = ["one", "families", "elders", "all"];
+    const PAYS = ["wage", "farm", "land", "lot"];
+    function newGov() {
+      return { say: "", council: [], n: 0, mean: new Float64Array(TRAITS.length), councilAt: -1e9, lawAt: -1e9,
+               head: {}, collector: 0, judge: 0, captain: 0, governor: {}, pay: "", audit: false, termEnd: 0,
+               laws: { theft: "", killing: "", unfree: "" }, taxIn: 0, taxAvg: 0, farm: 0, disputes: 0, month: 0, heardShare: 1,
+               skim: {}, lord: -1, bound: [], made: 0 };
+    }
+    /* The traits of whoever has the say: the leader alone, or half the leader and half the council. */
+    const sayOf = (f, lead, k) => ruling(lead, k, f);
+    function holds(f, id) { const p = id && byId.get(id); return p && p.hp !== -99 && p.f === f.id ? p : null; }
+    function lean3(score, now, gap) {   // the highest, unless the one in force is within `gap` of it
+      let best = null; for (const k in score) if (!best || score[k] > score[best]) best = k;
+      return now && score[now] != null && score[best] - score[now] < gap ? now : best;
+    }
+    function councilOf(f, lead, g) {
+      if (f.rule === "elected") { g.say = "all"; g.council = []; g.n = 0; return; }
+      const k = TI, m = q => (lead[q] + (g.n ? g.mean[k[q]] : lead[q])) / 2;
+      const score = { one: m("bold") + m("temper") - m("patient") - m("warm") - 0.4,
+                      families: m("greed") + m("bold") - m("warm") - m("stub"),
+                      elders: m("patient") * 2 - m("bold") - m("temper") + 0.05 };
+      const was = g.say;
+      g.say = f.rule === "rich" ? "families" : lean3(score, g.say, 0.15);
+      if (was && was !== g.say) {
+        const at = villages[lead.home];
+        note("council", f.name + (g.say === "one" ? " is ruled by " + lead.name + " alone now." : g.say === "families" ? " is ruled now with its great families." : " is ruled now with its elders."), 2, at.x, at.y, f.id);
+      }
+      const pool = people.filter(q => q.hp !== -99 && q.f === f.id && adult(q) && q.id !== lead.id && !q.unfree);
+      if (g.say === "one") { g.council = []; g.n = 0; return; }
+      pool.sort(g.say === "families" ? (a, b) => (b.coins + b.food * 0.2) - (a.coins + a.food * 0.2) || a.id - b.id : (a, b) => b.age - a.age || a.id - b.id);
+      const out = [];
+      for (const q of pool) { if (out.length >= COUNCIL_N) break; if (!out.some(c => c.id === q.partner)) out.push(q); }   // a household once
+      g.council = out.map(q => q.id); g.n = out.length;
+    }
+    function councilMean(f, g) {
+      g.mean.fill(0);
+      let n = 0;
+      for (const id of g.council) { const q = holds(f, id); if (!q) continue; n++; for (let i = 0; i < TRAITS.length; i++) g.mean[i] += q[TRAITS[i]]; }
+      if (n) for (let i = 0; i < TRAITS.length; i++) g.mean[i] /= n;
+      g.n = n;
+    }
+    /* The laws, looked at once a month and changed only on a clear lean. */
+    function lawsOf(f, lead, g) {
+      const m = k => sayOf(f, lead, k), L = g.laws, at = villages[lead.home];
+      const say = (what, text) => note("law", f.name + " " + text, 2, at.x, at.y, f.id);
+      const theft = lean3({ repay: m("honest") + m("warm"), fine: m("greed") + m("bold") }, L.theft, 0.2);
+      if (theft !== L.theft) { if (L.theft) say("theft", theft === "repay" ? "now makes a thief pay back twice what was taken." : "now fines a thief, to the ruler."); L.theft = theft; }
+      const killing = lean3({ kin: 0.9 + (g.judge ? -0.3 : 0.2), fine: m("greed") * 1.2 + (g.judge ? 0.2 : 0), death: m("temper") + m("bold") - m("warm") }, L.killing, 0.2);
+      if (killing !== L.killing) { if (L.killing) say("killing", killing === "kin" ? "now has a killer's kin pay the dead's." : killing === "fine" ? "now fines a killer, to the ruler." : "now puts a killer to death."); L.killing = killing; }
+      const want = f.yours && f.yours.unfree ? f.yours.unfree : null;
+      const bind = m("greed") + m("bold") - m("warm") - m("honest");
+      const unfree = want ? (want === "keep" ? "allowed" : "forbidden") : L.unfree === "allowed" ? (bind < 0.05 ? "forbidden" : "allowed") : (bind > 0.3 ? "allowed" : "forbidden");
+      if (unfree !== L.unfree) {
+        if (L.unfree) say("unfree", unfree === "allowed" ? "now lets captives and debtors be held unfree." : "has forbidden holding anybody unfree.");
+        L.unfree = unfree;
+        if (unfree === "forbidden") freeAll(f, g);
+      }
+      if (want === "free") freeAll(f, g);
+    }
+    function freeAll(f, g) {
+      let n = 0;
+      for (const id of g.bound) { const q = byId.get(id); if (q && q.unfree) { q.unfree = 0; q.loyal = clamp(q.loyal + 0.3, 0, 1); n++; } }
+      g.bound = [];
+      if (n) { count.freed += n; const at = villages.find(v => v.alive && v.f === f.id); if (at) note("freed", n + " held unfree in " + f.name + " have been set free.", 2.5, at.x, at.y, f.id); }
+    }
+    /* Holding somebody unfree (a captive, a debtor): their coins beyond a day's go to whoever holds
+       them; they cannot leave with founders, and run when they dare. Domesday counted about one in
+       eleven so. */
+    function bind(p, holder, why) {
+      const g = factions[holder.f].gov;
+      if (!g || p.unfree || p.id === factions[p.f].leader) return false;
+      p.unfree = holder.id; p.loyal = Math.min(p.loyal, 0.15); g.bound.push(p.id); count.bound++;
+      return true;
+    }
+    function bondage(f, g) {
+      if (!g.bound.length) return;
+      const keep = [];
+      for (const id of g.bound) {
+        const q = byId.get(id);
+        if (!q || q.hp === -99 || !q.unfree) continue;
+        let h = byId.get(q.unfree);
+        if (!h || h.hp === -99 || h.f !== f.id) { h = byId.get(f.leader); if (!h) { q.unfree = 0; continue; } q.unfree = h.id; }   // passes to the ruler
+        if (q.f !== f.id) { q.unfree = 0; continue; }
+        if (q.coins > 1) { h.coins += q.coins - 1; q.coins = 1; }
+        /* Running: the bold and the most wronged, now and then, to the nearest place of another people. */
+        if (adult(q) && q.loyal < 0.3 && R() < 0.004 * (0.3 + q.bold)) {
+          let to = null, d = 1e9;
+          for (const v of villages) if (v.alive && v.f !== f.id) { const dd = Math.hypot(v.x - q.x, v.y - q.y); if (dd < d) { d = dd; to = v; } }
+          if (to && d < 40) { q.unfree = 0; q.f = to.f; q.from = to.f; q.loyal = 0.5; rehome(q, to, "fled"); count.ranFree++; continue; }
+        }
+        keep.push(id);
+      }
+      g.bound = keep;
+    }
+    /* Somebody in an office. Chosen from where the need is, by standing; for the lot, anybody grown. */
+    function appoint(f, g, from, why) {
+      let best = null, bs = -1e9;
+      for (const q of from) {
+        if (q.hp === -99 || q.f !== f.id || !adult(q) || q.unfree || q.id === f.leader) continue;
+        const s = g.pay === "lot" ? R() : why === "captain" ? q.bold * 2 + (q.job === "soldier" ? 1 : 0) : why === "judge" ? q.honest + q.patient + q.age / S.life : standing(q);
+        if (s > bs) { bs = s; best = q; }
+      }
+      return best;
+    }
+    function officeCount(g) { let n = (g.collector ? 1 : 0) + (g.judge ? 1 : 0) + (g.captain ? 1 : 0); for (const k in g.head) n++; for (const k in g.governor) n++; return n; }
+    /* What an official takes beyond their due, by their honesty and how they are paid. */
+    const skimRate = (q, g) => clamp(1 - q.honest - 0.3, 0, 0.7) * (g.pay === "farm" ? 1.5 : 1) * (g.audit ? 0.5 : 1);
+    function takes(g, q, amount) { if (amount <= 0) return; q.coins += amount; g.skim[q.id] = (g.skim[q.id] || 0) + amount; count.skimmed += amount; }
+    function offices(f, lead, g) {
+      const m = k => sayOf(f, lead, k), mine = villages.filter(v => v.alive && v.f === f.id);
+      /* How they are paid, and whether anybody checks them. */
+      g.pay = lean3({ wage: m("honest") - m("greed") + (f.treasury > f.pop ? 0.2 : -0.2), farm: m("greed") - m("honest"),
+                      land: m("bold") - m("warm") - 0.1, lot: m("warm") + (g.say === "all" ? 0.3 : -0.3) - m("greed") }, g.pay, 0.15);
+      g.audit = g.pay === "lot" || m("honest") + m("patient") > 1.15;
+      /* Headmen: the ruler sees to the three villages nearest home. */
+      const home = villages[lead.home];
+      const far = mine.slice().sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y)).slice(SEE_TO);
+      const farIds = new Set(far.map(v => v.id));
+      for (const k in g.head) if (!farIds.has(+k) || !holds(f, g.head[k])) delete g.head[k];
+      for (const v of far) {
+        if (g.head[v.id]) continue;
+        const q = (g.pay !== "wage" || f.treasury > WAGE * 30) && appoint(f, g, residents(v.id), "head");
+        if (q) { g.head[v.id] = q.id; g.made++; count.offices++; }
+        else for (const p of residents(v.id)) if (adult(p) && p.f === f.id) p.loyal = clamp(p.loyal - 0.002, 0, 1);   // nobody sees to them
+      }
+      /* The collector: past about 480 people's tax. */
+      if (g.collector && (!holds(f, g.collector) || f.pop <= COLLECT_FOR * 0.8)) g.collector = 0;
+      if (!g.collector && f.pop > COLLECT_FOR && (g.pay !== "wage" || f.treasury > WAGE * 30)) {
+        const q = appoint(f, g, people, "collector");
+        if (q) { g.collector = q.id; g.farm = g.taxAvg * 0.75; g.made++; count.offices++; note("office", q.name + " now collects " + f.name + "'s tax" + (g.pay === "farm" ? ", owing a fixed sum and keeping the rest" : "") + ".", 1.5, q.x, q.y, f.id); }
+      }
+      /* The judge: past a dispute a day. */
+      if (g.judge && !holds(f, g.judge)) g.judge = 0;
+      if (!g.judge && g.month > HEAR_A_MONTH && (g.pay !== "wage" || f.treasury > WAGE * 30)) {
+        const q = appoint(f, g, people, "judge");
+        if (q) { g.judge = q.id; g.made++; count.offices++; note("office", q.name + " now hears " + f.name + "'s disputes.", 1.5, q.x, q.y, f.id); }
+      }
+      g.heardShare = g.judge ? 1 : Math.min(1, HEAR_A_MONTH / Math.max(1, g.month));
+      /* The captain: a war to run, or a taken place to hold. */
+      let war = false; for (const o of factions) if (o.alive && o !== f && f.rel[o.id].war) war = true;
+      const held = mine.some(v => v.heldTo > t);
+      if (g.captain && (!holds(f, g.captain) || !(war || held))) g.captain = 0;
+      if (!g.captain && (war || held)) {
+        const q = appoint(f, g, people, "captain");
+        if (q) { g.captain = q.id; g.made++; count.offices++; }
+      }
+      /* Governors over peoples who pay as subjects. */
+      for (const k in g.governor) if (!holds(f, g.governor[k]) || !factions[k].alive || !factions[k].rel[f.id].pays) delete g.governor[k];
+      for (const o of factions) if (o.alive && o !== f && o.rel[f.id] && o.rel[f.id].pays && !g.governor[o.id]) {
+        const q = appoint(f, g, people, "governor");
+        if (q) { g.governor[o.id] = q.id; g.made++; count.offices++; note("office", q.name + " is to govern " + o.name + " for " + f.name + ".", 2, q.x, q.y, f.id); }
+      }
+      /* Pay: a wage from the treasury, land's yield, or nothing. */
+      const n = officeCount(g);
+      if (g.pay === "wage") {
+        const cost = Math.min(f.treasury, n * WAGE);
+        f.treasury -= cost;
+        const each = n ? cost / n : 0;
+        for (const id of officeIds(g)) { const q = byId.get(id); if (q) q.coins += each; }
+      } else if (g.pay === "land") {
+        for (const id of officeIds(g)) { const q = byId.get(id); const v = q && villages[q.home]; if (v && v.food > 0) { const x = v.food * 0.0008; v.food -= x; q.food += x; } }
+      }
+      /* Headmen skim their village's till. */
+      for (const k in g.head) { const q = byId.get(g.head[k]), v = villages[k], x = v.till * 0.004 * skimRate(q, g); if (x > 0) { v.till -= x; takes(g, q, x); } }
+      /* The tax: collected in full only as far as somebody can collect it; a collector keeps a share. */
+      const taxIn = g.taxIn; g.taxIn = 0;
+      g.taxAvg += (taxIn - g.taxAvg) * 0.05;
+      if (taxIn > 0) {
+        const col = g.collector && byId.get(g.collector);
+        if (!col && f.pop > COLLECT_FOR) {
+          const lost = taxIn * (1 - COLLECT_FOR / f.pop);   // nobody came for it: it stays in the tills
+          f.treasury -= lost; if (mine.length) for (const v of mine) v.till += lost / mine.length;
+          count.uncollected += lost;
+        } else if (col) {
+          if (g.pay === "farm" && taxIn < g.farm) { const x = Math.min(col.coins, g.farm - taxIn); col.coins -= x; f.treasury += x; }   // the farm is owed whatever came in
+          const keep = g.pay === "farm" ? Math.max(0, taxIn - g.farm) : g.pay === "land" ? taxIn * 0.1 : taxIn * 0.25 * skimRate(col, g);
+          const x = Math.min(keep, f.treasury); f.treasury -= x; takes(g, col, x);
+        }
+      }
+      /* The end of a term: a year. Under the lot a new holder is drawn; with an audit, whoever took
+         more than a little gives half of it back and loses the office. */
+      if (t >= g.termEnd) {
+        g.termEnd = t + YEAR;
+        for (const id of officeIds(g)) {
+          const q = byId.get(id); if (!q) continue;
+          const took = g.skim[id] || 0;
+          if (g.audit && took > 5) {
+            const back = Math.min(q.coins, took * 0.5); q.coins -= back; f.treasury += back; count.audited++;
+            note("audit", q.name + " was found to have kept " + Math.round(took) + " coins that were " + f.name + "'s, and has lost the office.", 2, q.x, q.y, f.id);
+            unseat(g, id);
+          } else if (g.pay === "lot") unseat(g, id);
+        }
+        g.skim = {};
+      }
+      if (g.farm && g.collector) g.farm = Math.max(g.farm, g.taxAvg * 0.6);
+    }
+    function officeIds(g) { const out = []; if (g.collector) out.push(g.collector); if (g.judge) out.push(g.judge); if (g.captain) out.push(g.captain); for (const k in g.head) out.push(g.head[k]); for (const k in g.governor) out.push(g.governor[k]); return out; }
+    function unseat(g, id) {
+      if (g.collector === id) g.collector = 0; if (g.judge === id) g.judge = 0; if (g.captain === id) g.captain = 0;
+      for (const k in g.head) if (g.head[k] === id) delete g.head[k];
+      for (const k in g.governor) if (g.governor[k] === id) delete g.governor[k];
+    }
+    /* A dispute: counted, and heard if somebody can hear it, by the law in force. Returns whether it was heard. */
+    function dispute(f) { const g = f.gov; if (!g) return false; g.disputes++; return R() < g.heardShare; }
+    function theftJudged(p, q, take) {
+      const f = factions[q.f]; if (!f.gov || !dispute(f)) return;
+      const law = f.gov.laws.theft, judge = byId.get(f.gov.judge);
+      if (law === "repay") { const x = Math.min(p.food, take * 2); p.food -= x; q.food += x; }
+      else if (law === "fine") { const x = Math.min(p.coins, take * 2); p.coins -= x; if (judge && R() > judge.honest) takes(f.gov, judge, x * 0.5), f.treasury += x * 0.5; else f.treasury += x; }
+      count.judged++;
+      befriend(q, p, 0.2);   // settled: less held against them
+    }
+    function killingJudged(killer, dead) {
+      const f = factions[dead.f]; if (!f.gov || !dispute(f) || killer.hp === -99) return;
+      const law = f.gov.laws.killing;
+      count.judged++;
+      if (law === "death") { note("law", killer.name + " was put to death for killing " + dead.name + ".", 2, killer.x, killer.y, f.id); die(killer, "law"); return; }
+      /* What a killing cost: a wergild, here forty days' bread, paid by the killer and their kin. */
+      const owed = 40 * WAGE;
+      let paid = 0;
+      for (const q of [killer, byId.get(killer.mum), byId.get(killer.dad), byId.get(killer.partner)]) { if (!q || q.hp === -99 || paid >= owed) continue; const x = Math.min(q.coins, owed - paid); q.coins -= x; paid += x; }
+      if (law === "fine") f.treasury += paid;
+      else { const heir = [byId.get(dead.partner), byId.get(dead.mum), byId.get(dead.dad)].find(q => q && q.hp !== -99); if (heir) { heir.coins += paid; befriend(heir, killer, 0.3); } else f.treasury += paid; }
+      count.wergild += paid;
+    }
+    /* A title, read off what the ruler holds (Ric, 2026-11-20: "We can show titles that way"). */
+    function titleOf(f) {
+      if (f.rule === "elected") return "leader";
+      let subjects = 0, kings = 0;
+      for (const o of factions) if (o.alive && o !== f && o.rel[f.id] && o.rel[f.id].pays) { subjects++; for (const x of factions) if (x.alive && x !== o && x.rel[o.id] && x.rel[o.id].pays) kings++; }
+      return kings || subjects >= 3 ? "emperor" : subjects ? "king" : "chief";
+    }
+    /* A council that has turned on its ruler puts somebody else in (North, Wallis and Weingast: the
+       powerful keep the peace with each other only while staying in pays). */
+    function councilTurns(f, lead, g) {
+      if (f.yours || g.n < 3 || (g.say !== "families" && g.say !== "elders")) return false;
+      let loyal = 0, best = null;
+      for (const id of g.council) { const q = holds(f, id); if (!q) continue; loyal += q.loyal; if (!best || standing(q) > standing(best)) best = q; }
+      if (loyal / g.n >= 0.25 || !best) return false;
+      f.leader = best.id; f.views = viewOf(best); count.councilCoups++;
+      note("coup", "The " + (g.say === "families" ? "great families" : "elders") + " of " + f.name + " have put " + lead.name + " aside; " + best.name + " rules now.", 3.5, villages[best.home].x, villages[best.home].y, f.id);
+      for (const id of g.council) { const q = holds(f, id); if (q) q.loyal = clamp(q.loyal + 0.3, 0, 1); }
+      g.councilAt = -1e9;
+      return true;
+    }
+    function govern(f, lead) {
+      const g = f.gov || (f.gov = newGov());
+      if (t - g.councilAt > 90 * DAY_HOURS || g.council.some(id => !holds(f, id))) { councilOf(f, lead, g); g.councilAt = t; }
+      councilMean(f, g);
+      if (councilTurns(f, lead, g)) return byId.get(f.leader);
+      if (t - g.lawAt >= 30 * DAY_HOURS) { g.month = g.disputes; g.disputes = 0; lawsOf(f, lead, g); g.lawAt = t; }
+      offices(f, lead, g);
+      bondage(f, g);
+      return lead;
+    }
+    /* The way out (Carneiro): beaten people who will not live under the winner go and break new
+       ground beyond the winner's reach, as a people of their own — where the land allows it. Sea,
+       mountain, marsh and other peoples' villages close it off. */
+    function wayOut(v, by) {
+      let best = null, bs = 0.45;
+      for (let i = 0; i < 24; i++) {
+        const a = R() * 6.2832, d = v.radius + 6 + R() * 14;
+        const x = v.x + Math.cos(a) * d, y = v.y + Math.sin(a) * d;
+        if (x < 3 || y < 3 || x > cols - 3 || y > rows - 3) continue;
+        if (villages.some(o => o.alive && Math.hypot(o.x - x, o.y - y) < (o.f === by.id ? 12 : o.radius + 3.5))) continue;
+        if (!GROUND[ground[tileAt(x, y)]].live) continue;
+        let s = 0;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) s += fert[tileAt(x + dx, y + dy)];
+        s /= 25;
+        if (s > bs) { bs = s; best = { x: x, y: y }; }
+      }
+      return best;
+    }
+    /* Kept as itself (Carneiro; most conquered chiefdoms): a winner who would sooner have tribute than
+       the place, by its nature and how far it is from home. */
+    function wouldKeep(by, old, v) {
+      const lead = byId.get(by.leader); if (!lead || old.yours || by.yours) return false;
+      let near = 1e9; for (const u of villages) if (u.alive && u.f === by.id) near = Math.min(near, Math.hypot(u.x - v.x, u.y - v.y));
+      return sayOf(by, lead, "greed") + sayOf(by, lead, "patient") - sayOf(by, lead, "temper") - sayOf(by, lead, "bold") * 0.5 + Math.min(near, 40) / 40 > 0.55;
+    }
+    function submit(old, by, v) {
+      const rel = old.rel[by.id], back = by.rel[old.id];
+      warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t; count.peaces++;
+      const share = tributeShare(might(by, old) / Math.max(1, might(old, by)));
+      rel.pays = true; rel.rate = dailyRate(share); count.tributes++; count.subjects++;
+      (old.gov || (old.gov = newGov())).lord = by.id;
+      lostWar(old, rel); lostWar(by, back);
+      by.treasury += v.till * 0.5; v.till *= 0.5; sack(v);
+      note("subject", old.name + " has submitted to " + by.name + " and keeps its own " + (old.rule === "elected" ? "leaders" : "chief") + ", paying " + shareWords(share) + " of its stores a year.", 4, v.x, v.y, by.id);
+    }
+    /* What the page shows of a faction's government. */
+    function govView(f) {
+      const g = f.gov; if (!g) return null;
+      const nm = id => { const q = id && byId.get(id); return q && q.hp !== -99 ? q.name : null; };
+      return { title: titleOf(f), say: g.say, council: g.council.map(nm).filter(Boolean), pay: g.pay, audit: g.audit,
+               heads: Object.keys(g.head).length, collector: nm(g.collector), judge: nm(g.judge), captain: nm(g.captain),
+               governors: Object.keys(g.governor).map(k => ({ of: factions[k].name, name: nm(g.governor[k]) })), laws: Object.assign({}, g.laws), bound: g.bound.length,
+               lord: g.lord >= 0 && factions[g.lord] && f.rel[g.lord] && f.rel[g.lord].pays ? factions[g.lord].name : null };
+    }
+    /* ── faith (TODO 15g, 2026-11-22) ──────────────────────────────────────
+       Ric, 2026-11-20: "How do we make it so they can come up with their own faiths?"; "Yes it can
+       drive harsh things." Nothing is written in: a faith is made up by one person after something
+       big happened to them that they cannot otherwise explain — a famine, a sickness, a dry year, a
+       war lost, their village taken — likelier in the curious, the bold and the frightened (Boyer:
+       ideas that break a few everyday expectations stick). What it holds comes from its maker's
+       nature: its rite (a feast for the warm, a fast for the patient, an offering, or for the
+       hot-tempered and cold a sacrifice), its rule (no stealing for the honest, never turning the
+       hungry away for the warm), whether it calls for war on those who do not hold it, whether it
+       lives by rare rites in small groups or by teaching (Whitehouse's two modes), and how often
+       its holy day comes round. It passes by talk between people who trust each other, one at a
+       time along friendships (Stark), and to children; holders trust and help each other more; a
+       ruler who holds it makes it the people's own, with a priest to teach it; and it fades where
+       life is safe and full (Gore, Lemos, Shults and Wildman). README, "Faith". */
+    function makeFaith(p, why) {
+      const v = villages[p.home];
+      const rite = p.temper + p.bold - p.warm > 1.1 ? "sacrifice" : p.warm >= Math.max(p.patient, p.greed) ? "feast" : p.patient >= p.greed ? "fast" : "offering";
+      const rule = p.honest > 0.6 ? "theft" : p.warm > 0.6 ? "refuse" : "";
+      const holyWar = p.temper + p.bold + p.stub - p.warm > 1.6;
+      const mode = p.curious + p.patient > 1.1 ? "teaching" : "rites";
+      const every = p.patient > 0.6 ? 7 : p.hard > 0.6 ? 0 : 10;
+      const fa = { id: faiths.length, name: "", founder: p.id, founderName: p.name, why: why, born: t, rite, rule, holyWar, mode, every, holders: 0, at: v.id, alive: true };
+      faiths.push(fa);
+      p.faith = fa.id; p.zeal = 0.6 + p.bold * 0.3; fa.holders = 1; count.faiths++;
+      const said = { famine: "the hunger", sick: "the sickness", dry: "the drought", lost: "the war", taken: "what was done to " + v.name };
+      note("faith", p.name + " of " + v.name + " has begun to tell others what lay behind " + (said[why] || "what happened") + ", and what must be done.", 2, v.x, v.y, p.f);
+      return fa;
+    }
+    const FAITH_NAMES = [(w, n) => "the Way of " + w, (w, n) => n + "'s people", (w, n) => "the " + w + " faith", (w, n) => "those of " + w];
+    /* A hard event at village v: somebody there may make up a faith to explain it; those who already
+       hold one hold it harder. */
+    function hardTimes(v, why, size) {
+      if (!FAITH || !v || !v.alive) return;
+      let best = null, bs = 0;
+      for (const p of PLAIN ? people.filter(q => q.home === v.id) : residents(v.id)) {
+        if (p.hp === -99 || !adult(p)) continue;
+        if (p.faith != null) { p.zeal = Math.min(1, p.zeal + 0.1 * (size || 1)); continue; }
+        const s = (p.curious + p.bold * 0.5 + p.fear * 0.5) * (0.5 + R());
+        if (s > bs) { bs = s; best = p; }
+      }
+      /* Rare: about once in six such events somebody makes something of it. */
+      if (best && R() < FAITH_MAKE * (size || 1) * (0.5 + best.curious)) makeFaith(best, why);
+      /* A faith that calls for sacrifice, held hard here, asks for one in hard times. */
+      let zealot = null;
+      for (const p of residents(v.id)) if (p.hp > 0 && p.faith != null && faiths[p.faith].rite === "sacrifice" && p.zeal > 0.5 && (!zealot || p.zeal > zealot.zeal)) zealot = p;
+      if (zealot && R() < 0.5) sacrifice(v, faiths[zealot.faith]);
+    }
+    function faithTalk(a, b) {
+      if (a.faith == null && b.faith == null) return;
+      if (a.faith != null && a.faith === b.faith) { befriend(a, b, 0.03); a.zeal = Math.min(1, a.zeal + 0.002); b.zeal = Math.min(1, b.zeal + 0.002); return; }
+      for (const [x, y] of [[a, b], [b, a]]) {
+        if (x.faith == null || !adult(y)) continue;
+        const fa = faiths[x.faith], trust = feel(y, x.id);
+        if (trust <= 0.25) continue;   // along trust only, close friends and kin (Stark)
+        const pull = FAITH_PASS * x.zeal * trust * (fa.mode === "teaching" ? 1.5 : 1) * (0.5 + y.fear + (y.hungry > 0 ? 0.5 : 0)) * (1.2 - y.stub) * (y.faith != null ? 1 - y.zeal : 1);
+        if (R() < pull) { convert(y, fa, x.zeal * 0.5); return; }
+      }
+    }
+    function convert(p, fa, zeal) {
+      if (p.faith === fa.id) return;
+      if (p.faith != null) faiths[p.faith].holders--;
+      p.faith = fa.id; p.zeal = zeal; fa.holders++; count.converts++;
+      if (!fa.name && fa.holders >= FAITH_NAMED) {
+        const v = villages[fa.at];
+        fa.name = pick(FAITH_NAMES)(v.name, fa.founderName);
+        note("faith", "Those who hold what " + fa.founderName + " began to teach are now " + fa.holders + ", and call themselves " + fa.name + ".", 3, v.x, v.y, p.f);
+      }
+    }
+    const faithName = fa => fa.name || "what " + fa.founderName + " teaches";
+    /* Once a day: zeal fades where life is safe, the ruler's own faith becomes the people's, and the
+       last holder's death is the end of a faith. */
+    function faithDay() {
+      for (const fa of faiths) fa.holders = 0;
+      for (const p of people) {
+        if (p.hp === -99 || p.faith == null) continue;
+        if (p.hungry <= 0 && p.fear < 0.3 && p.sick <= 0) p.zeal -= 0.0015;
+        if (p.zeal <= 0.02) { p.faith = null; p.zeal = 0; count.lapsed++; continue; }
+        faiths[p.faith].holders++;
+      }
+      for (const fa of faiths) if (fa.alive && fa.holders === 0) {
+        fa.alive = false; count.faithsGone++;
+        const v = villages[fa.at];
+        if (fa.name) note("faith", "Nobody holds to " + fa.name + " any longer.", 2, v.x, v.y, -1);
+      }
+      for (const f of factions) {
+        if (!f.alive) continue;
+        const lead = byId.get(f.leader);
+        const was = f.faith;
+        f.faith = lead && lead.faith != null && faiths[lead.faith].holders >= FAITH_NAMED ? lead.faith : null;
+        if (f.faith != null && f.faith !== was) {
+          const fa = faiths[f.faith], v = villages[lead.home];
+          note("faith", lead.name + " holds to " + faithName(fa) + ", and " + f.name + " with them.", 2.5, v.x, v.y, f.id);
+        }
+        /* A priest to teach it, where it is taught (15c's offices). */
+        if (GOV && f.gov) {
+          const pr = f.gov.priest && byId.get(f.gov.priest);
+          if (f.faith == null || faiths[f.faith].mode !== "teaching" || !pr || pr.hp === -99 || pr.faith !== f.faith) f.gov.priest = 0;
+          if (f.faith != null && faiths[f.faith].mode === "teaching" && !f.gov.priest) {
+            let best = null; for (const q of people) if (q.f === f.id && q.faith === f.faith && adult(q) && q.id !== f.leader && (!best || q.zeal > best.zeal)) best = q;
+            if (best) { f.gov.priest = best.id; count.offices++; }
+          }
+        }
+        /* Standing: a people loyal to a ruler who holds what they hold. */
+        if (f.faith != null) for (const p of people) if (p.f === f.id && p.faith === f.faith && p.hp > 0) p.loyal = Math.min(1, p.loyal + 0.0005);
+      }
+    }
+    /* A holy day, for a holder of faith fa today. */
+    const holyDay = fa => fa.every > 0 && Math.floor(t / DAY_HOURS) % fa.every === fa.id % fa.every;
+    /* A sacrifice: in hard times, a faith that calls for one takes a life — one held unfree if there
+       is one, else a stranger to it (Watts et al. 2016: ritual killing mostly of slaves and outsiders). */
+    function sacrifice(v, fa) {
+      let victim = null;
+      for (const q of PLAIN ? people : residents(v.id)) if (q.hp > 0 && q.home === v.id && (q.unfree || q.faith !== fa.id) && (!victim || (q.unfree && !victim.unfree))) victim = q;
+      if (!victim) return;
+      count.sacrifices++;
+      note("sacrifice", "In " + v.name + ", those who hold to " + faithName(fa) + " have killed " + victim.name + " as an offering.", 3.5, v.x, v.y, v.f);
+      die(victim, "sacrifice");
+    }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
        they hold it — a wrong telling names the wrong side. */
@@ -7025,6 +7507,7 @@
       const size = 1 + rel.lost / (rel.lost + held || 1);
       for (const p of people) if (p.f === f.id && p.hp > 0) shaken(p, LIFE.lost, size);
       count.warsLost++;
+      if (FAITH) { const lead = byId.get(f.leader); if (lead) hardTimes(villages[lead.home], "lost", size); }   // TODO 15g
     }
     /* How strong a faction looks to a neighbour: its soldiers and grown-ups, and half its allies'. */
     function might(f, not) {
@@ -7171,12 +7654,15 @@
         if (to) {
           let food = 0;
           for (const v of villages) if (v.alive && v.f === f.id) { const x = v.food * rel.rate; v.food -= x; food += x; }
+          const gov = GOV && o.gov ? byId.get(o.gov.governor[f.id]) : null;   // TODO 15c: a governor counts it in
+          if (GOV && o.gov && !gov) food *= 0.5;
+          else if (gov) { const x = food * skimRate(gov, o.gov); gov.food += x; food -= x; }
           to.food += food; count.tribute += food;
           if (!shared) { const c = f.treasury * rel.rate * 3.3; f.treasury -= c; o.treasury += c; }   // the treasury at the rate it always paid against the stores
         }
         rel.grief = clamp(rel.grief + 0.004, 0, 3); rel.op = clamp(rel.op - 0.002, -1, 1);
         const dare = (ruling(lead, "temper", f) + ruling(lead, "bold", f)) / 2;
-        if (!f.yours && might(f, o) > might(o, f) * (1.45 - dare * 0.9)) {
+        if (!f.yours && might(f, o) > might(o, f) * (1.45 - dare * 0.9 + (GOV && o.gov && o.gov.governor[f.id] ? 0.25 : 0))) {
           rel.pays = false;
           back.grief = clamp(back.grief + 0.4, 0, 3);
           note("tribute", f.name + " has stopped paying tribute to " + o.name + ".", 3, at.x, at.y, f.id);
@@ -7627,7 +8113,7 @@
       f.reapedYear = 0;
     }
     function decide(f) {
-      const lead = byId.get(f.leader);
+      let lead = byId.get(f.leader);
       if (!lead || lead.hp === -99 || lead.f !== f.id) { succeed(f, "left"); return; }
       if (f.rule === "elected" && t >= f.voteAt) vote(f, false);
       /* Turned against: a people who vote and have mostly turned on their leader do not wait for
@@ -7642,6 +8128,7 @@
         const top = people.filter(q => q.f === f.id && adult(q)).sort((a, b) => b.coins - a.coins)[0];
         if (top && top !== lead && top.coins > lead.coins * 1.5 + 5) { f.leader = top.id; f.views = viewOf(top); note("leader", top.name + ", now the richest in " + f.name + ", has taken it over from " + lead.name + ".", 2.5, villages[top.home].x, villages[top.home].y, f.id); }
       }
+      if (GOV) { lead = govern(f, byId.get(f.leader) || lead); if (!lead) return; }   // TODO 15c
       /* Who holds the land (TODO 7c). */
       { const want = landWant(f); if (want !== f.land) setLand(f, want); }
       const hungry = f.pop ? f.hungry / f.pop : 0;
@@ -7680,7 +8167,7 @@
         /* An army is raised a few at a time — two in a hundred adults a week —
            not conjured whole the day a war starts; and rebuilt as slowly
            after it is broken. */
-        let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 / (wars && inSeason ? 1 : 7))));   // a levy for the season comes in days (TODO 14e)
+        let need = Math.min(Math.ceil(f.army * f.adults - f.soldiers), Math.max(1, Math.round(f.adults * 0.02 * (GOV && f.gov && f.gov.captain ? 2 : 1) / (wars && inSeason ? 1 : 7))));   // a captain musters twice as fast (TODO 15c)   // a levy for the season comes in days (TODO 14e)
         /* Farmers first, as levies were; then crafters. With real-size bodies (TODO 7a) farming
            stopped queuing in crowds, fields went further, fewer farmed, and an army raised from
            farmers alone stalled short of what its leader asked (4 of 23 wanted 6). Then any other
@@ -7700,7 +8187,7 @@
           else if (f.treasury > wages * 3 + f.pop * 0.5 && f.tax > S.tax * 0.5) f.tax = Math.max(S.tax * 0.5, f.tax - 0.02);
           /* A leader who believes in sharing feeds anybody who cannot pay; one
              who does not waits until the treasury is overflowing. */
-          f.relief = viewOf(lead) > 0.1 || f.treasury > wages * 2 + f.pop * 1.5;
+          f.relief = (GOV && f.gov && f.gov.say !== "all" ? false : viewOf(lead) > 0.1) || f.treasury > wages * 2 + f.pop * 1.5;   // a ruler who carries only a few pays them, not everybody (TODO 15c)
         }
         if (HARVEST_TAX) harvestRule(f, lead, wages);
         grainPolicy(f, lead, wages);
@@ -7711,8 +8198,10 @@
         const spare = f.treasury - Math.max(wages * 4 + f.pop, HARVEST_TAX ? f.chest : 0);
         if (spare > 0) {
           const mine = villages.filter(v => v.alive && v.f === f.id);
-          for (const v of mine) { v.till += spare * 0.5 / mine.length; }
-          if (mine.length) f.treasury -= spare * 0.5;
+          const few = GOV && f.gov && f.gov.say !== "all" ? (f.gov.say === "one" ? [lead] : f.gov.council.map(id => byId.get(id)).filter(q => q && q.hp !== -99)) : null;
+          if (few && few.length) { for (const q of few) q.coins += spare * 0.25 / few.length; f.treasury -= spare * 0.25; }   // gifts to those the ruler must carry (TODO 15c)
+          for (const v of mine) { v.till += spare * (few && few.length ? 0.25 : 0.5) / mine.length; }
+          if (mine.length) f.treasury -= spare * (few && few.length ? 0.25 : 0.5);
         }
       }
       for (const o of factions) {
@@ -7822,6 +8311,8 @@
              pushed patient leaders into wars as often as hot-tempered ones, test/dealings.test.mjs.
              What the people hold weighs on how a war ends, not on whether it starts.) */
           let want = (rel.grief + land + covet + Math.max(0, -rel.op) * 0.6 + mind) * (0.35 + ruling(lead, "bold", f)) * (0.25 + S.aggression * 1.5) * (0.6 + hot * 0.8) * (1.2 - calm * 0.4);
+          const holy = FAITH && f.faith != null && faiths[f.faith].holyWar && o.faith !== f.faith;   // TODO 15g: a faith that calls for war on those who do not hold it
+          if (holy) want += 0.5;
           if (back.pays) want *= 0.3;   // tribute coming in is what a war would have taken
           if (tied) want *= 0.5;        // family on the other side (TODO 14d): less, never nothing
           if (rel.ally) want = 0;       // allies do not fight; the alliance ends first
@@ -7844,7 +8335,8 @@
           if (want > 0.5 && !back.pays && t - rel.askedAt > 120 * DAY_HOURS && mine > theirs * 1.2 && R() < 0.1 + calm * 0.5 - hot * 0.1) {
             demand(f, o, why === "out of plain dislike" ? "" : why);
           } else if (want > 0.8 && mine > theirs * 0.7 && R() < 0.5) {
-            startWar(f, o, f.name + " has gone to war with " + o.name + ", " + why + ".");
+            if (holy && want > 0.8 && want - 0.5 <= 0.8) count.holyWars++;
+            startWar(f, o, f.name + " has gone to war with " + o.name + ", " + (holy && want - 0.5 <= 0.8 ? "for " + faithName(faiths[f.faith]) : why) + ".");
           }
         }
       }
@@ -7897,7 +8389,7 @@
         if (f.alive === false) continue;
         let sum = 0, n = 0, worst = null;
         for (const v of villages) if (v.alive && v.f === f.id) { const k = rainK[tileAt(v.x, v.y)]; sum += k; n++; if (!worst || k < worst.k) worst = { v: v, k: k }; }
-        if (n && sum / n < 80) note("dry", "A dry year for " + f.name + ": the crops are thin, about " + Math.round(sum / n) + "% of a usual harvest.", 3, worst.v.x, worst.v.y, f.id);
+        if (n && sum / n < 80) { note("dry", "A dry year for " + f.name + ": the crops are thin, about " + Math.round(sum / n) + "% of a usual harvest.", 3, worst.v.x, worst.v.y, f.id); if (FAITH) hardTimes(worst.v, "dry", 1.5); }
       }
     }
     /* Rain fills the pots: on a rainy day every house of a village catches about 40 litres off its
@@ -7965,6 +8457,7 @@
       if (t % REFLECT_HOURS === 0) {
         census();
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
+        if (FAITH && t % DAY_HOURS === 0 && faiths.length) faithDay();   // TODO 15g
         if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
         if (BEASTS && t % (30 * DAY_HOURS) === 0) for (const f of factions) ploughOf(f);   // TODO 15.5o
         if (OPEN && t % (7 * DAY_HOURS) === 0 && t > 0) overTheEdge();   // TODO 15.5c
@@ -8059,6 +8552,7 @@
       if ("harvest" in o && HARVEST_TAX) f.yours.harvest = f.harvest = clamp(+o.harvest || 0, 0, 0.5);   // TODO 15.5t
       if ("army" in o) f.yours.army = f.army = clamp(+o.army || 0, 0, 0.6);
       if ("relief" in o) f.yours.relief = f.relief = !!o.relief;
+      if ("unfree" in o && ["keep", "free", "forbid"].includes(o.unfree)) f.yours.unfree = o.unfree;   // TODO 15c
       if ("land" in o && ["family", "village", "leader"].includes(o.land)) { f.yours.land = o.land; if (o.land !== f.land) setLand(f, o.land); }
       return true;
     }
@@ -8259,6 +8753,11 @@
       tributeShare: tributeShare, wed: (a, b) => wed(factions[a], factions[b]), bound: bound,
       /* TODO 14e: the numbers item 15 sets for each age, and how much who is winning weighs. */
       warEra: WAR_ERA, winning: winning,
+      /* TODO 15c: a faction's government as the page shows it, and what the tests reach. */
+      govOf: f => govView(f), titleOf: f => titleOf(f), ruling: ruling, bind: (p, h) => bind(p, h, "test"), govern: f => GOV && f.alive && byId.get(f.leader) ? govern(f, byId.get(f.leader)) : null,
+      faithOf: id => { const fa = faiths[id]; return fa ? { name: faithName(fa), rite: fa.rite, rule: fa.rule, holyWar: fa.holyWar, mode: fa.mode, every: fa.every, holders: fa.holders } : null; },
+      faiths: faiths, hardTimes: (vid, why, size) => hardTimes(villages[vid], why, size), makeFaith: (p, why) => makeFaith(p, why || "famine"), faithDay: () => faithDay(), convert: (p, id) => convert(p, faiths[id], 0.5), holyDay: id => holyDay(faiths[id]),   // TODO 15g
+      steal: (p, q) => steal(p, q), capture: (vid, fid) => capture(villages[vid], factions[fid], null),   // for the tests (TODO 15c)
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },

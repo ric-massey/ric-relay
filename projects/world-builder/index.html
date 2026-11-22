@@ -2116,7 +2116,7 @@
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"] };
+                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], sacrifice: ["Sacrifice", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
     ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     for (const e of f.marks) {
       const m = MARK[e.kind]; if (!m) continue;
@@ -2263,7 +2263,7 @@
       keeper.send({ t: "do", seq: ++seq, what: "wed", a: [c.f, c.o, pa.id, pb.id] });
       wedPick = null; return;
     }
-    if (mode === "people" && ["rule", "ftax", "fharvest", "army", "relief", "land", "vtax", "vrelief", "vreset", "war", "peace", "ally", "trade", "tribute", "stop", "live"].includes(a[0])) {
+    if (mode === "people" && ["rule", "ftax", "fharvest", "army", "relief", "land", "unfree", "vtax", "vrelief", "vreset", "war", "peace", "ally", "trade", "tribute", "stop", "live"].includes(a[0])) {
       /* A decision is the keeper's to carry out, from what stands in the
          world at that moment; the panel is drawn again when it says it has
          (`hear`, "did"), with whatever the other side answered. */
@@ -2490,6 +2490,27 @@
       "<p class='small'>The leader and their family come first. Somebody already married leaves their partner." + (atWar ? " A marriage now ends the war." : "") + "</p>" +
       "<div class='row'><button class='btn' data-go='wedgo'>Marry them</button><button class='btn' data-go='wedpick'>Cancel</button></div></div>";
   }
+  /* A faction's government (TODO 15c): who rules with whom, its officials and its laws. */
+  const RITE = { feast: "a feast", fast: "a fast", offering: "offerings", sacrifice: "sacrifice" };   // TODO 15g
+  function govLines(g) {
+    if (!g) return "";
+    const T = { leader: "", chief: "Chief", king: "King", emperor: "Emperor" }[g.title] || "";
+    const say = { one: "rules alone", families: "rules with the great families", elders: "rules with the elders", all: "answers to everybody" }[g.say] || "";
+    const pay = { wage: "paid a wage", farm: "who farm what they collect", land: "paid in land", lot: "chosen by lot for a year" }[g.pay] || "";
+    const off = [];
+    if (g.heads) off.push(g.heads + (g.heads === 1 ? " headman" : " headmen"));
+    if (g.collector) off.push("a collector");
+    if (g.judge) off.push("a judge");
+    if (g.captain) off.push("a captain");
+    if (g.governors.length) off.push(g.governors.length === 1 ? "a governor over " + esc(g.governors[0].of) : g.governors.length + " governors");
+    const L = g.laws, laws = [];
+    if (L.theft) laws.push(L.theft === "repay" ? "a thief pays back twice" : "a thief is fined");
+    if (L.killing) laws.push(L.killing === "kin" ? "a killer's kin pay the dead's" : L.killing === "fine" ? "a killer is fined" : "a killer is put to death");
+    if (L.unfree) laws.push(L.unfree === "allowed" ? "people may be held unfree" + (g.bound ? " (" + g.bound + ")" : "") : "nobody may be held unfree");
+    return "<span class='ln'>" + (T ? T + " · " : "") + esc(say) + (g.council.length ? ": " + g.council.map(esc).join(", ") : "") + (g.lord ? " · pays tribute to " + esc(g.lord) : "") + "</span>" +
+      (off.length ? "<span class='ln'>Officials: " + off.join(", ") + (pay ? ", " + pay : "") + (g.audit ? ", checked each year" : "") + "</span>" : "") +
+      (laws.length ? "<span class='ln'>Law: " + laws.join("; ") + "</span>" : "");
+  }
   function rulePane(f, d) {
     const coins = d.money === "coins";
     if (!f.yours) return "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Rule " + esc(f.name) + " yourself</button></div>";
@@ -2503,6 +2524,7 @@
       stepRow("Under arms", pctOf(f.yours.army) + " (" + f.soldiers + ")", "army:" + f.id) +
       "<div class='row'><span class='lbl'>Who holds the land</span><button class='btn' data-go='land:" + f.id + "'>" + (LAND[f.yours.land] || LAND.family) + "</button></div>" +
       (coins ? "<div class='row'><span class='lbl'>Treasury buys bread for the hungry</span><button class='btn' data-go='relief:" + f.id + "' aria-pressed='" + f.yours.relief + "'>" + (f.yours.relief ? "Yes" : "No") + "</button></div>" : "") +
+      (f.gov ? "<div class='row'><span class='lbl'>Unfree people</span><button class='btn' data-go='unfree:" + f.id + "'>" + ({ keep: "Kept", free: "Set free", forbid: "Forbidden" }[f.yours.unfree] || "As the law says") + "</button></div>" : "") +
       (coins && own.length ? "<h4>Each village</h4>" + own.map(v => {
         const set = v.tax != null, rel = v.relief == null ? "as " + esc(f.name) : v.relief ? "feeds its hungry" : "no relief";
         return stepRow(esc(v.name) + " \u00b7 " + v.pop + " people", pctOf(v.taxNow) + (set ? "" : "*"), "vtax:" + v.id,
@@ -2580,7 +2602,7 @@
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") +
+            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");
@@ -2637,6 +2659,7 @@
           bar("Alone", p.alone / 30) + bar("Afraid", p.fear) + "</div>" : "") +
         "<p>" + fname(p.faction) + (p.from !== p.f ? " <span class='small'>— born under " + esc(p.bornUnder) + "</span>" : "") + "</p>" +
         "<p class='small'>" + (p.leans === "share" ? "Believes what is grown should be shared out." : p.leans === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
+        (p.faith ? " Holds to " + esc(p.faith.name) + "." : "") + (p.unfree ? " <span style='color:var(--warn)'>Held unfree.</span>" : "") +
         (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
         "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + bar("Stubborn", p.stub ?? 0.5) + bar("Greedy", p.greed) + bar("Patient", p.patient ?? 0.5) + bar("Hot-tempered", p.temper ?? 0.5) + bar("Hardworking", p.hard ?? 0.5) + bar("Curious", p.curious ?? 0.5) + bar("Honest", p.honest ?? 0.5) + "</div>" +
         "<p class='small'>One ration supplies an adult for one day. Children’s needs rise as they grow.</p>" +

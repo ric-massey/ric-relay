@@ -395,7 +395,9 @@
           const lead = byId.get(f.leader), rel = {};
           for (const o of w.factions) if (o !== f && f.rel[o.id]) { const r = f.rel[o.id], b = o.rel[f.id] || {}; rel[o.id] = { war: !!r.war, op: r.op, ally: !!r.ally, trade: !!r.trade, pays: !!r.pays, gets: !!b.pays, wed: !!r.wed }; }
           return { id: f.id, name: f.name, colour: f.colour, alive: f.alive, pop: f.pop, soldiers: f.soldiers, rule: f.rule, tax: f.tax, harvest: f.harvest || 0, loyal: f.loyal, land: f.land,
-                   treasury: f.treasury, yours: f.yours ? { tax: f.yours.tax, harvest: f.yours.harvest || 0, army: f.yours.army, relief: f.yours.relief, land: f.yours.land } : null,
+                   treasury: f.treasury, yours: f.yours ? { tax: f.yours.tax, harvest: f.yours.harvest || 0, army: f.yours.army, relief: f.yours.relief, land: f.yours.land, unfree: f.yours.unfree || "" } : null,
+                   gov: w.govOf ? w.govOf(f) : null,   // TODO 15c
+                   faith: f.faith != null && w.faiths ? w.faithOf(f.faith) : null,   // TODO 15g
                    lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
         });
         out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive, f: v.f, x: v.x, y: v.y, pop: v.pop, tax: v.tax == null ? null : v.tax,
@@ -439,6 +441,7 @@
               id: p.id, name: p.name, age: p.age, job: p.job, f: p.f, from: p.from, partner: p.partner, mum: p.mum, dad: p.dad, kids: p.kids,
               food: p.food, coins: p.coins, goods: p.goods, mood: p.mood, loyal: p.loyal, bold: p.bold, warm: p.warm, stub: p.stub, greed: p.greed, patient: p.patient, temper: p.temper, hard: p.hard, curious: p.curious, honest: p.honest,
               rest: p.rest, alone: p.alone, fear: p.fear, hungry: p.hungry, sick: p.sick, say: p.say,
+              faith: p.faith != null && w.faiths ? w.faithOf(p.faith) : null, unfree: !!p.unfree,   // TODO 15g, 15c
               cargo: p.cargo ? { what: p.cargo.what, amount: p.cargo.amount } : null,
               friends: friends, mind: w.inMind(p), mcap: p.mcap, children: children, listener: other && other.sayT > 0 && other.talkingTo === p.id ? other.id : 0,
               activity: w.activity(p), adult: w.adult(p), leans: w.leans(p), dailyNeed: w.dailyNeed(p), urgency: w.urgency(p),
@@ -480,6 +483,7 @@
       else if (what === "army" && f && f.yours) w.order(f.id, { army: f.yours.army + 0.02 * a[1] });
       else if (what === "relief" && f && f.yours) w.order(f.id, { relief: !f.yours.relief });
       else if (what === "land" && f && f.yours) w.order(f.id, { land: { family: "village", village: "leader", leader: "family" }[f.yours.land] || "family" });
+      else if (what === "unfree" && f && f.yours) w.order(f.id, { unfree: { keep: "free", free: "forbid", forbid: "keep" }[f.yours.unfree] || "keep" });   // TODO 15c
       else if (what === "vtax" && v) w.orderVillage(v.id, { tax: w.taxOf(v) + 0.02 * a[1] });
       else if (what === "vrelief" && v) w.orderVillage(v.id, { relief: v.relief == null ? true : v.relief ? false : null });
       else if (what === "vreset" && v) w.orderVillage(v.id, { tax: null, relief: null });

@@ -1841,7 +1841,9 @@ already does), nothing per person per step.
   lost) and children grieving a parent (more than any other death).
 - Per-faction sliders: "Faction tabs" — All, then one tab a faction, each starting from All.
 
-### [ ] 15c. Government, deeper
+### [x] 15c. Government, deeper
+
+**Done 2026-11-22** (Ric: "finish 15 please. all of it"). Setting Government ("The leader alone" = the world before, fingerprinted). A council (nobody, the great families, the elders, everybody) chosen by the stats of those with the say, sharing every decision through `ruling`; gifts to a small council, relief from a large one; councils that turn on their ruler. Headman, collector, judge, captain and governor, each made only from a need (past three villages, about 480 people, a dispute a day, a war or held place, a subject people), paid a wage, a farm, land or by lot, skimming by honesty and caught by a yearly audit. Laws on theft, killing (wergild, fine, death) and unfree people that change only on a clear lean. Captives held unfree where the law allows, running when they dare; a ruled faction keeps, frees or forbids them. A beaten people's last place kept as a tribute-paying subject by a winner whose nature leans that way, or its people breaking new ground beyond the winner's reach where land is open (Carneiro). Titles chief, king, emperor. Measured: chiefs, 1,200 on 17 km, starved 190 vs 200 and 86 vs 115 against the leader alone. `test/government.test.mjs`; README, "Government: councils, officials and laws". Left: scribes (15e), debtors bound, a many-seed hemmed-in against open land run.
 
 Added 2026-11-19 at Ric's word, while 14e was built: "is there government in there? governmnet
 decides alot of those things and the government probably needs to be way deeper no?"
@@ -2129,7 +2131,9 @@ a debtor may be bound, a lord's tenants bound to the land; they work and live as
 leave or choose, and may flee or rise when they can. *Questions:* (1) In, as proposed? (2) Can a
 player-ruled faction keep, free or forbid it?
 
-### [ ] 15g. Faith: peoples who come up with their own
+### [x] 15g. Faith: peoples who come up with their own
+
+**Done 2026-11-22.** Setting Faith (off = the 15c world, fingerprinted). A faith is made up by one person after a famine, sickness, dry year, war lost or their village taken (about one such event in six); its rite, rule, holy war, mode and holy day come from its maker's nature; it passes in talk along trust and to children, is named once ten hold it, binds and helps its holders, keeps holy days (gathering instead of work), becomes a people's own when its ruler holds it (a priest where it is taught), may call for holy war or sacrifice, and fades where life is safe. Measured: 11% of those who trusted a holder took it up in sixty days, 2.8% of the rest. `test/faith.test.mjs`; README, "Faith". Left: splits, festivals with feasting, writing a faith down (15e). Marrying within it is 15b.
 
 Added 2026-11-20 (Ric: "Faith seems pretty important. How do we make it so they can come up with
 their own faiths?").

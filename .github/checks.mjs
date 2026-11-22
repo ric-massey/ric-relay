@@ -180,6 +180,8 @@ const SUITES = [
   ['world-builder household firewood', ['projects/world-builder/test/hearth.test.mjs']],   // TODO 15.5f, under a minute
   ['world-builder news of plenty', ['projects/world-builder/test/plenty.test.mjs']],   // TODO 15.5g, under a minute
   ['world-builder small land and its edge', ['projects/world-builder/test/smallland.test.mjs']],   // TODO 15.5c, under a minute
+  ['world-builder government', ['projects/world-builder/test/government.test.mjs']],   // TODO 15c, under a minute
+  ['world-builder faith', ['projects/world-builder/test/faith.test.mjs']],   // TODO 15g, under a minute
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

@@ -1901,6 +1901,118 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Government: councils, officials and laws (2026-11-22)
+
+TODO item 15c. Ric (2026-11-20): "the governemnts need to go way deeper"; no office unlocked by
+size ("Which ones exist shouldn't be how big the people is unless if that's how it would play
+out"); (2026-11-21) headman, collector, judge or peacemaker, captain and governor; paid "All four,
+ruler's traits pick"; unfree people "Yes, as proposed", and a faction you rule can keep, free or
+forbid them. Setting **Government** under Power: "Councils, officials and laws" (default) or "The
+leader alone (as before)", which leaves the world exactly as it was (fingerprinted).
+
+- **Who must agree.** Each faction keeps a council: nobody (the ruler alone), the great families
+  (the five richest households), the elders (the five oldest), or everybody (a people who vote,
+  as before). Which it is comes from the stats of those who have the say already — the greedy and
+  the bold make rank run in families, the patient give it to the old, the bold and hot-tempered
+  rule alone (Flannery and Marcus, *The Creation of Inequality*, 2012) — and changes only on a
+  clear lean. A ruler's decisions are then half the ruler and half the council's average
+  (`ruling`), as an elected leader's already were half the people's. A small council is paid in
+  gifts from the treasury's spare coins and the hungry get relief only from an overflowing
+  treasury; a people who answer to everybody get relief (Bueno de Mesquita et al., *The Logic of
+  Political Survival*, 2003). A council whose members have turned on the ruler puts one of their
+  own in (North, Wallis and Weingast, NBER w12795).
+- **Officials, from a need.** A **headman** for each village past the three nearest the ruler's
+  home (a konohiki, a reeve): without one, its people's loyalty drains. A **collector** once a
+  people pass about 480 (the Western Han's one official to about 480 people): without one, the tax
+  past what one ruler collects stays in the tills. A **judge** once disputes pass one a day (a
+  quarrel, a theft seen, a killing): without one, only that share is heard. A **captain** for a
+  war or a held place: a levy musters twice as fast. A **governor** over each people who pay as
+  subjects: without one, half the tribute is lost on the way, and a people with one finds it
+  harder to stop paying. None is placed by size; bigger peoples have more because they need more.
+- **Paid four ways**, picked by the stats of whoever has the say: a wage from the treasury (the
+  honest; needs a treasury), a farm — a fixed sum owed, the rest kept, as England's sheriffs (the
+  greedy; Pipe Roll Society), land for service, its yield (the bold and cold; the Ottoman timar),
+  or unpaid by lot for a year with an audit at its end (the warm, among a people who vote; Athens'
+  euthyna). Officials skim by their honesty (more on a farm); an audit at the end of a year makes
+  anybody who kept more than a little give half back and lose the office.
+- **Laws that outlast a leader**, looked at monthly, changed only on a clear lean: a thief pays
+  back twice what was taken (the honest and warm) or is fined to the ruler (the greedy and bold); a
+  killing is paid for by the killer's kin to the dead's — a wergild, forty days' bread (early
+  English law, 200 shillings for a freeman) — fined, or punished by death (the hot-tempered and
+  cold); and whether people may be held unfree (the greedy and bold who are neither warm nor
+  honest).
+- **Unfree people.** Where the law allows it, a quarter of those who stay in a taken village
+  (the less bold) become captives, held by the ruler: their coins beyond a day's go to whoever
+  holds them, they never go with founders, and the bold among the wronged run, now and then, to
+  the nearest village of another people. A law forbidding it, or a ruler from the page ("Unfree
+  people": as the law says, kept, set free, forbidden), frees them all. Domesday counted about one
+  in eleven so (25,156 *servi* of 283,242).
+- **Carneiro, as things that can happen** (Carneiro, *Science* 1970). When a people's last place
+  falls, a winner whose nature leans to tribute (greedy and patient more than hot and bold, and
+  more the further it is from home) leaves it its own and takes a share of its stores a year: a
+  subject. Otherwise those who will not live under the winner go, with their ruler, to break new
+  ground at least 3 km from the winner's villages — where the land has room; sea, hills, marsh and
+  other villages close that off, and then they are absorbed as before.
+- **Titles**, read off what is held (Ric: "We can show titles that way"): a chief; a king over one
+  or two subject peoples; an emperor over three, or over a king. A people who vote have a leader.
+  Shown on the Factions tab with the council, officials, how they are paid and the laws.
+- Counts: `offices`, `skimmed`, `uncollected`, `audited`, `judged`, `wergild`, `councilCoups`,
+  `subjects`, `wayOut`, `bound`, `freed`, `ranFree`. `test/government.test.mjs`.
+
+**Measured** (a year each). Chiefs, 1,200 people on 17 km, three factions: seed 2, 190 starved
+against 200 with the leader alone; seed 7, 86 against 115, with two councils turning on their
+chief. Under the rule of the rich (800, two old enemies): 15 offices made, 100 coins skimmed, 1
+starved against none. A default world (400, vote): one headman and the laws, nothing else needed.
+Cost: a sort of one faction's grown-ups once a season for its council; the rest is a few dozen
+people a day.
+
+**Left out:** scribes (15e) and priests beyond teaching a faith (15g); debtors bound for debt;
+the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when") — measured
+for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
+customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
+
+### Faith (2026-11-22)
+
+TODO item 15g. Ric (2026-11-20): "How do we make it so they can come up with their own faiths?";
+"Yes it can drive harsh things." Setting **Faith** under Minds (on by default; off leaves the 15c
+world exactly as it was, fingerprinted).
+
+- **Made up by somebody.** After a famine, a sickness, a dry year, a war lost or their village
+  taken, one grown-up of the place — the likeliest the curious, then the bold and the frightened —
+  may make up what lay behind it; about one such event in six makes a faith, more after a bigger
+  one (a guess, said as one; Ric chose "Rare" for finds). Those already holding a faith hold it
+  harder instead.
+- **What it holds comes from its maker's nature** (Boyer, *Religion Explained*): its rite — a feast
+  (the warm), a fast (the patient), offerings, or sacrifice (the hot, bold and cold); its rule —
+  no stealing (the honest) or never turning the hungry away (the warm); war on those who do not
+  hold it (the hot, bold and stubborn); whether it lives by rites or by teaching (the curious and
+  patient teach; Whitehouse's two modes); and a holy day every seven or ten days, or none.
+- **It passes along trust** (Stark, *The Rise of Christianity*): in a talk, from a holder to
+  somebody who trusts them (close friends and kin), more from the zealous, more to the frightened
+  and the hungry, less to the stubborn and to those holding another; and to children. Named once
+  ten hold it, from the place and its maker ("the Way of Fiye", "Saemad's people").
+- **What it does.** Holders keep the holy day: in daylight they gather in the village and talk
+  instead of working. Holders trust each other more and give to each other more readily; a faith
+  that forbids stealing stops its zealous holders stealing; one that forbids refusing makes them
+  give. When a ruler holds a named faith it becomes the people's own: holders grow a little more
+  loyal, and where it is taught a priest is named (15c's offices). A faith that calls for war adds
+  to a ruler's reasons against a people that does not hold it; one that calls for sacrifice, held
+  hard in a place in hard times, kills somebody held unfree, or else somebody who does not hold it
+  (Watts et al., *Nature* 532, 2016: mostly slaves and outsiders).
+- **It fades** where life is safe — fed, unafraid, well — and is gone when nobody holds it (Gore,
+  Lemos, Shults and Wildman, *JASSS* 21(1), 2018).
+- Counts: `faiths`, `converts`, `lapsed`, `faithsGone`, `sacrifices`, `holyWars`, `holyDays`.
+  `test/faith.test.mjs`.
+
+**Measured.** Twenty holders seeded in a world of 400: in sixty days 11% of those who trusted a
+holder took it up, 2.8% of the rest. At the first rate tried (twenty times faster) every grown-up
+of a village held it within forty days, against Stark's 40% a decade; at the rate kept a faith
+spreads over years, not weeks. Cost: one sum over the people a day while any faith is held, and a
+few comparisons in each talk.
+
+**Left out:** splits when two leaders hold different versions; faith in marriage (15b); festivals
+with feasting beyond gathering; writing a faith down (15e).
+
 ### A land of one village, and beyond its edge (2026-11-22)
 
 TODO item 15.5c. Ric asked for land of about 2 km²; the smallest was 5 km across (25 km²), where the
