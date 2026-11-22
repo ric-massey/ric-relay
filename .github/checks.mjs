@@ -187,6 +187,7 @@ const SUITES = [
   ['world-builder work and workplaces', ['projects/world-builder/test/works.test.mjs']],   // TODO 15f, under a minute
   ['world-builder armies', ['projects/world-builder/test/armies.test.mjs']],   // TODO 15h, about a minute
   ['world-builder people on the road and in camps', ['projects/world-builder/test/roaming.test.mjs']],   // TODO 15i, under a minute
+  ['world-builder eras', ['projects/world-builder/test/eras.test.mjs']],   // TODO 15d, under a minute
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

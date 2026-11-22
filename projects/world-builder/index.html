@@ -1745,6 +1745,7 @@
         continue;
       }
       let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
+      if (h.len === h.wid) { r.moveTo(X + L, Y); r.arc(X, Y, L, 0, 6.2832); lines.moveTo(X + L, Y); lines.arc(X, Y, L, 0, 6.2832); continue; }   // a round hut (TODO 15d)
       const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
       r.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) r.lineTo(pts[k][0], pts[k][1]); r.closePath();
       lines.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) lines.lineTo(pts[k][0], pts[k][1]); lines.closePath();
@@ -2116,7 +2117,7 @@
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], works: ["Workplace", "#98a8a5"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
+                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], works: ["Workplace", "#98a8a5"], camp: ["Camp", "#8fd39a"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
     ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     for (const e of f.marks) {
       const m = MARK[e.kind]; if (!m) continue;
@@ -2490,6 +2491,7 @@
       "<p class='small'>The leader and their family come first. Somebody already married leaves their partner." + (atWar ? " A marriage now ends the war." : "") + "</p>" +
       "<div class='row'><button class='btn' data-go='wedgo'>Marry them</button><button class='btn' data-go='wedpick'>Cancel</button></div></div>";
   }
+  const ERA_NAMES = { foragers: "Foragers", bronze: "Bronze Age", ancient: "Ancient", medieval: "Medieval", earlymodern: "Early modern", industrial: "Industrial", modern: "Modern", information: "Information" };   // TODO 15d
   /* A faction's government (TODO 15c): who rules with whom, its officials and its laws. */
   const RITE = { feast: "a feast", fast: "a fast", offering: "offerings", sacrifice: "sacrifice" };   // TODO 15g
   /* What a people knows beyond the farming village's ways, and what it has lost (TODO 15e). */
@@ -2616,7 +2618,7 @@
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
+            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + (f.era && f.era !== "early" ? "<span class='ln'>Era at the start: " + esc(ERA_NAMES[f.era] || f.era) + (f.arms ? " · fights with " + esc(f.arms) : "") + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");

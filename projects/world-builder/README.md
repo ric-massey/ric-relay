@@ -1971,6 +1971,60 @@ the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when
 for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
 customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
 
+### Eras (2026-11-22)
+
+TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
+"Sure all 9 work"; different peoples in different eras in one world: "Yes"; moving on by itself: "A
+setting, on or off"; news "shouldn't be for era it should be for what is built"; "cell towers must
+be a thing too"; cars "Write them in". Settings under How it starts: **Era** (Foragers, Early
+farmers — the default, the world before exactly, fingerprinted — Bronze Age, Ancient, Medieval,
+Early modern, Industrial, Modern, Information), **The first people's own era**, and **Eras move on
+by themselves** (off by default).
+
+- **An era is a starting point, never a stage** (Ghys, *Game Studies* 2012, on the tech tree's
+  determinism; Turchin et al., *PNAS* 2013: techniques spread by contact): the know-how its people
+  start with (15e), to which ten techniques were added — iron working, riding and pack horses,
+  printing, gunpowder, the railway, the telegraph, the engine, medicine, the radio, the telephone.
+  After the start a people has what its people hold: they learn from neighbours who have it, lose
+  it, and, with eras moving on, find it.
+- **War** (14e's numbers, per people): Bronze Age and Ancient armies about one in a hundred under
+  arms (Roman, Our World in Data), medieval half that; walls worth more in stone, less once
+  gunpowder came; no fighting season from the industrial age; modern standing armies about one in a
+  hundred, ten in a hundred at war (the world wars).
+- **Weapons by what a people knows** (Dupuy, *The Evolution of Weapons and Warfare*, 1980, the
+  1980 table only): hand weapons, iron, muskets, rifles, machine guns. Each reaches further — so a
+  soldier strikes any enemy in reach and many can strike one, Lanchester's square law, where hand
+  weapons fight one to one — and hits harder, but far less than the lethality index rises, as
+  armies spread out (his dispersion): a machine gun two and a half times a sword's blow.
+- **Travel**: an army's reach half again with horses, double with rail (15h). **Medicine**: a
+  people with it loses a tenth as many children (about half died before fifteen in the past, a few
+  in a hundred now; Volk and Atkinson 2013) and a third as many of its sick. **Farming**: with the
+  engine a farmer reaps three times as much (one farmer fed 19 in 1940 and 166 now; AFBF).
+  **Printing**: teaching goes three times as quick.
+- **Houses by era**: round huts for foragers (drawn round), the Roman courtyard house for the
+  Bronze and Ancient ages, the hall house as before for early farmers and the middle ages,
+  terraces for the industrial age (back-to-backs and byelaw terraces; Harrison), blocks for the
+  modern ages (English Heritage; Britannica, house).
+- **News at the speed of what is built.** A telegraph office on the line (a people that knows the
+  telegraph puts one up, 300 hours) carries a village's big news at once to the people's other
+  places on the line; a telephone tower (the telephone, 400 hours, run by a power works) to every
+  place within 35 km (GSM's timing limit); a radio to a people's powered places. Cut or knocked down
+  — by hand, or half the time in a sack — it stops carrying there and nowhere else, and news goes
+  back to word of mouth.
+- **Cars**: a trader with 30 coins buys one where the engine is known and a works stands; on a road
+  it goes three times a walk, while the power works at home has fuel; off the road it sticks.
+- Counts: `wired`, `cars`. `test/eras.test.mjs`.
+
+**Measured** (a year each, 400 people): foragers moved camp 17 times, nearly all hunting; ancient
+peoples built water mills; industrial ones telegraph offices (15 pieces of news wired); the
+information age built towers and passed 535 pieces of news by them, and its sick died a sixth as
+often; an industrial people beside early farmers, old enemies, fought 23 battle deaths' worth and
+had its lines cut. Cost: a look at the villages with lines and towers for each piece of big news.
+
+**Left out:** relays of horses and the post as carriers of news; eras set per people beyond the
+first in the page (the link holds the two settings); house shapes by people as well as by era;
+tanks, aircraft and the bomb (Dupuy's table has them; nothing yet makes them).
+
 ### People who belong to no one place (2026-11-22)
 
 TODO item 15i. Ric (2026-11-20): "aren't their people who aren't part of a place? Depending on the

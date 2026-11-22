@@ -400,6 +400,7 @@
                    faith: f.faith != null && w.faiths ? w.faithOf(f.faith) : null,   // TODO 15g
                    match: f.match ? Object.assign({}, f.match) : null,   // TODO 15b
                    know: w.knowOf ? w.knowOf(f) : null,   // TODO 15e
+                   era: f.era || "early", arms: w.armsOf ? w.armsOf(f.id).name : "",   // TODO 15d
                    army: Object.entries(f.camp || {}).filter(([k, c]) => c.goal >= 0 && f.rel[k] && f.rel[k].war).map(([k, c]) => ({ at: w.villages[c.v] ? w.villages[c.v].name : "", goal: w.villages[c.goal].name, ready: c.ready, cut: c.cut })),   // TODO 15h
                    lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
         });

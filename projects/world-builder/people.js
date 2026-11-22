@@ -174,6 +174,17 @@
         help: "Under the year-to-year weather the climate itself drifts over decades and centuries, warmer and colder, wetter and drier, drawn from the seed: a cold spell of a few generations brings longer winters and poorer harvests, as the Little Ice Age did. Nothing is scripted; at the middle a cold age is about a degree colder." },
     ]},
     { title: "How it starts", items: [
+      { key: "era", label: "Era", type: "select", def: "early",   // TODO 15d, 2026-11-22; Ric: "Sure all 9 work"
+        options: [["foragers", "Foragers: bands, no farming"], ["early", "Early farmers (as before)"], ["bronze", "Bronze Age: writing"], ["ancient", "Ancient: iron, horses, mills"],
+                  ["medieval", "Medieval: the horse collar"], ["earlymodern", "Early modern: printing, gunpowder"], ["industrial", "Industrial: steam, rail, telegraph"],
+                  ["modern", "Modern: engines, medicine, radio"], ["information", "Information: phones and towers"]],
+        help: "Where every people starts: what it knows, its weapons, its wars, its medicine and its houses. Only a starting point: what a people knows after that is what its people hold, find, learn and lose." },
+      { key: "firstEra", label: "The first people's own era", type: "select", def: "same",   // TODO 15d; Ric: different peoples in different eras, "Yes"
+        options: [["same", "The same as the rest"], ["foragers", "Foragers"], ["early", "Early farmers"], ["bronze", "Bronze Age"], ["ancient", "Ancient"], ["medieval", "Medieval"],
+                  ["earlymodern", "Early modern"], ["industrial", "Industrial"], ["modern", "Modern"], ["information", "Information"]],
+        help: "One people of another age beside the rest: rifles against spears, a telegraph beside a village that has never heard of writing." },
+      { key: "onward", label: "Eras move on by themselves", type: "toggle", def: false,   // TODO 15d; Ric: "A setting, on or off"
+        help: "On, anything can be found by somebody who knows its parts — gunpowder, the railway, the telephone — at How often new things are found. Off, a people has what its era gave it and what it learns from others." },
       { key: "foragers", label: "Peoples who forage", type: "range", min: 0, max: 6, step: 1, def: 0,   // TODO 15i, 2026-11-22
         say: v => v === 0 ? "none: every people farms (as before)" : v === 1 ? "the first people" : "the first " + v + " peoples",
         help: "A people that does not know farming lives by hunting, herding and fishing from a camp, shares what it brings in, has a headman who cannot tax, and moves camp when the food round it runs down. Needs People on the road and in camps." },
@@ -793,7 +804,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1287,8 +1298,8 @@
        - wallDays: the days a village takes to raise one, working at it. */
     const WAR_ERA = { season: true, standing: 0.04, campaign: 0.2, wallWorth: 1, wallHold: 20, wallDays: 30 };
     let fightDay = -1, fightNow = true;
-    function fighting() {
-      if (!WAR_ERA.season) return true;
+    function fighting(f) {
+      if (!(f && ERA_ANY ? eraWar(f) : WAR_ERA).season) return true;   // TODO 15d: each people's own
       const d = today();
       if (d !== fightDay) { fightDay = d; const sn = season(); fightNow = (sn.name === "spring" || sn.name === "summer") && sn.ripe < 1.05; }
       return fightNow;
@@ -1402,6 +1413,7 @@
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9,
                   mean: new Float64Array(TRAITS.length),   // TODO 15a: its grown-ups' average of each trait, at the last census
+                  era: factions.length === 0 && S.firstEra !== "same" ? S.firstEra : S.era,   // TODO 15d: where it started
                   camp: {}, hired: null,   // TODO 15h: each war's army (where it gathers, where it strikes, whether it marches), and who fights for pay
                   match: null,   // TODO 15b: its marriage customs
                   faith: null,   // TODO 15g: the faith its ruler holds, when enough hold it
@@ -1579,7 +1591,18 @@
       }
     }
     /* 12 m by 4.5 for the poorest, up to 24 by 7 for the richest. */
-    function sizeHome(h, wealth) { const w = clamp(wealth, 0, 1); h.len = (12 + 12 * w) * M; h.wid = (4.5 + 2.5 * w) * M; }
+    function sizeHome(h, wealth) {
+      const w = clamp(wealth, 0, 1);
+      const era = ERA_ANY && h.v >= 0 && villages[h.v] ? factions[villages[h.v].f].era : "early";
+      /* TODO 15d: the shape of a house by its people's era (English Heritage; Britannica, house):
+         round huts, the longhouse and hall, the Roman courtyard house, industrial terraces (back-to-backs
+         and byelaw terraces, Harrison), modern blocks. A round one is drawn round (same length and width). */
+      if (era === "foragers") { h.len = h.wid = (3.5 + 1.5 * w) * M; return; }
+      if (era === "bronze" || era === "ancient") { h.len = (9 + 6 * w) * M; h.wid = h.len * 0.94; return; }
+      if (era === "industrial") { h.len = (8 + 3 * w) * M; h.wid = (4.5 + 0.5 * w) * M; return; }
+      if (era === "modern" || era === "information") { h.len = (10 + 8 * w) * M; h.wid = h.len * 0.9; return; }
+      h.len = (12 + 12 * w) * M; h.wid = (4.5 + 2.5 * w) * M;
+    }
     let starting = true;   // the first residents are housed once couples and children are known
     let founding = true;   // and each gets a house as they are (TODO 7b: after that, newcomers lodge and build)
     function house(p, v, from) {
@@ -1691,6 +1714,7 @@
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   unfree: undefined,   // TODO 15c: the id of whoever holds them, while they are unfree
                   keptBy: undefined,   // TODO 15b: the child who keeps them
+                  car: undefined,   // TODO 15d: when they bought a car
                   wanderTo: undefined,   // TODO 15i: the village a traveller is making for
                   hired: undefined, mustered: undefined,   // TODO 15h: when they were hired to fight for pay, and when they last reported in to an army gathering
                   know: undefined,   // TODO 15e: what they know how to do, a bit for each of TECH
@@ -1737,7 +1761,7 @@
         const camp = R() < 0.5 ? -1 : 1;
         setView(p, clamp(f.views * 0.5 + camp * S.divided * 0.7 + (R() - 0.5) * (0.3 + S.divided * 0.5), -1, 1));
       }
-      if (KNOW) { if (mum || dad) bornKnowing(p, mum, dad); else p.know = BASE_KNOW; }   // TODO 15e
+      if (KNOW) { if (mum || dad) bornKnowing(p, mum, dad); else p.know = ERA_ANY ? eraMask(v.f) : BASE_KNOW; }   // TODO 15e; 15d: the era's
       p.ix = people.length; people.push(p); byId.set(p.id, p);
       if (!PLAIN) {
         changedHomes();
@@ -2212,6 +2236,7 @@
     /* How often somebody at work finds something: "Rare" (Ric) at 0.2, about one find in a few
        years among 400; two hundred times as often at the top of the slider, so a run shows it. A guess. */
     const FIND_RATE = 5e-7 * Math.pow(200, (S.finds - 0.2) / 0.8), SEE_DONE = 0.002, COPY = 0.98;
+    const ONWARD_EARLY = S.onward === true;   // TODO 15d (ONWARD, before the list that reads it)
     const TECH = [
       { key: "farming", name: "farming" },
       { key: "wells", name: "digging wells", needs: ["farming"] },
@@ -2228,10 +2253,47 @@
       { key: "collar", name: "the horse collar", needs: ["plough", "carts"] },
       { key: "herbs", name: "healing herbs" },
       { key: "steam", name: "the steam engine", needs: ["mill", "smithing"] },   // TODO 15f
+      /* TODO 15d: found only where eras move on by themselves; otherwise a people starts with them or learns them from others. */
+      { key: "iron", name: "iron working", needs: ["smithing"], eraOnly: !ONWARD_EARLY },
+      { key: "horses", name: "riding and pack horses", needs: ["carts"], eraOnly: !ONWARD_EARLY },
+      { key: "printing", name: "printing", needs: ["writing", "smithing"], eraOnly: !ONWARD_EARLY },
+      { key: "gunpowder", name: "gunpowder", needs: ["smithing", "writing"], eraOnly: !ONWARD_EARLY },
+      { key: "rail", name: "the railway", needs: ["steam"], eraOnly: !ONWARD_EARLY },
+      { key: "telegraph", name: "the telegraph", needs: ["steam", "writing"], eraOnly: !ONWARD_EARLY },
+      { key: "engine", name: "the engine", needs: ["steam"], eraOnly: !ONWARD_EARLY },
+      { key: "medicine", name: "medicine", needs: ["writing", "herbs"], eraOnly: !ONWARD_EARLY },
+      { key: "radio", name: "the radio", needs: ["telegraph"], eraOnly: !ONWARD_EARLY },
+      { key: "phone", name: "the telephone and its towers", needs: ["radio", "engine"], eraOnly: !ONWARD_EARLY },
     ];
     const TI_K = Object.fromEntries(TECH.map((x, i) => [x.key, i]));
     for (const x of TECH) x.mask = (x.needs || []).reduce((m, k) => m | (1 << TI_K[k]), 0);
     const BASE_KNOW = ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"].reduce((m, k) => m | (1 << TI_K[k]), 0);   // the farming village the engine was
+    /* TODO 15d: eras (see "eras as starting points"). With every people an early farmer and eras not
+       moving on by themselves, nothing here is read and the world is the one 15i left. */
+    const ERA_ANY = S.era !== "early" || S.firstEra !== "same", ONWARD = S.onward === true, WIRED = ERA_ANY || ONWARD;
+    const ERA_LIST = ["foragers", "early", "bronze", "ancient", "medieval", "earlymodern", "industrial", "modern", "information"];
+    const ERA_KNOW = { foragers: ["boats", "weaving", "herbs"], early: ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"] };
+    ERA_KNOW.bronze = ERA_KNOW.early.concat(["writing"]);
+    ERA_KNOW.ancient = ERA_KNOW.bronze.concat(["iron", "horses", "rotation", "mill", "herbs"]);
+    ERA_KNOW.medieval = ERA_KNOW.ancient.concat(["collar"]);
+    ERA_KNOW.earlymodern = ERA_KNOW.medieval.concat(["printing", "gunpowder"]);
+    ERA_KNOW.industrial = ERA_KNOW.earlymodern.concat(["steam", "rail", "telegraph"]);
+    ERA_KNOW.modern = ERA_KNOW.industrial.concat(["engine", "medicine", "radio"]);
+    ERA_KNOW.information = ERA_KNOW.modern.concat(["phone"]);
+    const ERA_DEF = Object.fromEntries(ERA_LIST.map(k => [k, { know: ERA_KNOW[k] }]));
+    const ERA_WAR = {
+      foragers: { season: true, standing: 0, campaign: 0.25, wallWorth: 0, wallHold: 0, wallDays: 30 },
+      bronze: { season: true, standing: 0.01, campaign: 0.15, wallWorth: 1.2, wallHold: 25, wallDays: 30 },
+      ancient: { season: true, standing: 0.01, campaign: 0.1, wallWorth: 1.4, wallHold: 30, wallDays: 30 },
+      medieval: { season: true, standing: 0.005, campaign: 0.08, wallWorth: 1.4, wallHold: 30, wallDays: 30 },
+      earlymodern: { season: true, standing: 0.01, campaign: 0.08, wallWorth: 0.8, wallHold: 15, wallDays: 30 },
+      industrial: { season: false, standing: 0.01, campaign: 0.1, wallWorth: 0.4, wallHold: 8, wallDays: 30 },
+      modern: { season: false, standing: 0.01, campaign: 0.1, wallWorth: 0.2, wallHold: 4, wallDays: 30 },
+      information: { season: false, standing: 0.01, campaign: 0.1, wallWorth: 0.2, wallHold: 4, wallDays: 30 },
+    };
+    const ARMS = { hand: { reach: 0.8, hit: 1, name: "hand weapons" }, iron: { reach: 0.8, hit: 1.2, name: "iron weapons" }, musket: { reach: 1.5, hit: 1.5, name: "muskets" },
+                   rifle: { reach: 2.5, hit: 2, name: "rifles" }, modern: { reach: 3, hit: 2.5, name: "machine guns" } };
+    const TOWER_REACH = 140;   // squares: 35 km, GSM's timing limit
     const BAND_LOST = ["farming", "plough", "ditches", "wells", "carts", "bridges"];   // TODO 15i: what a band does not know
     const ROAM = S.roaming !== "settled";   // TODO 15i: bands that move camp, and people on the road (see "people who belong to no one place")
     const ARMIES = S.armies !== "trickle";   // TODO 15h: armies that gather, carry and choose (see "armies")
@@ -2239,7 +2301,7 @@
     const WORKS = S.works !== "none";   // TODO 15f: livings a place needs and can pay for, and workplaces (see "work and workplaces")
     /* A mill about as long to build as a bridge; a power works twice that; the works between. A power
        works burns two loads of wood a day. Guesses, said as such. */
-    const WORKS_HOURS = { mill: 600, power: 1200, works: 800 }, POWER_WOOD = 2;
+    const WORKS_HOURS = { mill: 600, power: 1200, works: 800, line: 300, tower: 400 }, POWER_WOOD = 2;
     const SERVICES = ["healer", "teacher", "miller"];
     const MARRY = S.marriage !== "liking";   // TODO 15b: each people's marriage customs (see "who marries whom")
     const FAITH = S.faith !== false;   // TODO 15g (see "faith")
@@ -2276,11 +2338,13 @@
     const lurk = new Map();     // TODO 15.5b4: bandits lying in wait by a road, and since when
     const bandOf = new Map();   // TODO 15.5b4: a bandit out with a band: the place they ride for, and how many ride
 
+    let wiresUp = false;   // TODO 15d: set once a line, a tower or a radio stands anywhere
     function note(kind, text, weight, x, y, f) {
       const e = { id: events.length ? events[events.length - 1].id + 1 : 0, t: t, year: Math.floor(year()), kind: kind, text: text,
                   weight: weight, x: x, y: y, f: f == null ? -1 : f };
       events.push(e);
       if (ACT_DAYS[kind]) { acted.add(e.id); mindStamp++; }   // TODO 12b
+      if (WIRED && wiresUp) wire(e);   // TODO 15d: news at the speed of what is built
       /* The record is finite and the least important goes first — the same
          rule KONDRITE's living world keeps. */
       if (events.length > 400) {
@@ -2391,7 +2455,7 @@
       if (BEASTS) for (const v of villages) { v.oxen = v.pop * OXEN_EACH; v.horses = v.pop * HORSES_EACH; }   // TODO 15.5o: a full team to start
       for (const p of people) if (adult(p)) p.job = chooseJob(p);
       for (const p of people) if (p.job === "trader") p.gear.cart = 1;   // a trader starts with a cart (TODO 7d)
-      if (ROAM && S.foragers > 0) for (const f of factions) if (f.id < S.foragers) makeBand(f);   // TODO 15i
+      if (ROAM && (S.foragers > 0 || ERA_ANY)) for (const f of factions) if (f.id < S.foragers || f.era === "foragers") makeBand(f);   // TODO 15i; 15d's Foragers era
       /* A quarter of the grown-ups start paired, so the first children are not
          fourteen years away. */
       for (const v of villages) {
@@ -3170,7 +3234,7 @@
        (2.7%). Now it is the hours, which is how farming labour actually
        differs — capped at what daylight allows, after which they bring back
        what they managed. */
-    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p) * (p.job === "child" ? childShare(p) : 1) * (BEASTS ? plough(villages[p.home]) : 1); }   // p.vig: TODO 15.5e; brawn: 15.5l
+    function harvestCapacity(p) { return CARRY * (WIRED && has(p.f, "engine") ? 3 : 1) * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p) * (p.job === "child" ? childShare(p) : 1) * (BEASTS ? plough(villages[p.home]) : 1); }   // p.vig: TODO 15.5e; brawn: 15.5l
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
@@ -3195,6 +3259,7 @@
     }
     /* How fast somebody laden with a cart goes on this square (TODO 7d). */
     function cartPace(p, i) {
+      if (WIRED && p.car && villages[p.home].power) return track[i] === 2 ? 3 : track[i] === 1 ? 1.2 : 0.6;   // TODO 15d: a car, on a road, with fuel at home
       if (!equipped(p, "cart")) return 1;
       if (BEASTS && villages[p.home].horses >= 1) return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.95 : 0.75;   // TODO 15.5o: a horse in the shafts
       return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.85 : 0.6;
@@ -3281,6 +3346,7 @@
       if (p.hungry > 0) h *= 2.5;
       if (DIRT) h *= 1 + 1.5 * villages[p.home].foul;
       if (p.age < 1) { const m = byId.get(p.mum); if (!m || m.hp <= 0) h *= 2; }
+      if (WIRED && has(p.f, "medicine")) h *= 0.1;   // TODO 15d: about half of children died before fifteen, a few in a hundred now (Volk and Atkinson 2013)
       if (HOUSEWORK && p.age < 5 && p.dwelling >= 0 && homes[p.dwelling].chores >= BEHIND) h *= 1.3;   // TODO 15.5n: nobody minding them
       return h;
     }
@@ -4737,7 +4803,8 @@
       }
       const foe = foeNear(p, 3);
       if (foe) {
-        if (dist(p, foe) < 0.8) {
+        const arms = WIRED ? armsOf(p.f) : ARMS.hand;   // TODO 15d: what reaches, and how hard
+        if (dist(p, foe) < arms.reach) {
           p.hit = TK(6);
           /* A fight is skirmishing, not a slaughter: about a one-in-four chance
              of landing a blow in an hour of close contact at "How deadly" 1,
@@ -4749,7 +4816,7 @@
              fed a soldier a day into the line all war, and a world lost a
              quarter of its people to battle in eleven days. */
           if (R() < 1 - Math.pow(1 - Math.min(0.95, 0.25 * S.deadly), 1 / ACTIONS_PER_HOUR)) {
-            strike(p, foe, 0.15 + R() * 0.3);
+            strike(p, foe, (0.15 + R() * 0.3) * arms.hit);
             if (foe.hp <= 0) die(foe, "battle", p);
           }
           p.task = "idle"; p.wait = 0;
@@ -4761,10 +4828,10 @@
       /* A band out raiding, in or out of the season (the Border reivers rode in the long nights of
          early winter); the army marches only in the fighting season (TODO 14e). */
       const rd = enemy >= 0 ? f.raid[enemy] : null, raider = !!rd && rd.v >= 0 && t < rd.until && p.id % 5 === 2;
-      if (enemy >= 0 && !(home.heldTo > t) && (raider || (p.id % 3 !== 0 && (fighting() || (ARMIES && f.camp[enemy] && f.camp[enemy].v >= 0))))) {   // a garrison stays (TODO 14c)
+      if (enemy >= 0 && !(home.heldTo > t) && (raider || (p.id % 3 !== 0 && (fighting(f) || (ARMIES && f.camp[enemy] && f.camp[enemy].v >= 0))))) {   // a garrison stays (TODO 14c)
         /* Gathering first (TODO 15h): until the army marches, to the gathering place, drawing bread there. */
         const camp = ARMIES && !raider ? f.camp[enemy] : null;
-        if (camp && (!camp.ready || !fighting()) && camp.v >= 0 && villages[camp.v].alive && villages[camp.v].f === p.f) {   // and out of the season they wait there
+        if (camp && (!camp.ready || !fighting(f)) && camp.v >= 0 && villages[camp.v].alive && villages[camp.v].f === p.f) {   // and out of the season they wait there
           const m = villages[camp.v];
           if (dist(p, m) < 3) { p.mustered = t; provision(p, m); outfit(p, m); const a = R() * 6.2832; go(p, m.x + Math.cos(a) * 1.5, m.y + Math.sin(a) * 1.5, "patrol"); p.wait = TK(30); }
           else { go(p, m.x + (R() - 0.5), m.y + (R() - 0.5), "patrol"); p.wait = 0; }
@@ -5321,7 +5388,7 @@
       if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
       if (p.sick > 0) {
         p.sick--;
-        if (R() < SICK_HAZARD * frailty(p) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
+        if (R() < SICK_HAZARD * frailty(p) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1) * (WIRED && has(p.f, "medicine") ? 0.3 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
         if (p.sick === 0) p.immune = true;
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
@@ -6741,7 +6808,7 @@
          four days, and a world's wars were won, lost and over in a month. */
       const sides = Object.keys(theirs);
       /* Behind a wall the same people count for more (TODO 14e). */
-      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + WAR_ERA.wallWorth * v.wall);
+      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + eraWar(factions[v.f]).wallWorth * v.wall);
       v.foes = attackers;
       if (RIOTS && attackers === 0) riot(v, ours);   // not with an enemy at the edge: then the doors are barred
       if (BANDITS) { v.watch = ours; if (attackers === 0) bandRide(v); }   // TODO 15.5b4
@@ -6751,11 +6818,11 @@
          village at war, every one was walled within a month and nothing was taken in 13 forced wars. */
       if (S.war) {
         if (v.wall < 1 && (t - v.dangerAt < 60 * DAY_HOURS || t - v.raidAt < YEAR) && v.foes === 0) {   // built between attacks, not under them
-          const need = (10 + v.pop * 0.5) / WAR_ERA.wallDays;   // a day's wood, stone or goods
+          const need = (10 + v.pop * 0.5) / eraWar(factions[v.f]).wallDays;   // a day's wood, stone or goods
           let got = 0;
           if (MATS) { const st = Math.min(v.stone, need); v.stone -= st; got += st; const wd = Math.min(Math.max(0, v.wood - v.wantWood * 0.5), need - got); if (wd > 0) { v.wood -= wd; got += wd; } }
           else { const g = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= g; got += g; }
-          if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / WAR_ERA.wallDays); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f); } }
+          if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / eraWar(factions[v.f]).wallDays); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f); } }
         } else if (v.wall > 0 && !atWarAnywhere(factions[v.f])) v.wall = Math.max(0, v.wall - 1 / (4 * 365));   // gone in about four years of peace
       }
       /* What an army does where it stands (TODO 14b): spoils the crops, burns what it can, takes
@@ -6775,7 +6842,7 @@
       else if (v.gone && t - v.dangerAt > 7 * DAY_HOURS) comeHome(v);
       if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
-        if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(v.wall * WAR_ERA.wallHold)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
+        if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(v.wall * eraWar(factions[v.f]).wallHold)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
       } else v.siege = Math.max(0, v.siege - 1);
 
       /* Too full: some of them go and start somewhere new, if there is land. */
@@ -6860,6 +6927,7 @@
       const names = new Set(factions.map(o => o.name));
       let name; do { name = R() < 0.5 ? "Free " + v.name : pick(F_FIRST) + " " + pick(F_LAST); } while (names.has(name) && names.size < 150);
       const nf = newFaction(name, viewOf(head));
+      nf.era = f.era;   // TODO 15d
       nf.treasury = 0; nf.tax = Math.min(f.tax, S.tax); nf.harvest = Math.min(f.harvest, S.harvestTax || 0); nf.leader = head.id; nf.rule = f.rule === "elected" ? "elected" : "chief";
       v.f = nf.id; v.broke = t; v.siege = 0;
       const refuge = villages.filter(o => o.alive && o.f === f.id).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
@@ -6942,7 +7010,7 @@
       if (BEASTS) { v.oxen *= 0.5; v.horses *= 0.3; }   // TODO 15.5o: driven off
       const mine = homesOf(v).filter(h => h.v === v.id && h.built);
       for (let n = Math.round(mine.length / 4); n > 0 && mine.length; n--) burnHouse(v, mine.splice(Math.floor(R() * mine.length), 1)[0]);
-      if (WORKS && v.works) for (const k of ["power", "works", "mill"]) if (v.works[k] && v.works[k].built && R() < 0.5) knock(v, k);   // TODO 15f
+      if (WORKS && v.works) for (const k of ["power", "works", "mill", "line", "tower"]) if (v.works[k] && v.works[k].built && R() < 0.5) knock(v, k);   // TODO 15f
       count.sacked++;
     }
     /* Running from an army: a household at a time, the frightened and the less bold first, to the
@@ -7732,6 +7800,7 @@
        2004, Tasmania), unless it was written down and somebody can read. Writing is one more
        technique: it is taught, not seen; written news passes word for word; a collector who keeps
        accounts is checked by a scribe; a law that is written outlasts more. README, "Know-how". */
+    function eraMask(fid) { return ERA_KNOW[factions[fid].era].reduce((m, k) => m | (1 << TI_K[k]), 0); }   // TODO 15d
     function knowsP(p, k) { return p.know != null && (p.know & (1 << TI_K[k])) !== 0; }
     /* A people knows it while one of them holds it. Before the first count, as at the start. */
     function knows(fid, k) { return !KNOW || !factions[fid].know || factions[fid].know[TI_K[k]] > 0; }
@@ -7835,6 +7904,7 @@
         v.spare = homesN ? spare / homesN : 0; v.sickN = sick; v.kids = kids; v.hands = hands;
         /* The power works burns two loads of wood a day from the store; without it, no power. */
         const pw = v.works && v.works.power;
+        v.powerUse = v.works && v.works.tower && v.works.tower.built ? 1 : 0;   // TODO 15d: a tower runs on power
         const feeds = (v.works && v.works.works && v.works.works.built) || v.powerUse > 0;   // something to run (15d: towers and lines)
         if (pw && pw.built && !feeds) pw.fuel = true;
         else if (pw && pw.built) {
@@ -7843,6 +7913,8 @@
           pw.fuel = !MATS || burn >= POWER_WOOD * 0.99;
         }
         v.power = !!(pw && pw.built && pw.fuel);
+        if (WIRED && v.works && ((v.works.line && v.works.line.built) || (v.works.tower && v.works.tower.built) || (v.power && has(v.f, "radio")))) wiresUp = true;
+        if (WIRED) buyCars(v);   // TODO 15d
         if (v.mill) v.millRun = v.mill && v.works && v.works.mill && v.works.mill.built && (hands.miller > 0);
       }
     }
@@ -7866,7 +7938,7 @@
           const par = byId.get(q.mum) || byId.get(q.dad);
           if (!par || par.coins < 3) continue;   // a family that cannot spare the fee keeps the child at work
           got += fee(par, 0.1);
-          if (KNOW && knowsP(p, "writing") && !knowsP(q, "writing") && R() < 0.03) { q.know = (q.know || 0) | (1 << TI_K.writing); count.taught++; }
+          if (KNOW && knowsP(p, "writing") && !knowsP(q, "writing") && R() < (WIRED && has(p.f, "printing") ? 0.09 : 0.03)) { q.know = (q.know || 0) | (1 << TI_K.writing); count.taught++; }
         }
       } else if (p.job === "miller") { v.milledAt = t; for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) got += fee(q, 0.05); }
       count.servicePaid += got;
@@ -7878,6 +7950,8 @@
       if (KNOW && knows(v.f, "mill") && (v.riverNear ??= ditchFrom(v) >= 0) && !(w.mill && w.mill.built)) want.push("mill");
       if (KNOW && knows(v.f, "steam") && !(w.power && w.power.built) && (!MATS || (v.wood || 0) > 10) && (asked(v) > 2 || v.wantPower)) want.push("power");   // only with work for it: goods asked for, or (15d) a tower or a line
       if (w.power && w.power.built && !(w.works && w.works.built) && asked(v) > 2) want.push("works");
+      if (WIRED && has(v.f, "telegraph") && !(w.line && w.line.built)) want.push("line");   // TODO 15d
+      if (WIRED && has(v.f, "phone") && !(w.tower && w.tower.built)) { if (w.power && w.power.built) want.push("tower"); else v.wantPower = true; }
       return want;
     }
     function buildWorks(v, kind, hours) {
@@ -7886,14 +7960,14 @@
       b.work += hours;
       if (!b.built && b.work >= WORKS_HOURS[kind]) {
         b.built = true; count.worksBuilt++;
-        note("works", v.name + " has built " + { mill: "a water mill", power: "a power works", works: "works by its power works" }[kind] + ".", 2, v.x, v.y, v.f);
+        note("works", v.name + " has built " + { mill: "a water mill", power: "a power works", works: "works by its power works", line: "a telegraph office on the line", tower: "a telephone tower" }[kind] + ".", 2, v.x, v.y, v.f);
       }
     }
     function knock(v, kind) {
       const b = v.works && v.works[kind];
       if (!b || !b.built) return false;
       b.built = false; b.work = 0; count.worksBroken++;
-      note("works", "The " + { mill: "water mill", power: "power works", works: "works" }[kind] + " of " + v.name + " has been knocked down.", 2.5, v.x, v.y, v.f);
+      note("works", "The " + { mill: "water mill", power: "power works", works: "works", line: "telegraph line", tower: "telephone tower" }[kind] + " of " + v.name + " has been " + (kind === "line" ? "cut" : "knocked down") + ".", 2.5, v.x, v.y, v.f);
       if (kind === "power") v.power = false;
       return true;
     }
@@ -7942,7 +8016,7 @@
       }
       return s;
     }
-    const reachOf = f => CAMPAIGN_DAYS * (KNOW && knows(f.id, "carts") ? 1.5 : 1) / 2 * MARCH_DAY;
+    const reachOf = f => CAMPAIGN_DAYS * (KNOW && knows(f.id, "carts") ? 1.5 : 1) * (WIRED && has(f.id, "horses") ? 1.5 : 1) * (WIRED && has(f.id, "rail") ? 2 : 1) / 2 * MARCH_DAY;   // 15d: horses and rail
     function campaign(f, o, lead) {
       const c = f.camp[o.id] || (f.camp[o.id] = { v: -1, goal: -1, ready: false, since: t, cut: false, out: 0 });
       const reach = reachOf(f), bold = ruling(lead, "bold", f), patient = ruling(lead, "patient", f);
@@ -7953,7 +8027,7 @@
         let near = null, d = 1e9;
         for (const u of villages) if (u.alive && u.f === f.id) { const dd = Math.hypot(u.x - v.x, u.y - v.y); if (dd < d) { d = dd; near = u; } }
         if (!near || d > reach) continue;
-        const worth = (v.food * 0.05 + v.pop + 1), guard = felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + WAR_ERA.wallWorth * v.wall);
+        const worth = (v.food * 0.05 + v.pop + 1), guard = felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + eraWar(o).wallWorth * v.wall);
         const s = Math.pow(worth, 0.5 + bold) / Math.pow(1 + guard, 0.5 + patient) / (1 + d * 0.02);
         if (s > bs) { bs = s; best = v; from = near; }
       }
@@ -8154,6 +8228,63 @@
       const need = dailyNeed(p);
       if (o.food > o.pop * 3 && R() < 0.6) { const x = Math.min(o.food, need * 2); o.food -= x; p.food += x; count.alms += x; }
       p.task = "idle"; p.wait = spell("market");
+    }
+    /* ── eras as starting points (TODO 15d, 2026-11-22) ────────────────────
+       Ric, 2026-11-19 and 20: eras "Ancient, Medieval, Industrial (1800s), Modern", then "Sure all 9
+       work"; different peoples in different eras in one world: "Yes"; moving on by itself: "A
+       setting, on or off"; news "shouldn't be for era it should be for what is built"; "cell towers
+       must be a thing too"; cars "Write them in". An era is only where a people starts: what it knows
+       (15e), the war numbers of 14e, the weapons its know-how gives it, medicine, how many one farmer
+       feeds, and the shape of its houses — never a stage it must pass through (Ghys 2012 on the tech
+       tree's determinism; Turchin et al., PNAS 2013: techniques spread by contact). Towers, telegraph
+       lines and cars are things built, owned, fed and knocked down. README, "Eras". */
+    /* Each era's war (14e's numbers): Roman armies about half to one per cent of the people; modern
+       peacetime about one per cent, world wars about ten (Our World in Data); gunpowder brought walls
+       down; industrial armies fought the year round. */
+    function eraWar(f) { return (f && ERA_WAR[f.era]) || WAR_ERA; }
+    function eraHas(fid, k) { const e = ERA_DEF[factions[fid].era]; return !!e && e.know.includes(k); }
+    /* Whether a people has something: what its people know, where know-how is held (15e); else its era's list. */
+    function has(fid, k) {
+      const f = factions[fid];
+      if (KNOW && f.know) return f.know[TI_K[k]] > 0;
+      return eraHas(fid, k);
+    }
+    /* Weapons by what a people knows (Dupuy, *The Evolution of Weapons and Warfare*, 1980: a sword 23, a
+       flintlock 43, a breech-loader 153, a WWII machine gun 4,973 — but armies spread out as weapons got
+       deadlier, so losses grew far more slowly, his dispersion). `reach` in squares: a weapon that
+       reaches lets every soldier in range strike any enemy in it, Lanchester's square law; hand weapons
+       fight one to one, his linear law. */
+    function armsOf(fid) {
+      if (has(fid, "engine")) return ARMS.modern;
+      if (has(fid, "rail")) return ARMS.rifle;
+      if (has(fid, "gunpowder")) return ARMS.musket;
+      if (has(fid, "iron")) return ARMS.iron;
+      return ARMS.hand;
+    }
+    /* News at the speed of what is built: a telegraph line to every place of the people with one, a
+       tower to all within its reach (GSM's timing limit, 35 km), a radio to all of a people's powered
+       places. A line cut or a tower down slows it there, and nowhere else. */
+    function wire(e) {
+      if (!e || !(e.weight >= 1.5)) return;
+      let at = null, d = 6;
+      for (const v of villages) if (v.alive) { const dd = Math.hypot(v.x - e.x, v.y - e.y); if (dd < d) { d = dd; at = v; } }
+      const lined = at && at.works && at.works.line && at.works.line.built && has(at.f, "telegraph");
+      for (const u of villages) {
+        if (!u.alive || u === at || !u.works) continue;
+        const byLine = lined && u.f === at.f && u.works.line && u.works.line.built;
+        const byTower = u.works.tower && u.works.tower.built && u.power && Math.hypot(u.x - e.x, u.y - e.y) <= TOWER_REACH;
+        const byRadio = e.weight >= 3 && u.power && has(u.f, "radio") && (e.f === u.f || e.f < 0);
+        if (!byLine && !byTower && !byRadio) continue;
+        let n = 0;
+        for (const p of residents(u.id)) { if (n >= 6) break; if (p.hp > 0 && adult(p) && mFind(p, M_NEWS, e.id) < 0) { heard(p, M_NEWS, e.id, 1, -1, 0); n++; } }
+        if (n) count.wired++;
+      }
+    }
+    /* A car (Ric: "Write them in"): bought by a trader with coins to spare, once the people knows the
+       engine and a works stands to make it; fast on a road while the power works at home has fuel. */
+    function buyCars(v) {
+      if (!has(v.f, "engine") || !(v.works && v.works.works && v.works.works.built)) return;
+      for (const p of residents(v.id)) if (p.job === "trader" && !p.car && p.coins > 30 && p.hp > 0) { p.coins -= 25; v.till += 25; p.car = t; count.cars++; }
     }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
@@ -8866,10 +8997,10 @@
       /* At war (TODO 14e): in the fighting season as many as were called before, up to the most that
          can be called for one season; out of it, what can be kept for long (and what they keep in
          peace). Before, a side at war kept about a quarter of its people under arms all year round. */
-      const inSeason = fighting();
+      const inSeason = fighting(f);
       f.army = f.yours ? f.yours.army : !wars ? (f.peace ?? S.soldiers)
-             : inSeason ? Math.min(WAR_ERA.campaign, clamp((f.peace ?? S.soldiers) * 2.6 + 0.08, 0, 0.6))
-             : Math.max(f.peace ?? S.soldiers, WAR_ERA.standing);
+             : inSeason ? Math.min(eraWar(f).campaign, clamp((f.peace ?? S.soldiers) * 2.6 + 0.08, 0, 0.6))
+             : Math.max(f.peace ?? S.soldiers, eraWar(f).standing);
       /* Stand soldiers down when there are more than are wanted, call some up
          when there are too few. */
       if (f.soldiers > f.army * f.adults * 1.25 + 1) {
@@ -8948,7 +9079,7 @@
               if (!v.alive || v.f !== o.id || v.id === f.target[o.id]) continue;
               let near = 1e9; for (const u of villages) if (u.alive && u.f === f.id) near = Math.min(near, Math.hypot(u.x - v.x, u.y - v.y));
               if (near > 30) continue;
-              const sc = (v.food + v.pop) / (1 + v.adults * 0.25 * (1 + WAR_ERA.wallWorth * v.wall)) / (1 + near * 0.05);
+              const sc = (v.food + v.pop) / (1 + v.adults * 0.25 * (1 + eraWar(o).wallWorth * v.wall)) / (1 + near * 0.05);
               if (sc > bs) { bs = sc; best = v; }
             }
             f.raid[o.id] = { v: best ? best.id : -1, until: t + 5 * DAY_HOURS };
@@ -9476,6 +9607,7 @@
       kill: p => die(p, "old"),   // for the tests (TODO 15b)
       knock: (vid, k) => knock(villages[vid], k), buildWorks: (vid, k, h) => buildWorks(villages[vid], k, h), workDay: () => { if (WORKS) workDay(); }, serviceWorth: (vid, job) => serviceWorth(villages[vid], job), worksWanted: vid => worksWanted(villages[vid]),   // TODO 15f
       place: (p, x, y) => jump(p, x, y), startWar: (a, b) => startWar(factions[a], factions[b], factions[a].name + " has gone to war with " + factions[b].name + "."),   // for the tests (TODO 15h)
+      eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e

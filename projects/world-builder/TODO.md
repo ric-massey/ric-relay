@@ -1515,7 +1515,9 @@ Research notes:
   = 2; a target is picked every fifteen days per enemy from villages within thirty squares. Cost: a
   pass over the villages every fifteen days per enemy; the bench is unchanged.
 
-### [ ] 15. Eras, old to modern — split into 15a to 15h
+### [x] 15. Eras, old to modern — split into 15a to 15h
+
+**Done 2026-11-22** (Ric: "finish 15 please. all of it then run tests"): 15c, 15g, 15b, 15e, 15f, 15h, 15i and 15d built in one session, in Ric's order, one local commit each, each with its own setting whose old value is the world before it (fingerprinted, and every older fingerprint test pins the later parts off). 15.5i, which waited for item 15, is next by its own note.
 
 **Split 2026-11-20** (Ric: "Split it"), because 15c and 15b stand on part of it. The order is
 **15a → 15c → 15g → 15b → 15e → 15f → 15h → 15i → 15d** (rearranged 2026-11-20, below; faith before marriage at Ric's word; 15i added the same day). This entry
@@ -2642,7 +2644,9 @@ fishing peoples of the North-West coast), **seasonal herding** (herds and a few 
 pasture, the village keeping hay for winter), and, **as its last part**, **sea nomads** whose home is
 a boat. Research in the notes above.
 
-### [ ] 15d. Eras as starting points; news by what is built; towers, cars, houses, medicine
+### [x] 15d. Eras as starting points; news by what is built; towers, cars, houses, medicine
+
+**Done 2026-11-22.** Settings Era (all nine, early farmers by default = the 15i world, fingerprinted), "The first people's own era" (one people of another age beside the rest) and "Eras move on by themselves" (off by default: the new techniques can then be found too). An era is only a starting list of know-how (15e: iron, horses, printing, gunpowder, the railway, the telegraph, the engine, medicine, radio, the telephone added); from it come the 14e war numbers per people (standing share, campaign share, wall worth, fighting season — none from the industrial age), weapons by what a people knows (hand, iron, musket, rifle, machine gun: reach in squares, so arms that reach fight by Lanchester's square law, and a hit's force following Dupuy with his dispersion), an army's reach (horses half again, rail double), medicine (children's deaths a tenth, the sick's a third), tractors (a farmer reaps three times), printing (teaching three times as quick), house shapes (round huts, courtyard houses, halls, terraces, blocks; round huts drawn round), foragers as bands (15i). News at the speed of what is built: a telegraph office on the line carries big news at once to the people's other places on the line, a telephone tower (needs a power works) to all within 35 km, a radio to a people's powered places; cut or knocked down (by hand or in a sack), it stops there and nowhere else. Cars: a trader with coins buys one where the engine is known and works stand, three times as fast on a road while the home power works has fuel. Measured: a year of each era runs; information-age towers passed 535 pieces of news, its sick died a sixth as often; lines were cut in a war between an industrial and an early people. `test/eras.test.mjs`; README, "Eras". Left: relays of horses and the post as news carriers; per-people eras for more than the first people in the page (the link can hold only the two settings); house shapes by people as well as by era; tanks, aircraft and the bomb.
 
 Split out of 15 on 2026-11-20; rewritten the same day with Ric's answers. Last of the 15 family,
 because an era is now only a starting list of know-how (15e) and buildings (15f).
