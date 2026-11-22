@@ -423,6 +423,9 @@
       { key: "siegecraft", label: "Siegecraft and service", type: "select", def: "era",   // TODO 15p, 2026-11-22
         options: [["era", "By era"], ["old", "Numbers alone (as before)"]],
         help: "Besiegers build what takes a wall (ramps and mining, rams, trebuchets, cannon, by era) and a place held shut can be starved into giving up. In the Middle Ages the levy owes forty days a year and goes home when they are served, and the well-off may pay scutage instead, which hires soldiers; an ancient army is paid and standing, and digs a camp every night." },
+      { key: "ransom", label: "Prisoners, mutiny and war loans", type: "select", def: "real",   // TODO 15q, 2026-11-22
+        options: [["real", "Taken, ransomed, borrowed for"], ["old", "None of it (as before)"]],
+        help: "Soldiers struck down, most of all from an army that has broken, may be taken and held for ransom, paid by their family or their people to the soldier who took them; unransomed after two months they are exchanged, killed or let go, by the captor's nature. Soldiers left unpaid rise together and take their pay. A ruler at war borrows from the richest, pays interest, repays in peace, and may default, which leaves the army unpaid." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -823,7 +826,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2350,6 +2353,11 @@
     const SIEGECRAFT = S.siegecraft !== "old";
     const ENGINE_DAYS = { foragers: 0, early: 40, bronze: 25, ancient: 20, medieval: 25, earlymodern: 8, industrial: 4, modern: 3, information: 3 };
     const SERVICE_DAYS = 40, SCUTAGE = 10, SERVED = new Map();
+    /* Prisoners, mutiny and war loans (TODO 15q). HELD: prisoners, by id. LOANS: what a people owes each
+       lender, by faction then lender id. LOAN_RATE: about a tenth a year (the Genoese lent the Spanish
+       crown at more, but asked for its silver as security). */
+    const SPOILS = S.ransom !== "old" && ARMIES && !shared, HELD = new Map(), LOANS = new Map();
+    const TAKE_ODDS = 0.15, TAKE_ROUTED = 0.5, RANSOM_DAYS = 60, RANSOM_TALK = 10, LOAN_RATE = 0.1 / 365, MUTINY_DAYS = 5;
     const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
@@ -3341,6 +3349,7 @@
       const wasUp = foe.hp >= 0.45;
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
       if (GENERALS && wasUp && foe.hp < 0.45 && foe.job === "soldier") fellOut(foe, p);
+      if (SPOILS && wasUp && foe.hp < 0.45 && foe.hp > 0 && foe.job === "soldier" && !HELD.has(foe.id) && R() < (GENERALS && (ROUT.get(foe.id) ?? -1) > t ? TAKE_ROUTED : TAKE_ODDS)) takePrisoner(foe, p);   // TODO 15q
       wound(foe, damage);
       /* Enemies striking in somebody's own village: a raid there (TODO 10). */
       const hv = villages[foe.home];
@@ -3359,6 +3368,137 @@
       const b = era === "medieval" ? (f.mean && f.mean[TRAIT_AT.hard] > 0.55 ? BOWS.longbow : BOWS.crossbow) : era === "bronze" || era === "ancient" ? BOWS.composite : BOWS.bow;
       return chariot(p) ? { reach: b.reach + 0.3, hit: b.hit * 1.2, name: "chariot archers" } : b;
     }
+    /* Prisoners (TODO 15q). Taken to the captor's nearest place of their own. In the Hundred Years' War
+       captives of every rank were ransomed by contract, a living for common soldiers too, financed by kin
+       and merchants (Ambuhl, *Prisoners of War in the Hundred Years War*, 2013). */
+    function takePrisoner(q, by) {
+      const v = nearestOwn(by); if (!v) return;
+      HELD.set(q.id, { by: by.f, v: v.id, taker: by.id, since: t }); count.prisoners++;
+      wakeUp(q); q.task = "patrol"; q.wait = 0; q.say = "I yield."; q.sayT = TK(30);
+    }
+    function ransomOf(q) { const f = factions[q.f]; return 5 + worth(q) * 0.5 + (q.id === f.leader ? 60 : 0) + (GOV && f.gov && officeIds(f.gov).includes(q.id) ? 20 : 0); }
+    function releasePrisoner(q, why) {
+      HELD.delete(q.id);
+      if (q.hp <= 0) return;
+      q.job = "farmer"; q.task = "idle"; q.wait = 0;   // home on their word not to fight again
+      const home = villages[q.home]; go(q, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol");
+      count[why]++;
+    }
+    /* Once a day for the captor's people: ransoms paid by family (the prisoner's own purse and kin) or,
+       for a leader or an official, the treasury; most to the soldier who took them. Two months on: an
+       exchange if they hold one of ours, else killed by a hard and dishonest captor, else let go. */
+    function ransoms(f) {
+      for (const [id, h] of HELD) {
+        if (h.by !== f.id) continue;
+        const q = byId.get(id);
+        if (!q || q.hp <= 0 || !factions[q.f].alive) { HELD.delete(id); continue; }
+        const r = ransomOf(q), own = factions[q.f], public_ = q.id === own.leader || (GOV && own.gov && officeIds(own.gov).includes(q.id));
+        let paid = false;
+        if (t - h.since < RANSOM_TALK * DAY_HOURS) continue;   // word sent, terms agreed, coins found
+        if (funds(q) >= r) { pay(q, r); paid = true; }
+        else if (public_ && own.treasury >= r) { own.treasury -= r; paid = true; }
+        if (paid) {
+          const taker = byId.get(h.taker); if (taker && taker.hp > 0) taker.coins += r * 0.7; else f.treasury += r * 0.7;
+          f.treasury += r * 0.3; count.ransomCoins += r;
+          if (r > 30) note("war", q.name + " has been ransomed from " + f.name + " for " + Math.round(r) + " coins.", 1.5, q.x, q.y, q.f);
+          releasePrisoner(q, "ransomed"); continue;
+        }
+        if (t - h.since < RANSOM_DAYS * DAY_HOURS) continue;
+        let swap = null;
+        for (const [id2, h2] of HELD) if (h2.by === q.f && byId.get(id2) && byId.get(id2).f === f.id) { swap = byId.get(id2); break; }
+        if (swap) { releasePrisoner(swap, "exchanged"); releasePrisoner(q, "exchanged"); continue; }
+        const lead = byId.get(f.leader);
+        if (ruling(lead, "temper", f) > 0.65 && ruling(lead, "honest", f) < 0.4) { HELD.delete(id); count.prisonersKilled++; die(q, "battle", lead); continue; }
+        releasePrisoner(q, "released");
+      }
+    }
+    /* Mutiny (TODO 15q): not one by one but together — the Army of Flanders, unpaid after Spain's
+       bankruptcy of 1575, sacked Antwerp in 1576. Two in five of a people's soldiers unpaid five days or
+       more, at least four, rise: they take what they are owed from the till and the people's grain where
+       they are, hold there and march nowhere, until the arrears are paid; after a month they scatter. */
+    function mutinyDay(f, wars) {
+      const m = f.mutiny;
+      if (m) {
+        const ids = [...m.ids].filter(id => { const p = byId.get(id); return p && p.hp > 0 && p.f === f.id && p.job === "soldier"; });
+        const owed = ids.reduce((a, id) => a + byId.get(id).unpaid * WAGE, 0);
+        if (f.treasury >= owed) {
+          for (const id of ids) { const p = byId.get(id); p.coins += p.unpaid * WAGE; p.unpaid = 0; }
+          f.treasury -= owed; f.mutiny = null;
+          note("war", f.name + " has paid its soldiers what they were owed, and they obey again.", 1.5, villages[m.v].x, villages[m.v].y, f.id);
+        } else if (t - m.since > 30 * DAY_HOURS) {
+          for (const id of ids) { const p = byId.get(id); p.job = BANDITS && p.coins < 5 ? "bandit" : "farmer"; p.task = "idle"; p.unpaid = 0; }
+          f.mutiny = null;
+        } else m.ids = new Set(ids);
+        return;
+      }
+      if (!wars) return;
+      const unpaid = [];
+      let all = 0;
+      for (const p of people) if (p.f === f.id && p.job === "soldier" && p.hp > 0 && !HELD.has(p.id)) { all++; if (p.unpaid >= MUTINY_DAYS) unpaid.push(p); }
+      if (unpaid.length < 4 || unpaid.length < all * 0.4) return;
+      const v = villages[unpaid[0].home];
+      let took = 0;
+      for (const p of unpaid) {
+        const owed = p.unpaid * WAGE;
+        const c = Math.min(owed, Math.max(0, v.till)); v.till -= c; p.coins += c; took += c;
+        const g = Math.min(owed - c, v.levy, v.food); v.levy -= g; v.food -= g; p.food += g; took += g;
+        p.unpaid = Math.max(0, Math.round((owed - c - g) / WAGE));
+      }
+      f.mutiny = { since: t, v: v.id, ids: new Set(unpaid.map(p => p.id)) }; count.mutinies++; count.mutinyTook += took;
+      note("riot", unpaid.length + " of " + f.name + "'s soldiers, unpaid, have risen at " + v.name + " and taken what they are owed.", 2.5, v.x, v.y, f.id);
+    }
+    /* War loans (TODO 15q; Slantchev, *Borrowed Power*: borrowing lets wars start, last longer, end
+       harder). At war with too little to pay its soldiers a fortnight, a people borrows from the richest
+       grown-ups of its own and of peoples at peace with it, up to twice its people's number in coins,
+       halved for each default; it owes about a tenth a year; it repays a fiftieth a day at peace while
+       the treasury has more than a fortnight's wages; owing more than three times its credit, or unable
+       to pay its interest for two months, it defaults: the lenders lose it all, nobody lends for years. */
+    function borrow(f, wars) {
+      const book = LOANS.get(f.id);
+      let debt = 0; if (book) for (const a of book.values()) debt += a;
+      if (debt > 0) {
+        const interest = debt * LOAN_RATE;
+        if (f.treasury >= interest) { f.treasury -= interest; payLenders(f, book, interest, debt, false); f.behind = 0; }
+        else { for (const [id, a] of book) book.set(id, a * (1 + LOAN_RATE)); f.behind = (f.behind || 0) + 1; debt *= 1 + LOAN_RATE; }
+        const credit = (f.pop || 1) * 2 * Math.pow(0.5, f.defaults || 0);
+        if (debt > credit * 3 || f.behind > 60) {
+          LOANS.delete(f.id); f.defaults = (f.defaults || 0) + 1; f.defaultAt = t; f.behind = 0; count.defaults++;
+          f.treasury = 0;   // what was left went to the most pressing lenders; the soldiers go unpaid
+          const v = villages.find(u => u.alive && u.f === f.id);
+          if (v) note("war", f.name + " cannot pay what it borrowed for the war: its lenders have lost " + Math.round(debt) + " coins.", 2.5, v.x, v.y, f.id);
+          return;
+        }
+        if (!wars && f.treasury > f.soldiers * WAGE * 14) {
+          const back = Math.min(debt * 0.02 + 1, f.treasury - f.soldiers * WAGE * 14, debt);
+          if (back > 0) { f.treasury -= back; payLenders(f, book, back, debt, true); count.repaid += back; }
+        }
+      }
+      if (!wars || f.treasury >= f.soldiers * WAGE * 14 || t - (f.defaultAt ?? -1e9) < 3 * YEAR) return;
+      const credit = (f.pop || 1) * 2 * Math.pow(0.5, f.defaults || 0) - debt;
+      let want = Math.min(credit, f.soldiers * WAGE * 30);
+      if (want < 5) return;
+      const lenders = people.filter(p => p.hp > 0 && adult(p) && p.coins > 50 && (p.f === f.id || !atWar(p.f, f.id))).sort((a, b) => b.coins - a.coins).slice(0, 10);
+      const b = book || new Map(); let got = 0;
+      for (const p of lenders) {
+        if (want <= 0) break;
+        const a = Math.min(want, p.coins * 0.3);
+        p.coins -= a; f.treasury += a; want -= a; got += a; b.set(p.id, (b.get(p.id) || 0) + a);
+      }
+      if (got > 0) {
+        LOANS.set(f.id, b); count.borrowed += got;
+        if (t - (f.loanNews ?? -1e9) > 60 * DAY_HOURS) { f.loanNews = t; const v = villages.find(u => u.alive && u.f === f.id); if (v) note("war", f.name + " has borrowed " + Math.round(got) + " coins to pay for the war.", 1.5, v.x, v.y, f.id); }
+      }
+    }
+    /* Paid to lenders in proportion to what each is owed; a repayment also lowers what is owed. Owed to the dead goes to nobody. */
+    function payLenders(f, book, amount, debt, principal) {
+      for (const [id, a] of book) {
+        const share = amount * a / debt, p = byId.get(id);
+        if (p && p.hp > 0) p.coins += share; else count.minted -= share;
+        if (principal) { const left = a - share; if (left <= 0.01) book.delete(id); else book.set(id, left); }
+      }
+      if (principal && !book.size) LOANS.delete(f.id);
+    }
+
     /* Siegecraft (TODO 15p), once a day at a place with enemies at its edge. Engines: three or more
        besiegers working under a wall break it over ENGINE_DAYS; mended a twentieth a day when they are
        gone. Hunger: a place shut in (more of them than our soldiers) for a fortnight, its store under a
@@ -4053,6 +4193,14 @@
         chosen(); p.chose = chosenTask; return;
       }
 
+      /* Held for ransom (TODO 15q): kept where they were taken to, fed by their captors. */
+      if (SPOILS && HELD.has(p.id)) {
+        const hv = villages[HELD.get(p.id).v];
+        if (p.food < dailyNeed(p) && hv.food > dailyNeed(p)) { hv.food -= dailyNeed(p); p.food += dailyNeed(p); }
+        if (Math.hypot(p.x - hv.x, p.y - hv.y) > 1.5) { go(p, hv.x + (R() - 0.5), hv.y + (R() - 0.5), "patrol"); p.wait = 0; }
+        else { p.task = dark ? "sleep" : "idle"; p.wait = TK(60); }
+        p.chose = "held"; return;
+      }
       /* On campaign (TODO 15j): duty, or sleep where the army lies; nothing else calls them home. */
       if (CAMPAIGN && p.job === "soldier" && !(p.dry > 0) && p.hp >= 0.45 && onCampaign(p)) {
         count.campHours++;
@@ -5029,7 +5177,7 @@
             const q = b[i];
             /* The wounded leaving the field are let go (2026-11-14): chased and
                cut down as they walked home, they were most of a war's dead. */
-            if (q.job !== "soldier" || (q.hp < 0.45 && !(GENERALS && (ROUT.get(q.id) ?? -1) > t)) || !atWar(p.f, q.f)) continue;   // TODO 15o: the running are hunted
+            if (q.job !== "soldier" || (q.hp < 0.45 && !(GENERALS && (ROUT.get(q.id) ?? -1) > t)) || !atWar(p.f, q.f) || (SPOILS && HELD.has(q.id))) continue;   // TODO 15o: the running are hunted
             const d = dist(p, q);
             if (d < bd) { bd = d; best = q; }
           }
@@ -5076,6 +5224,8 @@
     function soldier(p) {
       const f = factions[p.f], home = villages[p.home];
       const atHome = dist(p, home) < 2.5;
+      /* Risen for their pay (TODO 15q): they hold their own place and march nowhere. */
+      if (SPOILS && f.mutiny && f.mutiny.ids.has(p.id)) { const d = home.radius * R(); go(p, home.x + (R() - 0.5) * d, home.y + (R() - 0.5) * d, "patrol"); p.wait = TK(12); return; }
       /* Running from a broken army (TODO 15o): home, fighting nobody. */
       if (GENERALS && (ROUT.get(p.id) ?? -1) > t) { if (!atHome) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; } ROUT.delete(p.id); }
       /* The wounded go home to heal; a fight is for the whole. */
@@ -9388,6 +9538,7 @@
            world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
         for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && !(SIEGECRAFT && servedOut(p)) && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25)) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
+      if (SPOILS) { borrow(f, wars); ransoms(f); mutinyDay(f, wars); }   // TODO 15q: before hiring, so a loan can hire
       if (ARMIES && !shared) hire(f, wars, f.soldiers * WAGE * 7);   // TODO 15h
       if (CAMPAIGN && wars) desertions(f);   // TODO 15j
       if (ARMY_SICK) campSickness(f, wars);   // TODO 15m
@@ -9983,6 +10134,7 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      takePrisoner: (q, by) => takePrisoner(q, by), held: p => HELD.get(p.id), ransoms: fid => ransoms(factions[fid]), mutinyDay: fid => mutinyDay(factions[fid], true), borrow: (fid, wars) => borrow(factions[fid], wars), debtOf: fid => { const b = LOANS.get(fid); let d = 0; if (b) for (const a of b.values()) d += a; return d; },   // TODO 15q
       siegeWorks: (vid, fid, attackers, ours) => siegeWorks(villages[vid], [String(fid)], { [fid]: attackers }, attackers, ours, []),
       serviceOf: fid => SIEGECRAFT ? serviceOf(factions[fid]) : "levy", service: fid => service(factions[fid]), servedOut: p => SIEGECRAFT && servedOut(p),   // TODO 15p
       generalOf: fid => GENERALS ? generalOf(factions[fid]) : null, skillOf: p => skillOf(p), planOf: (fid, oid) => factions[fid].camp[oid] && factions[fid].camp[oid].plan, choosePlan: (fid, oid) => { const f = factions[fid], c = f.camp[oid]; choosePlan(f, factions[oid], c, generalOf(f)); return c.plan; },

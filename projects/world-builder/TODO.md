@@ -2891,7 +2891,9 @@ by scutage that hires soldiers, against a paid standing army (Rome) with its nig
 **Done when:** a walled place falls to engines or hunger, not only to numbers, and a feudal army
 melts away when its service ends. **Budget:** default.
 
-### [ ] 15q. Prisoners and ransom, mutiny, and paying for war by borrowing
+### [x] 15q. Prisoners and ransom, mutiny, and paying for war by borrowing
+
+**Done 2026-11-22.** Setting Prisoners, mutiny and war loans ("None of it" = the 15p world, fingerprinted). A soldier knocked out of the line is taken about one time in seven, one in two from a broken army; held at the captor's place and fed; ransomed after ten days for 5 coins and half of what they and their parents are worth (more for leaders and officials), seven-tenths to the soldier who took them; after two months exchanged, killed by a hot-tempered and dishonest ruler, or let go. Two in five of a people's soldiers five days unpaid rise together, take their pay from the till and grain where they are and hold there until paid, or scatter after a month. At war short of a fortnight's wages a people borrows from the richest (coins moved, none made), owes a tenth a year, repays in peace, and defaults when three times its credit or two months behind: lenders lose it, treasury empty, no lending for three years. Measured, a year of war: 31 to 79 prisoners, nearly all ransomed; 0 to 5 mutinies; about 1,000 coins borrowed; no default in a year. `test/spoils.test.mjs`; README, "Prisoners, mutiny and war loans". Left: merchants lending on ransoms, prisoners as news, a ruler's ransom ending a war.
 
 15k's gaps 5, 6 and 7. **Do:** captives taken in battle and ransomed by contract (or exchanged, or
 killed), a living for soldiers; unpaid soldiers rising together and holding a place for their pay

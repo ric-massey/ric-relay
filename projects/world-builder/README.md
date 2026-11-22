@@ -2178,6 +2178,47 @@ to 2,350; captures 3 and 0 against 1 and 0. Ancient, a wall was broken once in e
 was starved out in these years: villages flee or fall to numbers first. **Left out:** engineers and
 prisoners building ramps; countermining; the 1200s' shift from forty days to paid foot soldiers.
 
+### Prisoners, mutiny and war loans (2026-11-22)
+
+TODO item 15q, from 15k's gaps 5, 6 and 7. Setting **Prisoners, mutiny and war loans** under War:
+"Taken, ransomed, borrowed for" (default) or "None of it (as before)", which leaves the 15p world
+exactly as it was (fingerprinted).
+
+- **Prisoners.** A soldier knocked out of the line by a blow may be taken: about one in seven, one in
+  two if their army has broken (15o). They are kept at the captor's nearest place, fed from its store,
+  and nobody fights them. In the Hundred Years' War captives of every rank were ransomed by contract,
+  a living for common soldiers too, financed by kin and merchants (Ambuhl, *Prisoners of War in the
+  Hundred Years War*, 2013; set scales from Agincourt on).
+- **Ransom**: after ten days (word sent, terms agreed), 5 coins and half of what the prisoner and their
+  parents are worth, 60 more for a leader and 20 for an official; paid out of the prisoner's purse and
+  their household's, or by their people's treasury for a leader or an official. Seven-tenths go to
+  the soldier who took them, the rest to the captor's treasury. A ransomed prisoner goes home to farm,
+  on their word not to fight again in this war.
+- **Unransomed** after two months: exchanged if the other side holds one of the captor's people;
+  otherwise killed where the captor's ruler is hot-tempered and dishonest (`ruling` over 0.65 and under
+  0.4), else let go.
+- **Mutiny** (the Army of Flanders, unpaid after Spain's bankruptcy of 1575, sacked Antwerp in 1576;
+  garrisons held forts as security for arrears): when two in five of a people's soldiers, and at least
+  four, have gone five days unpaid, they rise together at their place, take what they are owed from its
+  till and the people's grain there, and hold it, marching nowhere, until the treasury pays the rest;
+  after a month unpaid they scatter, the poor to banditry (15.5b4).
+- **War loans** (Slantchev, *Borrowed Power*: borrowing lets wars start, last longer and end harder; a
+  default leaves armies unpaid). A people at war with less than a fortnight's wages in its treasury
+  borrows from the ten richest grown-ups of its own and of peoples not at war with it, a third of each
+  one's coins, up to twice its number of people in coins (halved for each default), and owes about a
+  tenth a year in interest, paid to the lenders. At peace with more than a fortnight's wages it repays
+  a fiftieth a day. Owing three times its credit, or two months behind with its interest, it
+  **defaults**: the lenders lose it all, its treasury is empty (the soldiers go unpaid, so they may
+  rise), and nobody lends to it for three years. No coin is made: a loan is coins moved from lenders.
+- Counts `prisoners`, `ransomed`, `ransomCoins`, `exchanged`, `prisonersKilled`, `released`,
+  `mutinies`, `mutinyTook`, `borrowed`, `repaid`, `defaults`; hooks `w.takePrisoner`, `w.held`,
+  `w.ransoms`, `w.mutinyDay`, `w.borrow`, `w.debtOf`. `test/spoils.test.mjs`.
+
+**Measured** (a year of war, 600 people, three old enemies, two seeds, before the ten days' wait was
+added): 31 to 79 prisoners, nearly all ransomed, 700 to 1,700 coins in ransoms; 0 to 5 mutinies; about
+800 to 1,170 coins borrowed; no default within a year. **Left out:** merchants lending against
+ransoms; prisoners as a source of news for generals (15o); a ruler's own ransom ending a war.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
