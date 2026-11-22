@@ -177,6 +177,7 @@ body[data-look="terminal"] .marquee{min-height:0;margin-bottom:6px;padding:0}
 body[data-look="terminal"] .screen{padding:4px}
 body[data-look="terminal"] .deck{border-top:1px dashed #2c6b3a;border-radius:0}
 body[data-look="terminal"] .tt-name{font-size:0!important}body[data-look="terminal"] .tt-name::before{font-size:17px}body[data-look="terminal"] .tt-name::after{content:"tetris";font:400 17px var(--term-font);text-transform:none}
+@media(max-width:760px){body[data-look="terminal"] .tt-name::before,body[data-look="terminal"] .tt-name::after{font-size:clamp(11px,3.4vw,15px)!important;letter-spacing:0}}@media(max-width:340px){body[data-look="terminal"] .tt-name::before,body[data-look="terminal"] .tt-name::after{font-size:10px!important}}
   </style>
 </head>
 <body data-game="tetris" data-skin="0" data-look="cabinet">

@@ -400,4 +400,27 @@ body[data-look="terminal"] #options-toggle::before{content:'[ '}body[data-look="
   body[data-look="terminal"] .game-actions.has-options:not(.open) :is(#new-game,#save-game,#options-toggle){border:1px dashed var(--edge,#2c6b3a)!important}
   body[data-look="terminal"] header :is(h1,.cz-title,.ck-title,.st-title,.sn-title,.ms-name,.wd-name,.tt-name,.sd-site,.tc-site){font-size:15px!important}
 }
+/* Phones: the game's whole name always shows (Ric, 2026-11-21: "Make it so the
+   longer named games don't get cut short"). The New button says just "New", the
+   row is tighter, and the name's size steps down with the screen. */
+@media (max-width:760px){
+  header:has(.game-actions.has-options:not(.open)){gap:6px!important;padding-left:8px!important;padding-right:8px!important}
+  header:has(.game-actions.has-options:not(.open)) .game-actions{gap:5px!important}
+  header:has(.game-actions.has-options:not(.open)) :is(.cz-back,.ck-back,.st-back,.ms-back,.sd-back,.wd-back,.tt-back,.sn-back,.tc-back,.back){width:36px;min-width:36px;height:44px;flex:none}
+  body .game-actions.has-options:not(.open) #new-game{font-size:0!important}
+  body .game-actions.has-options:not(.open) #new-game::before{content:'New'!important;font-size:14px}
+  body[data-look="terminal"] .game-actions.has-options:not(.open) #new-game::before{content:'new'!important}
+  header :is(.cz-title,.ck-title,.st-title,.sn-title,.ms-name,.wd-name,.tt-name,.sd-site,.tc-site){font-size:clamp(15px,4.6vw,18px)!important;text-overflow:clip!important;flex:0 1 auto}
+  body:not([data-look="terminal"]) :is(.sd-site,.tc-site,.tt-name)::after{font-size:clamp(15px,4.6vw,18px)!important}
+  body[data-look="terminal"] header :is(h1,.cz-title,.ck-title,.st-title,.sn-title,.ms-name,.wd-name,.tt-name,.sd-site,.tc-site){font-size:clamp(11px,3.4vw,15px)!important}
+  body[data-look="terminal"] :is(.sd-site,.tc-site)::after{font-size:clamp(11px,3.4vw,15px)!important}
+}
+@media (max-width:760px){header .ms-name{letter-spacing:.02em!important}}
+/* Very narrow phones (320-340 px): names a size smaller still. */
+@media (max-width:340px){
+  header :is(.cz-title,.ck-title,.st-title,.sn-title,.ms-name,.wd-name,.tt-name,.sd-site,.tc-site){font-size:13px!important;letter-spacing:0!important}
+  body:not([data-look="terminal"]) :is(.sd-site,.tc-site,.tt-name)::after{font-size:13px!important}
+  body[data-look="terminal"] header :is(h1,.cz-title,.ck-title,.st-title,.sn-title,.ms-name,.wd-name,.tt-name,.sd-site,.tc-site),body[data-look="terminal"] :is(.sd-site,.tc-site)::after{font-size:10px!important}
+  body .game-actions.has-options:not(.open) :is(#new-game,#save-game){padding-left:7px!important;padding-right:7px!important}
+}
 
