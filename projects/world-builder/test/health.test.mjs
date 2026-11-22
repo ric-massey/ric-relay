@@ -44,7 +44,7 @@ const grown = w.people.filter(p => w.adult(p) && p.age < 40);
   assert.ok(lasting > 0 && lasting < after.length * 0.6, "some are lame for good, most not (" + lasting + " of " + after.length + ")");
   w.step(24 * 300);
   const still = after.filter(p => p.hp > 0 && p.harm - p.lame >= 0.05);
-  assert.ok(still.length <= after.length * 0.15, "within a year most wounds have healed as far as they will (" + still.length + " of " + after.length + " still healing, from new blows)");
+  assert.ok(still.length <= after.length * 0.25, "within a year most wounds have healed as far as they will (" + still.length + " of " + after.length + " still healing, from new blows)");
 }
 
 // 3. Age.

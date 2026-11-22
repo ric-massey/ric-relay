@@ -12,7 +12,10 @@
 // node projects/world-builder/test/materials.test.mjs
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-const People = createRequire(import.meta.url)("../people.js");
+const People0 = createRequire(import.meta.url)("../people.js");
+/* TODO 15.5 (2026-11-22): the firewood checked is the village store's (9c); each household's own is 15.5f, tested in hearth.test.mjs; so its worlds keep these at their old values unless a check sets them. */
+const PIN = { hearth: "village" };
+const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 
 // 1 and 2. Twenty days of the default world; each village's hours by what they were doing.
 {

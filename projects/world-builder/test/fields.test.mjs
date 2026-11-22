@@ -13,7 +13,10 @@
 // node projects/world-builder/test/fields.test.mjs
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-const People = createRequire(import.meta.url)("../people.js");
+const People0 = createRequire(import.meta.url)("../people.js");
+/* TODO 15.5 (2026-11-22): these checks were made on worlds before 15.5's later parts and sit near their thresholds by seed (each passes with any of several of those parts off, 2026-11-22); so its worlds keep these at their old values unless a check sets them. */
+const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false };
+const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 
 // 1. Common fields.
 {

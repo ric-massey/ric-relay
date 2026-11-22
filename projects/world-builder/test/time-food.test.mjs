@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-const People=createRequire(import.meta.url)("../people.js");
+const People0 = createRequire(import.meta.url)("../people.js");
+/* TODO 15.5 (2026-11-22): the regrowth checked is the land's own: tired soil (15.5d) and the climate's swing (15.5q) move it; so its worlds keep these at their old values unless a check sets them. */
+const PIN = { landchange: "fixed", climate: 0 };
+const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 const options={people:40,map:"small",talk:0.8,seed:11,plague:"none"};
 const print=w=>JSON.stringify({ people:w.people, minds:w.people.map(p=>w.inMind(p)), factions:w.factions,villages:w.villages,stock:[...w.stock],events:w.events,chatter:w.chatter,stats:w.stats() });
 const batched=People.create(options), hourly=People.create(options), framed=People.create(options);
@@ -44,7 +47,7 @@ for(const life of [20,120]){
 }
 {
  // The year, read off its settings (the slow suite runs a world into the frost).
- const base=People.clean({winter:1,weather:0,latitude:45,start:"spring"});
+ const base=People.clean({winter:1,weather:0,climate:0,latitude:45,start:"spring"});   // climate: TODO 15.5q, the slow swing is weather too
  const at=(d,x={})=>People.seasonAt(d,{...base,...x});
  assert.equal(at(0).name,"spring");
  assert.equal(at(0,{start:"autumn"}).name,"autumn");assert.equal(at(0,{start:"winter"}).name,"winter");

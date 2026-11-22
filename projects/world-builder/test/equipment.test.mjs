@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-const People = createRequire(import.meta.url)("../people.js");
+const People0 = createRequire(import.meta.url)("../people.js");
+/* TODO 15.5 (2026-11-22): the harvest numbers checked are a tool's alone: strength (15.5l), the plough (15.5o) and a child's share (15.5m) move them; so its worlds keep these at their old values unless a check sets them. */
+const PIN = { sexes: "none", beasts: "none", childwork: "none" };
+const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 // The goods economy as it was; real materials are held at the end (TODO 9a).
 const make = extra => People.create({ people: 20, map: "small", factions: 1, villages: 2, war: false, talk: 0, seed: 7, materials: "goods", ...extra });
 const ready = w => {

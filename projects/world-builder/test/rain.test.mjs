@@ -13,7 +13,10 @@
 // node projects/world-builder/test/rain.test.mjs
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-const People = createRequire(import.meta.url)("../people.js");
+const People0 = createRequire(import.meta.url)("../people.js");
+/* TODO 15.5 (2026-11-22): the rain checked is the year-to-year weather's: the climate's swing (15.5q) and ditches (15.5p) move it; so its worlds keep these at their old values unless a check sets them. */
+const PIN = { climate: 0, irrigation: "none" };
+const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 
 // 1. Off.
 {
