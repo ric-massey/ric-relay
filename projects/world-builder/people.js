@@ -1713,10 +1713,6 @@
                   waitHouse: -1, buildAt: -1, shift: false,
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   unfree: undefined,   // TODO 15c: the id of whoever holds them, while they are unfree
-                  keptBy: undefined,   // TODO 15b: the child who keeps them
-                  car: undefined,   // TODO 15d: when they bought a car
-                  wanderTo: undefined,   // TODO 15i: the village a traveller is making for
-                  hired: undefined, mustered: undefined,   // TODO 15h: when they were hired to fight for pay, and when they last reported in to an army gathering
                   know: undefined,   // TODO 15e: what they know how to do, a bit for each of TECH
                   faith: undefined, zeal: undefined,   // TODO 15g: which faith they hold, and how hard
                   vig: 1, harm: 0, lame: 0,   // TODO 15.5e: strength left (wounds and age), a wound still healing, and what of it never will
@@ -2295,6 +2291,9 @@
                    rifle: { reach: 2.5, hit: 2, name: "rifles" }, modern: { reach: 3, hit: 2.5, name: "machine guns" } };
     const TOWER_REACH = 140;   // squares: 35 km, GSM's timing limit
     const BAND_LOST = ["farming", "plough", "ditches", "wells", "carts", "bridges"];   // TODO 15i: what a band does not know
+    /* Rare state kept beside the people, not on them (TODO 15): one field more on every person made the
+       whole engine about 70% slower (V8's object shapes), measured 2026-11-22. Keyed by person id. */
+    const CARS = new Map(), WANDER = new Map(), MUSTER = new Map(), HIRED = new Map(), KEPT = new Map();
     const ROAM = S.roaming !== "settled";   // TODO 15i: bands that move camp, and people on the road (see "people who belong to no one place")
     const ARMIES = S.armies !== "trickle";   // TODO 15h: armies that gather, carry and choose (see "armies")
     const MARCH_DAY = 80, HIRE_WAGE = WAGE * 2;   // squares a day's march (20 km; Engels), and a hired man's wage
@@ -3259,7 +3258,7 @@
     }
     /* How fast somebody laden with a cart goes on this square (TODO 7d). */
     function cartPace(p, i) {
-      if (WIRED && p.car && villages[p.home].power) return track[i] === 2 ? 3 : track[i] === 1 ? 1.2 : 0.6;   // TODO 15d: a car, on a road, with fuel at home
+      if (WIRED && CARS.size && CARS.has(p.id) && villages[p.home].power) return track[i] === 2 ? 3 : track[i] === 1 ? 1.2 : 0.6;   // TODO 15d: a car, on a road, with fuel at home
       if (!equipped(p, "cart")) return 1;
       if (BEASTS && villages[p.home].horses >= 1) return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.95 : 0.75;   // TODO 15.5o: a horse in the shafts
       return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.85 : 0.6;
@@ -4027,7 +4026,7 @@
 
         /* On the road (TODO 15i): to another village, for bread, or to stay. */
         if (ROAM && p.job === "vagrant")
-          weigh("wander", 0.7 + n.food * 0.6 + n.provide * 0.5 - n.rest * 0.5 - dark * 0.8, () => { const o = wanderTo(p); if (o) { p.wanderTo = o.id; go(p, o.x + (R() - 0.5), o.y + (R() - 0.5), "wander"); p.wait = 0; } });
+          weigh("wander", 0.7 + n.food * 0.6 + n.provide * 0.5 - n.rest * 0.5 - dark * 0.8, () => { const o = wanderTo(p); if (o) { WANDER.set(p.id, o.id); go(p, o.x + (R() - 0.5), o.y + (R() - 0.5), "wander"); p.wait = 0; } });
         /* A service (TODO 15f): half a day of it, where people pay for it. */
         if (WORKS && SERVICES.includes(p.job)) {
           const sw = serviceWorth(v, p.job) * (v.hands ? v.hands[p.job] || 1 : 1);
@@ -4833,7 +4832,7 @@
         const camp = ARMIES && !raider ? f.camp[enemy] : null;
         if (camp && (!camp.ready || !fighting(f)) && camp.v >= 0 && villages[camp.v].alive && villages[camp.v].f === p.f) {   // and out of the season they wait there
           const m = villages[camp.v];
-          if (dist(p, m) < 3) { p.mustered = t; provision(p, m); outfit(p, m); const a = R() * 6.2832; go(p, m.x + Math.cos(a) * 1.5, m.y + Math.sin(a) * 1.5, "patrol"); p.wait = TK(30); }
+          if (dist(p, m) < 3) { MUSTER.set(p.id, t); provision(p, m); outfit(p, m); const a = R() * 6.2832; go(p, m.x + Math.cos(a) * 1.5, m.y + Math.sin(a) * 1.5, "patrol"); p.wait = TK(30); }
           else { go(p, m.x + (R() - 0.5), m.y + (R() - 0.5), "patrol"); p.wait = 0; }
           return;
         }
@@ -7767,9 +7766,9 @@
     function keepOld(f) {
       for (const p of people) {
         if (p.f !== f.id || p.hp <= 0) continue;
-        if (p.keptBy) {
-          const k = byId.get(p.keptBy);
-          if (!k || k.hp <= 0 || k.home !== p.home) { p.keptBy = 0; continue; }
+        if (KEPT.has(p.id)) {
+          const k = byId.get(KEPT.get(p.id));
+          if (!k || k.hp <= 0 || k.home !== p.home) { KEPT.delete(p.id); continue; }
           const need = dailyNeed(p);
           if (p.food < need * 2 && k.food > dailyNeed(k) * 4) { const x = Math.min(need * 2, k.food - dailyNeed(k) * 4); k.food -= x; p.food += x; count.keptFed += x; }
           continue;
@@ -7780,7 +7779,7 @@
         if (!child) continue;
         if (p.coins > 3) { child.coins += p.coins - 3; p.coins = 3; }
         if (p.dwelling >= 0 && homes[p.dwelling] && homes[p.dwelling].owner === p.id) homes[p.dwelling].owner = child.id;
-        p.keptBy = child.id; count.handedOver++;
+        KEPT.set(p.id, child.id); count.handedOver++;
       }
     }
     function marriageDay(f, lead) {
@@ -8039,7 +8038,7 @@
       const muster = villages[c.v], goal = villages[c.goal];
       /* Who would march, and how many have come in. */
       let all = 0, here = 0;
-      for (const p of people) if (p.f === f.id && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0 && !(villages[p.home].heldTo > t)) { all++; if (p.mustered > t - 2 * DAY_HOURS) here++; }   // reported in within two days
+      for (const p of people) if (p.f === f.id && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0 && !(villages[p.home].heldTo > t)) { all++; if ((MUSTER.get(p.id) ?? -1e9) > t - 2 * DAY_HOURS) here++; }   // reported in within two days
       /* The line it is fed along: three points between the gathering place and the goal. */
       let cut = false;
       for (const k of [0.25, 0.5, 0.75]) {
@@ -8082,7 +8081,7 @@
         const p = byId.get(id);
         if (!p || p.hp <= 0 || p.f !== f.id || p.job !== "soldier") return false;
         if (p.unpaid >= 7 || !wars) {
-          p.job = BANDITS && (p.unpaid >= 7 || p.coins < 5) ? "bandit" : "farmer"; p.task = "idle"; p.hired = 0; count.hiredGone++;
+          p.job = BANDITS && (p.unpaid >= 7 || p.coins < 5) ? "bandit" : "farmer"; p.task = "idle"; HIRED.delete(p.id); count.hiredGone++;
           if (p.job === "bandit") count.hiredBandits++;
           return false;
         }
@@ -8093,13 +8092,13 @@
       let took = 0;
       for (const p of people) {
         if (took >= 3) break;
-        if (p.hp <= 0 || !adult(p) || p.hired || p.unfree || p.id === factions[p.f].leader || (p.job !== "bandit" && !(p.coins < 2 && p.f !== f.id)) || atWar(p.f, f.id)) continue;
+        if (p.hp <= 0 || !adult(p) || HIRED.has(p.id) || p.unfree || p.id === factions[p.f].leader || (p.job !== "bandit" && !(p.coins < 2 && p.f !== f.id)) || atWar(p.f, f.id)) continue;
         if ((1 - p.lame) * (HEALTH ? ageVigour(p) : 1) < 0.6 || p.bold < 0.35) continue;
         let to = null, d = 30;
         for (const v of mine) { const dd = Math.hypot(v.x - p.x, v.y - p.y); if (dd < d) { d = dd; to = v; } }
         if (!to) continue;
         if (p.f !== f.id) { p.f = f.id; p.from = f.id; rehome(p, to, "hired"); }
-        p.job = "soldier"; p.task = "idle"; p.wait = 0; p.hired = t; p.unpaid = 0; p.loyal = 0.3;
+        p.job = "soldier"; p.task = "idle"; p.wait = 0; HIRED.set(p.id, t); p.unpaid = 0; p.loyal = 0.3;
         (f.hired || (f.hired = [])).push(p.id); took++; count.hired++;
       }
       if (took) note("war", f.name + " has hired " + took + " to fight for pay.", 1.5, mine[0].x, mine[0].y, f.id);
@@ -8216,7 +8215,7 @@
       return best;
     }
     function arrive(p) {
-      const o = villages[p.wanderTo];
+      const o = villages[WANDER.get(p.id)];
       if (!o || !o.alive) { p.task = "idle"; return; }
       p.at = o.id;
       const fed = o.food > o.pop * 14 && o.hungry < o.pop * 0.1;   // a fortnight of bread a head, and few going hungry
@@ -8246,7 +8245,8 @@
     /* Whether a people has something: what its people know, where know-how is held (15e); else its era's list. */
     function has(fid, k) {
       const f = factions[fid];
-      if (KNOW && f.know) return f.know[TI_K[k]] > 0;
+      /* A new thing changes a whole people (its arms, its medicine) only once one in ten of them holds it: one man who has heard of the railway does not arm an army. */
+      if (KNOW && f.know) { const i = TI_K[k], n = f.know[i]; return BASE_KNOW & (1 << i) ? n > 0 : n >= Math.max(1, (f.pop || 1) * 0.1); }
       return eraHas(fid, k);
     }
     /* Weapons by what a people knows (Dupuy, *The Evolution of Weapons and Warfare*, 1980: a sword 23, a
@@ -8284,7 +8284,7 @@
        engine and a works stands to make it; fast on a road while the power works at home has fuel. */
     function buyCars(v) {
       if (!has(v.f, "engine") || !(v.works && v.works.works && v.works.works.built)) return;
-      for (const p of residents(v.id)) if (p.job === "trader" && !p.car && p.coins > 30 && p.hp > 0) { p.coins -= 25; v.till += 25; p.car = t; count.cars++; }
+      for (const p of residents(v.id)) if (p.job === "trader" && !CARS.has(p.id) && p.coins > 30 && p.hp > 0) { p.coins -= 25; v.till += 25; CARS.set(p.id, t); count.cars++; }
     }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
@@ -9609,6 +9609,7 @@
       place: (p, x, y) => jump(p, x, y), startWar: (a, b) => startWar(factions[a], factions[b], factions[a].name + " has gone to war with " + factions[b].name + "."),   // for the tests (TODO 15h)
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
+      muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },

@@ -1986,7 +1986,10 @@ by themselves** (off by default).
   start with (15e), to which ten techniques were added — iron working, riding and pack horses,
   printing, gunpowder, the railway, the telegraph, the engine, medicine, the radio, the telephone.
   After the start a people has what its people hold: they learn from neighbours who have it, lose
-  it, and, with eras moving on, find it.
+  it, and, with eras moving on, find it. One of the ten changes a whole people — its arms, its
+  medicine, its tractors — only once one in ten of them holds it (seen in the page: a medieval
+  people beside an industrial one was "fighting with rifles" when one man had learned of the
+  railway).
 - **War** (14e's numbers, per people): Bronze Age and Ancient armies about one in a hundred under
   arms (Roman, Our World in Data), medieval half that; walls worth more in stone, less once
   gunpowder came; no fighting season from the industrial age; modern standing armies about one in a
@@ -2023,7 +2026,8 @@ had its lines cut. Cost: a look at the villages with lines and towers for each p
 
 **Left out:** relays of horses and the post as carriers of news; eras set per people beyond the
 first in the page (the link holds the two settings); house shapes by people as well as by era;
-tanks, aircraft and the bomb (Dupuy's table has them; nothing yet makes them).
+tanks, aircraft and the bomb (Dupuy's table has them; nothing yet makes them); a forager camp's
+ground is still drawn like a village's land round it.
 
 ### People who belong to no one place (2026-11-22)
 

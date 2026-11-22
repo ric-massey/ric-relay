@@ -54,12 +54,12 @@ w.warMap();
   assert.ok(c.goal >= 0 && c.v >= 0, "a place to strike and a place to gather");
   /* The rule itself: not before enough have reported in at the gathering place. */
   const mine = w.people.filter(p => p.f === a.id && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0);
-  for (const p of mine) p.mustered = -1e9;
+  for (const p of mine) w.muster(p, -1e9);
   c.ready = false; c.since = w.tick;
   w.warMap(); w.campaign(a.id, b.id);
   assert.equal(c.ready, false, "with nobody come in, it does not march");
   const m = w.villages[c.v];
-  for (const p of mine.slice(0, Math.ceil(mine.length * 0.95))) { w.place(p, m.x + 0.5, m.y + 0.5); p.mustered = w.tick; }
+  for (const p of mine.slice(0, Math.ceil(mine.length * 0.95))) { w.place(p, m.x + 0.5, m.y + 0.5); w.muster(p, w.tick); }
   w.warMap(); w.campaign(a.id, b.id);
   assert.ok(c.ready, "with nearly all come in, it marches (" + mine.length + " soldiers)");
   assert.ok(w.events.some(e => e.kind === "war" && /marches from/.test(e.text)), "and it is news");

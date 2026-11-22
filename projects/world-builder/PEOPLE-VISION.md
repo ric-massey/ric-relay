@@ -819,7 +819,7 @@ when it is built.
 - [x] How events move traits, and how fast (2026-11-17, TODO item 10: Ric, "A little") (Ric: "those numbers can change based on
   cercumstances").
 - [x] The mind: how many slots, what kinds of thing a slot holds, how the weakest is forgotten. (2026-11-17, TODO item 11: Ric, 20, "A little", "Grudges last longest")
-- [ ] Skills: learned by doing, taught, lost when the people who had them die.
+- [x] Skills: learned by doing, taught, lost when the people who had them die. (2026-11-22, TODO 15e: techniques held, found, seen, taught and lost.)
 - [ ] Health: wounds, sickness, old age, what a person can no longer do.
   (2026-11-20: wounds and old age `TODO.md` 15.5e; sickness item 18.)
 - [x] What the visitor sets about people at the start ("what the people are kinda like").
@@ -833,8 +833,8 @@ when it is built.
 - [x] Trust, and things arriving weaker or wrong. (2026-11-18, TODO 12: Ric, "1 in 20".)
 - [x] People acting on what they know, not on what is true. (2026-11-18, TODO 12: news of war, and where food is; 2026-11-19, TODO 12b: sickness, famine, dear food and dry years.)
 - [x] Children: some inherited, some heard (decided: "a mix of both"). How much of each. (2026-11-18, TODO 12: up to four of each parent's strongest things, weaker.)
-- [ ] News over distance by era: on foot, by rider, by letter, by radio, by phone within reach
-  of a tower.
+- [x] News over distance by era: on foot, by rider, by letter, by radio, by phone within reach
+  of a tower. (2026-11-22, TODO 15d: by what is built — telegraph lines, towers, radio; relays and the post left out.)
 - [x] Following it on screen: who told whom, and where a rumour started. (2026-11-18, TODO 12: the person panel.)
 
 **6. Making a living**
@@ -850,19 +850,21 @@ when it is built.
 
 **7. Eras**
 - Now: one era, roughly a farming village with hand weapons.
-- [ ] Which eras there are, from tribes to modern.
-- [ ] What changes between them (Ric: "the building and weapons and travel really change
+- [x] Which eras there are, from tribes to modern. (2026-11-22, TODO 15d: nine, as starting points.)
+- [x] What changes between them (Ric: "the building and weapons and travel really change
   more"): materials and size of buildings, weapons, travel, how many one farmer feeds, medicine.
-- [ ] Whether a world stays in its era or can move on by itself over centuries.
-- [ ] Modern things that must exist as things: towers, power, fuel, vehicles.
+  (2026-11-22, TODO 15d.)
+- [x] Whether a world stays in its era or can move on by itself over centuries. (2026-11-22, TODO 15d: "Eras move on by themselves".)
+- [x] Modern things that must exist as things: towers, power, fuel, vehicles. (2026-11-22, TODO 15f and 15d.)
 
 **8. War and after**
 - Now: factions go to war and make peace, soldiers are real people, fights wear gear, armies
   need food from home (first version, 2026-11-14).
-- [ ] War "accurate to the time": weapons, reach and deadliness by era, walls and sieges, raids,
+- [x] War "accurate to the time": weapons, reach and deadliness by era, walls and sieges, raids,
   how far an army can go. (2026-11-20, TODO 14e: walls raised in wartime, raids by bands, a
   fighting season, an army a people can keep, weariness that knows who is winning, all as numbers
-  item 15 sets per era; weapons by era and an army's reach are item 15.)
+  item 15 sets per era; weapons by era and an army's reach are item 15.) (2026-11-22: done with
+  TODO 15h and 15d.)
 - [x] Wartime effort: fear only where the fighting is, and a war elsewhere makes people work and
   store more. (2026-11-19, TODO 14a.)
 - [x] Why a war starts and why it ends, from what the people and the leader hold in mind.

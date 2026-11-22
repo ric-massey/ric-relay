@@ -14,7 +14,9 @@
 // node projects/world-builder/test/landchange.test.mjs
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-const People = createRequire(import.meta.url)("../people.js");
+const Engine = createRequire(import.meta.url)("../people.js");
+/* Item 15's parts off: this test holds its own part as it was built (TODO 15, 2026-11-22). */
+const People = Object.assign({}, Engine, { create: s => Engine.create(Object.assign({ govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled" }, s)) });
 const FINGERPRINT = 3890791117;   // print() of 15.5n's engine, seed 2, 60 days
 const G_GRASS = 5, G_FOREST = 6, YEAR_DAYS = 365;
 
