@@ -1901,6 +1901,85 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Work in the house (2026-11-22)
+
+TODO item 15.5n. Ric (2026-11-20): house work as hours a household must spend each day, yes; clothes
+"should maybe matter? If it doesn't cost much for the copy or gpu". Spinning was about 85% of the
+work of cloth, and most women and many girls spun (ACOUP; Humphries and Schneider); cooking and
+minding small children took hours every day, for which no figure was found.
+
+- **Hours owed** (`h.chores`, each house): two hours of cooking a day, a quarter-hour more for each
+  mouth after the first, and an hour for each child under five — guesses, said as such — counted an
+  hour at a time, up to sixteen.
+- **Done** as a task, "house" (`choose`): two hours at home, by whoever weighs it highest. Its pull
+  grows with the hours owed, and by custom (15.5l's `split`): a woman's is times 1 + 0.6 × split, a
+  man's 1 − 0.7 × split. The lame and the old do it more slowly.
+- **Short of hands.** A household eight hours or more behind wastes a seventh more food, and its
+  children under five are a third likelier to die (15.5k).
+- **Clothes** (`p.clothes`, one number a person, 0 to 1): worn out in a year and a half, made good by
+  "spin" (two hours at home, for the worst-clothed of the household under 0.7: 300 hours a person's
+  clothes, a guess). Read only in the cold: the chance of dying of it is times 2 − clothes.
+- Counts: `houseHours`, `spunHours`.
+- **A setting**, "Work in the house", under Lives. "No house work" is the world 15.5m left, step for
+  step (`test/housework.test.mjs` holds its fingerprint).
+
+**Measured** (a year each, six default worlds, 15.5m and n together against 15.5k): about 28,000 hours of spinning a world-year, so clothes run down slowly
+(a third of what wears is made good); starved 3 → 11, births 119 → 126, children dying young 30 → 32.
+A first build counted the two hours' shift wrongly and nobody ever finished house work: every world
+starved (91 to 181 of 400), caught by the same measurement.
+
+**Left out:** caring hours for the sick and the frail (15.5e), light to spin by after dark (15.5s),
+cloth as goods to sell, and girls' and boys' house work (children mind only the fields and the herd,
+15.5m).
+
+### Children working (2026-11-22)
+
+TODO item 15.5m. Ric (2026-11-20): yes. Children did light farm and house work early — minding
+sheep and the younger ones, scaring birds, gleaning — and serious work from about twelve to fourteen
+(Pittsburgh, the medieval child; Horrell and Humphries, children's work and wages in Britain
+1280–1860).
+
+- **A child's share of a grown-up's day** (`childShare`): nothing before seven, rising evenly to
+  seven-tenths the year before "Grown up at", a grown-up's from then.
+- **What they do**, by day: go to the fields beside a parent who is working there (most at the
+  harvest), and mind the herd within 2 km of home. What they reap or bring in is their share of a
+  day (`harvestCapacity`, the herd's day). They still fetch water from six, as before.
+- **A setting**, "Children working", under Lives. "Nothing until grown" is the world 15.5k left,
+  step for step (`test/childwork.test.mjs`).
+
+**Left out:** schooling taking the hours (15e); children's wages and apprenticeship (15f).
+
+### Babies, children and mothers (2026-11-22)
+
+TODO item 15.5k. Ric (2026-11-20), all four yes: children dying of real causes at real rates,
+mothers dying in childbirth, the gap after a birth, and "Children" meaning as many as they had. Until
+now almost every child grew up and no mother died of a birth. About a quarter of babies died in
+their first year and nearly half of children before fifteen, among foragers and in historical
+populations alike (Volk and Atkinson 2013); England's parish registers give about 10 mothers dead per
+1,000 births (Cambridge Group); foragers' births were about 3.7 years apart, kept so mostly by
+nursing (Kaplan and others 2000).
+
+- **Children's deaths** (`childHazard`, a yearly chance): 0.2 in the first year, 0.04 to five, 0.008
+  to grown — the fevers, the flux and accidents — on top of the sickness, hunger and cold already
+  here; times 2.5 hungry, times 1 + 1.5 × foul where the water is foul (15.5r), twice for a baby whose
+  mother is dead. Counted as `young`.
+- **Childbirth** (in `deliver`): one mother in a hundred dies, twice that starving, half again past
+  thirty-five. Counted as `childbirth`.
+- **Nursing** (`p.nurse`, `fecund`): while she nurses a living baby under eighteen months a woman
+  conceives at 0.15 of her rate; a baby who dies leaves her free sooner, as in life.
+- **As many as they had.** Couples conceive 2.4 times as readily as they bore a child before
+  (`BIRTHS_UP`), so that with these deaths a world holds its numbers, as the measurement shows.
+- Deaths draw from a stream of their own (`RK`). It needs Men and women (15.5l).
+- **A setting**, "Babies and mothers", under Lives. "Nearly every child grows up" is the world 15.5l
+  left, step for step (`test/infancy.test.mjs`).
+
+**Measured** (three years each, six default worlds, against 15.5l): people at the end 2,517 → 2,493
+(it holds), births 267 → 392, 100 children dead young (a quarter of the births), 3 mothers dead of a
+birth (under one in a hundred), sickness deaths 90 → 131 (more children for it to take). Starved
+10 → 13.
+
+**Left out:** each era's medicine lowering these (15d); wet nurses; miscarriage and stillbirth.
+
 ### Men and women (2026-11-21)
 
 TODO item 15.5l. Until now the engine had no sex at all: any two grown-ups not kin could pair and

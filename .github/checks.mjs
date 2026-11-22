@@ -169,6 +169,9 @@ const SUITES = [
   ['world-builder dirt in towns', ['projects/world-builder/test/dirt.test.mjs']],   // TODO 15.5r, under a minute and a half
   ['world-builder wounds and old age', ['projects/world-builder/test/health.test.mjs']],   // TODO 15.5e, about two minutes
   ['world-builder men and women', ['projects/world-builder/test/sexes.test.mjs']],   // TODO 15.5l, about two minutes
+  ['world-builder babies and mothers', ['projects/world-builder/test/infancy.test.mjs']],   // TODO 15.5k, about two minutes
+  ['world-builder children working', ['projects/world-builder/test/childwork.test.mjs']],   // TODO 15.5m, about a minute
+  ['world-builder work in the house', ['projects/world-builder/test/housework.test.mjs']],   // TODO 15.5n, about two minutes
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

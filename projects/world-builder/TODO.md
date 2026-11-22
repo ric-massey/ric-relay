@@ -3050,7 +3050,7 @@ after it.
 speed work itself is 15.25's five passes; j is only the 20,000-person measurement and, if it
 finds something 15.25 does not cover, a pass added there rather than here.
 
-**15.5k. Babies, children and mothers dying, and the gap between births** (added 2026-11-20, Ric:
+**[x] 15.5k. Babies, children and mothers dying, and the gap between births** *Done 2026-11-22:* a child's yearly chance of dying 0.2 in its first year, 0.04 to five, 0.008 to grown, times hunger, foul water and a dead mother; one mother in a hundred dies of a birth; nursing a living baby under eighteen months cuts conceiving to 0.15; couples conceive 2.4 times as readily, so a world holds. Setting "Babies and mothers" ("before" = the 15.5l world, fingerprinted; needs Men and women). Three years, six default worlds: people 2,517 → 2,493, births 267 → 392, 100 dead young, 3 mothers. `test/infancy.test.mjs`; README, "Babies, children and mothers". Left out: medicine by era (15d), wet nurses, stillbirth. (added 2026-11-20, Ric:
 "early humans … the baby infertility rate was low … is all that built in?"; "Write what you said
 down"). *Now* (read from `people.js`): each person's age of death is drawn at birth between 0.72 and
 1.28 of "How long they live" (default 60), so almost nobody dies of age before about 43; a child dies
@@ -3107,7 +3107,7 @@ the plough leaning it one way as Boserup and Alesina found, never one rule for e
 or two women live as a couple (no children of their own; they may take in orphans, as 14b's orphans
 are taken in)?
 
-**15.5m. Children working.** *Now:* a child does nothing until "Grown up at" (default 14) but fetch
+**[x] 15.5m. Children working.** *Done 2026-11-22:* from seven a child goes to the fields beside a working parent (most at harvest) and herds near home, doing a share of a grown-up's day that rises to seven-tenths before grown. Setting "Children working" ("none" = the 15.5k world, fingerprinted). `test/childwork.test.mjs`; README, "Children working". Left out: schooling (15e), wages and apprenticeship (15f). *Was:* a child does nothing until "Grown up at" (default 14) but fetch
 water from six (6a). *History:* children did light farm and house work early — minding sheep and
 younger children, scaring birds, gleaning — and serious work from about twelve to fourteen (Pittsburgh,
 [the medieval child](https://representingchildhood.pitt.edu/medieval_child.htm)); children were a
@@ -3119,7 +3119,7 @@ weeding at seven but cite nothing; Hanawalt's *The Ties That Bind* to read befor
 gleaning at harvest), more as they grow, full work at "Grown up at"; schooling, where a people has it
 (15e), takes hours from this. *Question:* children working, as proposed?
 
-**15.5n. Work in the house.** *Now:* none but fetching water. *History:* making cloth was one of
+**[x] 15.5n. Work in the house.** *Done 2026-11-22:* a household owes two hours of cooking a day, a quarter-hour a mouth more, an hour a child under five (guesses); done in two-hour spells by whom custom expects; eight hours behind wastes a seventh more food and endangers the little ones; clothes one number a person, worn out in a year and a half, spun good at 300 hours, read only in the cold. Setting "Work in the house" ("none" = the 15.5m world, fingerprinted). A year, six worlds, m+n against k: starved 3 → 11, births 119 → 126. `test/housework.test.mjs`; README, "Work in the house". Left out: caring hours, light to spin by (s), cloth as goods. *Was:* none but fetching water. *History:* making cloth was one of
 the largest uses of a household's hours — spinning was about 85% of the work of cloth, and most women
 and many girls spun (a historian's blog, [ACOUP](https://acoup.blog/2021/03/19/collections-clothing-how-did-they-make-it-part-iii-spin-me-right-round/));
 by one table a pound of yarn took about 500 hours on an early wheel and 200 about 1700, 3 on a water

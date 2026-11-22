@@ -235,6 +235,15 @@
       { key: "sexes", label: "Men and women", type: "select", def: "real",   // TODO 15.5l, 2026-11-21
         options: [["real", "Men and women, and each people's customs"], ["none", "Nobody is either (as before)"]],
         help: "Each person is a man or a woman. A child needs a mother: she carries it nine months, works lighter at the end and lies in after the birth for as long as her household can spare her. Women are weaker at the heaviest work, as bodies are, and each people's customs, from its nature, say how far women are kept from the fields and the army. Couples of two men or two women form as far as their people accepts them, and have no children of their own." },
+      { key: "infancy", label: "Babies and mothers", type: "select", def: "real",   // TODO 15.5k, 2026-11-21
+        options: [["real", "As in the past: many babies die, some mothers too"], ["before", "Nearly every child grows up (as before)"]],
+        help: "About a quarter of babies died in their first year and nearly half of children before fifteen, of fevers, the flux, hunger, cold and accidents, more in foul towns and without a mother. About one mother in a hundred died giving birth. A mother nursing a baby seldom conceives, so children come two or three years apart, and couples have as many as they did then. Needs Men and women." },
+      { key: "childwork", label: "Children working", type: "select", def: "real",   // TODO 15.5m, 2026-11-21
+        options: [["real", "From about seven, light work, more as they grow"], ["none", "Nothing until grown but fetching water (as before)"]],
+        help: "From about seven children help: minding the herd near home, and in the fields beside a parent, weeding, scaring birds and gleaning, above all at the harvest. What they do grows with them, to a grown-up's full share at Grown up at." },
+      { key: "housework", label: "Work in the house", type: "select", def: "real",   // TODO 15.5n, 2026-11-21
+        options: [["real", "Cooking, minding the little ones and spinning take hours"], ["none", "No house work but fetching water (as before)"]],
+        help: "Every household owes hours a day of cooking and of minding its children under five, and spinning to keep everybody clothed; whoever their people's custom expects does most of it. A household short of hands feels it: meals go to waste and small children come to harm. Clothes worn thin let the cold in." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -605,6 +614,8 @@
     /* Men and women (TODO 15.5l): who is which, how strong, and the dates of their children, from
        their own stream, so a world with "Nobody is either" is the one before. */
     const RS = rng((S.seed | 0) * 1597334677 + 17);
+    /* Babies and mothers (TODO 15.5k): children's deaths and childbirth, their own stream too. */
+    const RK = rng((S.seed | 0) * 3812015801 + 19);
     /* The minds (TODO 11). Everybody's slots in four flat arrays, a block of MB a person, so a
        mind is no object of its own and is never copied: slot 0 is what they think about sharing
        (what was `views`), the rest whatever they hold. A dead person's block goes to the next
@@ -717,7 +728,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1389,7 +1400,7 @@
         if (!wet(x, y)) break;
       }
       const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
-                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9 };   // TODO 14b: when it last burned
+                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9, chores: 0, small: 0 };   // chores, small: TODO 15.5n   // TODO 14b: when it last burned
       sizeHome(h, wealth);
       homes.push(h); (homesIn[v.id] || (homesIn[v.id] = [])).push(h);
       return h;
@@ -1534,7 +1545,10 @@
        them at every decision was a quarter of a 20,000-person world's time. */
     function countHouses() {
       for (const h of homes) h.n = 0;
-      for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) { const h = homes[p.dwelling]; h.n++; if (adult(p)) h.head = p.id; }   // and a grown-up of it, for its share (TODO 7c)
+      if (HOUSEWORK) for (const h of homes) h.small = 0;
+      for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) { const h = homes[p.dwelling]; h.n++; if (adult(p)) h.head = p.id; if (HOUSEWORK && p.age < 5) h.small++; }   // and a grown-up of it, for its share (TODO 7c)
+      /* The hours a household owes, an hour at a time (TODO 15.5n). */
+      if (HOUSEWORK) for (const h of homes) if (h.n > 0) h.chores = Math.min(CHORES_MAX, h.chores + (COOKING + COOK_EACH * (h.n - 1) + MINDING * h.small) / (THIRST ? DAY_HOURS : 1));   // counted hourly with thirst on, daily without
       for (const v of villages) v.fullest = null;
       for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
     }
@@ -1606,6 +1620,8 @@
                   /* TODO 15.5l: 0 a woman, 1 a man; strength at heavy work; drawn to their own sex; a child
                      due (the hour), its father, and lying in until. */
                   sex: 1, str: 1, same: false, due: 0, babyDad: 0, lying: 0,
+                  nurse: 0,   // TODO 15.5k: the baby she is nursing
+                  clothes: 1,   // TODO 15.5n: how warm what they wear is, 0 to 1
                   gathering: undefined,   // TODO 9a: at the day's cutting, quarrying or mining
                   /* TODO 10: the other five of the ten, and what of the last hard times has yet to wear off. */
                   patient: nature(RT(), ownOf(v.f, "patient")), temper: nature(RT(), ownOf(v.f, "temper")), hard: nature(RT(), ownOf(v.f, "hardwork")),
@@ -2109,6 +2125,9 @@
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
+    const HOUSEWORK = S.housework !== "none";   // TODO 15.5n: work in the house
+    const CHILDWORK = S.childwork !== "none";   // TODO 15.5m: children working
+    const INFANCY = SEXES && S.infancy !== "before";   // TODO 15.5k: babies, children and mothers dying, and the gap between births
     /* Drawn to their own sex: a few in a hundred. Surveys find 2 to 5 in a hundred today; no
        figure for the past can be had, so a guess, said as one. */
     const SAME_SHARE = 0.04;
@@ -3004,7 +3023,7 @@
        (2.7%). Now it is the hours, which is how farming labour actually
        differs — capped at what daylight allows, after which they bring back
        what they managed. */
-    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p); }   // p.vig: TODO 15.5e; brawn: 15.5l
+    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p) * (p.job === "child" ? childShare(p) : 1); }   // p.vig: TODO 15.5e; brawn: 15.5l
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
@@ -3094,6 +3113,63 @@
       if (!SEXES || p.sex === 1) return 1;
       return (1 - 0.3 * split(factions[p.f])) * (p.due > 0 && p.due - t < LATE_DAYS * DAY_HOURS || p.lying > t ? 0.4 : 1);
     }
+    /* ── babies, children and mothers (TODO 15.5k) ─────────────────────────
+       Ric (2026-11-20), all four yes: children dying of real causes at real rates, mothers dying in
+       childbirth, the gap after a birth, and "Children" meaning as many as they had. About a quarter
+       of babies died in their first year and nearly half of children before fifteen, among foragers
+       and in historical populations alike (Volk and Atkinson 2013); infants in English market towns
+       died at 209–270 in 1,000 against under 100 in remote country (15.5r's notes). A fed child's
+       yearly chance of dying is 0.2 in its first year, 0.04 to five, 0.008 to grown, before what
+       is already here (the sickness, hunger, cold); times 2.5 when hungry, more where the water is
+       foul, and twice for a baby whose mother is dead. Nursing kept births about three years apart
+       among foragers and two or three among farmers: while she nurses a living baby under eighteen
+       months a woman conceives at 0.15 of her rate. Couples conceive `BIRTHS_UP` times as readily as
+       they bore a child before, so as many are born as were then (measured below), not a number
+       turned until the world holds. */
+    const CHILDBIRTH = 0.01, BIRTHS_UP = 2.4, NURSING = 1.5;
+    function childHazard(p) {
+      let h = p.age < 1 ? 0.2 : p.age < 5 ? 0.04 : 0.008;
+      if (p.hungry > 0) h *= 2.5;
+      if (DIRT) h *= 1 + 1.5 * villages[p.home].foul;
+      if (p.age < 1) { const m = byId.get(p.mum); if (!m || m.hp <= 0) h *= 2; }
+      if (HOUSEWORK && p.age < 5 && p.dwelling >= 0 && homes[p.dwelling].chores >= BEHIND) h *= 1.3;   // TODO 15.5n: nobody minding them
+      return h;
+    }
+    function fecund(p) {
+      const b = p.nurse ? byId.get(p.nurse) : null;
+      return BIRTHS_UP * (b && b.hp > 0 && b.age < NURSING ? 0.15 : 1);
+    }
+    /* ── children working (TODO 15.5m) ────────────────────────────────────
+       Ric (2026-11-20): yes. Children did light farm and house work early — minding sheep and the
+       younger ones, scaring birds, gleaning — and serious work from about twelve to fourteen; their
+       wages tracked the economy (Horrell and Humphries, 1280–1860). A child's share of a grown-up's
+       day: nothing before seven, rising evenly to seven-tenths the year before "Grown up at"; a
+       grown-up's from then. House work and minding the young are hours (15.5n). */
+    const CHILD_WORK_AGE = 7;
+    function childShare(p) {
+      if (!CHILDWORK || p.age >= S.grown) return 1;
+      return clamp((p.age - (CHILD_WORK_AGE - 1)) / Math.max(1, S.grown - (CHILD_WORK_AGE - 1)), 0, 1) * 0.7;
+    }
+    /* ── work in the house (TODO 15.5n) ───────────────────────────────────
+       Ric (2026-11-20): house work as hours, yes; clothes "should maybe matter? If it doesn't cost
+       much": one number a person, worn by use, made good by spinning, read only in the cold. Cooking
+       at one hearth took hours every day, and minding a small child more; spinning was about 85% of
+       the work of cloth, and most women and many girls spun (ACOUP; Humphries and Schneider). No figure
+       was found for the hours of cooking or minding, so these are guesses, said as such: two hours a
+       household a day and a quarter-hour more each mouth, an hour for each child under five; and
+       clothes that wear out in a year and a half and take 300 hours of spinning, weaving and sewing a
+       person to make good. A household more than `BEHIND` hours behind wastes food (a seventh more
+       eaten) and its little ones come to more harm. */
+    const COOKING = 2, COOK_EACH = 0.25, MINDING = 1, CHORES_MAX = 16, BEHIND = 8, HOUSE_SPELL = 2;
+    const SPIN_HOURS = 300, CLOTHES_WEAR = 1 / (1.5 * YEAR);
+    /* The worst-clothed of a household, if anybody's clothes are thin. */
+    function threadbare(p) {
+      const h = homes[p.dwelling]; if (!h) return null;
+      let worst = p.clothes < 0.7 ? p : null;
+      for (const id of [p.partner, p.mum, p.dad]) { const q = id && byId.get(id); if (q && q.hp > 0 && q.dwelling === p.dwelling && q.clothes < 0.7 && (!worst || q.clothes < worst.clothes)) worst = q; }
+      if (p.wards) for (const k of p.wards) if (k.hp > 0 && k.dwelling === p.dwelling && k.clothes < 0.7 && (!worst || k.clothes < worst.clothes)) worst = k;
+      return worst;
+    }
     /* Whether two may pair: a man and a woman, or two of one sex drawn to it whose people accept it. */
     function mayPair(a, b) {
       if (!SEXES) return true;
@@ -3111,6 +3187,12 @@
       /* She lies in a month where the household can spare her, under a fortnight where it cannot. */
       p.lying = t + (p.food > reserve(p) * 0.5 ? 28 : 10) * DAY_HOURS;
       p.say = c.name + " was born today."; p.sayT = 90;
+      if (INFANCY) {
+        p.nurse = c.id;
+        /* About one mother in a hundred died of a birth (England 1650–1800, about 10 per 1,000 births,
+           17 at the worst), more when starving and past thirty-five. */
+        if (RK() < CHILDBIRTH * (p.hungry > 0 ? 2 : 1) * (p.age > 35 ? 1.5 : 1)) { die(p, "childbirth"); return "died"; }
+      }
       return c;
     }
 
@@ -3261,6 +3343,22 @@
           if (mum && mum.home === p.home) { go(p, mum.x + (R() - 0.5) * 2, mum.y + (R() - 0.5) * 2, "idle"); p.wait = spell("visit"); }
           else near(p, v, 4);
         });
+        /* From about seven, light work (TODO 15.5m): in the fields beside a parent who is there,
+           above all at the harvest, and minding the herd near home. */
+        if (CHILDWORK && p.age >= CHILD_WORK_AGE && !dark) {
+          const share = childShare(p), par = byId.get(p.mum) || byId.get(p.dad);
+          if (par && par.hp > 0 && par.chose === "field" && par.task === "field" && par.home === p.home)
+            weigh("field", (0.3 + 0.5 * (season().ripe - 1) / 3 + n.food * 0.3) * (0.6 + share) - away(Math.hypot(par.tx - p.x, par.ty - p.y)) * 0.6 - n.rest * 0.45 - n.water * 0.5,
+              () => { go(p, par.tx + (R() - 0.5) * 0.6, par.ty + (R() - 0.5) * 0.6, "field"); p.wait = 0; });
+          if (MATS) {
+            const j = wildSpot(v, "herd");
+            if (j >= 0) {
+              const i = wildList(v, "herd")[j], sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5, d = Math.hypot(sx - p.x, sy - p.y);
+              if (d < 8) weigh("herd", (0.25 + n.food * 0.3) * (0.6 + share) * wildWorth(v, "herd", j) - away(d) * 0.6 - n.rest * 0.45 - n.water * 0.5,
+                () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, "herd"); p.wait = 0; });
+            }
+          }
+        }
         chosen(); p.chose = chosenTask; return;
       }
 
@@ -3569,6 +3667,20 @@
           go(p, x, y, "gear"); p.wait = 0;
         });
 
+      /* Work in the house (TODO 15.5n): the cooking and the little ones, and spinning when clothes are
+         thin. Whoever their people's custom expects does most of it. */
+      if (HOUSEWORK && p.dwelling >= 0 && !p.cargo) {
+        const h = homes[p.dwelling], who = SEXES ? (p.sex === 0 ? 1 + split(f) * 0.6 : 1 - split(f) * 0.7) : 1;
+        const d = Math.hypot(h.x - p.x, h.y - p.y);
+        if (h.chores >= 1)
+          weigh("house", (0.15 + h.chores / CHORES_MAX * 0.9) * who - away(d) * 0.5 - n.food * 0.4 - n.rest * 0.3 - n.water * 0.4 - dark * 0.15,
+            () => { go(p, h.x + (R() - 0.5) * 0.3, h.y + (R() - 0.5) * 0.3, "house"); p.wait = 0; });
+        const thin = threadbare(p);
+        if (thin && h.chores < BEHIND)
+          weigh("spin", (0.1 + (1 - thin.clothes) * 0.9 + (chill() > 0 ? 0.15 : 0)) * who - away(d) * 0.5 - n.food * 0.5 - n.rest * 0.35 - n.provide * 0.3 - dark * 0.2,
+            () => { go(p, h.x + (R() - 0.5) * 0.3, h.y + (R() - 0.5) * 0.3, "spin"); p.wait = 0; });
+      }
+
       /* Sitting out the day: ill, spent, or nothing better on offer. */
       weigh("rest", n.rest * 0.7 + (p.sick > 0 ? 0.45 : 0) + 0.05 + (0.5 - p.hard) * 0.2 - away(far) * 0.3, () => {
         go(p, p.hx + (R() - 0.5) * 0.6, p.hy + (R() - 0.5) * 0.6, "rest"); p.wait = spell("rest");
@@ -3617,8 +3729,8 @@
       const v = villages[p.home];
       /* A shift of building or digging is spent at the work, and shows as that work; what it
          did is counted when it ends (TODO 7b: before, the hours showed as resting). */
-      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork") && !p.shift) {
-        p.shift = true; p.wait = p.task === "build" ? Math.round(BUILD_SHIFT * ACTIONS_PER_HOUR) : TK(240); return;
+      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin") && !p.shift) {
+        p.shift = true; p.wait = p.task === "build" ? Math.round(BUILD_SHIFT * ACTIONS_PER_HOUR) : p.task === "house" || p.task === "spin" ? TK(HOUSE_SPELL * 60) : TK(240); return;
       }
       p.shift = false;
       if (p.task === "eat") { p.at = v.id; shop(p, v); p.task = "idle"; p.wait = spell("meal"); return; }
@@ -3676,6 +3788,12 @@
         p.task = "idle"; p.wait = 0; return;
       }
       if (p.task === "rest") { p.rest = Math.max(0, p.rest - 0.25); p.task = "idle"; p.wait = 0; return; }
+      if (p.task === "house" || p.task === "spin") {   // TODO 15.5n: two hours at it (the shift above), then free
+        const h = homes[p.dwelling], hands = p.vig < 1 ? 0.5 + 0.5 * p.vig : 1;
+        if (h && p.task === "house") { const done = Math.min(h.chores, HOUSE_SPELL * hands); h.chores -= done; count.houseHours += done; }
+        else if (h) { const q = threadbare(p); if (q) { q.clothes = Math.min(1, q.clothes + HOUSE_SPELL * hands / SPIN_HOURS); count.spunHours += HOUSE_SPELL * hands; } }
+        p.task = "idle"; p.wait = 0; return;
+      }
       if (p.task === "ask") {
         const q = byId.get(p.askOf);
         if (q && q.hp > 0) askFor(p, q);
@@ -3728,7 +3846,7 @@
         p.gathering = false;
         const herd = p.task === "herd", m = herd ? grazeStock : gameStock, cap = herd ? GRAZE_YEAR : GAME_YEAR;
         const list = wildList(v, p.task), j0 = wildSpot(v, p.task);
-        let need = (herd ? herdDay() : huntDay()) * (p.job === (herd ? "herder" : "hunter") ? 1 : 0.7) * p.vig;
+        let need = (herd ? herdDay() : huntDay()) * (p.job === (herd ? "herder" : "hunter") ? 1 : 0.7) * p.vig * (p.job === "child" ? childShare(p) : 1);
         const want = need;
         if (j0 >= 0) for (let j = j0; j < list.length && need > 0.01; j++) {
           const i = list[j]; if (herd && held.has(i)) continue;
@@ -4582,6 +4700,7 @@
     /* ── one person, one tick ──────────────────────────────────────────── */
     function live(p) {
       p.age += 1 / YEAR;
+      if (HOUSEWORK) p.clothes = Math.max(0, p.clothes - CLOTHES_WEAR);   // TODO 15.5n
       if (HEALTH) {   // TODO 15.5e: a wound heals toward what it leaves for good; age takes its share
         if (p.harm > p.lame) { p.harm = p.lame + (p.harm - p.lame) * HARM_HEAL; if (p.harm - p.lame < 0.002) p.harm = p.lame; }
         p.vig = (1 - p.harm) * ageVigour(p);
@@ -4620,7 +4739,7 @@
         }
       }
       /* Eating. A child eats from whichever parent has food before it goes hungry. */
-      p.food -= EAT * dailyNeed(p);
+      p.food -= EAT * dailyNeed(p) * (HOUSEWORK && p.dwelling >= 0 && homes[p.dwelling].chores >= BEHIND ? 1.15 : 1);   // TODO 15.5n: meals not cooked go to waste
       if (p.food < 0) {
         p.food = 0;
         let fed = false;
@@ -4677,7 +4796,7 @@
          the very young and the old. */
       if (FIRE && villages[p.home].cold > 0 && p.task !== "march" && p.task !== "fight") {
         const c = chill();
-        if (c > 0 && R() < villages[p.home].cold * c * 0.05 * frailty(p) / (120 * DAY_HOURS)) { die(p, "cold"); return; }
+        if (c > 0 && R() < villages[p.home].cold * c * 0.05 * frailty(p) * (2 - p.clothes) / (120 * DAY_HOURS)) { die(p, "cold"); return; }   // clothes: TODO 15.5n
       }
       /* Crowded places were graveyards: London's burials outran its baptisms for two centuries and it
          grew only by those who came in (Wrigley 1967). About one more death a hundred a year in a town
@@ -4691,6 +4810,9 @@
         const foul = villages[p.home].foul;
         if (foul > 0.001 && RD() < FOUL_DEATHS * foul * frailty(p) / YEAR) { count.foul++; die(p, "sick"); return; }
       }
+      /* Children dying (TODO 15.5k) of what killed them: the fevers and the flux of infancy, and
+         accidents, on top of the sickness, hunger and cold already here. */
+      if (INFANCY && p.age < S.grown && RK() < childHazard(p) / YEAR) { die(p, "young"); return; }
       if (p.job === "child" && adult(p)) p.job = chooseJob(p);
 
     }
@@ -5914,7 +6036,7 @@
       const mate = byId.get(p.partner);
       /* A child is carried nine months and born to its mother (TODO 15.5l); conceived by a woman and a
          man at home together, she neither carrying nor lying in. */
-      if (SEXES && p.due > 0 && t >= p.due) deliver(p);
+      if (SEXES && p.due > 0 && t >= p.due && deliver(p) === "died") return;
       if (mate && (SEXES ? p.sex === 0 && mate.sex === 1 && !(p.due > 0) && !(p.lying > t) : p.id < mate.id) && mate.home === p.home && S.births > 0 &&
           p.age < p.dieAt * 0.7 && mate.age < mate.dieAt * 0.7 && p.food > 0.5 && mate.food > 0.5 && p.hungry === 0) {
         const room = clamp(1.6 - v.pop / (crowdOf(v) * 1.6), 0.15, 1) * (v.hungry > v.pop * 0.15 ? 0.3 : 1);
@@ -5922,7 +6044,7 @@
            cadence. Changing update frequency must not multiply fertility.
            Short-lived settings still compress their reproductive span. */
         const span = Math.max(3, S.life * 0.7 - S.grown);
-        if (R() < S.births * 14 * (REFLECT_HOURS / YEAR) * room / span / (1 + p.kids * 0.12)) {
+        if (R() < S.births * 14 * (REFLECT_HOURS / YEAR) * room / span / (1 + p.kids * 0.12) * (INFANCY ? fecund(p) : 1)) {
           if (SEXES) { p.due = t + CARRY_DAYS * DAY_HOURS; p.babyDad = mate.id; count.conceived++; }
           else {
           const c = newPerson(v, 0, p, mate);
@@ -7659,9 +7781,11 @@
       newsText: newsText, traceNews: traceNews, eventById: eventById, telling: telling,   // TODO 12
       setView: setView, befriend: befriend,   // for the tests
       shaken: shaken, LIFE: LIFE, ruling: ruling,   // for the tests (TODO 15a)
-      foulness: () => { if (DIRT) foulness(); },
+      foulness: () => { if (DIRT) foulness(); },   // for the tests (TODO 15.5r): work out each village's water now
       wound: wound, ageVigour: ageVigour,   // for the tests (TODO 15.5e)
-      brawn: brawn, split: fid => split(factions[fid]), accepts: fid => accepts(factions[fid]),   // for the tests (TODO 15.5l)   // for the tests (TODO 15.5r): work out each village's water now
+      brawn: brawn, split: fid => split(factions[fid]), accepts: fid => accepts(factions[fid]),   // for the tests (TODO 15.5l)
+      childHazard: childHazard, fecund: fecund,   // for the tests (TODO 15.5k)
+      childShare: childShare,   // for the tests (TODO 15.5m)
       living: p => chooseJob(p), roadOf: vid => roadOf(villages[vid]),   // for the tests (TODO 15.5b4): the living somebody would choose now, and where a village's bandits lie in wait
       /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
          the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */
