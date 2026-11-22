@@ -412,6 +412,8 @@
         help: "A soldier in an army that is gathering or marching eats what they carry or draw where it gathers, sleeps where it is, and keeps to their duty. The one way out is to desert: likelier hungry, unpaid, afraid, disloyal or losing, rarer under a law that hangs killers. About a fifth of a fed, paid army deserts in a year of war." },
       { key: "caravans", label: "Caravans", type: "toggle", def: true,   // TODO 15l, 2026-11-22
         help: "Traders who go for weeks to places far beyond a village's own traders, with goods dear for their weight (finished goods, ore, wool) on pack animals: twice a pack on foot, four times with horses. Routes grow where they keep going; bandits wait on them." },
+      { key: "armySick", label: "Sickness in armies", type: "toggle", def: true,   // TODO 15m, 2026-11-22
+        help: "An army's camp is crowded and fouls its water as a town does, so sickness starts and spreads there, and kills more of its tired men; soldiers carry it to the places they pass and home. Before modern medicine sickness killed more soldiers than the enemy did." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -809,7 +811,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2306,6 +2308,13 @@
        (160 kg) what four would. ROUTES: trips between two places, the route that grows. */
     const CARAVANS = S.caravans !== false && !shared, CARAVAN_REACH = 600, CARAVAN_GAP = 20 * DAY_HOURS;
     const ROUTES = new Map();
+    /* Sickness in armies (TODO 15m). A camp is a crowd with no wells or latrines: half as foul as it can
+       be at 150 soldiers (a town needs 2,000 for that, 15.5r). A soldier with it catches a camp fever
+       about one day in a hundred, more as the camp grows: at any time about a fifth of Wellington's
+       Peninsular army was sick, which with a week's illness is near three in a hundred a day. The camp
+       fevers (dysentery, typhus) killed about three times as many of those who caught them as a
+       village fever does (about one in ten). */
+    const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
        2 to 7% a year in peacetime): this a day, before what makes it likelier or rarer. */
@@ -4951,6 +4960,7 @@
       p.hp = -99; needStamp++;
       if (p.on) { madeRoom(p.x, p.y); p.on = 2; }   // the dead are in nobody's way: see `move`. 2: counted
       count[why]++;
+      if (why === "sick" && p.job === "soldier") count.soldierSick++;   // TODO 15m
       dropOrder(p);
       const v = villages[p.home], f = factions[p.f];
       /* Gone over the edge (TODO 15.5c): what they have goes with them, coins out of the world's sum. */
@@ -5193,8 +5203,8 @@
       /* How open each of them is: their own nature, not the world's. */
       const open = 1 - ((a.stub ?? S.stubborn) + (b.stub ?? S.stubborn)) / 2, openA = 1 - (a.stub ?? S.stubborn), openB = 1 - (b.stub ?? S.stubborn);
       /* Sickness goes where talk goes. */
-      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < CATCH * (DIRT ? 1 + villages[b.home].foul : 1)) { b.sick = ILLNESS_HOURS; count.infected++; }   // TODO 15.5r: and more readily where the water is foul
-      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < CATCH * (DIRT ? 1 + villages[a.home].foul : 1)) { a.sick = ILLNESS_HOURS; count.infected++; }
+      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < CATCH * (DIRT ? 1 + villages[b.home].foul : 1) * (ARMY_SICK ? 1 + campFoulOf(b) : 1)) { b.sick = ILLNESS_HOURS; count.infected++; }   // TODO 15.5r: and more readily where the water is foul; 15m: or the camp
+      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < CATCH * (DIRT ? 1 + villages[a.home].foul : 1) * (ARMY_SICK ? 1 + campFoulOf(a) : 1)) { a.sick = ILLNESS_HOURS; count.infected++; }
 
       /* 0 — somebody holding a grudge has nothing to say to the other (TODO 11): a cold word, and
          nothing warms between them. Until item 11 every chat warmed any two people, and a
@@ -5474,7 +5484,7 @@
       if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
       if (p.sick > 0) {
         p.sick--;
-        if (R() < SICK_HAZARD * frailty(p) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1) * (WIRED && has(p.f, "medicine") ? 0.3 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
+        if (R() < SICK_HAZARD * frailty(p) * (ARMY_SICK && p.job === "soldier" && campFoulOf(p) > 0 ? CAMP_DEADLY : 1) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1) * (WIRED && has(p.f, "medicine") ? 0.3 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
         if (p.sick === 0) p.immune = true;
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
@@ -8172,6 +8182,34 @@
       }
       if (n && t - (f.desertNews ?? -1e9) > 30 * DAY_HOURS) { f.desertNews = t; note("war", n + (n === 1 ? " soldier has" : " soldiers have") + " deserted " + f.name + "'s army and gone home.", 1.5, home.x, home.y, f.id); }
     }
+    /* Sickness in an army (TODO 15m), once a day: how foul its camp is, a fever starting there as in a
+       town that foul, and the sick carrying it to the places they pass. */
+    function campSickness(f, wars) {
+      f.campFoul = 0;
+      if (!wars) return;
+      const here = [];
+      for (const p of people) if (p.f === f.id && p.job === "soldier" && p.hp > 0 && onCampaign(p)) here.push(p);
+      if (!here.length) return;
+      f.campFoul = here.length / (here.length + CAMP_HALF); count.campDays += here.length;
+      /* Camp fever caught from the water and the crowd, by each soldier. Dysentery and typhus are not the
+         village's sickness: having had that is no shield (nor, in the engine, is having had them). */
+      const odds = CAMP_CATCH * (S.plague === "none" ? 0 : S.plague === "rare" ? 1 : 1.5) * (1 + f.campFoul * 3);
+      const before = here.some(p => p.sick > 0);
+      let caught = null;
+      for (const p of here) if (!(p.sick > 0) && R() < odds) { p.sick = ILLNESS_HOURS; count.infected++; caught = p; }
+      if (caught && !before) { count.campOutbreaks++; if (t - (f.feverNews ?? -1e9) > 30 * DAY_HOURS) { f.feverNews = t; note("sick", "A fever has broken out in " + f.name + "'s army.", 2, caught.x, caught.y, f.id); } }
+      /* The sick passing through a place not their own, or home: one in twenty a day leaves it there. */
+      for (const p of here) {
+        if (!(p.sick > 0) || R() >= ARMY_CARRY) continue;
+        let v = null, d = 3;
+        for (const u of villages) if (u.alive && u.id !== p.home) { const dd = Math.hypot(u.x - p.x, u.y - p.y); if (dd < d) { d = dd; v = u; } }
+        if (!v) continue;
+        const open = (PLAIN ? people : residents(v.id)).filter(q => q.hp > 0 && !(q.sick > 0) && q.home === v.id);   // the camp's fever, whoever has had the village's
+        if (open.length) { pick(open).sick = ILLNESS_HOURS; count.infected++; count.armySpread++; v.armySickAt = t; }
+      }
+    }
+    /* How foul the camp somebody lives in is: their people's army's, if they are with it; else none. */
+    function campFoulOf(p) { return p.job === "soldier" && factions[p.f].campFoul > 0 && onCampaign(p) ? factions[p.f].campFoul : 0; }
     function gathering(f) { for (const k in f.camp) { const c = f.camp[k]; if (c.v >= 0 && !c.ready && factions[k].alive && f.rel[k].war) return true; } return false; }
     /* Enemy soldiers in the 2 km square of the map round a point (the day's map). */
     function foesNearPoint(f, x, y) {
@@ -9134,6 +9172,7 @@
       }
       if (ARMIES && !shared) hire(f, wars, f.soldiers * WAGE * 7);   // TODO 15h
       if (CAMPAIGN && wars) desertions(f);   // TODO 15j
+      if (ARMY_SICK) campSickness(f, wars);   // TODO 15m
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
       if (!shared) {
@@ -9725,6 +9764,7 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      campSickness: fid => campSickness(factions[fid], true), campFoulOf: p => ARMY_SICK ? campFoulOf(p) : 0,   // TODO 15m
       routes: () => [...ROUTES].map(([k, r]) => ({ key: k, trips: r.n, last: r.last })), caravanRoute: (pid, vid) => CARAVANS ? caravanRoute(byId.get(pid), villages[vid]) : null,   // TODO 15l
       onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h

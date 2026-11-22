@@ -2848,7 +2848,9 @@ goods, ore, wool), by land or by boat; caravans about 35 km a day, a camel or pa
 form where trade keeps going, and robbery on them rises and falls with the trade.
 **Budget:** default.
 
-### [ ] 15m. Sickness in armies and in their wake
+### [x] 15m. Sickness in armies and in their wake
+
+**Done 2026-11-22.** Setting Sickness in armies (off = the 15l world, fingerprinted). An army's camp is foul (half at 150 soldiers), so the sickness passes more readily there; each soldier with it catches a camp fever about one day in a hundred (a fifth of Wellington's army sick at a time), whatever village sickness they have had, and it kills about three times as many as a village fever; the sick leave it in places they pass, one day in twenty. Found on the way: the village sickness sweeps a world early and leaves nearly everybody immune for life, so camp fever caught from that alone never started. Measured, a year of three old enemies, four seeds: soldiers dead of sickness 30 against 8 in battle (off: 6 against 10); 2 to 14 places a year caught it from an army. `test/armysick.test.mjs`; README, "Sickness in armies". Left: refugees carrying it on purpose, camp hygiene by era.
 
 15k's gap 1. **Do:** an army camp is crowded and fouls its water as a town does (15.5r), so
 sickness starts and passes there; soldiers carry it home and to the places they pass, and refugees

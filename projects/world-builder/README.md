@@ -2027,6 +2027,35 @@ beyond a trader's reach; on seed 5 one route went five times. Before letting the
 none went: that land had no traders and no crafters at all. **Left out:** pirates on boat routes (15r);
 caravanserais and fairs; robbery measured against trade over years.
 
+### Sickness in armies (2026-11-22)
+
+TODO item 15m, from 15k's research. Before the 20th century sickness killed more soldiers than the
+enemy: about four to one in the Napoleonic wars, two to one in the American Civil War, seven to one in
+the Spanish–American War (Montana State on Napoleon; the National Museum of Health and Medicine;
+PubMed 18192771); in the Thirty Years' War most of the dead were civilians, of hunger and of sickness
+spread by troops and refugees. Setting **Sickness in armies** under War (on by default; off leaves
+the 15l world exactly as it was, fingerprinted).
+
+- An army gathering or marching (15h, 15j) is a **camp**: a crowd with no wells or latrines, half as
+  foul as it can be at 150 soldiers (a town needs 2,000, 15.5r). Its foulness makes the sickness pass
+  more readily between soldiers who talk, as a town's foul water does.
+- **Camp fever**: each soldier with the army catches a fever about one day in a hundred, more as the
+  camp grows (at any time about a fifth of Wellington's Peninsular army was sick: with a week's
+  illness, near three in a hundred a day). Dysentery and typhus are not the village's sickness, so
+  having had that is no shield. It kills about three times as many of those who catch it as a
+  village fever (about one in ten).
+- **Carried**: a sick soldier on campaign within 750 m of a place not their home leaves it there one
+  day in twenty, whoever there has had the village's sickness; from there it passes by talk as any
+  sickness does. A fever breaking out in an army is news (at most once a month for a people).
+- Counts: `campDays` (soldier-days with an army), `campOutbreaks`, `armySpread`, `soldierSick`
+  (soldiers dead of sickness); hooks `w.campSickness(fid)`, `w.campFoulOf(p)`. `test/armysick.test.mjs`.
+
+**Measured** (a year, 600 people, three old enemies, four seeds): soldiers dead of sickness 30 against
+8 killed in battle, about four to one (off: about 6 against 10); 2 to 14 places a year caught it from
+an army; 4 to 12 fewer people alive at the year's end. **Left out:** refugees carrying it on purpose
+(they carry it now only as anybody does, by talk); camp hygiene by era (Roman latrines, modern medicine
+beyond the one `medicine` factor).
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
