@@ -3012,7 +3012,7 @@ lasting wound can stop somebody working for good.
 **[x] 15.5f. A household's own firewood** *Done 2026-11-22:* each house keeps and burns its own wood and is cold without it whatever its neighbours have; short, it buys from the store with coins or cuts its own in the village's woods (four hours for six-tenths of a woodcutter's day). Setting "Whose firewood" ("village" = the 15.5s world, fingerprinted). A year, six worlds: 1,614 loads cut, 564 bought, 17 dead of cold in households that ran short (none before). `test/hearth.test.mjs`; README, "A household's own firewood". Left out: wood sold door to door, charcoal, the land rule for cutting. (left open by item 9). Firewood is the village's, while
 food, water and money are the household's. Make it the household's, fetched or bought like water.
 
-**15.5g. News of a good harvest** (left open by 12b). People act on news of dear food and dry
+**[x] 15.5g. News of a good harvest** *Done 2026-11-22:* a village with over half a year's food a head, cheap, after the harvest is news ("There is grain to spare in V"), passed by word of mouth; traders who hear it go there to load, the hungry lean toward moving there, and a hungry household with coins and an empty store goes there to buy. Setting "News of plenty" (off = the 15.5f world, fingerprinted). A year, six worlds: 6 such news, none needed. `test/plenty.test.mjs`; README, "News of plenty". Left out: letters (15e), families buying for kin. (left open by 12b). People act on news of dear food and dry
 years, not on news of plenty elsewhere. A good harvest becomes an event people hold and pass on,
 and traders and the hungry act on it the way 12b's news is acted on.
 

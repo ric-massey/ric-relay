@@ -1901,6 +1901,34 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### News of plenty (2026-11-22)
+
+TODO item 15.5g. Ric (2026-11-20): "Not sure which is best. Do research." Merchants learned prices by
+letter (Datini's archive holds over 100,000) and moved grain on news of a rise; how fast prices
+evened out between markets followed how fast news went between them (research notes under 15.5g in
+`TODO.md`). So news of plenty has two halves: by word of mouth, built here with 12b's machinery, and
+by letter, which needs writing (15e) and roads (15d). Until now people acted on news of dear food,
+famine and dry years, not on news of plenty.
+
+- **The news** ("plenty", in `villageTurn`): a village whose store and houses hold more than half a
+  year's food a head (`PLENTY_DAYS`), where hardly anyone is hungry and grain is cheap, is news:
+  "There is grain to spare in V." At most once a village a year and once a people every two months.
+  It passes in talk like any news, and is acted on for 45 days (`ACT_DAYS.plenty`).
+- **Traders** who hold it, with no load that pays from where they are, go there to load instead of
+  to the next market.
+- **The hungry** weigh moving there a little more (+0.25).
+- **A hungry household with coins**, its own store empty, goes there to buy (task "buyfar": half
+  its winter's want, with up to six-tenths of its coins), a day's walk or less, and comes home.
+- The page marks it "Plenty". Counts: `plenty`, `plentyBought`.
+- **A setting**, "News of plenty", under Minds. Off is the world 15.5f left, step for step
+  (`test/plenty.test.mjs`).
+
+**Measured** (a year each, six default worlds, against 15.5f): six pieces of news of plenty, none
+bought on (nobody hungry with an empty store within reach); people 2,377 → 2,377, starved 0 → 0. It
+matters where some go short and others have plenty, as the test sets up.
+
+**Left out:** letters (15e) and faster news on roads (15d); families sending to buy for kin elsewhere.
+
 ### A household's own firewood (2026-11-22)
 
 TODO item 15.5f. Ric (2026-11-20): keep it — "firewood was important till the modern age no?"

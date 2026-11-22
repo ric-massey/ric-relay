@@ -298,6 +298,8 @@
         say: v => v + " things", help: "Each friend, grudge, debt, piece of news, who has food to spare, and what they think about sharing takes one. When a mind is full the weakest thing goes. People differ a little: a quarter either way, taken after their parents." },
       { key: "wrong", label: "How often a tale changes in the telling", type: "range", min: 0, max: 0.3, step: 0.01, def: 0.05,   // TODO 12; Ric, 2026-11-18: "1 in 20"
         say: v => v <= 0 ? "never" : "1 telling in " + Math.round(1 / v), help: "Each time something is passed on, the chance it comes out changed: a number grows, the wrong village, the wrong side. Field studies of real rumours find them mostly right." },
+      { key: "plenty", label: "News of plenty", type: "toggle", def: true,   // TODO 15.5g, 2026-11-22
+        help: "A village with grain to spare after the harvest becomes news, passed on by word of mouth like news of a famine. Traders who hear it go to load there, the hungry think of moving there, and a hungry household with coins goes there to buy." },
       { key: "switch", label: "Changing sides", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["never", "almost never", "if life is better there", "easily"]),
         help: "How readily an unhappy person joins the faction of somebody who is doing better." },
@@ -765,7 +767,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1938,7 +1940,7 @@
        Ric, 2026-11-19: sickness, famine, and prices and harvests. Each is read from what the person
        holds as it was told to them, so a telling that names the wrong village sends them the wrong
        way. A report is acted on for so many days after what it tells of (`ACT_DAYS`). */
-    const ACT_DAYS = { sick: 30, famine: 30, dear: 20, dry: 120 };
+    const ACT_DAYS = { sick: 30, famine: 30, dear: 20, dry: 120, plenty: 45 };   // plenty: TODO 15.5g
     const acted = new Set();   // recent events of those kinds: minds are read for them only while there are some
     /* The village a telling names (for a dry year, the faction), or -1. Kept here, keyed by event and
        telling, not on the event: the page reads events, and reading must not change them. */
@@ -1957,7 +1959,7 @@
     /* What p has heard and still holds, into these four lists (read them before the next call):
        villages with a sickness, villages starving, villages where food is dear, factions with a dry
        year. False when there is nothing. */
-    const heardSick = [], heardFamine = [], heardDear = [], heardDry = [];
+    const heardSick = [], heardFamine = [], heardDear = [], heardDry = [], heardPlenty = [];   // heardPlenty: TODO 15.5g
     /* Read once for a person in an hour: a choice asks three or four times (measured 2026-11-19, the
        repeat reads made a day 10% slower). Anything held or forgotten, and any new report, starts over. */
     let rumP = -1, rumT = -1, rumS = -1, rumAny = false;
@@ -1965,7 +1967,7 @@
       if (!acted.size || p.mb < 0) return false;
       if (p.id === rumP && t === rumT && mindStamp === rumS) return rumAny;
       rumP = p.id; rumT = t; rumS = mindStamp; rumAny = false;
-      heardSick.length = 0; heardFamine.length = 0; heardDear.length = 0; heardDry.length = 0;
+      heardSick.length = 0; heardFamine.length = 0; heardDear.length = 0; heardDry.length = 0; heardPlenty.length = 0;
       let any = false;
       const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
       for (let o = o0; o < o1; o++) {
@@ -1973,7 +1975,7 @@
         const e = eventById(mAbout[o]);
         if (!e || t - e.t > ACT_DAYS[e.kind] * DAY_HOURS) continue;
         const at = namedIn(e, mVar[o]); if (at < 0) continue;
-        (e.kind === "sick" ? heardSick : e.kind === "famine" ? heardFamine : e.kind === "dear" ? heardDear : heardDry).push(at);
+        (e.kind === "sick" ? heardSick : e.kind === "famine" ? heardFamine : e.kind === "dear" ? heardDear : e.kind === "plenty" ? heardPlenty : heardDry).push(at);
         any = true;
       }
       rumAny = any;
@@ -2168,6 +2170,7 @@
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
     const HEARTH = MATS && S.firewood !== "off" && S.hearth !== "village";   // TODO 15.5f: each household's own firewood
+    const PLENTY = S.plenty !== false;   // TODO 15.5g: news of a good harvest
     const SLEEP = S.sleep !== "simple";   // TODO 15.5s: sleep that follows the length of the night
     const BED_AFTER = 3, BED_DARK = 1.5, WATCH = 1, LIGHT_WOOD = 0.0004;   // TODO 15.5s (see "sleep")
     const IRRIGATION = S.irrigation !== "none" && S.rain !== "off";   // TODO 15.5p: ditches from rivers
@@ -3217,6 +3220,7 @@
        time, cut as any wood is (so a wood runs down and grows back the same way). A household with no
        forest in reach burns dung and turf, as before. */
     const HEARTH_HOURS = 4, HEARTH_SHARE = 0.6;
+    const PLENTY_DAYS = 180;   // TODO 15.5g: food a head that is plenty to spare, in days
     function hearthWant(h) { return h.n * BURN * (chill() * 30 + winterAhead()) + h.n * BURN * 3; }
     function hearths(v, burning) {
       const price = matPrice(v, "wood");
@@ -3830,7 +3834,9 @@
         // No profitable load need not mean never leaving home. Prospecting
         // competes with real needs and work; it creates no goods or payment.
         else if (p.job === "trader") {
-          const next = nextMarket(p, w.here);
+          let next = nextMarket(p, w.here);
+          /* Where they have heard there is grain to spare (TODO 15.5g): to load there. */
+          if (PLENTY && rumours(p) && heardPlenty.length) { let bd = 34; for (const id of heardPlenty) { const o = villages[id]; if (o.alive && o !== w.here && !atWar(o.f, p.f) && dist(p, o) < bd) { bd = dist(p, o); next = o; } } }
           if (next && p.food >= 0.6)
             weigh("scout", 0.3 + p.greed * 0.2 + (p.curious - 0.5) * 0.3 + n.provide * 0.3 - away(dist(p, next)) * 0.4
                             - n.food * 0.6 - n.rest * 0.5 - n.safety * 0.8 - dark * 0.5,
@@ -3872,7 +3878,7 @@
           if (d > 20) continue;
           const foreign = o.f !== p.f;
           if (foreign && S.switch <= 0) continue;
-          const g = clamp((perHead(o) - perHead(v)) / (8 + winterAhead()), -1, 1) * 0.7 + (room(o) - room(v)) * 0.6
+          const g = clamp((perHead(o) - perHead(v)) / (8 + winterAhead()), -1, 1) * 0.7 + (room(o) - room(v)) * 0.6 + (PLENTY && rum && p.hungry > 0 && heardPlenty.includes(o.id) ? 0.25 : 0)
                     - (foreign ? (1 - S.switch) * 0.7 + p.loyal * 0.6 : 0) - away(d) * 0.4;
           if (g > bs) { bs = g; best = o; }
         }
@@ -3937,6 +3943,15 @@
             });
           }
         }
+      }
+
+      /* To buy food where they have heard there is plenty (TODO 15.5g): somebody going short with coins,
+         when the store at home is empty, a day's walk or less. */
+      if (PLENTY && !shared && !p.cargo && n.food > 0.35 && v.food <= 0.05 && funds(p) > 1 && rumours(p) && heardPlenty.length) {
+        let to = null, bd = 20;
+        for (const id of heardPlenty) { const o = villages[id]; if (o.alive && o !== v && !atWar(o.f, p.f) && dist(p, o) < bd) { bd = dist(p, o); to = o; } }
+        if (to) weigh("buyfar", n.food * 1.4 + 0.2 - away(bd) * 0.35 - n.rest * 0.4 - n.safety * 0.6 - dark * 0.5,
+          () => { p.at = to.id; go(p, to.x + (R() - 0.5) * to.radius, to.y + (R() - 0.5) * to.radius, "buyfar"); p.wait = 0; p.say = "There's grain to spare in " + to.name + ". I'm going to buy."; p.sayT = TK(60); });
       }
 
       /* Having it out with somebody they cannot stand (TODO 10): the hot-tempered go looking for
@@ -4058,6 +4073,13 @@
         const h = homes[p.buildAt];
         if (h && !h.built) buildShift(p, h);
         p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "buyfar") {                       // TODO 15.5g: buying where there is plenty, then home
+        const o = villages[p.at];
+        if (o && o.alive && dist(p, o) < o.radius + 2) { const before = p.food; const want = reserve(p);
+          buy(p, o, "food", Math.min(Math.max(1.1, want * 0.5 - p.food), funds(p) * 0.6 / Math.max(0.3, o.priceFood))); count.plentyBought += p.food - before; }
+        p.at = p.home; p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
+        return;
       }
       if (p.task === "firewood") {                     // TODO 15.5f: half a day's cutting, carried home
         if (!p.gathering) { p.gathering = true; p.wait = TK(HEARTH_HOURS * 60); return; }
@@ -5162,6 +5184,7 @@
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
       if (p.task === "watch") return "Awake in the night";   // TODO 15.5s
       if (p.task === "firewood") return walking ? "Going for firewood" : "Cutting firewood";   // TODO 15.5f
+      if (p.task === "buyfar") return "Going to buy grain where there is plenty";   // TODO 15.5g
       if (p.task === "water") return "Fetching water";
       if (p.task === "fish") return walking ? "Going fishing" : "Fishing";
       if (p.task === "cut") return walking ? "Going to cut wood" : "Cutting wood";
@@ -6508,6 +6531,14 @@
          (the newest is what is told). */
       if (!shared && t > 30 * DAY_HOURS && v.pop > 8 && v.hungry > v.pop * 0.15 && (v.purse || 0) > v.pop && t - v.dearAt >= 90 * DAY_HOURS && t - factions[v.f].dearAt >= 120 * DAY_HOURS && !(v.famine && t - v.famine < 30 * DAY_HOURS)) {
         v.dearAt = t; factions[v.f].dearAt = t; note("dear", "Food is dear in " + v.name + ".", 1.5, v.x, v.y, v.f);
+      }
+      /* Word of plenty (TODO 15.5g): after the harvest, a village whose store and houses hold more than
+         half a year's food a head and where it is cheap; at most once a village a year, once a faction
+         every two months. */
+      if (PLENTY && t > 30 * DAY_HOURS && v.pop > 8 && v.hungry < v.pop * 0.05 && (v.food + (v.held || 0)) > v.pop * PLENTY_DAYS && (shared || v.priceFood < 0.9) &&
+          t - (v.plentyAt ?? -1e9) >= YEAR * 0.8 && t - (factions[v.f].plentyAt ?? -1e9) >= 60 * DAY_HOURS) {
+        v.plentyAt = t; factions[v.f].plentyAt = t; count.plenty++;
+        note("plenty", "There is grain to spare in " + v.name + ".", 1.2, v.x, v.y, v.f);
       }
       /* Under the walls: soldiers of a faction at war with this one, and
          nobody of ours near enough to stop them. */
@@ -8143,7 +8174,7 @@
       /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
          the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */
       report: (kind, vid, ids, sayVid) => {
-        const v = villages[vid], text = n => kind === "sick" ? "A sickness has started in " + n + "." : kind === "famine" ? n + " is starving." : "Food is dear in " + n + ".";
+        const v = villages[vid], text = n => kind === "sick" ? "A sickness has started in " + n + "." : kind === "famine" ? n + " is starving." : kind === "plenty" ? "There is grain to spare in " + n + "." : "Food is dear in " + n + ".";
         const e = note(kind, text(v.name), 2, v.x, v.y, v.f);
         let tv = 0;
         if (sayVid !== undefined && sayVid !== vid) { e.vars = [e.text, text(villages[sayVid].name)]; tv = 1; }
