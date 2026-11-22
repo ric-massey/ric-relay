@@ -380,6 +380,36 @@ opposite).
 - [x] Checkers online, with resign and draw offers (also across the table).
 - [ ] Online games have no clock; a clock for them would need the Worker to keep time.
 
+## Mobile (Ric, 2026-11-21: "All of the styles now need to be looked at on a phone style and made for mobile do some research on what is best for mobile use.")
+
+What the research says, and what the pages now do:
+- **Touch targets at least 44 × 44 px.** Apple asks for 44 pt, Material for 48 dp,
+  WCAG 2.5.5 (AAA) for 44 px (2.5.8 AA: 24 px). Every header control, in-game
+  button (Undo, Hint, Notes, Flag mode, move-list arrows), Snake's d-pad and keys
+  and the Play button are now at least 44 px on a phone.
+- **The game on the first screen, controls under the thumb.** Hoober's study: about
+  half of people hold the phone in one hand, thumb working from the bottom. The
+  header is now one row on a phone (back, name, New game, Options) and everything
+  else folds into an Options panel, which closes again when you pick a style or
+  mode; games start 40-60 px higher. Solitaire's Undo/Hint move to the table's near
+  edge; Sudoku's pad, Wordle's keyboard, Tetris and Snake's controls already sit
+  under the board.
+- **No zoom when tapping a menu.** iPhones zoom the page into any field or menu with
+  text under 16 px; on phones every menu and field is 16 px.
+- **No double-tap zoom on buttons** (`touch-action: manipulation`), and hover-only
+  effects (the faint X/O in tic-tac-toe) only on devices that can hover.
+- **Nothing wider than the screen.** All 54 game/style pairs measured at 375 × 812
+  and the bigger games at 360 × 640: no sideways scrolling (fixed a hidden label
+  widening Checkers, and a rounding pixel on Snake's Terminal).
+- Small text raised where it carried meaning (Tetris side labels 8 → 9.5 px);
+  decorative numbers (checker square numbers) left small.
+- Terminal boards on a touch screen get taller lines, so each square is a bigger
+  target. Expert Minesweeper stays fitted (Ric's call) at about 20 px a square.
+
+Sources: Apple HIG / Material / WCAG target sizes (Smashing Magazine 2024 summary);
+Steven Hoober's one-handed-use research (Smashing Magazine "The Thumb Zone");
+mobile viewport units and safe areas (Polypane, OpenReplay guides).
+
 ## Ideas not built yet
 
 - [ ] Checkers variants (Russian/Brazilian flying kings, international 10 × 10).

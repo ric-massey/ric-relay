@@ -341,3 +341,52 @@ body[data-look="terminal"] [data-frame] :is(.scores,.scores li,.score-source,#sc
 body[data-look="terminal"] [data-frame] .dist-bar{background:#1f6e37!important;color:#f4fff6!important;border-radius:0}
 body[data-look="terminal"] [data-frame] .dist-bar.now{background:#8dffa6!important;color:#021004!important}
 
+/* Phones (Ric, 2026-11-21: "All of the styles now need to be looked at on a phone
+   … made for mobile"). From the research written up in TODO.md "Mobile":
+   - controls at least 44 × 44 px (Apple 44 pt, Material 48 dp, WCAG 2.5.5);
+   - menus and fields at 16 px text, or iPhones zoom the page when tapped;
+   - the game on the first screen: the header is one row (back, name, New game,
+     Options) and everything else folds into the Options panel;
+   - no double-tap zoom on buttons (touch-action: manipulation). */
+button{touch-action:manipulation}
+@media (max-width:760px){
+  body :is(select,input:not([type="checkbox"]):not([type="range"])){font-size:16px!important}
+  body .game-actions :is(button,select),body #options-toggle{min-height:44px!important}
+  body header :is(.cz-back,.ck-back,.st-back,.ms-back,.sd-back,.wd-back,.tt-back,.sn-back,.tc-back,.back){width:44px;height:44px;min-width:44px}
+  body .game-actions.has-options:not(.open)>:not(#new-game):not(#options-toggle):not(#pause):not(#tools){display:none!important}
+  body .game-actions.has-options:not(.open){order:0!important;flex:0 0 auto!important;flex-basis:auto!important;width:auto!important;margin-left:auto!important;overflow:visible!important;padding:0!important}
+  body .game-actions.has-options.open{order:3!important;flex:1 1 100%!important;flex-basis:100%!important;display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important;overflow:visible!important;padding:4px 0 6px!important}
+  body .game-actions.has-options.open>*{width:100%!important;max-width:none!important;margin:0!important}
+  body .game-actions.has-options.open :is(select,button){width:100%!important;max-width:none!important}
+  body .game-actions.has-options.open #new-game,body .game-actions.has-options.open #options-toggle{order:0}
+  body #options-toggle{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-width:44px;padding:4px 12px}
+}
+@media (min-width:761px){#options-toggle{display:none!important}}
+body[data-look="terminal"] #options-toggle::before{content:'[ '}body[data-look="terminal"] #options-toggle::after{content:' ]'}
+/* Terminal boards on a touch screen: taller lines, so each square is a bigger target. */
+@media (pointer:coarse){body[data-look="terminal"] .ascii-board:not(.sudoku-ascii){line-height:1.5!important}}
+/* Phones: the header's name shrinks and loses its subtitle, so back, name, New game
+   and Options fit on one row. */
+@media (max-width:760px){
+  header :is(.cz-sub,.ck-sub,.sn-sub,.st-sub){display:none!important}
+  header :is(.cz-name,.ck-name,.st-name,.sn-name){min-width:0;flex:0 1 auto;overflow:hidden;margin-right:auto}
+  header :is(.cz-title,.ck-title,.st-title,.sn-title,.ms-name,.wd-name,.tt-name,.sd-site,.tc-site){font-size:18px!important;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  header .st-title::after{display:none!important}
+  header:has(.game-actions.has-options:not(.open)){flex-wrap:nowrap!important}
+}
+/* Phones: every in-game control is a 44 px target too (Undo, Hint, Notes, Flag
+   mode, the move-list arrows, Snake's d-pad and keys, Play). */
+@media (max-width:760px){
+  body #tools :is(button,select,input:not([type="checkbox"])),body .review-nav button,body #chess-actions :is(button,select),body .start-overlay .overlay-play,body .keypad button,body :is(#btn-a,#btn-b),body .day-pick input{min-height:44px!important}
+  body .dpad button{min-width:44px!important;min-height:44px!important}
+}
+/* Phones: where the header says "The Arcade", it says the game's name instead. */
+@media (max-width:760px){
+  body:not([data-look="terminal"]) :is(.sd-site,.tc-site,.tt-name){font-size:0!important;letter-spacing:0!important;opacity:1!important}
+  body:not([data-look="terminal"]) :is(.sd-site,.tc-site,.tt-name)::after{font:700 18px/1 var(--display-font,var(--body-font,Georgia,serif));letter-spacing:.02em;text-transform:none}
+  body[data-game="sudoku"]:not([data-look="terminal"]) .sd-site::after{content:"Sudoku"}
+  body[data-game="tictactoe"]:not([data-look="terminal"]) .tc-site::after{content:"Tic-tac-toe"}
+  body[data-game="tetris"]:not([data-look="terminal"]) .tt-name::after{content:"Tetris"}
+  header .ms-name{font-size:17px!important}
+}
+

@@ -1664,6 +1664,15 @@
   let frameTimer=0;const framesSoon=()=>{clearTimeout(frameTimer);frameTimer=setTimeout(drawFrames,40);};
   addEventListener('resize',framesSoon);
   if(document.querySelector('[data-frame]')&&$('playroom'))new MutationObserver(framesSoon).observe($('playroom'),{childList:true,subtree:true});
+  /* Phones: one header row. Everything in the actions row except New game (and
+     Pause while it shows) folds into an Options panel (style.css "Phones"). */
+  (function(){
+    const row=document.querySelector('.game-actions'),ng=$('new-game');if(!row||!ng||$('options-toggle'))return;
+    const t=button('Options',()=>{const open=!row.classList.contains('open');row.classList.toggle('open',open);t.setAttribute('aria-expanded',open);t.textContent=open?'Done':'Options';framesSoon?.();},'options-toggle');
+    t.id='options-toggle';t.setAttribute('aria-expanded','false');t.setAttribute('aria-controls','options-panel');row.id=row.id||'options-panel';row.classList.add('has-options');ng.after(t);
+    // Picking a style or a mode folds the panel away again, so the game is in view.
+    row.addEventListener('change',e=>{if(e.target.matches('select')&&matchMedia('(max-width:760px)').matches){row.classList.remove('open');t.setAttribute('aria-expanded','false');t.textContent='Options';}});
+  })();
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';
   $('style-switch').onchange=()=>{applyStyle();framesSoon();};

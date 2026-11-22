@@ -251,6 +251,8 @@ body[data-look="terminal"] .term-title{border-bottom:1px dashed var(--edge)}
 body[data-look="terminal"] .sn-title{text-transform:lowercase}body[data-look="terminal"] .sn-title::before{content:"$ ./";color:#4fae66}
 /* Screen-reader labels in the scrolling toolbar stay inside it on a phone. */
 .sn-bar .game-actions{position:relative}
+/* A rounding pixel at phone width must not make the page scroll sideways. */
+body[data-look="terminal"] .sn-room{overflow-x:clip}
   </style>
 </head>
 <body data-game="snake" data-skin="0" data-look="pocket">

@@ -65,8 +65,8 @@ button.solid{background:var(--accent)!important;color:var(--on-accent,#fff)!impo
 .board.ttt .square,.board.ultimate .square{position:relative;background:none!important;border:0!important;border-radius:0;box-shadow:none!important;padding:8%;min-height:0;display:grid;place-items:center;cursor:pointer;color:inherit}
 .board.ttt .square:disabled,.board.ultimate .square:disabled{cursor:default}
 .board .square:focus-visible{outline:2px dashed var(--x-ink);outline-offset:-6px}
-.board .square[data-ghost]:hover::after{content:attr(data-ghost);position:absolute;inset:0;display:grid;place-items:center;font:var(--ghost-font,400 clamp(30px,8vw,70px)/1 'Segoe Print',cursive);color:var(--ghost,#0002)}
-.board.ultimate .square[data-ghost]:hover::after{font-size:clamp(12px,2.6vw,22px)}
+@media (hover:hover){.board .square[data-ghost]:hover::after{content:attr(data-ghost);position:absolute;inset:0;display:grid;place-items:center;font:var(--ghost-font,400 clamp(30px,8vw,70px)/1 'Segoe Print',cursive);color:var(--ghost,#0002)}
+.board.ultimate .square[data-ghost]:hover::after{font-size:clamp(12px,2.6vw,22px)}}
 .hand-grid{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .hand-grid path{fill:none;stroke:var(--grid-ink);stroke-width:var(--grid-width,3);stroke-linecap:round;vector-effect:non-scaling-stroke;filter:var(--stroke-filter,none)}
 .mark{width:100%;height:100%;overflow:visible}

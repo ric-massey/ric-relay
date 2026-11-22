@@ -229,6 +229,8 @@ body[data-look="terminal"] .st-bar .tools button::before{content:'['}body[data-l
 /* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
 body[data-look="terminal"] .st-table{margin:8px auto 0;width:calc(100% - 16px)}
 body[data-look="terminal"] .st-edge{margin:8px auto 8px;width:calc(100% - 16px);background:#040904!important}
+/* Phones: the tools on the near edge, big enough for a thumb. */
+@media(max-width:760px){.st-edge .tools{flex-basis:100%;order:0;display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:0}.st-edge .tools .break{display:none}.st-edge .tools button{min-height:44px;padding:6px 14px;font-size:14px;background:var(--bar-btn,#ffffff1a);color:var(--edge-ink,#fff);border:1px solid var(--bar-btn-edge,#ffffff33);border-radius:var(--radius,6px)}.st-edge .tools button.minor{font-size:13px}.st-edge .tools button.on{background:var(--bar-on,#ffffff40)}.st-edge #status{order:1}.st-edge #metric{order:2}}
   </style>
 </head>
 <body data-game="solitaire" data-skin="0" data-look="cardroom">
@@ -259,6 +261,11 @@ body[data-look="terminal"] .st-edge{margin:8px auto 8px;width:calc(100% - 16px);
   </script>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
+  <script>
+    // On a phone, Undo, Hint and the switches sit on the table's near edge, under
+    // your thumb, instead of in the header (TODO.md "Mobile").
+    (function(){const mq=matchMedia('(max-width:760px)'),tools=document.getElementById('tools'),home=tools.parentElement,next=tools.nextElementSibling,foot=document.querySelector('.st-edge');const place=()=>{if(mq.matches)foot.prepend(tools);else home.insertBefore(tools,next);};mq.addEventListener('change',place);place();})();
+  </script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
 </body>
 </html>
