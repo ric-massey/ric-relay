@@ -200,6 +200,18 @@ body[data-look="terminal"] .sd-tools .tools button.on{background:#8dffa6!importa
 body[data-look="terminal"] .sd-tools .tools button:not(.on):hover,body[data-look="terminal"] .sd-tools .tools button:not(.on):focus-visible{background:#0f2a16!important;color:#d8ffe0!important}
 @media (hover:none){body[data-look="terminal"] .sd-tools .tools button:not(.on):hover{background:transparent!important;color:var(--ink)!important}}
 body[data-look="terminal"] .sd-tray .numpad button.held{background:#8dffa6;color:#021004;font-weight:700}
+/* The grid as ASCII text (app.js builds it in a <pre> for this style). */
+body[data-look="terminal"] .sudoku-ascii{margin:0;font:clamp(12px,min(3.9vw,2.6vh),24px)/1.35 var(--term-font);color:#4fae66;white-space:pre;user-select:none;text-shadow:0 0 6px #8dffa640}
+body[data-look="terminal"] .sudoku-ascii .cell{all:unset;cursor:pointer;white-space:pre;color:#ffc56b}
+body[data-look="terminal"] .sudoku-ascii .cell.given{color:#d8ffe0;font-weight:700}
+body[data-look="terminal"] .sudoku-ascii .cell.empty{color:#2f7a42}
+body[data-look="terminal"] .sudoku-ascii .cell.peer{background:#0c2614}
+body[data-look="terminal"] .sudoku-ascii .cell.same{background:#1f6e37;color:#f4fff6;font-weight:700}
+body[data-look="terminal"] .sudoku-ascii .cell.chosen{background:#8dffa6;color:#021004;font-weight:700;text-shadow:none}
+body[data-look="terminal"] .sudoku-ascii .cell:is(.conflict,.wrong){color:#ff6b6b;background:#ff6b6b26}
+body[data-look="terminal"] .sudoku-ascii .cell:focus-visible{outline:1px solid #8dffa6}
+body[data-look="terminal"] .sudoku-ascii.brushing .cell.empty:hover{background:#0f2a16}
+body[data-look="terminal"] .ascii-notes{margin:6px 0 0;font:13px var(--term-font);color:#8dffa6}
 body[data-look="terminal"] .sudoku .square.empty:not(:has(.notes-grid))::before{content:'.';color:#2f7a42}
 body[data-look="terminal"] .sd-head h1::before{content:'$ ./';color:#4fae66}
 body[data-look="terminal"] .sd-head h1{text-transform:lowercase}

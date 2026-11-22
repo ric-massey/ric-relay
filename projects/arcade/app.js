@@ -1167,6 +1167,24 @@
       if(!n&&notes[i]?.length){const marks=el('span','notes-grid');for(let v=1;v<=9;v++)marks.append(el('span',sameN===v&&notes[i].includes(v)?'hot':'',notes[i].includes(v)?String(v):' '));sq.append(marks);}
       b.append(sq);
     });
+    /* Terminal: the grid drawn in ASCII (Ric, 2026-11-21: "a style for sudoku that is
+       the numbers. Like the ascii"), +-------+ rules and | walls, each square a
+       3-character button so the highlights still work; a square's notes are
+       listed under the board. */
+    if(look()==='terminal'){
+      const pre=el('pre','ascii-board sudoku-ascii'+(brush?' brushing':''));pre.setAttribute('role','grid');pre.setAttribute('aria-label','Sudoku grid');
+      const cells=[...b.children],rule='   +---------+---------+---------+\n';
+      pre.append('     1  2  3    4  5  6    7  8  9\n',rule);
+      for(let r=0;r<9;r++){
+        pre.append(` ${'ABCDEFGHJ'[r]} |`);
+        for(let c=0;c<9;c++){const i=r*9+c,sq=cells[i],n=s.b[i];sq.replaceChildren(` ${n||(notes[i]?.length?'·':'.')} `);sq.classList.add('cell');pre.append(sq);if(c===2||c===5)pre.append('|');}
+        pre.append('|\n');if(r===2||r===5)pre.append(rule);
+      }
+      pre.append(rule);
+      const out=[pre];
+      if(selected!==null&&!s.b[selected]&&notes[selected]?.length)out.push(el('p','ascii-notes',`notes ${'ABCDEFGHJ'[Math.floor(selected/9)]}${selected%9+1}: ${notes[selected].slice().sort().join(' ')}`));
+      stage.replaceChildren(...out);
+    }
     const count=Array(10).fill(0);for(const n of s.b)count[n]++;
     const pad=el('div','numpad');for(let n=1;n<=9;n++){const k=button('',()=>sudokuPad(n),(count[n]>=9?'done':'')+(brush===n?' held':''));k.setAttribute('aria-pressed',brush===n);k.append(el('span',null,String(n)),el('small',null,count[n]>=9?'✓':String(9-count[n])));k.setAttribute('aria-label',`${n}, ${Math.max(0,9-count[n])} left`);pad.append(k);}
     // A page with a tray (#pad-slot) keeps the pad beside the grid.
