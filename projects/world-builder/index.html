@@ -2492,6 +2492,14 @@
   }
   /* A faction's government (TODO 15c): who rules with whom, its officials and its laws. */
   const RITE = { feast: "a feast", fast: "a fast", offering: "offerings", sacrifice: "sacrifice" };   // TODO 15g
+  /* A people's marriage customs (TODO 15b). */
+  function matchLine(c) {
+    if (!c) return "";
+    const who = c.arranged > 0.66 ? "arranged by the families" : c.arranged > 0.33 ? "the families have their say" : "the couple's own choice";
+    const pay = { dowry: "a dowry", brideprice: "a bride-price", none: "" }[c.pay] || "";
+    const heir = { kids: "all the children inherit", eldest: "the eldest son inherits", kin: "the kin inherit" }[c.inherit] || "";
+    return "<span class='ln'>Marriage: " + [who, pay, c.live === "his" ? "she goes to his family" : "a house of their own", c.late ? "late" : "", c.cousins ? "" : "no cousins", heir].filter(Boolean).join(", ") + "</span>";
+  }
   function govLines(g) {
     if (!g) return "";
     const T = { leader: "", chief: "Chief", king: "King", emperor: "Emperor" }[g.title] || "";
@@ -2602,7 +2610,7 @@
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
+            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");

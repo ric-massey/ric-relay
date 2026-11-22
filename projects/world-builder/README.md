@@ -1971,6 +1971,54 @@ the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when
 for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
 customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
 
+### Who marries whom (2026-11-22)
+
+TODO item 15b. Ric (2026-11-19): "dont people who marry marry in similarry pay ranges? … there
+was tons of factors that play into who marrys who"; (2026-11-20) "The marriage thing should be
+decided through the stats." Setting **Who marries whom** under Lives: "Each people's customs, from
+its nature" (default) or "Whoever likes each other (as before)", which leaves the 15g world exactly
+as it was (fingerprinted).
+
+- **Customs, worked out each day** from the stats of whoever has the say (the ruler and 15c's
+  council): how much the families decide (stubborn, patient and greedy peoples arrange, the
+  curious leave it to the couple; about 70% of marriages in 190 foraging societies were arranged
+  by parents, Apostolou 2007); what passes between families — a dowry where wealth is unequal and
+  oxen plough, a bride-price among the greedy, or nothing (Anderson, JEP 21(4), 2007: dowry in the
+  stratified plough societies, bride-price in two thirds of the Ethnographic Atlas); where the
+  couple lives (a house of their own for the bold and curious, else his family's) and, with a
+  house of their own, late marriage for the patient — women at 24, men at 26 (Hajnal's
+  north-west European pattern); cousins forbidden where the people's faith is a taught one
+  (Schulz et al., *Science* 366, 2019); and who inherits.
+- **A match weighed inside them.** Two who like each other still marry, unless the families say
+  no: as far as they decide, more the further apart the two families' wealth (twice as well off is
+  a third of the way to a flat no), for another people, and for another faith held hard. Families
+  also arrange matches themselves, as often as they decide: a single of age is matched with the
+  single of the other sex within reach (6 to 16 km, the curious further; Perry 1969: under 11
+  miles) whose family's wealth is nearest theirs, of the same faith if they can, near in age; if
+  nobody of like standing is in reach, they wait. A dowry is an early share, 15% of the bride's
+  parents' coins to the groom; a bride-price ten days' bread and a tenth of the groom's family's
+  wealth to her parents. Two of 15c's great families married are news.
+- **Who inherits** (Ric: "I agree"), with the setting "When somebody dies" at its usual "their
+  children": a widow's third (English dower), then all the children alike, the eldest son alone,
+  or the children and the dead person's brothers and sisters, by the people's custom.
+- **Handed over for keep** (Ric, from 15.5e): the old who can no longer work and have no partner
+  give what they have and their house to their eldest grown child in the village, who keeps them in
+  food; if the child dies or leaves, the bargain is off.
+- Counts: `arranged`, `wedRefused`, `brideprice`, `dowry`, `greatWed`, `handedOver`, `keptFed`.
+  `test/marriage.test.mjs`.
+
+**Measured** (a year each; the correlation of the log of the two families' wealth among couples
+made that year, against the same people paired at random, about 0): a default world 0.61 against
+0.23 by liking alone; very unequal wealth 0.21 against 0.12, and under chiefs 0.52 against 0.35
+(Clark and Cummins found about 0.8 in English marriages 1837–2021). The families' own matches alone
+correlate 0.98 in the test. Fewer marry in a year (66 against 73 couples), and births fall with it
+(17 against 26 in the default world), as later, choosier marriage did. Cost: one pass over a
+people's grown-ups a day for its customs and the singles, and a search through the singles for a
+few families a day.
+
+**Left out:** more than one wife (a person has one partner in the engine); widows forbidden to
+marry again; dowries of land rather than coins.
+
 ### Faith (2026-11-22)
 
 TODO item 15g. Ric (2026-11-20): "How do we make it so they can come up with their own faiths?";

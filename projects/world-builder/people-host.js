@@ -398,6 +398,7 @@
                    treasury: f.treasury, yours: f.yours ? { tax: f.yours.tax, harvest: f.yours.harvest || 0, army: f.yours.army, relief: f.yours.relief, land: f.yours.land, unfree: f.yours.unfree || "" } : null,
                    gov: w.govOf ? w.govOf(f) : null,   // TODO 15c
                    faith: f.faith != null && w.faiths ? w.faithOf(f.faith) : null,   // TODO 15g
+                   match: f.match ? Object.assign({}, f.match) : null,   // TODO 15b
                    lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
         });
         out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive, f: v.f, x: v.x, y: v.y, pop: v.pop, tax: v.tax == null ? null : v.tax,

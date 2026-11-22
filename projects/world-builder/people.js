@@ -247,6 +247,9 @@
       { key: "sexes", label: "Men and women", type: "select", def: "real",   // TODO 15.5l, 2026-11-21
         options: [["real", "Men and women, and each people's customs"], ["none", "Nobody is either (as before)"]],
         help: "Each person is a man or a woman. A child needs a mother: she carries it nine months, works lighter at the end and lies in after the birth for as long as her household can spare her. Women are weaker at the heaviest work, as bodies are, and each people's customs, from its nature, say how far women are kept from the fields and the army. Couples of two men or two women form as far as their people accepts them, and have no children of their own." },
+      { key: "marriage", label: "Who marries whom", type: "select", def: "custom",   // TODO 15b, 2026-11-22
+        options: [["custom", "Each people's customs, from its nature"], ["liking", "Whoever likes each other (as before)"]],
+        help: "Each people works out from the nature of those with the say how much families arrange marriages, what passes between them (a dowry, a bride-price, nothing), where a couple lives, how old they marry, whether cousins may, and who inherits. Families say no to a match far beneath them, of another faith or another people, and arrange matches of like standing within a day's walk or so. The old who can no longer work hand what they have to a child who keeps them." },
       { key: "infancy", label: "Babies and mothers", type: "select", def: "real",   // TODO 15.5k, 2026-11-21
         options: [["real", "As in the past: many babies die, some mothers too"], ["before", "Nearly every child grows up (as before)"]],
         help: "About a quarter of babies died in their first year and nearly half of children before fifteen, of fevers, the flux, hunger, cold and accidents, more in foul towns and without a mother. About one mother in a hundred died giving birth. A mother nursing a baby seldom conceives, so children come two or three years apart, and couples have as many as they did then. Needs Men and women." },
@@ -775,7 +778,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1384,6 +1387,7 @@
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9,
                   mean: new Float64Array(TRAITS.length),   // TODO 15a: its grown-ups' average of each trait, at the last census
+                  match: null,   // TODO 15b: its marriage customs
                   faith: null,   // TODO 15g: the faith its ruler holds, when enough hold it
                   gov: null,   // TODO 15c: its council, officials and laws (see "government")
                   cheap: 0 };   // TODO 15.5b2: the share of a ration's price the treasury pays, in a village under a public order for grain
@@ -1670,6 +1674,7 @@
                   waitHouse: -1, buildAt: -1, shift: false,
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   unfree: undefined,   // TODO 15c: the id of whoever holds them, while they are unfree
+                  keptBy: undefined,   // TODO 15b: the child who keeps them
                   faith: undefined, zeal: undefined,   // TODO 15g: which faith they hold, and how hard
                   vig: 1, harm: 0, lame: 0,   // TODO 15.5e: strength left (wounds and age), a wound still healing, and what of it never will
                   /* TODO 15.5l: 0 a woman, 1 a man; strength at heavy work; drawn to their own sex; a child
@@ -2183,6 +2188,7 @@
     const RIOTS = !shared && S.riots !== false;   // TODO 15.5b3
     const BANDITS = !shared && S.bandits !== false;   // TODO 15.5b4
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
+    const MARRY = S.marriage !== "liking";   // TODO 15b: each people's marriage customs (see "who marries whom")
     const FAITH = S.faith !== false;   // TODO 15g (see "faith")
     /* How often a hard event makes a faith (one in six, Ric: "Rare" for finds, said as a guess), how
        readily it passes in one talk between people who trust each other, and how many make it a named faith. */
@@ -4712,7 +4718,11 @@
       /* Coins. */
       if (p.coins > 0) {
         let heirs = [];
-        if (S.inherit === "kids") {
+        if (MARRY && S.inherit === "kids" && f.match) {   // TODO 15b: by the custom of their people
+          const shares = heirsByCustom(p, f.match);
+          for (const [h, share] of shares) h.coins += p.coins * share;
+          if (shares.length) p.coins = 0;
+        } else if (S.inherit === "kids") {
           heirs = people.filter(q => q.hp !== -99 && (q.mum === p.id || q.dad === p.id));
           if (!heirs.length && p.partner && byId.get(p.partner)) heirs = [byId.get(p.partner)];
         } else if (S.inherit === "village") heirs = (PLAIN ? people : residents(p.home)).filter(q => q.hp !== -99 && q.home === p.home && q !== p);
@@ -4968,12 +4978,14 @@
       }
       /* 2 — two people with nobody. */
       if (adult(a) && adult(b) && !a.partner && !b.partner && !kin(a, b) && !war &&
-          a.age < a.dieAt * 0.75 && b.age < b.dieAt * 0.75 && (fr > 0.1 || like > 0.3) && mayPair(a, b) && R() < 0.5) {
+          a.age < a.dieAt * 0.75 && b.age < b.dieAt * 0.75 && (fr > 0.1 || like > 0.3) && mayPair(a, b) && R() < 0.5 && (!MARRY || wouldWed(a, b))) {
         a.partner = b.id; b.partner = a.id; befriend(a, b, 0.6);
+        if (MARRY) wedNote(a, b);   // TODO 15b
         if (SEXES && a.sex === b.sex) count.sameCouples++;
         if (a.home !== b.home) {
           /* One of them moves, and if that crosses a border they change flags. */
-          const mover = villages[a.home].pop <= villages[b.home].pop ? a : b, stay = mover === a ? b : a;
+          const his = MARRY && SEXES && a.sex !== b.sex && factions[a.f].match && factions[a.f].match.live === "his";   // TODO 15b: she goes to his family
+          const mover = his ? (a.sex === 0 ? a : b) : villages[a.home].pop <= villages[b.home].pop ? a : b, stay = mover === a ? b : a;
           said(a, b, "pair", "Come and live with me in " + villages[stay.home].name + ".", "I will.");
           rehome(mover, villages[stay.home], "married");
           mover.hx = stay.hx; mover.hy = stay.hy; mover.dwelling = stay.dwelling;
@@ -7446,6 +7458,168 @@
       note("sacrifice", "In " + v.name + ", those who hold to " + faithName(fa) + " have killed " + victim.name + " as an offering.", 3.5, v.x, v.y, v.f);
       die(victim, "sacrifice");
     }
+    /* ── who marries whom (TODO 15b, 2026-11-22) ───────────────────────────
+       Ric, 2026-11-19: "dont people who marry marry in similarry pay ranges? … there was tons of
+       factors that play into who marrys who"; 2026-11-20: "The marriage thing should be decided
+       through the stats" of a people's most influential. So each people's customs are worked out
+       each day from the stats of whoever has the say (`ruling`, with 15c's council):
+       - how much the families decide against the couple's own liking (stubborn, patient and greedy
+         peoples arrange; the curious leave it to the couple — in 190 foraging societies about 70%
+         of marriages were arranged by parents, Apostolou 2007);
+       - what passes between the families: dowry where wealth is unequal and the plough is used,
+         bride-price where they are greedy, nothing otherwise (Anderson, JEP 2007);
+       - where a couple lives (their own household for the bold and curious, else his family's) and,
+         with their own household, late marriage for the patient (Hajnal's north-west European
+         pattern: women at 24 or more, men about 26);
+       - cousins forbidden where the people's faith is a taught one (Schulz et al. 2019: the Western
+         Church's ban);
+       - who inherits (all the children alike, the eldest son, or the kin), with a widow's third.
+       Inside those customs a match is still weighed: a wide gap in what two families have, a
+       different faith and a different people make the families say no as far as the families
+       decide; and the families themselves arrange matches between those of like standing within a
+       day's walk or so. Measured by the correlation of spouses' families' wealth. README, "Who
+       marries whom". */
+    function worth(p) {
+      let w = p.coins + p.food * 0.2;
+      for (const id of [p.mum, p.dad]) { const q = id && byId.get(id); if (q && q.hp !== -99) w += q.coins * 0.5; }
+      return w;
+    }
+    function customs(f, lead) {
+      const m = k => ruling(lead, k, f);
+      const c = f.match || (f.match = { arranged: 0, pay: "", live: "", late: false, cousins: true, inherit: "", reach: 0, unequal: 0 });
+      const coins = []; for (const p of people) if (p.f === f.id && p.hp !== -99 && adult(p)) coins.push(p.coins);
+      coins.sort((a, b) => b - a);
+      let all = 0, top = 0; for (let i = 0; i < coins.length; i++) { all += coins[i]; if (i < Math.ceil(coins.length / 10)) top += coins[i]; }
+      c.unequal = all > 0 ? top / all : 0;
+      c.arranged = clamp((m("stub") + m("patient") + m("greed")) / 3 * 1.6 - 0.25 - (m("curious") - 0.5) * 0.6, 0, 1);
+      c.pay = lean3({ dowry: c.unequal * 2 - 0.5 + (BEASTS ? 0.2 : -0.3), brideprice: m("greed") - 0.1, none: m("warm") - 0.2 }, c.pay, 0.1);
+      c.live = m("bold") + m("curious") > 1.05 ? "own" : "his";
+      c.late = c.live === "own" && m("patient") > 0.5;
+      c.cousins = !(FAITH && f.faith != null && faiths[f.faith].mode === "teaching");
+      c.inherit = lean3({ kids: m("warm") + 0.25, eldest: m("greed") + m("bold") + c.unequal - 0.6, kin: m("stub") + m("patient") - 0.6 }, c.inherit, 0.1);
+      c.reach = 24 + 40 * m("curious");   // squares: 6 to 16 km, as far as most looked (Perry 1969: under 11 miles)
+      return c;
+    }
+    const wedAge = (c, p) => c && c.late ? (SEXES && p.sex === 0 ? 24 : 26) : S.grown;
+    function cousins(a, b) {
+      const g = p => [p.mum, p.dad].flatMap(id => { const q = id && byId.get(id); return q ? [q.mum, q.dad] : []; }).filter(Boolean);
+      const ga = g(a); if (!ga.length) return false;
+      return g(b).some(id => ga.includes(id));
+    }
+    /* Would the families let these two marry? */
+    function wouldWed(a, b) {
+      const c = factions[a.f].match; if (!c) return true;
+      if (a.age < wedAge(c, a) || b.age < wedAge(c, b)) return false;
+      if (!c.cousins && cousins(a, b)) return false;
+      const gap = Math.min(1, Math.abs(Math.log((worth(a) + 1) / (worth(b) + 1))) / 2);   // twice as well off: a third of the way to a flat no
+      let no = c.arranged * (0.4 + gap * 1.5);   // families who arrange would sooner choose, and not beneath them
+      if (a.f !== b.f) no += c.arranged * 0.5;
+      if (FAITH && a.faith !== b.faith) no += Math.max(a.faith != null ? a.zeal : 0, b.faith != null ? b.zeal : 0) * 0.7;
+      if (R() < no) { count.wedRefused++; return false; }
+      return true;
+    }
+    const wedWealth = [];   // TODO 15b: [one family's worth, the other's] at each marriage, the last 400
+    function wedNote(a, b) { wedWealth.push([worth(a), worth(b)]); if (wedWealth.length > 400) wedWealth.shift(); }
+    /* What passes between the families, at an arranged match. */
+    function wedPay(c, bride, groom) {
+      if (c.pay === "brideprice") {
+        const giver = [groom, byId.get(groom.dad), byId.get(groom.mum)].filter(q => q && q.hp !== -99), take = [byId.get(bride.dad), byId.get(bride.mum)].find(q => q && q.hp !== -99) || bride;
+        let owed = 10 * WAGE + worth(groom) * 0.1;
+        for (const q of giver) { const x = Math.min(q.coins, owed); q.coins -= x; take.coins += x; owed -= x; count.brideprice += x; }
+      } else if (c.pay === "dowry") {
+        const par = [byId.get(bride.dad), byId.get(bride.mum)].filter(q => q && q.hp !== -99);
+        for (const q of par) { const x = q.coins * 0.15; q.coins -= x; groom.coins += x; count.dowry += x; }   // an early share of what she would have had
+      }
+    }
+    /* The families' own matches: a few a day in each people, as often as the families decide. Each
+       single of age with a parent living may be matched with the single of the other sex within
+       reach whose family is most like theirs. */
+    function matchmaking(f, c) {
+      if (R() > c.arranged) return;
+      const pool = [];
+      for (const p of people) if (p.f === f.id && p.hp > 0 && adult(p) && !p.partner && !p.unfree && p.job !== "soldier" && p.age < p.dieAt * 0.75 && p.age >= wedAge(c, p)) pool.push(p);
+      if (pool.length < 2) return;
+      for (let k = Math.max(2, Math.ceil(pool.length / 25)); k > 0; k--) {
+        const x = pool[Math.floor(R() * pool.length)];
+        if (x.partner || (!(byId.get(x.mum) || byId.get(x.dad)) && x.age > 30)) continue;   // a family to arrange it (the young at the start have family nobody traced)
+        const vx = villages[x.home], wx = worth(x);
+        let best = null, bs = -1e9;
+        for (const y of pool) {
+          if (y === x || y.partner || kin(x, y) || !mayPair(x, y) || (SEXES && x.sex === y.sex)) continue;
+          if (!c.cousins && cousins(x, y)) continue;
+          const vy = villages[y.home], d = Math.hypot(vx.x - vy.x, vx.y - vy.y);
+          if (d > c.reach) continue;
+          const s = -2 * Math.abs(Math.log((wx + 1) / (worth(y) + 1))) - d / c.reach * 0.5 + (FAITH && x.faith === y.faith ? 0.3 : 0) - Math.abs(x.age - y.age) * 0.02;
+          if (s > bs) { bs = s; best = y; }
+        }
+        if (!best || bs < -1.2) continue;   // nobody of like standing within reach: they wait
+        const bride = SEXES ? (x.sex === 0 ? x : best) : x, groom = bride === x ? best : x;
+        wedArranged(c, bride, groom);
+      }
+    }
+    function wedArranged(c, bride, groom) {
+      bride.partner = groom.id; groom.partner = bride.id; befriend(bride, groom, 0.35);
+      count.arranged++; wedNote(bride, groom);
+      wedPay(c, bride, groom);
+      if (c.live === "his" || bride.home !== groom.home) {
+        const mover = c.live === "his" ? bride : (villages[bride.home].pop <= villages[groom.home].pop ? bride : groom), stay = mover === bride ? groom : bride;
+        if (mover.home !== stay.home) rehome(mover, villages[stay.home], "married");
+        mover.hx = stay.hx; mover.hy = stay.hy; mover.dwelling = stay.dwelling;
+      } else { bride.hx = groom.hx; bride.hy = groom.hy; bride.dwelling = groom.dwelling; }
+      /* Two of the great families (15c), married to each other. */
+      const g = factions[groom.f].gov;
+      const great = q => g && [q.mum, q.dad].some(id => g.council.includes(id));
+      if (great(bride) && great(groom)) {
+        count.greatWed++;
+        note("wed", bride.name + " and " + groom.name + ", of two of " + factions[groom.f].name + "'s great families, have been married.", 1.5, villages[groom.home].x, villages[groom.home].y, groom.f);
+      }
+    }
+    /* Who inherits, by the custom of the dead person's people; a widow takes a third first. */
+    function heirsByCustom(p, c) {
+      const kids = people.filter(q => q.hp !== -99 && (q.mum === p.id || q.dad === p.id));
+      const mate = p.partner && byId.get(p.partner);
+      const out = [];
+      if (mate && mate.hp !== -99) out.push([mate, 1 / 3]);
+      const rest = out.length ? 2 / 3 : 1;
+      let heirs = kids;
+      if (c.inherit === "eldest" && kids.length) {
+        const sons = SEXES ? kids.filter(q => q.sex === 1) : kids;
+        heirs = [(sons.length ? sons : kids).sort((a, b) => b.age - a.age)[0]];
+      } else if (c.inherit === "kin") {
+        const sibs = people.filter(q => q.hp !== -99 && q !== p && ((p.mum && q.mum === p.mum) || (p.dad && q.dad === p.dad)));
+        heirs = kids.concat(sibs);
+      }
+      if (heirs.length) for (const h of heirs) out.push([h, rest / heirs.length]);
+      else if (out.length) out[0][1] = 1;
+      return out;
+    }
+    /* Handing over for keep (Ric, 2026-11-20, from 15.5e; medieval maintenance agreements): the old
+       who can no longer work hand what they have to a grown child of the same village, who keeps
+       them — food when they run short — or the bargain is off. */
+    function keepOld(f) {
+      for (const p of people) {
+        if (p.f !== f.id || p.hp <= 0) continue;
+        if (p.keptBy) {
+          const k = byId.get(p.keptBy);
+          if (!k || k.hp <= 0 || k.home !== p.home) { p.keptBy = 0; continue; }
+          const need = dailyNeed(p);
+          if (p.food < need * 2 && k.food > dailyNeed(k) * 4) { const x = Math.min(need * 2, k.food - dailyNeed(k) * 4); k.food -= x; p.food += x; count.keptFed += x; }
+          continue;
+        }
+        if (!HEALTH || ageVigour(p) > 0.5 || p.partner) continue;
+        let child = null;
+        for (const q of residents(p.home)) if (q.hp > 0 && adult(q) && (q.mum === p.id || q.dad === p.id) && (!child || q.age > child.age)) child = q;
+        if (!child) continue;
+        if (p.coins > 3) { child.coins += p.coins - 3; p.coins = 3; }
+        if (p.dwelling >= 0 && homes[p.dwelling] && homes[p.dwelling].owner === p.id) homes[p.dwelling].owner = child.id;
+        p.keptBy = child.id; count.handedOver++;
+      }
+    }
+    function marriageDay(f, lead) {
+      const c = customs(f, lead);
+      matchmaking(f, c);
+      keepOld(f);
+    }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
        they hold it — a wrong telling names the wrong side. */
@@ -8129,6 +8303,7 @@
         if (top && top !== lead && top.coins > lead.coins * 1.5 + 5) { f.leader = top.id; f.views = viewOf(top); note("leader", top.name + ", now the richest in " + f.name + ", has taken it over from " + lead.name + ".", 2.5, villages[top.home].x, villages[top.home].y, f.id); }
       }
       if (GOV) { lead = govern(f, byId.get(f.leader) || lead); if (!lead) return; }   // TODO 15c
+      if (MARRY) marriageDay(f, lead);   // TODO 15b
       /* Who holds the land (TODO 7c). */
       { const want = landWant(f); if (want !== f.land) setLand(f, want); }
       const hungry = f.pop ? f.hungry / f.pop : 0;
@@ -8755,6 +8930,8 @@
       warEra: WAR_ERA, winning: winning,
       /* TODO 15c: a faction's government as the page shows it, and what the tests reach. */
       govOf: f => govView(f), titleOf: f => titleOf(f), ruling: ruling, bind: (p, h) => bind(p, h, "test"), govern: f => GOV && f.alive && byId.get(f.leader) ? govern(f, byId.get(f.leader)) : null,
+      kill: p => die(p, "old"),   // for the tests (TODO 15b)
+      wedWealth: wedWealth, wouldWed: wouldWed, marriageDay: fid => { const f = factions[fid], l = byId.get(f.leader); if (MARRY && l) marriageDay(f, l); return f.match; }, worth: worth,   // TODO 15b
       faithOf: id => { const fa = faiths[id]; return fa ? { name: faithName(fa), rite: fa.rite, rule: fa.rule, holyWar: fa.holyWar, mode: fa.mode, every: fa.every, holders: fa.holders } : null; },
       faiths: faiths, hardTimes: (vid, why, size) => hardTimes(villages[vid], why, size), makeFaith: (p, why) => makeFaith(p, why || "famine"), faithDay: () => faithDay(), convert: (p, id) => convert(p, faiths[id], 0.5), holyDay: id => holyDay(faiths[id]),   // TODO 15g
       steal: (p, q) => steal(p, q), capture: (vid, fid) => capture(villages[vid], factions[fid], null),   // for the tests (TODO 15c)

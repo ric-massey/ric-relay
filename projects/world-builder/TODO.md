@@ -2133,7 +2133,7 @@ player-ruled faction keep, free or forbid it?
 
 ### [x] 15g. Faith: peoples who come up with their own
 
-**Done 2026-11-22.** Setting Faith (off = the 15c world, fingerprinted). A faith is made up by one person after a famine, sickness, dry year, war lost or their village taken (about one such event in six); its rite, rule, holy war, mode and holy day come from its maker's nature; it passes in talk along trust and to children, is named once ten hold it, binds and helps its holders, keeps holy days (gathering instead of work), becomes a people's own when its ruler holds it (a priest where it is taught), may call for holy war or sacrifice, and fades where life is safe. Measured: 11% of those who trusted a holder took it up in sixty days, 2.8% of the rest. `test/faith.test.mjs`; README, "Faith". Left: splits, festivals with feasting, writing a faith down (15e). Marrying within it is 15b.
+**Done 2026-11-22.** Setting Faith (off = the 15c world, fingerprinted). A faith is made up by one person after a famine, sickness, dry year, war lost or their village taken (about one such event in six); its rite, rule, holy war, mode and holy day come from its maker's nature; it passes in talk along trust and to children, is named once ten hold it, binds and helps its holders, keeps holy days (gathering instead of work), becomes a people's own when its ruler holds it (a priest where it is taught), may call for holy war or sacrifice, and fades where life is safe. Measured: 11% of those who trusted a holder took it up in sixty days, 2.8% of the rest. `test/faith.test.mjs`; README, "Faith". Left: splits, festivals with feasting, writing a faith down (15e). Marrying within it is in 15b.
 
 Added 2026-11-20 (Ric: "Faith seems pretty important. How do we make it so they can come up with
 their own faiths?").
@@ -2190,7 +2190,9 @@ and festivals are its own (15g), kept or not by a people's customs and its lords
 festival is a day people gather, eat, talk and pass news, so it does something. *Question:* in, as
 proposed?
 
-### [ ] 15b. Who marries whom
+### [x] 15b. Who marries whom
+
+**Done 2026-11-22.** Setting "Who marries whom" ("Whoever likes each other" = the 15g world, fingerprinted). Each people's customs worked out daily from the stats of those with the say: how much families arrange, dowry, bride-price or nothing, his family's house or their own, late marriage, cousins (forbidden under a taught faith), and who inherits (all the children, the eldest son, or the kin, after a widow's third). Families refuse matches far beneath them, of another people or faith, and arrange matches of like standing within 6 to 16 km; the old hand what they have to a child for their keep. Measured: spouses' families' wealth correlates 0.61 against 0.23 by liking alone (default world), 0.52 against 0.35 under chiefs; births in the first year fall with later, choosier marriage. `test/marriage.test.mjs`; README, "Who marries whom". Left: more than one wife, widows barred from marrying again, dowries of land.
 
 Added 2026-11-19 at Ric's word, while 14d was built: "generally leaders are well off dont people
 who marry marry in similarry pay ranges? most the time in earlier times and the money was spread
