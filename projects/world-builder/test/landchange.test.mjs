@@ -20,7 +20,7 @@ const G_GRASS = 5, G_FOREST = 6, YEAR_DAYS = 365;
 
 // 1. Fixed: the world before.
 {
-  const w = People.create({ seed: 2, landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0 });
+  const w = People.create({ seed: 2, landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "\"The land never changes\" is the world before 15.5d");
 }

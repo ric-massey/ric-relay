@@ -2337,7 +2337,9 @@ in a people that shrinks; a connected people finds more than the same people cut
 rare by default (as in history); turned up, a run shows it sooner.
 **Budget:** default (a finding is checked only for people already at work).
 
-### [ ] 15f. Work and buildings: technology people are employed in
+### [x] 15f. Work and buildings: technology people are employed in
+
+**Done 2026-11-22.** Setting "Work and workplaces" ("Farming, crafts and trade only" = the 15e world, fingerprinted). Livings a place needs and can pay for, from households' coins beyond a week's bread (Engel): a healer where people are sick (a third fewer of the sick die while tended), a teacher who writes where there are children and families pay (children learn to write), a miller where a mill stands (the mill's saving needs a miller). Workplaces people put up once they know how, never placed: a water mill by a river, a power works (the steam engine, found from the mill and smithing) only when there is work for it, burning two loads of wood a day, and works beside it where a crafter makes three times a bench's while the power runs; knocked down, sacked or out of wood, it stops. Measured: in a year at "often", nine mills, three millers, a teacher, 115 coins paid for services; seed 2's land is mostly hunters, so farming better did not visibly move people (said, not tuned). `test/works.test.mjs`; README, "Work and workplaces". Left: firefighters (no fires before item 17), long-distance trade by caravan (Ric's question on it is still open), shops and carters.
 
 Added 2026-11-20 (Ric: "technology needs to be more of a thing and there does need to be jobs so
 do some research of how we could implement that"; power, wires and fuel go here: "These seem kinda

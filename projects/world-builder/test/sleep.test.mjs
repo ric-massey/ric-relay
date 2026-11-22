@@ -16,7 +16,7 @@ const FINGERPRINT = 983894563;   // print() of 15.5q's engine, seed 2, 60 days
 
 // 1. Simple: the world before.
 {
-  const w = People.create({ seed: 2, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0 });
+  const w = People.create({ seed: 2, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "\"From dark to dawn\" is the world before 15.5s");
 }

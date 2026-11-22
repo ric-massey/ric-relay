@@ -247,6 +247,9 @@
       { key: "sexes", label: "Men and women", type: "select", def: "real",   // TODO 15.5l, 2026-11-21
         options: [["real", "Men and women, and each people's customs"], ["none", "Nobody is either (as before)"]],
         help: "Each person is a man or a woman. A child needs a mother: she carries it nine months, works lighter at the end and lies in after the birth for as long as her household can spare her. Women are weaker at the heaviest work, as bodies are, and each people's customs, from its nature, say how far women are kept from the fields and the army. Couples of two men or two women form as far as their people accepts them, and have no children of their own." },
+      { key: "works", label: "Work and workplaces", type: "select", def: "real",   // TODO 15f, 2026-11-22
+        options: [["real", "Livings a place needs and can pay for, and workplaces"], ["none", "Farming, crafts and trade only (as before)"]],
+        help: "Households spend on bread first and on other things with what is left. Where they have coins to spare a village keeps a healer when people are sick, a teacher when its people write and there are children, a miller when it has a mill. People put up workplaces once they know how: a water mill by a river, a power works that burns wood, and works beside it where a crafter makes three times as much while the power runs. Knock the power works down and the works stops." },
       { key: "marriage", label: "Who marries whom", type: "select", def: "custom",   // TODO 15b, 2026-11-22
         options: [["custom", "Each people's customs, from its nature"], ["liking", "Whoever likes each other (as before)"]],
         help: "Each people works out from the nature of those with the say how much families arrange marriages, what passes between them (a dowry, a bride-price, nothing), where a couple lives, how old they marry, whether cousins may, and who inherits. Families say no to a match far beneath them, of another faith or another people, and arrange matches of like standing within a day's walk or so. The old who can no longer work hand what they have to a child who keeps them." },
@@ -781,7 +784,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1608,7 +1611,7 @@
       if (HOUSEWORK) for (const h of homes) h.small = 0;
       for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) { const h = homes[p.dwelling]; h.n++; if (adult(p)) h.head = p.id; if (HOUSEWORK && p.age < 5) h.small++; }   // and a grown-up of it, for its share (TODO 7c)
       /* The hours a household owes, an hour at a time (TODO 15.5n). */
-      if (HOUSEWORK) for (const h of homes) if (h.n > 0) h.chores = Math.min(CHORES_MAX, h.chores + ((COOKING + COOK_EACH * (h.n - 1)) * (KNOW && villages[h.v].mill ? 0.75 : 1) + MINDING * h.small) / (THIRST ? DAY_HOURS : 1));   // a mill grinds what a quern did (TODO 15e)   // counted hourly with thirst on, daily without
+      if (HOUSEWORK) for (const h of homes) if (h.n > 0) h.chores = Math.min(CHORES_MAX, h.chores + ((COOKING + COOK_EACH * (h.n - 1)) * (KNOW && (WORKS ? villages[h.v].millRun : villages[h.v].mill) ? 0.75 : 1) + MINDING * h.small) / (THIRST ? DAY_HOURS : 1));   // a mill grinds what a quern did (TODO 15e)   // counted hourly with thirst on, daily without
       for (const v of villages) v.fullest = null;
       for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
     }
@@ -2212,10 +2215,16 @@
       { key: "mill", name: "the water mill", needs: ["carts", "smithing"] },
       { key: "collar", name: "the horse collar", needs: ["plough", "carts"] },
       { key: "herbs", name: "healing herbs" },
+      { key: "steam", name: "the steam engine", needs: ["mill", "smithing"] },   // TODO 15f
     ];
     const TI_K = Object.fromEntries(TECH.map((x, i) => [x.key, i]));
     for (const x of TECH) x.mask = (x.needs || []).reduce((m, k) => m | (1 << TI_K[k]), 0);
     const BASE_KNOW = ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"].reduce((m, k) => m | (1 << TI_K[k]), 0);   // the farming village the engine was
+    const WORKS = S.works !== "none";   // TODO 15f: livings a place needs and can pay for, and workplaces (see "work and workplaces")
+    /* A mill about as long to build as a bridge; a power works twice that; the works between. A power
+       works burns two loads of wood a day. Guesses, said as such. */
+    const WORKS_HOURS = { mill: 600, power: 1200, works: 800 }, POWER_WOOD = 2;
+    const SERVICES = ["healer", "teacher", "miller"];
     const MARRY = S.marriage !== "liking";   // TODO 15b: each people's marriage customs (see "who marries whom")
     const FAITH = S.faith !== false;   // TODO 15g (see "faith")
     /* How often a hard event makes a faith (one in six, Ric: "Rare" for finds, said as a guess), how
@@ -2712,6 +2721,7 @@
       const building = v.paidSites > 0 ? BUILDER_PAY * clamp(v.paidSites / (1 + v.crafters * 0.5), 0, 1) : 0;
       const score = { farmer: w.land, crafter: Math.max(w.bench, building) * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) };
       if (FISH && fishGround(v)) score.fisher = fishWorth(v) * 0.9;   // TODO 6c
+      if (WORKS) for (const k of SERVICES) { if (k === "teacher" && !knowsP(p, "writing")) continue; const sw = serviceWorth(v, k); if (sw > 0) score[k] = sw * (0.85 + p.greed * 0.3); }   // TODO 15f: only who writes can teach it
       if (MATS) {                                                       // TODO 9a
         const iw = matSpot(v, "wood"), is = matSpot(v, "stone"), io = matSpot(v, "iron");
         if (iw >= 0) score.woodcutter = matWorth(v, "wood", iw) * 0.9;
@@ -2721,7 +2731,7 @@
         if (it >= 0) score.hunter = wildWorth(v, "hunt", it) * 0.9;
       }
       let job = "farmer", bs = -Infinity;
-      for (const k of ["farmer", "crafter", "trader", "fisher", "woodcutter", "miner", "herder", "hunter"]) {
+      for (const k of ["farmer", "crafter", "trader", "fisher", "woodcutter", "miner", "herder", "hunter", "healer", "teacher", "miller"]) {
         if (score[k] === undefined) continue;
         const s = score[k] + (R() - 0.5) * 0.15;
         if (s > bs) { bs = s; job = k; }
@@ -3173,7 +3183,8 @@
     function craftOutput(p, v) {
       /* With real materials (TODO 9a) what a batch comes to is what is in the store to work: wood, and
          ore for the metal in it; without either, a little by hand. */
-      const hands = p.vig < 1 ? 0.5 + 0.5 * p.vig : 1;   // TODO 15.5e: light work, but slower for the lame and the old
+      let hands = p.vig < 1 ? 0.5 + 0.5 * p.vig : 1;   // TODO 15.5e: light work, but slower for the lame and the old
+      if (WORKS && v.power && v.works && v.works.works && v.works.works.built) hands *= 3;   // at the works while the power runs (TODO 15f)
       if (MATS) return (0.35 + (v.wood >= 0.5 ? 0.3 : 0) + (v.iron >= 0.3 ? 0.45 : 0) + (v.wool >= 0.3 ? 0.2 : 0)) * (equipped(p, "tool") ? 1.2 : 1) * hands;
       return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1) * hands;
     }
@@ -3928,6 +3939,20 @@
                        - away(dist(p, v)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
           () => { const [x, y] = plaza(v, v.radius * 0.95); go(p, x, y, "make"); p.wait = 0; });
 
+        /* A service (TODO 15f): half a day of it, where people pay for it. */
+        if (WORKS && SERVICES.includes(p.job)) {
+          const sw = serviceWorth(v, p.job) * (v.hands ? v.hands[p.job] || 1 : 1);
+          const at = p.job === "miller" && v.works && v.works.mill ? v.works.mill : null;
+          weigh("serve", (n.provide * 1.05 + 0.1) * (0.6 + Math.min(0.8, sw)) - away(at ? Math.hypot(at.x - p.x, at.y - p.y) : dist(p, v)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
+            () => { if (at) go(p, at.x, at.y, "serve"); else { const [x, y] = plaza(v, v.radius * 0.6); go(p, x, y, "serve"); } p.wait = 0; });
+        }
+        /* A workplace the village wants, once it knows how (TODO 15f). */
+        if (WORKS && p.job !== "soldier" && v.wantAt !== Math.floor(t / DAY_HOURS)) { v.wantAt = Math.floor(t / DAY_HOURS); v.wantWorks = worksWanted(v); }   // looked at once a day
+        if (WORKS && p.job !== "soldier" && v.wantWorks && v.wantWorks.length) {
+          const k = v.wantWorks[0], sx = v.x + (k === "mill" ? 0.8 : -0.9), sy = v.y + (k === "works" ? 0.9 : -0.6);
+          weigh("worksbuild", 0.38 * heavyWish(p) - away(Math.hypot(sx - p.x, sy - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - (season().ripe - 1) * 0.3 - dark * 0.6,
+            () => { go(p, sx, sy, "worksbuild"); p.wait = 0; });
+        }
         /* A load to carry, if anywhere reachable wants what is here. */
         /* Carting grain between villages is a trader's work; anybody may still
            carry a pack of goods to where it sells. */
@@ -4154,7 +4179,7 @@
       if (KNOW && AT_WORK.has(p.task)) findTech(p);   // TODO 15e
       /* A shift of building or digging is spent at the work, and shows as that work; what it
          did is counted when it ends (TODO 7b: before, the hours showed as resting). */
-      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear" || p.task === "ditch") && !p.shift) {
+      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear" || p.task === "ditch" || p.task === "serve" || p.task === "worksbuild") && !p.shift) {
         p.shift = true; p.wait = p.task === "build" ? Math.round(BUILD_SHIFT * ACTIONS_PER_HOUR) : p.task === "house" || p.task === "spin" ? TK(HOUSE_SPELL * 60) : TK(240); return;
       }
       p.shift = false;
@@ -4203,6 +4228,8 @@
         p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
         return;
       }
+      if (p.task === "serve") { serve(p, v); p.task = "idle"; p.wait = spell("market"); return; }   // TODO 15f
+      if (p.task === "worksbuild") { const k = worksWanted(v)[0]; if (k) buildWorks(v, k, 4); p.task = "idle"; p.wait = spell("market"); return; }
       if (p.task === "ditch") {                        // TODO 15.5p: four hours digging or cleaning
         const h = 4 * p.vig * brawn(p);
         if (v.ditch) { v.cleanWork += h; count.ditchCleaned += h; }
@@ -5262,7 +5289,7 @@
       if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
       if (p.sick > 0) {
         p.sick--;
-        if (R() < SICK_HAZARD * frailty(p) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1)) { die(p, "sick"); return; }
+        if (R() < SICK_HAZARD * frailty(p) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
         if (p.sick === 0) p.immune = true;
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
@@ -5313,6 +5340,8 @@
       if (p.task === "herd") return walking ? "Taking the herd out" : "Herding";
       if (p.task === "hunt") return walking ? "Going hunting" : "Hunting";
       if (p.task === "waterhome") return "Carrying water home";
+      if (p.task === "serve") return walking ? "Going to work" : p.job === "healer" ? "Tending the sick" : p.job === "teacher" ? "Teaching the children" : "At the mill";   // TODO 15f
+      if (p.task === "worksbuild") return walking ? "Going to the building site" : "Putting up a workplace";
       if (p.task === "well") return walking ? "Going to dig the well" : "Digging a well";
       if (p.task === "bridge") return walking ? "Going to work on the bridge" : "Building a bridge";
       if (p.task === "build") { const h = homes[p.buildAt], own = h && (h.owner === p.id || h.owner === p.partner); return walking ? (own ? "Going to build their house" : "Going to build a house") : own ? "Building their house" : "Building a house for pay"; }
@@ -6879,6 +6908,7 @@
       if (BEASTS) { v.oxen *= 0.5; v.horses *= 0.3; }   // TODO 15.5o: driven off
       const mine = homesOf(v).filter(h => h.v === v.id && h.built);
       for (let n = Math.round(mine.length / 4); n > 0 && mine.length; n--) burnHouse(v, mine.splice(Math.floor(R() * mine.length), 1)[0]);
+      if (WORKS && v.works) for (const k of ["power", "works", "mill"]) if (v.works[k] && v.works[k].built && R() < 0.5) knock(v, k);   // TODO 15f
       count.sacked++;
     }
     /* Running from an army: a household at a time, the frightened and the less bold first, to the
@@ -7741,6 +7771,96 @@
       }
       /* A mill where a people knows it and a village sits by a river. */
       for (const v of villages) v.mill = v.alive && knows(v.f, "mill") && (v.riverNear ??= ditchFrom(v) >= 0);
+    }
+    /* ── work and workplaces (TODO 15f, 2026-11-22) ────────────────────────
+       Ric, 2026-11-20: "technology needs to be more of a thing and there does need to be jobs";
+       "Firefighters can be a job if it matches with the cities needs … they have to match what the
+       city needs." A living exists where the place needs it and can pay for it, never placed and
+       never a fixed share. Households spend on bread first and on other things with what is left
+       (Engel's law; Herrendorf, Rogerson and Valentinyi, NBER w18996), so a village whose
+       households have coins to spare beyond their bread can keep a healer where people are sick, a
+       teacher where the people write and there are children, and a miller where a mill stands.
+       Workplaces are buildings people put up, with a method (Victoria 3's production methods: what
+       goes in, the hands, what comes out): a water mill, once a people knows it and the village is by
+       a river; a power works, once they know the steam engine, burning wood; and works beside it,
+       where a crafter makes three times what a bench does while the power works runs. Knock the power
+       works down, or let it run out of wood, and the works is a bench again. README, "Work and
+       workplaces". */
+    function workDay() {
+      for (const v of villages) {
+        if (!v.alive) continue;
+        let spare = 0, homesN = 0, sick = 0, kids = 0;
+        const hands = { healer: 0, teacher: 0, miller: 0 };
+        for (const p of residents(v.id)) {
+          if (p.hp <= 0) continue;
+          if (adult(p)) { if (p.partner < p.id || !p.partner) { homesN++; spare += Math.max(0, p.coins - 5); } if (hands[p.job] !== undefined) hands[p.job]++; }
+          else if (p.age >= 6) kids++;
+          if (p.sick > 0) sick++;
+        }
+        v.spare = homesN ? spare / homesN : 0; v.sickN = sick; v.kids = kids; v.hands = hands;
+        /* The power works burns two loads of wood a day from the store; without it, no power. */
+        const pw = v.works && v.works.power;
+        const feeds = (v.works && v.works.works && v.works.works.built) || v.powerUse > 0;   // something to run (15d: towers and lines)
+        if (pw && pw.built && !feeds) pw.fuel = true;
+        else if (pw && pw.built) {
+          const burn = Math.min(v.wood || 0, POWER_WOOD);
+          if (MATS) v.wood -= burn;
+          pw.fuel = !MATS || burn >= POWER_WOOD * 0.99;
+        }
+        v.power = !!(pw && pw.built && pw.fuel);
+        if (v.mill) v.millRun = v.mill && v.works && v.works.mill && v.works.mill.built && (hands.miller > 0);
+      }
+    }
+    /* What a service would bring somebody here, beside the land and the bench. */
+    function serviceWorth(v, job) {
+      if (!v.hands) return 0;
+      const pay = clamp((v.spare || 0) / 8, 0, 1), held = 1 + (v.hands[job] || 0);
+      if (job === "healer") return clamp(v.sickN / Math.max(1, v.pop) * 25, 0, 1.2) * pay / held;
+      if (job === "teacher") return KNOW && knows(v.f, "writing") ? clamp(v.kids / 15, 0, 1) * pay / held : 0;
+      if (job === "miller") return v.works && v.works.mill && v.works.mill.built ? clamp(v.pop / 60, 0, 1) * pay / held : 0;
+      return 0;
+    }
+    /* A half-day of a service, and what it is paid by those it serves. */
+    function serve(p, v) {
+      const fee = (q, x) => { const c = Math.min(Math.max(0, q.coins - 1), x); q.coins -= c; p.coins += c; return c; };
+      let got = 0;
+      if (p.job === "healer") { v.tendedAt = t; for (const q of residents(v.id)) if (q.sick > 0 && q.hp > 0) got += fee(q, 0.3); }
+      else if (p.job === "teacher") {
+        for (const q of residents(v.id)) {
+          if (q.hp <= 0 || adult(q) || q.age < 6) continue;
+          const par = byId.get(q.mum) || byId.get(q.dad);
+          if (!par || par.coins < 3) continue;   // a family that cannot spare the fee keeps the child at work
+          got += fee(par, 0.1);
+          if (KNOW && knowsP(p, "writing") && !knowsP(q, "writing") && R() < 0.03) { q.know = (q.know || 0) | (1 << TI_K.writing); count.taught++; }
+        }
+      } else if (p.job === "miller") { v.milledAt = t; for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) got += fee(q, 0.05); }
+      count.servicePaid += got;
+    }
+    /* A workplace a village puts up, at the hours it takes: wanted, it stands where it was begun. */
+    function worksWanted(v) {
+      const w = v.works || (v.works = {});
+      const want = [];
+      if (KNOW && knows(v.f, "mill") && (v.riverNear ??= ditchFrom(v) >= 0) && !(w.mill && w.mill.built)) want.push("mill");
+      if (KNOW && knows(v.f, "steam") && !(w.power && w.power.built) && (!MATS || (v.wood || 0) > 10) && (asked(v) > 2 || v.wantPower)) want.push("power");   // only with work for it: goods asked for, or (15d) a tower or a line
+      if (w.power && w.power.built && !(w.works && w.works.built) && asked(v) > 2) want.push("works");
+      return want;
+    }
+    function buildWorks(v, kind, hours) {
+      const w = v.works || (v.works = {});
+      const b = w[kind] || (w[kind] = { kind, x: v.x + (kind === "mill" ? 0.8 : kind === "power" ? -0.9 : -0.9), y: v.y + (kind === "works" ? 0.9 : -0.6), built: false, work: 0 });
+      b.work += hours;
+      if (!b.built && b.work >= WORKS_HOURS[kind]) {
+        b.built = true; count.worksBuilt++;
+        note("works", v.name + " has built " + { mill: "a water mill", power: "a power works", works: "works by its power works" }[kind] + ".", 2, v.x, v.y, v.f);
+      }
+    }
+    function knock(v, kind) {
+      const b = v.works && v.works[kind];
+      if (!b || !b.built) return false;
+      b.built = false; b.work = 0; count.worksBroken++;
+      note("works", "The " + { mill: "water mill", power: "power works", works: "works" }[kind] + " of " + v.name + " has been knocked down.", 2.5, v.x, v.y, v.f);
+      if (kind === "power") v.power = false;
+      return true;
     }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
@@ -8756,6 +8876,7 @@
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
         if (FAITH && t % DAY_HOURS === 0 && faiths.length) faithDay();   // TODO 15g
         if (KNOW && t % DAY_HOURS === 0) knowDay();   // TODO 15e
+        if (WORKS && t % DAY_HOURS === 0) workDay();   // TODO 15f
         if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
         if (BEASTS && t % (30 * DAY_HOURS) === 0) for (const f of factions) ploughOf(f);   // TODO 15.5o
         if (OPEN && t % (7 * DAY_HOURS) === 0 && t > 0) overTheEdge();   // TODO 15.5c
@@ -9054,6 +9175,7 @@
       /* TODO 15c: a faction's government as the page shows it, and what the tests reach. */
       govOf: f => govView(f), titleOf: f => titleOf(f), ruling: ruling, bind: (p, h) => bind(p, h, "test"), govern: f => GOV && f.alive && byId.get(f.leader) ? govern(f, byId.get(f.leader)) : null,
       kill: p => die(p, "old"),   // for the tests (TODO 15b)
+      knock: (vid, k) => knock(villages[vid], k), buildWorks: (vid, k, h) => buildWorks(villages[vid], k, h), workDay: () => { if (WORKS) workDay(); }, serviceWorth: (vid, job) => serviceWorth(villages[vid], job), worksWanted: vid => worksWanted(villages[vid]),   // TODO 15f
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },
       wedWealth: wedWealth, wouldWed: wouldWed, marriageDay: fid => { const f = factions[fid], l = byId.get(f.leader); if (MARRY && l) marriageDay(f, l); return f.match; }, worth: worth,   // TODO 15b

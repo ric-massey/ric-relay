@@ -12,18 +12,19 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
+const LATER = { works: "none" };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 4263759778;   // print() of 15b's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, finds: 0 });
+  const w = People.create({ seed: 2, finds: 0, works: "none" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "never is the world before 15e");
 }
 
 // 2. Found at work.
 {
-  const w = People.create({ seed: 3, people: 400, finds: 1, war: false });
+  const w = People.create({ ...LATER, seed: 3, people: 400, finds: 1, war: false });
   w.step(24 * 90);
   const st = w.stats();
   const ev = w.events.filter(e => e.kind === "found");
@@ -33,7 +34,7 @@ const FINGERPRINT = 4263759778;   // print() of 15b's engine, seed 2, 60 days
 
 // 3 and 4 and 5.
 {
-  const w = People.create({ seed: 5, people: 300, finds: 0.2, war: false, factions: 2 });
+  const w = People.create({ ...LATER, seed: 5, people: 300, finds: 0.2, war: false, factions: 2 });
   w.step(24 * 2);
   w.knowDay();
   /* 3. Seen done. */

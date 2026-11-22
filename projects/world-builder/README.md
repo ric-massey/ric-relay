@@ -1971,6 +1971,42 @@ the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when
 for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
 customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
 
+### Work and workplaces (2026-11-22)
+
+TODO item 15f. Ric (2026-11-20): "technology needs to be more of a thing and there does need to be
+jobs"; (from item 17) jobs "have to match what the city needs". Setting **Work and workplaces**
+under Lives: "Livings a place needs and can pay for, and workplaces" (default) or "Farming, crafts
+and trade only (as before)", which leaves the 15e world exactly as it was (fingerprinted).
+
+- **Spending decides the work** (Engel's law; Herrendorf, Rogerson and Valentinyi, NBER w18996):
+  households buy bread first, and what a village can pay for anything else is its households'
+  coins beyond a week's bread. Each day a village counts that, its sick and its children of six
+  and over.
+- **Three livings, weighed in `chooseJob` like any other**, worth what the place needs times what
+  it can pay, shared by whoever already does it: a **healer** where people are sick — paid by the
+  sick, and while a village is tended a third fewer of its sick die; a **teacher**, only somebody
+  who writes, where there are children and their families have three coins to spare — each
+  half-day a child has a small chance to learn to write (15e); a **miller** where a mill stands —
+  paid a little by each household, and the mill's saving on grinding needs one.
+- **Workplaces people put up**, at the hours they take, never placed (Victoria 3's production
+  methods: what goes in, the hands, what comes out): a **water mill** once a people knows it and
+  the village is within 2 km of a river (600 hours); a **power works** once they know the steam
+  engine (found from the mill and smithing, 15e), only when there is work for it (1,200 hours); and
+  **works** beside it where goods are asked for (800 hours). While the power works runs — two loads
+  of wood a day from the store — a crafter at the works makes three times what a bench does; knocked
+  down, sacked (half the time) or out of wood, the works is a bench again. Hours and fuel are
+  guesses, said as such.
+- Counts: `taught`, `servicePaid`, `worksBuilt`, `worksBroken`. `test/works.test.mjs`.
+
+**Measured** (a year, 400 people, finds "often"): nine water mills built, three millers, a
+teacher, 115 coins paid for services; a teacher put to work taught five children to write in a
+month. Seed 2's land is mostly hunting ground, about half its grown-ups hunters, so whether farming
+better moves people into other work could not be seen there; said, not tuned. Cost: one pass over
+each village's people a day.
+
+**Left out:** firefighters (no fires until item 17); long-distance trade by caravan (Ric's question
+on it is still open); shops, carters and clerks.
+
 ### Know-how: found, passed on, lost; and writing (2026-11-22)
 
 TODO item 15e. Ric (2026-11-20): "Idk what to do about 2. Propose an idea please"; finds "Rare
