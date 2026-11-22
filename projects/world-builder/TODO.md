@@ -2452,7 +2452,9 @@ Sovereigns* to read first) — and **pirates**, taking at sea from boats carryin
 their own rules (Leeson); Barbary captive numbers (Davis) to find first.
 **Budget:** default (one coarse map per side a day).
 
-### [ ] 15i. People who belong to no one place: foragers, herders who move, and travellers
+### [x] 15i. People who belong to no one place: foragers, herders who move, and travellers
+
+**Done 2026-11-22.** Setting "People on the road and in camps" ("Everybody keeps to their village" = the 15h world, fingerprinted) and slider "Peoples who forage" (none by default; 15d's Foragers era sets it per people). A foraging people does not know farming: it lives by hunting, herding and fishing from camps, shares its food across a camp by need, has a headman who takes no tax and keeps no soldiers at peace, and moves camp when the near ground is used up (a measure that falls with the walk to the nearest ground with food, central-place foraging) to the best ground within a day or so; a band that splits makes two camps; rich fishing ground keeps a camp put (foragers who settle); a band that learns farming from its neighbours (15e) — most of it — settles where it is camped. Herders' camps move as the grazing is eaten down. Travellers: somebody grown, poor and hungry in a hungry village, with no small children, takes to the road (at most one grown-up in ten), asks for bread from village to village, sleeps where night finds them, and settles where there is a fortnight's bread a head. Measured: two bands moved camp 11 times in a year without know-how; with it, both learned farming and settled within the year; a famine world put 24 on the road. `test/roaming.test.mjs`; README, "People who belong to no one place". Left: transhumance (herders sleeping at a summer hut), sea nomads (Ric: last, or not at all), pedlars as their own living (traders already travel).
 
 Added 2026-11-20 (Ric: "aren't their people who aren't part of a place? Depending on the era too? They
 travel?"). Before 15d, which makes "Foragers" one of the starting eras.

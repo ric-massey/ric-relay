@@ -174,6 +174,9 @@
         help: "Under the year-to-year weather the climate itself drifts over decades and centuries, warmer and colder, wetter and drier, drawn from the seed: a cold spell of a few generations brings longer winters and poorer harvests, as the Little Ice Age did. Nothing is scripted; at the middle a cold age is about a degree colder." },
     ]},
     { title: "How it starts", items: [
+      { key: "foragers", label: "Peoples who forage", type: "range", min: 0, max: 6, step: 1, def: 0,   // TODO 15i, 2026-11-22
+        say: v => v === 0 ? "none: every people farms (as before)" : v === 1 ? "the first people" : "the first " + v + " peoples",
+        help: "A people that does not know farming lives by hunting, herding and fishing from a camp, shares what it brings in, has a headman who cannot tax, and moves camp when the food round it runs down. Needs People on the road and in camps." },
       { key: "stored", label: "Food put by", type: "range", min: 0, max: 1, step: 0.05, def: 0,
         say: v => { const d = putByDays(v); return d < 1 ? "nothing — they live day to day" : d < 21 ? "about " + Math.round(d) + " days" : d < 60 ? "about " + Math.round(d / 7) + " weeks" : d < 330 ? "about " + Math.round(d / 30) + " months" : "a full year's worth"; },
         help: "What every household has in the house on the first day, and the village store with it." },
@@ -247,6 +250,9 @@
       { key: "sexes", label: "Men and women", type: "select", def: "real",   // TODO 15.5l, 2026-11-21
         options: [["real", "Men and women, and each people's customs"], ["none", "Nobody is either (as before)"]],
         help: "Each person is a man or a woman. A child needs a mother: she carries it nine months, works lighter at the end and lies in after the birth for as long as her household can spare her. Women are weaker at the heaviest work, as bodies are, and each people's customs, from its nature, say how far women are kept from the fields and the army. Couples of two men or two women form as far as their people accepts them, and have no children of their own." },
+      { key: "roaming", label: "People on the road and in camps", type: "select", def: "real",   // TODO 15i, 2026-11-22
+        options: [["real", "Bands move camp; the hungry poor may take to the road"], ["settled", "Everybody keeps to their village (as before)"]],
+        help: "Somebody grown with no coins, hungry, in a village gone hungry, and with no small children may take to the road, going from village to village for bread and settling where there is food and work. And the peoples set to forage live in camps that move." },
       { key: "works", label: "Work and workplaces", type: "select", def: "real",   // TODO 15f, 2026-11-22
         options: [["real", "Livings a place needs and can pay for, and workplaces"], ["none", "Farming, crafts and trade only (as before)"]],
         help: "Households spend on bread first and on other things with what is left. Where they have coins to spare a village keeps a healer when people are sick, a teacher when its people write and there are children, a miller when it has a mill. People put up workplaces once they know how: a water mill by a river, a power works that burns wood, and works beside it where a crafter makes three times as much while the power runs. Knock the power works down and the works stops." },
@@ -787,7 +793,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1685,6 +1691,7 @@
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   unfree: undefined,   // TODO 15c: the id of whoever holds them, while they are unfree
                   keptBy: undefined,   // TODO 15b: the child who keeps them
+                  wanderTo: undefined,   // TODO 15i: the village a traveller is making for
                   hired: undefined, mustered: undefined,   // TODO 15h: when they were hired to fight for pay, and when they last reported in to an army gathering
                   know: undefined,   // TODO 15e: what they know how to do, a bit for each of TECH
                   faith: undefined, zeal: undefined,   // TODO 15g: which faith they hold, and how hard
@@ -2225,6 +2232,8 @@
     const TI_K = Object.fromEntries(TECH.map((x, i) => [x.key, i]));
     for (const x of TECH) x.mask = (x.needs || []).reduce((m, k) => m | (1 << TI_K[k]), 0);
     const BASE_KNOW = ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"].reduce((m, k) => m | (1 << TI_K[k]), 0);   // the farming village the engine was
+    const BAND_LOST = ["farming", "plough", "ditches", "wells", "carts", "bridges"];   // TODO 15i: what a band does not know
+    const ROAM = S.roaming !== "settled";   // TODO 15i: bands that move camp, and people on the road (see "people who belong to no one place")
     const ARMIES = S.armies !== "trickle";   // TODO 15h: armies that gather, carry and choose (see "armies")
     const MARCH_DAY = 80, HIRE_WAGE = WAGE * 2;   // squares a day's march (20 km; Engels), and a hired man's wage
     const WORKS = S.works !== "none";   // TODO 15f: livings a place needs and can pay for, and workplaces (see "work and workplaces")
@@ -2382,6 +2391,7 @@
       if (BEASTS) for (const v of villages) { v.oxen = v.pop * OXEN_EACH; v.horses = v.pop * HORSES_EACH; }   // TODO 15.5o: a full team to start
       for (const p of people) if (adult(p)) p.job = chooseJob(p);
       for (const p of people) if (p.job === "trader") p.gear.cart = 1;   // a trader starts with a cart (TODO 7d)
+      if (ROAM && S.foragers > 0) for (const f of factions) if (f.id < S.foragers) makeBand(f);   // TODO 15i
       /* A quarter of the grown-ups start paired, so the first children are not
          fourteen years away. */
       for (const v of villages) {
@@ -2717,7 +2727,8 @@
          the fields: weighed before it, a town short of food lost its farmers to the road and
          starved twice as many (measured, eight starting cities). */
       /* A village that cannot feed itself needs food, whatever else pays. */
-      if (v.food < v.pop * 0.5) return "farmer";
+      if (ROAM && wouldWander(p, v)) { if (p.job !== "vagrant") count.wandered++; return "vagrant"; }   // TODO 15i: a famine puts the poor on the road
+      if (v.food < v.pop * 0.5) return bandFarms(f) ? "farmer" : FISH && fishGround(v) >= 0 ? "fisher" : "hunter";   // a band that does not farm hunts (TODO 15i)
       if (BANDITS && wouldRob(p, v)) { if (p.job !== "bandit") count.banditry++; return "bandit"; }
       const w = livelihood(p, v);
       /* Somebody takes up the work that looks worth most to them. Greed makes
@@ -2737,7 +2748,8 @@
         if (ih >= 0) score.herder = wildWorth(v, "herd", ih) * 0.9;
         if (it >= 0) score.hunter = wildWorth(v, "hunt", it) * 0.9;
       }
-      let job = "farmer", bs = -Infinity;
+      if (ROAM && !bandFarms(f)) { delete score.farmer; delete score.crafter; delete score.trader; delete score.miner; }   // a band: no fields, no trades (TODO 15i)
+      let job = ROAM && !bandFarms(f) ? "hunter" : "farmer", bs = -Infinity;
       for (const k of ["farmer", "crafter", "trader", "fisher", "woodcutter", "miner", "herder", "hunter", "healer", "teacher", "miller"]) {
         if (score[k] === undefined) continue;
         const s = score[k] + (R() - 0.5) * 0.15;
@@ -3830,9 +3842,10 @@
             () => { go(p, c.landing.x, c.landing.y, "boatwork"); p.wait = 0; });
       }
       /* Sleep, in their own house. The one thing a night is for. */
-      const far = Math.hypot(p.hx - p.x, p.hy - p.y);
+      const road = ROAM && p.job === "vagrant";   // on the road they sleep where night finds them (TODO 15i)
+      const far = road ? 0 : Math.hypot(p.hx - p.x, p.hy - p.y);
       weigh("sleep", n.rest + (SLEEP ? bedtime(p, hour) : dark) * 0.6 - 0.22 - away(far) * 0.4, () => {
-        const [ix, iy] = inHouse(p); go(p, ix, iy, "sleep");   // inside their own house (TODO 7a)
+        if (road) go(p, p.x, p.y, "sleep"); else { const [ix, iy] = inHouse(p); go(p, ix, iy, "sleep"); }   // inside their own house (TODO 7a)
         p.wait = sleepTicks(p);
       });
 
@@ -3946,6 +3959,9 @@
                        - away(dist(p, v)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
           () => { const [x, y] = plaza(v, v.radius * 0.95); go(p, x, y, "make"); p.wait = 0; });
 
+        /* On the road (TODO 15i): to another village, for bread, or to stay. */
+        if (ROAM && p.job === "vagrant")
+          weigh("wander", 0.7 + n.food * 0.6 + n.provide * 0.5 - n.rest * 0.5 - dark * 0.8, () => { const o = wanderTo(p); if (o) { p.wanderTo = o.id; go(p, o.x + (R() - 0.5), o.y + (R() - 0.5), "wander"); p.wait = 0; } });
         /* A service (TODO 15f): half a day of it, where people pay for it. */
         if (WORKS && SERVICES.includes(p.job)) {
           const sw = serviceWorth(v, p.job) * (v.hands ? v.hands[p.job] || 1 : 1);
@@ -4235,6 +4251,7 @@
         p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
         return;
       }
+      if (p.task === "wander") { arrive(p); return; }   // TODO 15i
       if (p.task === "serve") { serve(p, v); p.task = "idle"; p.wait = spell("market"); return; }   // TODO 15f
       if (p.task === "worksbuild") { const k = worksWanted(v)[0]; if (k) buildWorks(v, k, 4); p.task = "idle"; p.wait = spell("market"); return; }
       if (p.task === "ditch") {                        // TODO 15.5p: four hours digging or cleaning
@@ -5355,6 +5372,7 @@
       if (p.task === "herd") return walking ? "Taking the herd out" : "Herding";
       if (p.task === "hunt") return walking ? "Going hunting" : "Hunting";
       if (p.task === "waterhome") return "Carrying water home";
+      if (p.task === "wander") return walking ? "On the road" : "Asking for bread at the door";   // TODO 15i
       if (p.task === "serve") return walking ? "Going to work" : p.job === "healer" ? "Tending the sick" : p.job === "teacher" ? "Teaching the children" : "At the mill";   // TODO 15f
       if (p.task === "worksbuild") return walking ? "Going to the building site" : "Putting up a workplace";
       if (p.task === "well") return walking ? "Going to dig the well" : "Digging a well";
@@ -6796,6 +6814,7 @@
         .sort((a, b) => b.bold - a.bold).slice(0, Math.max(6, Math.floor(v.pop * 0.22)));
       if (goers.length < 4) return;
       const nv = newVillage(best.x, best.y, v.f);
+      if (ROAM && v.camp) { nv.camp = true; nv.movedAt = t; }   // a band that splits makes two camps (TODO 15i)
       const share = goers.length / v.pop;
       nv.food = v.food * share; v.food -= nv.food;
       nv.till = v.till * share; v.till -= nv.till;
@@ -7348,6 +7367,7 @@
     }
     /* A title, read off what the ruler holds (Ric, 2026-11-20: "We can show titles that way"). */
     function titleOf(f) {
+      if (ROAM && f.band) return "headman";   // TODO 15i
       if (f.rule === "elected") return "leader";
       let subjects = 0, kings = 0;
       for (const o of factions) if (o.alive && o !== f && o.rel[f.id] && o.rel[f.id].pays) { subjects++; for (const x of factions) if (x.alive && x !== o && x.rel[o.id] && x.rel[o.id].pays) kings++; }
@@ -8009,6 +8029,131 @@
         (f.hired || (f.hired = [])).push(p.id); took++; count.hired++;
       }
       if (took) note("war", f.name + " has hired " + took + " to fight for pay.", 1.5, mine[0].x, mine[0].y, f.id);
+    }
+    /* ── people who belong to no one place (TODO 15i, 2026-11-22) ──────────
+       Ric, 2026-11-20: "aren't their people who aren't part of a place? Depending on the era too?
+       They travel?"; which kinds: "all of them"; a settled family taking to the road and back: "yes";
+       a moving people its own faction or inside a settled one's land: "Probably both."
+       - A **band**: a people that does not farm (no farming known, 15e) lives by hunting, herding and
+         fishing from a camp, shares what it brings in across the camp (game divided with no favour
+         to kin; Kaplan, Hill and others), has a headman with no power to tax or levy (Boehm), and
+         moves camp when the food within reach has run down — across 312 forager cases camps moved
+         7.4 times a year on average, 0 to 58 (Marlowe 2005) — to the best ground within a day or so
+         that no other village holds. Where the fish are rich it need not move at all: foragers who
+         settle (the North-West coast) come out of the same rule. Herders' camps move as the grazing
+         round them is eaten down.
+       - A **traveller** inside a settled people: somebody grown with no coins, hungry, in a village
+         gone hungry, who has no small children and is bold enough, takes to the road (many taken up
+         as vagrants in England were simply out of work; *Rural History* 2013), goes from village to
+         village asking for bread, and settles where there is food and work.
+       README, "People who belong to no one place". */
+    function makeBand(f) {
+      f.band = true; f.tax = 0; f.harvest = 0;
+      for (const v of villages) if (v.f === f.id) v.camp = true;
+      for (const p of people) {
+        if (p.f !== f.id) continue;
+        if (KNOW && p.know != null) for (const k of BAND_LOST) p.know &= ~(1 << TI_K[k]);
+        if (adult(p) && p.job !== "soldier") p.job = chooseJob(p);
+      }
+    }
+    function bandFarms(f) { return !(ROAM && f.band) || (KNOW && knows(f.id, "farming") && !!f.know && f.know[TI_K.farming] > (f.pop || 1) * 0.5); }   // a band farms once most of it knows how
+    /* What a camp's ground gives a day now: the best of the hunt, the herd and the fish, 0 to about 1.2. */
+    function campFood(v) {
+      /* The nearest ground with something on it, and the walk to it: a camp moves when the near ground is used up (central-place foraging). */
+      const near = k => { const j = wildSpot(v, k); if (j < 0) return 0; const i = wildList(v, k)[j], d = Math.hypot(i % cols + 0.5 - v.x, ((i / cols) | 0) + 0.5 - v.y); return wildWorth(v, k, j) * clamp(1 - d / 12, 0.1, 1); };
+      const h = MATS ? near("hunt") : 0, g = MATS ? near("herd") : 0;
+      const fi = FISH && fishGround(v) >= 0 ? fishWorth(v) : 0;
+      return Math.max(h, g, fi);
+    }
+    function campSite(v) {
+      let best = null, bs = 0;
+      for (let i = 0; i < 24; i++) {
+        const a = R() * 6.2832, d = 8 + R() * 24;
+        const x = v.x + Math.cos(a) * d, y = v.y + Math.sin(a) * d;
+        if (x < 3 || y < 3 || x > cols - 3 || y > rows - 3) continue;
+        if (!GROUND[ground[tileAt(x, y)]].live) continue;
+        if (villages.some(o => o.alive && o !== v && Math.hypot(o.x - x, o.y - y) < o.radius + 6)) continue;
+        let s = 0;
+        for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+          const X = Math.floor(x + dx), Y = Math.floor(y + dy); if (X < 0 || Y < 0 || X >= cols || Y >= rows) continue;
+          const j = Y * cols + X, g = ground[j];
+          if (MATS && g === G_FOREST) s += stockIn(gameStock, j, GAME_YEAR);
+          else if (MATS && (g === G_GRASS || g === G_DRY || g === G_HILLS)) s += stockIn(grazeStock, j, GRAZE_YEAR) * 0.3;
+          else if (g <= G_RIVER) s += 1;
+        }
+        if (s > bs) { bs = s; best = { x, y, s }; }
+      }
+      return best;
+    }
+    function moveCamp(v, spot) {
+      const nv = newVillage(spot.x, spot.y, v.f);
+      nv.camp = true; nv.food = v.food; v.food = 0; nv.till = v.till; v.till = 0; nv.movedAt = t; nv.foundedAs = v.foundedAs ?? v.id;
+      const here = residents(v.id).slice().sort((a, b) => (adult(b) ? 1 : 0) - (adult(a) ? 1 : 0));
+      for (const p of here) if (p.hp !== -99) rehome(p, nv, "camp");
+      v.alive = false; v.camp = false;
+      count.campMoves++;
+      note("camp", factions[v.f].name + " have moved camp from " + v.name + " to " + nv.name + ".", 1.5, nv.x, nv.y, v.f);
+      territory(); census();
+    }
+    function bandDay(f) {
+      /* Farming learned from neighbours (15e), by most of the band: it settles where it is camped. */
+      if (bandFarms(f)) {
+        f.band = false; count.bandsSettled++;
+        const at = villages.find(v => v.alive && v.f === f.id && v.camp);
+        for (const v of villages) if (v.f === f.id) v.camp = false;
+        if (at) note("camp", f.name + " have taken up farming, and settle where they are camped.", 3, at.x, at.y, f.id);
+        return;
+      }
+      f.tax = 0; f.harvest = 0;   // a headman takes nothing (Boehm)
+      for (const v of villages) {
+        if (!v.alive || v.f !== f.id || !v.camp) continue;
+        /* Shared out: what the camp has, by what each needs. */
+        const here = residents(v.id).filter(p => p.hp > 0);
+        if (!bandFarms(f)) for (const p of here) if (adult(p) && (p.job === "farmer" || p.job === "crafter" || p.job === "trader" || p.job === "miner")) p.job = chooseJob(p);   // a soldier stood down goes back to the hunt
+        let food = 0, need = 0;
+        for (const p of here) { food += p.food; need += dailyNeed(p); }
+        if (need > 0 && here.length > 1) for (const p of here) p.food = food * dailyNeed(p) / need;
+        /* Moving on, when the ground round the camp has run down and better lies within reach. */
+        if (t - (v.movedAt ?? v.founded) < 20 * DAY_HOURS) continue;
+        const now = campFood(v);
+        if (now >= 0.4) continue;
+        const spot = campSite(v);
+        if (spot && spot.s > 8) moveCamp(v, spot);
+      }
+    }
+    /* On the road: the hungry and the poor who take to it, and where they stop. */
+    function wouldWander(p, v) {
+      if (!ROAM || !adult(p) || p.coins >= 1 || p.hungry <= 0 || v.hungry <= v.pop * 0.15 || p.bold < 0.4 || p.unfree) return false;
+      if (p.id === factions[p.f].leader || p.job === "soldier") return false;
+      let gone = 0; for (const q of residents(v.id)) if (q.job === "vagrant" && q.hp > 0) gone++;
+      if (p.job !== "vagrant" && gone >= v.adults * 0.1) return false;   // one grown-up in ten at most
+      for (const q of residents(v.id)) if (q.hp > 0 && !adult(q) && q.age < 12 && (q.mum === p.id || q.dad === p.id)) return false;   // not with small children
+      return true;
+    }
+    function wanderTo(p) {
+      const here = villages[p.at] && villages[p.at].alive ? villages[p.at] : villages[p.home];
+      let best = null, bs = -1e9;
+      for (const o of villages) {
+        if (!o.alive || o.id === here.id || atWar(o.f, p.f)) continue;
+        const d = Math.hypot(o.x - here.x, o.y - here.y); if (d > 40) continue;
+        const s = o.food / Math.max(1, o.pop) - d * 0.3 + R() * 10;
+        if (s > bs) { bs = s; best = o; }
+      }
+      return best;
+    }
+    function arrive(p) {
+      const o = villages[p.wanderTo];
+      if (!o || !o.alive) { p.task = "idle"; return; }
+      p.at = o.id;
+      const fed = o.food > o.pop * 14 && o.hungry < o.pop * 0.1;   // a fortnight of bread a head, and few going hungry
+      if (fed && !o.camp) {
+        rehome(p, o, "settled"); p.job = chooseJob(p); count.wanderersSettled++;
+        return;
+      }
+      /* Bread at the door, from a store that has some. */
+      const need = dailyNeed(p);
+      if (o.food > o.pop * 3 && R() < 0.6) { const x = Math.min(o.food, need * 2); o.food -= x; p.food += x; count.alms += x; }
+      p.task = "idle"; p.wait = spell("market");
     }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
@@ -8694,6 +8839,7 @@
       }
       if (GOV) { lead = govern(f, byId.get(f.leader) || lead); if (!lead) return; }   // TODO 15c
       if (MARRY) marriageDay(f, lead);   // TODO 15b
+      if (ROAM && f.band) bandDay(f);   // TODO 15i
       /* Who holds the land (TODO 7c). */
       { const want = landWant(f); if (want !== f.land) setLand(f, want); }
       const hungry = f.pop ? f.hungry / f.pop : 0;
@@ -8704,7 +8850,8 @@
          bolder leader more, and fewer when the treasury cannot pay them.
          It moves a little each day, never all at once. In war, it grows
          from there. */
-      if (!f.yours && !wars) {
+      if (ROAM && f.band && !wars && !f.yours) f.peace = 0;   // a band keeps no soldiers at peace (TODO 15i)
+      else if (!f.yours && !wars) {
         let threat = 0;
         for (const o of factions) if (o.alive && o !== f && border(f, o).d < 30) {
           threat = Math.max(threat, o.adults ? o.soldiers / o.adults : 0) + Math.min(0.06, f.rel[o.id].grief * 0.03) + (t - o.rel[f.id].askedAt < 180 * DAY_HOURS ? 0.04 : 0);
@@ -8748,6 +8895,7 @@
            as paying the soldiers demands, and comes back when it does not. */
         const wages = f.soldiers * WAGE * 7;
         if (f.yours) { f.tax = f.yours.tax; f.relief = f.yours.relief; }
+        else if (ROAM && f.band) { f.tax = 0; f.harvest = 0; f.relief = false; }   // a headman takes nothing (TODO 15i)
         else {
           if (f.treasury < wages && f.tax < 0.6) f.tax = Math.min(0.6, f.tax + 0.02);
           else if (f.treasury > wages * 3 + f.pop * 0.5 && f.tax > S.tax * 0.5) f.tax = Math.max(S.tax * 0.5, f.tax - 0.02);
@@ -9328,6 +9476,7 @@
       kill: p => die(p, "old"),   // for the tests (TODO 15b)
       knock: (vid, k) => knock(villages[vid], k), buildWorks: (vid, k, h) => buildWorks(villages[vid], k, h), workDay: () => { if (WORKS) workDay(); }, serviceWorth: (vid, job) => serviceWorth(villages[vid], job), worksWanted: vid => worksWanted(villages[vid]),   // TODO 15f
       place: (p, x, y) => jump(p, x, y), startWar: (a, b) => startWar(factions[a], factions[b], factions[a].name + " has gone to war with " + factions[b].name + "."),   // for the tests (TODO 15h)
+      bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },

@@ -1971,6 +1971,47 @@ the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when
 for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
 customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
 
+### People who belong to no one place (2026-11-22)
+
+TODO item 15i. Ric (2026-11-20): "aren't their people who aren't part of a place? Depending on the
+era too? They travel?"; which kinds: "all of them"; a settled family taking to the road and back:
+"yes"; a moving people its own faction or inside a settled one's land: "Probably both." Setting
+**People on the road and in camps** under Lives ("Everybody keeps to their village (as before)"
+leaves the 15h world exactly as it was, fingerprinted) and **Peoples who forage** under How it
+starts (none by default; item 15d's Foragers era sets it per people).
+
+- **A band.** A people that does not know farming (15e: farming, the plough, ditches, wells, the
+  cart and bridges unknown) lives from camps by hunting, herding and fishing; nobody farms or keeps
+  a trade. What a camp has is shared each day by what each needs (game divided across the band with
+  no favour to kin). Its headman takes no tax and keeps no soldiers at peace (Boehm's reverse
+  dominance hierarchy); with 15c's government, everybody has the say.
+- **Moving camp.** A camp moves when the near ground is used up: the measure is what a day's hunt,
+  herd or fishing would bring at the nearest ground that still has something, less the further it
+  is (to a tenth at 3 km) — central-place foraging — and below 0.4, at least 20 days after the last
+  move, the band goes to the best ground 2 to 8 km off that no other village holds. Across 312
+  forager cases camps moved 7.4 times a year on average, from 0 to 58 (Marlowe 2005); bands here
+  moved two to three times a camp a year. A band that splits makes two camps. Rich fishing keeps a
+  camp where it is: foragers who settle come out of the same rule. Herders' camps move as their
+  grazing is eaten down.
+- **Taking up farming.** Farming passes to a band by being seen (15e); once more than half of it
+  knows how, the band settles where it is camped and becomes a settled people.
+- **On the road.** Somebody grown with no coins, going hungry, in a village where more than one in
+  seven is hungry, bold enough and with no children under twelve, takes to the road (at most one
+  grown-up in ten of a village) — the vagrants of the sixteenth and seventeenth centuries were
+  mostly people out of work (*Rural History* 2013). They walk to another village within 10 km,
+  ask for bread at the door (given from a store that has it, more often than not), sleep where
+  night finds them, and settle where there is a fortnight's bread a head and few hungry.
+- Counts: `campMoves`, `bandsSettled`, `wandered`, `wanderersSettled`, `alms`.
+  `test/roaming.test.mjs`.
+
+**Measured** (a year): two bands among two farming peoples moved camp 11 times without know-how,
+all hunting, herding and fishing; with know-how both learned farming from their neighbours and
+settled within the year — fast, as they live among farmers. A crowded world with sickness put 24
+on the road. Cost: one pass over a camp's people a day.
+
+**Left out:** herders sleeping at a summer hut (transhumance); sea nomads (Ric: last, or not at
+all); pedlars and tinkers as livings of their own (traders already travel).
+
 ### Armies: what they carry, how far they go, and strategy (2026-11-22)
 
 TODO item 15h. Ric (2026-11-20): "we need to cover what it is carrying with it so it knows how far
