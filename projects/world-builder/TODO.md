@@ -2385,7 +2385,7 @@ too — wool, cloth, millstones, weapons, slaves; ships went far faster per day
 travel for weeks, worth it only for what is dear for its weight (finished goods, ore, wool), by land or
 by boat; a route grows where traders keep going, and bandits and pirates (15.5b, 15h) prey on it.
 *Question:* in, as proposed? On a 1,000 km land, far trade is within one world.
-**Ric (2026-11-22): "caravans are a yes."** Not yet built (15f was ticked without it): to do as
+**Ric (2026-11-22): "caravans are a yes."** Not yet built (15f was ticked without it): item **15l**, to do as
 proposed — traders travelling for weeks with goods dear for their weight, by land or boat, routes
 growing where they keep going, bandits preying on them.
 
@@ -2698,7 +2698,9 @@ paid army at war loses about a fifth a year. A setting whose old value is the wo
 desertion rises with hunger and unpaid days.
 **Budget:** default.
 
-### [ ] 15k. War and armies: what the research says is still missing
+### [x] 15k. War and armies: what the research says is still missing
+
+**Done 2026-11-22** as research: seventeen gaps found, all to go in (Ric: "i like all those"), written as items 15l to 15r below.
 
 Added 2026-11-22 (Ric: "do research on the war and armies stuff see if you missed something
 important"). Researched the same day from search summaries (the sources named are where to read
@@ -2828,6 +2830,67 @@ gunpowder, and whose only armour is the shield bought as gear (7).
 and strategy, since they are what a general works with; 11, 12 and 13 together as weapons by era
 (they fill 15d's gap before gunpowder); 15 and 16 next; 5, 6 and 7 after; 8 a measurement; 9 and 10
 last. **Ric decides:** which go in, and whether 2–4 and 14 join his generals item.
+**Ric (2026-11-22): "i like all those"; "write all of it in the todo"** — all seventeen go in. They
+are the items 15l to 15r below, with caravans; the research for each stays in the list above.
+
+**The work left after item 15, in order (written 2026-11-22).** Each is done the way any item is:
+"work on 15l" and so on.
+
+### [ ] 15l. Caravans: long-distance trade
+
+From 15f (Ric, 2026-11-22: "caravans are a yes"). Research in 15f's "Long-distance trade" note.
+**Do:** traders who travel for weeks between far places with goods dear for their weight (finished
+goods, ore, wool), by land or by boat; caravans about 35 km a day, a camel or pack animal about
+160 kg; a route grows where traders keep going; bandits and (with 15r) pirates prey on it.
+**Done when:** on a large land, goods reach places beyond a village's own traders' reach, routes
+form where trade keeps going, and robbery on them rises and falls with the trade.
+**Budget:** default.
+
+### [ ] 15m. Sickness in armies and in their wake
+
+15k's gap 1. **Do:** an army camp is crowded and fouls its water as a town does (15.5r), so
+sickness starts and passes there; soldiers carry it home and to the places they pass, and refugees
+carry it on. **Done when:** at war, more soldiers die of sickness than in battle, by about the
+ratios found (four to one Napoleonic, two to one in the American Civil War), and villages an army
+passes fall sick more than those it does not. **Budget:** default.
+
+### [ ] 15n. Weapons before gunpowder: bows, armour, chariots
+
+15k's gaps 11, 12 and 13. **Do:** bows, composite bows, crossbows and longbows as weapons that reach,
+by era and know-how (Dupuy's 1980 values); archers as a share of an army, as at Crécy and Agincourt;
+armour (mail, padding, plate) bought like gear, dear, cutting arrows and blows by what was tested;
+chariots for the Bronze Age, as platforms for archers. **Done when:** an ancient or medieval army
+with bows and armour fights measurably differently from one with hand weapons alone, and the rich
+are better armoured than the levy. **Budget:** default.
+
+### [ ] 15o. Generals and strategy
+
+Ric's own coming item (2026-11-22: "i was going to impliment generals and strategies for wars"),
+with 15k's gaps 2, 3, 4 and 14 placed in it: morale, rout and pursuit; knowing the enemy only from
+scouts, deserters and prisoners instead of 15h's all-seeing map; horsemen for scouting, screening,
+raiding and pursuit; horse archers of the steppe. **Ric decides:** what a general is and does, and
+which strategies; the research above first. **Budget:** default.
+
+### [ ] 15p. Siege engines, and how armies are raised
+
+15k's gaps 15 and 16. **Do:** ramps, rams, mining, the trebuchet and engineers as things built to take
+a wall; starving a place out as the slow way; feudal service owed for so many days a year, paid off
+by scutage that hires soldiers, against a paid standing army (Rome) with its nightly camp.
+**Done when:** a walled place falls to engines or hunger, not only to numbers, and a feudal army
+melts away when its service ends. **Budget:** default.
+
+### [ ] 15q. Prisoners and ransom, mutiny, and paying for war by borrowing
+
+15k's gaps 5, 6 and 7. **Do:** captives taken in battle and ransomed by contract (or exchanged, or
+killed), a living for soldiers; unpaid soldiers rising together and holding a place for their pay
+(15.5b3's riots as the shape); rulers borrowing for war, wars lasting longer on debt, and a default
+leaving armies unpaid. **Done when:** each happens from its causes in a long war. **Budget:** default.
+
+### [ ] 15r. Wounds measured, war between bands, and war at sea
+
+15k's gaps 8, 9 and 10. **Do:** measure wounded against killed against the three or four to one
+found, and fix what is off; bands (15i) at war by raid and ambush, not armies and sieges; fighting
+from boats — landings, blockades, piracy (with 15l's trade by boat to prey on). **Budget:** default.
 
 ### [x] 15.25. Faster People simulation without losing quality, and births without a population cap
 
