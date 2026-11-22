@@ -1901,6 +1901,60 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Bandits on land (2026-11-21)
+
+TODO item 15.5b4. Ric (2026-11-20), from 15i's research: the hungry, the landless and the dishonest
+may choose to take for a living, from carts on the roads and from weakly held villages, weighed like
+any living and rising by itself in hard times. Nothing starts a band and nobody is placed as a
+bandit; those robbed hold it against them. Hobsbawm's bandits (*Bandits*, 1969) came out of the
+peasantry in times of impoverishment, crisis, war and conquest, went back to it when times mended,
+and were few; "most Robin Hoods were far from noble" (research notes under 15i in `TODO.md`).
+
+- **Who takes it up.** A living is weighed as before (`chooseJob`), and now robbing is weighed
+  against the best honest work (`wouldRob`). It needs hard times (`hardship`): hunger above all,
+  and with it nothing put by and no coin, no house, or a war's ruin (their village struck or fled
+  from, or conquered). Hunger or ruin has to be there to start it. The less honest the likelier
+  (nobody of honesty 0.7 or more), the bolder somewhat. It also needs something within a day's walk
+  to take (`preyFor`: other places' stores weighed by how weakly they are held, and a road out),
+  and few at it already: past about one grown-up in twenty a village's bandits find nothing more.
+  The hungry and dishonest think about it oftener than about their living in general, and a bandit
+  who is fed thinks about stopping about once a month. A village so short that everybody is sent to
+  the fields sends its would-be bandits there too.
+- **On the road.** A bandit spends a day lying in wait (`roadOf`: a third of the way to the place
+  their village's carts go most, at least 2 km out), by daylight, while short of food. A cart that
+  passes within half a km, not of their own village and not a soldier's, loses its food (up to ten
+  days' worth) and four tenths of the carter's purse. The bandit goes home with it and lies low
+  for three days. The carter holds it against them, as any theft.
+- **As a band.** Once a day a village with three or more bandits fit to ride may send them out, at
+  most every twenty days. They ride for the store within 15 km worth most against what holds it, never
+  their own, never a walled one, never where yesterday's soldiers at hand are as many as the band.
+  If the soldiers there are two to their three, they are driven off and bruised. Otherwise each takes
+  up to ten days' food, the band no more than a third of the store, the faction's grain in its share.
+  A few of the place's people hold it against each of them.
+- Nothing is made or lost: what they take is somebody's food and coin. Events "Bandits" on the page,
+  the occupation Bandit in the people list, and `stats()` counts `banditry`, `waylaid`,
+  `banditGrain`, `banditCoins`, `banditRaids`, `banditsDriven`.
+- **A setting**, "Bandits", under Power (with coins only). Off, the world is the one 15.5b3 left, step
+  for step (`test/bandits.test.mjs` holds a fingerprint of it; `test/riots.test.mjs` now runs with
+  bandits off).
+
+**Measured** (a year each, against 15.5b3). Six default worlds: 1–4 took to robbing in each, in the
+hungry months, and most were back at honest work by the year's end; 20 robberies on the road in all,
+no raids; starved 12 → 19 in all six, but seed 4's 2 → 6 came with no robbery at all, so most of it is
+noise (a different world from day 30; seeds vary by ±5). Eight starting cities of 1,000: 1–12 took it
+up, 1–58 robberies on the road each, 2 raids in all; starved 9 → 3. Speed: `bench.mjs --quick` alternated twice, 400, 2,000 and 5,000
+the same within drift (5,000: 1.80/1.81 → 1.81/1.84 s a day).
+
+**What measuring changed.** The first build weighed robbing before a short village sent everybody to
+the fields, and let the hungry rethink their whole living twelve times as often. In eight cities that
+starved twice as many: towns lost their farmers to the road, the hungry went into the army in
+numbers and starved there, and one town of 200 had 28 bandits. Now robbing comes after the fields,
+the frequent rethink is only "rob or not", bandits are capped at one in twenty, a bandit robs at
+most every three days and only while short, and a band takes a third of a store at most.
+
+**Left out:** leaders hunting bandits down (offices are 15c: a captain); bandits living apart in the
+hills or forest; a band with a leader and a name; bandits remembered as heroes; pirates (15h).
+
 ### Food riots (2026-11-21)
 
 TODO item 15.5b3. Ric (2026-11-20): "Yes they should", after asking "is it really just a hot
@@ -1947,7 +2001,7 @@ in a village already going hungry.
 
 **Left out:** riots over anything but food (taxes, a leader's choice); a riot spreading by news to the
 next town (riots came in waves); a leader fixing the price by law afterwards (the "assize of bread");
-hangings. Bandits are 15.5b4.
+hangings. Bandits are 15.5b4, above.
 
 ### Treasuries that can pay: the harvest tax (2026-11-21)
 

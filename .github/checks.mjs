@@ -165,6 +165,7 @@ const SUITES = [
   ['world-builder grain', ['projects/world-builder/test/grain.test.mjs']],   // TODO 15.5b2, about a minute
   ['world-builder treasury', ['projects/world-builder/test/treasury.test.mjs']],   // TODO 15.5t, about a minute
   ['world-builder food riots', ['projects/world-builder/test/riots.test.mjs']],   // TODO 15.5b3, under a minute
+  ['world-builder bandits', ['projects/world-builder/test/bandits.test.mjs']],   // TODO 15.5b4, under a minute
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

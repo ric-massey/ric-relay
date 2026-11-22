@@ -324,6 +324,8 @@
       /* TODO 15.5b3 (Ric, 2026-11-20: "Yes they should"). */
       { key: "riots", when: s => s.money === "coins", label: "Food riots", type: "toggle", def: true,
         help: "When enough of a village's hungry can see food that is not theirs — a full store, a rich family's larder, a cart leaving — they take it together and pay what they think fair, as most food riots did. Each leader answers by their nature: grain, soldiers, or nothing." },
+      { key: "bandits", when: s => s.money === "coins", label: "Bandits", type: "toggle", def: true,
+        help: "In hard times the hungry, the landless and the dishonest may take to robbing for a living: lying in wait for carts on the roads, and as a band, raiding the store of a weakly held village. Nobody starts as a bandit, they go back to honest work when times mend, and those they rob hold it against them." },
     ]},
     { title: "War", items: [
       { key: "neighbours", label: "How the factions start", type: "select", def: "strangers",   // TODO 13
@@ -696,7 +698,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1330,6 +1332,7 @@
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
                   riotAt: -1e9, putDown: -1e9,   // TODO 15.5b3: the last riot here, and the last one soldiers broke up
+                  bandits: 0, watch: 0, road: null, banditAt: -1e9, robbedAt: -1e9, waylaidAt: -1e9,   // TODO 15.5b4: its bandits at the census, soldiers at hand today, where its bandits lie in wait, their last raid, the last time it was raided, and the last robbery on the road told of
                   heldTo: -1e9, wall: 0 };   // wall: TODO 14e, 0 none to 1 its full height   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { o += ore[tileAt(x + dx, y + dy)]; c++; }
@@ -2070,6 +2073,9 @@
     const shared = S.money === "shared";
     const HARVEST_TAX = !shared && (S.harvestTax || 0) > 0;   // TODO 15.5t: none at the start means none ever
     const RIOTS = !shared && S.riots !== false;   // TODO 15.5b3
+    const BANDITS = !shared && S.bandits !== false;   // TODO 15.5b4
+    const lurk = new Map();     // TODO 15.5b4: bandits lying in wait by a road, and since when
+    const bandOf = new Map();   // TODO 15.5b4: a bandit out with a band: the place they ride for, and how many ride
 
     function note(kind, text, weight, x, y, f) {
       const e = { id: events.length ? events[events.length - 1].id + 1 : 0, t: t, year: Math.floor(year()), kind: kind, text: text,
@@ -2352,7 +2358,7 @@
       workedList = list;
     }
     function census() {
-      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; v.crafters = 0; }
+      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; v.crafters = 0; v.bandits = 0; }
       for (const f of factions) { f.pop = 0; f.soldiers = 0; f.hungry = 0; f.loyal = 0; f.adults = 0; f.mean.fill(0); }
       for (const p of people) {
         const v = villages[p.home], f = factions[p.f];
@@ -2360,7 +2366,7 @@
         if (p.hungry > 0) { v.hungry++; f.hungry++; }
         if (p.sick > 0) v.sick++;
         if (adult(p)) {
-          v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") f.soldiers++; else if (p.job === "crafter") v.crafters++;
+          v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") f.soldiers++; else if (p.job === "crafter") v.crafters++; else if (p.job === "bandit") v.bandits++;
           /* Each by name, in the order of TRAITS: read by a name held in a list, it was most of the census (TODO 15.25). */
           const m = f.mean; m[0] += p.bold; m[1] += p.warm; m[2] += p.greed; m[3] += p.stub; m[4] += p.patient; m[5] += p.temper; m[6] += p.hard; m[7] += p.curious; m[8] += p.honest;
         }
@@ -2503,8 +2509,15 @@
     function chooseJob(p) {
       const v = villages[p.home], f = factions[p.f];
       if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold + (p.temper - 0.5) * 0.3 > 0.35 && R() < 0.8) { f.soldiers++; return "soldier"; }
+      /* Robbing for a living (TODO 15.5b4), weighed against what honest work would bring: by the hungry,
+         the landless and those the wars have ruined, the less honest the likelier, where there is
+         something within reach to take and not too many taking it already (Hobsbawm: banditry rose
+         with impoverishment, crisis, war and conquest). After a village's want has sent everybody to
+         the fields: weighed before it, a town short of food lost its farmers to the road and
+         starved twice as many (measured, eight starting cities). */
       /* A village that cannot feed itself needs food, whatever else pays. */
       if (v.food < v.pop * 0.5) return "farmer";
+      if (BANDITS && wouldRob(p, v)) { if (p.job !== "bandit") count.banditry++; return "bandit"; }
       const w = livelihood(p, v);
       /* Somebody takes up the work that looks worth most to them. Greed makes
          the paid trades more tempting; nobody becomes a trader with nowhere to
@@ -3272,6 +3285,16 @@
           }
         }
 
+        /* Lying in wait by the road for a cart (TODO 15.5b4): a bandit's day's work, by daylight, when
+           carts are on the roads. */
+        /* A living, not a fortune: with half the winter put by they stay home, and after a robbery they
+           lie low for three days (`stoleAt`, as after a theft). */
+        if (BANDITS && p.job === "bandit" && p.food < reserve(p) * 0.5 && !(t - (p.stoleAt ?? -1e9) < 3 * DAY_HOURS)) {
+          const r = roadOf(v);
+          if (r) weigh("waylay", (n.food * 0.7 + n.provide * 0.9 + 0.15) * (0.6 + crookOf(p) * 0.5) - away(Math.hypot(r.x - p.x, r.y - p.y)) * 0.5 - n.rest * 0.45 - n.safety * 0.6 - dark * 0.6,
+            () => { go(p, r.x + (R() - 0.5) * 0.8, r.y + (R() - 0.5) * 0.8, "waylay"); p.wait = 0; });
+        }
+
         /* A day at the bench. */
         weigh("make", (n.provide * 1.05 + 0.1) * skilled(p, "crafter") * w.bench
                        - away(dist(p, v)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
@@ -3538,6 +3561,17 @@
         const q = byId.get(p.askOf);
         if (q && q.hp > 0) askFor(p, q);
         p.task = "idle"; p.wait = spell("visit"); return;
+      }
+      if (p.task === "waylay") {                       // TODO 15.5b4: a spell by the road, then home
+        const since = lurk.get(p);
+        if (since === undefined || t - since > 12) { lurk.set(p, t); p.wait = spell("harvest"); return; }
+        lurk.delete(p); p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "maraud") {                       // TODO 15.5b4: a band at the store they rode for
+        const b = bandOf.get(p.id); bandOf.delete(p.id);
+        const o = b && villages[b.v];
+        if (o && o.alive && dist(p, o) < o.radius + 2.5) plunder(p, o, b.n);
+        go(p, p.hx, p.hy, "idle"); p.wait = 0; return;
       }
       if (p.task === "steal") {                        // TODO 10
         const q = byId.get(p.askOf);
@@ -4549,6 +4583,8 @@
       if (p.task === "visit") return walking ? "Going to see somebody" : "Visiting";
       if (p.task === "ask") return walking ? "Going to ask for food" : "Asking for food";
       if (p.task === "steal") return walking ? "Creeping to a neighbour's house" : "Taking food";
+      if (p.task === "waylay") return walking ? "Going out to the road" : "Lying in wait by the road";
+      if (p.task === "maraud") return walking ? "Riding out with the band" : "Raiding";
       if (p.task === "quarrel") return walking ? "Going to have it out with somebody" : "Quarrelling";
       if (p.task === "gear") return walking ? "Going for tools" : "Fitting tools";
       if (p.task === "fight") return "Fighting";
@@ -5561,6 +5597,7 @@
         return;
       }
       if (d > Math.max(pace, 0.5)) {
+        if (lurk.size && p.cargo && p.task === "carry") waylaid(p, dx / d, dy / d, Math.min(pace, d));   // TODO 15.5b4
         if (d < (p.lastDistance ?? Infinity) - 0.1 * footing) { p.lastDistance = d; p.stuck = 0; }
         else p.stuck = (p.stuck || 0) + 1;
         // Preserve the daily engine's nearby arrival rule for local work.
@@ -5750,9 +5787,20 @@
         }
       }
       /* Now and then, think again about what to do for a living. */
-      if (R() < 1 - Math.pow(0.97, 10 * REFLECT_HOURS / YEAR) && p.job !== "soldier" && !p.cargo && p.id !== f.leader) {
+      const rethink = 1 - Math.pow(0.97, 10 * REFLECT_HOURS / YEAR);
+      if (R() < rethink && p.job !== "soldier" && !p.cargo && p.id !== f.leader) {
         const was = p.job; p.job = chooseJob(p);
         if (p.job !== was) { p.task = "idle"; p.at = p.home; }
+      }
+      /* And oftener, only whether to rob or to stop robbing (TODO 15.5b4): the hungry and dishonest,
+         and a bandit who is fed. Only that, since a whole rethink this often took the hungry into the
+         army, where they starved (measured: cities' soldiers starving where there was not a bandit). */
+      else if (BANDITS && t >= 30 * DAY_HOURS && p.job !== "soldier" && !p.cargo && p.id !== f.leader && (p.job === "bandit" ? !(p.hungry > 0) : p.hungry > 0 && p.honest < 0.6)) {
+        if (R() < rethink * (p.job === "bandit" ? BANDIT_MENDED : BANDIT_RETHINK)) {
+          const v = villages[p.home];
+          if (p.job !== "bandit" && v.food >= v.pop * 0.5 && wouldRob(p, v)) { p.job = "bandit"; count.banditry++; p.task = "idle"; p.at = p.home; }
+          else if (p.job === "bandit" && !wouldRob(p, v)) { p.job = chooseJob(p); if (p.job !== "bandit") { p.task = "idle"; p.at = p.home; } }
+        }
       }
     }
 
@@ -5875,6 +5923,7 @@
       const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + WAR_ERA.wallWorth * v.wall);
       v.foes = attackers;
       if (RIOTS && attackers === 0) riot(v, ours);   // not with an enemy at the edge: then the doors are barred
+      if (BANDITS) { v.watch = ours; if (attackers === 0) bandRide(v); }   // TODO 15.5b4
       /* A wall raised in wartime by the people of the place, out of what is in its store (murage, asked
          for when the enemy was near or had just struck): after enemy soldiers were at its edge in the
          last two months, or it was raided in the last year; let go in a long peace. Raised by every
@@ -6558,6 +6607,145 @@
        once hunger had gone on too long (Ó Gráda). The leader answers by their nature (`ruling`):
        the bold, with soldiers enough to send, break it up, the warm feed the crowd from the treasury, and the
        rest do nothing; what they do is held against them, or for them, in their people's loyalty. */
+    /* ── bandits (TODO 15.5b4) ───────────────────────────────────────────
+       Ric (2026-11-20), from 15i's research: the hungry, the landless and the dishonest may choose to
+       take for a living, from carts on the roads and from weakly held villages; nothing starts a band
+       and nobody is placed as a bandit; those robbed hold it against them, as any theft. Hobsbawm's
+       bandits came out of the peasantry in hard times — impoverishment, crisis, war, conquest — and
+       went back to it; most robbed travellers and the badly guarded, and stayed clear of soldiers.
+       So: `chooseJob` weighs it against honest work by `hardship`, honesty and what there is to take
+       (`preyFor`); a bandit lies in wait by a road out of their village (`roadOf`) and robs a passing
+       cart (`waylaid`); three or more ride out together to a weakly held store (`bandRide`,
+       `plunder`). Nothing is made or lost: what they take is food and coin that was somebody's. */
+    const BANDIT_RETHINK = 12;        // how much oftener the hungry and dishonest think again about their living
+    const BANDIT_MENDED = 30;         // and a bandit who is fed: about once a month
+    const BANDIT_SHARE = 0.05;        // at most about one grown-up in twenty a bandit
+    const BANDIT_GAP = 20 * DAY_HOURS;   // a band rides out at most every twenty days
+    const BANDIT_TAKE = 10;           // days of food one can carry off from a cart or a store
+    /* Whether robbing would bring them more than honest work, as they stand now. */
+    function wouldRob(p, v) {
+      if (p.honest >= 0.7 || t < 30 * DAY_HOURS) return false;
+      const hard = hardship(p, v), prey = hard > 0 ? preyFor(v) : 0;
+      if (prey <= 0) return false;
+      const w = livelihood(p, v), take = prey * crookOf(p) * hard * (0.8 + p.bold * 0.4);
+      return take > 0.2 && take > Math.max(w.land, w.bench, w.load) + (R() - 0.5) * 0.15;
+    }
+    const crookOf = p => (1 - p.honest) * (1 - p.honest) * 2;   // 0.5 at an ordinary honesty, as stealing (TODO 10)
+    /* How hard their times are, 0 to 1: hunger, nothing put by and nothing to buy with, no land worth
+       working, and war — their village struck, or fled from. */
+    function hardship(p, v) {
+      /* Hunger, or a war's ruin, is what starts it: the poor who are fed stay at honest work. A bandit
+         keeps at it while they are still poor. */
+      const ruined = t - v.dangerAt < 90 * DAY_HOURS || t - v.raidAt < 90 * DAY_HOURS || p.fledFrom >= 0 || p.from !== p.f;
+      if (!(p.hungry > 0) && !ruined && p.job !== "bandit") return 0;
+      let h = 0;
+      if (p.hungry > 0) h += 0.35 + Math.min(0.25, p.hungry / 40);
+      if (p.food < reserve(p) * 0.25 && funds(p) < 2) h += 0.2;
+      if (p.dwelling < 0) h += 0.1;
+      if (ruined) h += 0.2;   // their village struck, fled from, or conquered
+      return Math.min(1, h);
+    }
+    /* What there is to take within a day's walk, against how many are taking it already: stores
+       weighed by how weakly they are held, and the road out of the village. */
+    function preyFor(v) {
+      let food = 0;
+      for (const o of villages) {
+        if (!o.alive || o === v) continue;
+        const d = Math.hypot(o.x - v.x, o.y - v.y); if (d > 60) continue;
+        food += o.food / (1 + o.watch * 0.5 + o.adults * 0.05 + o.wall * 2) / (1 + d * 0.05);
+      }
+      /* And bandits were few: past one grown-up in twenty, a village's road and its neighbours have
+         no more to give (measured: without this a town of 200 had 28 bandits in a hard winter, and
+         its soldiers starved for want of the farmers). */
+      return clamp(food / ((v.bandits + 1) * 30), 0, 1) * clamp(1 - v.bandits / (v.adults * BANDIT_SHARE + 1), 0, 1) * (roadOf(v) ? 1 : 0.5);
+    }
+    /* Where a village's bandits lie in wait: on the way to the place its carts and those of others go
+       most, a third of the way there and at least two km out, looked at again every ten days. */
+    function roadOf(v) {
+      if (v.road && t - v.road.at < 10 * DAY_HOURS) return v.road.o >= 0 ? v.road : null;
+      let best = null, bs = 0;
+      for (const o of villages) {
+        if (!o.alive || o === v) continue;
+        const d = Math.hypot(o.x - v.x, o.y - v.y); if (d < 10 || d > 80) continue;
+        const s = Math.sqrt((v.pop + 1) * (o.pop + 1)) / (1 + d * 0.05);
+        if (s > bs) { bs = s; best = o; }
+      }
+      if (!best) { v.road = { o: -1, x: 0, y: 0, at: t }; return null; }
+      const d = Math.hypot(best.x - v.x, best.y - v.y), k = Math.max(8, d / 3) / d;
+      v.road = { o: best.id, x: v.x + (best.x - v.x) * k, y: v.y + (best.y - v.y) * k, at: t };
+      return v.road;
+    }
+    /* A cart going by somebody lying in wait (from `act`, on each step it takes): within half a km, not their own
+       village's, and not a soldier's. They take its food and most of the purse, and go home with it. */
+    function waylaid(p, ux, uy, step) {
+      for (const [q, since] of lurk) {
+        if (q.hp <= 0 || q.task !== "waylay" || t - since > 12) { lurk.delete(q); continue; }
+        if (q.home === p.home || p.job === "soldier") continue;
+        /* how near the step they are about to take passes them: a step can be longer than the reach */
+        const along = clamp((q.x - p.x) * ux + (q.y - p.y) * uy, 0, step);
+        if (Math.hypot(q.x - p.x - ux * along, q.y - p.y - uy * along) > 2) continue;
+        const c = p.cargo;
+        let grain = 0;
+        if (c.what === "food" && c.amount > 0.05) {
+          grain = Math.min(c.amount, BANDIT_TAKE * dailyNeed(q));
+          if (c.paid) c.paid *= 1 - grain / c.amount;
+          c.amount -= grain; q.food += grain;
+        }
+        const coins = p.coins * 0.4;
+        p.coins -= coins; q.coins += coins;
+        if (grain < 0.05 && coins < 0.05) continue;
+        count.waylaid++; count.banditGrain += grain; count.banditCoins += coins;
+        lurk.delete(q); wakeUp(q); q.stoleAt = t;
+        befriend(p, q, -0.5); shaken(p, LIFE.robbed);
+        p.say = "Robbed on the road!"; p.sayT = TK(60); q.say = grain > 0.05 ? "A good load. Home with it." : "Hand over the purse."; q.sayT = TK(60);
+        const v = villages[q.home];
+        if (t - v.waylaidAt > 3 * DAY_HOURS) { v.waylaidAt = t; note("bandit", q.name + " of " + v.name + " robbed " + p.name + " on the road" + (grain > 0.5 ? ", and took a load of food" : "") + ".", 1, q.x, q.y, q.f); }
+        go(q, q.hx, q.hy, "idle"); q.wait = 0;
+        return;
+      }
+    }
+    /* A band rides out (once a day, from `villageTurn`): three or more of a village's bandits, fit and
+       at home or by the road, to the store within 15 km worth most against what holds it — never their own village,
+       never a walled one, and never where the soldiers at hand are as many as the band. */
+    function bandRide(v) {
+      if (v.bandits < 3 || t - v.banditAt < BANDIT_GAP || t < 30 * DAY_HOURS) return;
+      const band = (PLAIN ? people : residents(v.id)).filter(q => q.home === v.id && q.job === "bandit" && q.hp > 0.5 && !q.cargo && !bandOf.has(q.id));
+      if (band.length < 3) return;
+      let best = null, bs = 0;
+      for (const o of villages) {
+        if (!o.alive || o === v || o.wall >= 0.5 || o.watch >= band.length) continue;
+        const d = Math.hypot(o.x - v.x, o.y - v.y); if (d > 60) continue;
+        const s = Math.min(o.food, band.length * BANDIT_TAKE) / (1 + o.watch + o.adults * 0.03) / (1 + d * 0.03);
+        if (s > bs) { bs = s; best = o; }
+      }
+      if (!best || bs < band.length) return;
+      v.banditAt = t; count.banditRaids++;
+      for (const q of band) { wakeUp(q); lurk.delete(q); bandOf.set(q.id, { v: best.id, n: band.length }); go(q, best.x + (R() - 0.5) * 2, best.y + (R() - 0.5) * 2, "maraud"); q.wait = 0; }
+    }
+    /* One of a band at the store: driven off if the soldiers there now are two to their three, or take
+       what they can carry, the band no more than a third of the store between them, in the hurry of a
+       raid. The village's people hold it against them, a few for each of the band. */
+    function plunder(p, o, n) {
+      const from = villages[p.home];
+      if (o.watch * 1.5 >= n) {
+        p.hp = Math.max(0.05, p.hp - 0.15); p.hit = TK(6); count.banditsDriven++;
+        if (t - o.robbedAt > DAY_HOURS) { o.robbedAt = t; note("bandit", "Bandits from " + from.name + " were driven off from " + o.name + ".", 1, o.x, o.y, o.f); }
+        return;
+      }
+      const a = Math.min(o.food * 0.3 / n, BANDIT_TAKE * dailyNeed(p)), mine = o.levy > 0 ? Math.min(1, o.levy / Math.max(o.food, 1e-9)) : 0;
+      if (a < 0.05) return;
+      o.food -= a; if (mine > 0) o.levy = Math.max(0, o.levy - a * mine);
+      p.food += a; count.banditGrain += a;
+      let seen = 0;
+      for (const q of PLAIN ? people : residents(o.id)) {
+        if (seen >= 3) break;
+        if (q.home !== o.id || !adult(q) || q.hp <= 0) continue;   // asleep or not: a store found empty in the morning is known by whom
+        befriend(q, p, -0.4); shaken(q, LIFE.robbed); seen++;
+      }
+      if (t - o.robbedAt > DAY_HOURS) { o.robbedAt = t; note("bandit", "Bandits from " + from.name + " raided " + o.name + "'s store.", 1.5, o.x, o.y, o.f); }
+      p.say = "Back before they gather."; p.sayT = TK(40);
+    }
+
     const RIOT_GAP = 7 * DAY_HOURS;     // a crowd once fed and gone home is not out again within the week
     const RIOT_FEAR = 60 * DAY_HOURS;   // a riot broken up by soldiers is remembered for two months
     const RIOT_TAKE = 4;                // days of food each takes: a sack's worth, what one can carry home
@@ -7276,6 +7464,7 @@
       newsText: newsText, traceNews: traceNews, eventById: eventById, telling: telling,   // TODO 12
       setView: setView, befriend: befriend,   // for the tests
       shaken: shaken, LIFE: LIFE, ruling: ruling,   // for the tests (TODO 15a)
+      living: p => chooseJob(p), roadOf: vid => roadOf(villages[vid]),   // for the tests (TODO 15.5b4): the living somebody would choose now, and where a village's bandits lie in wait
       /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
          the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */
       report: (kind, vid, ids, sayVid) => {

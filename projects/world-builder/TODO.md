@@ -2799,7 +2799,7 @@ must make sense first. Find out where goods come in and why nothing draws them d
 households want, what crafters use, what wears out). Done when: a default year's store holds
 roughly what its people use in a season, without a cap or a rule that throws goods away.
 
-**15.5b. Towns cannot be fed from round them** (left open by item 8 and its food-supply fix). A
+**[x] 15.5b. Towns cannot be fed from round them** (all four parts, b1–b4, done 2026-11-21) (left open by item 8 and its food-supply fix). A
 city of half the people starves: the land round it has a quarter of what it needs to spare, and
 its money buys less. Research how real towns drew grain (item 8's notes: 20–30 km by land, much
 further by water) before changing anything. Done when: a starting city is fed or fails because
@@ -2972,7 +2972,21 @@ anything but food; riots spreading by news in waves; a price fixed by law afterw
 A first build checked soldiers before kindness and broke up 13 of 26 riots, fed none (measured): now
 whichever the leader leans to more.
 
-**[ ] 15.5b4. Bandits on land** (Ric, from 15i's research).
+**[x] 15.5b4. Bandits on land** (Ric, from 15i's research).
+*Done 2026-11-21:* robbing is a living weighed against honest work (`wouldRob`), by hardship (hunger
+or a war's ruin to start it; nothing put by, no house), honesty under 0.7, boldness, and what there is
+to take within a day's walk with few at it (one grown-up in twenty at most). A bandit lies in wait a
+third of the way along their village's busiest road and robs a passing cart of its food and four
+tenths of the purse, then lies low three days; three or more ride out as a band, at most every twenty
+days, to the weakest-held store within 15 km, never a walled one or one with soldiers as many as
+them, and take a third of it at most. The robbed hold it against them. A fed bandit thinks about
+stopping about monthly. Setting "Bandits" (coins only); off is the 15.5b3 world (fingerprint). A year
+each: six default worlds 1–4 bandits, 20 road robberies, no raids, starved 12 → 19 (seed 4's 2 → 6 with
+no robbery at all: noise); eight cities 1–12 bandits, 2 raids, starved 9 → 3; bench within drift. `test/bandits.test.mjs`; README, "Bandits on
+land". **Left out:** leaders hunting bandits (15c's captain), camps in the hills, named bands, pirates
+(15h). A first build weighed robbing before a short village sent all to the fields and rethought the
+hungry's whole living twelve times as often: eight cities starved twice as many (measured), so now
+robbing comes after the fields and the frequent rethink is only "rob or not".
 
 **15.5c. Land from about 2 km²** (left by item 4a, never done by item 5). The smallest land is 5 km
 across (25 km²); Ric asked for about 2 km². The square must get smaller as the land does, or a
@@ -4078,4 +4092,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-21 | 15.5a | Intel Xeon (cloud), 4 cores | 2.51 / 2.65 s a day (2.63 / 2.53 before, same machine) | *not run* | 7.0 MB, 1.37 KB | **made to order**, a different world (who takes which trade). `--quick` two runs each; 400 people timed alone for ten days 0.17 → 0.15 s a day; none of the new code in the profile |
 | 2026-11-21 | 15.5b2 | AMD Ryzen 5 3600, 24 GB | 2.12 / 2.33 s a day (2.12 / 2.13 before) | *not run* | 6.8 MB, 1.32 KB | **the government's grain**: public orders, rations, forced sales, laying in; a different world where a village goes hungry. `--quick` alternated old/new twice: 400 0.17/0.17 → 0.15/0.15 s, 2,000 0.67/0.73 → 0.71/0.73 s, 5,000 2.12/2.13 → 2.33/2.12 s: within the drift. Cost: one pass over a faction's villages a day; forced sales only in hungry villages |
 | 2026-11-21 | 15.5b3 | AMD Ryzen 5 3600, 24 GB | 2.15 / 2.20 s a day (2.10 / 2.16 before) | *not run* | 7.3 MB, 1.43 KB | **food riots**: a different world only where a village goes hungry with food in sight (3 riots in six default world-years). `--quick` alternated old/new twice: 400 0.16/0.16 → 0.16/0.16 s, 2,000 0.71/0.70 → 0.72/0.70 s; within drift |
+| 2026-11-21 | 15.5b4 | AMD Ryzen 5 3600, 24 GB | 1.81 / 1.84 s a day (1.80 / 1.81 before) | *not run* | 7.3 MB, 1.42 KB | **bandits**: a different world from day 30 wherever somebody hungry and dishonest weighs robbing. `--quick` alternated old/new twice: 400 0.15/0.15 → 0.15/0.16 s, 2,000 0.64/0.64 → 0.65/0.65 s; within drift |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

@@ -18,12 +18,14 @@ const FINGERPRINT = 3279161514;   // print() of 15.5t's engine, seed 2, 40 days
 
 // 1. Off: the world 15.5t left (fingerprint taken from 15.5t's engine, seed 2, 40 days).
 {
-  const w = People.create({ seed: 2, riots: false });
+  const w = People.create({ seed: 2, riots: false, bandits: false });
   w.step(24 * 40);
   assert.equal(print(w), FINGERPRINT, "riots off is the world before them");
 }
 
-const OPTS = { seed: 3, people: 400, map: 20, places: "city", start: "winter", materials: "goods" };
+// Bandits off (15.5b4): the towns below were set up in the world before them, and a hungry, hot-tempered
+// town's people take to the road as well as to the store.
+const OPTS = { seed: 3, people: 400, map: 20, places: "city", start: "winter", materials: "goods", bandits: false };
 /* A town set up to riot on its next day: its people hungry and nearly penniless, its store full.
    Held there by the hour until the day's turn has looked at it (`each` may change it further). */
 function town(over, lead, each) {
