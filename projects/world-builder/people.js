@@ -256,6 +256,9 @@
       { key: "irrigation", label: "Irrigation", type: "select", def: "real",   // TODO 15.5p, 2026-11-22
         options: [["real", "Villages by a river dig ditches after a dry year"], ["none", "None (as before)"]],
         help: "A village within two kilometres of a river that has had a dry year digs a ditch from it, about a hundred days' work, and the fields along the ditch are spared in a dry year as river flats are. It silts up unless the village spends some forty days a year cleaning it. Needs Rain by place and year." },
+      { key: "sleep", label: "Sleep", type: "select", def: "real",   // TODO 15.5s, 2026-11-22
+        options: [["real", "As long nights make it: two sleeps far north in winter"], ["simple", "From dark to dawn in one piece (as before)"]],
+        help: "Grown-ups go to bed a few hours after dark (longer by firelight, which burns the village's wood) and sleep what they need, about six and a half hours and an hour more in winter. Where the night is much longer than that — far from the equator in winter — they wake in the middle and are up an hour, talking and minding the fire, before a second sleep. Near the equator sleep stays in one piece." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -759,7 +762,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -787,9 +790,10 @@
        Before 2026-11-14 it was always seven hours, which was right only while
        every night was the same length — with real days, somebody who woke
        before a spring dawn went back to bed until one in the afternoon. */
-    function sleepTicks() {
+    function sleepTicks(p) {
       const hour = t % DAY_HOURS;
       if (!isDark(hour)) return spell("sleep");
+      if (SLEEP && p && adult(p)) return nightSleep(p, hour);
       const dawn = 13 - daylight() / 2;
       return Math.round(clamp((dawn - hour + DAY_HOURS) % DAY_HOURS, 1, 10) * ACTIONS_PER_HOUR);
     }
@@ -1656,6 +1660,7 @@
                   sex: 1, str: 1, same: false, due: 0, babyDad: 0, lying: 0,
                   nurse: 0,   // TODO 15.5k: the baby she is nursing
                   clothes: 1,   // TODO 15.5n: how warm what they wear is, 0 to 1
+                  woke: 0,   // TODO 15.5s: 1 a second sleep to come, 2 up in the night between
                   gathering: undefined,   // TODO 9a: at the day's cutting, quarrying or mining
                   /* TODO 10: the other five of the ten, and what of the last hard times has yet to wear off. */
                   patient: nature(RT(), ownOf(v.f, "patient")), temper: nature(RT(), ownOf(v.f, "temper")), hard: nature(RT(), ownOf(v.f, "hardwork")),
@@ -2159,6 +2164,8 @@
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
+    const SLEEP = S.sleep !== "simple";   // TODO 15.5s: sleep that follows the length of the night
+    const BED_AFTER = 3, BED_DARK = 1.5, WATCH = 1, LIGHT_WOOD = 0.0004;   // TODO 15.5s (see "sleep")
     const IRRIGATION = S.irrigation !== "none" && S.rain !== "off";   // TODO 15.5p: ditches from rivers
     const DITCH_HOURS = 800, DITCH_CLEAN = 320, DITCH_REACH = 5;   // TODO 15.5p (see "irrigation")
     const BEASTS = S.beasts !== "none";   // TODO 15.5o: oxen and horses (see "animals that work")
@@ -3194,6 +3201,39 @@
       if (!CHILDWORK || p.age >= S.grown) return 1;
       return clamp((p.age - (CHILD_WORK_AGE - 1)) / Math.max(1, S.grown - (CHILD_WORK_AGE - 1)), 0, 1) * 0.7;
     }
+    /* ── sleep (TODO 15.5s) ───────────────────────────────────────────────
+       Ric (2026-11-20): "For the sleeps how close to the equator changes the nights which changes the
+       sleep. So I think it should all be in there"; the waking hour does something. Three equatorial
+       forager peoples slept in one piece, about 6.4 hours, falling asleep some three hours after
+       sunset, waking before sunrise, an hour longer in winter (Yetish and others 2015); Ekirch found a
+       "first sleep" and "second sleep" in pre-industrial Europe, where winter nights are long. So: a
+       grown-up's night's need is six and a half hours and up to an hour more as the night lengthens
+       past twelve; they go to bed three hours after dusk where the village has wood for a fire to sit
+       by (it burns a little of it), an hour and a half where it has none; and where the night is more
+       than six hours longer than their need (over about twelve and a half: never near the equator)
+       and two hours of it are left besides, they sleep half their need,
+       wake an hour (`watch`: up at home, with whoever else is), then sleep until dawn. Near the
+       equator the night is never that long, and sleep stays in one piece by the same rule. Light
+       brighter than a fire — candles, lamps, electric light — is 15e and 15f. */
+    function nightLen() { return DAY_HOURS - daylight(); }
+    function sinceDusk(hour) { return ((hour - (13 + daylight() / 2)) % DAY_HOURS + DAY_HOURS) % DAY_HOURS; }
+    function need(p) { return 6.5 + clamp((nightLen() - 12) / 6, 0, 1); }
+    function bedtime(p, hour) {
+      if (!isDark(hour)) return 0;
+      const fire = FIRE && villages[p.home].wood > 0.5;
+      return sinceDusk(hour) >= (fire ? BED_AFTER : BED_DARK) ? 1 : 0.25;
+    }
+    function untilDawn(p, cap) {
+      const hour = t % DAY_HOURS, dawn = 13 - daylight() / 2;
+      return Math.round(clamp((dawn - hour + DAY_HOURS) % DAY_HOURS, 1, cap) * ACTIONS_PER_HOUR);
+    }
+    function nightSleep(p, hour) {
+      const dawn = 13 - daylight() / 2, left = (dawn - hour + DAY_HOURS) % DAY_HOURS, want = need(p);
+      if (nightLen() > want + 6 && left > want + 2) { p.woke = 1; return Math.round(want / 2 * ACTIONS_PER_HOUR); }
+      p.woke = 0;
+      return Math.round(clamp(left, 1, want + 1) * ACTIONS_PER_HOUR);
+    }
+
     /* ── irrigation (TODO 15.5p) ──────────────────────────────────────────
        Ric (2026-11-20): yes. Wittfogel's claim that big irrigation made despots is widely rejected:
        Bali's terraces were run for a thousand years by local water-temple networks, Nepal's small
@@ -3618,9 +3658,9 @@
       }
       /* Sleep, in their own house. The one thing a night is for. */
       const far = Math.hypot(p.hx - p.x, p.hy - p.y);
-      weigh("sleep", n.rest + dark * 0.6 - 0.22 - away(far) * 0.4, () => {
+      weigh("sleep", n.rest + (SLEEP ? bedtime(p, hour) : dark) * 0.6 - 0.22 - away(far) * 0.4, () => {
         const [ix, iy] = inHouse(p); go(p, ix, iy, "sleep");   // inside their own house (TODO 7a)
-        p.wait = sleepTicks();
+        p.wait = sleepTicks(p);
       });
 
       /* Eat. Only worth the walk if there is anything to be had. */
@@ -3951,7 +3991,14 @@
       p.shift = false;
       if (p.task === "eat") { p.at = v.id; shop(p, v); p.task = "idle"; p.wait = spell("meal"); return; }
       if (p.task === "gear") { outfit(p, v); shop(p, v); p.task = "idle"; p.wait = spell("market"); return; }
-      if (p.task === "sleep") { p.rest = 0; p.task = "idle"; p.wait = 0; return; }
+      if (p.task === "sleep") {
+        /* The first of two sleeps over (TODO 15.5s): up an hour in the night, at home. */
+        if (SLEEP && p.woke === 1 && isDark(t % DAY_HOURS)) { p.woke = 2; p.rest = Math.min(p.rest, 0.2); p.task = "watch"; p.wait = TK(WATCH * 60); p.alone = 0; count.wakings++; return; }
+        p.rest = 0; p.task = "idle"; p.wait = 0; p.woke = 0; return;
+      }
+      if (p.task === "watch") {   // TODO 15.5s: and back to sleep until dawn
+        p.woke = 0; p.task = "sleep"; p.wait = untilDawn(p, 8); return;
+      }
       if (p.task === "water") {                        // TODO 6a: fill up and carry it home
         const h = homes[p.dwelling];
         p.carry = BUCKETS; p.wait = 0;
@@ -4929,6 +4976,8 @@
     function live(p) {
       p.age += 1 / YEAR;
       if (HOUSEWORK) p.clothes = Math.max(0, p.clothes - CLOTHES_WEAR);   // TODO 15.5n
+      /* Light after dark is the fire (TODO 15.5s): staying up burns the village's wood. */
+      if (SLEEP && FIRE && p.task !== "sleep" && isDark(t % DAY_HOURS)) { const hv = villages[p.home]; if (hv.wood > 0.5 && Math.hypot(p.x - p.hx, p.y - p.hy) < 1) { hv.wood -= LIGHT_WOOD; count.lightWood += LIGHT_WOOD; } }
       if (HEALTH) {   // TODO 15.5e: a wound heals toward what it leaves for good; age takes its share
         if (p.harm > p.lame) { p.harm = p.lame + (p.harm - p.lame) * HARM_HEAL; if (p.harm - p.lame < 0.002) p.harm = p.lame; }
         p.vig = (1 - p.harm) * ageVigour(p);
@@ -5054,6 +5103,7 @@
       if (p.task === "eat") return walking ? "Going to eat" : "Buying food";
       if (p.task === "make") return walking ? "Walking to workshop" : "Making goods";
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
+      if (p.task === "watch") return "Awake in the night";   // TODO 15.5s
       if (p.task === "water") return "Fetching water";
       if (p.task === "fish") return walking ? "Going fishing" : "Fishing";
       if (p.task === "cut") return walking ? "Going to cut wood" : "Cutting wood";
@@ -8024,6 +8074,7 @@
       childHazard: childHazard, fecund: fecund,   // for the tests (TODO 15.5k)
       childShare: childShare,   // for the tests (TODO 15.5m)
       rainOf: y => RAIN ? rainField(y, new Uint8Array(tiles)) : null,
+      nightSleep: (p, hour) => nightSleep(p, hour), need: p => need(p),   // for the tests (TODO 15.5s)
       watered: watered, ditchDug: vid => ditchDug(villages[vid]), ditchYear: () => { if (IRRIGATION) ditchYear(); }, rainK: rainK,   // for the tests (TODO 15.5p)
       plough: vid => plough(villages[vid]), beastTurn: vid => beastTurn(villages[vid]),   // for the tests (TODO 15.5o)
       lastCut: lastCut, reapedFrom: (i, got, vid) => reapedFrom(i, got, villages[vid]), restSoil: () => rest(), restWill: fid => restWill(factions[fid]),

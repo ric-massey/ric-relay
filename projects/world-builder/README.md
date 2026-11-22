@@ -1901,6 +1901,43 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Sleep that follows the night (2026-11-22)
+
+TODO item 15.5s. Ric (2026-11-20): "For the sleeps how close to the equator changes the nights which
+changes the sleep. So I think it should all be in there"; the waking hour does something; and
+(2026-11-21) light is a thing, and light changes sleep. Until now somebody who went to bed in the
+dark slept until dawn in one piece. Three equatorial forager peoples slept in one piece, about 6.4
+hours, falling asleep some three hours after sunset (Yetish and others 2015); Ekirch found a "first
+sleep" and a "second sleep" in pre-industrial Europe, where winter nights are long (research notes
+under 15.5s in `TODO.md`).
+
+- **A night's need** (`need`): six and a half hours, up to an hour more as the night lengthens past
+  twelve.
+- **Bedtime** (`bedtime`): a grown-up's wish to sleep after dark is a quarter of what it was until
+  three hours after dusk where the village has wood for a fire to sit by, an hour and a half where it
+  has none; the tired still go early.
+- **One sleep or two** (`nightSleep`): where the night is more than six hours longer than their need
+  (over about twelve and a half hours, never near the equator) and two hours of it are left, they
+  sleep half their need, are up an hour at home (`watch`, "Awake in the night": no longer alone,
+  so they talk with whoever else is up, and mind the fire), then sleep until dawn. Otherwise one
+  sleep, to dawn or their need and an hour, whichever is first. The same rule makes one sleep at the
+  equator and two in a northern winter; nothing is set by place.
+- **Firelight costs wood**: a grown-up up after dark at home burns a little of the village's wood
+  (`lightWood`), about 130 loads a world-year.
+- Children sleep as before. Candles, lamps and brighter light, and light moving sleep later, are 15e
+  and 15f.
+- Counts: `wakings`, `lightWood`.
+- **A setting**, "Sleep", under Lives. "From dark to dawn in one piece" is the world 15.5q left, step
+  for step (`test/sleep.test.mjs`).
+
+**Measured** (a year each, six default worlds at 45°, against 15.5q): about 32,000 wakings in the
+night a world-year (the long nights of the winter half), reaped 359,900 → 358,800, births 124 → 136,
+people 2,391 → 2,387. One world at 62° 38,900 wakings; at 2°, none. A first build split any long
+stretch left before dawn, so the tired who went to bed early woke in the night even at the equator
+(16,000 a year there); now the split follows the length of the night.
+
+**Left out:** children's sleep, naps by day beyond what was there, light brighter than a fire.
+
 ### Climate over centuries (2026-11-22)
 
 TODO item 15.5q. Ric (2026-11-20): yes, from the seed, and **on by default**, so a default world

@@ -3221,7 +3221,7 @@ proposed, measured so a default world's towns lose about what they do now?
 - *15c, slavery and serfdom:* yes, **with a setting to turn it off**; a ruled faction can keep, free or
   forbid it: yes.
 - *15f, long-distance trade:* yes. *15g, festivals and holy days:* yes.
-**15.5s. Sleep that follows the way people live** (added 2026-11-20, Ric: "sleep should follow the way
+**[x] 15.5s. Sleep that follows the way people live** *Done 2026-11-22:* need six and a half hours, an hour more on the longest nights; bed three hours after dusk by firelight (which burns wood), an hour and a half without; where the night is over about twelve and a half hours, two sleeps with an hour up at home between, so one sleep near the equator and two far north in winter by the same rule. Setting "Sleep" ("simple" = the 15.5q world, fingerprinted). A year, six worlds at 45°: about 32,000 wakings a world; at 2° none. `test/sleep.test.mjs`; README, "Sleep that follows the night". Left out: children's sleep, brighter light (15e, 15f). (added 2026-11-20, Ric: "sleep should follow the way
 they live. Didn't foragers and even on slept in two 4hr segments. Until there was artificial light it
 wasn't like that right?"). *Now* (`sleepTicks` in `people.js`): somebody who goes to bed in the dark
 sleeps until dawn, one to ten hours, in one piece; nobody has a light. *History — partly right, and
