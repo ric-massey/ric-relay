@@ -1224,7 +1224,7 @@
   function puzzleHeader(){
     if(!s.no){let h=7;for(const v of s.given)h=(h*31+v)%9973;s.no=mode==='daily'?Math.floor((Date.parse(s.day||dailyDate||new Date().toISOString().slice(0,10))-Date.UTC(2026,0,1))/864e5)+1:1000+h%9000;}
     const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
-    set('puzzle-no',String(s.no).padStart(4,'0'));set('puzzle-level',MODES.sudoku.find(m=>m[0]===mode)?.[1]||'');
+    set('puzzle-no',String(s.no).padStart(4,'0'));$('game-title')?.setAttribute('data-level',mode);set('puzzle-level',MODES.sudoku.find(m=>m[0]===mode)?.[1]||'');
     set('puzzle-date',new Date((mode==='daily'&&s.day?s.day:new Date().toISOString().slice(0,10))+'T12:00:00Z').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'}));
   }
   function sudokuHistory(){history.push({b:s.b.slice(),notes:JSON.parse(JSON.stringify(notes)),selected});if(history.length>300)history.shift();}
