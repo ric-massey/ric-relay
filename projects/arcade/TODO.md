@@ -406,6 +406,12 @@ What the research says, and what the pages now do:
 - Terminal boards on a touch screen get taller lines, so each square is a bigger
   target. Expert Minesweeper stays fitted (Ric's call) at about 20 px a square.
 
+- **Save button** (Ric, 2026-11-21: "There needs to be a save button as well"):
+  every game has Save beside New game. Games already saved after every move; Save
+  saves right now, pauses Snake/Tetris first, and says "Saved ✓". Online games say
+  they live in their room; a finished game says there's nothing to save. On a phone
+  the header is New game, Save and ⋯ (Options).
+
 Sources: Apple HIG / Material / WCAG target sizes (Smashing Magazine 2024 summary);
 Steven Hoober's one-handed-use research (Smashing Magazine "The Thumb Zone");
 mobile viewport units and safe areas (Polypane, OpenReplay guides).

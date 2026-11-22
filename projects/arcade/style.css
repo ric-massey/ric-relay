@@ -353,13 +353,15 @@ button{touch-action:manipulation}
   body :is(select,input:not([type="checkbox"]):not([type="range"])){font-size:16px!important}
   body .game-actions :is(button,select),body #options-toggle{min-height:44px!important}
   body header :is(.cz-back,.ck-back,.st-back,.ms-back,.sd-back,.wd-back,.tt-back,.sn-back,.tc-back,.back){width:44px;height:44px;min-width:44px}
-  body .game-actions.has-options:not(.open)>:not(#new-game):not(#options-toggle):not(#pause):not(#tools){display:none!important}
+  body .game-actions.has-options:not(.open)>:not(#new-game):not(#options-toggle):not(#pause):not(#tools):not(#save-game){display:none!important}
   body .game-actions.has-options:not(.open){order:0!important;flex:0 0 auto!important;flex-basis:auto!important;width:auto!important;margin-left:auto!important;overflow:visible!important;padding:0!important}
   body .game-actions.has-options.open{order:3!important;flex:1 1 100%!important;flex-basis:100%!important;display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important;overflow:visible!important;padding:4px 0 6px!important}
   body .game-actions.has-options.open>*{width:100%!important;max-width:none!important;margin:0!important}
   body .game-actions.has-options.open :is(select,button){width:100%!important;max-width:none!important}
   body .game-actions.has-options.open #new-game,body .game-actions.has-options.open #options-toggle{order:0}
-  body #options-toggle{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-width:44px;padding:4px 12px}
+  body #options-toggle{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-width:44px;padding:4px 10px;font-size:20px!important;line-height:1}
+  body .game-actions.has-options.open #options-toggle{font-size:14px!important}
+  body .game-actions.has-options:not(.open) :is(#new-game,#save-game){padding-left:10px!important;padding-right:10px!important}
 }
 @media (min-width:761px){#options-toggle{display:none!important}}
 body[data-look="terminal"] #options-toggle::before{content:'[ '}body[data-look="terminal"] #options-toggle::after{content:' ]'}
@@ -388,5 +390,14 @@ body[data-look="terminal"] #options-toggle::before{content:'[ '}body[data-look="
   body[data-game="tictactoe"]:not([data-look="terminal"]) .tc-site::after{content:"Tic-tac-toe"}
   body[data-game="tetris"]:not([data-look="terminal"]) .tt-name::after{content:"Tetris"}
   header .ms-name{font-size:17px!important}
+}
+/* The Save button lights up for a moment when it has saved. */
+#save-game.saved{background:var(--accent,var(--green,#2a7))!important;color:var(--on-accent,#fff)!important;border-color:var(--accent,var(--green,#2a7))!important}
+@media (max-width:760px){body #save-game{min-height:44px!important;padding:4px 12px}}
+@media (max-width:760px){
+  body .game-actions.has-options:not(.open) :is(#new-game,#save-game){font-size:14px!important;padding-left:9px!important;padding-right:9px!important}
+  body[data-look="terminal"] .game-actions.has-options:not(.open) :is(#new-game,#save-game,#options-toggle)::before,body[data-look="terminal"] .game-actions.has-options:not(.open) :is(#new-game,#save-game,#options-toggle)::after{content:none!important}
+  body[data-look="terminal"] .game-actions.has-options:not(.open) :is(#new-game,#save-game,#options-toggle){border:1px dashed var(--edge,#2c6b3a)!important}
+  body[data-look="terminal"] header :is(h1,.cz-title,.ck-title,.st-title,.sn-title,.ms-name,.wd-name,.tt-name,.sd-site,.tc-site){font-size:15px!important}
 }
 

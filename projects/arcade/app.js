@@ -1664,14 +1664,31 @@
   let frameTimer=0;const framesSoon=()=>{clearTimeout(frameTimer);frameTimer=setTimeout(drawFrames,40);};
   addEventListener('resize',framesSoon);
   if(document.querySelector('[data-frame]')&&$('playroom'))new MutationObserver(framesSoon).observe($('playroom'),{childList:true,subtree:true});
+  /* A Save button on every game (Ric, 2026-11-21: "There needs to be a save button
+     as well"). Games already save themselves after every move; this saves right
+     now, says so, and pauses Snake or Tetris first. */
+  (function(){
+    const ng=$('new-game');if(!ng||$('save-game'))return;
+    let undoText=0;
+    const b=button('Save',()=>{
+      const say=(label,msg)=>{clearTimeout(undoText);b.textContent=label;b.classList.toggle('saved',label!=='Save');if(msg)hint(msg);undoText=setTimeout(()=>{b.textContent='Save';b.classList.remove('saved');},1800);};
+      if(!game||!s){say('Save');return;}
+      if(mode==='online'){say('Saved ✓','Online games are kept in their room as you play; come back to the same link any time.');return;}
+      if(finished){say('Nothing to save','This game is over. Start a new one whenever you like.');return;}
+      if(action()&&running&&!paused)togglePause();
+      if(game.id==='wordle'&&mode!=='practice')saveDaily();else persist();
+      sfx('flag');say('Saved ✓','Saved. It will be right here when you come back, on this device.');
+    },'save-game');
+    b.id='save-game';b.setAttribute('aria-label','Save this game');ng.after(b);
+  })();
   /* Phones: one header row. Everything in the actions row except New game (and
      Pause while it shows) folds into an Options panel (style.css "Phones"). */
   (function(){
     const row=document.querySelector('.game-actions'),ng=$('new-game');if(!row||!ng||$('options-toggle'))return;
-    const t=button('Options',()=>{const open=!row.classList.contains('open');row.classList.toggle('open',open);t.setAttribute('aria-expanded',open);t.textContent=open?'Done':'Options';framesSoon?.();},'options-toggle');
-    t.id='options-toggle';t.setAttribute('aria-expanded','false');t.setAttribute('aria-controls','options-panel');row.id=row.id||'options-panel';row.classList.add('has-options');ng.after(t);
+    const t=button('⋯',()=>{const open=!row.classList.contains('open');row.classList.toggle('open',open);t.setAttribute('aria-expanded',open);t.textContent=open?'Done':'⋯';framesSoon?.();},'options-toggle');t.setAttribute('aria-label','Options: style, mode, sound, rules');t.title='Options';
+    t.id='options-toggle';t.setAttribute('aria-expanded','false');t.setAttribute('aria-controls','options-panel');row.id=row.id||'options-panel';row.classList.add('has-options');($('save-game')||ng).after(t);
     // Picking a style or a mode folds the panel away again, so the game is in view.
-    row.addEventListener('change',e=>{if(e.target.matches('select')&&matchMedia('(max-width:760px)').matches){row.classList.remove('open');t.setAttribute('aria-expanded','false');t.textContent='Options';}});
+    row.addEventListener('change',e=>{if(e.target.matches('select')&&matchMedia('(max-width:760px)').matches){row.classList.remove('open');t.setAttribute('aria-expanded','false');t.textContent='⋯';}});
   })();
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';
