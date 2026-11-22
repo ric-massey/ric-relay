@@ -228,6 +228,9 @@
       { key: "dirt", label: "Dirt in towns", type: "select", def: "real",   // TODO 15.5r, 2026-11-21
         options: [["real", "From its causes: waste and foul water"], ["fixed", "A fixed toll in towns and cities"]],
         help: "Where many live, their waste fouls the water they drink: a well among the houses, a river below a town. Foul water kills, the young and the old most, and a sickness starts oftener and passes more easily where it is bad. The fixed toll is the old way: one more death in a hundred a year in a town, two in a city." },
+      { key: "health", label: "Wounds and old age", type: "select", def: "real",   // TODO 15.5e, 2026-11-21
+        options: [["real", "Bad wounds can last, and the old slow down"], ["simple", "Full strength until the day they die (as before)"]],
+        help: "A bad blow in a fight or a battle heals over months, and now and then leaves somebody lame for good: slower, weaker at heavy work, no soldier. From about three-quarters of a lifetime people slow down, until the very old can no longer farm, and their family feeds them." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -593,6 +596,8 @@
        hour, and drawing that from `R` made every world a different one from its first hour, where
        now a world changes only once somebody dies of it. */
     const RD = rng((S.seed | 0) * 3266489917 + 11);
+    /* Whether a wound lasts (TODO 15.5e), from its own stream for the same reason. */
+    const RW = rng((S.seed | 0) * 2654435761 + 13);
     /* The minds (TODO 11). Everybody's slots in four flat arrays, a block of MB a person, so a
        mind is no object of its own and is never copied: slot 0 is what they think about sharing
        (what was `views`), the rest whatever they hold. A dead person's block goes to the next
@@ -705,7 +710,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { foul: 0, banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { wounds: 0, lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1590,6 +1595,7 @@
                   /* Building (TODO 7b): the house they are waiting for, which they are working on, and whether a shift is under way. */
                   waitHouse: -1, buildAt: -1, shift: false,
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
+                  vig: 1, harm: 0, lame: 0,   // TODO 15.5e: strength left (wounds and age), a wound still healing, and what of it never will
                   gathering: undefined,   // TODO 9a: at the day's cutting, quarrying or mining
                   /* TODO 10: the other five of the ten, and what of the last hard times has yet to wear off. */
                   patient: nature(RT(), ownOf(v.f, "patient")), temper: nature(RT(), ownOf(v.f, "temper")), hard: nature(RT(), ownOf(v.f, "hardwork")),
@@ -2044,8 +2050,9 @@
       const heat = (a.temper + b.temper) / 2;
       if (R() < heat * heat * 1.2) {
         count.fights++;
-        b.hp -= 0.05 + R() * 0.15 * (0.5 + a.temper);
-        a.hp -= 0.03 + R() * 0.12 * (0.5 + b.temper);
+        const hb = 0.05 + R() * 0.15 * (0.5 + a.temper), ha = 0.03 + R() * 0.12 * (0.5 + b.temper);
+        b.hp -= hb; a.hp -= ha;
+        wound(b, hb); wound(a, ha);   // TODO 15.5e
         befriend(a, b, -0.25);
         said(a, b, "fight", pick(["I've had enough of you.", "Say that again.", "You'll answer for it."]), pick(["Get away from me!", "Try it.", "Help! Help!"]));
         const dead = R() < LETHAL ? (R() < 0.5 + (a.temper - b.temper) * 0.5 ? b : a) : null;
@@ -2083,6 +2090,7 @@
     const RIOTS = !shared && S.riots !== false;   // TODO 15.5b3
     const BANDITS = !shared && S.bandits !== false;   // TODO 15.5b4
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
+    const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const riverDirt = DIRT ? new Float32Array(tiles) : null, dirtied = [];   // TODO 15.5r: people's waste in each river square, today
     const lurk = new Map();     // TODO 15.5b4: bandits lying in wait by a road, and since when
     const bandOf = new Map();   // TODO 15.5b4: a bandit out with a band: the place they ride for, and how many ride
@@ -2518,7 +2526,7 @@
 
     function chooseJob(p) {
       const v = villages[p.home], f = factions[p.f];
-      if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold + (p.temper - 0.5) * 0.3 > 0.35 && R() < 0.8) { f.soldiers++; return "soldier"; }
+      if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold + (p.temper - 0.5) * 0.3 > 0.35 && p.vig >= 0.6 && R() < 0.8) { f.soldiers++; return "soldier"; }   // p.vig: TODO 15.5e, no lame or old soldiers
       /* Robbing for a living (TODO 15.5b4), weighed against what honest work would bring: by the hungry,
          the landless and those the wars have ruined, the less honest the likelier, where there is
          something within reach to take and not too many taking it already (Hobsbawm: banditry rose
@@ -2964,7 +2972,7 @@
        (2.7%). Now it is the hours, which is how farming labour actually
        differs — capped at what daylight allows, after which they bring back
        what they managed. */
-    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe; }
+    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig; }   // p.vig: TODO 15.5e
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
@@ -2995,17 +3003,40 @@
     function craftOutput(p, v) {
       /* With real materials (TODO 9a) what a batch comes to is what is in the store to work: wood, and
          ore for the metal in it; without either, a little by hand. */
-      if (MATS) return (0.35 + (v.wood >= 0.5 ? 0.3 : 0) + (v.iron >= 0.3 ? 0.45 : 0) + (v.wool >= 0.3 ? 0.2 : 0)) * (equipped(p, "tool") ? 1.2 : 1);
-      return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1);
+      const hands = p.vig < 1 ? 0.5 + 0.5 * p.vig : 1;   // TODO 15.5e: light work, but slower for the lame and the old
+      if (MATS) return (0.35 + (v.wood >= 0.5 ? 0.3 : 0) + (v.iron >= 0.3 ? 0.45 : 0) + (v.wool >= 0.3 ? 0.2 : 0)) * (equipped(p, "tool") ? 1.2 : 1) * hands;
+      return (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1) * hands;
     }
     function strike(p, foe, base) {
-      const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1);
+      const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1) * (p.vig < 1 ? 0.4 + 0.6 * p.vig : 1);   // TODO 15.5e: the lame and the old strike weaker
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
+      wound(foe, damage);
       /* Enemies striking in somebody's own village: a raid there (TODO 10). */
       const hv = villages[foe.home];
       if (hv && hv.f !== p.f && Math.hypot(foe.x - hv.x, foe.y - hv.y) < hv.radius + 1) hv.raidAt = t;
       return damage;
     }
+
+    /* ── wounds and old age (TODO 15.5e) ─────────────────────────────────
+       Ric (2026-11-20): lasting harm from a bad wound, yes; the old slowing down, yes. Of ordinary
+       working people buried in medieval Cambridge 44% had broken a bone, nearly all well healed
+       (Dittmar and others 2021), and some badly hurt were cared for for years. So a real blow (a
+       tenth of a life or more) may leave a wound that takes months to heal (`harm`, halving in about
+       two months), and the worse the blow the likelier some of it stays for good (`lame`): a fifth of
+       the heaviest blows of a battle, hardly any bruise from a village fight. Age takes strength
+       from about three-quarters of "How long they live" on, down to a fifth of it; `vig` is what
+       is left of both, read by work, walking and fighting. */
+    const HARM_HEAL = Math.pow(0.5, 1 / (60 * DAY_HOURS));   // an hour's healing of what will heal
+    const LAME_SHARE = 0.6;    // how fast the chance a wound leaves something for good rises with how bad it is
+    const FRAIL = 0.2;         // strength under which somebody can do no real work
+    function wound(p, d) {
+      if (!HEALTH || d < 0.1 || p.hp <= 0) return;
+      if (RW() >= d * 1.5) return;   // a bruise: what hp already is
+      p.harm = Math.min(0.9, p.harm + d * (1 + RW() * 2)); count.wounds++;
+      if (RW() < (d - 0.15) * LAME_SHARE) {   /* the worse the blow, the likelier it leaves a mark: a fifth of the heaviest */ p.lame = Math.min(0.9, Math.max(p.lame, p.harm * (0.3 + RW() * 0.7))); count.lamed++; }
+      p.vig = (1 - p.harm) * ageVigour(p);
+    }
+    function ageVigour(p) { return 1 - clamp((p.age - S.life * 0.75) / (S.life * 0.5), 0, 0.8); }
 
     /* ── what somebody needs ─────────────────────────────────────────────────
        How badly each thing is wanted, 0 to about 1.4. Food is allowed past 1
@@ -3212,7 +3243,9 @@
       /* A day in the fields. What the patch would actually give decides whether
          it is worth the walk — so thin, crowded or worked-out land pushes people
          into other work, other villages, or somebody else's store. */
-      if (!p.cargo) {
+      /* Nobody too frail for any real work goes to it (TODO 15.5e): they sit by the fire, are fed by
+         their family, and still talk, eat and fetch water. */
+      if (!p.cargo && p.vig >= FRAIL) {
         const w = livelihood(p, v);
         /* Laying in for the winter (TODO 10): how far the larder falls short of it, which the
            patient set about now and the impatient leave for later. Nothing at an ordinary patience. */
@@ -3603,7 +3636,7 @@
         if (!p.fishing) { p.fishing = true; p.wait = spell("harvest"); return; }
         p.fishing = false;
         const g = fishGround(v);
-        let need = g ? fishDay() * (p.job === "fisher" ? 1 : 0.7) : 0;
+        let need = g ? fishDay() * (p.job === "fisher" ? 1 : 0.7) * p.vig : 0;
         const want = need;
         if (g) for (const i of g.tiles) {
           if (need <= 0.01) break;
@@ -3619,7 +3652,7 @@
         p.gathering = false;
         const herd = p.task === "herd", m = herd ? grazeStock : gameStock, cap = herd ? GRAZE_YEAR : GAME_YEAR;
         const list = wildList(v, p.task), j0 = wildSpot(v, p.task);
-        let need = (herd ? herdDay() : huntDay()) * (p.job === (herd ? "herder" : "hunter") ? 1 : 0.7);
+        let need = (herd ? herdDay() : huntDay()) * (p.job === (herd ? "herder" : "hunter") ? 1 : 0.7) * p.vig;
         const want = need;
         if (j0 >= 0) for (let j = j0; j < list.length && need > 0.01; j++) {
           const i = list[j]; if (herd && held.has(i)) continue;
@@ -3640,7 +3673,7 @@
         const k = p.task === "cut" ? "wood" : p.task === "quarry" ? "stone" : "iron", i = matSpot(v, k);
         let got = 0;
         if (i >= 0) {
-          got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1);
+          got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1) * p.vig;
           if (k === "wood") { const have = woodIn(i); got = Math.min(got, have); woodStock.set(i, [have - got, t]); }
           sellMat(p, v, k, got); count[k] += got; wear(p, "tool");
         }
@@ -4472,6 +4505,10 @@
     /* ── one person, one tick ──────────────────────────────────────────── */
     function live(p) {
       p.age += 1 / YEAR;
+      if (HEALTH) {   // TODO 15.5e: a wound heals toward what it leaves for good; age takes its share
+        if (p.harm > p.lame) { p.harm = p.lame + (p.harm - p.lame) * HARM_HEAL; if (p.harm - p.lame < 0.002) p.harm = p.lame; }
+        p.vig = (1 - p.harm) * ageVigour(p);
+      }
 
       /* The needs that are not food, once an hour. Rest rises with the hours
          awake and faster at real work; a night in a bed clears it. Being alone
@@ -4527,6 +4564,13 @@
           if (!fed && p.wards) for (const k of p.wards) {
             const spare = k.hp > 0 ? k.food - 3 * dailyNeed(k) : 0;
             if (spare > 0.3) { const take = Math.min(spare, 1); k.food -= take; p.food += take; fed = true; break; }
+          }
+          /* Somebody too old or too lame to work is fed by their grown children (TODO 15.5e; Ric: "Family"),
+             from what each holds beyond a week. */
+          if (!fed && HEALTH && p.vig < 0.5 && p.kids > 0) for (const k of residents(p.home)) {
+            if ((k.mum !== p.id && k.dad !== p.id) || !adult(k) || k.hp <= 0) continue;
+            const spare = k.food - 7 * dailyNeed(k);
+            if (spare > 0.3) { const take = Math.min(spare, 1); k.food -= take; p.food += take; fed = true; count.keptOld += take; break; }
           }
         }
         if (!fed) {
@@ -5272,7 +5316,7 @@
        with something to do"). The world is the same world, step for step:
        test/dozing.test.mjs runs it both ways. */
     const quietTask = k => k === "sleep" || k === "field" || k === "make" || k === "fight";
-    const paceOf = p => WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1);
+    const paceOf = p => WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1) * (p.vig < 1 ? 0.5 + 0.5 * p.vig : 1);   // p.vig: TODO 15.5e
     const whole = v => Math.floor(v) === v;
     /* How many rolls, at the odds of trying to speak on one step, until the
        first that comes up: at least one. */
@@ -5597,7 +5641,7 @@
          open hills jammed round its middle for hours (measured: 43 people stuck over 200 steps
          against 1). */
       const here = tileAt(p.x, p.y), footing = track[here] === 2 ? 1.15 : owner[here] >= 0 || (cross !== null && cross[here] === 3) ? 1 : paceAt(here);
-      const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1) * footing * (p.cargo ? cartPace(p, here) : 1);
+      const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1) * (p.vig < 1 ? 0.5 + 0.5 * p.vig : 1) * footing * (p.cargo ? cartPace(p, here) : 1);
       const partner = p.sayT > 0 && byId.get(p.talkingTo);
       if (partner && partner.sayT > 0 && partner.talkingTo === p.id) {
         /* 3: in conversation. They stand and listen until one of the two
@@ -5748,6 +5792,8 @@
            as soldiers' pay so often was. */
         else if (v.f === p.f && v.levy >= WAGE && v.food >= WAGE) { v.levy -= WAGE; v.food -= WAGE; p.food += WAGE; p.unpaid = Math.max(0, p.unpaid - 1); count.levyEaten += WAGE; }
         else if (++p.unpaid > 6 && !anyWar) { p.job = "farmer"; p.unpaid = 0; p.task = "idle"; }
+        /* Sent home lame or too old to fight (TODO 15.5e). */
+        if (HEALTH && p.job === "soldier" && p.vig < 0.4 && (1 - p.lame) * ageVigour(p) < 0.4) { p.job = "farmer"; p.task = "idle"; count.discharged++; }   // not for a wound that will heal
       }
       if (lead === p && !shared && t % DAY_HOURS === 0 && f.treasury >= 0.3) { f.treasury -= 0.3; p.coins += 0.3; }
       /* Starving people do something about it: steal if they are bold, and
@@ -7019,7 +7065,7 @@
            farmers alone stalled short of what its leader asked (4 of 23 wanted 6). Then any other
            trade (TODO 15.5a): once crafters made only to order there were few, and in rule.test's
            world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
-        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
+        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
@@ -7530,7 +7576,8 @@
       newsText: newsText, traceNews: traceNews, eventById: eventById, telling: telling,   // TODO 12
       setView: setView, befriend: befriend,   // for the tests
       shaken: shaken, LIFE: LIFE, ruling: ruling,   // for the tests (TODO 15a)
-      foulness: () => { if (DIRT) foulness(); },   // for the tests (TODO 15.5r): work out each village's water now
+      foulness: () => { if (DIRT) foulness(); },
+      wound: wound, ageVigour: ageVigour,   // for the tests (TODO 15.5e)   // for the tests (TODO 15.5r): work out each village's water now
       living: p => chooseJob(p), roadOf: vid => roadOf(villages[vid]),   // for the tests (TODO 15.5b4): the living somebody would choose now, and where a village's bandits lie in wait
       /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
          the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */

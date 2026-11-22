@@ -2998,7 +2998,13 @@ square year after year and coming back when left; forest cleared and staying cle
 regrows. Floods and fires dropped by the visitor stay item 17. Research first: medieval yields on
 land left fallow and not; how long woodland takes to come back.
 
-**15.5e. Health: wounds and old age** (`PEOPLE-VISION.md`, "People"). A wound from a fight or a
+**[x] 15.5e. Health: wounds and old age** *Done 2026-11-21:* a blow of a tenth of a life or more
+may wound (healing by half in two months), the worse the likelier some stays for good (lame); the old
+lose strength from three-quarters of a lifetime to a fifth at the end; strength scales what work
+gives, walking and blows; under a fifth nobody works; no lame or old soldiers; a grown child feeds a
+frail parent. Setting "Wounds and old age" ("simple" = the 15.5r world, fingerprinted). A year, six
+default worlds: starved 15 → 16, births 109 → 116, 63 lamed for good. `test/health.test.mjs`; README,
+"Wounds and old age". Left out: handing the farm on (15b), caring hours (15.5n). (`PEOPLE-VISION.md`, "People"). A wound from a fight or a
 battle that heals slowly or does not; old age taking away what a person can do (heavy work, long
 walks, fighting). Item 18 stays the mechanism for sickness that spreads. Ric decides: whether a
 lasting wound can stop somebody working for good.

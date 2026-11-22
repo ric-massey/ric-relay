@@ -1901,6 +1901,42 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Wounds and old age (2026-11-21)
+
+TODO item 15.5e. Ric (2026-11-20): a bad wound can leave lasting harm, yes; the old slow down, yes;
+somebody who cannot work is looked after by "Family". Until now a wound came back in full at a fixed
+rate, and everybody worked as hard as ever until the day they died. Of ordinary working people buried
+in medieval Cambridge, 44% had broken a bone, nearly all well healed (Dittmar and others 2021); some
+badly hurt people were cared for for years (research notes under 15.5e in `TODO.md`).
+
+- **A wound** (`wound`, from any blow of a tenth of a life or more: a battle's strike, a village
+  fight). The chance it is more than a bruise is one and a half times the blow; then it takes
+  strength (`p.harm`) that heals by half about every two months. The worse the blow, the likelier
+  some of it stays for good (`p.lame`): about a fifth of the heaviest battle blows, almost no fight
+  between neighbours. Whether a wound lasts draws from its own stream (`RW`).
+- **Age** (`ageVigour`): full strength until three-quarters of "How long they live" (45 at the
+  default 60), half at 60, a fifth at the very end.
+- **`p.vig`**, what is left of both, is read by work: what a day reaps, fishes, herds, hunts, cuts,
+  quarries or mines is times `vig`, the bench a little less; walking goes at half to full pace; a
+  blow strikes at 0.4 to full. Under a fifth of their strength nobody goes to work at all; they eat,
+  fetch water, talk and rest.
+- **Soldiers.** Nobody under 0.6 is taken as a soldier, by choice or by the wartime levy, and a
+  soldier lame or too old for it (under 0.4 not counting a wound that will heal) is sent home.
+- **The family feeds them.** Somebody under half their strength who has nothing to eat takes it from
+  a grown child of theirs in the same village, from what that child holds beyond a week.
+- Counts: `wounds`, `lamed`, `discharged`, `keptOld` (days of food).
+- **A setting**, "Wounds and old age", under Lives. "Full strength until the day they die" is the
+  world 15.5r left, step for step (`test/health.test.mjs` holds its fingerprint).
+
+**Measured** (a year each, six default worlds, against 15.5r): starved 15 → 16, births 109 → 116,
+battle deaths 11 → 15 (noise across these seeds); 1,212 wounds (most in seed 4's year of five wars),
+63 left lame for good, 30 soldiers sent home. Two first builds were wrong and measured so: the wartime
+levy drafted the lame back the next day (731 sent home in a year in one world), and a quarter of all
+wounds lasting left 160 lame in that world in a year.
+
+**Left out:** the old handing the farm to a child for their keep (15b, with inheritance); the hours a
+family spends caring (15.5n's house work); a new kind of work for those who cannot farm (15f).
+
 ### Dirt and foul water in towns (2026-11-21)
 
 TODO item 15.5r. Ric (2026-11-20): "There shouldn't be a town fixed death rate it should all be of
