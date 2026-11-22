@@ -177,6 +177,7 @@ const SUITES = [
   ['world-builder irrigation', ['projects/world-builder/test/irrigation.test.mjs']],   // TODO 15.5p, about two minutes
   ['world-builder climate', ['projects/world-builder/test/climate.test.mjs']],   // TODO 15.5q, seconds
   ['world-builder sleep', ['projects/world-builder/test/sleep.test.mjs']],   // TODO 15.5s, seconds
+  ['world-builder household firewood', ['projects/world-builder/test/hearth.test.mjs']],   // TODO 15.5f, under a minute
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

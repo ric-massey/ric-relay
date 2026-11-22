@@ -1901,6 +1901,37 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### A household's own firewood (2026-11-22)
+
+TODO item 15.5f. Ric (2026-11-20): keep it — "firewood was important till the modern age no?"
+Until now firewood was the village's, burned from its store for everybody, while food, water and
+money were the household's. The right to take wood for the fire (firebote, one of the estovers)
+belonged to a holding, from the lord's or the common wood; town households bought it; rural
+households burned most of Europe's firewood (Warde 2019).
+
+- **Each house's own wood** (`h.wood`), burned in the cold as the village burned it for each of its
+  people (`BURN` × chill); a house with not enough is cold (`h.cold`), and its people die of cold by
+  it, whatever the neighbours have. On the first day each house has what the store had for it.
+- **Wanted** (`hearthWant`): a month of the worst cold now and the winter ahead, as the store
+  reckoned it.
+- **Bought** (`hearths`, daily): short of half of it, a household with coins buys from the store at
+  its price, while the store keeps a third of what it wants for crafts and building.
+- **Cut** (task "firewood", "Cutting firewood"): otherwise somebody goes to the village's woods for
+  four hours and brings home six-tenths of a woodcutter's day, taken from the same woods (which run
+  down and grow back as before). Where no forest is in reach, dung and turf, as before.
+- Firelight after dark (15.5s) burns the house's wood.
+- Counts: `hearthCut`, `hearthBought` (loads).
+- **A setting**, "Whose firewood", under Lives. "The village store's, for everybody" is the world
+  15.5s left, step for step (`test/hearth.test.mjs`).
+
+**Measured** (a year each, six default worlds, against 15.5s): households cut 1,614 loads and bought
+564; 17 people died of cold in households that ran short (none when the store warmed everyone);
+people 2,387 → 2,367, births 136 → 129. That is the change this part asked for: a cold household
+different from its neighbour.
+
+**Left out:** wood carried to towns by sellers door to door; charcoal; whose wood it is to cut
+(the land rule of 7c is not asked).
+
 ### Sleep that follows the night (2026-11-22)
 
 TODO item 15.5s. Ric (2026-11-20): "For the sleeps how close to the equator changes the nights which

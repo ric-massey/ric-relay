@@ -226,6 +226,9 @@
       { key: "firewood", label: "Firewood", type: "select", def: "real",   // TODO 9c, 2026-11-17
         options: [["real", "Needed in the cold"], ["off", "Off"]],
         help: "In the cold a village burns wood from its store, about three-quarters of a load a person over a winter (a household in a cold land burned some tonnes a year), more in a hard one; the store wants it before the winter, so wood is dearer in autumn. A village with none left is cold: the very young and the old die of it first. Needs Materials on wood, stone and ore. Off, no wood is burned." },
+      { key: "hearth", label: "Whose firewood", type: "select", def: "household",   // TODO 15.5f, 2026-11-22
+        options: [["household", "Each household's own, fetched or bought"], ["village", "The village store's, for everybody (as before)"]],
+        help: "Each household keeps its own wood and burns it in the cold: it buys from the village store while it has coins, and otherwise goes out and cuts its own in the village's woods, as the right of firebote let a holding take wood for its fire. A household with none is cold, whatever its neighbours have. Needs Firewood." },
       { key: "crossing", label: "Crossing water", type: "select", def: "real",   // TODO 6d, 2026-11-16
         options: [["real", "Big rivers need a ford, bridge or boat"], ["wade", "Every river can be waded; no boats"]],
         help: "A big river can only be crossed at a ford, or where a village has built a bridge; a village by a lake or the sea builds a boat once its people keep wanting to cross, and ferries them over. An army does not go by boat: water it cannot walk round stops it." },
@@ -762,7 +765,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1438,7 +1441,7 @@
         if (!wet(x, y)) break;
       }
       const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
-                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9, chores: 0, small: 0 };   // chores, small: TODO 15.5n   // TODO 14b: when it last burned
+                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9, chores: 0, small: 0, wood: 0, cold: 0 };   // wood, cold: TODO 15.5f   // chores, small: TODO 15.5n   // TODO 14b: when it last burned
       sizeHome(h, wealth);
       homes.push(h); (homesIn[v.id] || (homesIn[v.id] = [])).push(h);
       return h;
@@ -2164,6 +2167,7 @@
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
+    const HEARTH = MATS && S.firewood !== "off" && S.hearth !== "village";   // TODO 15.5f: each household's own firewood
     const SLEEP = S.sleep !== "simple";   // TODO 15.5s: sleep that follows the length of the night
     const BED_AFTER = 3, BED_DARK = 1.5, WATCH = 1, LIGHT_WOOD = 0.0004;   // TODO 15.5s (see "sleep")
     const IRRIGATION = S.irrigation !== "none" && S.rain !== "off";   // TODO 15.5p: ditches from rivers
@@ -3201,6 +3205,37 @@
       if (!CHILDWORK || p.age >= S.grown) return 1;
       return clamp((p.age - (CHILD_WORK_AGE - 1)) / Math.max(1, S.grown - (CHILD_WORK_AGE - 1)), 0, 1) * 0.7;
     }
+    /* ── a household's own firewood (TODO 15.5f) ───────────────────────────
+       Ric (2026-11-20): keep — "firewood was important till the modern age no?" The right to take wood
+       for the fire (firebote, one of the estovers) belonged to a holding, from the lord's or the
+       common wood; town households bought it; rural households burned most of Europe's firewood
+       (Warde 2019). So a household burns its own wood in the cold, as much as the village did for
+       each of its people (`BURN`), and wants what the store wanted for them (a month's worst and the
+       winter ahead). Each day, short of it, it buys from the village store while the store has wood
+       above a third of what it wants and the household has coins; otherwise somebody goes to the
+       village's woods for half a day and brings home six-tenths of a woodcutter's day for half the
+       time, cut as any wood is (so a wood runs down and grows back the same way). A household with no
+       forest in reach burns dung and turf, as before. */
+    const HEARTH_HOURS = 4, HEARTH_SHARE = 0.6;
+    function hearthWant(h) { return h.n * BURN * (chill() * 30 + winterAhead()) + h.n * BURN * 3; }
+    function hearths(v, burning) {
+      const price = matPrice(v, "wood");
+      for (const h of homesOf(v)) {
+        if (h.v !== v.id || h.n === 0) continue;
+        if (t < 2 * DAY_HOURS && !h.wood) h.wood = h.n * 0.3;   // what each household has in on the first day, as the store had for it
+        if (burning) { const need = h.n * BURN * chill(), got = Math.min(h.wood, need); h.wood -= got; h.cold = need > 0 ? 1 - got / need : 0; }
+        else h.cold = 0;
+        const want = hearthWant(h);
+        if (!shared && h.wood < want * 0.5 && v.wood > v.wantWood * 0.33 + 0.5) {
+          const q = byId.get(h.head); if (!q || q.hp <= 0) continue;
+          const amount = Math.min(want - h.wood, v.wood - v.wantWood * 0.33), cost = amount * price;
+          if (amount <= 0.01) continue;
+          const can = Math.min(amount, funds(q) / Math.max(price, 1e-6));
+          if (can > 0.01) { pay(q, can * price); v.till += can * price; v.wood -= can; h.wood += can; count.hearthBought += can; }
+        }
+      }
+    }
+
     /* ── sleep (TODO 15.5s) ───────────────────────────────────────────────
        Ric (2026-11-20): "For the sleeps how close to the equator changes the nights which changes the
        sleep. So I think it should all be in there"; the waking hour does something. Three equatorial
@@ -3220,7 +3255,7 @@
     function need(p) { return 6.5 + clamp((nightLen() - 12) / 6, 0, 1); }
     function bedtime(p, hour) {
       if (!isDark(hour)) return 0;
-      const fire = FIRE && villages[p.home].wood > 0.5;
+      const fire = FIRE && (HEARTH ? p.dwelling >= 0 && homes[p.dwelling].wood > 0.5 : villages[p.home].wood > 0.5);
       return sinceDusk(hour) >= (fire ? BED_AFTER : BED_DARK) ? 1 : 0.25;
     }
     function untilDawn(p, cap) {
@@ -3631,6 +3666,15 @@
         if (h) weigh("build", (n.provide * 1.05 + 0.3) * 1.35 * 1.15 - away(Math.hypot(h.x - p.x, h.y - p.y)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
           () => { p.buildAt = h.id; go(p, h.x, h.y, "build"); p.wait = 0; });
       }
+      /* Wood for the household's fire (TODO 15.5f): cut in the village's woods, as water is fetched. */
+      if (HEARTH && p.dwelling >= 0 && !p.cargo && p.vig >= FRAIL) {
+        const h = homes[p.dwelling], want = hearthWant(h), i = want > 0 ? matSpot(v, "wood") : -1;
+        if (i >= 0 && h.wood < want) {
+          const sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5;
+          weigh("firewood", clamp(1 - h.wood / want, 0, 1) * (0.55 + chill() * 0.6) * heavyWish(p) - away(Math.hypot(sx - p.x, sy - p.y)) * 0.6 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
+            () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, "firewood"); p.wait = 0; });
+        }
+      }
       /* A ditch from the river (TODO 15.5p): dug after a dry year, cleaned every year, in the slack of it. */
       if (IRRIGATION && v.alive && p.job !== "soldier" && p.vig >= FRAIL && (v.wantDitch && !v.ditch || v.ditch && v.cleanWork < DITCH_CLEAN)) {
         const j = v.ditch ? v.ditch.at : ditchFrom(v);
@@ -4014,6 +4058,18 @@
         const h = homes[p.buildAt];
         if (h && !h.built) buildShift(p, h);
         p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "firewood") {                     // TODO 15.5f: half a day's cutting, carried home
+        if (!p.gathering) { p.gathering = true; p.wait = TK(HEARTH_HOURS * 60); return; }
+        p.gathering = false;
+        const i = matSpot(v, "wood"), h = homes[p.dwelling];
+        if (i >= 0 && h) {
+          let got = matYield("wood", i) * HEARTH_SHARE * p.vig * brawn(p) * (equipped(p, "tool") ? 1.2 : 1);
+          const have = woodIn(i); got = Math.min(got, have); woodStock.set(i, [have - got, t]);
+          h.wood += got; count.hearthCut += got;
+        }
+        p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
+        return;
       }
       if (p.task === "ditch") {                        // TODO 15.5p: four hours digging or cleaning
         const h = 4 * p.vig * brawn(p);
@@ -4977,7 +5033,7 @@
       p.age += 1 / YEAR;
       if (HOUSEWORK) p.clothes = Math.max(0, p.clothes - CLOTHES_WEAR);   // TODO 15.5n
       /* Light after dark is the fire (TODO 15.5s): staying up burns the village's wood. */
-      if (SLEEP && FIRE && p.task !== "sleep" && isDark(t % DAY_HOURS)) { const hv = villages[p.home]; if (hv.wood > 0.5 && Math.hypot(p.x - p.hx, p.y - p.hy) < 1) { hv.wood -= LIGHT_WOOD; count.lightWood += LIGHT_WOOD; } }
+      if (SLEEP && FIRE && p.task !== "sleep" && isDark(t % DAY_HOURS)) { const hv = HEARTH ? homes[p.dwelling] : villages[p.home]; if (hv && hv.wood > 0.5 && Math.hypot(p.x - p.hx, p.y - p.hy) < 1) { hv.wood -= LIGHT_WOOD; count.lightWood += LIGHT_WOOD; } }
       if (HEALTH) {   // TODO 15.5e: a wound heals toward what it leaves for good; age takes its share
         if (p.harm > p.lame) { p.harm = p.lame + (p.harm - p.lame) * HARM_HEAL; if (p.harm - p.lame < 0.002) p.harm = p.lame; }
         p.vig = (1 - p.harm) * ageVigour(p);
@@ -5071,9 +5127,10 @@
       if (p.age >= p.dieAt) { die(p, "old"); return; }
       /* Cold at home (TODO 9c): over a hard winter unwarmed, about one in twenty grown-ups, more of
          the very young and the old. */
-      if (FIRE && villages[p.home].cold > 0 && p.task !== "march" && p.task !== "fight") {
+      const coldHere = HEARTH ? (p.dwelling >= 0 ? homes[p.dwelling].cold : 0) : villages[p.home].cold;   // TODO 15.5f: the house's fire
+      if (FIRE && coldHere > 0 && p.task !== "march" && p.task !== "fight") {
         const c = chill();
-        if (c > 0 && R() < villages[p.home].cold * c * 0.05 * frailty(p) * (2 - p.clothes) / (120 * DAY_HOURS)) { die(p, "cold"); return; }   // clothes: TODO 15.5n
+        if (c > 0 && R() < coldHere * c * 0.05 * frailty(p) * (2 - p.clothes) / (120 * DAY_HOURS)) { die(p, "cold"); return; }   // clothes: TODO 15.5n
       }
       /* Crowded places were graveyards: London's burials outran its baptisms for two centuries and it
          grew only by those who came in (Wrigley 1967). About one more death a hundred a year in a town
@@ -5104,6 +5161,7 @@
       if (p.task === "make") return walking ? "Walking to workshop" : "Making goods";
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
       if (p.task === "watch") return "Awake in the night";   // TODO 15.5s
+      if (p.task === "firewood") return walking ? "Going for firewood" : "Cutting firewood";   // TODO 15.5f
       if (p.task === "water") return "Fetching water";
       if (p.task === "fish") return walking ? "Going fishing" : "Fishing";
       if (p.task === "cut") return walking ? "Going to cut wood" : "Cutting wood";
@@ -6416,7 +6474,8 @@
         /* A day's fires (TODO 9c). */
         /* Where there is no forest within reach, dung, turf and peat, as on treeless land: no wood burned. */
         const burn = matGround(v).wood.length ? v.pop * BURN * chill() : 0;
-        if (burn > 0) { const got = Math.min(v.wood, burn); v.wood -= got; v.cold = 1 - got / burn; } else v.cold = 0;
+        if (HEARTH) { v.cold = 0; hearths(v, burn > 0); }   // TODO 15.5f: each household's own
+        else if (burn > 0) { const got = Math.min(v.wood, burn); v.wood -= got; v.cold = 1 - got / burn; } else v.cold = 0;
       }
       /* What was brought in today, into a month's average; and what the place is by its size (TODO 8). */
       v.importAvg = (v.importAvg || 0) * (179 / 180) + (v.inFood || 0) / 180; v.inFood = 0;   // over about half a year: a town lives on a harvest
@@ -8074,6 +8133,7 @@
       childHazard: childHazard, fecund: fecund,   // for the tests (TODO 15.5k)
       childShare: childShare,   // for the tests (TODO 15.5m)
       rainOf: y => RAIN ? rainField(y, new Uint8Array(tiles)) : null,
+      hearths: (vid, burning) => hearths(villages[vid], burning), hearthWant: h => hearthWant(h),   // for the tests (TODO 15.5f)
       nightSleep: (p, hour) => nightSleep(p, hour), need: p => need(p),   // for the tests (TODO 15.5s)
       watered: watered, ditchDug: vid => ditchDug(villages[vid]), ditchYear: () => { if (IRRIGATION) ditchYear(); }, rainK: rainK,   // for the tests (TODO 15.5p)
       plough: vid => plough(villages[vid]), beastTurn: vid => beastTurn(villages[vid]),   // for the tests (TODO 15.5o)

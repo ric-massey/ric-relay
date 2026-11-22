@@ -3009,7 +3009,7 @@ battle that heals slowly or does not; old age taking away what a person can do (
 walks, fighting). Item 18 stays the mechanism for sickness that spreads. Ric decides: whether a
 lasting wound can stop somebody working for good.
 
-**15.5f. A household's own firewood** (left open by item 9). Firewood is the village's, while
+**[x] 15.5f. A household's own firewood** *Done 2026-11-22:* each house keeps and burns its own wood and is cold without it whatever its neighbours have; short, it buys from the store with coins or cuts its own in the village's woods (four hours for six-tenths of a woodcutter's day). Setting "Whose firewood" ("village" = the 15.5s world, fingerprinted). A year, six worlds: 1,614 loads cut, 564 bought, 17 dead of cold in households that ran short (none before). `test/hearth.test.mjs`; README, "A household's own firewood". Left out: wood sold door to door, charcoal, the land rule for cutting. (left open by item 9). Firewood is the village's, while
 food, water and money are the household's. Make it the household's, fetched or bought like water.
 
 **15.5g. News of a good harvest** (left open by 12b). People act on news of dear food and dry
