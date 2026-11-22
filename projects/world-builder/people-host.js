@@ -62,6 +62,7 @@
        is only worked out again when the engine's number for it has changed. */
     const LAND_BLOCK = 64;
     let landFull = null, landStock = null, sentOwner = null, sentAt = -1, cropDirty = null, ownDirty = null;   // the blocks found changed
+    let groundSent = 0;   // TODO 15.5d: how much of the engine's log of changed ground the page has been sent
     if (LAND_BLOCK !== 64) throw new Error("LAND_BLOCK is found by shifting by 6");
     let sorted = null, sortedSig = "";               // everybody by name, for the People list
     let trial = null;                                // the quiet test of a world (see `tryOut`)
@@ -325,6 +326,10 @@
           transfer.push(send1.buffer, owner.buffer);
         }
         sentAt = w.sceneTick;
+        /* Ground that has changed (TODO 15.5d: forest cleared, grown back): square, kind, how well it farms, three numbers each.
+           All of it with a whole land, only what is new with an update; the page may take one twice. */
+        const log = w.groundLog;
+        if (log && log.length && (out.land.full || log.length > groundSent)) { out.grounds = Float32Array.from(out.land.full ? log : log.slice(groundSent)); groundSent = log.length; }
       }
       out.cost = now() - began;
       send(out, transfer);

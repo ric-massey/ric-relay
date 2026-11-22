@@ -752,6 +752,19 @@
     k += "|"; for (const f of fs) k += f.colour + ",";
     if (k !== washKey) { washKey = k; landStale = true; }
   }
+  /* Ground that has changed (TODO 15.5d): forest cleared for fields, scrub, forest grown back. The
+     square's colour is worked out again and the whole land repainted, which is seldom. */
+  function takeGrounds(g) {
+    const w = world; if (!w || !w.ground) return;
+    let changed = false;
+    for (let k = 0; k + 2 < g.length; k += 3) {
+      const i = g[k] | 0, kind = g[k + 1] | 0, f = g[k + 2];
+      if (w.ground[i] === kind && w.fert[i] === f) continue;
+      w.ground[i] = kind; w.fert[i] = f; changed = true;
+      if (soil && soil.length === w.cols * w.rows * 3) { const c = groundColour(kind, f, w.shade ? w.shade[i] : null); soil[i * 3] = c[0]; soil[i * 3 + 1] = c[1]; soil[i * 3 + 2] = c[2]; }
+    }
+    if (changed) { landStale = true; chunks.clear(); }
+  }
   function takeLand(L) {
     bigAt = performance.now();
     if (!L.part) { landNow = L; landStale = true; landDirty = null; return; }
@@ -884,6 +897,7 @@
       if (m.tracks) { trackMap = new Map(); for (let k = 0; k < m.tracks.length; k += 2) trackMap.set(m.tracks[k], m.tracks[k + 1]); }
       if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
       if (m.fs) { fs = m.fs; washCheck(); }
+      if (m.grounds) takeGrounds(m.grounds);   // TODO 15.5d: before the crops, which are worked out from how well it farms
       if (m.land) takeLand(m.land);
       if (picked && picked.person && m.picked && m.picked.id === picked.person && !m.picked.gone) picked.name = m.picked.name;
     } else if (m.t === "pane") {

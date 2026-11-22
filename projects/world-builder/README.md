@@ -1901,6 +1901,49 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Land that changes (2026-11-22)
+
+TODO item 15.5d. Ric (2026-11-20): people clear forest for fields, yes; resting land is "the people's
+choice"; herds manure fields, yes; and shifting cultivation with it. Until now a field never tired
+and a forest was never cleared. English demesne wheat gave three to six times its seed (Campbell); a
+third of the land lay fallow under three fields, half under two; marl and manure raised yields;
+Rothamsted's Broadbalk, unmanured since 1843, is low but has not fallen to nothing; English fields
+left alone were scrub in about 25 years and near woodland in about 50 (research notes under 15.5d in
+`TODO.md`).
+
+- **Soil** (`soil`, each square, 1 fresh): every harvest taken wears it toward half
+  (`SOIL_FLOOR`): a full field's worth takes 15% of what is left above the floor, about a tenth of
+  its strength in a year of steady reaping and a third in five. A square's crop grows back to, and
+  as fast as, its strength. Not reaped for six months (a winter is not a rest), it comes back: half
+  of what it lost in a fallow year, most in two.
+- **Manure.** A village's herds leave dung (`v.manure`, from each herd-day) that goes onto the
+  fields as they are reaped, a quarter of what each has lost at a time: about a third of what wears
+  in a default world.
+- **Fallow by custom** (`restWill`, from how patient a people is): tired land (under 0.75) is
+  worth that much less to them when they pick a field, so the patient rest it and the impatient
+  hardly.
+- **Clearing forest** (`landTurn`, `clearedFor`): a village short of land (a tenth hungry, or
+  nearly full) picks the nearest forest square beside its fields, and its people clear it in the
+  slack of the year, 1,200 hours (a guess: no figure for assarting by the hectare was found). The
+  square becomes grassland that farms better, starts fresh, and its wood goes to the store.
+- **Growing back** (`regrow`, monthly): a cleared square nobody reaps is scrub (half its gain gone)
+  after 25 years and forest again after 50. Shifting cultivation is this and nothing more: cleared
+  land wears, and a village short again clears more.
+- **The page is told** (`groundLog`: square, kind, how well it farms): the keeper sends what is new
+  with each land update and all of it with a whole land, and the page recolours the square and
+  repaints.
+- Counts: `cleared`, `regrown`, `manured`.
+- **A setting**, "Land that changes", under The land. "The land never changes" is the world 15.5n
+  left, step for step (`test/landchange.test.mjs`).
+
+**Measured** (a year each, six default worlds, against 15.5n): reaped 396,746 → 371,190 days of food
+(6% less, from tired land), 58 squares cleared (none in seed 4, whose land is treeless; 23 in seed 6),
+people 2,355 → 2,346, starved 11 → 6, births 126 → 122. A first build let the herds' dung undo all
+the wear (no square lost a tenth in a year) and counted the winter as a rest.
+
+**Left out:** villages that move when the forest near is gone (people move house already, one by
+one); marling; floods and fires dropped by the visitor (item 17).
+
 ### Work in the house (2026-11-22)
 
 TODO item 15.5n. Ric (2026-11-20): house work as hours a household must spend each day, yes; clothes

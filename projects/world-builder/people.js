@@ -144,6 +144,9 @@
       { key: "hills", label: "How hilly", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: scale(["flat", "rolling", "hilly", "rugged"]),
         help: "Steep ground is hills; steep and high is mountain. Hills farm worse than flat land, mountains not at all." },
+      { key: "landchange", label: "Land that changes", type: "select", def: "real",   // TODO 15.5d, 2026-11-21
+        options: [["real", "Soil tires and rests; forest is cleared and grows back"], ["fixed", "The land never changes (as before)"]],
+        help: "A field farmed year after year gives less, down to about half, and comes back when it is left to rest or is manured by the herds. Whether a people rests its land is its own custom: the patient do. Where people are short of land they clear forest for new fields, which start rich; a cleared field left alone is scrub in about 25 years and forest again in about 50." },
       { key: "seed", label: "Seed", type: "range", min: 1, max: 9999, step: 1, def: 11,
         say: v => "#" + v, help: "The same seed and settings start the same world." },
     ]},
@@ -633,6 +636,10 @@
     const tiles = cols * rows;
     const fert = new Float32Array(tiles), ore = new Float32Array(tiles), stock = new Float32Array(tiles);
     const ground = new Uint8Array(tiles), height = new Float32Array(tiles);   // the kind of ground, and metres (TODO 4a)
+    /* TODO 15.5d: how much of its strength each square has left (1 fresh, down to SOIL_FLOOR), and the
+       hour it was last reaped; a changed square of ground, for the page; squares cleared of forest. */
+    const soil = S.landchange !== "fixed" ? new Float32Array(tiles).fill(1) : null, lastCut = soil ? new Float32Array(tiles) : null;
+    const groundLog = [], cleared = new Map();
     /* Which way a river runs from each river square: 0 to 7 for the eight
        neighbours, 255 elsewhere. For drawing it as a line (TODO 5). */
     const riverTo = new Uint8Array(tiles).fill(255);
@@ -728,7 +735,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1362,6 +1369,7 @@
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
                   riotAt: -1e9, putDown: -1e9,   // TODO 15.5b3: the last riot here, and the last one soldiers broke up
+                  manure: 0, clearAt: -1, clearWork: 0,   // TODO 15.5d: dung for the fields, forest being cleared, and the hours put in
                   foul: 0, foulLoad: 0,   // TODO 15.5r: how fouled its water is, 0 to 1, and how many people's waste reaches it
                   bandits: 0, watch: 0, road: null, banditAt: -1e9, robbedAt: -1e9, waylaidAt: -1e9,   // TODO 15.5b4: its bandits at the census, soldiers at hand today, where its bandits lie in wait, their last raid, the last time it was raided, and the last robbery on the road told of
                   heldTo: -1e9, wall: 0 };   // wall: TODO 14e, 0 none to 1 its full height   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
@@ -2125,6 +2133,9 @@
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
+    const LANDCHANGE = S.landchange !== "fixed";   // TODO 15.5d: soil that tires, forest cleared and grown back (see "land that changes")
+    const SOIL_FLOOR = 0.5, SOIL_WEAR = 0.15, SOIL_BACK = 1 / (0.75 * 365), REST_AFTER = 180, REST_AT = 0.75, MANURE = 0.0005, CLEAR_HOURS = 1200;
+    const FOREST_GAIN = (0.8 - 0.55) * 1.15;   // what a square farms better for being cleared: grassland's against forest's (the land's FERT)
     const HOUSEWORK = S.housework !== "none";   // TODO 15.5n: work in the house
     const CHILDWORK = S.childwork !== "none";   // TODO 15.5m: children working
     const INFANCY = SEXES && S.infancy !== "before";   // TODO 15.5k: babies, children and mothers dying, and the gap between births
@@ -2794,7 +2805,8 @@
         if (owner[ti] !== v.id && owner[ti] !== -1) continue;
         /* Another household's field may be worked for half of what it gives, the other half
            theirs, as harvest work was paid in sheaves (TODO 7c): worth half as much to the worker. */
-        const val = held.size && held.has(ti) && held.get(ti) !== p.dwelling ? stock[ti] * 0.5 : stock[ti];
+        let val = held.size && held.has(ti) && held.get(ti) !== p.dwelling ? stock[ti] * 0.5 : stock[ti];
+        if (soil && soil[ti] < REST_AT) val *= 1 - restWill(factions[v.f]);   // TODO 15.5d: tired land left to rest, as far as the people's custom goes
         if (val > bs) { bs = val; best = ti; }
       }
       if (own >= 0 && ownBs > 0.25 && ownBs >= bs * 0.6) return own;
@@ -3150,6 +3162,84 @@
       if (!CHILDWORK || p.age >= S.grown) return 1;
       return clamp((p.age - (CHILD_WORK_AGE - 1)) / Math.max(1, S.grown - (CHILD_WORK_AGE - 1)), 0, 1) * 0.7;
     }
+    /* ── land that changes (TODO 15.5d) ───────────────────────────────────
+       Ric (2026-11-20): people clear forest for fields, yes; resting land is the people's choice;
+       herds manure fields, yes; shifting cultivation with it. English demesne wheat gave three to six
+       times its seed (Campbell); a third of the land lay fallow under three fields, half under two;
+       marl and manure raised yields; Rothamsted's Broadbalk, unmanured since 1843, is low but has not
+       fallen to nothing: worn soil settles at a floor. English fields left alone were scrub in about
+       25 years and near woodland in about 50. So: each harvest taken from a square wears it toward
+       half its strength (`SOIL_FLOOR`), a full field's worth taking 15% of what is left above the
+       floor (about a tenth of its strength in a year of steady reaping, a third in five); a square
+       not reaped for six months (a winter is not a rest) comes back, half of what it lost in a
+       fallow year and most in two; dung from a village's herds goes onto the fields reaped; and a people rests tired land as
+       far as it is patient. A village short of land (a tenth hungry, or nearly full) clears the
+       nearest forest beside its fields: about 1,200 hours for a square of 6 ha (a guess: no figure
+       for assarting by the hectare was found), in the slack of the year; the new field starts fresh,
+       the wood goes to the store. A cleared square left unreaped is scrub (half its gain gone) in 25
+       years and forest in 50. Shifting cultivation is this with nothing added: cleared land wears,
+       and a village short again clears more. */
+    function restWill(f) { return clamp((f.mean[TRAIT_AT.patient] - 0.35) * 1.5, 0, 0.8); }
+    function reapedFrom(ti, got, v) {
+      soil[ti] -= SOIL_WEAR * got / (fert[ti] * FIELD_CAP + 1e-6) * (soil[ti] - SOIL_FLOOR);
+      if (v.manure > 0 && soil[ti] < 1) { const m = Math.min(v.manure, (1 - soil[ti]) * 0.25); v.manure -= m; soil[ti] += m; count.manured += m; }
+      if (lastCut[ti] === 0 && soil[ti] < 1) worn.push(ti);
+      lastCut[ti] = t || 1;
+      if (cleared.size) { const c = cleared.get(ti); if (c) c.last = t; }
+    }
+    const worn = [];   // squares that have been reaped, for their rest
+    /* Once a day: tired squares not reaped for six months come back. */
+    function rest() {
+      let w = 0;
+      for (const i of worn) {
+        if (t - lastCut[i] > REST_AFTER * DAY_HOURS) soil[i] += (1 - soil[i]) * SOIL_BACK;
+        if (soil[i] < 0.999) worn[w++] = i; else { soil[i] = 1; lastCut[i] = 0; }
+      }
+      worn.length = w;
+    }
+    function landTurn(v) {
+      /* Short of land: clear the nearest forest beside fields. */
+      if (v.clearAt < 0 && v.pop >= 20 && (v.hungry > v.pop * 0.1 || v.pop > crowdOf(v) * 0.85) && t % (7 * DAY_HOURS) < DAY_HOURS) {
+        const cx = Math.floor(v.x), cy = Math.floor(v.y), R0 = Math.ceil(v.radius) + 3;
+        let best = -1, bd = 1e9;
+        for (let y = cy - R0; y <= cy + R0; y++) for (let x = cx - R0; x <= cx + R0; x++) {
+          if (x < 1 || y < 1 || x >= cols - 1 || y >= rows - 1) continue;
+          const i = y * cols + x; if (ground[i] !== G_FOREST || (owner[i] !== v.id && owner[i] !== -1)) continue;
+          const d = Math.hypot(x - cx, y - cy); if (d > R0 || d >= bd) continue;
+          let edge = false;
+          for (let k = 0; k < 4 && !edge; k++) { const j = i + [1, -1, cols, -cols][k]; edge = ground[j] === G_GRASS || ground[j] === G_DRY || ground[j] === G_HILLS; }
+          if (edge) { bd = d; best = i; }
+        }
+        if (best >= 0) { v.clearAt = best; v.clearWork = 0; }
+      }
+    }
+    function clearedFor(v) {
+      const i = v.clearAt;
+      v.clearAt = -1; v.clearWork = 0;
+      if (ground[i] !== G_FOREST) return;
+      setGround(i, G_GRASS, Math.min(1, fert[i] + FOREST_GAIN));
+      soil[i] = 1; lastCut[i] = 0;
+      const got = woodIn(i); woodStock.delete(i);
+      if (MATS) v.wood += Math.max(5, got * 0.5);
+      cleared.set(i, { last: t, scrub: false });
+      count.cleared++;
+      note("build", v.name + " has cleared forest for a new field.", 0.6, i % cols + 0.5, ((i / cols) | 0) + 0.5, v.f);
+    }
+    /* A square's ground changes: the page is told, and every village near reads its ground again. */
+    function setGround(i, k, f) {
+      ground[i] = k; fert[i] = f; groundLog.push(i, k, f);
+      const x = i % cols, y = (i / cols) | 0;
+      for (const o of villages) if (Math.abs(o.x - x) < 18 && Math.abs(o.y - y) < 18) o.mats = null;
+    }
+    /* Once a month: cleared squares nobody reaps go back to scrub, then forest. */
+    function regrow() {
+      for (const [i, c] of cleared) {
+        const since = t - c.last;
+        if (since > 50 * YEAR) { setGround(i, G_FOREST, Math.max(0.04, fert[i] - FOREST_GAIN * 0.5)); cleared.delete(i); count.regrown++; }
+        else if (since > 25 * YEAR && !c.scrub) { c.scrub = true; fert[i] = Math.max(0.04, fert[i] - FOREST_GAIN * 0.5); groundLog.push(i, ground[i], fert[i]); }
+      }
+    }
+
     /* ── work in the house (TODO 15.5n) ───────────────────────────────────
        Ric (2026-11-20): house work as hours, yes; clothes "should maybe matter? If it doesn't cost
        much": one number a person, worn by use, made good by spinning, read only in the cold. Cooking
@@ -3389,6 +3479,12 @@
         /* A wage and a half: worth more than a batch at the bench to most. */
         if (h) weigh("build", (n.provide * 1.05 + 0.3) * 1.35 * 1.15 - away(Math.hypot(h.x - p.x, h.y - p.y)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
           () => { p.buildAt = h.id; go(p, h.x, h.y, "build"); p.wait = 0; });
+      }
+      /* Forest being cleared for fields (TODO 15.5d): in the slack of the year, as assarts were made. */
+      if (soil && v.clearAt >= 0 && v.alive && p.job !== "soldier" && p.vig >= FRAIL) {
+        const cx = v.clearAt % cols + 0.5, cy = ((v.clearAt / cols) | 0) + 0.5;
+        weigh("clear", (0.42 + v.hungry / (v.pop + 1)) * heavyWish(p) - away(Math.hypot(cx - p.x, cy - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - (season().ripe - 1) * 0.3 - dark * 0.6,
+          () => { go(p, cx - 0.3 + R() * 0.6, cy - 0.3 + R() * 0.6, "clear"); p.wait = 0; });
       }
       /* A bridge or a boat for the village (TODO 6d). */
       if (CROSS && v.alive && p.job !== "soldier") {
@@ -3729,7 +3825,7 @@
       const v = villages[p.home];
       /* A shift of building or digging is spent at the work, and shows as that work; what it
          did is counted when it ends (TODO 7b: before, the hours showed as resting). */
-      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin") && !p.shift) {
+      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear") && !p.shift) {
         p.shift = true; p.wait = p.task === "build" ? Math.round(BUILD_SHIFT * ACTIONS_PER_HOUR) : p.task === "house" || p.task === "spin" ? TK(HOUSE_SPELL * 60) : TK(240); return;
       }
       p.shift = false;
@@ -3750,6 +3846,10 @@
       if (p.task === "build") {                        // TODO 7b: five hours on a house
         const h = homes[p.buildAt];
         if (h && !h.built) buildShift(p, h);
+        p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "clear") {                        // TODO 15.5d: four hours at the trees and roots
+        if (v.clearAt >= 0) { v.clearWork += 4 * p.vig * brawn(p); if (v.clearWork >= CLEAR_HOURS) clearedFor(v); }
         p.task = "idle"; p.wait = 0; return;
       }
       if (p.task === "bridge" || p.task === "boatwork") {   // TODO 6d: four hours at a time
@@ -3856,6 +3956,7 @@
         }
         const food = want - need;
         p.food += food; count.meat += food;
+        if (herd && soil) v.manure += food * MANURE;   // TODO 15.5d: the herd's dung, for the fields
         if (herd) { sellMat(p, v, "wool", food * 0.12); sellMat(p, v, "hide", food * 0.03); count.wool += food * 0.12; count.hide += food * 0.03; }   // and hides from the beasts killed
         else if (food > 1) { sellMat(p, v, "hide", 0.3); count.hide += 0.3; }
         p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
@@ -3898,6 +3999,7 @@
           if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
           const ti = y * cols + x, got = Math.min(stock[ti], need);
           stock[ti] -= got; need -= got;
+          if (soil && got > 0) reapedFrom(ti, got, v);   // TODO 15.5d
         }
         p.food += capacity - need; count.reaped += capacity - need;   // TODO 14b: the harvest, in days of food
         /* The faction's share of it (TODO 15.5t), into the village store as the faction's grain, as
@@ -6114,6 +6216,7 @@
         return;
       }
       v.empty = 0;
+      if (soil) landTurn(v);   // TODO 15.5d
       /* The faction's grain is never more than the store holds (TODO 15.5t): what was eaten, spoiled or taken went first from it. */
       if (v.levy > v.food) v.levy = Math.max(0, v.food);
       /* A raid here since yesterday, or a year gone by without want or raids (TODO 10). */
@@ -7509,8 +7612,8 @@
       const n = WILD && workedList ? workedList.length : tiles;
       for (let k = 0; k < n; k++) {
         const i = WILD && workedList ? workedList[k] : k;
-        const cap = fert[i] * FIELD_CAP;
-        if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich * (RAIN ? grow * rainK[i] * 0.01 : grow));
+        const sl = soil ? soil[i] : 1, cap = fert[i] * FIELD_CAP * sl;   // sl: TODO 15.5d
+        if (stock[i] < cap) stock[i] = Math.min(cap, stock[i] + fert[i] * REGROW * S.rich * (RAIN ? grow * rainK[i] * 0.01 : grow) * sl);
         /* What is still standing when the frost comes is lost a little at a time. */
         if (frost > 0 && stock[i] > 0) stock[i] -= stock[i] * frost;
       }
@@ -7545,6 +7648,7 @@
       if (t % REFLECT_HOURS === 0) {
         census();
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
+        if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
         for (const v of villages) if (v.alive) { market(v); if (t % DAY_HOURS === 0) villageTurn(v); }
         if (t % DAY_HOURS === 0 && acted.size) forgetActed();
         /* The newest thing that happened is known first where it happened. */
@@ -7786,6 +7890,8 @@
       brawn: brawn, split: fid => split(factions[fid]), accepts: fid => accepts(factions[fid]),   // for the tests (TODO 15.5l)
       childHazard: childHazard, fecund: fecund,   // for the tests (TODO 15.5k)
       childShare: childShare,   // for the tests (TODO 15.5m)
+      lastCut: lastCut, reapedFrom: (i, got, vid) => reapedFrom(i, got, villages[vid]), restSoil: () => rest(), restWill: fid => restWill(factions[fid]),
+      soil: soil, groundLog: groundLog, cleared: cleared, regrow: () => { if (soil) regrow(); }, clearedFor: vid => clearedFor(villages[vid]), landTurn: vid => landTurn(villages[vid]),   // TODO 15.5d: the page reads groundLog; the rest for the tests
       living: p => chooseJob(p), roadOf: vid => roadOf(villages[vid]),   // for the tests (TODO 15.5b4): the living somebody would choose now, and where a village's bandits lie in wait
       /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
          the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */

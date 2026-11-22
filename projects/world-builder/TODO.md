@@ -2993,7 +2993,7 @@ across (25 km²); Ric asked for about 2 km². The square must get smaller as the
 house and its field are one square. Ric decides: how few people and villages a land that small
 starts with.
 
-**15.5d. Land that changes** (`PEOPLE-VISION.md`, "Land"). Soil worn out by farming the same
+**[x] 15.5d. Land that changes** *Done 2026-11-22:* soil wears with each harvest toward half, comes back after six months unreaped, herds' dung goes onto the fields, a patient people rests tired land; a village short of land clears forest beside its fields (1,200 hours a square, a guess), which starts fresh and grows back to scrub in 25 years and forest in 50 if left; the page is told of changed ground. Setting "Land that changes" ("fixed" = the 15.5n world, fingerprinted). A year, six worlds: reaped 6% less, 58 squares cleared, starved 11 → 6. `test/landchange.test.mjs`; README, "Land that changes". Left out: villages moving, marling. (`PEOPLE-VISION.md`, "Land"). Soil worn out by farming the same
 square year after year and coming back when left; forest cleared and staying cleared until it
 regrows. Floods and fires dropped by the visitor stay item 17. Research first: medieval yields on
 land left fallow and not; how long woodland takes to come back.
