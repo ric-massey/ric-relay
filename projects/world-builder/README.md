@@ -1999,6 +1999,34 @@ fed soldiers mostly stayed with the army the old way too (7 of 8 against 8 of 8)
 unpaid desert six times as often as the fed and paid. **Left out:** deserters caught and punished;
 generals and strategy (Ric's coming item stands on this).
 
+### Caravans (2026-11-22)
+
+TODO item 15l. Ric (2026-11-22): "caravans are a yes". Setting **Caravans** under War's neighbours
+(on by default; off leaves the 15j world exactly as it was, fingerprinted).
+
+- A village trader looks no further than 34 squares (8.5 km). A **caravan** goes from there to about
+  150 km (600 squares): caravans made about 35 km a day, so weeks on the road. It carries what is
+  dear for its weight — finished goods, ore and wool, never grain — on pack animals: twice a pack on
+  foot, four times with horses (a camel or pack horse about 160 kg).
+- Who goes: a trader, or anybody grown, well-off (more than 5 coins) and greedy enough, from their
+  own village, at most one caravan from a village every twenty days. It is weighed beside every
+  other thing they might do that hour, and goes when it is worth twice the best load to somewhere near.
+- Where to: goods to a place whose people have asked for goods (orders waiting) and whose store has
+  none, sold to them door to door at a fifth over the store's price; ore and wool to a store that can
+  pay. A route already gone **pulls** (a road known, buyers found), up to three times for five trips,
+  so routes grow where trade keeps going; the third trip makes news ("Caravans now go regularly …").
+- **Robbery:** a bandit who waylays a caravan carries off half its load to their own place, as well
+  as the purse. More caravans on a road, more to rob.
+- Why the door-to-door sale: village stores almost never have coins (15.5b2's finding), so a caravan
+  selling into the store sold nothing; real long-distance merchants sold to whoever wanted their goods.
+- Counts: `caravans`, `caravanSold`, `caravanFar`, `caravanRobbed`; test hooks `w.routes()`,
+  `w.caravanRoute(pid, vid)`. `test/caravans.test.mjs`.
+
+**Measured** (60 days, 1,500 people on 60 km, 36 places): 21 to 29 caravans; 5 to 67 goods sold
+beyond a trader's reach; on seed 5 one route went five times. Before letting the well-off run them,
+none went: that land had no traders and no crafters at all. **Left out:** pirates on boat routes (15r);
+caravanserais and fairs; robbery measured against trade over years.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

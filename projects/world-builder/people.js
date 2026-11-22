@@ -410,6 +410,8 @@
       { key: "campaign", label: "Soldiers on campaign", type: "select", def: "army",   // TODO 15j, 2026-11-22
         options: [["army", "Live with the army; some desert"], ["home", "Come home to eat and sleep (as before)"]],
         help: "A soldier in an army that is gathering or marching eats what they carry or draw where it gathers, sleeps where it is, and keeps to their duty. The one way out is to desert: likelier hungry, unpaid, afraid, disloyal or losing, rarer under a law that hangs killers. About a fifth of a fed, paid army deserts in a year of war." },
+      { key: "caravans", label: "Caravans", type: "toggle", def: true,   // TODO 15l, 2026-11-22
+        help: "Traders who go for weeks to places far beyond a village's own traders, with goods dear for their weight (finished goods, ore, wool) on pack animals: twice a pack on foot, four times with horses. Routes grow where they keep going; bandits wait on them." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -807,7 +809,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2299,6 +2301,11 @@
     const CARS = new Map(), WANDER = new Map(), MUSTER = new Map(), HIRED = new Map(), KEPT = new Map();
     const ROAM = S.roaming !== "settled";   // TODO 15i: bands that move camp, and people on the road (see "people who belong to no one place")
     const ARMIES = S.armies !== "trickle";
+    /* Caravans (TODO 15l): beyond a village trader's 34 squares, to about 150 km — a few weeks out at
+       the 35 km a day caravans made; a pack animal carries what two people would, a horse or camel
+       (160 kg) what four would. ROUTES: trips between two places, the route that grows. */
+    const CARAVANS = S.caravans !== false && !shared, CARAVAN_REACH = 600, CARAVAN_GAP = 20 * DAY_HOURS;
+    const ROUTES = new Map();
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
        2 to 7% a year in peacetime): this a day, before what makes it likelier or rarer. */
@@ -4058,6 +4065,10 @@
         /* A load to carry, if anywhere reachable wants what is here. */
         /* Carting grain between villages is a trader's work; anybody may still
            carry a pack of goods to where it sells. */
+        /* A caravan far away (TODO 15l), weighed beside a load to somewhere near. */
+        if (CARAVANS && p.at === p.home && w.here.id === p.home && caravanFor(p, w.here))
+          weigh("caravan", 0.35 + p.greed * 0.3 + (p.curious - 0.5) * 0.2 + n.provide * 0.3 - away(dist(p, w.here)) * 0.5 - n.food * 0.6 - n.rest * 0.5 - n.safety * 0.8 - dark * 0.5,
+            () => { trade(p); });
         if (w.route.best && (w.route.what !== "grain" || p.job === "trader"))
           /* A load is worth carrying for the profit in it, not only because
              somebody is short: trading is a living, and a trader who has done
@@ -4642,6 +4653,33 @@
       return { best: best, gain: gain, what: what };
     }
 
+    /* A caravan's goal (TODO 15l): goods dear for their weight — finished goods, ore and wool, never
+       grain — from here to a place beyond a village trader's reach, at peace with them. The road's
+       length counts a fifth as much as a short haul's: a caravan's cost is its weeks, not each step. */
+    function caravanFor(p, here) {
+      if (!CARAVANS || here.id !== p.home || p.coins <= 5 || p.job === "soldier" || p.job === "bandit" || !adult(p) || !(p.job === "trader" || p.greed > 0.55) || t - (here.caravanAt ?? -1e9) <= CARAVAN_GAP) return null;
+      if (t - (here.caravanLook ?? -1e9) >= DAY_HOURS) { here.caravanLook = t; here.caravanPlan = caravanRoute(p, here); }
+      return here.caravanPlan;
+    }
+    function caravanRoute(p, here) {
+      let best = null, gain = 0.3, what = null;
+      for (const o of villages) {
+        if (!o.alive || o === here || (o.f !== p.f && (atWar(o.f, p.f) || hostile(o.f, p.f)))) continue;
+        const d = Math.hypot(o.x - here.x, o.y - here.y);
+        if (d <= 34 || d > CARAVAN_REACH) continue;
+        /* A route already gone is a road known, inns and buyers found: it pulls (a route grows where trade keeps going). */
+        const r = ROUTES.get(Math.min(here.id, o.id) + ">" + Math.max(here.id, o.id)), known = 1 + 0.4 * Math.min(r ? r.n : 0, 5);
+        /* Goods to where people have asked for them and the store has none (orders waiting): sold to them door to door. */
+        const g = Math.min(asked(o) - o.goods, here.goods - 2, 12) * 0.1 / (1 + d * 0.004) * known;
+        if (g > gain) { gain = g; best = o; what = "goods"; }
+        if (MATS) for (const w of ["iron", "wool"]) {
+          const gm = Math.min(here[w] - 2, o.till / Math.max(0.1, matPrice(o, w)), 12) * (matPrice(o, w) * 0.85 - matPrice(here, w)) * 0.3 / (1 + d * 0.004) * known;
+          if (gm > gain) { gain = gm; best = o; what = w; }
+        }
+      }
+      return best ? { best, gain, what } : null;
+    }
+
     /* A trader buys where a thing is cheap and walks it to where it is dear.
        With no money they carry food from the fullest store to the emptiest. */
     function trade(p) {
@@ -4694,7 +4732,23 @@
           if (here.f !== p.f && sold + intoStore > 0) crossSale(p.f, here.f, sold + intoStore);
           p.cargo = null; wear(p, "pack");
         } else if (p.cargo) {
-          const got = sell(p, here, p.cargo.what, p.cargo.amount);
+          /* A caravan's goods to those who asked for them, at a fifth over the store's price (TODO 15l). */
+          let door = 0;
+          if (p.cargo.caravan && p.cargo.what === "goods") {
+            const ask = here.priceGoods * 1.2;
+            for (const q of PLAIN ? people : residents(here.id)) {
+              if (p.cargo.amount - door <= 0.01) break;
+              if (q.home !== here.id || q.hp <= 0 || !(q.order > 0) || q.orderV !== here.id) continue;
+              const amount = Math.min(q.order, p.cargo.amount - door, funds(q) / ask);
+              if (amount <= 0.01) continue;
+              pay(q, amount * ask); p.coins += amount * ask; q.goods += amount; door += amount;
+              q.order -= amount; here.wanted = Math.max(0, here.wanted - amount); if (q.order <= 0.01) dropOrder(q);
+            }
+            p.cargo.amount -= door;
+          }
+          const got = sell(p, here, p.cargo.what, p.cargo.amount) + door;
+          p.cargo.amount += door;
+          if (p.cargo.caravan && got > 0) { count.caravanSold += got; if (Math.hypot(here.x - villages[p.cargo.from].x, here.y - villages[p.cargo.from].y) > 34) count.caravanFar += got; }   // TODO 15l
           if (p.cargo.what === "food" && here.id !== p.home) here.inFood = (here.inFood || 0) + got;   // food brought in (TODO 8)
           if (p.cargo.what === "food") p.food += p.cargo.amount - got; else if (p.cargo.what === "goods") p.goods += p.cargo.amount - got; else here[p.cargo.what] += p.cargo.amount - got;   // unsold wood, stone or ore is left in the store
           if (here.f !== p.f && got > 0) { goodwill(factions[here.f], p.f, 0.012); goodwill(factions[p.f], here.f, 0.012); crossSale(p.f, here.f, got); }
@@ -4705,7 +4759,26 @@
         return;
       }
       shop(p, here);
-      const { best, what } = bestRoute(p, here);
+      const { best, what, gain } = bestRoute(p, here);
+      /* A caravan (TODO 15l): far, for weeks, when it is worth more than anything near. */
+      {
+        const far = caravanFor(p, here);
+        if (far && far.best.alive && far.gain > (best ? gain : 0) * 2) {
+          const before = p.goods;
+          const got = buy(p, here, far.what, tradeCapacity(p) * (WIRED && has(p.f, "horses") || KNOW && knows(p.f, "horses") ? 4 : 2));
+          p.goods = before;
+          if (got > 0.01) {
+            here.caravanAt = t; here.caravanPlan = null; count.caravans++;
+            const key = Math.min(here.id, far.best.id) + ">" + Math.max(here.id, far.best.id), r = ROUTES.get(key) || { n: 0, last: 0 };
+            r.n++; r.last = t; ROUTES.set(key, r);
+            if (r.n === 3) note("trade", "Caravans now go regularly between " + here.name + " and " + far.best.name + ".", 1.5, here.x, here.y, here.f);
+            p.cargo = { what: far.what, amount: got, caravan: true, from: here.id };
+            p.say = "A caravan for " + far.best.name + ", weeks away."; p.sayT = TK(60);
+            p.at = far.best.id; go(p, far.best.x + (R() - 0.5), far.best.y + (R() - 0.5), "carry");
+            return;
+          }
+        }
+      }
       if (!best) {
         /* Nothing worth carrying from here: go home, or try the next village. */
         const home = villages[p.home];
@@ -8788,9 +8861,11 @@
           if (c.paid) c.paid *= 1 - grain / c.amount;
           c.amount -= grain; q.food += grain;
         }
+        /* A caravan's load (TODO 15l): half of it, carried off to their own place. */
+        if (c.caravan && c.what !== "food" && c.amount > 0.05) { const took = c.amount * 0.5; c.amount -= took; if (c.what === "goods") q.goods += took; else villages[q.home][c.what] += took; count.caravanRobbed++; }
         const coins = p.coins * 0.4;
         p.coins -= coins; q.coins += coins;
-        if (grain < 0.05 && coins < 0.05) continue;
+        if (grain < 0.05 && coins < 0.05 && !c.caravan) continue;
         count.waylaid++; count.banditGrain += grain; count.banditCoins += coins;
         lurk.delete(q); wakeUp(q); q.stoleAt = t;
         befriend(p, q, -0.5); shaken(p, LIFE.robbed);
@@ -9650,6 +9725,7 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      routes: () => [...ROUTES].map(([k, r]) => ({ key: k, trips: r.n, last: r.last })), caravanRoute: (pid, vid) => CARAVANS ? caravanRoute(byId.get(pid), villages[vid]) : null,   // TODO 15l
       onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e

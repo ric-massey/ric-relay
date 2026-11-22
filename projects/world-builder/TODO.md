@@ -2836,7 +2836,9 @@ are the items 15l to 15r below, with caravans; the research for each stays in th
 **The work left after item 15, in order (written 2026-11-22).** Each is done the way any item is:
 "work on 15l" and so on.
 
-### [ ] 15l. Caravans: long-distance trade
+### [x] 15l. Caravans: long-distance trade
+
+**Done 2026-11-22** (Ric: "finish 15 please. all of it"). Setting Caravans (off = the 15j world, fingerprinted). Anybody grown, well-off and greedy enough, or a trader, takes goods, ore or wool from their village to a place 8.5 to 150 km off, twice a pack on foot, four times with horses, at most one caravan a village every twenty days; goods are sold door to door to people with orders waiting (village stores almost never have coins, so selling to the store sold nothing). A route gone before pulls, so routes grow; the third trip is news. A bandit who waylays one takes half its load. Measured: 60 days, 1,500 people on 60 km: 21 to 29 caravans, 5 to 67 goods sold beyond a trader's reach, one route gone five times. `test/caravans.test.mjs`; README, "Caravans". Left: pirates (15r), fairs and caravanserais, robbery against trade measured over years.
 
 From 15f (Ric, 2026-11-22: "caravans are a yes"). Research in 15f's "Long-distance trade" note.
 **Do:** traders who travel for weeks between far places with goods dear for their weight (finished
@@ -2864,6 +2866,8 @@ with bows and armour fights measurably differently from one with hand weapons al
 are better armoured than the levy. **Budget:** default.
 
 ### [ ] 15o. Generals and strategy
+
+**Ric (2026-11-22):** who leads — "Captain, else leader" (the captain office from 15c leads if a people has one, else the leader; a bold leader may still go); strategies — "All five" (seek a battle; raid and burn; besiege; wait and wear them down; ambush on the march), picked from the general's nature and what scouts have told them; skill — "Nature + experience" (traits, and each battle fought teaches a little). And: build 15l to 15r in one session, in order, one commit each.
 
 Ric's own coming item (2026-11-22: "i was going to impliment generals and strategies for wars"),
 with 15k's gaps 2, 3, 4 and 14 placed in it: morale, rout and pursuit; knowing the enemy only from
