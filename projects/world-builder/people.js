@@ -420,6 +420,9 @@
       { key: "generals", label: "Generals", type: "select", def: "led",   // TODO 15o, 2026-11-22
         options: [["led", "Led, scouted, and they break"], ["none", "No general (as before)"]],
         help: "The captain leads the army, or the leader if there is no captain or the leader is bold. A general knows the enemy only from scouts and neighbours, and picks a plan by their nature and what they know: seek a battle, raid and burn, besiege, wait and wear them down, or lie in wait on the enemy's road. An army that loses too many at once breaks and runs, and is cut down as it runs, most of all by horsemen. Generals learn from every battle. Herding peoples with horses shoot from the saddle." },
+      { key: "siegecraft", label: "Siegecraft and service", type: "select", def: "era",   // TODO 15p, 2026-11-22
+        options: [["era", "By era"], ["old", "Numbers alone (as before)"]],
+        help: "Besiegers build what takes a wall (ramps and mining, rams, trebuchets, cannon, by era) and a place held shut can be starved into giving up. In the Middle Ages the levy owes forty days a year and goes home when they are served, and the well-off may pay scutage instead, which hires soldiers; an ancient army is paid and standing, and digs a camp every night." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -820,7 +823,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1446,7 +1449,7 @@
     function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0, sold: 0, rate: 0, wed: null, lost: 0, took: 0, spoiled: 0 }; }   // lost, took, spoiled: this war's places and crops (TODO 14e)   // sold, rate, wed: TODO 14d   // began: this side's leader when the war began (TODO 14c)
     function newVillage(x, y, f) {
       const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0, given: 0,
-                  priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0,
+                  priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0, breach: 0, blockade: 0,
                   alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
                   /* A public order for grain (TODO 15.5b2): coins the treasury has set aside here, the days of food
                      they are for, and whether for people going short now or to lay in after the harvest. */
@@ -2341,6 +2344,12 @@
        general has seen. A horseman is about one soldier in seven where a people has horses. */
     const GENERALS = ARMIES && S.generals !== "none", ROUT = new Map(), GEN_EXP = new Map();
     const SCOUT_FOOT = 8, SCOUT_HORSE = 20, ROUT_DAYS = 1, FELL_HALF = 6;   // squares; days running; hours for the shock of losses to halve
+    /* Siegecraft and how armies are raised (TODO 15p). ENGINE_DAYS: days of work under a wall to break
+       it, by era: ramps and mining by hand; the Assyrian ramp and ram; the trebuchet (Dover 1216-17) and
+       mining; cannon. SERVICE_DAYS: a knight's forty days a year. SCUTAGE: coins paid instead of serving. */
+    const SIEGECRAFT = S.siegecraft !== "old";
+    const ENGINE_DAYS = { foragers: 0, early: 40, bronze: 25, ancient: 20, medieval: 25, earlymodern: 8, industrial: 4, modern: 3, information: 3 };
+    const SERVICE_DAYS = 40, SCUTAGE = 10, SERVED = new Map();
     const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
@@ -3327,7 +3336,7 @@
       if (OLD_ARMS) { damage *= (1 - armourCut(foe, shot)) * (chariot(foe) || (GENERALS && horseArcher(foe)) ? 0.7 : 1); wear(foe, "armour"); }   // TODO 15n
       if (GENERALS && foe.job === "soldier") {   // TODO 15o
         if ((ROUT.get(foe.id) ?? -1) > t) damage *= horseman(p) ? 4 : 3;   // cut down running, worst by horsemen
-        else if (foe.task === "march" && factions[p.f].camp[foe.f] && factions[p.f].camp[foe.f].ambush) damage *= 1.5;   // caught on the march
+        else if (foe.task === "march" && factions[p.f].camp[foe.f] && factions[p.f].camp[foe.f].ambush && !(SIEGECRAFT && serviceOf(factions[foe.f]) === "paid")) damage *= 1.5;   // caught on the march; not a Roman column, which marched ready and camped behind a ditch (15p)
       }
       const wasUp = foe.hp >= 0.45;
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
@@ -3350,6 +3359,45 @@
       const b = era === "medieval" ? (f.mean && f.mean[TRAIT_AT.hard] > 0.55 ? BOWS.longbow : BOWS.crossbow) : era === "bronze" || era === "ancient" ? BOWS.composite : BOWS.bow;
       return chariot(p) ? { reach: b.reach + 0.3, hit: b.hit * 1.2, name: "chariot archers" } : b;
     }
+    /* Siegecraft (TODO 15p), once a day at a place with enemies at its edge. Engines: three or more
+       besiegers working under a wall break it over ENGINE_DAYS; mended a twentieth a day when they are
+       gone. Hunger: a place shut in (more of them than our soldiers) for a fortnight, its store under a
+       third of a day a head and half its grown-ups hungry, gives itself up (Kenilworth, 1266, near six months). */
+    function siegeWorks(v, sides, theirs, attackers, ours, foesHere) {
+      const era = eraOf(factions[sides.length ? +sides.sort((a, b) => theirs[b] - theirs[a])[0] : v.f]), days = ENGINE_DAYS[era] || 0;
+      if (attackers >= 3 && v.wall > 0.2 && days > 0) {
+        const was = v.breach; v.breach = Math.min(1, v.breach + 1 / days);
+        if (was < 0.5 && v.breach >= 0.5) { count.breached++; note("wall", (era === "earlymodern" || era === "industrial" || era === "modern" || era === "information" ? "Guns have" : era === "medieval" ? "Engines and miners have" : "The besiegers' ramp and rams have") + " broken the wall of " + v.name + ".", 2, v.x, v.y, v.f); }
+      } else if (attackers === 0) v.breach = Math.max(0, v.breach - 0.05);
+      if (attackers > ours && attackers >= 3) v.blockade++; else v.blockade = Math.max(0, v.blockade - 2);
+      if (v.blockade >= 14 && v.food < v.pop * 0.3 && v.hungry > v.adults * 0.5 && v.alive) {
+        count.starvedOut++; v.blockade = 0;
+        note("taken", v.name + " has been starved into giving itself up.", 2.5, v.x, v.y, v.f);
+        capture(v, factions[+sides[0]], foesHere);
+        return true;
+      }
+      return false;
+    }
+    /* How a people raises its army (TODO 15p): feudal service in the Middle Ages, a paid standing army in antiquity; else the levy as before. */
+    function serviceOf(f) { const e = eraOf(f); return e === "medieval" ? "feudal" : e === "ancient" ? "paid" : "levy"; }
+    function servedOut(p) { const d = SERVED.get(p.id); return !!d && d.year === Math.floor(t / YEAR) && d.days >= SERVICE_DAYS; }
+    /* Once a day for a feudal people: forty days with the army and home they go; the well-off at home pay instead. */
+    function service(f) {
+      if (serviceOf(f) !== "feudal") return;
+      const yr = Math.floor(t / YEAR);
+      let gone = 0, at = null;
+      for (const p of people) {
+        if (p.f !== f.id || p.job !== "soldier" || p.hp <= 0 || HIRED.has(p.id)) continue;
+        let d = SERVED.get(p.id); if (!d || d.year !== yr) SERVED.set(p.id, d = { year: yr, days: 0 });
+        if (onCampaign(p) || p.task === "march" || p.task === "fight") {
+          if (++d.days >= SERVICE_DAYS) { p.job = "farmer"; p.task = "idle"; p.wait = 0; gone++; at = at || p; count.serviceEnded++; }
+        } else if (d.days === 0 && p.coins > SCUTAGE * 4 && p.bold < 0.6 && !shared) {
+          p.coins -= SCUTAGE; f.treasury += SCUTAGE; d.days = SERVICE_DAYS; p.job = "farmer"; p.task = "idle"; count.scutage++;
+        }
+      }
+      if (gone && t - (f.serviceNews ?? -1e9) > 20 * DAY_HOURS) { f.serviceNews = t; note("war", gone + " of " + f.name + "'s levy " + (gone === 1 ? "has" : "have") + " served their forty days and gone home.", 1.5, at.x, at.y, f.id); }
+    }
+
     /* Generals and strategy (TODO 15o). */
     const hasHorses = f => has(f.id, "horses");   // the era's list, or what its people hold (15e)
     function horseman(p) { return GENERALS && p.job === "soldier" && idHash(p) >= 85 && hasHorses(factions[p.f]); }
@@ -7055,7 +7103,8 @@
          four days, and a world's wars were won, lost and over in a month. */
       const sides = Object.keys(theirs);
       /* Behind a wall the same people count for more (TODO 14e). */
-      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + eraWar(factions[v.f]).wallWorth * v.wall);
+      const wallNow = SIEGECRAFT ? v.wall * (1 - v.breach) : v.wall;   // TODO 15p: what the engines have left of it
+      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + eraWar(factions[v.f]).wallWorth * wallNow);
       v.foes = attackers;
       if (RIOTS && attackers === 0) riot(v, ours);   // not with an enemy at the edge: then the doors are barred
       if (BANDITS) { v.watch = ours; if (attackers === 0) bandRide(v); }   // TODO 15.5b4
@@ -7087,9 +7136,10 @@
       if (v.sick > 0 && v.gone) v.dangerAt = t;   // those who left for a sickness wait a week past it (TODO 12b)
       if (v.siege > 0) flee(v);
       else if (v.gone && t - v.dangerAt > 7 * DAY_HOURS) comeHome(v);
-      if (sides.length && attackers > defence * 1.2) {
+      if (SIEGECRAFT && siegeWorks(v, sides, theirs, attackers, ours, foesHere)) v.siege = 0;   // TODO 15p: starved out, taken
+      else if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
-        if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(v.wall * eraWar(factions[v.f]).wallHold)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
+        if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(wallNow * eraWar(factions[v.f]).wallHold)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
       } else v.siege = Math.max(0, v.siege - 1);
 
       /* Too full: some of them go and start somewhere new, if there is land. */
@@ -8358,7 +8408,7 @@
       const here = [];
       for (const p of people) if (p.f === f.id && p.job === "soldier" && p.hp > 0 && onCampaign(p)) here.push(p);
       if (!here.length) return;
-      f.campFoul = here.length / (here.length + CAMP_HALF); count.campDays += here.length;
+      f.campFoul = here.length / (here.length + CAMP_HALF) * (SIEGECRAFT && serviceOf(f) === "paid" ? 0.5 : 1); count.campDays += here.length;   // TODO 15p: half as foul behind a Roman camp's ditch, with its latrines
       /* Camp fever caught from the water and the crowd, by each soldier. Dysentery and typhus are not the
          village's sickness: having had that is no shield (nor, in the engine, is having had them). */
       const odds = CAMP_CATCH * (S.plague === "none" ? 0 : S.plague === "rare" ? 1 : 1.5) * (1 + f.campFoul * 3);
@@ -9336,11 +9386,12 @@
            farmers alone stalled short of what its leader asked (4 of 23 wanted 6). Then any other
            trade (TODO 15.5a): once crafters made only to order there were few, and in rule.test's
            world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
-        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25)) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
+        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && !(SIEGECRAFT && servedOut(p)) && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25)) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       if (ARMIES && !shared) hire(f, wars, f.soldiers * WAGE * 7);   // TODO 15h
       if (CAMPAIGN && wars) desertions(f);   // TODO 15j
       if (ARMY_SICK) campSickness(f, wars);   // TODO 15m
+      if (SIEGECRAFT && wars) service(f);   // TODO 15p
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
       if (!shared) {
@@ -9932,6 +9983,8 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      siegeWorks: (vid, fid, attackers, ours) => siegeWorks(villages[vid], [String(fid)], { [fid]: attackers }, attackers, ours, []),
+      serviceOf: fid => SIEGECRAFT ? serviceOf(factions[fid]) : "levy", service: fid => service(factions[fid]), servedOut: p => SIEGECRAFT && servedOut(p),   // TODO 15p
       generalOf: fid => GENERALS ? generalOf(factions[fid]) : null, skillOf: p => skillOf(p), planOf: (fid, oid) => factions[fid].camp[oid] && factions[fid].camp[oid].plan, choosePlan: (fid, oid) => { const f = factions[fid], c = f.camp[oid]; choosePlan(f, factions[oid], c, generalOf(f)); return c.plan; },
       scout: (fid, oid) => scout(factions[fid], factions[oid], generalOf(factions[fid])), intelOf: fid => factions[fid].intel || {}, rout: (fid, oid) => rout(factions[fid], factions[oid], factions[fid].camp[oid]), routing: p => (ROUT.get(p.id) ?? -1) > t, horseman: p => horseman(p), horseArcher: p => GENERALS && horseArcher(p), battlesOf: id => GEN_EXP.get(id) || 0,   // TODO 15o
       bowFor: p => OLD_ARMS ? bowFor(p) : null, armourOf: fid => armourOf(factions[fid]), strike: (p, foe, base, shot) => strike(p, foe, base, shot), outfit: (p, vid) => outfit(p, villages[vid]), chariot: p => OLD_ARMS && chariot(p),   // TODO 15n

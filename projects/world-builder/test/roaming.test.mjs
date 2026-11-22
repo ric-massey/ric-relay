@@ -19,7 +19,7 @@ const FINGERPRINT = 322919713;   // print() of 15h's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none" });
+  const w = People.create({ seed: 2, roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15i");
 }

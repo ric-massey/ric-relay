@@ -11,12 +11,12 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { oldArms: "plain", generals: "none" };   // the parts built after this one, off: this part as it was built
+const LATER = { oldArms: "plain", generals: "none", siegecraft: "old" };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 659234792;   // print() of 15l's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, armySick: false, oldArms: "plain", generals: "none" });
+  const w = People.create({ seed: 2, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15m");
 }

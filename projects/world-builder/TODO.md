@@ -2881,7 +2881,9 @@ scouts, deserters and prisoners instead of 15h's all-seeing map; horsemen for sc
 raiding and pursuit; horse archers of the steppe. **Ric decides:** what a general is and does, and
 which strategies; the research above first. **Budget:** default.
 
-### [ ] 15p. Siege engines, and how armies are raised
+### [x] 15p. Siege engines, and how armies are raised
+
+**Done 2026-11-22.** Setting Siegecraft and service ("Numbers alone" = the 15o world, fingerprinted). Besiegers break a wall in their era's days (40 by hand, 25 ramp and ram, 20 antiquity, 25 trebuchet and mining, 8 cannon), mended a twentieth a day after; a place shut in a fortnight, out of food and half hungry gives itself up. Middle Ages: forty days' service a year, then home and not called again; the well-off may pay scutage into the treasury, which hires. Antiquity: a paid standing army whose nightly camp is not ambushed and is half as foul. Found on the way: a comment put in mid-line swallowed 15m's soldier-day count; fixed. Measured, a year: medieval levies 50 and 61 home after forty days, soldier-days with armies about halved; walls broken once a year in ancient wars; none starved out (villages flee or fall first). `test/siege.test.mjs`; README, "Siegecraft and service". Left: engineers and prisoners at work, countermining.
 
 15k's gaps 15 and 16. **Do:** ramps, rams, mining, the trebuchet and engineers as things built to take
 a wall; starving a place out as the slow way; feudal service owed for so many days a year, paid off

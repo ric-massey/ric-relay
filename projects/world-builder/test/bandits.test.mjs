@@ -16,12 +16,12 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const Engine = createRequire(import.meta.url)("../people.js");
 /* Item 15's parts off: this test holds its own part as it was built (TODO 15, 2026-11-22). */
-const People = Object.assign({}, Engine, { create: s => Engine.create(Object.assign({ govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none" }, s)) });
+const People = Object.assign({}, Engine, { create: s => Engine.create(Object.assign({ govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old" }, s)) });
 const FINGERPRINT = 3273619856;   // print() of 15.5b3's engine, seed 2, 60 days
 
 // 1. Off: the world 15.5b3 left.
 {
-  const w = People.create({ seed: 2, bandits: false, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none" });   // and 15.5r's dirt at the old fixed toll
+  const w = People.create({ seed: 2, bandits: false, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old" });   // and 15.5r's dirt at the old fixed toll
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "bandits off is the world before them");
 }

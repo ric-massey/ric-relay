@@ -2145,6 +2145,39 @@ plans changed 8 to 21 times; 0 to 11 ambushes. War is far more decisive, as Ric'
 **Left out:** deserters and prisoners as a source of news (prisoners are 15q); screening (horsemen
 keeping the enemy's scouts off); formations; a general's own death in battle mattering more.
 
+### Siegecraft and service (2026-11-22)
+
+TODO item 15p, from 15k's gaps 15 and 16. Setting **Siegecraft and service** under War: "By era"
+(default) or "Numbers alone (as before)", which leaves the 15o world exactly as it was (fingerprinted).
+
+- **Engines.** Three or more besiegers at a walled place work at breaking its wall, which takes, by
+  the besiegers' era: early farmers 40 days (ramps and mining by hand), the Bronze Age 25 (the
+  Assyrian ramp and ram; Lachish's ramp of some three million stones), antiquity 20, the Middle Ages
+  25 (the trebuchet, first in England at Dover in 1216-17, and mining), early modern 8 (cannon),
+  later 3 or 4. What is broken no longer counts in the defence or in how long the place holds out;
+  it is mended a twentieth a day once they have gone. A wall half broken is news. (English Heritage
+  and World History Encyclopedia on medieval siege warfare; Hebrew University on Lachish.)
+- **Starving a place out**, the slow last resort (Kenilworth, 1266, held nearly six months): a place
+  with more enemy soldiers at its edge than its own for a fortnight, its store under a third of a
+  day's food a head, and half its grown-ups hungry, gives itself up to the besiegers.
+- **Feudal service** (the Middle Ages): a soldier owes forty days a year with the army (knight-service);
+  then they go home to farm and are not called again that year, so a feudal army melts away when its
+  service ends. Somebody well-off (over 40 coins) and not bold who has not yet served may pay scutage
+  (10 coins) into the treasury instead, which 15h's hiring spends on soldiers who serve as long as they
+  are paid. Hired soldiers owe no days.
+- **A paid standing army** (antiquity, Rome): no days owed; it digs a fortified camp every night, so
+  it is not caught on the march by an ambush (15o) and its camp, with latrines, is half as foul (15m).
+- Other eras keep the levy as before.
+- Counts `breached`, `starvedOut`, `serviceEnded`, `scutage`; village fields `breach`, `blockade`;
+  hooks `w.siegeWorks(vid, fid, attackers, ours)`, `w.serviceOf`, `w.service`, `w.servedOut`.
+  `test/siege.test.mjs`.
+
+**Measured** (a year, 600 people, three old enemies, two seeds): medieval, 50 and 61 of the levy went
+home after their forty days and 5 and 7 paid scutage; soldier-days with an army fell from about 4,300
+to 2,350; captures 3 and 0 against 1 and 0. Ancient, a wall was broken once in each world. No place
+was starved out in these years: villages flee or fall to numbers first. **Left out:** engineers and
+prisoners building ramps; countermining; the 1200s' shift from forty days to paid foot soldiers.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
