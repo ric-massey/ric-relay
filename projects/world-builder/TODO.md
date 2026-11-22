@@ -3152,7 +3152,17 @@ smoothing of the data made the cycles look tidier than they were ([UCD](https://
 year-to-year weather — never a scripted cold age. *Questions:* (1) In, from the seed? (2) A setting
 for how big the swings are, off by default so a world is as it was?
 
-**15.5r. Dirt and disease in towns.** *Now:* a town loses one more person in a hundred a year and a
+**[x] 15.5r. Dirt and disease in towns.** *Done 2026-11-21:* the fixed toll is gone (kept as a setting,
+"Dirt in towns": "A fixed toll" = the 15.5b4 world, fingerprinted). Each day a village's water is
+fouled by the waste of those round it (all of them at a well among the houses, half at a river or
+lake) and of places within 10 km upstream on its river; `foul` = load / (load + 2,000). Foul water
+kills up to 3 in a hundred a year, times frailty (a town of 1,000 at a well about 1, as before), and
+a sickness starts up to four times as often and passes up to twice as readily where it is foul. A year
+each: six default worlds 3 deaths of it, sickness deaths 81 → 93; three cities of 3,000, 33, sickness
+deaths 480 → 432; two market-town worlds, 9; bench within drift. No town lasts a year in these worlds
+(they scatter), so neither the toll nor its causes did much. `test/dirt.test.mjs`; README, "Dirt
+and foul water in towns". **Left out:** sewers and clean water as things built (15d), cholera.
+*Before:* *Now:* a town loses one more person in a hundred a year and a
 city a little over two, a fixed number (item 8). *History:* the town penalty came from crowding, waste
 and foul water; infants in English market towns of 2,000–3,000 died at 209–270 in 1,000 in 1675–1749
 against under 100 in remote country; it fell once water, sewers and public health came (from the 1870s
@@ -4093,4 +4103,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-21 | 15.5b2 | AMD Ryzen 5 3600, 24 GB | 2.12 / 2.33 s a day (2.12 / 2.13 before) | *not run* | 6.8 MB, 1.32 KB | **the government's grain**: public orders, rations, forced sales, laying in; a different world where a village goes hungry. `--quick` alternated old/new twice: 400 0.17/0.17 → 0.15/0.15 s, 2,000 0.67/0.73 → 0.71/0.73 s, 5,000 2.12/2.13 → 2.33/2.12 s: within the drift. Cost: one pass over a faction's villages a day; forced sales only in hungry villages |
 | 2026-11-21 | 15.5b3 | AMD Ryzen 5 3600, 24 GB | 2.15 / 2.20 s a day (2.10 / 2.16 before) | *not run* | 7.3 MB, 1.43 KB | **food riots**: a different world only where a village goes hungry with food in sight (3 riots in six default world-years). `--quick` alternated old/new twice: 400 0.16/0.16 → 0.16/0.16 s, 2,000 0.71/0.70 → 0.72/0.70 s; within drift |
 | 2026-11-21 | 15.5b4 | AMD Ryzen 5 3600, 24 GB | 1.81 / 1.84 s a day (1.80 / 1.81 before) | *not run* | 7.3 MB, 1.42 KB | **bandits**: a different world from day 30 wherever somebody hungry and dishonest weighs robbing. `--quick` alternated old/new twice: 400 0.15/0.15 → 0.15/0.16 s, 2,000 0.64/0.64 → 0.65/0.65 s; within drift |
+| 2026-11-21 | 15.5r | AMD Ryzen 5 3600, 24 GB | 2.81 / 2.76 s a day (2.71 / 2.97 before; a busy machine) | *not run* | 7.6 MB, 1.48 KB | **dirt and foul water**: a different world from the first death of it or the first sickness caught more readily for it. `--quick` alternated old/new twice: 400 0.17/0.18 → 0.16/0.17 s, 2,000 0.89/0.89 → 0.82/0.92 s; within drift |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

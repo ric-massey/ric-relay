@@ -1901,6 +1901,47 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Dirt and foul water in towns (2026-11-21)
+
+TODO item 15.5r. Ric (2026-11-20): "There shouldn't be a town fixed death rate it should all be of
+actual causes." Until now a town lost one more person in a hundred a year and a city a little over
+two, a fixed number (item 8). The urban penalty came from crowding, waste and foul water. Infants in
+English market towns of 2,000–3,000 died at 209–270 in 1,000 in 1675–1749, against under 100 in
+remote country. It fell once towns had clean water and sewers (research notes under 15.5r in
+`TODO.md`, with links).
+
+- **How foul a village's water is** (`foulness`, once a day): the waste of those who live round it,
+  as far as it reaches the water. All of them where it drinks from a well among its houses (the
+  cesspits seep in); half where it drinks from a river or a lake. On a river, the waste of every place
+  of twenty or more within 10 km upstream comes down too, less the further up (`riverDirt`, which
+  way each river runs from 15.5b1). `v.foul` = load / (load + 2,000): a hamlet of 50 drinks nearly
+  clean water (0.02), a town of 1,000 at a well 0.33, a city of 5,000 at one 0.71.
+- **What it does.** Foul water kills (the flux, typhoid, the fevers): up to 3 deaths in a hundred a
+  year at the foulest, times frailty, so the young, the old and the hungry most. A town of 1,000 at a
+  well loses about one in a hundred a year, as the fixed toll did, and a city about two to three. A
+  sickness starts up to four times as often where the water is foulest, and passes up to twice as
+  readily in conversation.
+- Deaths of foul water draw from a stream of their own (`RD`), so a world goes the way it would have
+  gone until somebody dies of it. Drawn from the main one, every world was different from its first
+  hour and six tests' seeds stopped holding.
+- `stats().foul` counts the deaths of foul water (they are also counted as `sick`). Every village has
+  `foul` and `foulLoad`.
+- **A setting**, "Dirt in towns", by Sickness. "A fixed toll" is the world 15.5b4 left, step for step
+  (`test/dirt.test.mjs` holds a fingerprint of it, and the older fingerprint tests now use it).
+
+**Measured** (a year each, against 15.5b4). Six default worlds: 3 deaths of foul water in all;
+sickness deaths 81 → 93 (seed 6 alone 19 → 28), infections 2,116 → 2,239. Three starting cities of
+3,000 on 40 km: 33 deaths of foul water, sickness deaths 480 → 432 (most die in the first outbreak,
+and the city has scattered to about 900 within a fortnight, old and new alike). Two worlds of market
+towns of 3,000 (measured before foul deaths had their own stream): 9 deaths of foul water, sickness
+deaths 263 → 279. No place stayed a town all year in any of these, so the old
+toll and the new causes both did little. Speed: `bench.mjs --quick` alternated twice, within drift
+(5,000: 2.71/2.97 → 2.81/2.76 s a day, a busy machine).
+
+**Left out:** sewers, clean water brought in, and wells dug away from the houses, as things a village
+builds (15d); waste on the streets as something seen; a sickness that lives in the water itself
+(cholera) rather than passing between people; one house's well against another's.
+
 ### Bandits on land (2026-11-21)
 
 TODO item 15.5b4. Ric (2026-11-20), from 15i's research: the hungry, the landless and the dishonest
@@ -2936,7 +2977,8 @@ TODO item 8. A village was a village for ever, split when it passed "A full vill
   further by water, Campbell and others, 1993).
 - **Crowded places were graveyards.** About one more death a hundred a year in a town than in the
   country and a little over two in a city: London's burials outran its baptisms for two centuries
-  and it grew only by those who came in (Wrigley, 1967).
+  and it grew only by those who came in (Wrigley, 1967). *Since 15.5r that is no longer a fixed toll
+  but its causes (below, "Dirt and foul water"); the fixed toll is kept as a setting.*
 - **Where they live at first** (a setting; Ric: "all of this being choices"): hamlets of about
   fifteen, villages as before, villages and a market town with two-fifths of each faction, or a city
   with half of everybody. A town or city made at the start is trusted to be fed by its villages for

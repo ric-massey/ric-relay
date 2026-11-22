@@ -225,6 +225,9 @@
       { key: "plague", label: "Sickness", type: "select", def: "rare",
         options: [["none", "None"], ["rare", "Now and then"], ["common", "Often"]],
         help: "A sickness starts in one person and passes to whoever they talk to." },
+      { key: "dirt", label: "Dirt in towns", type: "select", def: "real",   // TODO 15.5r, 2026-11-21
+        options: [["real", "From its causes: waste and foul water"], ["fixed", "A fixed toll in towns and cities"]],
+        help: "Where many live, their waste fouls the water they drink: a well among the houses, a river below a town. Foul water kills, the young and the old most, and a sickness starts oftener and passes more easily where it is bad. The fixed toll is the old way: one more death in a hundred a year in a town, two in a city." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -586,6 +589,10 @@
        bold, warm, greedy and stubborn come out as they did before item 10. Who they become does
        not: hot temper now counts in who takes up soldiering on the first day, and from there on. */
     const RT = rng((S.seed | 0) * 2246822519 + 7);
+    /* Deaths of foul water (TODO 15.5r) draw from their own stream: every person is looked at every
+       hour, and drawing that from `R` made every world a different one from its first hour, where
+       now a world changes only once somebody dies of it. */
+    const RD = rng((S.seed | 0) * 3266489917 + 11);
     /* The minds (TODO 11). Everybody's slots in four flat arrays, a block of MB a person, so a
        mind is no object of its own and is never copied: slot 0 is what they think about sharing
        (what was `views`), the rest whatever they hold. A dead person's block goes to the next
@@ -698,7 +705,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { foul: 0, banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1332,6 +1339,7 @@
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
                   riotAt: -1e9, putDown: -1e9,   // TODO 15.5b3: the last riot here, and the last one soldiers broke up
+                  foul: 0, foulLoad: 0,   // TODO 15.5r: how fouled its water is, 0 to 1, and how many people's waste reaches it
                   bandits: 0, watch: 0, road: null, banditAt: -1e9, robbedAt: -1e9, waylaidAt: -1e9,   // TODO 15.5b4: its bandits at the census, soldiers at hand today, where its bandits lie in wait, their last raid, the last time it was raided, and the last robbery on the road told of
                   heldTo: -1e9, wall: 0 };   // wall: TODO 14e, 0 none to 1 its full height   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
       let o = 0, c = 0;
@@ -2074,6 +2082,8 @@
     const HARVEST_TAX = !shared && (S.harvestTax || 0) > 0;   // TODO 15.5t: none at the start means none ever
     const RIOTS = !shared && S.riots !== false;   // TODO 15.5b3
     const BANDITS = !shared && S.bandits !== false;   // TODO 15.5b4
+    const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
+    const riverDirt = DIRT ? new Float32Array(tiles) : null, dirtied = [];   // TODO 15.5r: people's waste in each river square, today
     const lurk = new Map();     // TODO 15.5b4: bandits lying in wait by a road, and since when
     const bandOf = new Map();   // TODO 15.5b4: a bandit out with a band: the place they ride for, and how many ride
 
@@ -4273,8 +4283,8 @@
       /* How open each of them is: their own nature, not the world's. */
       const open = 1 - ((a.stub ?? S.stubborn) + (b.stub ?? S.stubborn)) / 2, openA = 1 - (a.stub ?? S.stubborn), openB = 1 - (b.stub ?? S.stubborn);
       /* Sickness goes where talk goes. */
-      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < CATCH) { b.sick = ILLNESS_HOURS; count.infected++; }
-      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < CATCH) { a.sick = ILLNESS_HOURS; count.infected++; }
+      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < CATCH * (DIRT ? 1 + villages[b.home].foul : 1)) { b.sick = ILLNESS_HOURS; count.infected++; }   // TODO 15.5r: and more readily where the water is foul
+      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < CATCH * (DIRT ? 1 + villages[a.home].foul : 1)) { a.sick = ILLNESS_HOURS; count.infected++; }
 
       /* 0 — somebody holding a grudge has nothing to say to the other (TODO 11): a cold word, and
          nothing warms between them. Until item 11 every chat warmed any two people, and a
@@ -4551,8 +4561,15 @@
       /* Crowded places were graveyards: London's burials outran its baptisms for two centuries and it
          grew only by those who came in (Wrigley 1967). About one more death a hundred a year in a town
          than in the country, a little over two in a city (TODO 8). */
-      const place = villages[p.home].place;
-      if (place && place !== "village" && R() < (place === "city" ? 0.022 : 0.01) / (365 * DAY_HOURS)) { die(p, "sick"); return; }
+      if (!DIRT) {
+        const place = villages[p.home].place;
+        if (place && place !== "village" && R() < (place === "city" ? 0.022 : 0.01) / (365 * DAY_HOURS)) { die(p, "sick"); return; }
+      } else {
+        /* Ric (2026-11-20): "There shouldn't be a town fixed death rate it should all be of actual
+           causes" (TODO 15.5r): the flux, typhoid and the fevers of foul water (`foulness`). */
+        const foul = villages[p.home].foul;
+        if (foul > 0.001 && RD() < FOUL_DEATHS * foul * frailty(p) / YEAR) { count.foul++; die(p, "sick"); return; }
+      }
       if (p.job === "child" && adult(p)) p.job = chooseJob(p);
 
     }
@@ -5885,7 +5902,7 @@
         const sc = o.pop / (1 + d * 0.05); if (sc > mb) { mb = sc; v.marketTo = o.id; }
       }
       /* Sickness starts in one person. */
-      const odds = S.plague === "none" ? 0 : S.plague === "rare" ? 0.004 : 0.02;
+      const odds = (S.plague === "none" ? 0 : S.plague === "rare" ? 0.004 : 0.02) * (DIRT ? 1 + v.foul * FOUL_OUTBREAK : 1);   // TODO 15.5r
       if (v.sick === 0 && R() < odds) {
         const here = people.filter(p => p.home === v.id && !p.immune);
         if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; count.infected++; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); }
@@ -6607,6 +6624,54 @@
        once hunger had gone on too long (Ó Gráda). The leader answers by their nature (`ruling`):
        the bold, with soldiers enough to send, break it up, the warm feed the crowd from the treasury, and the
        rest do nothing; what they do is held against them, or for them, in their people's loyalty. */
+    /* ── dirt and foul water (TODO 15.5r) ────────────────────────────────
+       Ric (2026-11-20): "There shouldn't be a town fixed death rate it should all be of actual
+       causes." The urban penalty came from crowding, waste and foul water: infants in English market
+       towns of 2,000–3,000 died at 209–270 in 1,000 in 1675–1749 against under 100 in remote country,
+       and it fell once towns had clean water and sewers (TODO 15.5r's notes). So a village's water is
+       as foul as the waste of those who live round it reaches it: all of them, where it drinks from a
+       well among its houses (their cesspits seep into it); half, where it drinks from a lake or a
+       river; and on a river, the waste of every place upstream within 10 km besides, less the further
+       up. `foul` = load / (load + FOUL_HALF), so a hamlet's water is nearly clean, a town's fouled and
+       a city's very foul. Foul water kills (`live`), the frail most (the young, the old and the
+       hungry), and a sickness starts oftener and passes more readily where the water is foul. */
+    const FOUL_HALF = 2000;     // people whose waste reaches a water to foul it halfway
+    const FOUL_DEATHS = 0.03;   // deaths a year a person at the foulest, before frailty: a town of 1,000 about one in a hundred
+    const FOUL_OUTBREAK = 3;    // a sickness starts up to four times as often where the water is foulest
+    const FOUL_REACH = 40;      // squares downstream a town's waste is carried (10 km)
+    const RDX = [1, -1, 0, 0, 1, 1, -1, -1], RDY = [0, 0, 1, -1, 1, -1, 1, -1];   // riverTo's directions
+    /* The water a village drinks: the nearer of its well and the fresh water by its middle. */
+    function waterOf(v) {
+      const ti = tileAt(v.x, v.y), j = freshNear !== null ? freshNear[ti] : -1;
+      const dr = j >= 0 ? Math.hypot(j % cols + 0.5 - v.x, ((j / cols) | 0) + 0.5 - v.y) : Infinity;
+      const dw = v.well ? Math.hypot(v.well.x - v.x, v.well.y - v.y) : Infinity;
+      return dw <= dr || j < 0 ? -1 : j;   // -1: a well (or nothing better known than one)
+    }
+    function foulness() {
+      for (const i of dirtied) riverDirt[i] = 0;
+      dirtied.length = 0;
+      /* Each place's waste down its river. */
+      for (const v of villages) {
+        if (!v.alive || v.pop < 20) continue;
+        let i = waterOf(v);
+        if (i < 0 || ground[i] !== G_RIVER) continue;
+        for (let k = 1; k <= FOUL_REACH && i >= 0; k++) {
+          const d = riverTo[i]; if (d === 255) break;
+          const x = i % cols + RDX[d], y = ((i / cols) | 0) + RDY[d];
+          if (x < 0 || y < 0 || x >= cols || y >= rows) break;
+          i = y * cols + x;
+          if (riverDirt[i] === 0) dirtied.push(i);
+          riverDirt[i] += v.pop * (1 - k / (FOUL_REACH + 1));
+        }
+      }
+      for (const v of villages) {
+        if (!v.alive) { v.foul = 0; v.foulLoad = 0; continue; }
+        const i = waterOf(v);
+        const load = i < 0 ? v.pop : v.pop * 0.5 + (ground[i] === G_RIVER ? riverDirt[i] : 0);
+        v.foulLoad = load; v.foul = load / (load + FOUL_HALF);
+      }
+    }
+
     /* ── bandits (TODO 15.5b4) ───────────────────────────────────────────
        Ric (2026-11-20), from 15i's research: the hungry, the landless and the dishonest may choose to
        take for a living, from carts on the roads and from weakly held villages; nothing starts a band
@@ -7228,6 +7293,7 @@
 
       if (t % REFLECT_HOURS === 0) {
         census();
+        if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
         for (const v of villages) if (v.alive) { market(v); if (t % DAY_HOURS === 0) villageTurn(v); }
         if (t % DAY_HOURS === 0 && acted.size) forgetActed();
         /* The newest thing that happened is known first where it happened. */
@@ -7464,6 +7530,7 @@
       newsText: newsText, traceNews: traceNews, eventById: eventById, telling: telling,   // TODO 12
       setView: setView, befriend: befriend,   // for the tests
       shaken: shaken, LIFE: LIFE, ruling: ruling,   // for the tests (TODO 15a)
+      foulness: () => { if (DIRT) foulness(); },   // for the tests (TODO 15.5r): work out each village's water now
       living: p => chooseJob(p), roadOf: vid => roadOf(villages[vid]),   // for the tests (TODO 15.5b4): the living somebody would choose now, and where a village's bandits lie in wait
       /* For the tests (TODO 12b): a report of a sickness, famine or dear food at village `vid`, told to
          the people `ids` naming village `sayVid` (the true one when left out). Returns the event. */

@@ -19,7 +19,7 @@ const FINGERPRINT = 3273619856;   // print() of 15.5b3's engine, seed 2, 60 days
 
 // 1. Off: the world 15.5b3 left.
 {
-  const w = People.create({ seed: 2, bandits: false });
+  const w = People.create({ seed: 2, bandits: false, dirt: "fixed" });   // and 15.5r's dirt at the old fixed toll
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "bandits off is the world before them");
 }
@@ -71,10 +71,10 @@ const here = () => w.people.filter(p => p.home === v.id && w.adult(p) && p.job !
   w.step(1);
   carter.cargo = { what: "food", amount: 20, grain: true, paid: 20 }; carter.at = v.id;
   w.send(carter, v.x, v.y, "carry");
-  const before = w.stats().waylaid, food0 = robber.food;
+  const before = w.stats().waylaid, grain0 = w.stats().banditGrain;
   for (let h = 0; h < 30 && w.stats().waylaid === before; h++) { if (robber.task !== "waylay") w.send(robber, mx, my, "waylay"); w.step(1); }
   assert.equal(w.stats().waylaid, before + 1, "the cart is robbed on the road");
-  assert.ok(robber.food - food0 > 5, "and its food taken (" + (robber.food - food0).toFixed(1) + " days)");
+  assert.ok(w.stats().banditGrain - grain0 > 5, "and its food taken (" + (w.stats().banditGrain - grain0).toFixed(1) + " days)");
   assert.ok(carter.cargo === null || carter.cargo.amount < 20 - 5, "from the cart");
   assert.ok(carter.coins < 30 * 0.7, "and most of the purse (" + carter.coins.toFixed(1) + " left)");
   assert.ok(w.feel(carter, robber.id) < 0, "the carter holds it against " + robber.name);

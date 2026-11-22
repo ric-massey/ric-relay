@@ -18,7 +18,7 @@ const People = createRequire(import.meta.url)("../people.js");
 
 // 1. Wars off: the same world, every person and store, as the engine before 15.5h gave.
 {
-  const w = People.create({ seed: 5, war: false, people: 200, map: "small", harvestTax: 0 });   // off: 15.5t's harvest tax changes the world
+  const w = People.create({ seed: 5, war: false, people: 200, map: "small", harvestTax: 0, dirt: "fixed" });   // off: 15.5t's harvest tax changes the world
   w.step(24 * 20);
   let h = 0; const mix = x => { h = (h * 31 + (Math.round(x * 1e6) | 0)) % 2147483647; };
   for (const p of w.people) { mix(p.id); mix(p.x); mix(p.y); mix(p.food); mix(p.coins); mix(p.goods); mix(p.partner); mix(p.home); }
