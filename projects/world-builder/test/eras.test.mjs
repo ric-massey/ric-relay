@@ -16,7 +16,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = {};   // the parts built after this one, off: this part as it was built
+const LATER = { campaign: "home" };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 322919713;   // print() of 15i's engine, seed 2, 60 days
 
 // 1. As before.

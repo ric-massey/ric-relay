@@ -2385,6 +2385,9 @@ too — wool, cloth, millstones, weapons, slaves; ships went far faster per day
 travel for weeks, worth it only for what is dear for its weight (finished goods, ore, wool), by land or
 by boat; a route grows where traders keep going, and bandits and pirates (15.5b, 15h) prey on it.
 *Question:* in, as proposed? On a 1,000 km land, far trade is within one world.
+**Ric (2026-11-22): "caravans are a yes."** Not yet built (15f was ticked without it): to do as
+proposed — traders travelling for weeks with goods dear for their weight, by land or boat, routes
+growing where they keep going, bandits preying on them.
 
 ### [x] 15h. Armies: what they carry, how far they go, and strategy
 
@@ -2661,6 +2664,38 @@ and each of those is a thing that can be built, cut or knocked down.
 **Done when:** 15's "Done when": the same land and people from two starting eras fight, travel and
 hear news at measurably different speeds; knocking down a tower or cutting a line slows the news
 in its area and nowhere else.
+**Budget:** default.
+
+### [x] 15j. Soldiers on campaign: needs met in the army, orders, and desertion
+
+**Done 2026-11-22.** Setting "Soldiers on campaign" ("Come home to eat and sleep" = the 15d world, fingerprinted). A soldier in an army that is gathering or marching keeps to duty and sleeps where the army lies; their fellows are their company; only thirst or a wound sends them off (the wounded home, as item 14). Desertion weighed daily: a fed, paid army at war about a fifth a year, three times as likely hungry, more unpaid, disloyal, afraid or losing, less under a law that hangs killers; news when it happens. Found and fixed on the way (a 15h bug): an army's road counted as cut by the enemy's own soldiers standing at home by their village at its far end, so armies fell back almost every time they marched (30 marches, 29 retreats in a year); now only enemy soldiers 3 km or more from their own places cut it (1 retreat). Measured: battles in a year of old enemies are still few (2 to 7 dead) either way — item 14's fights are skirmishes where the wounded leave the line; fed soldiers mostly stayed with the army the old way too (7 of 8 against 8 of 8). `test/campaign.test.mjs`; README, "Soldiers on campaign". Left: deserters punished when caught; generals and strategy (Ric's coming item).
+
+Added 2026-11-22 (Ric, after 15h: "in real like do soldiors choose duty over food and company? if
+so how do we change that?"; "soldiors first"). Not the generals and strategy Ric means to add
+next: this is the army holding together so that a plan can be carried out; *what* the plan is
+(generals, their strategies) is Ric's coming item and stands on this.
+**Now:** a soldier weighs duty against everything else every few hours like anybody, and food,
+rest and company are all at home, so on campaign they keep walking home; in the war worlds tried
+for 15h no battle was fought in a year.
+**Research (2026-11-22).** Real soldiers did not choose each hour: food came to them (rations
+carried, issued, foraged or plundered — the Byzantine *Tactica* made supply the commander's charge;
+crusaders bought their own), they ate and slept with their mess, and leaving was desertion, which
+was punished. How many left: in peacetime about 2 to 7% a year (Prussian infantry 1713–40 about
+2.1%, French 1716–49 4.4%, Saxony 1717–27 7%), in wartime far more (a French estimate of 20% a year,
+1700–63); British Army 77,696 desertions 1803–15, varying greatly by unit (Linch, *J. Social History*
+2016); the American Civil War about 7% of enlistments, rising as the war dragged on
+([Linch, White Rose](https://eprints.whiterose.ac.uk/93692/23/Desertion_form_the_British_Army_during_the_Napoleonic_Wars_%28final%29.pdf);
+[Prussian peacetime attrition, *Central European History*](https://resolve.cambridge.org/core/journals/central-european-history/article/peacetime-attrition-in-the-army-of-frederick-william-i-17131740/040434AE9368C3A0C65FD508B88D0039);
+[Kabinettskriege, a summary](https://kabinettskriege.blogspot.com/2017/10/how-common-was-desertion-in-eighteenth.html);
+[US Army Heritage, desertion statistics](https://armyheritage.org/wp-content/uploads/ref-bibs/subjects/Military%20Service/Desertion/Desertion%20Statistics.pdf);
+[History.com on rations](https://history.com/articles/soldier-wartime-food-rations-battle-napoleon-vietnam)).
+**Do:** a soldier in an army that is gathering or marching (15h) has their needs met in it — eats
+what they carry or draw at the gathering place, sleeps where the army is, has their fellows for
+company — and keeps to their duty; the one way out is desertion, a choice weighed daily, likelier
+when hungry, unpaid, afraid, disloyal or losing, rarer under a harsh law (15c), set so that a fed,
+paid army at war loses about a fifth a year. A setting whose old value is the world before.
+**Done when:** armies that gather and march fight battles within a year where 15h's did not;
+desertion rises with hunger and unpaid days.
 **Budget:** default.
 
 ### [x] 15.25. Faster People simulation without losing quality, and births without a population cap

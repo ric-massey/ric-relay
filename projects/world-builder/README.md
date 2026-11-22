@@ -1971,6 +1971,34 @@ the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when
 for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
 customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
 
+### Soldiers on campaign (2026-11-22)
+
+TODO item 15j. Ric (2026-11-22): "in real like do soldiors choose duty over food and company? if so
+how do we change that?" They did not choose: food came to them (rations carried, issued, foraged or
+taken), they ate and slept with their fellows, and the way out was desertion. Setting **Soldiers on
+campaign** under War: "Live with the army; some desert" (default) or "Come home to eat and sleep
+(as before)", which leaves the 15d world exactly as it was (fingerprinted).
+
+- A soldier in an army that is gathering or marching (15h), of a people at war, keeps to duty and
+  sleeps where the army lies; their fellows are their company. Only thirst or a wound sends them off.
+- **Desertion**, weighed once a day: about a fifth a year for a fed, paid army at war (a French
+  estimate, 1700–63; peacetime armies lost 2 to 7% a year — Prussian infantry 1713–40 about 2.1%,
+  French 1716–49 4.4%, Saxony 7%; Linch, *J. Social History* 2016, on the British army's 77,696
+  desertions 1803–15), three times as likely when hungry, more for each day unpaid, for the
+  disloyal and the afraid, for a people losing and for the hired, less under a law that hangs
+  killers (15c). A deserter goes home to farm.
+- **A 15h bug found on the way:** the road an army is fed by counted as cut by the enemy's own
+  soldiers standing at home by their village at its far end, so armies fell back nearly every time
+  they marched (30 marches, 29 retreats in a year). Now only enemy soldiers 3 km or more from their
+  own places cut it (1 retreat).
+- Counts: `deserted`, `campHours`. `test/campaign.test.mjs`.
+
+**Measured** (a year, 600 people, three old enemies, two seeds): battles are still few either way
+(2 to 7 dead a year), because item 14's fights are skirmishes where the wounded leave the line;
+fed soldiers mostly stayed with the army the old way too (7 of 8 against 8 of 8); the hungry and
+unpaid desert six times as often as the fed and paid. **Left out:** deserters caught and punished;
+generals and strategy (Ric's coming item stands on this).
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

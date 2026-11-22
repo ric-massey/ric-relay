@@ -14,17 +14,17 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { roaming: "settled" };   // the parts built after this one, off: this part as it was built
+const LATER = { roaming: "settled", campaign: "home" };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 2789358566;   // print() of 15f's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, armies: "trickle", roaming: "settled" });
+  const w = People.create({ seed: 2, armies: "trickle", roaming: "settled", campaign: "home" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15h");
 }
 
-const w = People.create({ ...LATER, seed: 5, people: 500, factions: 2, war: true, aggression: 0, map: 20, bandits: false });
+const w = People.create({ ...LATER, seed: 5, people: 500, factions: 2, war: true, aggression: 0, map: 40, bandits: false });
 w.step(24 * 2);
 const [a, b] = w.factions;
 w.startWar(a.id, b.id);
@@ -73,12 +73,24 @@ w.warMap();
   const m = w.villages[c.v], g = w.villages[c.goal];
   const theirs = w.people.filter(p => p.f === b.id && p.job === "soldier" && p.hp > 0).slice(0, 4);
   if (theirs.length < 3) for (const p of w.people.filter(q => q.f === b.id && w.adult(q) && q.hp > 0 && q.job !== "soldier").slice(0, 4 - theirs.length)) { p.job = "soldier"; theirs.push(p); }
-  for (const p of theirs) w.place(p, (m.x + g.x) / 2 + 0.3, (m.y + g.y) / 2 + 0.3);
-  const before = w.stats().withdrawn;
+  /* A point on the road clear of their own places: soldiers by their own village are its defence,
+     not across the road (TODO 15j). */
+  const k = [0.25, 0.5, 0.75].find(k => w.villages.every(u => !u.alive || u.f !== b.id || Math.hypot(u.x - (m.x + (g.x - m.x) * k), u.y - (m.y + (g.y - m.y) * k)) >= 12));
+  if (k === undefined) console.log("  (every point of this road lies by one of their places; the cut is not tested here)");
+  else {
+    for (const p of theirs) w.place(p, m.x + (g.x - m.x) * k, m.y + (g.y - m.y) * k);
+    const before = w.stats().withdrawn;
+    w.warMap(); w.campaign(a.id, b.id);
+    assert.ok(c.cut, "enemy soldiers across the road it is fed by cut it");
+    assert.equal(w.stats().withdrawn, before + 1, "and the army falls back");
+    assert.equal(c.ready, false, "to gather again");
+  }
+  /* And their soldiers standing by their own place do not. */
+  const near = w.villages.find(u => u.alive && u.f === b.id);
+  c.ready = true; c.cut = false;
+  for (const p of theirs) w.place(p, near.x + 0.3, near.y + 0.3);
   w.warMap(); w.campaign(a.id, b.id);
-  assert.ok(c.cut, "enemy soldiers across the road it is fed by cut it");
-  assert.equal(w.stats().withdrawn, before + 1, "and the army falls back");
-  assert.equal(c.ready, false, "to gather again");
+  assert.equal(c.cut, false, "soldiers at home by their own place are not across the road");
 }
 
 // 5. Hired.

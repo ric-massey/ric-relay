@@ -407,6 +407,9 @@
       { key: "armies", label: "Armies", type: "select", def: "march",   // TODO 15h, 2026-11-22
         options: [["march", "Gathered, fed and led"], ["trickle", "Each soldier marches alone (as before)"]],
         help: "An army gathers at its own village nearest the enemy and marches when enough have come in; it goes only as far as the bread it carries takes it there and back, further with carts; its leader picks the enemy place worth most against what defends it; enemy soldiers across the road it is fed by make it fall back. A ruler with coins and too few soldiers hires the poor and the bandits round about, who go back to robbing when they are not paid." },
+      { key: "campaign", label: "Soldiers on campaign", type: "select", def: "army",   // TODO 15j, 2026-11-22
+        options: [["army", "Live with the army; some desert"], ["home", "Come home to eat and sleep (as before)"]],
+        help: "A soldier in an army that is gathering or marching eats what they carry or draw where it gathers, sleeps where it is, and keeps to their duty. The one way out is to desert: likelier hungry, unpaid, afraid, disloyal or losing, rarer under a law that hangs killers. About a fifth of a fed, paid army deserts in a year of war." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -804,7 +807,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2295,7 +2298,11 @@
        whole engine about 70% slower (V8's object shapes), measured 2026-11-22. Keyed by person id. */
     const CARS = new Map(), WANDER = new Map(), MUSTER = new Map(), HIRED = new Map(), KEPT = new Map();
     const ROAM = S.roaming !== "settled";   // TODO 15i: bands that move camp, and people on the road (see "people who belong to no one place")
-    const ARMIES = S.armies !== "trickle";   // TODO 15h: armies that gather, carry and choose (see "armies")
+    const ARMIES = S.armies !== "trickle";
+    const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
+    /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
+       2 to 7% a year in peacetime): this a day, before what makes it likelier or rarer. */
+    const DESERT_DAY = 0.2 / 365;   // TODO 15h: armies that gather, carry and choose (see "armies")
     const MARCH_DAY = 80, HIRE_WAGE = WAGE * 2;   // squares a day's march (20 km; Engels), and a hired man's wage
     const WORKS = S.works !== "none";   // TODO 15f: livings a place needs and can pay for, and workplaces (see "work and workplaces")
     /* A mill about as long to build as a bridge; a power works twice that; the works between. A power
@@ -3841,6 +3848,13 @@
         chosen(); p.chose = chosenTask; return;
       }
 
+      /* On campaign (TODO 15j): duty, or sleep where the army lies; nothing else calls them home. */
+      if (CAMPAIGN && p.job === "soldier" && !(p.dry > 0) && p.hp >= 0.45 && onCampaign(p)) {
+        count.campHours++;
+        if ((dark && n.rest > 0.3) || n.rest > 0.9) { go(p, p.x, p.y, "sleep"); p.wait = sleepTicks(p); p.chose = "sleep"; return; }
+        p.alone = 0;   // among their fellows
+        p.until = t + SPELL.guard; p.chose = "patrol"; soldier(p); return;
+      }
       /* A holy day (TODO 15g): its holders gather in the village, and talk, rather than work. */
       if (FAITH && p.faith != null && !dark && holyDay(faiths[p.faith]))
         weigh("worship", 0.35 + p.zeal * 0.5 - n.food * 0.8 - n.water - n.rest * 0.5, () => { const [x, y] = plaza(v, 1.2); go(p, x, y, "idle"); p.wait = spell("visit"); count.holyDays++; });
@@ -8043,6 +8057,8 @@
       let cut = false;
       for (const k of [0.25, 0.5, 0.75]) {
         const x = muster.x + (goal.x - muster.x) * k, y = muster.y + (goal.y - muster.y) * k;
+        /* Their soldiers at home by their own place are its defence, not across the road (TODO 15j). */
+        if (villages.some(u => u.alive && u.f === o.id && Math.hypot(u.x - x, u.y - y) < 12)) continue;
         if (foesNearPoint(f, x, y) >= 3) { cut = true; break; }
       }
       if (c.ready && cut && !c.cut) {
@@ -8059,6 +8075,29 @@
       }
       /* Too few left of what marched: back to gather again. */
       if (c.ready && all < c.out * 0.4) { c.ready = false; c.since = t; }
+    }
+    /* In an army gathering or marching (TODO 15j): one of those who march (15h), of a people at war. */
+    function onCampaign(p) {
+      if (p.id % 3 === 0 || villages[p.home].heldTo > t) return false;
+      const f = factions[p.f];
+      for (const k in f.camp) { const c = f.camp[k]; if (c.v >= 0 && f.rel[k] && f.rel[k].war && factions[k].alive) return true; }
+      return false;
+    }
+    /* Desertion, weighed once a day: hungry, unpaid, afraid, disloyal, losing; a harsh law holds them. */
+    function desertions(f) {
+      let losing = false;
+      for (const k in f.rel) if (f.rel[k].war && f.rel[k].lost > f.rel[k].took) losing = true;
+      const harsh = GOV && f.gov && f.gov.laws.killing === "death";
+      let n = 0, home = null;
+      for (const p of people) {
+        if (p.f !== f.id || p.job !== "soldier" || p.hp <= 0 || !onCampaign(p)) continue;
+        const rate = DESERT_DAY * (p.hungry > 0 ? 3 : 1) * (1 + Math.min(10, p.unpaid || 0) * 0.3) * (1.6 - p.loyal) * (0.5 + p.fear) * (losing ? 1.5 : 1) * (harsh ? 0.6 : 1) * (HIRED.has(p.id) ? 1.5 : 1);
+        if (R() >= rate) continue;
+        p.job = "farmer"; p.task = "idle"; p.wait = 0; HIRED.delete(p.id); n++; count.deserted++;
+        home = villages[p.home];
+        go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol");
+      }
+      if (n && t - (f.desertNews ?? -1e9) > 30 * DAY_HOURS) { f.desertNews = t; note("war", n + (n === 1 ? " soldier has" : " soldiers have") + " deserted " + f.name + "'s army and gone home.", 1.5, home.x, home.y, f.id); }
     }
     function gathering(f) { for (const k in f.camp) { const c = f.camp[k]; if (c.v >= 0 && !c.ready && factions[k].alive && f.rel[k].war) return true; } return false; }
     /* Enemy soldiers in the 2 km square of the map round a point (the day's map). */
@@ -9019,6 +9058,7 @@
         for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25)) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
       if (ARMIES && !shared) hire(f, wars, f.soldiers * WAGE * 7);   // TODO 15h
+      if (CAMPAIGN && wars) desertions(f);   // TODO 15j
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
       if (!shared) {
@@ -9610,6 +9650,7 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },
