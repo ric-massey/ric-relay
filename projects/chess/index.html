@@ -362,6 +362,10 @@ body[data-look="terminal"] .promo-pick{position:static;transform:none;margin:8px
 body[data-look="terminal"] .promo-pick .promo{font:700 18px var(--term-font)}
 @keyframes term-blink{50%{opacity:0}}
 @media(max-width:600px){body[data-look="terminal"] .plate{font-size:11px}}
+/* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
+body[data-look="terminal"] .sheet-head{display:none}
+body[data-look="terminal"] .cz-side{gap:12px}
+body[data-look="terminal"] .cz-board{width:100%}
   </style>
 </head>
 <body data-game="chess" data-skin="0" data-look="club">
@@ -371,20 +375,20 @@ body[data-look="terminal"] .promo-pick .promo{font:700 18px var(--term-font)}
     <div class="game-actions"><label class="theme-picker"><span class="sr-only">Set</span><select id="style-switch" aria-label="Chess set"><option value="0" data-look="club">Club</option><option value="1" data-look="heirloom">Heirloom</option><option value="2" data-look="marble">Marble hall</option><option value="3" data-look="book">Book diagram</option><option value="4" data-look="bit">8-bit computer</option><option value="5" data-look="terminal">Terminal</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Who you play</span><select id="mode"></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
   </header>
   <main id="playroom" class="cz-hall" aria-labelledby="game-title">
-    <section class="cz-board" aria-label="The board">
+    <section class="cz-board" aria-label="The board" data-frame="board">
       <div id="stage" class="stage"></div>
       <p id="status" class="cz-status" role="status" aria-live="polite"></p><span id="metric" hidden></span>
       <div id="tools" class="tools"></div>
       <p id="hint" class="hint"></p>
     </section>
     <aside class="cz-side" aria-label="Score sheet and game">
-      <div class="sheet">
+      <div class="sheet" data-frame="game.pgn">
         <div class="sheet-head"><span class="sheet-title"><span class="only club">Official score sheet</span><span class="only heirloom">Game record</span><span class="only marble">Partie</span><span class="only book">The game</span><span class="only bit">Moves</span><span class="only terminal">$ cat game.pgn</span></span><span class="sheet-meta"><span class="only club">White · Black</span><span class="only heirloom">in ink</span><span class="only book">figurine notation</span><span class="only bit">Keys ◄ ►</span></span></div>
         <p id="opening" class="opening"></p>
         <div id="sheet-slot"></div>
       </div>
-      <div id="chess-actions" class="cz-actions"></div>
-      <div id="stats-slot"></div>
+      <div id="chess-actions" class="cz-actions" data-frame="actions"></div>
+      <div id="stats-slot" data-frame="your games"></div>
       <section id="score-panel" hidden><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
     </aside>
     <noscript><p>Chess needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>

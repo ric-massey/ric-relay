@@ -307,6 +307,12 @@ body[data-look="terminal"] .sheet-title span{display:none}
 body[data-look="terminal"] .sheet-title::after{content:'moves.log'}
 body[data-look="terminal"] .sheet .movelist li{border:0;padding:0}
 body[data-look="terminal"] .sheet .stats{border:0;border-top:1px dashed var(--edge);padding-left:0;padding-right:0}
+/* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
+body[data-look="terminal"] .sheet-head{display:none}
+body[data-look="terminal"] .ck-table{width:100%}
+body[data-look="terminal"] .sheet .stats{margin-top:12px!important;padding-top:10px!important;border-top:1px dashed #2c6b3a!important}
+/* Screen-reader labels in the scrolling toolbar stay inside it on a phone. */
+.ck-bar .game-actions{position:relative}
   </style>
 </head>
 <body data-game="checkers" data-skin="0" data-look="tournament">
@@ -317,14 +323,14 @@ body[data-look="terminal"] .sheet .stats{border:0;border-top:1px dashed var(--ed
     <div class="game-actions"><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Visual style"><option value="0" data-look="tournament" data-sides="Red,White">Tournament</option><option value="1" data-look="diner" data-sides="Black,Red">Diner</option><option value="2" data-look="heirloom" data-sides="Ebony,Boxwood">Heirloom</option><option value="3" data-look="newsprint" data-sides="Black,White">Newsprint</option><option value="4" data-look="park" data-sides="Red,Silver">Park table</option><option value="5" data-look="terminal" data-sides="o,x">Terminal</option></select></label><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
   </header>
   <main id="playroom" class="ck-room" aria-labelledby="game-title">
-    <section class="ck-table" aria-label="The board">
+    <section class="ck-table" aria-label="The board" data-frame="board">
       <div id="stage" class="stage"></div>
       <p id="status" class="ck-status" role="status" aria-live="polite"></p><span id="metric" hidden></span>
       <div id="tools" class="tools"></div>
       <p id="hint" class="hint"></p>
     </section>
     <aside class="ck-sheet" aria-label="Scoresheet and your record">
-      <div class="sheet">
+      <div class="sheet" data-frame="moves.log">
         <div class="sheet-head"><span class="sheet-title"><span>Score sheet</span></span><span class="sheet-meta"><span>American</span></span></div>
         <div id="sheet-slot"></div>
         <div id="stats-slot"></div>

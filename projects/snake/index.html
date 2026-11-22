@@ -246,6 +246,11 @@ body[data-look="phone"] .hi-card{--card:#b5cb93;--card-ink:#1d2716;--card-muted:
 body[data-look="led"] .hi-card{--card:#111;--card-ink:#f6e9dc;--card-muted:#d1bba6;--card-rule:#ffffff2e;background:linear-gradient(#ffd43b 0 5px,#ff9a1f 5px 10px,#c8320c 10px 15px,#111 15px);padding-top:28px}
 body[data-look="candy"] .hi-card{--card:#fff;--card-radius:18px;--card-tilt:rotate(-1.5deg);border:3px dashed #e5c9ff}
 body[data-look="calc"] .hi-card{--card:#fffef6;--card-radius:0;--card-tilt:none;font-family:'Lucida Console',Consolas,monospace;-webkit-mask:linear-gradient(#000,#000) 0 0/100% calc(100% - 8px) no-repeat,radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) 0 100%/16px 8px repeat-x;mask:linear-gradient(#000,#000) 0 0/100% calc(100% - 8px) no-repeat,radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) 0 100%/16px 8px repeat-x;padding-bottom:26px}
+/* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
+body[data-look="terminal"] .term-title{border-bottom:1px dashed var(--edge)}
+body[data-look="terminal"] .sn-title{text-transform:lowercase}body[data-look="terminal"] .sn-title::before{content:"$ ./";color:#4fae66}
+/* Screen-reader labels in the scrolling toolbar stay inside it on a phone. */
+.sn-bar .game-actions{position:relative}
   </style>
 </head>
 <body data-game="snake" data-skin="0" data-look="pocket">
@@ -256,7 +261,7 @@ body[data-look="calc"] .hi-card{--card:#fffef6;--card-radius:0;--card-tilt:none;
   </header>
   <main id="playroom" class="sn-room" aria-label="Snake">
     <div>
-      <div class="device">
+      <div class="device" data-frame="snake">
         <div class="device-top"><span class="brand"></span><span class="power"><i></i>Power</span></div>
         <div class="term-title" aria-hidden="true"><span>tty1 — snake</span><span>42×22</span></div>
         <div class="bezel">
@@ -278,7 +283,7 @@ body[data-look="calc"] .hi-card{--card:#fffef6;--card-radius:0;--card-tilt:none;
       <span id="metric" hidden></span><div id="tools" hidden></div>
       <p id="hint" class="device-hint"></p>
     </div>
-    <aside class="hi-card" aria-label="High scores">
+    <aside class="hi-card" aria-label="High scores" data-frame="high scores">
       <section id="score-panel"><div class="score-heading"><h2>High scores</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted score-kind"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
       <div id="stats-slot"></div>
     </aside>

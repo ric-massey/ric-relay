@@ -210,6 +210,9 @@ body[data-look="terminal"] .ms-field .mines .square.revealed:not(.bomb){color:va
 body[data-look="terminal"] .ms-field .mines .square.revealed.v0{color:#2f7a42}
 body[data-look="terminal"] .ms-titlebar::before{content:'┌─ '}
 body[data-look="terminal"] .ms-game .tools button::before{content:'['}body[data-look="terminal"] .ms-game .tools button::after{content:']'}
+/* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
+body[data-look="terminal"] .ms-titlebar{display:none}
+body[data-look="terminal"] .ms-panel{border-bottom:1px dashed #2c6b3a;margin-bottom:8px}
   </style>
 </head>
 <body data-game="minesweeper" data-skin="0" data-look="retro">
@@ -219,7 +222,7 @@ body[data-look="terminal"] .ms-game .tools button::before{content:'['}body[data-
     <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Field</span><select id="mode"></select></label><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Style"><option value="0" data-look="retro">Retro desktop</option><option value="1" data-look="sonar">Sonar</option><option value="2" data-look="graph">Graph paper</option><option value="3" data-look="meadow">Meadow</option><option value="4" data-look="blueprint">Blueprint</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
   </header>
   <main id="playroom" class="ms-desk" aria-labelledby="game-title">
-    <section class="ms-window ms-game" aria-label="The field">
+    <section class="ms-window ms-game" aria-label="The field" data-frame="minesweeper">
       <div class="ms-titlebar"><span>Minesweeper</span><span class="ms-wsub" id="field-name"></span><span class="ms-dots" aria-hidden="true"><i></i><i></i></span></div>
       <div class="ms-panel"><div class="ms-counter"><span class="ms-label">Mines</span><span id="mine-count">10</span></div><div id="face-slot"></div><div class="ms-counter"><span class="ms-label">Time</span><span id="metric" aria-live="off">0:00</span></div></div>
       <div class="ms-field"><div id="stage" class="stage"></div></div>
@@ -227,7 +230,7 @@ body[data-look="terminal"] .ms-game .tools button::before{content:'['}body[data-
       <div id="tools" class="tools"></div>
       <p id="hint" class="hint"></p>
     </section>
-    <aside class="ms-window ms-records" aria-label="Best times">
+    <aside class="ms-window ms-records" aria-label="Best times" data-frame="best times">
       <div class="ms-titlebar"><span>Best times</span><span class="ms-wsub"></span><span class="ms-dots" aria-hidden="true"><i></i></span></div>
       <div class="ms-body"><div id="stats-slot"></div>
       <section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section></div>

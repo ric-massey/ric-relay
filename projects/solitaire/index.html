@@ -226,6 +226,9 @@ body[data-look="terminal"] .waste.fan>.card{left:calc(var(--f)*34%)}
 body[data-look="terminal"] .waste{aspect-ratio:auto;height:1.3em}
 body[data-look="terminal"] .pile .card-space:not(:only-child){visibility:hidden}
 body[data-look="terminal"] .st-bar .tools button::before{content:'['}body[data-look="terminal"] .st-bar .tools button::after{content:']'}
+/* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
+body[data-look="terminal"] .st-table{margin:8px auto 0;width:calc(100% - 16px)}
+body[data-look="terminal"] .st-edge{margin:8px auto 8px;width:calc(100% - 16px);background:#040904!important}
   </style>
 </head>
 <body data-game="solitaire" data-skin="0" data-look="cardroom">
@@ -234,12 +237,12 @@ body[data-look="terminal"] .st-bar .tools button::before{content:'['}body[data-l
     <div class="st-name"><h1 class="st-title" id="game-title">Solitaire</h1><p id="game-subtitle" hidden>Klondike</p></div>
     <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Game</span><select id="mode"></select></label><div id="tools" class="tools"></div><label class="theme-picker push"><span class="sr-only">Deck</span><select id="style-switch" aria-label="Deck"><option value="0" data-look="cardroom">Card room</option><option value="1" data-look="parlour">Parlour</option><option value="2" data-look="kitchen">Kitchen table</option><option value="3" data-look="large">Large print</option><option value="4" data-look="pixel">Pixel</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="record-open" type="button">Your games</button><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div>
   </header>
-  <main id="playroom" class="st-table" aria-labelledby="game-title">
+  <main id="playroom" class="st-table" aria-labelledby="game-title" data-frame="table">
     <div id="stage" class="stage"></div>
     <noscript><p>Solitaire needs JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
   </main>
-  <footer class="st-edge"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span><p id="hint" class="hint"></p></footer>
-  <dialog id="record-dialog" aria-labelledby="record-title"><h2 id="record-title">Your games</h2><div id="stats-slot"></div>
+  <footer class="st-edge" data-frame="status"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span><p id="hint" class="hint"></p></footer>
+  <dialog id="record-dialog" aria-labelledby="record-title"><h2 id="record-title">Your games</h2><div id="stats-slot" data-frame="your games"></div>
     <section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
     <div class="dialog-actions"><button type="button" id="record-close" class="solid">Back to the table</button></div></dialog>
   <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>

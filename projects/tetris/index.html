@@ -172,6 +172,11 @@ body[data-look="terminal"]{--room:#040904;--ink:#8dffa6;--muted:#4fae66;--accent
   --num-ink:#d8ffe0;--deck:none;--overlay:#040904e6;--overlay-ink:#8dffa6;--sheet:#061206;--attract:#040904;--attract-border:1px dashed #2c6b3a;--attract-radius:0;--pad:#040904;--pad-ink:#8dffa6;--pad-border:1px dashed #2c6b3a;--pad-radius:0}
 body[data-look="terminal"] .tt-name::before,body[data-look="terminal"] .marquee strong::before{content:'$ ./';color:#4fae66}
 body[data-look="terminal"] .tt-name,body[data-look="terminal"] .marquee strong{text-transform:lowercase}
+/* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
+body[data-look="terminal"] .marquee{min-height:0;margin-bottom:6px;padding:0}
+body[data-look="terminal"] .screen{padding:4px}
+body[data-look="terminal"] .deck{border-top:1px dashed #2c6b3a;border-radius:0}
+body[data-look="terminal"] .tt-name{font-size:0!important}body[data-look="terminal"] .tt-name::before{font-size:17px}body[data-look="terminal"] .tt-name::after{content:"tetris";font:400 17px var(--term-font);text-transform:none}
   </style>
 </head>
 <body data-game="tetris" data-skin="0" data-look="cabinet">
@@ -181,12 +186,12 @@ body[data-look="terminal"] .tt-name,body[data-look="terminal"] .marquee strong{t
     <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Game</span><select id="mode"></select></label><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Style"><option value="0" data-look="cabinet">Arcade cabinet</option><option value="1" data-look="toy">Toy blocks</option><option value="2" data-look="glass">Glass</option><option value="3" data-look="vector">Vector</option><option value="4" data-look="paper">Paper cut</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="controls-open" type="button">Controls</button><button id="soundless" type="button">Rules</button><button id="pause" hidden>Pause</button><button id="new-game" class="solid">New game</button></div>
   </header>
   <main id="playroom" class="tt-room" aria-labelledby="game-title">
-    <section class="cabinet" aria-label="The game">
+    <section class="cabinet" aria-label="The game" data-frame="tetris">
       <div class="marquee"><strong id="game-title">Tetris</strong><small id="mode-name"></small><p id="game-subtitle" hidden></p></div>
       <div class="screen"><div id="stage" class="stage"></div></div>
       <div class="deck"><p id="status" role="status" aria-live="polite"></p><span id="metric" hidden></span><p id="hint" class="hint"></p><div id="tools" class="tools" hidden></div></div>
     </section>
-    <aside class="attract" aria-label="High scores">
+    <aside class="attract" aria-label="High scores" data-frame="high scores">
       <section id="score-panel"><div class="score-heading"><h2>High scores</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section>
       <div id="stats-slot"></div>
     </aside>

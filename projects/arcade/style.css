@@ -315,3 +315,29 @@ body[data-mode="table"] .plate.upside{transform:rotate(180deg)}
 body[data-mode="table"] .checkerboard .side-b .crown{transform:rotate(180deg)}
 .tools .resign.armed{background:var(--warn,#b3261e);border-color:var(--warn,#b3261e);color:#fff}
 .plate:has(.offer){flex-wrap:wrap}
+
+/* Terminal, the whole page (Ric, 2026-11-21: "the whole page should be like that"
+   … "Go through all the other pages"). Any panel marked data-frame is framed in
+   ASCII: a top rule with its name, a bottom rule, | walls; app.js draws the rules
+   to fit. Inside, a record reads as name ..... value lines and the scoreboard as
+   plain lines. */
+body[data-look="terminal"]{--frame-font:400 13px/1.35 var(--term-font)}
+body[data-look="terminal"] [data-frame]{position:relative;padding:calc(1.35em + 6px) calc(1ch + 10px) calc(1.35em + 6px)!important;border:0!important;box-shadow:none!important;border-radius:0!important;background:linear-gradient(#2c6b3a,#2c6b3a) .5ch 1.35em/1px calc(100% - 2.7em) no-repeat,linear-gradient(#2c6b3a,#2c6b3a) calc(100% - .5ch) 1.35em/1px calc(100% - 2.7em) no-repeat!important;font-family:var(--term-font);box-sizing:border-box;max-width:100%;transform:none!important;backdrop-filter:none!important}
+body[data-look="terminal"] [data-frame]::before,body[data-look="terminal"] [data-frame]::after{position:absolute;left:0;right:0;display:block;white-space:pre;overflow:hidden;font:var(--frame-font);color:#4fae66;pointer-events:none;text-shadow:0 0 5px #8dffa633;inset:auto 0 auto 0;width:auto;height:auto;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;transform:none!important;animation:none!important;opacity:1!important;margin:0!important;z-index:1}
+body[data-look="terminal"] [data-frame]::before{content:var(--frame-top,'')!important;top:0}
+body[data-look="terminal"] [data-frame]::after{content:var(--frame-bottom,'')!important;bottom:0}
+body[data-look="terminal"] [data-frame] :is(.stats,.score-heading,#score-panel){border:0!important;padding:0!important;margin:0!important;background:none!important;box-shadow:none!important}
+body[data-look="terminal"] [data-frame] .stats h2{display:none}
+body[data-look="terminal"] [data-frame] .stats .muted{font:400 12px var(--term-font);color:var(--muted,#4fae66);margin:0 0 6px}
+body[data-look="terminal"] [data-frame] .stats .muted::before,body[data-look="terminal"] [data-frame] #score-kind::before{content:'# '}
+body[data-look="terminal"] [data-frame] .stat-grid{display:block}
+body[data-look="terminal"] [data-frame] .stat-grid div{display:flex;flex-direction:row;gap:0;font:400 13px/1.6 var(--term-font)}
+body[data-look="terminal"] [data-frame] .stat-grid dt{order:0;font:inherit;color:#4fae66;text-transform:lowercase;flex:none;letter-spacing:0}
+body[data-look="terminal"] [data-frame] .stat-grid div::after{content:'';order:1;flex:1;margin:0 1ch;border-bottom:1px dotted #2c6b3a;transform:translateY(-.4em)}
+body[data-look="terminal"] [data-frame] .stat-grid dd{order:2;font:700 13px/1.6 var(--term-font)!important;color:#d8ffe0}
+body[data-look="terminal"] [data-frame] .score-heading{display:flex;justify-content:flex-end}
+body[data-look="terminal"] [data-frame] .score-heading h2{display:none}
+body[data-look="terminal"] [data-frame] :is(.scores,.scores li,.score-source,#score-panel p,.dist-row){font-family:var(--term-font)!important;font-size:13px;text-align:left}
+body[data-look="terminal"] [data-frame] .dist-bar{background:#1f6e37!important;color:#f4fff6!important;border-radius:0}
+body[data-look="terminal"] [data-frame] .dist-bar.now{background:#8dffa6!important;color:#021004!important}
+

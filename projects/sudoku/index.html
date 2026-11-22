@@ -200,13 +200,6 @@ body[data-look="terminal"] .sd-tools .tools button.on{background:#8dffa6!importa
 body[data-look="terminal"] .sd-tools .tools button:not(.on):hover,body[data-look="terminal"] .sd-tools .tools button:not(.on):focus-visible{background:#0f2a16!important;color:#d8ffe0!important}
 @media (hover:none){body[data-look="terminal"] .sd-tools .tools button:not(.on):hover{background:transparent!important;color:var(--ink)!important}}
 body[data-look="terminal"] .sd-tray .numpad button.held{background:#8dffa6;color:#021004;font-weight:700}
-/* The whole page as text: ASCII frames on every panel, drawn to fit by the script at
-   the end of the page; | walls are a dashed rule so they line up with the text. */
-body[data-look="terminal"]{--frame-font:400 13px/1.35 var(--term-font)}
-body[data-look="terminal"] [data-frame]{position:relative;padding:calc(1.35em + 6px) calc(1ch + 10px) calc(1.35em + 6px)!important;border:0!important;box-shadow:none!important;border-radius:0!important;background:linear-gradient(#2c6b3a,#2c6b3a) .5ch 1.35em/1px calc(100% - 2.7em) no-repeat,linear-gradient(#2c6b3a,#2c6b3a) calc(100% - .5ch) 1.35em/1px calc(100% - 2.7em) no-repeat!important;font-family:var(--term-font)}
-body[data-look="terminal"] [data-frame]::before,body[data-look="terminal"] [data-frame]::after{position:absolute;left:0;right:0;display:block;white-space:pre;overflow:hidden;font:var(--frame-font);color:#4fae66;pointer-events:none;text-shadow:0 0 5px #8dffa633}
-body[data-look="terminal"] [data-frame]::before{content:var(--frame-top,'');top:0}
-body[data-look="terminal"] [data-frame]::after{content:var(--frame-bottom,'');bottom:0;top:auto;width:auto;height:auto;background:none;border-radius:0}
 body[data-look="terminal"] .sd-page{width:min(100% - 12px,920px)}
 body[data-look="terminal"] .sd-page::before{z-index:1}
 /* the header: a command and two comment lines */
@@ -230,19 +223,6 @@ body[data-look="terminal"] .sd-tray .numpad button small::before{content:'x'}
 body[data-look="terminal"] .sd-tray .numpad button.held span::before,body[data-look="terminal"] .sd-tray .numpad button.held span::after{color:#021004}
 /* your games and the scoreboard: name ..... value */
 body[data-look="terminal"] .sd-records{gap:14px}
-body[data-look="terminal"] .sd-records .stats h2,body[data-look="terminal"] .sd-records .score-heading h2{display:none}
-body[data-look="terminal"] .sd-records .stats .muted::before{content:'# '}
-body[data-look="terminal"] .sd-records .stat-grid{display:block}
-body[data-look="terminal"] .sd-records .stat-grid div{display:flex;flex-direction:row;gap:0;font:400 13px/1.6 var(--term-font)}
-body[data-look="terminal"] .sd-records .stat-grid dt{order:0;font:inherit;color:#4fae66;text-transform:lowercase;flex:none}
-body[data-look="terminal"] .sd-records .stat-grid div::after{content:'';order:1;flex:1;margin:0 1ch;border-bottom:1px dotted #2c6b3a;transform:translateY(-.4em)}
-body[data-look="terminal"] .sd-records .stat-grid dd{order:2;font:700 13px/1.6 var(--term-font);color:#d8ffe0}
-body[data-look="terminal"] .sd-records #score-panel .muted,body[data-look="terminal"] .sd-records .score-source{font:400 12px var(--term-font);color:#4fae66;text-align:left}
-body[data-look="terminal"] .sd-records #score-kind::before{content:'# '}
-body[data-look="terminal"] .sd-records .scores{font:400 13px/1.6 var(--term-font)}
-body[data-look="terminal"] .sd-records .score-heading{justify-content:flex-end}
-body[data-look="terminal"] .sd-records :is(.stats,.score-heading){border:0!important;padding:0!important;margin:0!important;background:none!important}
-body[data-look="terminal"] .sd-records :is(.scores,.scores li,.score-source,p){font-family:var(--term-font)!important;font-size:13px}
 /* the footer: the status as a prompt */
 body[data-look="terminal"] .sd-foot #status{font:400 13px var(--term-font);text-transform:none;letter-spacing:0;color:#8dffa6}
 body[data-look="terminal"] .sd-foot .hint::before{content:'# ';color:#2f7a42}
@@ -263,6 +243,7 @@ body[data-look="terminal"] .sudoku .square.empty:not(:has(.notes-grid))::before{
 body[data-look="terminal"] .sd-head h1::before{content:'$ ./';color:#4fae66}
 body[data-look="terminal"] .sd-head h1{text-transform:lowercase}
 body[data-look="terminal"] .sd-tools .tools button::before{content:'['}body[data-look="terminal"] .sd-tools .tools button::after{content:']'}
+body[data-look="terminal"] .sd-site{font-size:0;letter-spacing:0;opacity:1}body[data-look="terminal"] .sd-site::after{content:"$ ./sudoku";font:400 17px var(--term-font);color:#8dffa6;text-transform:none}
   </style>
 </head>
 <body data-game="sudoku" data-skin="0" data-look="book">
@@ -294,29 +275,6 @@ body[data-look="terminal"] .sd-tools .tools button::before{content:'['}body[data
     <button id="close-help" class="solid">Got it</button></dialog>
   <script src="../arcade/engine.js"></script>
   <script src="../arcade/app.js"></script>
-  <script>
-    /* Terminal: every panel framed in ASCII (Ric, 2026-11-21: "Not just the grid the
-       whole page should be like that"). Each [data-frame] gets a top rule with its
-       name and a bottom rule, as many characters long as the panel is wide; | walls
-       run down the sides. Redrawn when the window or the style changes. */
-    (function(){
-      const probe=document.createElement('span');probe.textContent='0'.repeat(50);probe.style.cssText='position:fixed;left:-9999px;top:0;visibility:hidden;white-space:pre';document.body.append(probe);
-      function draw(){
-        const on=document.body.dataset.look==='terminal';
-        for(const el of document.querySelectorAll('[data-frame]')){
-          if(!on){el.style.removeProperty('--frame-top');el.style.removeProperty('--frame-bottom');continue;}
-          probe.style.font=getComputedStyle(el,'::before').font;const ch=probe.getBoundingClientRect().width/50||8;
-          const n=Math.max(8,Math.floor(el.getBoundingClientRect().width/ch)),name=' '+el.dataset.frame+' ';
-          el.style.setProperty('--frame-top',JSON.stringify('+--'+name+'-'.repeat(Math.max(1,n-4-name.length))+'+'));
-          el.style.setProperty('--frame-bottom',JSON.stringify('+'+'-'.repeat(n-2)+'+'));
-        }
-      }
-      let t=0;const soon=()=>{clearTimeout(t);t=setTimeout(draw,30);};
-      addEventListener('resize',soon);document.getElementById('style-switch').addEventListener('change',soon);
-      new MutationObserver(soon).observe(document.getElementById('playroom'),{childList:true,subtree:true});
-      soon();
-    })();
-  </script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
 </body>
 </html>

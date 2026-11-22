@@ -171,6 +171,9 @@ body[data-look="terminal"] .letter.present::before{content:'(';position:absolute
 body[data-look="terminal"] .letter.correct::before{content:'[';position:absolute;left:8%}body[data-look="terminal"] .letter.correct::after{content:']';position:absolute;right:8%}
 body[data-look="terminal"] .letter.present,body[data-look="terminal"] .letter.absent{text-transform:lowercase!important}
 body[data-look="terminal"] .keyrow button.present{color:#ffc56b!important;border-color:#ffc56b!important}
+/* Terminal, the whole page (Ric, 2026-11-21): panels framed in ASCII via data-frame (style.css, app.js). */
+body[data-look="terminal"] .wd-col{margin-top:8px;width:min(100% - 12px,460px)}
+body[data-look="terminal"] .wd-col .keyboard{width:100%;margin-left:0;margin-right:0}
   </style>
 </head>
 <body data-game="wordle" data-skin="0" data-look="flip">
@@ -179,7 +182,7 @@ body[data-look="terminal"] .keyrow button.present{color:#ffc56b!important;border
     <h1 class="wd-name" id="game-title">Wordle</h1><p id="game-subtitle" hidden></p>
     <div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Which word</span><select id="mode"></select></label><label class="theme-picker"><span class="sr-only">Style</span><select id="style-switch" aria-label="Style"><option value="0" data-look="flip">Flip board</option><option value="1" data-look="letterpress">Letterpress</option><option value="2" data-look="typewriter">Typewriter</option><option value="3" data-look="neon">Neon</option><option value="4" data-look="crossword">Crossword</option><option value="5" data-look="terminal">Terminal</option></select></label><button id="stats-open" type="button">Stats</button><button id="soundless" type="button">Rules</button><button id="new-game" class="solid">New word</button><button id="pause" hidden>Pause</button></div>
   </header>
-  <main id="playroom" class="wd-col" aria-labelledby="game-title">
+  <main id="playroom" class="wd-col" aria-labelledby="game-title" data-frame="wordle">
     <p class="wd-day" id="word-day"></p>
     <p id="status" role="status" aria-live="polite"></p><span id="metric" hidden></span>
     <div id="stage" class="stage"></div>

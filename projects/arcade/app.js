@@ -1645,11 +1645,31 @@
     // Board games whose pieces are drawn differently per style redraw the same position.
     else if(game&&s&&['checkers','chess','solitaire','minesweeper','wordle','tictactoe'].includes(game.id)){render();renderStats();}
   }
+  /* Terminal frames (Ric, 2026-11-21): every [data-frame] panel gets an ASCII
+     top rule with its name and a bottom rule, as many characters long as the
+     panel is wide (see style.css). Redrawn when the window, the style or the
+     game's layout changes. */
+  const frameProbe=document.createElement('span');frameProbe.textContent='0'.repeat(50);frameProbe.setAttribute('aria-hidden','true');frameProbe.style.cssText='position:fixed;left:-9999px;top:0;visibility:hidden;white-space:pre';document.body.append(frameProbe);
+  function drawFrames(){
+    const on=document.body.dataset.look==='terminal';
+    for(const f of document.querySelectorAll('[data-frame]')){
+      if(!on){f.style.removeProperty('--frame-top');f.style.removeProperty('--frame-bottom');continue;}
+      if(!f.offsetParent&&getComputedStyle(f).position!=='fixed')continue;
+      frameProbe.style.font=getComputedStyle(f,'::before').font;const ch=frameProbe.getBoundingClientRect().width/50||8;
+      const n=Math.max(8,Math.floor(f.getBoundingClientRect().width/ch)),name=' '+f.dataset.frame+' ';
+      f.style.setProperty('--frame-top',JSON.stringify('+--'+name+'-'.repeat(Math.max(1,n-4-name.length))+'+'));
+      f.style.setProperty('--frame-bottom',JSON.stringify('+'+'-'.repeat(n-2)+'+'));
+    }
+  }
+  let frameTimer=0;const framesSoon=()=>{clearTimeout(frameTimer);frameTimer=setTimeout(drawFrames,40);};
+  addEventListener('resize',framesSoon);
+  if(document.querySelector('[data-frame]')&&$('playroom'))new MutationObserver(framesSoon).observe($('playroom'),{childList:true,subtree:true});
   const savedStyle=storage.get('style:'+document.body.dataset.game,'0');
   $('style-switch').value=[...$('style-switch').options].some(o=>o.value===savedStyle)?savedStyle:'0';
-  $('style-switch').onchange=applyStyle;
+  $('style-switch').onchange=()=>{applyStyle();framesSoon();};
   if(document.body.dataset.game==='chess')pieceSprites();
   applyStyle();
   route();
+  framesSoon();
   if(document.body.dataset.game==='tetris')controlsSheet();
 })();
