@@ -14,6 +14,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
+const LATER = { finds: 0 };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 2193699208;   // print() of 15g's engine, seed 2, 60 days
 
 // 1. Off: the world before.
@@ -23,7 +24,7 @@ const FINGERPRINT = 2193699208;   // print() of 15g's engine, seed 2, 60 days
   assert.equal(print(w), FINGERPRINT, "off is the world before 15b");
 }
 
-const w = People.create({ seed: 4, people: 600, unequal: 0.9, rule: "chief", factions: 2, war: false, map: 20 });
+const w = People.create({ ...LATER, seed: 4, people: 600, unequal: 0.9, rule: "chief", factions: 2, war: false, map: 20 });
 w.step(24 * 2);
 const [fa, fb] = w.factions;
 

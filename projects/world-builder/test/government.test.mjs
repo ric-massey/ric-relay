@@ -17,6 +17,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
+const LATER = { faith: false, marriage: "liking", finds: 0 };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 140974437;   // print() of the engine after 15.5, seed 2, 60 days
 
 // 1. Off: the world before.
@@ -29,7 +30,7 @@ const FINGERPRINT = 140974437;   // print() of the engine after 15.5, seed 2, 60
 // 2. The same chief, two councils.
 {
   const run = boldness => {
-    const w = People.create({ seed: 3, people: 300, rule: "chief", war: false, factions: 2 });
+    const w = People.create({ ...LATER, seed: 3, people: 300, rule: "chief", war: false, factions: 2 });
     w.step(24 * 2);
     const f = w.factions[0], g = f.gov;
     g.say = "elders"; g.councilAt = w.tick;   // held for the test: the council stays who it is
@@ -46,12 +47,13 @@ const FINGERPRINT = 140974437;   // print() of the engine after 15.5, seed 2, 60
 
 // 3. Officials from a need.
 {
-  const small = People.create({ seed: 5, people: 200, factions: 1, villages: 2, war: false });
+  const small = People.create({ ...LATER, seed: 5, people: 200, factions: 1, villages: 2, war: false });
   small.step(24 * 3);
   const gs = small.govOf(small.factions[0]);
-  assert.equal(gs.heads, 0, "two villages need no headman");
+  const nv = small.villages.filter(v => v.alive && v.f === 0).length;
+  assert.equal(gs.heads, Math.max(0, nv - 3), "no headman for the three villages the ruler sees to (" + nv + " villages)");
   assert.equal(gs.collector, null, "200 people need no collector");
-  const big = People.create({ seed: 5, people: 900, factions: 1, villages: 6, war: false, map: 25 });
+  const big = People.create({ ...LATER, seed: 5, people: 900, factions: 1, villages: 6, war: false, map: 25 });
   big.step(24 * 3);
   const gb = big.govOf(big.factions[0]), alive = big.villages.filter(v => v.alive && v.f === 0).length;
   assert.equal(gb.heads, Math.max(0, alive - 3), "a headman for each village past the three the ruler sees to (" + gb.heads + " of " + alive + ")");
@@ -61,7 +63,7 @@ const FINGERPRINT = 140974437;   // print() of the engine after 15.5, seed 2, 60
 
 // 4. A law outlasts its leader; a theft heard is paid back.
 {
-  const w = People.create({ seed: 4, people: 200, factions: 1, rule: "chief", war: false, bandits: false, riots: false });
+  const w = People.create({ ...LATER, seed: 4, people: 200, factions: 1, rule: "chief", war: false, bandits: false, riots: false });
   w.step(24 * 2);
   const f = w.factions[0], g = f.gov;
   g.laws.theft = "repay"; g.heardShare = 1;
@@ -83,7 +85,7 @@ const FINGERPRINT = 140974437;   // print() of the engine after 15.5, seed 2, 60
 
 // 5. Unfree.
 {
-  const w = People.create({ seed: 4, people: 200, factions: 1, rule: "chief", war: false });
+  const w = People.create({ ...LATER, seed: 4, people: 200, factions: 1, rule: "chief", war: false });
   w.step(24 * 2);
   const f = w.factions[0], g = f.gov, lead = w.byId.get(f.leader);
   g.laws.unfree = "allowed";
@@ -101,7 +103,7 @@ const FINGERPRINT = 140974437;   // print() of the engine after 15.5, seed 2, 60
 // 6. Kept as a subject, or taken; and the way out.
 {
   const setUp = (patient) => {
-    const w = People.create({ seed: 6, people: 400, factions: 2, villages: 1, war: false, map: 25, rule: "chief" });
+    const w = People.create({ ...LATER, seed: 6, people: 400, factions: 2, villages: 1, war: false, map: 25, rule: "chief" });
     w.step(24 * 2);
     const [a, b] = w.factions, lead = w.byId.get(b.leader);
     for (const k of ["patient", "greed"]) lead[k] = patient ? 1 : 0;
