@@ -387,6 +387,9 @@
       { key: "neighbours", label: "How the factions start", type: "select", def: "strangers",   // TODO 13
         options: [["friends", "Old friends"], ["strangers", "Strangers"], ["enemies", "Old enemies"]],
         help: "Old friends start allied, and trading free of tax if there is money. Old enemies start with a feud every grown-up knows and tells their children. Either fades over a generation unless something keeps it alive." },
+      { key: "armies", label: "Armies", type: "select", def: "march",   // TODO 15h, 2026-11-22
+        options: [["march", "Gathered, fed and led"], ["trickle", "Each soldier marches alone (as before)"]],
+        help: "An army gathers at its own village nearest the enemy and marches when enough have come in; it goes only as far as the bread it carries takes it there and back, further with carts; its leader picks the enemy place worth most against what defends it; enemy soldiers across the road it is fed by make it fall back. A ruler with coins and too few soldiers hires the poor and the bandits round about, who go back to robbing when they are not paid." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -784,7 +787,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1393,6 +1396,7 @@
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9,
                   mean: new Float64Array(TRAITS.length),   // TODO 15a: its grown-ups' average of each trait, at the last census
+                  camp: {}, hired: null,   // TODO 15h: each war's army (where it gathers, where it strikes, whether it marches), and who fights for pay
                   match: null,   // TODO 15b: its marriage customs
                   faith: null,   // TODO 15g: the faith its ruler holds, when enough hold it
                   gov: null,   // TODO 15c: its council, officials and laws (see "government")
@@ -1681,6 +1685,7 @@
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   unfree: undefined,   // TODO 15c: the id of whoever holds them, while they are unfree
                   keptBy: undefined,   // TODO 15b: the child who keeps them
+                  hired: undefined, mustered: undefined,   // TODO 15h: when they were hired to fight for pay, and when they last reported in to an army gathering
                   know: undefined,   // TODO 15e: what they know how to do, a bit for each of TECH
                   faith: undefined, zeal: undefined,   // TODO 15g: which faith they hold, and how hard
                   vig: 1, harm: 0, lame: 0,   // TODO 15.5e: strength left (wounds and age), a wound still healing, and what of it never will
@@ -2220,6 +2225,8 @@
     const TI_K = Object.fromEntries(TECH.map((x, i) => [x.key, i]));
     for (const x of TECH) x.mask = (x.needs || []).reduce((m, k) => m | (1 << TI_K[k]), 0);
     const BASE_KNOW = ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"].reduce((m, k) => m | (1 << TI_K[k]), 0);   // the farming village the engine was
+    const ARMIES = S.armies !== "trickle";   // TODO 15h: armies that gather, carry and choose (see "armies")
+    const MARCH_DAY = 80, HIRE_WAGE = WAGE * 2;   // squares a day's march (20 km; Engels), and a hired man's wage
     const WORKS = S.works !== "none";   // TODO 15f: livings a place needs and can pay for, and workplaces (see "work and workplaces")
     /* A mill about as long to build as a bridge; a power works twice that; the works between. A power
        works burns two loads of wood a day. Guesses, said as such. */
@@ -3764,7 +3771,7 @@
          well, dig one. */
       if (THIRST && p.dwelling >= 0) {
         const h = homes[p.dwelling], src = sourceOf(h);
-        if (src) weigh("water", n.water * 1.4 - away(dist(p, src)) * 0.6 - dark * 0.3, () => { go(p, src.x, src.y, "water"); p.wait = 0; });
+        if (src && !(ARMIES && p.job === "soldier" && !(p.dry > 0) && dist(p, v) > 3)) weigh("water", n.water * 1.4 - away(dist(p, src)) * 0.6 - dark * 0.3, () => { go(p, src.x, src.y, "water"); p.wait = 0; });   // a soldier away leaves the house water-fetching to the household (TODO 15h)
         if (!v.well && (!src || src.d > FAR) && knows(v.f, "wells")) {   // knows: TODO 15e
           const spot = v.wellAt || (v.wellAt = { x: v.x + 0.15, y: v.y + 0.15 });
           weigh("well", 0.35 + n.water * 0.5 - away(dist(p, spot)) - n.food * 0.4 - dark * 0.6, () => { go(p, spot.x, spot.y, "well"); p.wait = 0; });
@@ -3978,7 +3985,7 @@
 
       /* Standing guard, and going where the fighting is. */
       if (p.job === "soldier")
-        weigh("patrol", 0.4 + n.safety * 0.9 + p.loyal * 0.35 + (p.temper - 0.5) * 0.3 + (atWarAnywhere(f) ? 0.5 : 0)
+        weigh("patrol", 0.4 + n.safety * 0.9 + p.loyal * 0.35 + (p.temper - 0.5) * 0.3 + (atWarAnywhere(f) ? 0.5 : 0) + (ARMIES && gathering(f) ? 0.5 : 0)
                          - n.rest * 0.4 - n.food * 0.5, () => { p.until = t + SPELL.guard; soldier(p); });
 
       /* Moving house. Until 2026-11-14 a person changed village only by
@@ -4737,7 +4744,15 @@
       /* A band out raiding, in or out of the season (the Border reivers rode in the long nights of
          early winter); the army marches only in the fighting season (TODO 14e). */
       const rd = enemy >= 0 ? f.raid[enemy] : null, raider = !!rd && rd.v >= 0 && t < rd.until && p.id % 5 === 2;
-      if (enemy >= 0 && !(home.heldTo > t) && (raider || (p.id % 3 !== 0 && fighting()))) {   // a garrison stays (TODO 14c)
+      if (enemy >= 0 && !(home.heldTo > t) && (raider || (p.id % 3 !== 0 && (fighting() || (ARMIES && f.camp[enemy] && f.camp[enemy].v >= 0))))) {   // a garrison stays (TODO 14c)
+        /* Gathering first (TODO 15h): until the army marches, to the gathering place, drawing bread there. */
+        const camp = ARMIES && !raider ? f.camp[enemy] : null;
+        if (camp && (!camp.ready || !fighting()) && camp.v >= 0 && villages[camp.v].alive && villages[camp.v].f === p.f) {   // and out of the season they wait there
+          const m = villages[camp.v];
+          if (dist(p, m) < 3) { p.mustered = t; provision(p, m); outfit(p, m); const a = R() * 6.2832; go(p, m.x + Math.cos(a) * 1.5, m.y + Math.sin(a) * 1.5, "patrol"); p.wait = TK(30); }
+          else { go(p, m.x + (R() - 0.5), m.y + (R() - 0.5), "patrol"); p.wait = 0; }
+          return;
+        }
         const goal = villages[raider ? rd.v : f.target[enemy]];
         if (goal && goal.alive && goal.f === enemy) {
           /* Before marching: rations drawn at a village of their own, and a
@@ -7862,6 +7877,139 @@
       if (kind === "power") v.power = false;
       return true;
     }
+    /* ── armies: what they carry, how far they go, and strategy (TODO 15h, 2026-11-22) ──
+       Ric, 2026-11-20: "we need to cover what it is carrying with it so it knows how far they can
+       go. Armies will need more work too because rn they just run up one at a time instead of using
+       war strategies." An army now:
+       - gathers first, at the village of its own nearest where it means to strike, and marches when
+         enough have come in — more of them for a patient leader, fewer for a hot-tempered one, or
+         after a fortnight's wait. Lanchester: men arriving one by one are beaten one by one;
+       - goes only as far as what it carries lets it there and back: ten days' bread a soldier, half
+         as much again where the people have carts (Engels, *Alexander the Great and the Logistics of
+         the Macedonian Army*, 1978: pack animals and carts, and what they eat, decide the reach), at
+         about 20 km a day;
+       - chooses where to strike from a coarse map of each side's soldiers, kept once a day (an
+         influence map: Game Developer, "The core mechanics of influence mapping"; Miles and Louis,
+         2006): the enemy place within reach worth most against what stands near it, the bold
+         weighing what it is worth, the patient what defends it;
+       - is fed along a line from the gathering place, and when enemy soldiers stand across that line
+         it withdraws to the gathering place and waits — never scripted, only where they stand;
+       - and may be hired: a ruler at war with coins to spare and too few under arms takes on the poor
+         and the bandits of the land round about for a wage, twice a soldier's; unpaid for a week, or
+         let go at the peace, a hired man goes back to robbing (the free companies; Thomson,
+         *Mercenaries, Pirates, and Sovereigns*, 1994). README, "Armies". */
+    const MAP_CELL = 8;   // squares, 2 km a side
+    let warCells = null, warCols = 0;
+    function warMap() {
+      warCols = Math.ceil(cols / MAP_CELL);
+      const n = warCols * Math.ceil(rows / MAP_CELL);
+      warCells = new Map();
+      for (const p of people) {
+        if (p.hp <= 0 || p.job !== "soldier") continue;
+        let g = warCells.get(p.f); if (!g) warCells.set(p.f, g = new Float32Array(n));
+        g[Math.floor(p.y / MAP_CELL) * warCols + Math.floor(p.x / MAP_CELL)]++;
+      }
+    }
+    /* A side's strength felt at a place: its soldiers in the cells round about, fading with distance. */
+    function felt(fid, x, y) {
+      const g = warCells && warCells.get(fid); if (!g) return 0;
+      const cx = Math.floor(x / MAP_CELL), cy = Math.floor(y / MAP_CELL), rowsN = g.length / warCols;
+      let s = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const X = cx + dx, Y = cy + dy;
+        if (X < 0 || Y < 0 || X >= warCols || Y >= rowsN) continue;
+        s += g[Y * warCols + X] / (1 + Math.hypot(dx, dy));
+      }
+      return s;
+    }
+    const reachOf = f => CAMPAIGN_DAYS * (KNOW && knows(f.id, "carts") ? 1.5 : 1) / 2 * MARCH_DAY;
+    function campaign(f, o, lead) {
+      const c = f.camp[o.id] || (f.camp[o.id] = { v: -1, goal: -1, ready: false, since: t, cut: false, out: 0 });
+      const reach = reachOf(f), bold = ruling(lead, "bold", f), patient = ruling(lead, "patient", f);
+      /* Where to strike: of their places within reach of one of ours, the one worth most against what stands near it. */
+      let best = null, bs = 0, from = null;
+      for (const v of villages) {
+        if (!v.alive || v.f !== o.id) continue;
+        let near = null, d = 1e9;
+        for (const u of villages) if (u.alive && u.f === f.id) { const dd = Math.hypot(u.x - v.x, u.y - v.y); if (dd < d) { d = dd; near = u; } }
+        if (!near || d > reach) continue;
+        const worth = (v.food * 0.05 + v.pop + 1), guard = felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + WAR_ERA.wallWorth * v.wall);
+        const s = Math.pow(worth, 0.5 + bold) / Math.pow(1 + guard, 0.5 + patient) / (1 + d * 0.02);
+        if (s > bs) { bs = s; best = v; from = near; }
+      }
+      if (!best) { c.goal = -1; c.ready = false; f.target[o.id] = -1; count.outOfReach++; return; }
+      const held = c.goal >= 0 && villages[c.goal].alive && villages[c.goal].f === o.id;
+      if (!held || (!c.ready && bs > (c.score || 0) * 1.5)) { if (c.v !== from.id) c.since = t; c.goal = best.id; c.v = from.id; c.score = bs; }   // keep to a plan unless a far better one shows
+      if (!held) c.ready = false;
+      f.target[o.id] = c.goal;
+      const muster = villages[c.v], goal = villages[c.goal];
+      /* Who would march, and how many have come in. */
+      let all = 0, here = 0;
+      for (const p of people) if (p.f === f.id && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0 && !(villages[p.home].heldTo > t)) { all++; if (p.mustered > t - 2 * DAY_HOURS) here++; }   // reported in within two days
+      /* The line it is fed along: three points between the gathering place and the goal. */
+      let cut = false;
+      for (const k of [0.25, 0.5, 0.75]) {
+        const x = muster.x + (goal.x - muster.x) * k, y = muster.y + (goal.y - muster.y) * k;
+        if (foesNearPoint(f, x, y) >= 3) { cut = true; break; }
+      }
+      if (c.ready && cut && !c.cut) {
+        c.ready = false; c.since = t; count.withdrawn++;
+        note("war", f.name + "'s army has fallen back to " + muster.name + ": " + o.name + " stands across the road it is fed by.", 2.5, muster.x, muster.y, f.id);
+      }
+      c.cut = cut;
+      if (!c.ready && !cut && all > 0) {
+        const want = clamp(0.5 + patient * 0.4 - (ruling(lead, "temper", f) - 0.5) * 0.4, 0.3, 0.9);
+        if (here >= 3 && (here >= all * want || t - c.since > 14 * DAY_HOURS)) {   // never a handful; after a fortnight, whoever has come
+          c.ready = true; c.out = all; count.marched++;
+          note("war", f.name + "'s army of " + here + " marches from " + muster.name + " on " + goal.name + ".", 2.5, muster.x, muster.y, f.id);
+        }
+      }
+      /* Too few left of what marched: back to gather again. */
+      if (c.ready && all < c.out * 0.4) { c.ready = false; c.since = t; }
+    }
+    function gathering(f) { for (const k in f.camp) { const c = f.camp[k]; if (c.v >= 0 && !c.ready && factions[k].alive && f.rel[k].war) return true; } return false; }
+    /* Enemy soldiers in the 2 km square of the map round a point (the day's map). */
+    function foesNearPoint(f, x, y) {
+      if (!warCells) return 0;
+      const cell = Math.floor(y / MAP_CELL) * warCols + Math.floor(x / MAP_CELL);
+      let n = 0;
+      for (const [fid, g] of warCells) if (atWar(fid, f.id)) n += g[cell] || 0;
+      return n;
+    }
+    /* Mercenaries: taken on, paid, and let go. */
+    function hire(f, wars, wages) {
+      for (const id of f.hired || []) {
+        const p = byId.get(id);
+        if (!p || p.hp <= 0 || p.job !== "soldier" || p.f !== f.id) continue;
+        if (f.treasury >= HIRE_WAGE) { f.treasury -= HIRE_WAGE; p.coins += HIRE_WAGE; p.unpaid = 0; }
+        else p.unpaid = (p.unpaid || 0) + 1;
+      }
+      f.hired = (f.hired || []).filter(id => {
+        const p = byId.get(id);
+        if (!p || p.hp <= 0 || p.f !== f.id || p.job !== "soldier") return false;
+        if (p.unpaid >= 7 || !wars) {
+          p.job = BANDITS && (p.unpaid >= 7 || p.coins < 5) ? "bandit" : "farmer"; p.task = "idle"; p.hired = 0; count.hiredGone++;
+          if (p.job === "bandit") count.hiredBandits++;
+          return false;
+        }
+        return true;
+      });
+      if (!wars || f.yours || f.treasury < wages * 6 + HIRE_WAGE * 30 || f.soldiers >= f.army * f.adults * 0.8) return;
+      const mine = villages.filter(v => v.alive && v.f === f.id);
+      let took = 0;
+      for (const p of people) {
+        if (took >= 3) break;
+        if (p.hp <= 0 || !adult(p) || p.hired || p.unfree || p.id === factions[p.f].leader || (p.job !== "bandit" && !(p.coins < 2 && p.f !== f.id)) || atWar(p.f, f.id)) continue;
+        if ((1 - p.lame) * (HEALTH ? ageVigour(p) : 1) < 0.6 || p.bold < 0.35) continue;
+        let to = null, d = 30;
+        for (const v of mine) { const dd = Math.hypot(v.x - p.x, v.y - p.y); if (dd < d) { d = dd; to = v; } }
+        if (!to) continue;
+        if (p.f !== f.id) { p.f = f.id; p.from = f.id; rehome(p, to, "hired"); }
+        p.job = "soldier"; p.task = "idle"; p.wait = 0; p.hired = t; p.unpaid = 0; p.loyal = 0.3;
+        (f.hired || (f.hired = [])).push(p.id); took++; count.hired++;
+      }
+      if (took) note("war", f.name + " has hired " + took + " to fight for pay.", 1.5, mine[0].x, mine[0].y, f.id);
+    }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
        they hold it — a wrong telling names the wrong side. */
@@ -8592,6 +8740,7 @@
            world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
         for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25)) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
       }
+      if (ARMIES && !shared) hire(f, wars, f.soldiers * WAGE * 7);   // TODO 15h
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
       if (!shared) {
@@ -8641,6 +8790,7 @@
         if (f.yours) { if (rel.war && b.pair) f.target[o.id] = b.pair[1].id; continue; }
         if (rel.war) {
           if (b.pair) f.target[o.id] = b.pair[1].id;
+          if (ARMIES) campaign(f, o, lead);   // TODO 15h: where to strike, and whether the army marches
           /* A band sent raiding (TODO 14e): every fortnight or so, to the open place of theirs within
              reach whose store is worth most against what defends it, never where the army is going. */
           const rd = f.raid[o.id];
@@ -8899,6 +9049,7 @@
            faded below what anybody remembers (TODO 12). The tellings themselves stay. */
         for (const e of events) if (e.hops && e.t < t - 365 * DAY_HOURS) e.hops = null;
         territory();
+        if (ARMIES) warMap();   // TODO 15h
         for (const f of factions) if (f.alive) {
           if (f.pop === 0) { fall(f, -1); continue; }
           decide(f);
@@ -9176,6 +9327,8 @@
       govOf: f => govView(f), titleOf: f => titleOf(f), ruling: ruling, bind: (p, h) => bind(p, h, "test"), govern: f => GOV && f.alive && byId.get(f.leader) ? govern(f, byId.get(f.leader)) : null,
       kill: p => die(p, "old"),   // for the tests (TODO 15b)
       knock: (vid, k) => knock(villages[vid], k), buildWorks: (vid, k, h) => buildWorks(villages[vid], k, h), workDay: () => { if (WORKS) workDay(); }, serviceWorth: (vid, job) => serviceWorth(villages[vid], job), worksWanted: vid => worksWanted(villages[vid]),   // TODO 15f
+      place: (p, x, y) => jump(p, x, y), startWar: (a, b) => startWar(factions[a], factions[b], factions[a].name + " has gone to war with " + factions[b].name + "."),   // for the tests (TODO 15h)
+      campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },
       wedWealth: wedWealth, wouldWed: wouldWed, marriageDay: fid => { const f = factions[fid], l = byId.get(f.leader); if (MARRY && l) marriageDay(f, l); return f.match; }, worth: worth,   // TODO 15b

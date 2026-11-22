@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People0 = createRequire(import.meta.url)("../people.js");
 /* TODO 15.5 (2026-11-22): the winter store checked (60 days) is a fixed guess that the climate's swing (15.5q) and households with children (15.5l, k) move; the rest sits near its thresholds by seed; so its worlds keep these at their old values unless a check sets them. */
-const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none" };
+const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle" };
 const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 
 const city = w => w.villages.reduce((a, b) => (b.pop > a.pop ? b : a));

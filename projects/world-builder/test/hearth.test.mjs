@@ -16,7 +16,7 @@ const FINGERPRINT = 1545454631;   // print() of 15.5s's engine, seed 2, 60 days
 
 // 1. The village's: the world before.
 {
-  const w = People.create({ seed: 2, hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none" });
+  const w = People.create({ seed: 2, hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "\"The village store's\" is the world before 15.5f");
 }

@@ -1971,6 +1971,50 @@ the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when
 for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
 customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
 
+### Armies: what they carry, how far they go, and strategy (2026-11-22)
+
+TODO item 15h. Ric (2026-11-20): "we need to cover what it is carrying with it so it knows how far
+they can go. Armies will need more work too because rn they just run up one at a time instead of
+using war strategies." Setting **Armies** under War: "Gathered, fed and led" (default) or "Each
+soldier marches alone (as before)", which leaves the 15f world exactly as it was (fingerprinted).
+
+- **Gathering.** For each war, an army gathers at its own village nearest where it means to strike;
+  soldiers draw bread and arms there. It marches when enough have reported in within two days —
+  half, plus up to four tenths more for a patient leader and less for a hot-tempered one — or after
+  a fortnight with whoever has come, never fewer than three. Out of the fighting season (14e) it
+  waits at the gathering place. While it gathers, standing with it weighs more for a soldier, and a
+  soldier away leaves fetching the house's water to the household. Lanchester: men who arrive one
+  by one are beaten one by one (Lanchester's laws; Kress, NPS).
+- **How far.** Ten days' bread a soldier, half as much again where the people have carts, at about
+  20 km a day, there and back: an army strikes only within about 100 km (150 with carts) of one of
+  its villages (Engels, *Alexander the Great and the Logistics of the Macedonian Army*, 1978).
+  Soldiers out of bread already go back to the nearest village of their own (item 14).
+- **Where to strike.** Once a day each side's soldiers are counted on a map of 2 km squares (an
+  influence map: Game Developer, "The core mechanics of influence mapping"; Miles and Louis, 2006).
+  Of the enemy's places within reach, the leader picks the one worth most — its people and store —
+  against what stands near it on that map and its walls; a bold leader weighs the worth more, a
+  patient one the defence. A plan is kept unless one half again better shows, or the place falls.
+- **Fed along a road.** When three or more enemy soldiers stand in a 2 km square on the road
+  between the gathering place and the goal, a marching army falls back to the gathering place and
+  gathers again; it is news.
+- **Hired men** (the free companies; Thomson, *Mercenaries, Pirates, and Sovereigns*, 1994): a
+  ruler at war with coins to spare and fewer under arms than wanted hires up to three a day from
+  the bold among the land's bandits and the poor of peoples it is not fighting, within 7.5 km, at
+  twice a soldier's wage; unpaid for a week, or let go at the peace, they go back to robbing (or to
+  farming, with coins in hand).
+- Counts: `marched`, `withdrawn`, `outOfReach`, `hired`, `hiredGone`, `hiredBandits`. The Factions
+  tab shows each army gathering or marching. `test/armies.test.mjs`.
+
+**Measured.** In the war worlds tried (600 people, old enemies, a year, two seeds) soldiers so
+seldom chose duty over food and company that no battles were fought either way; armies gathered
+and marched 7 and 8 times and fell back 3 and 6 times. So "a gathered army beats the same men one
+by one" is held here by the gathering rule (tested), not shown in a battle — said, not tuned.
+Cost: one pass over the soldiers a day for the map; a look through one side's villages per war a
+day.
+
+**Left out:** pirates at sea (goods by boat are only grain runs so far); battles fought by
+Lanchester's laws for each era's weapons (15d); Barbary captive numbers.
+
 ### Work and workplaces (2026-11-22)
 
 TODO item 15f. Ric (2026-11-20): "technology needs to be more of a thing and there does need to be

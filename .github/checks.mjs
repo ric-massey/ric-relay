@@ -185,6 +185,7 @@ const SUITES = [
   ['world-builder marriage', ['projects/world-builder/test/marriage.test.mjs']],   // TODO 15b, under a minute
   ['world-builder know-how', ['projects/world-builder/test/knowhow.test.mjs']],   // TODO 15e, under a minute
   ['world-builder work and workplaces', ['projects/world-builder/test/works.test.mjs']],   // TODO 15f, under a minute
+  ['world-builder armies', ['projects/world-builder/test/armies.test.mjs']],   // TODO 15h, about a minute
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

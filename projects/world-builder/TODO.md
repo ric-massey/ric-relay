@@ -2384,7 +2384,9 @@ travel for weeks, worth it only for what is dear for its weight (finished goods,
 by boat; a route grows where traders keep going, and bandits and pirates (15.5b, 15h) prey on it.
 *Question:* in, as proposed? On a 1,000 km land, far trade is within one world.
 
-### [ ] 15h. Armies: what they carry, how far they go, and strategy
+### [x] 15h. Armies: what they carry, how far they go, and strategy
+
+**Done 2026-11-22.** Setting "Armies" ("Each soldier marches alone" = the 15f world, fingerprinted). An army gathers at its own village nearest where it means to strike and marches when enough have reported in (more for a patient leader, fewer for a hot-tempered one; after a fortnight whoever has come, never fewer than three), and out of the fighting season waits there; it strikes only within what its bread takes it there and back (ten days, half again with carts, 20 km a day: about 100 km); its leader picks the enemy place worth most against what stands near it from a daily 2 km map of each side's soldiers (bold weigh worth, patient defence), keeping to the plan unless a far better one shows; enemy soldiers across the road it is fed by make it fall back; a soldier away leaves fetching the house's water to the household. Mercenaries: a ruler at war with coins to spare hires the poor and the bandits round about at twice a wage; unpaid a week or let go at the peace, they go robbing. Measured: in the war worlds tried, soldiers so seldom chose duty over food and company that no battles were fought in a year either way, so "a gathered army beats the same men one by one" is held by the gathering rule, not shown in a battle — said, not tuned. `test/armies.test.mjs`; README, "Armies". Left: pirates at sea (no goods carried by boat to prey on yet), battles by Lanchester's laws per weapon (15d), Barbary captives.
 
 Added 2026-11-20 (Ric: "we need to cover what it is carrying with it so it knows how far they can
 go. Armies will need more work too because rn they just run up one at a time instead of using war
