@@ -250,6 +250,9 @@
       { key: "beasts", label: "Animals that work", type: "select", def: "real",   // TODO 15.5o, 2026-11-22
         options: [["real", "Oxen pull the plough, horses the carts"], ["none", "None (as before)"]],
         help: "Each village keeps oxen and horses, counted, not walking about: bred where there is grazing, worn out in about ten years, eaten in a famine, driven off when a village is sacked. A village with a full plough team reaps as before; without one, a fifth less a day. Horses pull a village's carts faster. Where the plough is used, a people's customs keep women from the fields a little more." },
+      { key: "irrigation", label: "Irrigation", type: "select", def: "real",   // TODO 15.5p, 2026-11-22
+        options: [["real", "Villages by a river dig ditches after a dry year"], ["none", "None (as before)"]],
+        help: "A village within two kilometres of a river that has had a dry year digs a ditch from it, about a hundred days' work, and the fields along the ditch are spared in a dry year as river flats are. It silts up unless the village spends some forty days a year cleaning it. Needs Rain by place and year." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -650,6 +653,7 @@
        to 8), and this year's crops for the rain, a hundredth a step (100 an ordinary year). Only
        with Rain on. */
     const RAIN = S.rain !== "off";
+    const watered = S.irrigation !== "none" && S.rain !== "off" ? new Uint8Array(tiles) : null;   // TODO 15.5p: squares a ditch waters
     const wetQ = RAIN ? new Uint8Array(tiles) : null, nearW = RAIN ? new Uint8Array(tiles) : null, rainK = RAIN ? new Uint8Array(tiles).fill(100) : null;
     let rainYear = -1;
     const deep = k => k === G_SEA || k === G_LAKE;
@@ -738,7 +742,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1373,7 +1377,8 @@
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
                   riotAt: -1e9, putDown: -1e9,   // TODO 15.5b3: the last riot here, and the last one soldiers broke up
                   manure: 0, clearAt: -1, clearWork: 0,
-                  oxen: 0, horses: 0,   // TODO 15.5o: draught animals the village keeps   // TODO 15.5d: dung for the fields, forest being cleared, and the hours put in
+                  oxen: 0, horses: 0,   // TODO 15.5o: draught animals the village keeps
+                  wantDitch: false, ditch: null, ditchWork: 0, cleanWork: 0,   // TODO 15.5p: a ditch wanted, the ditch (its river square and the squares it waters), hours dug, hours cleaned this year   // TODO 15.5d: dung for the fields, forest being cleared, and the hours put in
                   foul: 0, foulLoad: 0,   // TODO 15.5r: how fouled its water is, 0 to 1, and how many people's waste reaches it
                   bandits: 0, watch: 0, road: null, banditAt: -1e9, robbedAt: -1e9, waylaidAt: -1e9,   // TODO 15.5b4: its bandits at the census, soldiers at hand today, where its bandits lie in wait, their last raid, the last time it was raided, and the last robbery on the road told of
                   heldTo: -1e9, wall: 0 };   // wall: TODO 14e, 0 none to 1 its full height   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
@@ -2137,6 +2142,8 @@
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
+    const IRRIGATION = S.irrigation !== "none" && S.rain !== "off";   // TODO 15.5p: ditches from rivers
+    const DITCH_HOURS = 800, DITCH_CLEAN = 320, DITCH_REACH = 5;   // TODO 15.5p (see "irrigation")
     const BEASTS = S.beasts !== "none";   // TODO 15.5o: oxen and horses (see "animals that work")
     const OXEN_EACH = 1 / 3, HORSES_EACH = 1 / 20, TEAM_EACH = 1 / 4, PLOUGH_MIN = 0.8, OX_FOOD = 150;
     const LANDCHANGE = S.landchange !== "fixed";   // TODO 15.5d: soil that tires, forest cleared and grown back (see "land that changes")
@@ -3170,6 +3177,55 @@
       if (!CHILDWORK || p.age >= S.grown) return 1;
       return clamp((p.age - (CHILD_WORK_AGE - 1)) / Math.max(1, S.grown - (CHILD_WORK_AGE - 1)), 0, 1) * 0.7;
     }
+    /* ── irrigation (TODO 15.5p) ──────────────────────────────────────────
+       Ric (2026-11-20): yes. Wittfogel's claim that big irrigation made despots is widely rejected:
+       Bali's terraces were run for a thousand years by local water-temple networks, Nepal's small
+       canals by farmers, and Hohokam canals were cleaned yearly in one to eight days by the villages
+       that used them. No figure for how much a ditch raises a yield was found, so it does what the
+       notes asked: the fields along it are spared in a dry year as river flats are (all but 15% of
+       what the dry year would take). A village within 2 km of a river that has had a dry year at its
+       middle (under 85% of a usual crop) wants a ditch; digging it is 800 hours, about a hundred
+       person-days (a guess), from the river square nearest the village to the village; it waters the
+       farmland within 1.25 km of that line. Each year it needs 320 hours of cleaning, some forty
+       person-days; a ditch not cleaned by the turn of the year silts up and waters nothing until it is. */
+    /* The river square a ditch would start from: the nearest within 2 km of the village's middle. */
+    function ditchFrom(v) {
+      const cx = Math.floor(v.x), cy = Math.floor(v.y);
+      let best = -1, bd = 9;
+      for (let y = cy - 8; y <= cy + 8; y++) for (let x = cx - 8; x <= cx + 8; x++) {
+        if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+        const i = y * cols + x, d = Math.hypot(x - cx, y - cy);
+        if (ground[i] === G_RIVER && d < bd) { bd = d; best = i; }
+      }
+      return best;
+    }
+    function ditchDug(v) {
+      const j = ditchFrom(v); v.wantDitch = false; v.ditchWork = 0;
+      if (j < 0) return;
+      const ax = j % cols + 0.5, ay = ((j / cols) | 0) + 0.5, bx = v.x, by = v.y, L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+      const tiles0 = [], R0 = Math.ceil(v.radius) + DITCH_REACH;
+      for (let y = Math.floor(v.y) - R0; y <= Math.floor(v.y) + R0; y++) for (let x = Math.floor(v.x) - R0; x <= Math.floor(v.x) + R0; x++) {
+        if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+        const i = y * cols + x; if (!fert[i] || ground[i] === G_RIVER) continue;
+        const px = x + 0.5, py = y + 0.5, u = clamp(((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L2, 0, 1);
+        if (Math.hypot(px - (ax + u * (bx - ax)), py - (ay + u * (by - ay))) <= DITCH_REACH) tiles0.push(i);
+      }
+      v.ditch = { at: j, tiles: tiles0, silted: false };
+      v.cleanWork = DITCH_CLEAN;   // new, it needs nothing this year
+      for (const i of tiles0) watered[i] = 1;
+      count.ditches++;
+      note("build", v.name + " has dug a ditch from the river to water its fields.", 1, ax, ay, v.f);
+    }
+    /* The turn of the year: a ditch cleaned stays open, one left silts up; cleaning starts again. */
+    function ditchYear() {
+      for (const v of villages) {
+        if (!v.ditch) continue;
+        const open = v.alive && v.cleanWork >= DITCH_CLEAN;
+        if (open !== !v.ditch.silted) { v.ditch.silted = !open; for (const i of v.ditch.tiles) watered[i] = open ? 1 : 0; if (!open) count.silted++; }
+        v.cleanWork = 0;
+      }
+    }
+
     /* ── animals that work (TODO 15.5o) ───────────────────────────────────
        Ric (2026-11-20): yes, the cheapest way — counted as what a village owns, not as animals that
        walk about. A plough team was eight oxen and a carucate the land it ploughed in a season;
@@ -3518,6 +3574,15 @@
         if (h) weigh("build", (n.provide * 1.05 + 0.3) * 1.35 * 1.15 - away(Math.hypot(h.x - p.x, h.y - p.y)) - n.food * 0.55 - n.rest * 0.4 - n.safety * 0.5 - dark * 0.5,
           () => { p.buildAt = h.id; go(p, h.x, h.y, "build"); p.wait = 0; });
       }
+      /* A ditch from the river (TODO 15.5p): dug after a dry year, cleaned every year, in the slack of it. */
+      if (IRRIGATION && v.alive && p.job !== "soldier" && p.vig >= FRAIL && (v.wantDitch && !v.ditch || v.ditch && v.cleanWork < DITCH_CLEAN)) {
+        const j = v.ditch ? v.ditch.at : ditchFrom(v);
+        if (j >= 0) {
+          const dx = j % cols + 0.5, dy = ((j / cols) | 0) + 0.5;
+          weigh("ditch", (v.ditch ? 0.38 : 0.4) * heavyWish(p) - away(Math.hypot(dx - p.x, dy - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - (season().ripe - 1) * 0.3 - dark * 0.6,
+            () => { go(p, (dx + v.x) / 2 + (R() - 0.5), (dy + v.y) / 2 + (R() - 0.5), "ditch"); p.wait = 0; });
+        }
+      }
       /* Forest being cleared for fields (TODO 15.5d): in the slack of the year, as assarts were made. */
       if (soil && v.clearAt >= 0 && v.alive && p.job !== "soldier" && p.vig >= FRAIL) {
         const cx = v.clearAt % cols + 0.5, cy = ((v.clearAt / cols) | 0) + 0.5;
@@ -3863,7 +3928,7 @@
       const v = villages[p.home];
       /* A shift of building or digging is spent at the work, and shows as that work; what it
          did is counted when it ends (TODO 7b: before, the hours showed as resting). */
-      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear") && !p.shift) {
+      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear" || p.task === "ditch") && !p.shift) {
         p.shift = true; p.wait = p.task === "build" ? Math.round(BUILD_SHIFT * ACTIONS_PER_HOUR) : p.task === "house" || p.task === "spin" ? TK(HOUSE_SPELL * 60) : TK(240); return;
       }
       p.shift = false;
@@ -3884,6 +3949,12 @@
       if (p.task === "build") {                        // TODO 7b: five hours on a house
         const h = homes[p.buildAt];
         if (h && !h.built) buildShift(p, h);
+        p.task = "idle"; p.wait = 0; return;
+      }
+      if (p.task === "ditch") {                        // TODO 15.5p: four hours digging or cleaning
+        const h = 4 * p.vig * brawn(p);
+        if (v.ditch) { v.cleanWork += h; count.ditchCleaned += h; }
+        else if (v.wantDitch) { v.ditchWork += h; if (v.ditchWork >= DITCH_HOURS) ditchDug(v); }
         p.task = "idle"; p.wait = 0; return;
       }
       if (p.task === "clear") {                        // TODO 15.5d: four hours at the trees and roots
@@ -7607,6 +7678,7 @@
           const R = Math.max(0.05, 1 + cv * (0.8 * zg + 0.6 * zr));
           let short = Math.max(0, 1 - R);
           if (nearW[i] <= 4) short *= (nearW[i] - 1) / 4;           // river flats: none lost at the bank, a quarter 500 m off, all past a kilometre
+          if (watered && watered[i]) short *= 0.15;                  // TODO 15.5p: a ditch brings the river to it, less what seeps away
           const crop = (1 - KY * short + 0.15 * Math.min(0.5, Math.max(0, R - 1))) / rainMean[Math.round(cv * 40)];
           out[i] = clamp(Math.round(crop * 100), 0, 255);
         }
@@ -7615,7 +7687,9 @@
     }
     /* A new year's rain, and word of a dry one where a faction farms. */
     function newRainYear(year) {
+      if (IRRIGATION) ditchYear();   // TODO 15.5p: before the year's rain is drawn, ditches silted or kept
       rainYear = year; rainField(year, rainK);
+      if (IRRIGATION) for (const v of villages) if (v.alive && !v.ditch && rainK[tileAt(v.x, v.y)] < 85 && ditchFrom(v) >= 0) v.wantDitch = true;
       for (const f of factions) {
         if (f.alive === false) continue;
         let sum = 0, n = 0, worst = null;
@@ -7931,6 +8005,8 @@
       brawn: brawn, split: fid => split(factions[fid]), accepts: fid => accepts(factions[fid]),   // for the tests (TODO 15.5l)
       childHazard: childHazard, fecund: fecund,   // for the tests (TODO 15.5k)
       childShare: childShare,   // for the tests (TODO 15.5m)
+      rainOf: y => RAIN ? rainField(y, new Uint8Array(tiles)) : null,
+      watered: watered, ditchDug: vid => ditchDug(villages[vid]), ditchYear: () => { if (IRRIGATION) ditchYear(); }, rainK: rainK,   // for the tests (TODO 15.5p)
       plough: vid => plough(villages[vid]), beastTurn: vid => beastTurn(villages[vid]),   // for the tests (TODO 15.5o)
       lastCut: lastCut, reapedFrom: (i, got, vid) => reapedFrom(i, got, villages[vid]), restSoil: () => rest(), restWill: fid => restWill(factions[fid]),
       soil: soil, groundLog: groundLog, cleared: cleared, regrow: () => { if (soil) regrow(); }, clearedFor: vid => clearedFor(villages[vid]), landTurn: vid => landTurn(villages[vid]),   // TODO 15.5d: the page reads groundLog; the rest for the tests

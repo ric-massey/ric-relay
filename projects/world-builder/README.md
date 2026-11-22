@@ -1901,6 +1901,36 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Irrigation (2026-11-22)
+
+TODO item 15.5p. Ric (2026-11-20): yes. Until now nobody built irrigation; river flats were spared in
+dry years (6b). Wittfogel's claim that big irrigation made despots is widely rejected: Bali's rice
+terraces were run for a thousand years by local water-temple networks, Nepal's small canals by
+farmers, and Hohokam canals were cleaned yearly in one to eight days by the villages that used them
+(research notes under 15.5p in `TODO.md`). No figure for how much a ditch raises a yield was found, so
+a ditch does what the notes asked, no more.
+
+- **Wanted** after a dry year: a village within 2 km of a river whose middle had under 85% of a usual
+  crop (`newRainYear`) wants a ditch (`v.wantDitch`).
+- **Dug** (task "ditch", in the slack of the year, like clearing forest): 800 hours, about a hundred
+  person-days (a guess), from the river square nearest the village to the village (`ditchDug`). It
+  waters the farmland within 1.25 km of that line (`watered`).
+- **What it does** (`rainField`): a watered square loses only 15% of what a dry year would take from
+  it, as river flats are spared.
+- **Kept** (`ditchYear`, at the turn of each year): 320 hours of cleaning a year, some forty
+  person-days; a ditch not cleaned silts up and waters nothing until it is cleaned again.
+- Counts: `ditches`, `silted`, `ditchCleaned` (hours). It needs "Rain" by place and year.
+- **A setting**, "Irrigation", under Lives. "None" is the world 15.5o left, step for step
+  (`test/irrigation.test.mjs`).
+
+**Measured** (two years each, six worlds with "Year to year" at 0.8 and "How many rivers" at 0.8,
+against 15.5o): 8 ditches dug in two of the worlds, none silted; the other four had no dry year by a
+river and are the same worlds. People 2,429 → 2,452, reaped within a percent: in two years the ditches
+had not yet met a second dry year.
+
+**Left out:** big works a leader orders (canals, dams, terraces); water rights and quarrels over
+them; a ditch raising the yield of an ordinary year.
+
 ### Animals that work (2026-11-22)
 
 TODO item 15.5o. Ric (2026-11-20): yes, "the cheapest way to run" — counted as what a household or

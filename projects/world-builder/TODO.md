@@ -3144,7 +3144,7 @@ grazing and hay; a plough team sets how much land a household can work, a horse 
 (7d), horses carry riders and soldiers (15h later). *Questions:* (1) In, as proposed? (2) Animals as
 counted beasts that eat and die, or as part of what a household owns (cheaper)?
 
-**15.5p. Irrigation and big works.** *Now:* none; `PEOPLE-VISION.md` notes "irrigation is not built by
+**[x] 15.5p. Irrigation and big works.** *Done 2026-11-22:* a village within 2 km of a river that has had a dry year digs a ditch (800 hours, a guess) that waters the farmland within 1.25 km of it, spared in a dry year as river flats are; 320 hours of cleaning a year or it silts up. Setting "Irrigation" ("none" = the 15.5o world, fingerprinted). Two years, six dry-prone river worlds: 8 ditches. `test/irrigation.test.mjs`; README, "Irrigation". Left out: big works ordered by a leader, water rights. *Was:* none; `PEOPLE-VISION.md` notes "irrigation is not built by
 anybody yet"; river flats are spared in dry years (6b). *History:* Wittfogel's claim that big
 irrigation made despots is widely rejected; Bali's rice terraces were run for a thousand years by
 local water-temple networks, Nepal's small canals by farmers; Hohokam canals were cleaned yearly in
