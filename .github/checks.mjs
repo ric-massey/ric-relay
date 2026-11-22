@@ -195,6 +195,7 @@ const SUITES = [
   ['world-builder generals', ['projects/world-builder/test/generals.test.mjs']],   // TODO 15o
   ['world-builder siegecraft and service', ['projects/world-builder/test/siege.test.mjs']],   // TODO 15p
   ['world-builder prisoners, mutiny and war loans', ['projects/world-builder/test/spoils.test.mjs']],   // TODO 15q
+  ['world-builder wounds, small wars and the sea', ['projects/world-builder/test/smallwar.test.mjs']],   // TODO 15r
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

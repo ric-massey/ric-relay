@@ -2219,6 +2219,34 @@ added): 31 to 79 prisoners, nearly all ransomed, 700 to 1,700 coins in ransoms; 
 800 to 1,170 coins borrowed; no default within a year. **Left out:** merchants lending against
 ransoms; prisoners as a source of news for generals (15o); a ruler's own ransom ending a war.
 
+### Wounds, small wars and the sea (2026-11-22)
+
+TODO item 15r, from 15k's gaps 8, 9 and 10. Setting **Wounds, small wars and the sea** under War: "As
+found" (default) or "As before", which leaves the 15q world exactly as it was (fingerprinted).
+
+- **Wounds measured** (15k gap 8: in 18th- and 19th-century battles about three or four were wounded
+  for each killed, and many of the wounded died later; Encyclopedia.com's casualty figures; ACOUP).
+  Measured first: in a year of medieval war about five or six soldiers were knocked out of the line
+  for each killed outright, and none of the knocked-out died of it later. Now one in five of those
+  knocked out dies of the wound within ten days, fewer with healing herbs (four-fifths), a healer at
+  work in their village (seven-tenths) or medicine (three-tenths). Measured after: about 3.2 wounded
+  survivors to each dead (4.0 and 2.3 in two worlds), 12 to 14 a year dying of wounds. Counts
+  `knockedOut`, `diedOfWounds`.
+- **War between bands** (15k gap 9: among foragers and tribes war was raids and ambushes, not
+  battles; Keeley; the later counts in Our World in Data, about 2% of deaths for bands and 8 to 9% for
+  chiefdoms). A people that does not farm (15i) raises no army and lays no siege: its plan is always
+  to raid (14e's raiding bands, two in three of its fighters).
+- **War at sea** (15k gap 10: medieval naval war was coastal — landings, supplying armies, blockading
+  ports, and piracy, the first reason warships were built in the north). A boat's cargo is robbed only
+  by **pirates**, bandits of a place with a boat, from up to 1 km (a cart: 500 m); nobody on the shore
+  robs a boat. A port is **shut** while a place of an enemy at war with a boat is within 10 km: its
+  boats carry no grain (counted `blockaded`), so it goes by cart. Counts `piracy`, `blockaded`.
+- Hooks `w.dying(p)`, `w.woundDeaths()`, `w.bandAtWar(fid)`, `w.blockaded(vid)`, `w.waylay(q, p, ux,
+  uy, step)`. `test/smallwar.test.mjs`.
+
+**Left out:** landings (armies carried by boat); warships and sea battles; pirates of their own (they
+are 15.5b4's bandits with a boat at home); measuring band war's deaths against the 2% found.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

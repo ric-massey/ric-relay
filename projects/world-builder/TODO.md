@@ -2900,7 +2900,9 @@ killed), a living for soldiers; unpaid soldiers rising together and holding a pl
 (15.5b3's riots as the shape); rulers borrowing for war, wars lasting longer on debt, and a default
 leaving armies unpaid. **Done when:** each happens from its causes in a long war. **Budget:** default.
 
-### [ ] 15r. Wounds measured, war between bands, and war at sea
+### [x] 15r. Wounds measured, war between bands, and war at sea
+
+**Done 2026-11-22.** Setting Wounds, small wars and the sea ("As before" = the 15q world, fingerprinted). Measured first: about five or six knocked out of the line for each killed, and none of them dying later; now one in five knocked out dies within ten days (less with herbs, a healer, medicine), giving about 3.2 wounded survivors to each dead (4.0 and 2.3 in two medieval war-years). A band (a people that does not farm) raises no army and lays no siege: it raids. A boat is robbed only by pirates (bandits of a place with a boat), from up to 1 km; a port within 10 km of an enemy place with a boat is shut to its grain boats. `test/smallwar.test.mjs`; README, "Wounds, small wars and the sea". Left: landings, warships and sea battles, band war's deaths measured against the 2% found.
 
 15k's gaps 8, 9 and 10. **Do:** measure wounded against killed against the three or four to one
 found, and fix what is off; bands (15i) at war by raid and ambush, not armies and sieges; fighting
