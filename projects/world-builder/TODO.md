@@ -3131,7 +3131,7 @@ stock to count — unless Ric wants clothes to matter (warmth, 9c's cold). *Ques
 as hours a household must spend each day (cooking, minding children, spinning), so a household short of
 hands feels it? (2) Do clothes count for anything (keeping warm in the cold), or only the hours?
 
-**15.5o. Animals that work.** *Now:* none; "packhorse" is a word in a comment, and carts move without
+**[x] 15.5o. Animals that work.** *Done 2026-11-22:* oxen and horses counted as a village's own (an ox to three people, a horse to twenty at the start); a full plough team keeps a day's reaping as it was, none leaves four-fifths; horses quicken carts; worn out in ten years, bred back where there is grazing, eaten in famine, driven off in a sack; the plough leans customs about women's work. Setting "Animals that work" ("none" = the 15.5d world, fingerprinted). A year, six worlds: starved 6 → 0, 114 beasts eaten. `test/beasts.test.mjs`; README, "Animals that work". Left out: riders (15h), hay, a household's own beasts. *Was:* none; "packhorse" is a word in a comment, and carts move without
 anything pulling them. *History:* a plough team was eight oxen and a carucate the land it could
 plough in a season; Domesday counted over 80,000 teams, about 650,000 oxen; horses came into farm work
 slowly, first in richer, market-minded places, two horses doing about the work of three oxen; horse

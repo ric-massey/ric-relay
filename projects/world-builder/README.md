@@ -1901,6 +1901,35 @@ come from the great families. Cost: a sum per sale; a search through the people 
 marriage is made. Not done: everyday marriages still ignore wealth (TODO 15b). (The page's button
 for a marriage came with TODO 15.5h: "Wartime gear, and a marriage of your choosing".)
 
+### Animals that work (2026-11-22)
+
+TODO item 15.5o. Ric (2026-11-20): yes, "the cheapest way to run" — counted as what a household or
+village owns, not as animals that walk about, eat and die one by one. Until now carts moved with
+nothing pulling them and the plough was never mentioned. A plough team was eight oxen and a carucate
+the land it ploughed in a season; Domesday counted about 650,000 oxen in some 80,000 teams; horses
+came into farm work slowly, two doing about the work of three oxen, and changed carting in the 12th
+and 13th centuries (Langdon, *Horses, Oxen and Technological Innovation*).
+
+- **Counted, a village's own** (`v.oxen`, `v.horses`): an ox for every three people and a horse for
+  every twenty at the start, about Domesday's share.
+- **The plough** (`plough`): with a full team (an ox for every four people) a day's reaping is what
+  it was; with none, four-fifths (`PLOUGH_MIN`), the work of a hoe; between, between.
+- **Horses** pull a village's carts faster: 0.75 of a walk off the roads instead of 0.6.
+- **Kept up** (`beastTurn`, daily): worn out in about ten years (horses twelve), bred back toward
+  what the village needs where it has grazing; eaten when it starves with its store empty (horses
+  first, an ox about 150 days of food); half the oxen and most horses driven off when it is sacked.
+- **Custom.** `f.plough`, the share of a people living in villages with half a team or more, leans
+  its customs about women's work a little (15.5l's `split`, as Alesina, Giuliano and Nunn found).
+- Counts: `beastsEaten`.
+- **A setting**, "Animals that work", under Lives. "None" is the world 15.5d left, step for step
+  (`test/beasts.test.mjs`).
+
+**Measured** (a year each, six default worlds, against 15.5d): starved 6 → 0 (a starving village eats
+its beasts first: 114 eaten in all), reaped 371,190 → 368,500, people 2,346 → 2,400.
+
+**Left out:** horses for riders and soldiers (15h); hay as a crop; oxen bought and sold; a household's
+own beasts rather than its village's.
+
 ### Land that changes (2026-11-22)
 
 TODO item 15.5d. Ric (2026-11-20): people clear forest for fields, yes; resting land is "the people's

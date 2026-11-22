@@ -247,6 +247,9 @@
       { key: "housework", label: "Work in the house", type: "select", def: "real",   // TODO 15.5n, 2026-11-21
         options: [["real", "Cooking, minding the little ones and spinning take hours"], ["none", "No house work but fetching water (as before)"]],
         help: "Every household owes hours a day of cooking and of minding its children under five, and spinning to keep everybody clothed; whoever their people's custom expects does most of it. A household short of hands feels it: meals go to waste and small children come to harm. Clothes worn thin let the cold in." },
+      { key: "beasts", label: "Animals that work", type: "select", def: "real",   // TODO 15.5o, 2026-11-22
+        options: [["real", "Oxen pull the plough, horses the carts"], ["none", "None (as before)"]],
+        help: "Each village keeps oxen and horses, counted, not walking about: bred where there is grazing, worn out in about ten years, eaten in a famine, driven off when a village is sacked. A village with a full plough team reaps as before; without one, a fifth less a day. Horses pull a village's carts faster. Where the plough is used, a people's customs keep women from the fields a little more." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -735,7 +738,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1369,7 +1372,8 @@
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
                   riotAt: -1e9, putDown: -1e9,   // TODO 15.5b3: the last riot here, and the last one soldiers broke up
-                  manure: 0, clearAt: -1, clearWork: 0,   // TODO 15.5d: dung for the fields, forest being cleared, and the hours put in
+                  manure: 0, clearAt: -1, clearWork: 0,
+                  oxen: 0, horses: 0,   // TODO 15.5o: draught animals the village keeps   // TODO 15.5d: dung for the fields, forest being cleared, and the hours put in
                   foul: 0, foulLoad: 0,   // TODO 15.5r: how fouled its water is, 0 to 1, and how many people's waste reaches it
                   bandits: 0, watch: 0, road: null, banditAt: -1e9, robbedAt: -1e9, waylaidAt: -1e9,   // TODO 15.5b4: its bandits at the census, soldiers at hand today, where its bandits lie in wait, their last raid, the last time it was raided, and the last robbery on the road told of
                   heldTo: -1e9, wall: 0 };   // wall: TODO 14e, 0 none to 1 its full height   // TODO 14c: until when the soldiers who took it stay to hold it   // TODO 14b: the last day enemies were at its edge, and who fled it   // TODO 10: the last time enemies struck here, and the year last looked back on
@@ -2133,6 +2137,8 @@
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
     const HEALTH = S.health !== "simple";   // TODO 15.5e: lasting wounds, and the old slowing down
     const SEXES = S.sexes !== "none";       // TODO 15.5l: men and women
+    const BEASTS = S.beasts !== "none";   // TODO 15.5o: oxen and horses (see "animals that work")
+    const OXEN_EACH = 1 / 3, HORSES_EACH = 1 / 20, TEAM_EACH = 1 / 4, PLOUGH_MIN = 0.8, OX_FOOD = 150;
     const LANDCHANGE = S.landchange !== "fixed";   // TODO 15.5d: soil that tires, forest cleared and grown back (see "land that changes")
     const SOIL_FLOOR = 0.5, SOIL_WEAR = 0.15, SOIL_BACK = 1 / (0.75 * 365), REST_AFTER = 180, REST_AT = 0.75, MANURE = 0.0005, CLEAR_HOURS = 1200;
     const FOREST_GAIN = (0.8 - 0.55) * 1.15;   // what a square farms better for being cleared: grassland's against forest's (the land's FERT)
@@ -2259,6 +2265,7 @@
       census();
       for (const f of factions) succeed(f, "first");
       startNeighbours();
+      if (BEASTS) for (const v of villages) { v.oxen = v.pop * OXEN_EACH; v.horses = v.pop * HORSES_EACH; }   // TODO 15.5o: a full team to start
       for (const p of people) if (adult(p)) p.job = chooseJob(p);
       for (const p of people) if (p.job === "trader") p.gear.cart = 1;   // a trader starts with a cart (TODO 7d)
       /* A quarter of the grown-ups start paired, so the first children are not
@@ -3035,7 +3042,7 @@
        (2.7%). Now it is the hours, which is how farming labour actually
        differs — capped at what daylight allows, after which they bring back
        what they managed. */
-    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p) * (p.job === "child" ? childShare(p) : 1); }   // p.vig: TODO 15.5e; brawn: 15.5l
+    function harvestCapacity(p) { return CARRY * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p) * (p.job === "child" ? childShare(p) : 1) * (BEASTS ? plough(villages[p.home]) : 1); }   // p.vig: TODO 15.5e; brawn: 15.5l
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
@@ -3061,6 +3068,7 @@
     /* How fast somebody laden with a cart goes on this square (TODO 7d). */
     function cartPace(p, i) {
       if (!equipped(p, "cart")) return 1;
+      if (BEASTS && villages[p.home].horses >= 1) return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.95 : 0.75;   // TODO 15.5o: a horse in the shafts
       return track[i] === 2 ? 1 : track[i] === 1 || owner[i] >= 0 ? 0.85 : 0.6;
     }
     function craftOutput(p, v) {
@@ -3162,6 +3170,36 @@
       if (!CHILDWORK || p.age >= S.grown) return 1;
       return clamp((p.age - (CHILD_WORK_AGE - 1)) / Math.max(1, S.grown - (CHILD_WORK_AGE - 1)), 0, 1) * 0.7;
     }
+    /* ── animals that work (TODO 15.5o) ───────────────────────────────────
+       Ric (2026-11-20): yes, the cheapest way — counted as what a village owns, not as animals that
+       walk about. A plough team was eight oxen and a carucate the land it ploughed in a season;
+       Domesday counted about 650,000 oxen in some 80,000 teams, about one ox to every two or three
+       people; horses came into farm work slowly, two doing about the work of three oxen, and changed
+       carting in the 12th and 13th centuries (Langdon). So a village starts with an ox for every three
+       people and a horse for every twenty; with a full team (an ox for every four of its people) a
+       day's reaping is what it was, and with none, `PLOUGH_MIN` of it, the work of a hoe. Oxen and
+       horses breed where the village has grazing, toward what it needs, wear out in about ten years,
+       are eaten when a village starves (an ox is about 150 days of food), and are driven off when it
+       is sacked. Horses make a village's carts faster. `f.plough`, the share of a people in
+       ploughing villages, leans its customs about women's work (15.5l, Alesina and others). */
+    function plough(v) { return PLOUGH_MIN + (1 - PLOUGH_MIN) * clamp(v.oxen / Math.max(1, v.pop * TEAM_EACH), 0, 1); }
+    function beastTurn(v) {
+      const want = v.pop * OXEN_EACH, wantH = v.pop * HORSES_EACH;
+      const graze = MATS ? wildSpot(v, "herd") >= 0 : true;
+      v.oxen -= v.oxen / (10 * 365); v.horses -= v.horses / (12 * 365);   // worn out
+      if (graze) { if (v.oxen < want) v.oxen += Math.max(0.02, v.oxen * 0.25 / 365); if (v.horses < wantH) v.horses += Math.max(0.005, v.horses * 0.2 / 365); }
+      /* A village starving with an empty store eats its beasts, the plough team last of all. */
+      if (v.hungry > v.pop * 0.2 && v.food < v.pop * 0.5 && v.oxen + v.horses >= 1) {
+        const eat = v.horses >= 1 ? "horses" : "oxen", n = Math.min(v[eat], Math.max(1, v[eat] * 0.03));
+        v[eat] -= n; v.food += n * OX_FOOD; count.beastsEaten += n;
+      }
+    }
+    function ploughOf(f) {
+      let n = 0, ploughing = 0;
+      for (const v of villages) if (v.alive && v.f === f.id) { n += v.pop; if (plough(v) > PLOUGH_MIN + (1 - PLOUGH_MIN) * 0.5) ploughing += v.pop; }
+      f.plough = n ? ploughing / n : 0;
+    }
+
     /* ── land that changes (TODO 15.5d) ───────────────────────────────────
        Ric (2026-11-20): people clear forest for fields, yes; resting land is the people's choice;
        herds manure fields, yes; shifting cultivation with it. English demesne wheat gave three to six
@@ -6217,6 +6255,7 @@
       }
       v.empty = 0;
       if (soil) landTurn(v);   // TODO 15.5d
+      if (BEASTS) beastTurn(v);   // TODO 15.5o
       /* The faction's grain is never more than the store holds (TODO 15.5t): what was eaten, spoiled or taken went first from it. */
       if (v.levy > v.food) v.levy = Math.max(0, v.food);
       /* A raid here since yesterday, or a year gone by without want or raids (TODO 10). */
@@ -6488,6 +6527,7 @@
     /* A place taken by storm is sacked: half its store taken or spoiled, a quarter of its houses burned. */
     function sack(v) {
       v.food *= 0.5;
+      if (BEASTS) { v.oxen *= 0.5; v.horses *= 0.3; }   // TODO 15.5o: driven off
       const mine = homesOf(v).filter(h => h.v === v.id && h.built);
       for (let n = Math.round(mine.length / 4); n > 0 && mine.length; n--) burnHouse(v, mine.splice(Math.floor(R() * mine.length), 1)[0]);
       count.sacked++;
@@ -7649,6 +7689,7 @@
         census();
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
         if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
+        if (BEASTS && t % (30 * DAY_HOURS) === 0) for (const f of factions) ploughOf(f);   // TODO 15.5o
         for (const v of villages) if (v.alive) { market(v); if (t % DAY_HOURS === 0) villageTurn(v); }
         if (t % DAY_HOURS === 0 && acted.size) forgetActed();
         /* The newest thing that happened is known first where it happened. */
@@ -7890,6 +7931,7 @@
       brawn: brawn, split: fid => split(factions[fid]), accepts: fid => accepts(factions[fid]),   // for the tests (TODO 15.5l)
       childHazard: childHazard, fecund: fecund,   // for the tests (TODO 15.5k)
       childShare: childShare,   // for the tests (TODO 15.5m)
+      plough: vid => plough(villages[vid]), beastTurn: vid => beastTurn(villages[vid]),   // for the tests (TODO 15.5o)
       lastCut: lastCut, reapedFrom: (i, got, vid) => reapedFrom(i, got, villages[vid]), restSoil: () => rest(), restWill: fid => restWill(factions[fid]),
       soil: soil, groundLog: groundLog, cleared: cleared, regrow: () => { if (soil) regrow(); }, clearedFor: vid => clearedFor(villages[vid]), landTurn: vid => landTurn(villages[vid]),   // TODO 15.5d: the page reads groundLog; the rest for the tests
       living: p => chooseJob(p), roadOf: vid => roadOf(villages[vid]),   // for the tests (TODO 15.5b4): the living somebody would choose now, and where a village's bandits lie in wait

@@ -173,6 +173,7 @@ const SUITES = [
   ['world-builder children working', ['projects/world-builder/test/childwork.test.mjs']],   // TODO 15.5m, about a minute
   ['world-builder work in the house', ['projects/world-builder/test/housework.test.mjs']],   // TODO 15.5n, about two minutes
   ['world-builder land that changes', ['projects/world-builder/test/landchange.test.mjs']],   // TODO 15.5d, about two minutes
+  ['world-builder animals that work', ['projects/world-builder/test/beasts.test.mjs']],   // TODO 15.5o, under a minute
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],
