@@ -18,7 +18,7 @@ const FINGERPRINT = 2193699208;   // print() of 15g's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, marriage: "liking" });
+  const w = People.create({ seed: 2, marriage: "liking", finds: 0 });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15b");
 }

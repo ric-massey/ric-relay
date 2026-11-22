@@ -1971,6 +1971,50 @@ the hemmed-in against open land run of many seeds (said in TODO 15c's "Done when
 for one pair of worlds only (above), not tuned; a governor's subject people keeping its own
 customs pulling on the ruler (15a's ways stay its own, since it stays its own faction).
 
+### Know-how: found, passed on, lost; and writing (2026-11-22)
+
+TODO item 15e. Ric (2026-11-20): "Idk what to do about 2. Propose an idea please"; finds "Rare
+(make it a slide tho)"; "If writing is that important put it in". Setting **How often new things
+are found** under Minds, a slider: never (as before — the 15b world exactly, fingerprinted),
+rarely as in history (the default), now and then, often so a run shows it.
+
+- **A technique is something a person holds** (`p.know`, a bit each), not a flag on a people. One
+  list, each with what it is built from and no tree to walk: farming, digging wells, building
+  boats, building bridges (from the cart), the cart, the plough, irrigation ditches, smithing,
+  weaving — the farming village the engine already was, which everybody starts holding — and,
+  to be found, writing, resting fields with beans, the water mill, the horse collar, healing herbs
+  and the steam engine (15f).
+- **Found by somebody at work** (Muthukrishna and Henrich, *Phil. Trans. R. Soc. B* 2016: the
+  collective brain): each spell of work, a small chance to find one whose parts they hold — more
+  for the curious, a third as much when hungry, twice where the village is going short (Allen:
+  people invent to save what is dear). More people working who hold the parts means more finds,
+  without that being set. Rarely as in history is about one find a year among 400; the top of the
+  slider two hundred times that. A find others of the people already hold is no news.
+- **Passed on** to children, each thing copied a little imperfectly (98 in 100), reading and
+  writing only where the family has coins to spare a child for it; and to whoever sees it done in a
+  talk (writing excepted: it must be taught, 15f's teachers).
+- **Lost** when the last of a people who held it dies (Henrich, *American Antiquity* 2004:
+  Tasmania), and news. A people that writes writes down what it knows, and a lost thing that was
+  written is read again by somebody who can read, now and then.
+- **What each does.** Without wells, bridges or boats known, a village does not dig, build or make
+  them; without the plough, a village reaps as one without oxen. Resting fields with beans: soil
+  tires 40% slower (15.5d). The water mill: a household by a river spends a quarter less time
+  grinding and cooking (15.5n; with 15f, only where a mill stands and a miller works it). The horse
+  collar: a village's horses plough as oxen do. Healing herbs: a fifth fewer die of a sickness.
+  **Writing**: news told by somebody who writes passes word for word; a collector who keeps
+  accounts skims half as much (a scribe's check, 15c); a written law needs a clearer lean to
+  change (Goody, *The Logic of Writing and the Organization of Society*, 1986).
+- Counts: `finds`, `learned`, `lost`, `relearned`. `test/knowhow.test.mjs`.
+
+**Measured** (a year, 400 people): rarely, one find (the horse collar), spread by being seen to
+three of four peoples; often, 26 finds and all five new things in most peoples, four in a hundred
+writing; in a land of 60, a technique lost and found again within two years. Taught to one person,
+healing herbs is held by about 35 sixty days later. Cost: a bit test per spell of work and per talk;
+one pass over the people a day.
+
+**Left out:** losing a technique because its material is out of reach; trade goods and captured
+weapons taken apart to learn from; scribes as a separate office (counted into the collector here).
+
 ### Who marries whom (2026-11-22)
 
 TODO item 15b. Ric (2026-11-19): "dont people who marry marry in similarry pay ranges? … there

@@ -304,6 +304,9 @@
         say: v => v + " things", help: "Each friend, grudge, debt, piece of news, who has food to spare, and what they think about sharing takes one. When a mind is full the weakest thing goes. People differ a little: a quarter either way, taken after their parents." },
       { key: "wrong", label: "How often a tale changes in the telling", type: "range", min: 0, max: 0.3, step: 0.01, def: 0.05,   // TODO 12; Ric, 2026-11-18: "1 in 20"
         say: v => v <= 0 ? "never" : "1 telling in " + Math.round(1 / v), help: "Each time something is passed on, the chance it comes out changed: a number grows, the wrong village, the wrong side. Field studies of real rumours find them mostly right." },
+      { key: "finds", label: "How often new things are found", type: "range", min: 0, max: 1, step: 0.05, def: 0.2,   // TODO 15e, 2026-11-22; Ric: "Rare (make it a slide tho)"
+        say: v => v <= 0 ? "never: what they know is fixed (as before)" : v <= 0.25 ? "rarely, as in history" : v <= 0.6 ? "now and then" : "often, so a run shows it",
+        help: "What a people can do is what its people know: digging wells, building boats and bridges, the plough, ditches. Somebody at work, curious, fed and short of something, may find something new from what they know — writing, resting fields with beans, the water mill, the horse collar, healing herbs. It passes to children and to whoever sees it done; writing must be taught. When the last who knew a thing dies it is lost, unless it was written down." },
       { key: "faith", label: "Faith", type: "toggle", def: true,   // TODO 15g, 2026-11-22
         help: "After something hard they cannot explain — a famine, a sickness, a drought, a war lost — now and then somebody makes up what lay behind it and what must be done. Their nature makes its rite, its rule and its holy days; it passes from friend to friend and to children, binds those who hold it, can become a people's own, and may call for sacrifice or holy war. It fades where life is safe." },
       { key: "plenty", label: "News of plenty", type: "toggle", def: true,   // TODO 15.5g, 2026-11-22
@@ -778,7 +781,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1605,7 +1608,7 @@
       if (HOUSEWORK) for (const h of homes) h.small = 0;
       for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) { const h = homes[p.dwelling]; h.n++; if (adult(p)) h.head = p.id; if (HOUSEWORK && p.age < 5) h.small++; }   // and a grown-up of it, for its share (TODO 7c)
       /* The hours a household owes, an hour at a time (TODO 15.5n). */
-      if (HOUSEWORK) for (const h of homes) if (h.n > 0) h.chores = Math.min(CHORES_MAX, h.chores + (COOKING + COOK_EACH * (h.n - 1) + MINDING * h.small) / (THIRST ? DAY_HOURS : 1));   // counted hourly with thirst on, daily without
+      if (HOUSEWORK) for (const h of homes) if (h.n > 0) h.chores = Math.min(CHORES_MAX, h.chores + ((COOKING + COOK_EACH * (h.n - 1)) * (KNOW && villages[h.v].mill ? 0.75 : 1) + MINDING * h.small) / (THIRST ? DAY_HOURS : 1));   // a mill grinds what a quern did (TODO 15e)   // counted hourly with thirst on, daily without
       for (const v of villages) v.fullest = null;
       for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
     }
@@ -1675,6 +1678,7 @@
                   fledFrom: -1,   // TODO 14b: the village they fled from, while they are away from it
                   unfree: undefined,   // TODO 15c: the id of whoever holds them, while they are unfree
                   keptBy: undefined,   // TODO 15b: the child who keeps them
+                  know: undefined,   // TODO 15e: what they know how to do, a bit for each of TECH
                   faith: undefined, zeal: undefined,   // TODO 15g: which faith they hold, and how hard
                   vig: 1, harm: 0, lame: 0,   // TODO 15.5e: strength left (wounds and age), a wound still healing, and what of it never will
                   /* TODO 15.5l: 0 a woman, 1 a man; strength at heavy work; drawn to their own sex; a child
@@ -1718,6 +1722,7 @@
         const camp = R() < 0.5 ? -1 : 1;
         setView(p, clamp(f.views * 0.5 + camp * S.divided * 0.7 + (R() - 0.5) * (0.3 + S.divided * 0.5), -1, 1));
       }
+      if (KNOW) { if (mum || dad) bornKnowing(p, mum, dad); else p.know = BASE_KNOW; }   // TODO 15e
       p.ix = people.length; people.push(p); byId.set(p.id, p);
       if (!PLAIN) {
         changedHomes();
@@ -1934,7 +1939,7 @@
       if (!e) return null;
       const trust = feel(hearer, teller.id) + (kin(hearer, teller) ? 0.2 : 0);
       let v = mVar[o], changed = false;
-      if (S.wrong > 0 && R() < S.wrong) { const w = retold(e, v); changed = w !== v; v = w; }
+      if (S.wrong > 0 && !(KNOW && knowsP(teller, "writing")) && R() < S.wrong) { const w = retold(e, v); changed = w !== v; v = w; }   // written, it passes word for word (TODO 15e)
       const said = telling(e, v);
       count.passed++;
       if (R() > clamp(0.6 + trust * 0.4, 0.3, 1)) return { said: said, believed: false };
@@ -2188,6 +2193,29 @@
     const RIOTS = !shared && S.riots !== false;   // TODO 15.5b3
     const BANDITS = !shared && S.bandits !== false;   // TODO 15.5b4
     const DIRT = S.dirt !== "fixed";   // TODO 15.5r: town deaths from their causes, not a fixed toll
+    const KNOW = S.finds > 0;   // TODO 15e: know-how people hold, find, pass on and lose (see "know-how")
+    /* How often somebody at work finds something: "Rare" (Ric) at 0.2, about one find in a few
+       years among 400; two hundred times as often at the top of the slider, so a run shows it. A guess. */
+    const FIND_RATE = 5e-7 * Math.pow(200, (S.finds - 0.2) / 0.8), SEE_DONE = 0.002, COPY = 0.98;
+    const TECH = [
+      { key: "farming", name: "farming" },
+      { key: "wells", name: "digging wells", needs: ["farming"] },
+      { key: "boats", name: "building boats" },
+      { key: "bridges", name: "building bridges", needs: ["carts"] },
+      { key: "carts", name: "the wheel and the cart" },
+      { key: "plough", name: "the plough", needs: ["farming"] },
+      { key: "ditches", name: "irrigation ditches", needs: ["farming"] },
+      { key: "smithing", name: "smithing" },
+      { key: "weaving", name: "weaving" },
+      { key: "writing", name: "writing", needs: ["farming"], taught: true },
+      { key: "rotation", name: "resting fields with beans", needs: ["farming", "plough"] },
+      { key: "mill", name: "the water mill", needs: ["carts", "smithing"] },
+      { key: "collar", name: "the horse collar", needs: ["plough", "carts"] },
+      { key: "herbs", name: "healing herbs" },
+    ];
+    const TI_K = Object.fromEntries(TECH.map((x, i) => [x.key, i]));
+    for (const x of TECH) x.mask = (x.needs || []).reduce((m, k) => m | (1 << TI_K[k]), 0);
+    const BASE_KNOW = ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"].reduce((m, k) => m | (1 << TI_K[k]), 0);   // the farming village the engine was
     const MARRY = S.marriage !== "liking";   // TODO 15b: each people's marriage customs (see "who marries whom")
     const FAITH = S.faith !== false;   // TODO 15g (see "faith")
     /* How often a hard event makes a faith (one in six, Ric: "Rare" for finds, said as a guess), how
@@ -3406,7 +3434,11 @@
        are eaten when a village starves (an ox is about 150 days of food), and are driven off when it
        is sacked. Horses make a village's carts faster. `f.plough`, the share of a people in
        ploughing villages, leans its customs about women's work (15.5l, Alesina and others). */
-    function plough(v) { return PLOUGH_MIN + (1 - PLOUGH_MIN) * clamp(v.oxen / Math.max(1, v.pop * TEAM_EACH), 0, 1); }
+    function plough(v) {
+      if (KNOW && !knows(v.f, "plough")) return PLOUGH_MIN;   // TODO 15e: the plough forgotten
+      const team = v.oxen + (KNOW && knows(v.f, "collar") ? v.horses : 0);   // a collared horse ploughs as an ox does
+      return PLOUGH_MIN + (1 - PLOUGH_MIN) * clamp(team / Math.max(1, v.pop * TEAM_EACH), 0, 1);
+    }
     function beastTurn(v) {
       const want = v.pop * OXEN_EACH, wantH = v.pop * HORSES_EACH;
       const graze = MATS ? wildSpot(v, "herd") >= 0 : true;
@@ -3443,7 +3475,7 @@
        and a village short again clears more. */
     function restWill(f) { return clamp((f.mean[TRAIT_AT.patient] - 0.35) * 1.5, 0, 0.8); }
     function reapedFrom(ti, got, v) {
-      soil[ti] -= SOIL_WEAR * got / (fert[ti] * FIELD_CAP + 1e-6) * (soil[ti] - SOIL_FLOOR);
+      soil[ti] -= SOIL_WEAR * (KNOW && knows(v.f, "rotation") ? 0.6 : 1) * got / (fert[ti] * FIELD_CAP + 1e-6) * (soil[ti] - SOIL_FLOOR);   // beans rest a field (TODO 15e)
       if (v.manure > 0 && soil[ti] < 1) { const m = Math.min(v.manure, (1 - soil[ti]) * 0.25); v.manure -= m; soil[ti] += m; count.manured += m; }
       if (lastCut[ti] === 0 && soil[ti] < 1) worn.push(ti);
       lastCut[ti] = t || 1;
@@ -3722,7 +3754,7 @@
       if (THIRST && p.dwelling >= 0) {
         const h = homes[p.dwelling], src = sourceOf(h);
         if (src) weigh("water", n.water * 1.4 - away(dist(p, src)) * 0.6 - dark * 0.3, () => { go(p, src.x, src.y, "water"); p.wait = 0; });
-        if (!v.well && (!src || src.d > FAR)) {
+        if (!v.well && (!src || src.d > FAR) && knows(v.f, "wells")) {   // knows: TODO 15e
           const spot = v.wellAt || (v.wellAt = { x: v.x + 0.15, y: v.y + 0.15 });
           weigh("well", 0.35 + n.water * 0.5 - away(dist(p, spot)) - n.food * 0.4 - dark * 0.6, () => { go(p, spot.x, spot.y, "well"); p.wait = 0; });
         }
@@ -3772,10 +3804,10 @@
       /* A bridge or a boat for the village (TODO 6d). */
       if (CROSS && v.alive && p.job !== "soldier") {
         const c = crossings(v);
-        if (c.bridge && !v.bridge && cross[c.bridge.i] === 1)   // and nobody has bridged it since
+        if (c.bridge && !v.bridge && cross[c.bridge.i] === 1 && knows(v.f, "bridges"))   // and nobody has bridged it since; and they know how (TODO 15e)
           weigh("bridge", 0.4 - away(Math.hypot(c.bridge.x - p.x, c.bridge.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, c.bridge.x, c.bridge.y, "bridge"); p.wait = 0; });
-        if (c.landing && !v.boat && (v.wantBoat || 0) >= 3)
+        if (c.landing && !v.boat && (v.wantBoat || 0) >= 3 && knows(v.f, "boats"))
           weigh("boat", 0.4 + Math.min(0.3, v.wantBoat * 0.01) - away(Math.hypot(c.landing.x - p.x, c.landing.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, c.landing.x, c.landing.y, "boatwork"); p.wait = 0; });
       }
@@ -4116,8 +4148,10 @@
     /* ── carrying out what was chosen ──────────────────────────────────────
        One branch per task, and none of them chooses anything: when a task is
        finished the person goes back to `choose`. */
+    const AT_WORK = new Set(["field", "make", "gather", "herd", "hunt", "fish", "cut", "quarry", "mine", "build", "well", "bridge", "boatwork", "ditch", "clear", "spin"]);   // TODO 15e
     function work(p) {
       const v = villages[p.home];
+      if (KNOW && AT_WORK.has(p.task)) findTech(p);   // TODO 15e
       /* A shift of building or digging is spent at the work, and shows as that work; what it
          did is counted when it ends (TODO 7b: before, the hours showed as resting). */
       if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear" || p.task === "ditch") && !p.shift) {
@@ -4907,6 +4941,7 @@
          it, so somebody nobody speaks to keeps going out to look for company. */
       a.alone = 0; b.alone = 0;
       if (FAITH) faithTalk(a, b);   // TODO 15g
+      if (KNOW) learnFrom(a, b);   // TODO 15e
       if (S.records === "light") { exchange(a, b); return; }
       keepState(csWas[0], 0, a, b); keepState(csWas[1], 1, b, a);
       const previous = nextExchange, fa = a.f, fb = b.f, dipA = fa !== fb ? factions[fa].rel[fb].op : 0, dipB = fa !== fb ? factions[fb].rel[fa].op : 0;
@@ -5227,7 +5262,7 @@
       if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
       if (p.sick > 0) {
         p.sick--;
-        if (R() < SICK_HAZARD * frailty(p)) { die(p, "sick"); return; }
+        if (R() < SICK_HAZARD * frailty(p) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1)) { die(p, "sick"); return; }
         if (p.sick === 0) p.immune = true;
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
@@ -7084,11 +7119,11 @@
     }
     /* The laws, looked at once a month and changed only on a clear lean. */
     function lawsOf(f, lead, g) {
-      const m = k => sayOf(f, lead, k), L = g.laws, at = villages[lead.home];
+      const m = k => sayOf(f, lead, k), L = g.laws, at = villages[lead.home], held = KNOW && knows(f.id, "writing") ? 0.35 : 0.2;   // a written law outlasts more (TODO 15e)
       const say = (what, text) => note("law", f.name + " " + text, 2, at.x, at.y, f.id);
-      const theft = lean3({ repay: m("honest") + m("warm"), fine: m("greed") + m("bold") }, L.theft, 0.2);
+      const theft = lean3({ repay: m("honest") + m("warm"), fine: m("greed") + m("bold") }, L.theft, held);
       if (theft !== L.theft) { if (L.theft) say("theft", theft === "repay" ? "now makes a thief pay back twice what was taken." : "now fines a thief, to the ruler."); L.theft = theft; }
-      const killing = lean3({ kin: 0.9 + (g.judge ? -0.3 : 0.2), fine: m("greed") * 1.2 + (g.judge ? 0.2 : 0), death: m("temper") + m("bold") - m("warm") }, L.killing, 0.2);
+      const killing = lean3({ kin: 0.9 + (g.judge ? -0.3 : 0.2), fine: m("greed") * 1.2 + (g.judge ? 0.2 : 0), death: m("temper") + m("bold") - m("warm") }, L.killing, held);
       if (killing !== L.killing) { if (L.killing) say("killing", killing === "kin" ? "now has a killer's kin pay the dead's." : killing === "fine" ? "now fines a killer, to the ruler." : "now puts a killer to death."); L.killing = killing; }
       const want = f.yours && f.yours.unfree ? f.yours.unfree : null;
       const bind = m("greed") + m("bold") - m("warm") - m("honest");
@@ -7147,7 +7182,7 @@
     }
     function officeCount(g) { let n = (g.collector ? 1 : 0) + (g.judge ? 1 : 0) + (g.captain ? 1 : 0); for (const k in g.head) n++; for (const k in g.governor) n++; return n; }
     /* What an official takes beyond their due, by their honesty and how they are paid. */
-    const skimRate = (q, g) => clamp(1 - q.honest - 0.3, 0, 0.7) * (g.pay === "farm" ? 1.5 : 1) * (g.audit ? 0.5 : 1);
+    const skimRate = (q, g) => clamp(1 - q.honest - 0.3, 0, 0.7) * (g.pay === "farm" ? 1.5 : 1) * (g.audit ? 0.5 : 1) * (KNOW && knows(q.f, "writing") ? 0.5 : 1);   // a scribe's accounts (TODO 15e)
     function takes(g, q, amount) { if (amount <= 0) return; q.coins += amount; g.skim[q.id] = (g.skim[q.id] || 0) + amount; count.skimmed += amount; }
     function offices(f, lead, g) {
       const m = k => sayOf(f, lead, k), mine = villages.filter(v => v.alive && v.f === f.id);
@@ -7619,6 +7654,93 @@
       const c = customs(f, lead);
       matchmaking(f, c);
       keepOld(f);
+    }
+    /* ── know-how (TODO 15e, 2026-11-22) ───────────────────────────────────
+       Ric, 2026-11-20: "Idk what to do about 2. Propose an idea please"; finds "Rare (make it a
+       slide tho)"; "If writing is that important put it in". A technique is something a person
+       holds, not a flag on a people: one list, each with the techniques it is built from, and no
+       tree anybody walks along. Somebody at work may find one whose parts they already hold —
+       likelier the curious, the fed, and a village going short (Muthukrishna and Henrich 2016: the
+       collective brain; Allen: invent to save what is dear) — and more people working who hold the
+       parts means more finding, without that being set. It passes to children (copied a little
+       imperfectly) and to whoever sees it done; it is lost when the last who held it dies (Henrich
+       2004, Tasmania), unless it was written down and somebody can read. Writing is one more
+       technique: it is taught, not seen; written news passes word for word; a collector who keeps
+       accounts is checked by a scribe; a law that is written outlasts more. README, "Know-how". */
+    function knowsP(p, k) { return p.know != null && (p.know & (1 << TI_K[k])) !== 0; }
+    /* A people knows it while one of them holds it. Before the first count, as at the start. */
+    function knows(fid, k) { return !KNOW || !factions[fid].know || factions[fid].know[TI_K[k]] > 0; }
+    function findTech(p) {
+      if (p.know == null || !adult(p)) return;
+      const v = villages[p.home];
+      const rate = FIND_RATE * (0.5 + p.curious) * (p.hungry > 0 ? 0.3 : 1) * (v.hungry > v.pop * 0.15 || v.famine > t - YEAR ? 2 : 1);
+      if (R() >= rate) return;
+      const can = [];
+      for (let i = 0; i < TECH.length; i++) if (!(p.know & (1 << i)) && (p.know & TECH[i].mask) === TECH[i].mask && !TECH[i].eraOnly) can.push(i);
+      if (!can.length) return;
+      const i = can[Math.floor(R() * can.length)];
+      p.know |= 1 << i; count.finds++;
+      const f = factions[p.f];
+      if (f.know && f.know[i] > 0) return;   // others of the people knew it already: no news
+      const again = f.know && f.knewOnce && (f.knewOnce & (1 << i));
+      if (f.know) f.know[i]++;
+      note("found", p.name + " of " + v.name + " has " + (again ? "worked out again " : "found ") + TECH[i].name + ".", 2.5, v.x, v.y, p.f);
+    }
+    /* Seen done, in a talk: one thing the other holds that this one does not, now and then. */
+    function learnFrom(a, b) {
+      for (const [x, y] of [[a, b], [b, a]]) {
+        if (x.know == null || y.know == null || !adult(y)) continue;
+        const missing = x.know & ~y.know;
+        if (!missing) continue;
+        let i = -1, n = 0;
+        for (let k = 0; k < TECH.length; k++) if ((missing & (1 << k)) && !TECH[k].taught && R() < 1 / ++n) i = k;
+        if (i >= 0 && R() < SEE_DONE * (0.5 + y.curious)) { y.know |= 1 << i; count.learned++; }
+      }
+    }
+    /* A child grows up holding what its parents held, copied a little imperfectly; reading and
+       writing only where the family can spare a child to learn them. */
+    function bornKnowing(c, mum, dad) {
+      if (!KNOW) return;
+      const from = (mum && mum.know != null ? mum.know : 0) | (dad && dad.know != null ? dad.know : 0);
+      let k = 0;
+      for (let i = 0; i < TECH.length; i++) {
+        if (!(from & (1 << i))) continue;
+        if (TECH[i].taught) { const fam = (mum ? mum.coins : 0) + (dad ? dad.coins : 0); if (fam > 5 && R() < 0.7) k |= 1 << i; }
+        else if (R() < COPY) k |= 1 << i;
+      }
+      c.know = k;
+    }
+    /* Once a day: what each people holds, what it has lost, and what can be read again. */
+    function knowDay() {
+      for (const f of factions) { if (!f.know) f.know = new Int32Array(TECH.length); else f.know.fill(0); }
+      for (const p of people) {
+        if (p.hp === -99 || p.know == null) continue;
+        const fk = factions[p.f].know;
+        for (let i = 0; i < TECH.length; i++) if (p.know & (1 << i)) fk[i]++;
+      }
+      const W = TI_K.writing;
+      for (const f of factions) {
+        if (!f.alive) continue;
+        let had = f.knewOnce || 0, now = 0;
+        for (let i = 0; i < TECH.length; i++) if (f.know[i] > 0) now |= 1 << i;
+        if (f.know[W] > 0) f.written = (f.written || 0) | now;   // what a people that writes knows, it writes down
+        const lost = (f.knowWas || 0) & ~now;
+        for (let i = 0; i < TECH.length; i++) if (lost & (1 << i)) {
+          count.lost++;
+          const v = villages.find(x => x.alive && x.f === f.id);
+          if (v) note("lost", f.name + " has lost " + TECH[i].name + ": nobody left knows it.", 2.5, v.x, v.y, f.id);
+        }
+        /* Read again: somebody who can read finds a lost thing in what was written. */
+        const back = (f.written || 0) & ~now;
+        if (back && f.know[W] > 0) for (const p of people) {
+          if (p.f !== f.id || p.hp <= 0 || !adult(p) || !knowsP(p, "writing") || R() > 0.02) continue;
+          for (let i = 0; i < TECH.length; i++) if (back & (1 << i)) { p.know |= 1 << i; f.know[i]++; now |= 1 << i; count.relearned++; break; }
+          break;
+        }
+        f.knowWas = now; f.knewOnce = had | now;
+      }
+      /* A mill where a people knows it and a village sits by a river. */
+      for (const v of villages) v.mill = v.alive && knows(v.f, "mill") && (v.riverNear ??= ditchFrom(v) >= 0);
     }
     /* What a leader holds against another faction: grudges against its people, less any close
        friend there, and news they hold of wars, villages taken and old feuds between the two, as
@@ -8633,6 +8755,7 @@
         census();
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
         if (FAITH && t % DAY_HOURS === 0 && faiths.length) faithDay();   // TODO 15g
+        if (KNOW && t % DAY_HOURS === 0) knowDay();   // TODO 15e
         if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
         if (BEASTS && t % (30 * DAY_HOURS) === 0) for (const f of factions) ploughOf(f);   // TODO 15.5o
         if (OPEN && t % (7 * DAY_HOURS) === 0 && t > 0) overTheEdge();   // TODO 15.5c
@@ -8931,6 +9054,8 @@
       /* TODO 15c: a faction's government as the page shows it, and what the tests reach. */
       govOf: f => govView(f), titleOf: f => titleOf(f), ruling: ruling, bind: (p, h) => bind(p, h, "test"), govern: f => GOV && f.alive && byId.get(f.leader) ? govern(f, byId.get(f.leader)) : null,
       kill: p => die(p, "old"),   // for the tests (TODO 15b)
+      TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
+      knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },
       wedWealth: wedWealth, wouldWed: wouldWed, marriageDay: fid => { const f = factions[fid], l = byId.get(f.leader); if (MARRY && l) marriageDay(f, l); return f.match; }, worth: worth,   // TODO 15b
       faithOf: id => { const fa = faiths[id]; return fa ? { name: faithName(fa), rite: fa.rite, rule: fa.rule, holyWar: fa.holyWar, mode: fa.mode, every: fa.every, holders: fa.holders } : null; },
       faiths: faiths, hardTimes: (vid, why, size) => hardTimes(villages[vid], why, size), makeFaith: (p, why) => makeFaith(p, why || "famine"), faithDay: () => faithDay(), convert: (p, id) => convert(p, faiths[id], 0.5), holyDay: id => holyDay(faiths[id]),   // TODO 15g

@@ -2116,7 +2116,7 @@
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], sacrifice: ["Sacrifice", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
+                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
     ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     for (const e of f.marks) {
       const m = MARK[e.kind]; if (!m) continue;
@@ -2492,6 +2492,12 @@
   }
   /* A faction's government (TODO 15c): who rules with whom, its officials and its laws. */
   const RITE = { feast: "a feast", fast: "a fast", offering: "offerings", sacrifice: "sacrifice" };   // TODO 15g
+  /* What a people knows beyond the farming village's ways, and what it has lost (TODO 15e). */
+  function knowLine(k) {
+    if (!k || (!k.extra.length && !k.lost.length)) return "";
+    return "<span class='ln'>" + (k.extra.length ? "Know-how: " + k.extra.map(esc).join(", ") + (k.writes ? " (" + k.writes + " can write)" : "") : "") +
+      (k.lost.length ? (k.extra.length ? " · " : "") + "Lost: " + k.lost.map(esc).join(", ") : "") + "</span>";
+  }
   /* A people's marriage customs (TODO 15b). */
   function matchLine(c) {
     if (!c) return "";
@@ -2610,7 +2616,7 @@
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
+            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");

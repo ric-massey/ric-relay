@@ -2280,7 +2280,9 @@ hold, a list already kept up (item 2), so it costs a short list a day per family
 of age, not everybody against everybody. **Measured by** the correlation of spouses' household
 wealth against the same people paired at random, and how often the leading families marry each other.
 
-### [ ] 15e. Know-how: how a technique is found, spreads and is lost; and writing
+### [x] 15e. Know-how: how a technique is found, spreads and is lost; and writing
+
+**Done 2026-11-22.** Slider "How often new things are found" (never = the 15b world, fingerprinted; rarely by default). Techniques held person by person: the farming village's nine (wells, boats, bridges, the cart, the plough, ditches, smithing, weaving, farming) held by all at the start, and writing, resting fields with beans, the water mill, the horse collar and healing herbs to be found by somebody at work from parts they hold (curious, fed, short of something). Passed to children (copied imperfectly; writing only where a child can be spared) and by being seen; lost with the last holder, and news; read again from writing. Each does something: lost wells, bridges, boats or plough stop being made or used; beans rest the soil; the mill saves grinding; the collar puts horses to the plough; herbs save the sick; writing passes news word for word, halves a collector's skim, and holds laws. Measured: one find a year among 400 by default, 26 at the top; a technique lost and found again in a land of 60. `test/knowhow.test.mjs`; README, "Know-how". Left: losing a technique for want of its material, learning from traded or captured things.
 
 Added 2026-11-20 (Ric: "Idk what to do about 2. Propose an idea please"; "If writing is that
 important put it in").
