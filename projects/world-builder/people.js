@@ -439,6 +439,8 @@
         help: "A village by the sea, a lake or a big river whose people go fishing builds a boat, and its fishers catch a third more from it; with a boat, grain can go by water. A road built over a stream bridges it." },
       { key: "meeting", label: "Armies meet", type: "toggle", def: true,   // 2026-11-22, Ric: "do the peoplle at war just run past each other to go to the cities?"
         help: "An army sees an enemy army on the march within 5 km of its soldiers or places (10 km with horsemen); if it is coming for one of its places, its leader marches to meet it when the numbers are well in its favour, by nature, and keeps clear otherwise. A place under siege is relieved when the odds are clearly good." },
+      { key: "dispersion", label: "Armies spread out", type: "toggle", def: true,   // 2026-11-22
+        help: "As weapons grow deadlier armies spread out and take cover, so a blow lands less often: muskets 70%, rifles 35%, machine guns 20% as often as hand weapons (Dupuy's dispersion). Off, modern war kills about a tenth of a people a year." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -447,7 +449,7 @@
         say: v => (v === 0 ? "none" : "1 in " + Math.round(1 / v)),
         help: "After that each leader keeps as many as their neighbours' armies, their old wars and their treasury call for. Soldiers do not farm, and somebody has to pay them." },
       { key: "deadly", when: s => s.war, label: "How deadly a fight is", type: "range", min: 0.1, max: 3, step: 0.1, def: 1,
-        say: v => (v < 0.6 ? "mostly bruises" : v < 1.6 ? "people die" : "few walk away"), help: "How often a blow in a fight kills." },
+        say: v => (v < 0.6 ? "mostly bruises" : v < 1.6 ? "people die" : "few walk away"), help: "How often a blow lands in a battle, how hard it is, and how often a bad wound kills later." },
     ]},
     /* What the engine keeps track of, against how fast it runs (Ric,
        2026-11-14: "options to turn parts of tracking off would make it
@@ -2378,8 +2380,18 @@
       modern: { season: false, standing: 0.01, campaign: 0.1, wallWorth: 0.2, wallHold: 4, wallDays: 30 },
       information: { season: false, standing: 0.01, campaign: 0.1, wallWorth: 0.2, wallHold: 4, wallDays: 30 },
     };
-    const ARMS = { hand: { reach: 0.8, hit: 1, name: "hand weapons" }, iron: { reach: 0.8, hit: 1.2, name: "iron weapons" }, musket: { reach: 1.5, hit: 1.5, name: "muskets" },
-                   rifle: { reach: 2.5, hit: 2, name: "rifles" }, modern: { reach: 3, hit: 2.5, name: "machine guns" } };
+    /* `spread` (2026-11-22, Ric: "fix both"): how much of a blow's chance to land is left once an army
+       spreads out and takes cover as its weapons grow deadlier — Dupuy's dispersion: the ground held by a
+       hundred thousand men grew from about 1 km² in antiquity to 20 under Napoleon, 250 in 1914 and 3,000
+       in 1939–45, so losses a day fell even as weapons grew far deadlier. The values set modern war to a
+       few in a hundred of a people a year at the worst, not nine. */
+    const ARMS = { hand: { reach: 0.8, hit: 1, spread: 1, name: "hand weapons" }, iron: { reach: 0.8, hit: 1.2, spread: 1, name: "iron weapons" }, musket: { reach: 1.5, hit: 1.5, spread: 0.7, name: "muskets" },
+                   rifle: { reach: 2.5, hit: 2, spread: 0.35, name: "rifles" }, modern: { reach: 3, hit: 2.5, spread: 0.2, name: "machine guns" } };
+    const SPREAD = S.dispersion !== false;
+    /* A gun's greater power is more hits, not a harder one: a bullet wound is no deadlier than a lance's
+       twice over. No one blow more than one and a half times a sword's; the rest of `hit` goes into how
+       often blows land. */
+    const BLOW_MAX = 1.5;
     const TOWER_REACH = 140;   // squares: 35 km, GSM's timing limit
     const BAND_LOST = ["farming", "plough", "ditches", "wells", "carts", "bridges"];   // TODO 15i: what a band does not know
     /* Rare state kept beside the people, not on them (TODO 15): one field more on every person made the
@@ -3444,7 +3456,7 @@
         /* Only a severe wound kills later, the worse the likelier (calibrated 2026-11-22: one in five of every
            knock out of the line killed 5 to 9% of a warring people a year, ten times the worst societies on record). */
         const severe = clamp((WOUND_SEVERE - foe.hp) / WOUND_SEVERE, 0, 1);
-        if (severe > 0 && !DYING.has(foe.id) && RW() < WOUND_DIE * severe * care) DYING.set(foe.id, t + (1 + Math.floor(RW() * 10)) * DAY_HOURS);
+        if (severe > 0 && !DYING.has(foe.id) && RW() < WOUND_DIE * severe * care * Math.min(1.6, Math.sqrt(S.deadly))) DYING.set(foe.id, t + (1 + Math.floor(RW() * 10)) * DAY_HOURS);
       }
       if (SPOILS && wasUp && foe.hp < 0.45 && foe.hp > 0 && foe.job === "soldier" && !HELD.has(foe.id) && R() < (GENERALS && (ROUT.get(foe.id) ?? -1) > t ? TAKE_ROUTED : TAKE_ODDS)) takePrisoner(foe, p);   // TODO 15q
       wound(foe, damage);
@@ -5402,8 +5414,8 @@
              certainly and took up to four-fifths of a life: measured, armies
              fed a soldier a day into the line all war, and a world lost a
              quarter of its people to battle in eleven days. */
-          if (R() < 1 - Math.pow(1 - Math.min(0.95, 0.25 * S.deadly), 1 / ACTIONS_PER_HOUR)) {
-            strike(p, foe, (0.15 + R() * 0.3) * arms.hit, shot);
+          if (R() < 1 - Math.pow(1 - Math.min(0.95, 0.25 * S.deadly * (SPREAD && arms.spread ? arms.spread * arms.hit / Math.min(arms.hit, BLOW_MAX) : 1)), 1 / ACTIONS_PER_HOUR)) {   // spread out, harder to hit (2026-11-22)
+            strike(p, foe, (0.15 + R() * 0.3) * (SPREAD ? Math.min(arms.hit, BLOW_MAX) : arms.hit) * (0.6 + 0.4 * S.deadly), shot);   // and the slider: each blow harder too (1 at the default)
             if (foe.hp <= 0) { if (GENERALS && (ROUT.get(foe.id) ?? -1) > t) count.pursuitDead++; die(foe, "battle", p); }
           }
           p.task = "idle"; p.wait = 0;
@@ -10343,6 +10355,7 @@
       campSickness: fid => campSickness(factions[fid], true), campFoulOf: p => ARMY_SICK ? campFoulOf(p) : 0,   // TODO 15m
       routes: () => [...ROUTES].map(([k, r]) => ({ key: k, trips: r.n, last: r.last })), caravanRoute: (pid, vid) => CARAVANS ? caravanRoute(byId.get(pid), villages[vid]) : null,   // TODO 15l
       onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j
+      blowOf: (fid, deadly) => { const arms = WIRED ? armsOf(fid) : ARMS.hand, d = deadly ?? S.deadly; return { chance: Math.min(0.95, 0.25 * d * (SPREAD && arms.spread ? arms.spread * arms.hit / Math.min(arms.hit, BLOW_MAX) : 1)), harm: (SPREAD ? Math.min(arms.hit, BLOW_MAX) : arms.hit) * (0.6 + 0.4 * d), arms: arms.name }; },   // 2026-11-22: armies spread out; the slider
       meeting: (fid, oid) => { const f = factions[fid], o = factions[oid], c = f.camp[oid]; let all = 0; for (const p of people) if (p.f === fid && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0) all++; return MEETING && meeting(f, o, c, byId.get(f.leader), all, all); },   // armies that meet
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e

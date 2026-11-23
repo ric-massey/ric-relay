@@ -17,7 +17,7 @@ const People = createRequire(import.meta.url)("../people.js");
 
 // 1. None at the start, none ever — and then the world is the one before 15.5t (15.5b2's, as test/rivers holds it).
 {
-  const o = People.create({ seed: 1, harvestTax: 0, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false });   // and 15.5r's dirt at the old fixed toll
+  const o = People.create({ seed: 1, harvestTax: 0, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false });   // and 15.5r's dirt at the old fixed toll
   o.step(24 * 30);
   let h = 0; const mix = x => { h = (h * 31 + (Math.round(x * 1e6) | 0)) % 2147483647; };
   for (const p of o.people) { mix(p.id); mix(p.x); mix(p.y); mix(p.food); mix(p.coins); mix(p.home); }

@@ -2380,6 +2380,34 @@ people); places taken 1 to 2. **Left out:** an army seen but
 not met falling back from a stronger one; an army caught on the march by one that met it head on
 gets no surprise (only a lying in wait does, 15o).
 
+### Armies spread out, and the deadliness slider (2026-11-22)
+
+Ric (2026-11-22): "and this changes per era correct? and there is a slider to make them more
+dangerous", then "Yes, fix both". Measured first (a year of old enemies, one world an era): deaths rose
+with the era, but industrial and modern war killed 56 of 600 a year (9%, beyond even the worst real
+wars: Serbia lost about 4% a year in 1914–18, mostly to sickness, France about 1% in battle), and the
+slider "How deadly a fight is" moved deaths from 25 to 27 between 1 and 3.
+
+- **Armies spread out** (setting under War, on by default; off is the world before, and the default
+  world of early farmers is the same either way). Dupuy's dispersion: the ground held by a hundred
+  thousand men grew from about 1 km² in antiquity to 20 under Napoleon, 250 in 1914 and 3,000 in
+  1939–45, so losses a day fell even as weapons grew deadlier. A blow now lands 70% as often with
+  muskets, 35% with rifles, 20% with machine guns. And a gun's greater power is more hits, not a harder
+  one: no single blow is more than one and a half times a sword's; the rest of its `hit` goes into how
+  often blows land (before, a machine gun's one hit did two and a half times a sword's harm, so nearly
+  every hit killed).
+- **The slider** now makes each blow harder too (×0.6 + 0.4 × the slider: 1 at the default, so nothing
+  changes there) and a severe wound likelier to kill later (by its square root, up to 1.6 times).
+  Measured, medieval: 4, 25 and 40 battle dead a year at 0.3, 1 and 3 (it was 11, 25, 27).
+- Hook `w.blowOf(fid, deadly)`; `test/dispersion.test.mjs`.
+
+**Measured after** (a year of old enemies, 600 people, three worlds an era; battle dead a year):
+early farmers 13, 19, 3 (mean 2.0% of the people); Bronze Age 11, 16, 17 (2.4%); ancient 13, 20, 17
+(2.8%); medieval 25, 20, 15 (3.3%); early modern 14, 8, 17 (2.2%); industrial 24, 10, 16 (2.8%);
+modern 28, 19, 31 (4.3%). Rising with the era, but all still above the about 0.5 to 1% a year of the
+most warlike societies on record: three old enemies at war all year round in a small land is the
+worst case, and the gap is open (see TODO).
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
