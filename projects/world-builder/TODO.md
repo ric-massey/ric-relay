@@ -3921,6 +3921,20 @@ they are small, and 15.6 measures war, which two of them change.
      the levy (some armed them in a crisis). **Ric decides:** keep them out (recommended, as hiring
      does), or let a ruler arm them when the army is short.
 
+  **Answered 2026-11-23, Ric (on 5 and 6): "this should be dependednt on the leaders."** Neither is
+  a fixed rule; the people's leader decides, by their nature (`ruling()`, as war and peace are
+  weighed) and how short the army is against what they want:
+  - *Deserters:* a leader who forgives takes them back when short of soldiers; a hard one (high
+    temper, low warmth, or a law of death for killing) has them sought and punished — fined,
+    beaten, or killed where the law is harsh — and keeps them out of the army for the war; one in
+    between lets them be until the war ends. The marked ones are kept beside the people, not as a
+    field on everybody.
+  - *People held unfree:* kept out of the levy by default, as hiring does; a leader whose army is
+    badly short may arm them, the bold and the ruthless sooner, and may free them for it (Rome's
+    *volones* after Cannae were slaves bought by the state, armed and freed for service). Those
+    armed and not freed are likelier to desert.
+  - What each leader does is noted in the news, and the setting "Off" keeps today's world.
+
 **Done when:** each of 1–3 has a test that failed before and passes after; a default year measured
 before and after, and what moved is said; README updated where it describes them.
 **Budget:** default.
