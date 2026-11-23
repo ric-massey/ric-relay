@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const LATER = { smallWar: "old" };   // the parts built after this one, off: this part as it was built
-const FINGERPRINT = 3175300586;   // print() of 15p's engine, seed 2, 60 days
+const FINGERPRINT = 2553129383;   // print() of 15p's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
@@ -47,23 +47,21 @@ const soldiersOf = (w, fid) => w.people.filter(p => p.f === fid && p.job === "so
   assert.ok(by.coins > 10, "a living for the soldier who took them");
 }
 
-// 3. Unransomed.
+// 3. Unransomed: the capture dated two months back rather than the world run, so nothing else happens to them.
 {
-  const w = make(), [a, b] = soldiersOf(w, 0), [c, d] = soldiersOf(w, 1);
-  for (const p of [a, b, c, d]) { p.coins = 0; p.mum = p.dad = 0; p.partner = 0; p.wards = null; }
-  w.takePrisoner(c, a);   // ours hold one of theirs
-  w.takePrisoner(b, d);   // and they one of ours
-  w.step(24 * 61); w.ransoms(0);
-  assert.ok(!w.prisonerOf(c) && !w.prisonerOf(b), "exchanged after two months");
-  const [e] = soldiersOf(w, 1).filter(p => p !== c && p !== d), lead = w.people.find(p => p.id === w.factions[0].leader);
-  e.coins = 0; e.mum = e.dad = 0; e.partner = 0; e.wards = null;
-  lead.temper = 1; lead.honest = 0;
-  const [g] = soldiersOf(w, 0);
-  w.takePrisoner(e, g);
-  assert.ok(w.prisonerOf(e), "taken");
-  for (let d = 0; d < 61; d++) { e.coins = 0; w.step(24); }
+  const w = make(), [a, b, g] = soldiersOf(w, 0), [c, d, e] = soldiersOf(w, 1);
+  const poor = p => { p.coins = 0; p.mum = p.dad = 0; p.partner = 0; p.wards = null; };
+  for (const p of [a, b, c, d, e]) poor(p);
+  const back = p => { w.prisonerOf(p).since -= 61 * 24; };
+  w.takePrisoner(c, a); back(c);   // ours hold one of theirs
+  w.takePrisoner(b, d); back(b);   // and they one of ours
   w.ransoms(0);
-  console.log("  after two months: exchanged " + w.stats().exchanged + ", killed by a hard captor " + w.stats().prisonersKilled + " (ransomed " + w.stats().ransomed + ", released " + w.stats().released + ", e " + e.hp.toFixed(2) + " " + e.job + ", held " + !!w.prisonerOf(e) + ", temper " + lead.temper + ")");
+  assert.ok(!w.prisonerOf(c) && !w.prisonerOf(b) && w.stats().exchanged === 2, "exchanged after two months");
+  const lead = w.people.find(p => p.id === w.factions[0].leader);
+  lead.temper = 1; lead.honest = 0;
+  w.takePrisoner(e, g); assert.ok(w.prisonerOf(e), "taken"); back(e);
+  w.ransoms(0);
+  console.log("  after two months: exchanged " + w.stats().exchanged + ", killed by a hard captor " + w.stats().prisonersKilled);
   assert.ok(e.hp <= 0 && w.stats().prisonersKilled === 1, "a hard, dishonest captor kills");
 }
 

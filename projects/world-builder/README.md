@@ -2015,15 +2015,28 @@ TODO item 15l. Ric (2026-11-22): "caravans are a yes". Setting **Caravans** unde
   none, sold to them door to door at a fifth over the store's price; ore and wool to a store that can
   pay. A route already gone **pulls** (a road known, buyers found), up to three times for five trips,
   so routes grow where trade keeps going; the third trip makes news ("Caravans now go regularly …").
-- **Robbery:** a bandit who waylays a caravan carries off half its load to their own place, as well
-  as the purse. More caravans on a road, more to rob.
+- **Robbery:** bandits by its road take half its load to their own place. More caravans on a road,
+  more to rob.
 - Why the door-to-door sale: village stores almost never have coins (15.5b2's finding), so a caravan
   selling into the store sold nothing; real long-distance merchants sold to whoever wanted their goods.
-- Counts: `caravans`, `caravanSold`, `caravanFar`, `caravanRobbed`; test hooks `w.routes()`,
+- **Only in their eras** (Ric, 2026-11-22: "carasvans were only ina few eras anyways right?"): the
+  Bronze Age (donkey caravans; the Assyrian merchants' runs to Kanesh, about 1900 BC), antiquity (camels
+  from about 1000 BC: the incense routes, the Silk Road), the Middle Ages (the Sahara) and the early
+  modern era. Foragers and early farmers pass goods village to village; industrial peoples send them by
+  rail and ship. Modern trucks are left out.
+- **Living on the road** (Ric: "caravaners dont have homes their truck is their home no?"; chosen: "Live
+  on the road"): from a far market a caravaner goes on to the next one worth going to, and home only
+  when none is; their family stays in their village (a child no longer walks after a parent gone far).
+- **The road is not walked step by step.** A caravan takes its days at 35 km a day (140 squares) and
+  is there; bandits whose place lies within 2 km of its line take half its load three times in ten.
+  Walked, a 200 km land ran hundreds of times slower (the crossing test took 77 minutes): finding a
+  path across 150 km for every step, and children walking 65 km after a caravaner parent. A caravaner
+  sets out only with food for the road.
+- Counts: `caravans`, `caravanSold`, `caravanFar`, `caravanRobbed`, `caravanOnward`, `caravansHome`; test hooks `w.routes()`,
   `w.caravanRoute(pid, vid)`. `test/caravans.test.mjs`.
 
-**Measured** (60 days, 1,500 people on 60 km, 36 places): 21 to 29 caravans; 5 to 67 goods sold
-beyond a trader's reach; on seed 5 one route went five times. Before letting the well-off run them,
+**Measured** (60 days, 1,500 people on 60 km, 36 places, medieval): 43 caravans, 92 goods sold beyond
+a trader's reach, 33 routes. A 200 km land runs a day in about the time it did before caravans. Before letting the well-off run them,
 none went: that land had no traders and no crafters at all. **Left out:** pirates on boat routes (15r);
 caravanserais and fairs; robbery measured against trade over years.
 

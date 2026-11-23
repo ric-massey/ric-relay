@@ -2,7 +2,7 @@
 //
 // What is held:
 //   1. with caravans off the world is the one 15j left, step for step;
-//   2. on a large land, goods go by caravan to places beyond a village trader's reach (34 squares);
+//   2. on a large land in the Middle Ages, goods go by caravan to places beyond a village trader's reach (34 squares);
 //   3. a caravan robbed on the road loses half its load to the bandit's place.
 //
 // node projects/world-builder/test/caravans.test.mjs
@@ -19,9 +19,9 @@ const FINGERPRINT = 322919713;   // print() of 15j's engine, seed 2, 60 days
   assert.equal(print(w), FINGERPRINT, "off is the world before 15l");
 }
 
-// 2. Far trade on a 60 km land of 36 places.
+// 2. Far trade on a 60 km land of 36 places, in the Middle Ages.
 {
-  const w = People.create({ ...LATER, seed: 5, map: 60, villages: 8, people: 1500, factions: 2 });
+  const w = People.create({ ...LATER, seed: 5, map: 60, villages: 8, people: 1500, factions: 2, era: "medieval" });
   w.step(24 * 60);
   const s = w.stats(), routes = w.routes();
   console.log("  60 days on 60 km: " + s.caravans + " caravans, " + s.caravanFar.toFixed(1) + " goods sold beyond a trader's reach, " + routes.length + " routes, most trips on one " + Math.max(0, ...routes.map(r => r.trips)));
@@ -30,8 +30,11 @@ const FINGERPRINT = 322919713;   // print() of 15j's engine, seed 2, 60 days
   for (const r of routes) { const [a, b] = r.key.split(">").map(Number); assert.ok(Math.hypot(w.villages[a].x - w.villages[b].x, w.villages[a].y - w.villages[b].y) > 34, "a caravan route is long"); }
 }
 
-// 3. Off on the same land: none.
+// 3. Off on the same land, or early farmers (Ric: caravans only in their eras): none.
 {
+  const e = People.create({ ...LATER, seed: 5, map: 60, villages: 8, people: 1500, factions: 2 });
+  e.step(24 * 20);
+  assert.equal(e.stats().caravans, 0, "no caravans among early farmers");
   const w = People.create({ ...LATER, seed: 5, map: 60, villages: 8, people: 1500, factions: 2, caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old" });
   w.step(24 * 10);
   assert.equal(w.stats().caravans, 0, "no caravans when off");
