@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People0 = createRequire(import.meta.url)("../people.js");
 /* TODO 15.5 (2026-11-22): these checks were made on worlds before 15.5's later parts and sit near their thresholds by seed (each passes with any of several of those parts off, 2026-11-22); so its worlds keep these at their old values unless a check sets them. */
-const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old" };
+const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" };
 const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 const base = { people: 120, map: "small", factions: 3, villages: 2, seed: 7 };
 const print = w => JSON.stringify({ people: w.people.map(p => [p.id, p.x, p.y, p.food, p.coins, p.task]), stats: w.stats() });
@@ -96,12 +96,12 @@ const print = w => JSON.stringify({ people: w.people.map(p => [p.id, p.x, p.y, p
 
 /* Nothing a watcher does mints or loses a coin. */
 {
-  const w = People.create(base), money = w.stats().money;
+  const w = People.create(base), money = (w.stats().money - w.stats().minted);
   w.rule(0, true); w.order(0, { tax: 0.6, army: 0.4, relief: true });
   for (const v of w.villages) if (v.f === 0) w.orderVillage(v.id, { tax: 0, relief: true });
   w.declare(0, 1, "war");
   w.step(24 * 5);
-  assert.ok(Math.abs(w.stats().money - money) < 1e-6, "coins are conserved under rule: " + money + " → " + w.stats().money);
+  assert.ok(Math.abs((w.stats().money - w.stats().minted) - money) < 1e-6, "coins are conserved under rule: " + money + " → " + (w.stats().money - w.stats().minted));
 }
 
 /* Grain trade: one village's houses full past their winter, another's short;
@@ -119,10 +119,10 @@ const print = w => JSON.stringify({ people: w.people.map(p => [p.id, p.x, p.y, p
   const trader = w.people.find(p => w.adult(p) && p.home === a.id);
   trader.job = "trader"; trader.food = 3; trader.coins = 60; trader.greed = 1; trader.rest = 0;
   trader.task = "idle"; trader.wait = 0; trader.tx = trader.x; trader.ty = trader.y; trader.gear.pack = 1;
-  const money = w.stats().money;
+  const money = (w.stats().money - w.stats().minted);
   w.step(24 * 6);
   assert.ok(w.stats().grain > 1, "grain is carried from the full village to the short one: " + (w.stats().grain || 0));
-  assert.ok(Math.abs(w.stats().money - money) < 1e-6, "grain trade conserves coins");
+  assert.ok(Math.abs((w.stats().money - w.stats().minted) - money) < 1e-6, "grain trade conserves coins");
 }
 
 /* The daily record the graphs are drawn from. */

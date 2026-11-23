@@ -28,11 +28,11 @@ const war = w => { w.rule(0, true); w.declare(0, 1, "war"); w.rule(0, false); };
 /* Rations are drawn before marching, paid by the treasury, and no coin is
    made or lost doing it. */
 {
-  const w = People.create(base), money = w.stats().money;
+  const w = People.create(base), money = w.stats().money, minted0 = w.stats().minted;
   war(w);
   w.step(24 * 6);
   assert.ok(w.stats().rations > 0, "soldiers drew rations for the campaign");
-  assert.ok(Math.abs(w.stats().money - money) < 1e-6, "provisioning conserves coins");
+  assert.ok(Math.abs(w.stats().money - money - (w.stats().minted - minted0)) < 1e-6, "provisioning conserves coins");   // less what was mined and lost (TODO 15.8)
   const marching = w.people.filter(p => p.job === "soldier" && p.task === "march");
   for (const p of marching) assert.ok(p.food > 0 || p.supplyRun, "nobody marches on an empty pack");
 }

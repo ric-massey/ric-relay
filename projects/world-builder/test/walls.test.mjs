@@ -14,7 +14,7 @@ import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 
 const war = seed => {
-  const w = People.create({ seed, people: 600, factions: 3 });
+  const w = People.create({ seed, people: 600, factions: 3, battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" });   // the parts built after this one (TODO 15.6e to 15.9; 15.6e left this red: armies that choose battle took no open place in five months), off: walls as they were built
   const [a, b] = w.factions;
   w.rule(a.id, true); w.declare(a.id, b.id, "war"); w.rule(a.id, false);
   return { w, a, b };

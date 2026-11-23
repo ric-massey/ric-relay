@@ -402,6 +402,7 @@
                    faith: f.faith != null && w.faiths ? w.faithOf(f.faith) : null,   // TODO 15g
                    match: f.match ? Object.assign({}, f.match) : null,   // TODO 15b
                    know: w.knowOf ? w.knowOf(f) : null,   // TODO 15e
+                   tech: w.techView ? w.techView(f.id) : null,   // TODO 15.9i: the research panel
                    era: f.era || "early", arms: w.armsOf ? w.armsOf(f.id).name : "",   // TODO 15d
                    army: Object.entries(f.camp || {}).filter(([k, c]) => c.goal >= 0 && f.rel[k] && f.rel[k].war).map(([k, c]) => ({ at: w.villages[c.v] ? w.villages[c.v].name : "", goal: w.villages[c.goal].name, ready: c.ready, cut: c.cut })),   // TODO 15h
                    lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
@@ -488,7 +489,7 @@
       else if (what === "fharvest" && f && f.yours) w.order(f.id, { harvest: (f.yours.harvest || 0) + 0.02 * a[1] });   // TODO 15.5t
       else if (what === "army" && f && f.yours) w.order(f.id, { army: f.yours.army + 0.02 * a[1] });
       else if (what === "relief" && f && f.yours) w.order(f.id, { relief: !f.yours.relief });
-      else if (what === "land" && f && f.yours) w.order(f.id, { land: { family: "village", village: "leader", leader: "family" }[f.yours.land] || "family" });
+      else if (what === "land" && f && f.yours) w.order(f.id, { land: { family: "village", village: "leader", leader: "commune", commune: "family" }[f.yours.land] || "family" });
       else if (what === "unfree" && f && f.yours) w.order(f.id, { unfree: { keep: "free", free: "forbid", forbid: "keep" }[f.yours.unfree] || "keep" });   // TODO 15c
       else if (what === "vtax" && v) w.orderVillage(v.id, { tax: w.taxOf(v) + 0.02 * a[1] });
       else if (what === "vrelief" && v) w.orderVillage(v.id, { relief: v.relief == null ? true : v.relief ? false : null });

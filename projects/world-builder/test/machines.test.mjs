@@ -25,20 +25,20 @@ const ready = (era) => {
 
 {
   const { w, f } = ready("industrial");
-  const m0 = w.stats().money;
+  const m0 = (w.stats().money - w.stats().minted);
   for (let d = 0; d < 5; d++) w.machinesDay(0, 1);
   assert.equal(f.tanks || 0, 0, "no tanks without knowing them");
   assert.equal((f.air || []).length, 0, "nor aircraft");
-  assert.ok(Math.abs(w.stats().money - m0) < 1e-6);
+  assert.ok(Math.abs((w.stats().money - w.stats().minted) - m0) < 1e-6);
 }
 {
   const { w, v, f } = ready("modern");
-  const m0 = w.stats().money, wood = v.wood;
+  const m0 = (w.stats().money - w.stats().minted), wood = v.wood;
   for (let d = 0; d < 30; d++) { w.machinesDay(0, 1); v.power = true; }
   const s = w.stats();
   console.log("  modern: tanks " + (f.tanks || 0) + " built " + s.tanksBuilt + ", aircraft " + f.air.length + " built " + s.aircraftBuilt + " lost " + s.aircraftLost + ", sorties " + s.sorties + ", bombs " + s.bombs + ", scouted " + s.airScouted);
   assert.ok(s.tanksBuilt > 0 && s.aircraftBuilt > 0, "built when they pay");
-  assert.ok(Math.abs(s.money - m0) < 1e-6, "paid from the treasury into the till: no coin made or lost");
+  assert.ok(Math.abs((s.money - s.minted) - m0) < 1e-6, "paid from the treasury into the till: no coin made or lost");
   assert.ok(v.wood < wood, "fuelled from the store");
   assert.ok(s.sorties > 0 && s.airScouted > 0 && s.bombs > 0, "they fly, look and bomb");
   assert.ok(Object.keys(w.factions[0].intel || {}).length > 0, "and what they saw is known");

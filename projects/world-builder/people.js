@@ -309,6 +309,9 @@
       { key: "harvestTax", when: s => s.money === "coins", label: "Tax on the harvest at the start", type: "range", min: 0, max: 0.5, step: 0.01, def: 0.1,
         say: v => (v === 0 ? "none, ever" : pct(v) + " of what is reaped"),
         help: "A share of every harvest goes into the village store and is paid for to the faction, as tithes and land taxes were. After that each leader's nature moves it — or you, if you rule a faction. None leaves every harvest untaxed." },
+      { key: "mint", when: s => s.money === "coins", label: "Where coins come from", type: "select", def: "real",   // TODO 15.8, 2026-11-23
+        options: [["real", "Mined, struck, lost and debased"], ["fixed", "A fixed stock from the first day (as before)"]],
+        help: "One money, reckoned the same everywhere. Silver comes out of the ground with the ore, a little at a time: a people that knows how to strike coins buys it into its mint and keeps a twentieth; before that it passes as weighed silver. Coins wear away and are lost, about one in fifty a year, and people running from an army bury theirs, and those who never come back leave them in the ground. A greedy ruler with an empty treasury may strike more coins than there is silver for, and then their coin is trusted less. Where nobody trusts what coins will buy — a famine, a siege, a debased coin — food is not sold for coins at all, only shared and given, until trust comes back." },
       { key: "inherit", when: s => s.money === "coins", label: "When somebody dies", type: "select", def: "kids",
         options: [["kids", "Their children get their coins"], ["faction", "Their faction takes them"], ["village", "Shared round the village"]],
         help: "Who gets a person's coins. A child's share is kept for them until they are grown." },
@@ -327,6 +330,9 @@
       { key: "finds", label: "How often new things are found", type: "range", min: 0, max: 1, step: 0.05, def: 0.2,   // TODO 15e, 2026-11-22; Ric: "Rare (make it a slide tho)"
         say: v => v <= 0 ? "never: what they know is fixed (as before)" : v <= 0.25 ? "rarely, as in history" : v <= 0.6 ? "now and then" : "often, so a run shows it",
         help: "What a people can do is what its people know: digging wells, building boats and bridges, the plough, ditches. Somebody at work, curious, fed and short of something, may find something new from what they know — writing, resting fields with beans, the water mill, the horse collar, healing herbs. It passes to children and to whoever sees it done; writing must be taught. When the last who knew a thing dies it is lost, unless it was written down." },
+      { key: "tech", label: "How know-how moves", type: "select", def: "moves",   // TODO 15.9, 2026-11-23; Ric: "i dont want it linear because it isnt"
+        options: [["moves", "By need, the land, practice and meeting"], ["old", "As before: some things only by era"]],
+        help: "Anything can be found once its parts are known; a people's age is only a name for what it knows. What somebody is short of points their finding — the hungry toward the plough and the mill, the sick toward herbs, traders toward carts and boats — and their work too. Iron, steam and boats are found and used only where ore, wood or timber is within reach or bought in. A thing new to a people is done poorly at first and better as more of them do it. A stubborn ruler may forbid a new thing, until a war with a people that has it changes their mind. Towns, big villages and a ruler with money to spare for scholars find more." },
       { key: "faith", label: "Faith", type: "toggle", def: true,   // TODO 15g, 2026-11-22
         help: "After something hard they cannot explain — a famine, a sickness, a drought, a war lost — now and then somebody makes up what lay behind it and what must be done. Their nature makes its rite, its rule and its holy days; it passes from friend to friend and to children, binds those who hold it, can become a people's own, and may call for sacrifice or holy war. It fades where life is safe." },
       { key: "plenty", label: "News of plenty", type: "toggle", def: true,   // TODO 15.5g, 2026-11-22
@@ -384,8 +390,11 @@
         options: [["elected", "Whoever they vote for"], ["chief", "A chief for life, then their child"], ["rich", "Whoever is richest"]],
         help: "Each faction starts this way. A people who have turned on a chief or on the rich, and who outnumber the soldiers still loyal, can overthrow them and choose their own way." },
       { key: "land", label: "Who holds the land", type: "select", def: "decide",   // TODO 7c; Ric, 2026-11-16
-        options: [["decide", "Each faction decides"], ["family", "Families, each its own fields"], ["village", "The village, in common"], ["leader", "The leader, worked for a share"]],
+        options: [["decide", "Each faction decides"], ["family", "Families, each its own fields"], ["village", "The village, in common"], ["leader", "The leader, worked for a share"], ["commune", "The village, shared out by need"]],
         help: "Each faction's own rule, as Ric asked: a chief or the richest chooses by their own lights, a people who vote choose by what most of them want, and you choose for a faction you rule. Or set one rule for everybody here. Families hold one or two fields each near the house; common fields are worked by anybody of the village; a leader's land is worked by all, and a third of every harvest goes to the leader's barn, the village store." },
+      { key: "property", label: "Land as property", type: "select", def: "market",   // TODO 15.7, 2026-11-23
+        options: [["market", "Held, inherited, sold and pledged"], ["inherit", "Held and inherited, never sold"], ["old", "Shared out by need each month (as before)"]],
+        help: "A family's fields stay with it however many they are, and are worked by others for half when it has too few hands; they pass by its people's custom, to all the children or the eldest, split up as they go. A household in want pledges a field for a season's bread, gets it back when it can pay, and loses it after three years; a household with more land than hands sells. A ruler grants land to officials for life and to a people's own faith for good. A village's bounds, once set, stay; a people claims the woods and pasture round its villages, and others pay to cut or graze there or it is held against them. Without writing, who holds what is what the village remembers, and inheritances and boundaries are quarrelled over. A greedy ruler may enclose the commons. The commune, a fifth way to hold land under Who holds the land, shares the fields out by need, as the families' rule did before." },
       { key: "govern", label: "Government", type: "select", def: "deep",   // TODO 15c, 2026-11-22
         options: [["deep", "Councils, officials and laws"], ["leader", "The leader alone (as before)"]],
         help: "A ruler must carry those with the say: the great families, the elders, or everybody. Officials come only when the ruler cannot see to it all — a headman for a far village, a collector, a judge, a captain, a governor over a beaten people — paid a wage, a farm of the tax, land, or nothing, by lot, as the ruler's nature picks; and they may be honest or not. Laws on theft, killing and unfree people outlast the leader who made them. A beaten people may leave for open land, or stay itself and pay." },
@@ -456,6 +465,12 @@
       { key: "battle", label: "Battle", type: "select", def: "choice",   // TODO 15.6e, 2026-11-23
         options: [["choice", "Given when the general chooses"], ["old", "Whenever armies meet (as before)"]],
         help: "A general gives battle only when the odds suit them (the bolder, the worse the odds they take, and better on ground they chose), or when caught too close to slip away; otherwise the army draws off. After a battle an army rests and fills its ranks before it comes on again, a month after a rout. A walled place is invested, not stormed: the besiegers stand outside its walls and its people stay behind them, until the wall is breached or the place is starving." },
+      { key: "taking", label: "Taking a place", type: "select", def: "terms",   // TODO 15.6g, 2026-11-23
+        options: [["terms", "Surrender is demanded first"], ["old", "Stormed as soon as the enemy is strong enough (as before)"]],
+        help: "An army strong enough to take an open place demands its surrender before it attacks. A place that cannot hold — far outnumbered, few soldiers of its own, and not too stubborn a leader — gives in on terms: its soldiers and whoever will not stay march out, nothing is burned and a quarter of its till is paid. A place that refuses is stormed, and sacked when it falls, as the law of siege allowed." },
+      { key: "passage", label: "Crossing another people's land", type: "select", def: "ask",   // TODO 15.6f, 2026-11-23; Ric: "why wouldnt soldiers avoid areas that are others property unless they haave persmission?"
+        options: [["ask", "Leave is asked first"], ["old", "Armies go where they please (as before)"]],
+        help: "An army whose road crosses the land of a people it is not at war with asks that people's leader first. Leave is given to friends, allies and trading partners, to whoever marches on a people they hate, to the strong they dare not refuse, and for a price to the rest who will pay it. Refused, a bold general who can win forces the way and takes food from the fields as it goes, which that people holds against them; anybody else turns to another goal." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -802,7 +817,8 @@
        with no top on people there is none on villages either, and sixteen
        would have run out, silently, at the 32,768th. */
     const owner = new Int32Array(tiles).fill(-1);
-    const reachBest = new Float32Array(tiles).fill(1e9);   // territory(): the best claim on each square
+    const reachBest = new Float32Array(tiles).fill(1e9);
+    const boundOf = S.property !== "old" ? new Int32Array(tiles).fill(-1) : null;   // TODO 15.7d: whose a square was   // territory(): the best claim on each square
     let ownedList = [];
     const WILD = cols > 160, inReach = WILD ? new Uint8Array(tiles) : null;   // worked(): land over 40 km
     let workedList = null;
@@ -1231,6 +1247,8 @@
     let heldStamp = 0;                      // changed whenever any holding is
     let allotted = false;                   // land has been shared out once (at the start)
     const landOf = v => factions[v.f] ? factions[v.f].land : "village";
+    const PROP = S.property !== "old", MARKET = S.property === "market";   // TODO 15.7: land as property
+    const sharedOut = v => { const l = landOf(v); return l === "family" || l === "commune"; };   // households hold fields
     function landLean(p, isLeader) { return viewOf(p) > 0.3 ? "village" : isLeader && p.greed > 0.6 ? "leader" : "family"; }
     function landWant(f) {
       if (S.land && S.land !== "decide") return S.land;
@@ -1248,13 +1266,17 @@
       for (const v of villages) if (v.f === f.id && v.alive) allot(v);
       if (was) {
         const v = villages.find(o => o.alive && o.f === f.id) || { x: 0, y: 0 };
-        note("rule", f.name + (rule === "family" ? ": every family now holds its own fields." : rule === "village" ? ": the fields are now the village's, in common." : ": the land is now the leader's, worked for a share."), 2, v.x, v.y, f.id);
+        note("rule", f.name + (rule === "family" ? ": every family now holds its own fields." : rule === "village" ? ": the fields are now the village's, in common." : rule === "commune" ? ": the fields are now shared out by the village, each family by its size." : ": the land is now the leader's, worked for a share."), 2, v.x, v.y, f.id);
       }
     }
     /* A village's holdings, made up to date: under "family" each household its share of the
        village's own land, the nearest to its house, keeping what it held; otherwise none. */
     function allot(v) {
-      const family = landOf(v) === "family";
+      const family = sharedOut(v);
+      /* TODO 15.7a: held, not allotted by need. Under families' own fields a holding stays with
+         its household whatever its size and however little it works it (idle land is worked by
+         others for half); only the commune takes land back and shares it out again. */
+      const keepAll = PROP && landOf(v) === "family";
       /* Only a household that farms holds land: one whose people worked the fields twice or more
          in the month before (every lived-in house, at the start). Land held by a household that
          did not would lie idle, as nobody works another family's field: measured, holding it
@@ -1264,16 +1286,16 @@
       const farms = new Set();
       for (const h of homesOf(v)) if (h.v === v.id) {
         h.idle = h.farmed >= 2 ? 0 : (h.idle || 0) + 1;
-        if (family && (allotted ? h.n > 0 && (h.farmed >= 2 || h.fields && h.idle < 3) : h.n > 0)) farms.add(h.id);
+        if (family && (keepAll ? h.built && (h.n > 0 || h.fields && h.idle < 12) : allotted ? h.n > 0 && (h.farmed >= 2 || h.fields && h.idle < 3) : h.n > 0)) farms.add(h.id);
         h.farmed = 0;
       }
       for (const h of homesOf(v)) if (h.v === v.id && h.fields) {
-        const keep = family && h.built && farms.has(h.id) ? h.fields.filter(i => owner[i] === v.id) : [];
+        const keep = family && h.built && farms.has(h.id) ? h.fields.filter(i => keepAll ? owner[i] >= 0 : owner[i] === v.id) : [];
         for (const i of h.fields) if (!keep.includes(i)) held.delete(i);
         h.fields = keep.length ? keep : null;
       }
       if (family) for (const h of homes) {
-        if (h.v !== v.id || !h.built || !farms.has(h.id)) continue;
+        if (h.v !== v.id || !h.built || !farms.has(h.id) || keepAll && h.n === 0) continue;
         const want = Math.max(1, Math.ceil(h.n / 2.5));           // about 6.25 ha for every two or three of them
         if (h.fields && h.fields.length >= want) continue;
         const cx = Math.floor(h.x), cy = Math.floor(h.y), cand = [];
@@ -1286,6 +1308,284 @@
         for (const i of cand) { if ((h.fields ? h.fields.length : 0) >= want) break; (h.fields || (h.fields = [])).push(i); held.set(i, h.id); }
       }
       heldStamp++;
+    }
+
+    /* ── land as property (TODO 15.7, 2026-11-23) ──────────────────────────
+       Ric: "can we look at owned land? how realistic is the property side of
+       things?" Under families' own fields (with Land as property on):
+       - a holding stays with its household (15.7a), as a copyhold or freehold
+         did, and only the commune shares land out again by need (the Russian
+         mir repartitioned every six to twelve years, some never);
+       - it passes by the people's custom when the last of a couple dies
+         (15.7b): to all the children, each child's share going to the house
+         they live in (partible, as Kentish gavelkind), or whole to the eldest;
+       - a household in want pledges a field to the household with most to
+         spare for a season's bread: the lender holds and reaps it until it is
+         paid back, and keeps it after three years (the dead pledge, and the
+         distress sales of bad years in the English court rolls); a household
+         with more land than hands sells a field for two seasons' bread;
+       - an official paid in land holds real fields for as long as the office
+         (a benefice, a timar), and a people's own faith holds a glebe for good,
+         moving with its priest (15.7c);
+       - a people claims the land round its villages (15.7e) — wood, pasture,
+         hunting — and a stranger cutting, grazing or hunting there pays a
+         toll or is held to have wronged it; armies ask leave to cross it (15.6f);
+       - without writing nobody can show what was whose (15.7f): an inheritance
+         split between several may be quarrelled over, a greedy neighbour may
+         move a boundary, and only a judge with a record puts it right; a greedy
+         ruler, sooner one pushed by great families, may enclose the commons, so
+         the land nobody holds is worked for a third to the barn, as a leader's is.
+       Bounds are kept in territory() (15.7d). README, "Land as property". */
+    const PLEDGE = new Map();   // square -> { from: house, to: house, sum, until }
+    const GRANT = new Map();    // square -> { to: house, by: office holder's id, or -1 for the faith's glebe, f }
+    const claim = PROP ? new Int16Array(tiles).fill(-1) : null;   // the people that claims each square outside the villages
+    let claimList = [];
+    if (PROP) { count.pledged = 0; count.redeemed = 0; count.forfeit = 0; count.landSold = 0; count.landInherited = 0; count.landSplit = 0; count.granted = 0; count.grantsBack = 0;
+                count.tolls = 0; count.trespass = 0; count.landQuarrels = 0; count.landJudged = 0; count.encroached = 0; count.encroachUndone = 0; count.enclosed = 0; }
+    /* A field to another house, or back to the village (to: -1). */
+    function moveField(i, from, to) {
+      const a = from >= 0 ? homes[from] : null, b = to >= 0 ? homes[to] : null;
+      if (a && a.fields) { const k = a.fields.indexOf(i); if (k >= 0) a.fields.splice(k, 1); if (!a.fields.length) a.fields = null; }
+      if (b) { (b.fields || (b.fields = [])).push(i); held.set(i, to); } else held.delete(i);
+      PLEDGE.delete(i); heldStamp++;
+    }
+    /* A couple's holding passes on (15.7b) when the last of them dies, by the custom of their people. */
+    function passLand(p) {
+      if (!PROP || p.dwelling < 0 || !adult(p)) return;
+      const h = homes[p.dwelling];
+      if (!h || !h.fields || !h.fields.length || landOf(villages[h.v]) !== "family") return;
+      const mate = p.partner && byId.get(p.partner);
+      if (mate && mate.hp > 0 && mate.dwelling === p.dwelling) return;   // the other keeps it while they live
+      const kids = people.filter(q => q.hp > 0 && q !== p && (q.mum === p.id || q.dad === p.id) && q.dwelling >= 0);
+      if (!kids.length) return;
+      const f = factions[p.f], c = f && f.match ? f.match.inherit : "";
+      let heirs = kids;
+      if (c === "eldest") { const sons = SEXES ? kids.filter(q => q.sex === 1) : kids; heirs = [(sons.length ? sons : kids).slice().sort((a, b) => b.age - a.age)[0]]; }
+      const houses = [...new Set(heirs.map(q => q.dwelling))];
+      const list = h.fields.filter(i => !GRANT.has(i));
+      count.landInherited++;
+      if (houses.length === 1) { if (houses[0] !== h.id) for (const i of list) moveField(i, h.id, houses[0]); return; }
+      /* Split: each heir's house its share; the shares of heirs who live in the old house stay there. */
+      count.landSplit++;
+      const share = list.length / heirs.length;
+      let k = 0;
+      heirs.forEach((q, n) => {
+        const m = Math.round(share * (n + 1)) - Math.round(share * n);
+        for (let j = 0; j < m && k < list.length; j++, k++) if (q.dwelling !== h.id) moveField(list[k], h.id, q.dwelling);
+      });
+      /* Without writing, who was left what is what the village remembers (15.7f). */
+      if (!(KNOW && knows(p.f, "writing")) && R() < 0.3) {
+        count.landQuarrels++;
+        const g = GOV && f.gov, judge = g && g.judge && byId.get(g.judge);
+        if (judge && judge.hp > 0) count.landJudged++;
+        else for (let a = 0; a < heirs.length; a++) for (let b = a + 1; b < heirs.length; b++) befriend(heirs[a], heirs[b], -0.3);
+      }
+    }
+    /* What each household of a village has and needs, from its people. */
+    function households(v) {
+      const by = new Map();
+      for (const q of PLAIN ? people : residents(v.id)) {
+        if (q.hp <= 0 || q.dwelling < 0 || q.home !== v.id) continue;
+        let a = by.get(q.dwelling); if (!a) by.set(q.dwelling, a = { food: 0, need: 0, coins: 0, head: null, hands: 0 });
+        a.food += q.food; a.need += dailyNeed(q); a.coins += q.coins;
+        if (adult(q)) { a.hands++; if (!a.head || q.coins > a.head.coins) a.head = q; }
+      }
+      return by;
+    }
+    /* Once a month in a village of families' fields: pledges, sales, grants, boundaries, enclosure. */
+    function landMonth(v) {
+      if (!PROP || landOf(v) !== "family") return;
+      const f = factions[v.f], by = households(v), bread = v.priceFood * 60;
+      /* Pledges paid back, or kept for good. */
+      for (const [i, e] of PLEDGE) {
+        if (homes[e.from].v !== v.id) continue;
+        const a = by.get(e.from), lender = by.get(e.to);
+        if (a && a.head && lender && lender.head && a.coins > e.sum * 1.5 + a.need * 30 * v.priceFood) {
+          pay(a.head, e.sum); lender.head.coins += e.sum; a.coins -= e.sum; lender.coins += e.sum; moveField(i, e.to, e.from); count.redeemed++;
+        } else if (t > e.until) { PLEDGE.delete(i); count.forfeit++; }
+      }
+      if (MARKET && !shared) {
+        let lend = null, lc = 0;
+        for (const [hid, a] of by) { const spare = a.coins - a.need * 90 * v.priceFood; if (a.head && spare > lc) { lc = spare; lend = hid; } }
+        if (lend != null) for (const [hid, a] of by) {
+          const h = homes[hid]; if (!a.head || !h.fields || hid === lend) continue;
+          const L = by.get(lend), i = h.fields.find(j => !PLEDGE.has(j) && !GRANT.has(j));
+          if (i == null) continue;
+          if (a.food < a.need * 14 && a.coins < a.need * 14 * v.priceFood) {
+            /* In want: under two weeks of food and the coins for no more. */
+            const sum = a.need * bread;
+            if (L.coins - sum > L.need * 90 * v.priceFood) {
+              pay(L.head, sum); a.head.coins += sum; L.coins -= sum; a.coins += sum;
+              moveField(i, hid, lend); PLEDGE.set(i, { from: hid, to: lend, sum: sum, until: t + 3 * YEAR }); count.pledged++;
+            }
+          } else if (h.fields.length > Math.max(2, a.hands * 2) && a.coins < a.need * 30 * v.priceFood) {
+            /* More land than hands, and short of coin: a field sold to whoever has most to spare. */
+            const price = a.need * bread * 2;
+            if (L.coins - price > L.need * 90 * v.priceFood) { pay(L.head, price); a.head.coins += price; L.coins -= price; a.coins += price; moveField(i, hid, lend); count.landSold++; }
+          }
+        }
+      }
+      /* Grants (15.7c): an official paid in land, for as long as the office; a people's own faith, for good. */
+      const g = GOV && f.gov;
+      for (const [i, e] of GRANT) {
+        if (homes[e.to].v !== v.id) continue;
+        const q = e.by >= 0 ? byId.get(e.by) : null;
+        if (e.f !== f.id || (e.by >= 0 ? !q || q.hp <= 0 || !(g && g.pay === "land" && officeIds(g).includes(e.by)) : !(g && g.priest))) { GRANT.delete(i); moveField(i, e.to, -1); count.grantsBack++; continue; }
+        if (e.by < 0) { const pr = byId.get(g.priest); if (pr && pr.dwelling >= 0 && pr.dwelling !== e.to && homes[pr.dwelling].v === v.id) { moveField(i, e.to, pr.dwelling); e.to = pr.dwelling; } }
+      }
+      if (g) {
+        const want = [];
+        if (g.pay === "land") for (const id of officeIds(g)) want.push([id, 3]);
+        if (g.priest && FAITH && f.faith != null) want.push([-1, 2]);
+        for (const [id, n] of want) {
+          const q = byId.get(id >= 0 ? id : g.priest);
+          if (!q || q.hp <= 0 || q.dwelling < 0 || q.home !== v.id || homes[q.dwelling].v !== v.id) continue;
+          let have = 0; for (const [, e] of GRANT) if (e.by === id && e.f === f.id) have++;
+          for (const i of freeFields(v, homes[q.dwelling], n - have)) { moveField(i, -1, q.dwelling); GRANT.set(i, { to: q.dwelling, by: id, f: f.id }); count.granted++; }
+        }
+      }
+      /* A boundary moved (15.7f): a greedy, dishonest head takes a neighbour's field; a judge with a
+         written record to read puts it back. */
+      for (const [hid, a] of by) {
+        const q = a.head; if (!q || q.greed < 0.7 || q.honest > 0.3 || R() > 0.03) continue;
+        const h = homes[hid]; let best = -1, bd = 3;
+        for (const i of fieldsNear(h, 2)) { const o = held.get(i); if (o === undefined || o === hid || GRANT.has(i) || PLEDGE.has(i) || homes[o].v !== v.id) continue; const d = Math.hypot(i % cols + 0.5 - h.x, ((i / cols) | 0) + 0.5 - h.y); if (d < bd) { bd = d; best = i; } }
+        if (best < 0) continue;
+        const was = held.get(best), judge = g && g.judge && byId.get(g.judge);
+        if (judge && judge.hp > 0 && KNOW && knows(f.id, "writing")) { count.encroachUndone++; continue; }
+        moveField(best, was, hid); count.encroached++;
+        const them = byId.get(homes[was].head); if (them && them.hp > 0 && them !== q) befriend(q, them, -0.4);
+      }
+      /* Enclosure (15.7f): by a greedy ruler, sooner where the great families have the say. */
+      const lead = byId.get(f.leader);
+      if (!v.enclosed && lead && f.rule !== "elected" && ruling(lead, "greed", f) > (g && g.say === "families" ? 0.6 : 0.75) && R() < 0.02) {
+        v.enclosed = true; count.enclosed++;
+        note("rule", f.name + " has enclosed the common land of " + v.name + ": whoever works it now pays a third to the barn.", 2, v.x, v.y, f.id);
+      }
+    }
+    function fieldsNear(h, r) {
+      const out = [], cx = Math.floor(h.x), cy = Math.floor(h.y);
+      for (let y = Math.max(0, cy - r); y <= Math.min(rows - 1, cy + r); y++) for (let x = Math.max(0, cx - r); x <= Math.min(cols - 1, cx + r); x++) out.push(y * cols + x);
+      return out;
+    }
+    /* Households in villages of families' fields: how many hold land, how much, and how unevenly. */
+    function landView() {
+      const sizes = [];
+      for (const h of homes) { const v = villages[h.v]; if (!h.built || h.n === 0 || !v || !v.alive || landOf(v) !== "family") continue; sizes.push(h.fields ? h.fields.length : 0); }
+      sizes.sort((a, b) => a - b);
+      const n = sizes.length, sum = sizes.reduce((a, b) => a + b, 0);
+      let g = 0; sizes.forEach((x, i) => { g += (2 * (i + 1) - n - 1) * x; });
+      return { households: n, landless: n ? sizes.filter(x => x === 0).length / n : 0, mean: n ? sum / n : 0, most: n ? sizes[n - 1] : 0,
+               gini: n && sum ? g / (n * sum) : 0, pledged: PLEDGE.size, granted: GRANT.size, enclosed: villages.filter(v => v.alive && v.enclosed).length };
+    }
+    /* Fields of the village nobody holds, nearest the house first. */
+    function freeFields(v, h, n) {
+      const out = []; if (n <= 0) return out;
+      const cx = Math.floor(h.x), cy = Math.floor(h.y);
+      for (let r = 0; r <= 10 && out.length < n; r++) for (let y = cy - r; y <= cy + r && out.length < n; y++) for (let x = cx - r; x <= cx + r && out.length < n; x++) {
+        if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r || x < 0 || y < 0 || x >= cols || y >= rows) continue;
+        const i = y * cols + x; if (owner[i] === v.id && fert[i] > 0.05 && !held.has(i)) out.push(i);
+      }
+      return out;
+    }
+    /* A stranger using a people's claimed land (15.7e): a tenth of what it gave, in coins, to that
+       people, or held against their own people where they cannot pay. At war nobody asks. */
+    function useLand(p, i, worth) {
+      if (!claim || i < 0) return;
+      const c = claim[i]; if (c < 0 || c === p.f || !factions[c].alive || atWar(p.f, c)) return;
+      const x = worth * 0.1 * villages[p.home].priceFood;
+      if (!shared && p.coins >= x) { p.coins -= x; factions[c].treasury += x; count.tolls++; return; }
+      const r = factions[c].rel[p.f]; if (!r) return;
+      r.grief = clamp(r.grief + 0.003, 0, 3); r.op = clamp(r.op - 0.002, -1, 1); count.trespass++;
+    }
+    /* Who claims the land round the villages: within three kilometres of a village's fields, the nearest. */
+    function claims() {
+      for (const i of claimList) claim[i] = -1;
+      claimList = [];
+      const best = new Map();
+      for (const v of villages) {
+        if (!v.alive) continue;
+        const r = Math.ceil(v.radius) + 12;
+        for (let y = Math.max(0, Math.floor(v.y) - r); y <= Math.min(rows - 1, Math.floor(v.y) + r); y++)
+          for (let x = Math.max(0, Math.floor(v.x) - r); x <= Math.min(cols - 1, Math.floor(v.x) + r); x++) {
+            const i = y * cols + x; if (owner[i] >= 0 || stopAt(i)) continue;
+            const d = Math.hypot(v.x - x - 0.5, v.y - y - 0.5) - v.radius; if (d > 12) continue;
+            const b = best.get(i); if (b === undefined) claimList.push(i);
+            if (b === undefined || d < b) { best.set(i, d); claim[i] = v.f; }
+          }
+      }
+    }
+
+    /* ── where money comes from (TODO 15.8, 2026-11-23) ────────────────────
+       Ric: "i kinda want only one curency but how is it made?", then "one currence different coins are
+       okay". One money of account, the coin every price is reckoned in, whoever struck it.
+       - It comes out of the ground: ore carries a little silver, more in rich ground. A people that
+         knows how to strike coins (`coining`: Lydia, about 600 BC; ancient and later peoples start
+         with it) buys the silver into its mint at its worth and keeps a twentieth (seigniorage); a
+         people that does not passes it on as weighed silver, money all the same (Mesopotamia's shekel
+         of silver was a weight). Either way the money grows with what is mined.
+       - It goes: coins wear and are lost, about 2% a year (the figure Hopkins used for Rome's coinage,
+         and estimated for Viking-age silver); people fleeing an army bury half of what they have, dig
+         it up if they come home, and if they never do it stays in the ground (the hoards that peak in
+         wars).
+       - A ruler can debase: greedy, not honest, and unable to pay a month of soldiers, they strike
+         coins with no silver behind them into the treasury, and the people's coin is trusted less for
+         years after (Rome in the third century; England's Great Debasement).
+       - It can fail: a seller takes coins for food only while they trust what coins will buy. In a
+         famine, a siege, or under a coin debased again and again, food is not sold for coins in that
+         place, only shared, given and asked for, until it is plain again (Germany 1923 and 1945–48;
+         Radford's prisoner-of-war camp). Nothing switches money off by a rule: it fades as trust does.
+       README, "Where money comes from". */
+    const MINT = S.mint !== "fixed" && S.money !== "shared";
+    const SILVER = 0.3, LOSS_DAY = 0.02 / 365, TRUST_MIN = 0.35, SEIGNIORAGE = 0.05;
+    const HOARD = new Map();   // person id -> coins they buried before they fled
+    if (MINT) { count.silver = 0; count.struck = 0; count.coinsLost = 0; count.buried = 0; count.dugUp = 0; count.hoardsLost = 0; count.debased = 0; count.barterDays = 0; }
+    /* A load of ore, and the silver in it (rich ground only). */
+    function silverFrom(p, v, i, load) {
+      const x = load * SILVER * Math.max(0, ore[i] - 0.4);
+      if (x <= 0) return;
+      const f = factions[v.f];
+      count.silver += x; count.minted += x;
+      if (has(v.f, "coining")) { const keep = x * SEIGNIORAGE; p.coins += x - keep; f.treasury += keep; count.struck += x; }
+      else p.coins += x;
+    }
+    function bury(q, v) {
+      if (q.coins < 1) return;
+      const x = q.coins * 0.5; q.coins -= x; HOARD.set(q.id, (HOARD.get(q.id) || 0) + x); count.buried += x;
+    }
+    function hoardLost(q) {
+      const x = HOARD.get(q.id); if (x == null) return;
+      HOARD.delete(q.id); count.minted -= x; count.hoardsLost += x;
+    }
+    /* Once a day: what wears and is lost; and once a month, each ruler's coin. */
+    function moneyDay(month) {
+      let lost = 0;
+      for (const p of people) if (p.hp !== -99 && p.coins > 0) { const x = p.coins * LOSS_DAY; p.coins -= x; lost += x; }
+      count.minted -= lost; count.coinsLost += lost;
+      if (!month && t % (30 * DAY_HOURS) !== 5) return;
+      for (const f of factions) {
+        if (!f.alive) continue;
+        f.coinTrust = f.coinTrust == null ? 1 : f.coinTrust + (1 - f.coinTrust) * 0.03;
+        const lead = byId.get(f.leader);
+        if (!lead || !has(f.id, "coining") || f.treasury > f.soldiers * WAGE * 30 || f.soldiers < 3) continue;
+        if (ruling(lead, "greed", f) < 0.6 || ruling(lead, "honest", f) > 0.4) continue;
+        const x = f.pop * 0.3;
+        f.treasury += x; count.minted += x; count.debased++; f.coinTrust *= 0.8;
+        const at = villages[lead.home];
+        note("rule", lead.name + " has struck coins for " + f.name + " with less silver in them, to pay the soldiers.", 1.5, at.x, at.y, f.id);
+      }
+    }
+    /* Whether coins are taken for food here today. */
+    function trustOf(v) {
+      const f = factions[v.f];
+      let tr = f.coinTrust == null ? 1 : f.coinTrust;
+      if (v.siege > 0) tr *= 0.3;
+      if (v.pop > 4 && v.hungry > v.pop * 0.3 && v.food < v.pop * 2) tr *= 0.3;
+      const was = v.trust;
+      v.trust = tr;
+      if (tr < TRUST_MIN) count.barterDays++;
+      if (was != null && (was < TRUST_MIN) !== (tr < TRUST_MIN) && v.pop > 20)
+        note("money", tr < TRUST_MIN ? "In " + v.name + " nobody will sell food for coins now." : "In " + v.name + " coins buy food again.", 1, v.x, v.y, v.f);
     }
 
     /* ── fishing (TODO 6c, 2026-11-16) ─────────────────────────────────────
@@ -2347,6 +2647,7 @@
        years among 400; two hundred times as often at the top of the slider, so a run shows it. A guess. */
     const FIND_RATE = 5e-7 * Math.pow(200, (S.finds - 0.2) / 0.8), SEE_DONE = 0.002, COPY = 0.98;
     const ONWARD_EARLY = S.onward === true;   // TODO 15d (ONWARD, before the list that reads it)
+    const TECHMOVE = KNOW && S.tech !== "old";   // TODO 15.9: how know-how moves
     const TECH = [
       { key: "farming", name: "farming" },
       { key: "wells", name: "digging wells", needs: ["farming"] },
@@ -2364,23 +2665,33 @@
       { key: "herbs", name: "healing herbs" },
       { key: "steam", name: "the steam engine", needs: ["mill", "smithing"] },   // TODO 15f
       /* TODO 15d: found only where eras move on by themselves; otherwise a people starts with them or learns them from others. */
-      { key: "iron", name: "iron working", needs: ["smithing"], eraOnly: !ONWARD_EARLY },
-      { key: "horses", name: "riding and pack horses", needs: ["carts"], eraOnly: !ONWARD_EARLY },
-      { key: "printing", name: "printing", needs: ["writing", "smithing"], eraOnly: !ONWARD_EARLY },
-      { key: "gunpowder", name: "gunpowder", needs: ["smithing", "writing"], eraOnly: !ONWARD_EARLY },
-      { key: "rail", name: "the railway", needs: ["steam"], eraOnly: !ONWARD_EARLY },
-      { key: "telegraph", name: "the telegraph", needs: ["steam", "writing"], eraOnly: !ONWARD_EARLY },
-      { key: "engine", name: "the engine", needs: ["steam"], eraOnly: !ONWARD_EARLY },
-      { key: "medicine", name: "medicine", needs: ["writing", "herbs"], eraOnly: !ONWARD_EARLY },
-      { key: "radio", name: "the radio", needs: ["telegraph"], eraOnly: !ONWARD_EARLY },
-      { key: "phone", name: "the telephone and its towers", needs: ["radio", "engine"], eraOnly: !ONWARD_EARLY },
+      { key: "iron", name: "iron working", needs: ["smithing"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "horses", name: "riding and pack horses", needs: ["carts"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "printing", name: "printing", needs: ["writing", "smithing"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "gunpowder", name: "gunpowder", needs: ["smithing", "writing"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "rail", name: "the railway", needs: ["steam"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "telegraph", name: "the telegraph", needs: ["steam", "writing"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "engine", name: "the engine", needs: ["steam"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "medicine", name: "medicine", needs: ["writing", "herbs"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "radio", name: "the radio", needs: ["telegraph"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      { key: "phone", name: "the telephone and its towers", needs: ["radio", "engine"], eraOnly: !ONWARD_EARLY && !TECHMOVE },
+      /* TODO 15.8: kept last, and only where coins are minted, so no other bit moves. */
+      ...(S.mint !== "fixed" && S.money !== "shared" ? [{ key: "coining", name: "striking coins", needs: ["smithing", "writing"] }] : []),
+      /* TODO 15.9g: the wired telephone (1876) before the radio (1895); "phone" is the mobile one with its towers. */
+      ...(TECHMOVE ? [{ key: "telephone", name: "the telephone", needs: ["telegraph"] }] : []),
     ];
+    /* TODO 15.9g: what each needed, as the record has it (README, "How technology moves", with dates). */
+    if (TECHMOVE) {
+      const WIRE = { horses: [], gunpowder: ["writing", "herbs"], steam: ["iron", "mill"], rail: ["steam", "iron"], telegraph: ["writing", "iron"],
+                     medicine: ["writing", "herbs", "printing"], phone: ["telephone", "radio"] };
+      for (const x of TECH) if (WIRE[x.key]) x.needs = WIRE[x.key];
+    }
     const TI_K = Object.fromEntries(TECH.map((x, i) => [x.key, i]));
     for (const x of TECH) x.mask = (x.needs || []).reduce((m, k) => m | (1 << TI_K[k]), 0);
     const BASE_KNOW = ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"].reduce((m, k) => m | (1 << TI_K[k]), 0);   // the farming village the engine was
     /* TODO 15d: eras (see "eras as starting points"). With every people an early farmer and eras not
        moving on by themselves, nothing here is read and the world is the one 15i left. */
-    const ERA_ANY = S.era !== "early" || S.firstEra !== "same", ONWARD = S.onward === true, WIRED = ERA_ANY || ONWARD;
+    const ERA_ANY = S.era !== "early" || S.firstEra !== "same", ONWARD = S.onward === true, WIRED = ERA_ANY || ONWARD || TECHMOVE;   // 15.9a: anything found takes effect
     const ERA_LIST = ["foragers", "early", "bronze", "ancient", "medieval", "earlymodern", "industrial", "modern", "information"];
     const ERA_KNOW = { foragers: ["boats", "weaving", "herbs"], early: ["farming", "wells", "boats", "bridges", "carts", "plough", "ditches", "smithing", "weaving"] };
     ERA_KNOW.bronze = ERA_KNOW.early.concat(["writing"]);
@@ -2390,6 +2701,8 @@
     ERA_KNOW.industrial = ERA_KNOW.earlymodern.concat(["steam", "rail", "telegraph"]);
     ERA_KNOW.modern = ERA_KNOW.industrial.concat(["engine", "medicine", "radio"]);
     ERA_KNOW.information = ERA_KNOW.modern.concat(["phone"]);
+    if ("telephone" in TI_K) for (const k of ["modern", "information"]) ERA_KNOW[k].push("telephone");   // TODO 15.9g
+    if ("coining" in TI_K) for (const k of ["ancient", "medieval", "earlymodern", "industrial", "modern", "information"]) ERA_KNOW[k].push("coining");   // TODO 15.8: Lydia, about 600 BC
     const ERA_DEF = Object.fromEntries(ERA_LIST.map(k => [k, { know: ERA_KNOW[k] }]));
     /* War know-how (TODO 15.6, 2026-11-23; Ric: "technology and era need to be coorilated and technology
        and weaponry should be coorilated"). Each needs what is listed, of either list; found, passed on and
@@ -2424,7 +2737,7 @@
     for (const x of WAR_TECH) {
       x.civ = x.needs.filter(k => k in TI_K).reduce((m, k) => m | (1 << TI_K[k]), 0);
       x.war = x.needs.filter(k => k in WI).reduce((m, k) => m | (1 << WI[k]), 0);
-      x.eraOnly = !ONWARD_EARLY;
+      x.eraOnly = !ONWARD_EARLY && !TECHMOVE;
     }
     /* What each era starts with of it: what it really had. */
     const ERA_WARS = { foragers: [], early: [] };
@@ -2786,6 +3099,7 @@
       for (const p of people) c += p.coins;
       for (const v of villages) c += v.till + v.bid;
       for (const f of factions) c += f.treasury;
+      if (HOARD.size) for (const x of HOARD.values()) c += x;   // TODO 15.8: buried, still in the world
       return c;
     }
 
@@ -2834,6 +3148,9 @@
        a state-sized map was most of a day's work. */
     function territory() {
       for (const v of villages) v.radius = v.alive ? 2.6 + Math.sqrt(Math.max(1, v.pop)) * 0.55 : 0;
+      /* TODO 15.7d: bounds that stay put. A village's land grows as it clears more and never shrinks
+         while it lives; a square once a village's stays that village's while it stands. */
+      if (PROP) for (const v of villages) if (v.alive) { v.radius = Math.max(v.radius, v.bounds || 0); v.bounds = v.radius; }
       for (const i of ownedList) { owner[i] = -1; reachBest[i] = 1e9; }
       ownedList = [];
       for (const v of villages) {
@@ -2844,9 +3161,11 @@
             const d = Math.hypot(v.x - x - 0.5, v.y - y - 0.5);
             if (d >= v.radius) continue;
             const i = y * cols + x, ratio = d / v.radius;
+            if (PROP && boundOf[i] >= 0 && boundOf[i] !== v.id && villages[boundOf[i]].alive && villages[boundOf[i]].radius > Math.hypot(villages[boundOf[i]].x - x - 0.5, villages[boundOf[i]].y - y - 0.5)) continue;
             if (ratio < reachBest[i]) { if (reachBest[i] === 1e9) ownedList.push(i); reachBest[i] = ratio; owner[i] = v.id; }
           }
       }
+      if (PROP) { for (const i of ownedList) boundOf[i] = owner[i]; claims(); }
       worked();
       landFeeds();
     }
@@ -3295,6 +3614,7 @@
     function hostile(a, b) { return a !== b && (factions[a].rel[b].op < -0.3 || factions[b].rel[a].op < -0.3); }
     function taxFor(v, p) { return v.f !== p.f && factions[v.f].rel[p.f] && factions[v.f].rel[p.f].trade ? 0 : taxOf(v); }
     function buy(p, v, what, amount) {
+      if (MINT && what === "food" && v.trust < TRUST_MIN) return 0;   // TODO 15.8: coins not taken for food here now
       const have = what === "food" ? v.food : what === "goods" ? v.goods : v[what];
       amount = Math.min(amount, have);
       if (amount <= 0.01) return 0;
@@ -3349,6 +3669,7 @@
     function canBuy(v) { return shared ? asked(v) : Math.min(asked(v), Math.max(0, v.till) / (v.priceGoods * 0.85)); }
     function sell(p, v, what, amount) {
       if (amount <= 0.01) return 0;
+      if (MINT && what === "food" && v.trust < TRUST_MIN) return 0;   // TODO 15.8
       if (!shared) {
         const price = (what === "food" ? v.priceFood : what === "goods" ? v.priceGoods : matPrice(v, what)) * 0.85;
         amount = Math.min(amount, v.till / price);
@@ -3570,7 +3891,7 @@
 
     /* Bows, armour and chariots (TODO 15n). Whether somebody shoots is fixed by who they are (a hash of
        their id, apart from the garrison's and the raiders' rules), so an army's share holds. */
-    const eraOf = f => (f && f.era) || "early";
+    const eraOf = f => (f && (TECHMOVE && f.eraNow || f.era)) || "early";   // TODO 15.9a: read off what it knows
     const idHash = p => (Math.imul(p.id + 1, 2654435761) >>> 0) % 100;
     function bowFor(p) {
       const f = factions[p.f];
@@ -4724,7 +5045,7 @@
     function plough(v) {
       if (KNOW && !knows(v.f, "plough")) return PLOUGH_MIN;   // TODO 15e: the plough forgotten
       const team = v.oxen + (KNOW && knows(v.f, "collar") ? v.horses : 0);   // a collared horse ploughs as an ox does
-      return PLOUGH_MIN + (1 - PLOUGH_MIN) * clamp(team / Math.max(1, v.pop * TEAM_EACH), 0, 1);
+      return PLOUGH_MIN + (1 - PLOUGH_MIN) * clamp(team / Math.max(1, v.pop * TEAM_EACH), 0, 1) * (TECHMOVE ? techSkill(v.f, "plough") : 1);   // 15.9d: how well it is done
     }
     function beastTurn(v) {
       const want = v.pop * OXEN_EACH, wantH = v.pop * HORSES_EACH;
@@ -4762,7 +5083,7 @@
        and a village short again clears more. */
     function restWill(f) { return clamp((f.mean[TRAIT_AT.patient] - 0.35) * 1.5, 0, 0.8); }
     function reapedFrom(ti, got, v) {
-      soil[ti] -= SOIL_WEAR * (KNOW && knows(v.f, "rotation") ? 0.6 : 1) * got / (fert[ti] * FIELD_CAP + 1e-6) * (soil[ti] - SOIL_FLOOR);   // beans rest a field (TODO 15e)
+      soil[ti] -= SOIL_WEAR * (KNOW && knows(v.f, "rotation") ? 1 - 0.4 * (TECHMOVE ? techSkill(v.f, "rotation") : 1) : 1) * got / (fert[ti] * FIELD_CAP + 1e-6) * (soil[ti] - SOIL_FLOOR);   // beans rest a field (TODO 15e)
       if (v.manure > 0 && soil[ti] < 1) { const m = Math.min(v.manure, (1 - soil[ti]) * 0.25); v.manure -= m; soil[ti] += m; count.manured += m; }
       if (lastCut[ti] === 0 && soil[ti] < 1) worn.push(ti);
       lastCut[ti] = t || 1;
@@ -5648,6 +5969,7 @@
           if (j - j0 > 8) break;
         }
         const food = want - need;
+        if (claim && j0 >= 0) useLand(p, list[j0], food);   // TODO 15.7e
         p.food += food; count.meat += food;
         if (herd && soil) v.manure += food * MANURE;   // TODO 15.5d: the herd's dung, for the fields
         if (herd) { sellMat(p, v, "wool", food * 0.12); sellMat(p, v, "hide", food * 0.03); count.wool += food * 0.12; count.hide += food * 0.03; }   // and hides from the beasts killed
@@ -5663,6 +5985,8 @@
         if (i >= 0) {
           got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1) * p.vig * brawn(p);
           if (k === "wood") { const have = woodIn(i); got = Math.min(got, have); woodStock.set(i, [have - got, t]); }
+          if (claim) useLand(p, i, got * 3);   // TODO 15.7e: a load is worth about three days' food
+          if (MINT && k === "iron") silverFrom(p, v, i, got);   // TODO 15.8
           sellMat(p, v, k, got); count[k] += got; wear(p, "tool");
         }
         p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
@@ -5710,8 +6034,9 @@
           const q = byId.get(homes[holder].head), half = (capacity - need) / 2;
           if (q && q.hp !== -99 && q !== p && half > 0) { p.food -= half; q.food += half; count.shares += half; }
         }
-        /* On a leader's land a third goes to the leader's barn, the village store (TODO 7c). */
-        if (landOf(v) === "leader" && p.id !== factions[v.f].leader && p.partner !== factions[v.f].leader) {
+        /* On a leader's land a third goes to the leader's barn, the village store (TODO 7c); and on
+           enclosed common land (TODO 15.7f). */
+        if ((landOf(v) === "leader" || v.enclosed && holder === undefined && landOf(v) === "family") && p.id !== factions[v.f].leader && p.partner !== factions[v.f].leader) {
           const rent = (capacity - need) / 3; p.food -= rent; v.food += rent; count.rent += rent;
         }
         if (capacity > need) wear(p, "tool");
@@ -6201,6 +6526,8 @@
       if (LEAVING.size) LEAVING.delete(p.id);   // TODO 15.6d
       if (KO_AT.size) { if (why === "battle") koDead(p); else KO_AT.delete(p.id); }   // TODO 15.6d
       const v = villages[p.home], f = factions[p.f];
+      if (PROP) passLand(p);   // TODO 15.7b
+      if (HOARD.size) hoardLost(p);   // TODO 15.8: buried, and nobody left who knows where
       /* Gone over the edge (TODO 15.5c): what they have goes with them, coins out of the world's sum. */
       if (why === "left") { count.minted -= p.coins; p.coins = 0; p.food = 0; p.goods = 0; p.cargo = null; p.gear = {}; }
       if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else if (p.cargo.what === "goods") v.goods += p.cargo.amount; else v[p.cargo.what] += p.cargo.amount; }
@@ -8059,6 +8386,7 @@
         return;
       }
       v.empty = 0;
+      if (MINT) trustOf(v);   // TODO 15.8
       if (soil) landTurn(v);   // TODO 15.5d
       if (BEASTS) beastTurn(v);   // TODO 15.5o
       /* The faction's grain is never more than the store holds (TODO 15.5t): what was eaten, spoiled or taken went first from it. */
@@ -8204,9 +8532,27 @@
       if (KIT_ON && strongest >= 0 && attackers >= 3) shellPlace(v, factions[strongest], foesHere);   // TODO 15.6: guns into the place
       if (SIEGECRAFT && siegeWorks(v, sides, theirs, attackers, ours, foesHere)) v.siege = 0;   // TODO 15p: starved out, taken
       else if (sides.length && attackers > defence * 1.2) {
+        /* TODO 15.6g: surrender demanded first, of an open place. */
+        if (TERMS && v.siege === 0 && v.wall < 0.5) {
+          sides.sort((a, b) => theirs[b] - theirs[a]);
+          count.termsAsked++;
+          if (yieldsOnTerms(v, attackers, defence, ours)) { count.termsTaken++; capture(v, factions[+sides[0]], foesHere, true); return; }
+          count.termsRefused++; v.refused = t;
+        }
         v.siege += 1;
         if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(wallNow * (KIT_ON ? 20 * wallWorth(v, strongest) : eraWar(factions[v.f]).wallHold))) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
-      } else v.siege = Math.max(0, v.siege - 1);
+      } else {
+        v.siege = Math.max(0, v.siege - 1);
+        /* TODO 15.6g: an army that has come to a place it cannot take, and is not investing it, calls the
+           attack off and goes elsewhere for two months, rather than fighting its garrison at the edge. */
+        if (TERMS && sides.length && !band) for (const k of sides) {
+          const c = factions[+k].camp && factions[+k].camp[v.f];
+          if (!c || c.goal !== v.id || walledOut(v, +k)) continue;
+          if (theirs[k] < (c.out || 0) * 0.6) continue;   // still coming in: judged once most of it is here
+          c.ready = false; c.goal = -1; factions[+k].target[v.f] = -1; (c.barred || (c.barred = {}))[v.id] = t + 60 * DAY_HOURS; count.calledOff++;
+          note("war", factions[+k].name + "'s army has drawn off from " + v.name + ", too strongly held to take.", 1.5, v.x, v.y, +k);
+        }
+      }
 
       /* Too full: some of them go and start somewhere new, if there is land. */
       if (v.pop > crowdOf(v) && R() < 0.25) found(v);
@@ -8448,7 +8794,7 @@
         const mate = byId.get(p.partner), us = [p];
         if (mate && mate.hp > 0 && mate.home === v.id && mate.job !== "soldier" && mate.id !== lead) us.push(mate);
         for (const q of PLAIN ? people : residents(v.id)) if (q.hp > 0 && !adult(q) && q.home === v.id && us.some(a => q.mum === a.id || q.dad === a.id || q.carer === a.id)) us.push(q);
-        for (const q of us) { q.fledFrom = v.id; rehome(q, refuge, "fled"); (v.gone || (v.gone = [])).push(q.id); count.refugees++; }
+        for (const q of us) { q.fledFrom = v.id; if (MINT) bury(q, v); rehome(q, refuge, "fled"); (v.gone || (v.gone = [])).push(q.id); count.refugees++; }
       }
     }
     /* Home again, a week after the last enemy left — if it is still their own faction's. */
@@ -8458,12 +8804,21 @@
       back.sort((a, b) => (adult(b) ? 1 : 0) - (adult(a) ? 1 : 0));   // grown-ups first, so the children follow them into a house
       for (const q of back) {
         q.fledFrom = -1;
-        if (q.f !== v.f || (!adult(q) && !back.some(a => adult(a) && (q.mum === a.id || q.dad === a.id || q.carer === a.id)))) continue;
+        if (q.f !== v.f || (!adult(q) && !back.some(a => adult(a) && (q.mum === a.id || q.dad === a.id || q.carer === a.id)))) { if (HOARD.size) hoardLost(q); continue; }
         rehome(q, v, "home"); count.cameHome++;
+        if (HOARD.has(q.id)) { q.coins += HOARD.get(q.id); HOARD.delete(q.id); count.dugUp++; }
       }
     }
 
-    function capture(v, by, foes) {
+    const TERMS = S.taking !== "old";
+    /* Whether a place gives itself up when asked (TODO 15.6g): far outnumbered (by twice and more, more
+       again under a stubborn leader), with few soldiers of its own. */
+    function yieldsOnTerms(v, attackers, defence, ours) {
+      const ol = byId.get(factions[v.f].leader);
+      return attackers > defence * (1.8 + (ol ? ruling(ol, "stub", factions[v.f]) : 0.5)) && ours < attackers * 0.3;
+    }
+    if (TERMS) { count.termsAsked = 0; count.termsTaken = 0; count.termsRefused = 0; count.calledOff = 0; }
+    function capture(v, by, foes, terms) {
       const old = factions[v.f];
       const refuge = villages.filter(o => o.alive && o.f === old.id && o !== v).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y))[0];
       /* Its last place, and a winner who would sooner have tribute: it stays itself and pays (TODO 15c). */
@@ -8473,10 +8828,13 @@
       const captor = GOV && by.gov && by.gov.laws.unfree === "allowed" ? byId.get(by.leader) : null;
       v.f = by.id; v.siege = 0; v.broke = t;
       if (old.rel[by.id]) old.rel[by.id].lost++; if (by.rel[old.id]) by.rel[old.id].took++;   // TODO 14e
+      if (terms) { by.treasury += v.till * 0.25; v.till *= 0.75; }   // TODO 15.6g: given up on terms: nothing burned, a quarter paid
+      else {
       v.wall *= 0.5;   // breached
       sack(v);
       /* The winners take a share of what was in the store and the till. */
       by.treasury += v.till * 0.5; v.till *= 0.5;
+      }
       let fled = 0, stayed = 0;
       for (const p of people) {
         if (p.home !== v.id) continue;
@@ -8491,7 +8849,7 @@
           if (p.job === "soldier") p.job = "farmer";
           p.f = by.id; p.loyal = 0.12 + R() * 0.15; p.mood -= 0.2; stayed++; count.switched++;
           if (captor && p.unfree) p.unfree = 0;
-          if (captor && R() < 0.25 * (1.2 - p.bold)) bind(p, captor, "captive");   // TODO 15c: taken captive
+          if (captor && !terms && R() < 0.25 * (1.2 - p.bold)) bind(p, captor, "captive");   // TODO 15c: taken captive (not on terms, TODO 15.6g)
         }
       }
       /* Held (TODO 14c): half of the soldiers who took it stay as its garrison for a year, as the
@@ -8504,7 +8862,7 @@
       }
       old.rel[by.id].grief = clamp(old.rel[by.id].grief + 0.6, 0, 3);
       count.captures++;
-      note("taken", by.name + " has taken " + v.name + " from " + old.name + "." + (fled ? " " + fled + " fled." : ""), 3.5, v.x, v.y, by.id);
+      note("taken", by.name + " has taken " + v.name + " from " + old.name + (terms ? ", which gave itself up on terms" : "") + "." + (fled ? " " + fled + (terms ? " marched out." : " fled.") : ""), 3.5, v.x, v.y, by.id);
       if (FAITH) hardTimes(v, "taken", 1.5);   // TODO 15g
       if (nv) { count.wayOut++; note("founded", went + " of " + old.name + " would not live under " + by.name + " and have gone to break new ground at " + nv.name + ".", 3, nv.x, nv.y, old.id); }
       if (!villages.some(o => o.alive && o.f === old.id)) fall(old, by.id);
@@ -9294,22 +9652,136 @@
     }
     function knowsP(p, k) { return p.know != null && (p.know & (1 << TI_K[k])) !== 0; }
     /* A people knows it while one of them holds it. Before the first count, as at the start. */
-    function knows(fid, k) { if (k in WI) return !KNOW || !factions[fid].wk ? (ERA_WARS[factions[fid].era] || []).includes(k) : factions[fid].wk[WI[k]] > 0; return !KNOW || !factions[fid].know || factions[fid].know[TI_K[k]] > 0; }
+    function knows(fid, k) { if (k in WI) return !KNOW || !factions[fid].wk ? (ERA_WARS[factions[fid].era] || []).includes(k) : factions[fid].wk[WI[k]] > 0; return !KNOW || !factions[fid].know || factions[fid].know[TI_K[k]] > 0 && !(factions[fid].banned & (1 << TI_K[k])); }   // 15.9e: forbidden, not used
     function findTech(p) {
       if (p.know == null || !adult(p)) return;
       const v = villages[p.home];
-      const rate = FIND_RATE * (0.5 + p.curious) * (p.hungry > 0 ? 0.3 : 1) * (v.hungry > v.pop * 0.15 || v.famine > t - YEAR ? 2 : 1);
+      const rate = FIND_RATE * (0.5 + p.curious) * (p.hungry > 0 ? 0.3 : 1) * (v.hungry > v.pop * 0.15 || v.famine > t - YEAR ? 2 : 1) * (TECHMOVE ? meeting15(v) : 1);
       if (R() >= rate) return;
       const can = [];
-      for (let i = 0; i < TECH.length; i++) if (!(p.know & (1 << i)) && (p.know & TECH[i].mask) === TECH[i].mask && !TECH[i].eraOnly) can.push(i);
+      for (let i = 0; i < TECH.length; i++) if (!(p.know & (1 << i)) && (p.know & TECH[i].mask) === TECH[i].mask && !TECH[i].eraOnly && (!TECHMOVE || matOk(v, TECH[i].key))) can.push(i);
       if (!can.length) return;
-      const i = can[Math.floor(R() * can.length)];
+      let i;
+      if (TECHMOVE) {   // 15.9b: need and work point the finding
+        let sum = 0; const w = can.map(k => { const x = needWeight(p, v, TECH[k].key); sum += x; return x; });
+        let r = R() * sum, j = 0; while (j < can.length - 1 && (r -= w[j]) > 0) j++;
+        i = can[j];
+      } else i = can[Math.floor(R() * can.length)];
       p.know |= 1 << i; count.finds++;
       const f = factions[p.f];
       if (f.know && f.know[i] > 0) return;   // others of the people knew it already: no news
       const again = f.know && f.knewOnce && (f.knewOnce & (1 << i));
       if (f.know) f.know[i]++;
       note("found", p.name + " of " + v.name + " has " + (again ? "worked out again " : "found ") + TECH[i].name + ".", 2.5, v.x, v.y, p.f);
+    }
+    /* ── how technology moves (TODO 15.9, 2026-11-23) ─────────────────────
+       Ric: "how is technology advancement? i dont want it linear because it isnt."
+       - 15.9a: anything can be found once its parts are known; a people's age (`eraNow`) is read off
+         what it knows, for the news and the page and whatever followed the label (archers, caravans),
+         and never the other way round (the three-age system names assemblages, not a ladder).
+       - 15.9b: need points the finding (Boserup: crowding and hunger to the plough; Hicks and Allen:
+         what is dear is saved on) — the hungry toward farming's tools, the sick toward herbs and
+         medicine, the thirsty toward wells and ditches, traders toward carts, boats and rail — and so
+         does work: a crafter at metal, a farmer at the field. Weighed against chance, never certain.
+       - 15.9c: iron, rail and the engine need ore within reach or bought in; steam needs fuel and boats
+         timber: without it a thing is neither found nor used (Bronze Age peoples traded for tin).
+       - 15.9d: a thing new to a people is done poorly and gets better as more of them do it (learning
+         by doing, Wright 1936, Arrow 1962; Henrich 2004: skill held by many is kept, by few is lost).
+       - 15.9e: a stubborn ruler, or one whose faith keeps to old rites, may forbid a new thing (the
+         Ottoman ban on printing in Turkish, 1485–1727); a war with a people that has it ends the ban.
+       - 15.9f: big places and towns find more (Bettencourt and others, 2007: invention grows faster
+         than size), and a ruler with money to spare keeps scholars.
+       - 15.9g: each thing's parts as the record has them (README, with dates).
+       README, "How technology moves". */
+    const FARM_T = new Set(["plough", "rotation", "collar", "mill", "ditches"]);
+    const TRADE_T = new Set(["carts", "boats", "horses", "rail", "engine", "bridges"]);
+    const METAL_T = new Set(["smithing", "iron", "steam", "printing", "coining", "gunpowder", "telegraph"]);
+    const MAT_OF = { iron: "ore", rail: "ore", engine: "ore", steam: "fuel", boats: "wood" };
+    function matOk(v, k) {
+      const m = MAT_OF[k]; if (!m) return true;
+      const g = matGround(v);
+      if (m === "ore") return g.iron >= 0 || (v.iron || 0) > 0.5;
+      return g.wood.length > 0 || (v.wood || 0) > 0.5;
+    }
+    function needWeight(p, v, k) {
+      let w = 1;
+      if (FARM_T.has(k) && (v.hungry > v.pop * 0.15 || v.famine > t - YEAR)) w *= 3;
+      if ((k === "herbs" || k === "medicine") && v.sick > 0) w *= 3;
+      if ((k === "wells" || k === "ditches") && THIRST && freshDist[tileAt(v.x, v.y)] > FAR) w *= 3;
+      if (TRADE_T.has(k) && (p.job === "trader" || p.job === "fisher")) w *= 3;
+      if (METAL_T.has(k) && (p.job === "crafter" || p.job === "miner")) w *= 2;
+      if (FARM_T.has(k) && p.job === "farmer") w *= 2;
+      if (k === "boats" && p.job === "fisher") w *= 2;
+      return w;
+    }
+    function meeting15(v) {
+      const f = factions[v.f], lead = byId.get(f.leader);
+      let m = Math.pow(Math.max(1, v.pop) / 100, 0.15) * (v.place === "town" ? 1.3 : v.place === "city" ? 1.6 : 1);
+      if (lead && !shared && f.treasury > f.pop * 5 && lead.curious > 0.6) m *= 1.5;   // scholars kept
+      return m;
+    }
+    function techSkill(fid, k) { const f = factions[fid]; return f.skill ? f.skill[TI_K[k]] || 1 : 1; }
+    const ERA_ADDS = { bronze: ["writing"], ancient: ["iron", "horses", "rotation", "mill", "herbs"], medieval: ["collar"], earlymodern: ["printing", "gunpowder"],
+                       industrial: ["steam", "rail", "telegraph"], modern: ["engine", "medicine", "radio"], information: ["phone"] };
+    /* Once a day, after the count: skill, the age, what cannot be used here, and bans. */
+    function techDay() {
+      for (const f of factions) {
+        if (!f.alive || !f.know) continue;
+        if (!f.skill) { f.skill = new Float32Array(TECH.length); for (let i = 0; i < TECH.length; i++) if (f.know[i] > 0) f.skill[i] = 1; }
+        for (let i = 0; i < TECH.length; i++) {
+          if (f.know[i] <= 0) { f.skill[i] = 0; continue; }
+          if (f.skill[i] === 0) f.skill[i] = 0.7;   // new to them: done poorly
+          const aim = 0.85 + 0.075 * Math.log10(1 + f.know[i]);
+          f.skill[i] += (aim - f.skill[i]) / 365;
+        }
+        /* What the land lets them use. */
+        let cant = 0;
+        for (const k in MAT_OF) if (k in TI_K && !villages.some(v => v.alive && v.f === f.id && matOk(v, k))) cant |= 1 << TI_K[k];
+        f.cantUse = cant;
+        /* Bans: a new thing arrived; a ban lifted by war with a people that has it, or a new ruler. */
+        const lead = byId.get(f.leader);
+        const fresh = f.techSeen == null ? 0 : (f.knowWas || 0) & ~f.techSeen;
+        f.techSeen = f.knowWas || 0;
+        if (lead) for (let i = 0; i < TECH.length; i++) {
+          const bit = 1 << i;
+          if ((fresh & bit) && !(BASE_KNOW & bit) && !FARM_T.has(TECH[i].key)) {
+            const rites = FAITH && f.faith != null && faiths[f.faith] && faiths[f.faith].mode === "rites";
+            if (ruling(lead, "stub", f) > (rites ? 0.55 : 0.7) && ruling(lead, "curious", f) < 0.4) {
+              f.banned = (f.banned || 0) | bit; f.banBy = lead.id; count.banned++;
+              note("rule", lead.name + " has forbidden " + TECH[i].name + " in " + f.name + ".", 2, villages[lead.home].x, villages[lead.home].y, f.id);
+            }
+          }
+          if (f.banned & bit) {
+            const pressed = factions.some(o => o.alive && o !== f && f.rel[o.id] && f.rel[o.id].war && o.know && o.know[i] > 0);
+            if (pressed || f.banBy !== lead.id) { f.banned &= ~bit; count.banLifted++; note("rule", f.name + " has taken up " + TECH[i].name + " after all.", 1.5, villages[lead.home].x, villages[lead.home].y, f.id); }
+          }
+        }
+        /* Its age, read off what it knows. */
+        let era = has(f.id, "farming") ? "early" : "foragers";
+        if (era === "early") for (const e of ["bronze", "ancient", "medieval", "earlymodern", "industrial", "modern", "information"]) {
+          const adds = ERA_ADDS[e].filter(k => k in TI_K);
+          if (adds.filter(k => has(f.id, k)).length * 2 >= adds.length) era = e; else break;
+        }
+        if (f.eraNow && f.eraNow !== era) { const v = villages.find(x => x.alive && x.f === f.id); if (v) note("era", f.name + " has come into " + ERA_NAME[era] + ".", 2, v.x, v.y, f.id); count.eraChanged++; }
+        f.eraNow = era;
+      }
+    }
+    if (TECHMOVE) { count.banned = 0; count.banLifted = 0; count.eraChanged = 0; }
+    const ERA_NAME = { foragers: "a life of foraging", early: "farming", bronze: "the Bronze Age", ancient: "the Iron Age", medieval: "its middle ages", earlymodern: "the age of print and powder",
+                       industrial: "the age of steam", modern: "the age of engines and radio", information: "the age of telephones" };
+    /* What a people knows, could find next and has lost: what the page's know-how panel shows (15.9i). Reads only. */
+    function techView(f) {
+      if (!KNOW || !f.know) return null;
+      const known = [], next = [], lost = [];
+      let anyMask = 0; for (let i = 0; i < TECH.length; i++) if (f.know[i] > 0) anyMask |= 1 << i;
+      for (let i = 0; i < TECH.length; i++) {
+        const x = TECH[i], bit = 1 << i;
+        if (f.know[i] > 0) known.push({ key: x.key, name: x.name, holders: f.know[i], share: f.know[i] / Math.max(1, f.pop), skill: f.skill ? +f.skill[i].toFixed(2) : 1, banned: !!(f.banned & bit), cant: !!(f.cantUse & bit) });
+        else if ((anyMask & x.mask) === x.mask && !x.eraOnly) next.push({ key: x.key, name: x.name, ready: x.mask ? Math.min(...(x.needs || []).map(k => f.know[TI_K[k]] || 0)) : f.pop });
+        if (!(f.know[i] > 0) && f.knewOnce && (f.knewOnce & bit)) lost.push({ key: x.key, name: x.name, written: !!(f.written & bit) });
+      }
+      next.sort((a, b) => b.ready - a.ready);
+      return { era: eraOf(f), known, next, lost };
     }
     /* Seen done, in a talk: one thing the other holds that this one does not, now and then. */
     function learnFrom(a, b) {
@@ -9364,6 +9836,7 @@
         }
         f.knowWas = now; f.knewOnce = had | now;
       }
+      if (TECHMOVE) techDay();   // TODO 15.9
       /* A mill where a people knows it and a village sits by a river. */
       for (const v of villages) v.mill = v.alive && knows(v.f, "mill") && (v.riverNear ??= ditchFrom(v) >= 0);
     }
@@ -9510,6 +9983,68 @@
       return s;
     }
     const reachOf = f => CAMPAIGN_DAYS * (KNOW && knows(f.id, "carts") ? 1.5 : 1) * (WIRED && has(f.id, "horses") ? 1.5 : 1) * (WIRED && has(f.id, "rail") ? 2 : 1) * (KIT_ON && WIRED && has(f.id, "motor") ? 1.5 : 1) / 2 * MARCH_DAY;   // 15d: horses and rail; 15.6: lorries
+    /* Leave to cross (TODO 15.6f, 2026-11-23). Ric: "why wouldnt soldiers avoid areas that are others
+       property unless they haave persmission?" Before it marches, an army whose road crosses the land
+       of a third people — a village's fields, or the land it claims round them (15.7e) — asks that
+       people's leader, once a season. Leave is given by how they stand: friends, allies and trading
+       partners, a people that hates the one marched on, the strong a small people cannot refuse; to
+       anybody else for a price, from the treasury, where it can be paid (passage was sold, as Edom was
+       asked to sell water, Numbers 20). Refused, a bold general strong enough forces the way: the
+       fields along the road are stripped, and it is a wrong that people holds (Belgium, 1914); anybody
+       else turns to another goal for two months. Never a war started by a rule: forcing the way only
+       adds to what is held against them. README, "Leave to cross". */
+    const PASSAGE = ARMIES && S.passage !== "old";
+    if (PASSAGE) { count.passAsked = 0; count.passGiven = 0; count.passPaid = 0; count.passRefused = 0; count.passForced = 0; }
+    function landPeople(i) {
+      const o = owner[i]; if (o >= 0) return villages[o].f;
+      return claim ? claim[i] : -1;
+    }
+    function passage(f, o, c, lead, from, to) {
+      const crossed = new Set();
+      const n = Math.max(4, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 2));
+      for (let k = 1; k < n; k++) {
+        const x = Math.floor(from.x + (to.x - from.x) * k / n), y = Math.floor(from.y + (to.y - from.y) * k / n);
+        if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+        const x2 = landPeople(y * cols + x);
+        if (x2 >= 0 && x2 !== f.id && x2 !== o.id && factions[x2].alive && !atWar(f.id, x2)) crossed.add(x2);
+      }
+      const leave = c.leave || (c.leave = {});
+      for (const xid of crossed) {
+        const x = factions[xid], e = leave[xid];
+        if (e && e.until > t && e.goal === to.id) { if (e.ok) continue; return false; }
+        count.passAsked++;
+        const r = x.rel[f.id], ro = x.rel[o.id], xl = byId.get(x.leader);
+        const fear = might(f, x) / Math.max(1, might(x, f));
+        const score = (r ? r.op + r.bond * 0.5 + (r.ally ? 1 : 0) + (r.trade ? 0.3 : 0) : 0) + (ro && ro.op < -0.2 ? 0.4 : 0) + (fear > 3 ? 0.6 : fear > 2 ? 0.3 : 0)
+                      - (xl ? (ruling(xl, "stub", x) - 0.5) * 0.4 : 0) - 0.1;
+        let ok = score > 0;
+        if (!ok && score > -0.4 && !shared) {   // for a price: a tenth of a season's pay of the army
+          const price = Math.max(5, c.out || 20) * WAGE * 9;
+          if (f.treasury > price * 2) { f.treasury -= price; x.treasury += price; ok = true; count.passPaid++; }
+        }
+        if (ok) { count.passGiven++; leave[xid] = { ok: true, until: t + 90 * DAY_HOURS, goal: to.id }; continue; }
+        count.passRefused++;
+        const bold = ruling(lead, "bold", f);
+        if (bold > 0.6 && fear > 1.5) {
+          count.passForced++; leave[xid] = { ok: true, until: t + 90 * DAY_HOURS, goal: to.id };
+          const back = x.rel[f.id]; back.grief = clamp(back.grief + 0.5, 0, 3); back.op = clamp(back.op - 0.3, -1, 1);
+          for (const u of villages) if (u.alive && u.f === xid && segDist(u.x, u.y, from, to) < u.radius + 4) { const took = u.food * 0.1; u.food -= took; count.looted += took; }
+          note("war", f.name + "'s army has forced its way across the land of " + x.name + ", who refused it leave, and taken from their fields as it went.", 3, from.x, from.y, f.id);
+          continue;
+        }
+        leave[xid] = { ok: false, until: t + 60 * DAY_HOURS, goal: to.id };
+        (c.barred || (c.barred = {}))[to.id] = t + 60 * DAY_HOURS;
+        c.goal = -1; f.target[o.id] = -1;
+        note("war", x.name + " has refused " + f.name + "'s army leave to cross its land to " + to.name + ".", 2, from.x, from.y, xid);
+        return false;
+      }
+      return true;
+    }
+    function segDist(px, py, a, b) {
+      const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+      const k = L ? clamp(((px - a.x) * dx + (py - a.y) * dy) / L, 0, 1) : 0;
+      return Math.hypot(px - a.x - dx * k, py - a.y - dy * k);
+    }
     function campaign(f, o, lead) {
       const c = f.camp[o.id] || (f.camp[o.id] = { v: -1, goal: -1, ready: false, since: t, cut: false, out: 0 });
       const reach = reachOf(f), bold = ruling(lead, "bold", f), patient = ruling(lead, "patient", f);
@@ -9527,6 +10062,7 @@
         const worth = (v.food * 0.05 + v.pop + 1), guard = GENERALS ? knownGuard(f, v) : felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + wallWorth(v, f.id) * v.wall);
         /* Seeking a battle (TODO 15o): to where their soldiers are, not away from them. */
         const s = GENERALS && c.plan === "battle" ? Math.pow(worth, 0.3) * (1 + guard) / (1 + d * 0.02) : Math.pow(worth, 0.5 + bold) / Math.pow(1 + guard, 0.5 + patient) / (1 + d * 0.02);
+        if (c.barred && c.barred[v.id] > t) continue;   // TODO 15.6f, 15.6g: the way there was refused, or it was too strongly held
         if (s > bs) { bs = s; best = v; from = near; }
       }
       if (!best) { c.goal = -1; c.ready = false; f.target[o.id] = -1; count.outOfReach++; return; }
@@ -9566,6 +10102,7 @@
         }
         c.ambush = null;
       }
+      if (PASSAGE && !c.ready && !cut && all > 0 && !passage(f, o, c, lead, muster, goal)) return;   // TODO 15.6f
       if (!c.ready && !cut && all > 0) {
         const want = clamp(0.5 + patient * 0.4 - (ruling(lead, "temper", f) - 0.5) * 0.4, 0.3, 0.9);
         if (here >= 3 && (here >= all * want || t - c.since > 14 * DAY_HOURS)) {   // never a handful; after a fortnight, whoever has come
@@ -9984,7 +10521,7 @@
       /* War know-how (TODO 15.6): a people fights with it once one in twenty of them holds it — smiths and soldiers are a small share. */
       if (k in WI) return KNOW && f.wk ? f.wk[WI[k]] >= Math.max(1, (f.pop || 1) * 0.05) : (ERA_WARS[f.era] || []).includes(k);
       /* A new thing changes a whole people (its arms, its medicine) only once one in ten of them holds it: one man who has heard of the railway does not arm an army. */
-      if (KNOW && f.know) { const i = TI_K[k], n = f.know[i]; return BASE_KNOW & (1 << i) ? n > 0 : n >= Math.max(1, (f.pop || 1) * 0.1); }
+      if (KNOW && f.know) { const i = TI_K[k], n = f.know[i]; if (TECHMOVE && ((f.banned & (1 << i)) || (f.cantUse & (1 << i)))) return false; return BASE_KNOW & (1 << i) ? n > 0 : n >= Math.max(1, (f.pop || 1) * 0.1); }
       return eraHas(fid, k);
     }
     /* Weapons by what a people knows (Dupuy, *The Evolution of Weapons and Warfare*, 1980: a sword 23, a
@@ -11014,7 +11551,8 @@
       if (t % DAY_HOURS === 1) { if (!THIRST) countHouses(); housing(); }   // TODO 7b
       if (t % DAY_HOURS === 3) wearOff();                                       // TODO 7d
       if (ROADS && t % DAY_HOURS === 4) for (const f of factions) if (f.alive) roadDay(f);   // TODO 15.5i3
-      if (t % (DAY_HOURS * 30) === 2 && t > DAY_HOURS * 30) for (const v of villages) if (v.alive && landOf(v) === "family") allot(v);   // new households, and empty houses' land back (TODO 7c)
+      if (t % (DAY_HOURS * 30) === 2 && t > DAY_HOURS * 30) for (const v of villages) if (v.alive && sharedOut(v)) { allot(v); if (PROP) landMonth(v); }
+      if (MINT && t % DAY_HOURS === 5) moneyDay();   // TODO 15.8   // new households, and empty houses' land back (TODO 7c)
       if (THIRST) countHouses();
       if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
       t++;
@@ -11162,7 +11700,7 @@
       if ("army" in o) f.yours.army = f.army = clamp(+o.army || 0, 0, 0.6);
       if ("relief" in o) f.yours.relief = f.relief = !!o.relief;
       if ("unfree" in o && ["keep", "free", "forbid"].includes(o.unfree)) f.yours.unfree = o.unfree;   // TODO 15c
-      if ("land" in o && ["family", "village", "leader"].includes(o.land)) { f.yours.land = o.land; if (o.land !== f.land) setLand(f, o.land); }
+      if ("land" in o && ["family", "village", "leader", "commune"].includes(o.land)) { f.yours.land = o.land; if (o.land !== f.land) setLand(f, o.land); }
       return true;
     }
     function orderVillage(vid, o) {
@@ -11365,6 +11903,15 @@
       /* TODO 15c: a faction's government as the page shows it, and what the tests reach. */
       govOf: f => govView(f), titleOf: f => titleOf(f), ruling: ruling, bind: (p, h) => bind(p, h, "test"), govern: f => GOV && f.alive && byId.get(f.leader) ? govern(f, byId.get(f.leader)) : null,
       kill: p => die(p, "old"),   // for the tests (TODO 15b)
+      /* TODO 15.7: who holds the land, as the tests and the page read it. Reading changes nothing. */
+      passage: (fid, oid, a, b) => { const f = factions[fid], c = f.camp[oid] || (f.camp[oid] = { v: -1, goal: -1, ready: false, since: t, cut: false, out: 0 }); return passage(f, factions[oid], c, byId.get(f.leader), villages[a], villages[b]); },   // TODO 15.6f, for the tests
+      landView: () => landView(),
+      techView: fid => techView(factions[fid]),   // TODO 15.9i
+      needWeight: (id, k) => needWeight(byId.get(id), villages[byId.get(id).home], k), matOk: (vid, k) => matOk(villages[vid], k), techNeeds: k => (TECH.find(x => x.key === k) || {}).needs, learnAll: (fid, k, share) => { let n = 0; for (const p of people) if (p.f === fid && p.know != null && p.hp > 0 && (n++ % Math.round(1 / share)) === 0) p.know |= 1 << TI_K[k]; },   // TODO 15.9, for the tests
+      moneyMonth: () => { if (MINT) moneyDay(true); }, trustOf: vid => { if (MINT) trustOf(villages[vid]); return villages[vid].trust; }, bury: id => { const q = byId.get(id); if (MINT) bury(q, villages[q.home]); }, hoards: HOARD,   // TODO 15.8, for the tests
+      buyFood: (id, vid, n) => buy(byId.get(id), villages[vid], "food", n),
+      yieldsOnTerms: (vid, a, d, o) => yieldsOnTerms(villages[vid], a, d, o), takeOnTerms: (vid, fid) => capture(villages[vid], factions[fid], [], true),   // TODO 15.6g, for the tests
+      landMonth: vid => landMonth(villages[vid]), claimAt: i => claim ? claim[i] : -1, homes: homes, held: held, pledges: PLEDGE, grants: GRANT,
       knock: (vid, k) => knock(villages[vid], k), buildWorks: (vid, k, h) => buildWorks(villages[vid], k, h), workDay: () => { if (WORKS) workDay(); }, serviceWorth: (vid, job) => serviceWorth(villages[vid], job), worksWanted: vid => worksWanted(villages[vid]),   // TODO 15f
       place: (p, x, y) => jump(p, x, y), startWar: (a, b) => startWar(factions[a], factions[b], factions[a].name + " has gone to war with " + factions[b].name + "."),   // for the tests (TODO 15h)
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d

@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People0 = createRequire(import.meta.url)("../people.js");
 /* TODO 15.5 (2026-11-22): the winter store checked (60 days) is a fixed guess that the climate's swing (15.5q) and households with children (15.5l, k) move; the rest sits near its thresholds by seed; so its worlds keep these at their old values unless a check sets them. */
-const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old" };
+const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" };
 const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 
 const city = w => w.villages.reduce((a, b) => (b.pop > a.pop ? b : a));
@@ -44,7 +44,7 @@ for (const greedy of [false, true]) {
   for (const p of w.people) if (p.home === town.id) { p.food = 0; p.coins = 0; }
   for (const v of w.villages) if (v !== town) for (const p of w.people) if (p.home === v.id) p.food += 400;
   town.food = 0;
-  const before = w.stats().money;
+  const before = (w.stats().money - w.stats().minted);
   let most = 0;
   hungry(w, town, 24 * 20, () => { most = Math.max(most, town.bid); });
   const s = w.stats();
@@ -53,7 +53,7 @@ for (const greedy of [false, true]) {
     assert.ok(most > 100, "a warm leader sets coins aside for the town (" + Math.round(most) + ")");
     assert.ok(s.publicGrain > 0, "and grain is carried in on them (" + Math.round(s.publicGrain) + " days)");
   }
-  assert.ok(Math.abs(s.money - before) < 1e-6, "no coin made or lost (" + (s.money - before) + ")");
+  assert.ok(Math.abs((s.money - s.minted) - before) < 1e-6, "no coin made or lost (" + ((s.money - s.minted) - before) + ")");
 }
 
 // 3. Hoarders made to sell, by a bold leader only.

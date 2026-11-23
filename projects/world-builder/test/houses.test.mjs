@@ -74,7 +74,7 @@ for (const set of [{ seed: 11 }, { seed: 2, sea: 0.6, people: 600 }, { seed: 5, 
 {
   const w = People.create({ seed: 11 });
   w.step(24);
-  const money = w.stats().money;
+  const money = w.stats().money, minted0 = w.stats().minted;
   const couple = (a, b) => a && b && w.adult(a) && w.adult(b) && a.dwelling === b.dwelling && a.dwelling >= 0;
   const a = w.people.find(p => couple(p, w.byId.get(p.partner)));
   const c = w.people.find(p => p.home === a.home && p.dwelling !== a.dwelling && couple(p, w.byId.get(p.partner)));
@@ -97,7 +97,7 @@ for (const set of [{ seed: 11 }, { seed: 2, sea: 0.6, people: 600 }, { seed: 5, 
   for (let h = 0; h < 24 * 30 && !site.built; h++) w.step(1);
   assert.ok(site.built, "and finishes it");
   if (owner.hp !== -99 && owner.home === site.v) assert.equal(owner.dwelling, site.id, "the family that built it lives in it");
-  assert.ok(Math.abs(w.stats().money - money) < 1e-6, "builders paid and materials bought: no coin made or lost");
+  assert.ok(Math.abs(w.stats().money - money - (w.stats().minted - minted0)) < 1e-6, "builders paid and materials bought: no coin made or lost");   // less what was mined and lost (TODO 15.8)
   assert.ok(w.people.every(p => p.coins >= -1e-9), "nobody pays more than they have");
 }
 

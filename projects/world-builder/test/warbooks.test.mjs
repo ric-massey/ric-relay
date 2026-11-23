@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { warBy: "era", formations: "nearest", raids: "old", battle: "old" };   // the parts built after this one, off: this part as it was built
+const LATER = { warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 1505646459;   // print() of the world before (armies spread out), seed 2, 60 days
 
 {
@@ -61,9 +61,9 @@ for (const books of ["kept", "old"]) {
   const book = new Map(rich.map(q => [q.id, f.pop * 5]));
   w.loans().set(f.id, book);
   f.treasury = 50;
-  const before = w.stats().money;
+  const before = (w.stats().money - w.stats().minted);
   w.borrow(f.id, 1);
-  const after = w.stats().money;
+  const after = (w.stats().money - w.stats().minted);
   assert.equal(w.loans().has(f.id), false, books + ": the loans are gone");
   if (books === "kept") assert.ok(Math.abs(after - before) < 1e-6, "kept: every coin is still somewhere (" + before + " → " + after + ")");
   else assert.ok(before - after > 49, "before: the treasury's coins left the world");

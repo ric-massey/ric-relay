@@ -4454,7 +4454,7 @@ fixed before the six-seed numbers.
 year, now mostly at villages: 15.6g.
 **Budget:** default.
 
-### [ ] 15.6g. Soldiers die at villages
+### [x] 15.6g. Soldiers die at villages
 
 Found finishing 15.6e (2026-11-23, seeds 4–9): with battle given by choice, armies meet a third as often,
 but soldiers still die at 21% (medieval) to 46% (industrial) a year, against roughly 4–10% at worst on
@@ -4469,8 +4469,35 @@ siege, that a place which refused terms could be sacked); casualties in taking a
 how often armies took places against fought battles (Rogers on the Hundred Years' War; Parker on early
 modern sieges).
 **Budget:** default.
+**Done 2026-11-23** (Ric: "finish 15 … write all of them"; his questions answered in his absence with the
+recommended choice, each kept as a setting he can turn): setting **Taking a place**, the old way kept as "as
+before". Chosen: look first at how a place is attacked. An army strong enough to attack an open place demands
+its surrender first; a place far outnumbered with few soldiers gives itself up on terms (nothing burned, a
+quarter of the till), one that refuses is stormed and sacked; an army at a place too strongly held to take
+draws off and gives it up for two months.
+**Research** (search summaries, not read in full): the law of siege let a place that refused terms be sacked
+([Lieber Institute](https://lieber.westpoint.edu/sack-cities-laws-war-evolving-attitudes-historical-perspective/));
+surrender on terms was the common end, with time given to decide
+([Medievalists](https://www.medievalists.net/2017/09/surrender-medieval-europe-indirect-approach-2/));
+Gillingham in *How Fighting Ends* (2012). No source gave a rate of surrender against storm; Rogers and Parker
+not read.
+**Measured** (seeds 4–6, a year of old enemies, old taking against new): soldiers killed a year medieval
+17% → 20%, industrial 31% → 25% — noise at three seeds. **No place was asked to surrender or stormed in any of
+the six worlds**: the soldiers dying at villages are not dying in places being taken. That is 15.6h.
 
-### [ ] 15.6f. Leave to cross another people's land
+### [ ] 15.6h. Who the soldiers dying at villages are
+
+Found finishing 15.6g (2026-11-23): in a year of old enemies (seeds 4–6) no place was attacked in strength,
+asked to surrender or stormed, yet most soldiers who die still fall within a village's reach (`deadAtVillage`:
+26 medieval, 32 industrial, against 2 and 6 in the line). They are outside any unit: garrisons, armies
+gathering or passing near a place, raiders' pursuers. **Measure first:** count those deaths by who struck
+(a garrison, an army whose goal was that place, one passing) and where the dead was going; only then decide.
+**Ric decides:** whether this matters, once it is known who they are.
+Also found then: `test/walls.test.mjs` (slow lane) had been red since 15.6e — with battle by choice no open
+place fell in five months in its worlds; it now runs with 15.6e onward off, as walls were built.
+**Budget:** default.
+
+### [x] 15.6f. Leave to cross another people's land
 
 **Ric (2026-11-23):** "why wouldnt soldiers avoid areas that are others property unless they haave
 persmission?" Then "add it in the todo please".
@@ -4498,8 +4525,17 @@ forced, and what followed; whether ordinary travellers needed leave (tolls, safe
 **Done when:** a people at peace with another is asked before its land is crossed, a refusal is kept or
 forced, and a world with nobody marching through anybody is unchanged.
 **Budget:** default.
+**Done 2026-11-23** (README, "Leave to cross"): setting **Crossing another people's land**, the old way kept.
+Armies only (traders, herders and hunters pay for what they take from claimed land instead, 15.7e); a leader
+may ask a price, from the treasury. Given by how they stand (friends, allies, trade, a common enemy, fear of
+the strong), sold to the rest for a tenth of a season's pay; refused, a bold and stronger general forces it
+(stores along the road a tenth down, grievance as at a war's start), anybody else turns to another goal for
+two months. A world where nobody marches through a third people is unchanged (`test/passage.test.mjs`).
+**Research:** from what the item already gave (Numbers 20; Belgium 1914; the Thirty Years' War); not
+searched further. **Not done:** ordinary travellers' safe-conducts and tolls on roads; the road is a straight
+line, not the way the soldiers walk.
 
-### [ ] 15.7. Land as property
+### [x] 15.7. Land as property
 
 **Ric (2026-11-23):** "can we look at owned land? how realistic is the proipertyy side of things?", then,
 of the six gaps found, "all 6 of those things need to go somewhere right?"
@@ -4512,7 +4548,7 @@ What is missing is land as property: something held, kept, inherited, bought, so
 Each part below is its own piece of work: research first, Ric's questions, measured before and after,
 the old way kept as a setting.
 
-#### [ ] 15.7a. Fields held, not allotted by need
+#### [x] 15.7a. Fields held, not allotted by need
 **Now:** a family's fields grow and shrink with its size every month and go back after three months
 unworked — a repartitional commune (the Russian *mir*), not the "own fields" the setting names.
 **Do:** a holding stays with the household whatever its size; idle land is let, not taken back. Keep
@@ -4521,7 +4557,7 @@ redistribution by need as its own tenure, named for what it is.
 Javanese and Indian village tenures); how often the mir repartitioned.
 **Ric decides:** whether repartition stays as a fourth tenure.
 
-#### [ ] 15.7b. Inheriting, selling, renting and pledging land
+#### [x] 15.7b. Inheriting, selling, renting and pledging land
 **Now:** fields never change hands, so nobody builds an estate or loses a farm to debt.
 **Do:** fields and houses pass by each people's custom (all children, the eldest, sons only, and so on,
 from `f.match`); land can be sold, rented for a share or a sum, and pledged against a loan, and taken
@@ -4531,7 +4567,7 @@ generations; land markets in medieval England (court rolls), in Song China and i
 and fixed rents; debt bondage and land lost to it.
 **Ric decides:** how far towards a market (gifts and inheritance only, or sale and mortgage too).
 
-#### [ ] 15.7c. Landholders under the ruler
+#### [x] 15.7c. Landholders under the ruler
 **Now:** the only landlord is the leader; no great families, temples or monasteries hold land, and
 nobody rents from a landlord who is not the ruler. (Officials "paid in land" get a tenth of the tax, not land.)
 **Do:** estates granted by a ruler (for service, to officials, to temples and faiths of 15g) and kept by
@@ -4540,7 +4576,7 @@ families; tenants and labourers on them; an official paid in land is given real 
 Ottoman timar; how much land the great held against the small (Domesday).
 **Ric decides:** who may be granted land, and whether a grant is for life or for good.
 
-#### [ ] 15.7d. Bounds that stay put
+#### [x] 15.7d. Bounds that stay put
 **Now:** a village owns a circle whose radius follows its numbers (`territory()`), so its land grows and
 shrinks with every birth and death.
 **Do:** bounds set when land is first taken and kept through good years and bad; changed only by
@@ -4550,7 +4586,7 @@ inside the bounds, not out of them.
 how a shrinking village kept its land.
 **Ric decides:** nothing expected; ask if the research turns something up.
 
-#### [ ] 15.7e. The land between villages
+#### [x] 15.7e. The land between villages
 **Now:** everything outside a village's circle is nobody's, free to all.
 **Do:** a people claims the land round its villages: hunting grounds, pasture, woodland and waste, with
 rights in it (to graze, cut wood, hunt, gather) for its own and not, or for a price, for others. Goes with
@@ -4559,7 +4595,7 @@ rights in it (to graze, cut wood, hunt, gather) for its own and not, or for a pr
 held; royal forests.
 **Ric decides:** whether foragers and herders hold ranges, and what a trespass on them costs.
 
-#### [ ] 15.7f. Records and disputes over land
+#### [x] 15.7f. Records and disputes over land
 **Now:** who holds what is written nowhere, and land is never quarrelled over except as part of a
 village feud (15.5i2); theft laws (15c) cover goods only.
 **Do:** with writing (`knows(f, "writing")`) holdings are recorded; without it they are what the village
@@ -4572,8 +4608,24 @@ before writing, and enclosure in England.
 **Order:** a and d first (land that stays put), then b (it changes hands), c (estates), e (the land
 between, with 15.6f), f (records and disputes).
 **Budget:** default, each part.
+**Done 2026-11-23, all six parts** (README, "Land as property"; `test/property.test.mjs`): setting **Land as
+property** — held, inherited, sold and pledged (default); held and inherited, never sold; or shared out by
+need each month (as before, fingerprinted). Ric's questions, answered in his absence with the recommended
+choice: (a) repartition stays, as a fifth tenure, *The village, shared out by need*; (b) sale and mortgage
+too, with "never sold" as an option; (c) officials granted land for the office's length, a people's faith a
+glebe for good; (e) foragers' and herders' camps claim ranges like villages, and a trespass costs a tenth
+of what was taken in coin, or a grievance; (f) enclosure is the ruler's call, sooner under a council of the
+great families.
+**Research** (search summaries): distress sales tracked bad harvests in the English court rolls and feet of
+fines (Davis and Kissock 2004 on 1315–22; Harvey 1984); the mir repartitioned every 6–12 years, some never
+([Repartition](https://en.wikipedia.org/wiki/Repartition)); gavelkind's partible inheritance in Kent; no
+quantitative comparison of fragmentation found. Not read: Song China, Roman Egypt, Domesday's shares,
+timars, cadastres.
+**Measured** (seed 2, families, a year): 37 pledges, 3 sales, 5 boundaries moved, 281 tolls, 741 trespasses;
+starved 0 both ways. After a month 2% of households held no land, Gini 0.25. **Left for the long runs:**
+whether a landless class grows of itself over generations.
 
-### [ ] 15.8. Where money comes from
+### [x] 15.8. Where money comes from
 
 **Ric (2026-11-23):** "how does the currency work i kinda want only one curency but how is it made?", then
 "add all that to the todo please. where it makes the most sence". Next to 15.7: land and money are the two
@@ -4631,8 +4683,19 @@ dropped in mid-run says so.
 **Done when:** coins come from metal and a mint, the money grows and shrinks with what makes and loses it,
 peoples without coining trade without coins, and the old fixed stock is kept as a setting.
 **Budget:** default.
+**Done 2026-11-23** (README, "Where money comes from"; `test/mint.test.mjs`): setting **Where coins come from**,
+the fixed stock kept (fingerprinted). Ric's questions, answered in his absence: coins from the first day in
+ancient and later eras (earlier peoples' starting stock is weighed silver); a ruler may debase; every mint
+strikes the one money, so there is no separate currency; money can fail by itself. Silver comes with ore from
+rich ground; a people that strikes coins keeps a twentieth; 2% a year is lost; fugitives bury half and lose it
+if they never come home; a greedy ruler who cannot pay the soldiers debases and their coin is trusted less;
+below a trust of 0.35 (siege, famine, a coin debased again and again) food is not sold for coins there.
+**Research:** coin loss about 2% a year (Hopkins; [Lockyear](https://discovery.ucl.ac.uk/10171145/3/Lockyear_thordeman%20final.pdf));
+the rest from what the item already cites, not searched further. **Not done as written:** peoples without
+coining trade with weighed silver rather than without money (Mesopotamia did). **Not done:** coins that differ
+by metal (so no Gresham's law); prices here follow food against mouths, not money, which is older than this item.
 
-### [ ] 15.9. How technology moves
+### [x] 15.9. How technology moves
 
 **Ric (2026-11-23):** "how is technology advancement? i dont want it linear because it isnt. what is
 technology like now?", then "write those into todo. please witha research bar too. and are there such
@@ -4650,7 +4713,7 @@ towers (`phone`), and nothing past it.
 Each part below is its own piece of work: research first, Ric's questions, measured before and after, the
 old way kept as a setting.
 
-#### [ ] 15.9a. Eras follow know-how, not the other way round
+#### [x] 15.9a. Eras follow know-how, not the other way round
 **Now:** with "Eras move on by themselves" off (the default), iron, horses, printing, gunpowder, the
 railway, the telegraph, the engine, medicine, the radio and the telephone can never be found (`eraOnly`):
 a people has them only if it started with them or learns them from one that did. A people's era label
@@ -4661,7 +4724,7 @@ for the news and the page, and never decides anything. Starting eras stay as sta
 and why the same people can be in several at once.
 **Ric decides:** whether "era-only" goes altogether, and whether the old fixed label stays as a setting.
 
-#### [ ] 15.9b. Need steers what is found
+#### [x] 15.9b. Need steers what is found
 **Now:** what is found is picked at random from whatever is possible; only famine (all finds twice as
 likely) and war (war know-how, among smiths and soldiers) steer it.
 **Do:** what a person is short of points their finding: drought and dry fields toward ditches and wells,
@@ -4672,7 +4735,7 @@ farming; induced innovation, Hicks and Habakkuk: dear labour and machines; Allen
 account of the industrial revolution); and finds that came with no need behind them.
 **Ric decides:** how strongly need steers, against chance.
 
-#### [ ] 15.9c. What the land has decides what can be done
+#### [x] 15.9c. What the land has decides what can be done
 **Now:** nothing needs a material: iron working needs no ore near, the steam engine no coal or wood, boats
 no timber, though the land already has ore, forest and stone (item 9).
 **Do:** a thing can be found or used only where its materials are within reach, or come by trade (iron
@@ -4682,7 +4745,7 @@ the industrial revolution (Pomeranz, *The Great Divergence*; Wrigley); peoples t
 ore and traded for it (Bronze Age tin).
 **Ric decides:** whether a material decides finding, using, or both.
 
-#### [ ] 15.9d. Getting better at a thing
+#### [x] 15.9d. Getting better at a thing
 **Now:** a thing is known or not; the plough is the plough.
 **Do:** how well a thing is done grows with practice and with the people who do it, and falls when few do
 (a plough that works the land a little better each generation of use; a smith's skill); a find is a first,
@@ -4692,7 +4755,7 @@ old techniques (ploughs, ships, mills over centuries); Henrich's model of skill 
 of a people (Tasmania).
 **Ric decides:** whether skill is kept per person, per place, or per people.
 
-#### [ ] 15.9e. Knowing is not using
+#### [x] 15.9e. Knowing is not using
 **Now:** a people that knows a thing uses it, at no cost and with nobody against it.
 **Do:** taking a thing up costs something (the tools, the building, the years of learning) and is weighed
 against what it brings; guilds, a faith (15g), custom or a leader may hold it back or forbid it; known
@@ -4702,7 +4765,7 @@ Ottoman ban on printing in Turkish (1485–1727); Japan giving up the gun (Perri
 new machines; how fast new things spread when they did (diffusion curves, Griliches on hybrid corn).
 **Ric decides:** who may forbid a thing (a leader, a faith, a guild), and whether a ban can be broken.
 
-#### [ ] 15.9f. Places where ideas meet
+#### [x] 15.9f. Places where ideas meet
 **Now:** only printing speeds the passing on (writing taught three times as fast). Nothing makes some
 places find more than others but their numbers.
 **Do:** schools, scholars and patrons; towns and cities where many meet; trade routes that carry ideas
@@ -4713,7 +4776,7 @@ Tasmania; Kline and Boyd 2010 on Pacific islands' tool kits); cities and inventi
 2007); universities, academies and patrons; the Republic of Letters.
 **Ric decides:** which institutions come in, and whether they are built like workplaces (15f).
 
-#### [ ] 15.9g. Getting the order and the wiring right
+#### [x] 15.9g. Getting the order and the wiring right
 **Now:** the telephone needs the radio, though it came first (1876 against the 1890s); the list stops at
 the telephone; each thing's parts were set from memory and not checked one by one.
 **Do:** each thing's parts as the record has them, checked one by one, with its source in the README.
@@ -4724,7 +4787,7 @@ the telephone; each thing's parts were set from memory and not checked one by on
 **Ric (2026-11-23):** "no cmputers." Know-how stops at the telephone and its towers. Don't add computers,
 networks or anything past them without asking him.
 
-#### [ ] 15.9i. A research bar on the page
+#### [x] 15.9i. A research bar on the page
 **Now:** what a people knows shows only in the news when something is found or lost.
 **Do (as understood; to check with Ric):** a bar or panel for each people: what it knows and how widely
 (how many hold each thing), what it could find next (the things whose parts it already holds) and how
@@ -4738,6 +4801,67 @@ research (pay scholars, steer toward a thing), or only watch.
 **Order:** a and g first (the wiring), then b, c and e (what is found and used), d and f (how fast), with i
 whenever the page is next worked on. h is not to be done.
 **Budget:** default, each part.
+**Done 2026-11-23, a to g and i** (README, "How technology moves"; `test/tech.test.mjs`): setting **How know-how
+moves**, the old way kept (fingerprinted). Ric's questions, answered in his absence: (a) era-only goes; the old
+fixed label stays only in "as before"; (b) need weighs three times, work twice, against chance; (c) a material
+decides both finding and using; (d) skill per people; (e) a ruler forbids, a faith through its ruler, and war
+with a people that has it or a new ruler ends the ban; (f) towns, cities and a rich curious ruler's scholars,
+not built as workplaces; (i) the research panel is the fold on the Factions tab, and a ruler only watches.
+The telephone is a new technique of its own (1876), before the radio; the phone and its towers need both.
+**Research:** not searched this session; the wiring's dates and the sources named in each part are from the
+standard histories, from memory, and the README says so: to be checked one by one (15.9g's own ask).
+**Measured:** a year at the top of "how often new things are found", 34 finds, new things at 0.71–0.98 skill.
+
+### [ ] 15.10. Where the coins pile up, and how the penniless get by
+
+**Ric (2026-11-23):** "can we talk about the extreme wealth concentration that happens and how people with no
+money still survive. so we need to look into that and figure out what is most realistic", then, of the four
+steps below, "this stuff needs added to the todo".
+**Measured** (2026-11-23, seed 2, 400 people, two years; the default world, and the same with 15.6f–15.9 off):
+grown-ups' coins go from a Gini of 0.22 to 0.81 in a year and 0.87 in two (0.88 and 0.88 with 15.6f–15.9 off);
+the top tenth hold 20% → 68% → 76% (84%, 81%); 44% then 63% of grown-ups hold no coin (64%, 67%). Village tills
+go from 853 coins to about 0 within the first year. Nobody starved either way. So it is older than item 15.
+**Why** (read from the run): **soldiers keep their pay** — wages from the treasury, food from the store, so
+the five richest are nearly always soldiers, 40–100 coins a head against a farmer's 5–17; and **the tills drain
+one way** — they pay out for food and materials, but most households grow or hunt what they eat and buy little
+back, so once a till is empty nobody can sell and coin stops moving.
+**How the penniless get by now:** they eat what they reap, hunt and fish (food need not pass through money);
+a household shares one pot; working another household's field pays half the harvest in kind (about 8,000 days
+of food a year); penniless grown-ups held 18–35 days of food at the end of each year. That much is true to life
+— most peasants lived largely outside money, were paid in kind and fell back on kin.
+**What is not:** the speed and the cause. Alfani's estimates for Italy give the top tenth 45–55% of all wealth
+about 1500 and 70–80% by 1800 — three centuries, not one year — and that is all wealth, land included
+([VoxEU](https://voxeu.org/article/europe-s-rich-1300); [Alfani 2017](https://www.uni.lu/wp-content/uploads/sites/2/2024/09/Alfani_Luxemburg_2017_Final.pdf)).
+Soldiers were mostly poor; and the poor had more to fall back on than this world gives them.
+**Do** (proposed by Claude, agreed by Ric to go on the list; how each works is still to be decided):
+1. **Soldiers spend.** They buy their own food and gear (or have it stopped from their pay), send pay home to
+   their household, and lose some to drink and gambling.
+2. **Tills sell as well as buy**, so coin flows back to the village store.
+3. **Charity and poor relief** (alms, a faith's giving, a village's or ruler's relief), and **small loans
+   between neighbours**.
+4. **Then measure the Gini over decades, not one year.** Do not tune numbers to hit a target; remove the causes
+   and see what the distribution does.
+**Research first:** what soldiers' pay went on, and stoppages for food and kit (Roman, medieval, early modern);
+how a market town's sellers and buyers kept coin moving; alms, tithes for the poor and the English poor law;
+credit between neighbours in court rolls (Briggs, *Credit and Village Society*); wealth Gini and top shares
+before 1800 (Alfani; Milanovic, Lindert and Williamson), and how fast they moved.
+**Ric (2026-11-23), of the three questions:** "the three questions should be answered by what is realistic".
+So nothing here is a free choice: each is what the record shows, found in the research and written down with
+its source. What is expected, to be checked:
+- *Soldiers' food and kit* — stopped from pay where an army is paid and kept (Roman soldiers' pay had food,
+  clothes and arms stopped from it, one of the complaints of the mutiny of AD 14 in Tacitus; the British army's
+  "stoppages" into the 1800s); bought from sutlers and markets on campaign; brought from home by a levy. So it
+  follows how a people raises its army (15p's `service`), not one rule.
+- *Who gives relief* — kin first, then whoever a people has: a faith's alms and tithes (15g), the village or
+  parish (England's poor law of 1601), a ruler's grain (Rome's dole; 15.5b2's public orders already). Each comes
+  where it exists in that world, so it differs from people to people.
+- *Interest between neighbours* — yes, mostly, often hidden (court rolls show small loans everywhere; interest
+  was disguised where the Church forbade usury); none, or hidden, where a people's faith forbids it (a faith's
+  rule, 15g).
+**Done when:** a default world's coin no longer piles up with whoever is paid and cannot spend, tills keep
+coin moving, the penniless have more than their own pot to fall back on, and the Gini is measured over decades
+against the record, with the old way kept as a setting.
+**Budget:** default.
 
 ### [ ] 16. Ruins and scavenging
 
@@ -5293,4 +5417,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-21 | 15.5r | AMD Ryzen 5 3600, 24 GB | 2.81 / 2.76 s a day (2.71 / 2.97 before; a busy machine) | *not run* | 7.6 MB, 1.48 KB | **dirt and foul water**: a different world from the first death of it or the first sickness caught more readily for it. `--quick` alternated old/new twice: 400 0.17/0.18 → 0.16/0.17 s, 2,000 0.89/0.89 → 0.82/0.92 s; within drift |
 | 2026-11-22 | 15.5 (e to c, j) | AMD Ryzen 5 3600, 24 GB | 2.17 / 2.06 s a day (1.71 before, 15.5r) | 12.9 / 11.7 s a day, 23–26× (10.8 / 10.8 before, 28×) | 7.6 MB, 1.48 KB (5,000); 2.8 KB (20,000) | **15.5j**: the whole of 15.5 since 15.5r at once — wounds, men and women, children and mothers, children working, house work, land that changes, oxen, ditches, climate, sleep, household firewood, news of plenty, the edge. Old and new alternated at 20,000 and 5,000: about a tenth slower at 20,000 and a fifth at 5,000, every part a different world. Still well above the 16× Ric chose for item 3, and he set no floor ("it can go under in massive runs"). Not profiled part by part: for 15.25's passes if wanted |
 | 2026-11-22 | 15 (c, g, b, e, f, h, i, d) | AMD Ryzen 5 3600, 24 GB | 2.12 s a day (2.17 before, 15.5) | *not run* | 7.8 MB, 1.53 KB | **item 15 whole**: `--quick` 400 0.16 → 0.16, 2,000 0.74 → 0.77, 5,000 2.17 → 2.12 s a day. Built, it was 0.25 / 1.39 / 3.55: one field more on every person had tipped V8 into a slow object shape, even with every new part off (worlds identical, 70% slower); five rarely used fields (a traveller's destination, a car, when a soldier reported in, hired, who keeps an old parent) moved to side tables keyed by person, and the speed came back. Rule: count a person's fields before adding one. |
+| 2026-11-23 | 15.6f, 15.6g, 15.7, 15.8, 15.9 | AMD Ryzen 5 3600, 24 GB | 2.39 s a day (2.55 before, the same run of the old engine) | *not run* | 7.8 MB, 1.52 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.17, 2,000 0.97 → 0.85, 5,000 2.55 → 2.39 s a day; no slower, within the machine's drift. |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

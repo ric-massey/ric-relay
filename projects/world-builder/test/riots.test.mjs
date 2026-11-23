@@ -15,12 +15,12 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const Engine = createRequire(import.meta.url)("../people.js");
 /* Item 15's parts off: this test holds its own part as it was built (TODO 15, 2026-11-22). */
-const People = Object.assign({}, Engine, { create: s => Engine.create(Object.assign({ govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old" }, s)) });
+const People = Object.assign({}, Engine, { create: s => Engine.create(Object.assign({ govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" }, s)) });
 const FINGERPRINT = 3279161514;   // print() of 15.5t's engine, seed 2, 40 days
 
 // 1. Off: the world 15.5t left (fingerprint taken from 15.5t's engine, seed 2, 40 days).
 {
-  const w = People.create({ seed: 2, riots: false, bandits: false, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old" });
+  const w = People.create({ seed: 2, riots: false, bandits: false, dirt: "fixed", health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" });
   w.step(24 * 40);
   assert.equal(print(w), FINGERPRINT, "riots off is the world before them");
 }
@@ -40,7 +40,7 @@ function town(over, lead, each) {
   const here = () => w.people.filter(p => p.home === v.id);
   for (const p of here()) { p.food = 0; p.coins = Math.min(p.coins, 3); p.hp = 1; }
   v.food = 800;
-  const before = { money: w.stats().money, riots: w.stats().riots };
+  const before = { money: (w.stats().money - w.stats().minted), riots: w.stats().riots };
   for (let h = 0; h < 30 && w.stats().riots === before.riots; h++) {
     for (const p of here()) { p.food = Math.min(p.food, 0.2); p.hungry = Math.max(p.hungry, 1); }
     if (each) each(w, v, here());
@@ -56,7 +56,7 @@ function town(over, lead, each) {
   assert.ok(s.riotGrain > 20, "and takes grain (" + Math.round(s.riotGrain) + " days' food)");
   assert.equal(s.riotsRough, 0, "an ordinary crowd is not a rough one");
   assert.equal(s.riotsFed, 1, "a warm leader sends grain");
-  assert.ok(Math.abs(s.money - before.money) < 1e-6, "no coin made or lost (" + (s.money - before.money) + ")");
+  assert.ok(Math.abs((s.money - s.minted) - before.money) < 1e-6, "no coin made or lost (" + ((s.money - s.minted) - before.money) + ")");
   const e = w.events.filter(x => x.kind === "riot").pop();
   assert.match(e.text, /fair price/, e.text);
   assert.ok(v.riotAt > 0, "the village remembers it");

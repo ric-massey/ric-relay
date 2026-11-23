@@ -2662,6 +2662,160 @@ exactly (`test/battle.test.mjs`). A world not at war is unchanged.
   seeds and a version with a bug in it, and is not to be quoted. Fights at villages are TODO 15.6g. Not
   tuned toward the record: the odds a general takes are `meeting`'s, unchanged.
 
+### Leave to cross (2026-11-23)
+
+TODO item 15.6f. Ric: "why wouldnt soldiers avoid areas that are others property unless they haave
+persmission?" Setting **Crossing another people's land** under War: *Leave is asked first* (the default)
+or *Armies go where they please (as before)*. A world where no army's road crosses a third people is
+unchanged (`test/passage.test.mjs`).
+
+- Before it marches, an army looks along its road from where it gathered to its goal. Where the road
+  crosses the land of a people it is not at war with — a village's fields, or the land claimed round them
+  (15.7e) — it asks that people's leader, once a season and goal.
+- **Given** to friends, allies and trading partners, to whoever marches on a people they hate, and by a
+  small people to the strong they dare not refuse (more than twice their strength), less by a stubborn
+  leader. Otherwise, a little short of yes, **for a price**: a tenth of a season's pay of the army, from the
+  treasury, where it can pay twice that.
+- **Refused**, a bold general (over 0.6) with half again the other's strength forces the way: the villages
+  along the road lose a tenth of their stores, and it is a wrong that people holds (grievance and ill will,
+  as at the start of a war) — never a war started by a rule. Anybody else gives that goal up for two
+  months and turns to another.
+- **Why:** passage was asked and refused (Edom refusing Israel, Numbers 20, even when offered payment for
+  water); crossing anyway was itself a cause of war (Belgium, 1914, which brought Britain in); and an army
+  crossing uninvited lived off the land. Armies only (Ric's choice of armies or everybody, made in his
+  absence: traders, herders and hunters pay for what they take from claimed land instead, 15.7e).
+- The road is a straight line from where the army gathers to its goal; the soldiers walk the land's way,
+  which may bend round it.
+
+### Taking a place (2026-11-23)
+
+TODO item 15.6g. Setting **Taking a place** under War: *Surrender is demanded first* (the default) or
+*Stormed as soon as the enemy is strong enough (as before)* (`test/taking.test.mjs`).
+
+- **Terms first.** The first day an army is strong enough to attack an open place (no wall worth the name),
+  its surrender is demanded. A place outnumbered by about twice and more — more again under a stubborn
+  leader — with few soldiers of its own (under a third of the attackers) gives itself up: it changes hands,
+  its soldiers and leader march out to the nearest place of their own, nothing is burned or sacked, nobody
+  is taken captive, and a quarter of its till is paid. A place that refuses is besieged and stormed as
+  before, and sacked when it falls: the law of siege allowed a place that refused terms to be plundered
+  ([Lieber Institute](https://lieber.westpoint.edu/sack-cities-laws-war-evolving-attitudes-historical-perspective/);
+  Gillingham in *How Fighting Ends*, 2012; surrender on terms was the common end of a siege,
+  [Medievalists](https://www.medievalists.net/2017/09/surrender-medieval-europe-indirect-approach-2/)).
+- **Drawing off.** An army that has come to a place it cannot take — judged once most of it has arrived — and is not investing it behind its
+  wall, calls the attack off and gives the place up as a goal for two months, rather than fighting its
+  garrison at the edge day after day.
+- **Measured** (`test/soldierdead.mjs`, a year of old enemies, 600 people, seeds 4–6, the old taking
+  against the new in the same worlds, everything else as it now stands): soldiers killed a year medieval
+  17% → 20%, industrial 31% → 25%; dead at a village 23 → 26 and 38 → 32. That is within what three seeds
+  can tell apart, and in none of the six worlds was any place asked to surrender or stormed: **the
+  soldiers who die at villages are not dying in places being taken.** They fall within a village's reach
+  outside any unit — garrisons and armies passing or gathering near a place — which is what TODO 15.6h is
+  for. (For comparison, before 15.6f–15.9 on seeds 4–9, 15.6e measured 21% and 46%.)
+
+### Where money comes from (2026-11-23)
+
+TODO item 15.8. Ric: "how does the currency work i kinda want only one curency but how is it made?", then
+"one currence different coins are okay on currency", and "when does money not become important like in
+war. or in apocolypses?" Setting **Where coins come from** under Money: *Mined, struck, lost and debased*
+(the default) or *A fixed stock from the first day (as before)*, which is the old money exactly
+(`test/mint.test.mjs`).
+
+- **One money.** Every price in every people is reckoned in the one coin, as Ric asked; coins of different
+  mints and metals are worth what is in them, all in that one money of account.
+- **From the ground.** Ore carries a little silver: a load of ore from rich ground (ore above 0.4) brings
+  `0.3 × (ore − 0.4)` coins of it. A people that knows **striking coins** (a new technique, `coining`,
+  needing smithing and writing; ancient and later peoples start with it, as Lydia struck the first about
+  600 BC) buys the silver into its mint and keeps a twentieth (seigniorage); a people that does not keeps it
+  as weighed silver, money all the same, as Mesopotamia's shekel of silver was a weight. Each world starts
+  with the stock it always had, so earlier peoples start with weighed silver.
+- **Going out.** Coins in people's hands wear and are lost at 2% a year (the figure Hopkins used for
+  Rome's coinage, and estimated for Viking-age silver, [Lockyear](https://discovery.ucl.ac.uk/10171145/3/Lockyear_thordeman%20final.pdf)).
+  People fleeing an army bury half their coins; they dig them up if they come home, and if they never do —
+  dead, or their village taken — the coins stay in the ground, gone from the world, as the hoards that peak
+  in wars did.
+- **Debasement.** Once a month, a greedy ruler (over 0.6) who is not honest (under 0.4), whose people
+  strikes coins and who cannot pay a month of three or more soldiers, strikes coins with no silver behind
+  them: three tenths of a coin a head, into the treasury. Their coin is then trusted a fifth less, and trust
+  comes back about 3% a month (Rome's third century; England's Great Debasement, 1544–51).
+- **When money stops mattering.** Each village, each day: coins are trusted as far as its people's coin
+  is; under siege, or in a famine (more than three in ten hungry and under two days of food a head in the
+  store), much less. Below 0.35 no food is sold for coins there, by the till or to it: it moves only by
+  being shared, given and asked for, as it already could. It comes back when the siege or the famine ends.
+  A twice-debased coin is near the line; a famine on top of it is under it. Nothing switches money off by a
+  rule (Radford, *The economic organisation of a P.O.W. camp*, 1945; Germany 1923 and 1945–48). Money can
+  fail by itself, not only in a catastrophe (Ric's question; my choice in his absence).
+- **Every coin accounted for.** What is in hands, tills, treasuries and the ground is what was there at the
+  start, plus silver mined and coins debased, less coins lost and hoards never dug up; `count.minted`
+  follows it and the test adds it up.
+- **Measured** (seed 2, 400 people, a year): early farmers 4,306 coins → 4,275 (14 mined, 45 lost — that
+  was with a third of the silver; at the final rate about 45 mined against 43 lost with "How often new
+  things are found" at its top); medieval 4,306 → 4,285 (21 struck, 42 lost). Prices in this engine follow
+  food against mouths, not the money stock, so more or fewer coins change who can buy, not what bread
+  costs; that is unchanged.
+- **Not done:** a coin's own metal (every coin here is the one money; debasing lowers trust in a people's
+  coin, not the worth of particular coins), and Gresham's law, which needs coins that differ.
+
+### How technology moves (2026-11-23)
+
+TODO item 15.9 (a to g, and i; h, computers, is not to be done). Ric: "how is technology advancement? i
+dont want it linear because it isnt." Setting **How know-how moves** under Minds: *By need, the land,
+practice and meeting* (the default) or *As before: some things only by era*, which is the old know-how
+exactly (`test/tech.test.mjs`). It works only where things are found at all (How often new things are
+found above 0).
+
+- **(a) Eras follow know-how.** Anything can be found once its parts are known — iron, horses, printing,
+  gunpowder, the railway — without "Eras move on by themselves". A people's age is read off what it knows,
+  once a day: farming makes it farmers, then each age is reached when at least half of the things that came
+  in with it are in use and the age before was reached (writing; iron, horses, beans, the mill, herbs; the
+  collar; printing and gunpowder; steam, rail, the telegraph; the engine, medicine, the radio; the phone).
+  A change is in the news. What followed the era label before (archers, caravans, armour of hide or iron,
+  `eraOf`) now follows this. The starting era stays only as the starting know-how. Archaeology's ages are
+  names for what was in use, and one people can be in several at once.
+- **(g) The wiring, as the record has it.** Changed: riding needs nothing (horses were ridden on the steppe
+  about 3500 BC, by people without the cart); gunpowder needs writing and herbs (found by Chinese alchemists
+  seeking elixirs, 9th century); the steam engine needs iron working and the mill (Newcomen, 1712: cast-iron
+  cylinders, mine pumps); the railway needs steam and iron (1825, iron rails); the telegraph needs writing
+  and iron working (1837: wire and code, not steam); medicine needs writing, herbs and printing (germ
+  theory, 1860s–80s, came out of a printed science); and the **telephone** (Bell, 1876) is a thing of its
+  own, needing the telegraph, before the radio (Marconi, 1895); the phone and its towers need the telephone
+  and the radio. Unchanged: writing (farming), the plough and ditches (farming), the mill (the wheel,
+  smithing), the collar (plough, cart), beans (farming, plough), printing (writing, smithing — metal type,
+  1440), the radio (the telegraph), the engine (steam), striking coins (smithing, writing). The war list
+  (15.6) is unchanged. Dates from the standard histories, from memory, to be checked one by one.
+- **(b) Need steers what is found.** What somebody finds is still drawn by chance from what they could
+  find, but weighted: three times for farming's tools (plough, beans, collar, mill, ditches) in a hungry
+  village, herbs and medicine where people are sick, wells and ditches more than a kilometre from fresh
+  water, carts, boats, horses, rail and the engine for traders and fishers; twice for metal work (smithing,
+  iron, steam, printing, coining, gunpowder, the telegraph) for crafters and miners, farming's tools for
+  farmers, boats for fishers (Boserup: crowding brings the plough; Hicks, Habakkuk and Allen: what is dear
+  is saved on). How strongly — three and two — is my choice in Ric's absence.
+- **(c) What the land has.** Iron working, the railway and the engine need ore within reach of one of a
+  people's villages or iron in its store; the steam engine wood to burn; boats timber. Without it a thing
+  is not found there, and a people that knows it but has none anywhere cannot use it (`has` says no), as
+  Bronze Age peoples without tin had to trade for it. Both finding and using (my choice).
+- **(d) Getting better at a thing.** Each people does each thing it knows with a skill: 1 for what it
+  started with; 0.7 for a thing new to it; moving over about a year toward 0.85 + 0.075·log₁₀(1 + those who
+  know it) — better the more who do it, worse as few do (Wright 1936 and Arrow 1962 on learning by doing;
+  Henrich 2004 on Tasmania). It scales what the plough adds to a day's reaping and how much beans spare a
+  field. Kept per people (my choice).
+- **(e) Knowing is not using.** When a thing reaches a people that is new to it (not farming's tools),
+  a stubborn ruler (over 0.7, or 0.55 where the people's own faith keeps to rites) who is not curious (under
+  0.4) forbids it: it is held and passed on but not used. The ban ends when that people is at war with one
+  that has it, or under a new ruler (the Ottoman ban on printing in Turkish, 1485–1727). Who may forbid: a
+  ruler, and a faith through its ruler (my choice); a ban can be broken by war or a new ruler.
+- **(f) Places where ideas meet.** The chance of a find grows with the size of the village, as
+  (people/100)^0.15 (Bettencourt and others, 2007: invention grows faster than a city), a third more in a
+  town and three-fifths more in a city, and half again where a curious ruler has a treasury of five coins a
+  head to keep scholars. Schools are 15f's teachers.
+- **(i) A research panel.** Each people on the Factions tab has a fold, "Research", with its age and how
+  many things are within reach; open, a bar for each thing it knows (how many hold it, darker the better
+  it is done, "still learning it", "forbidden", "nothing here to make it with"), the things within reach
+  (those whose parts it already holds, those held most widely first) and what it lost (and whether it was
+  written down). It sets nothing: finds stay by chance and need, so it shows what is near, never a date.
+  The ruler cannot push research (my choice in Ric's absence).
+- **Measured** (seed 2, finds at the top, a year): 34 finds; new things at 0.71–0.98 skill; every people
+  still farmers.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
@@ -4557,6 +4711,69 @@ sometimes the people. Like different governments". Every faction has a land rule
 - Measured, a year on six seeds: families' holdings starve as many as common fields (124 against
   119). The first tries starved twice as many: holdings nobody else could touch, holdings for
   households that did not farm, and families going back every day to a bare field of their own.
+
+### Land as property (2026-11-23)
+
+TODO item 15.7, all six parts. Ric: "can we look at owned land? how realistic is the proipertyy side of
+things?", then, of the six gaps found, "all 6 of those things need to go somewhere right?" Setting **Land
+as property** under Power: *Held, inherited, sold and pledged* (the default), *Held and inherited, never
+sold*, or *Shared out by need each month (as before)*, which is the old land exactly
+(`test/property.test.mjs` holds a families' world fingerprinted before this). It works under families'
+own fields; common and leader's land are as they were.
+
+- **Held, not allotted by need (15.7a).** A household keeps its fields however many or few it is, and
+  however little it works them; idle land is worked by others for half, as any household's field could be
+  already. A household takes up more of the village's unheld land as it grows. An empty house keeps its
+  fields for a year, and whoever moves into it has them. The old way — fields that grow and shrink with
+  the family every month and go back after three idle months — is a repartitional commune, and it stays
+  as a fifth way to hold land under **Who holds the land**: *The village, shared out by need*. The Russian
+  mir repartitioned by law no oftener than every twelve years after 1893, in practice every six or more
+  often, and a third of Simbirsk's communes never did ([Repartition](https://en.wikipedia.org/wiki/Repartition);
+  [Obshchina](https://en.wikipedia.org/wiki/Obshchina)).
+- **Passing on (15.7b).** When the last of a couple dies, their fields pass by their people's custom
+  (15b's `match.inherit`): to every child, each child's share going to the house they live in — split, as
+  Kentish gavelkind split it ([Kent Archaeology](https://www.kentarchaeology.org.uk/journal/142/gavelkind-ground-1550-1700)) —
+  or whole to the eldest (the eldest son where men and women differ). Shares of children still in the house
+  stay with it. No child: the fields stay with the house.
+- **Pledging and selling (15.7b).** Once a month, a household with under two weeks of food and the coins
+  for no more pledges a field to the household with the most coin to spare (beyond three months of its own
+  bread), for a season's bread: the lender holds and reaps it — the "dead pledge" — until the borrower can
+  pay it back with half as much again to spare; after three years the lender keeps it. A household with
+  more fields than twice its grown-ups, short of a month's coin, sells one for two seasons' bread. Land is
+  cheap in coin because coin is scarce in these worlds; that is also how distress sales went: smallholders
+  sold to wealthier neighbours in bad harvest years, and the volume of sales followed the harvests in the
+  English court rolls and feet of fines (Davis and Kissock 2004 on 1315–22, cited in
+  [a reappraisal of the late medieval freehold market](https://centaur.reading.ac.uk/83824/9/reappraisal_of_the_freehold_property_market_in_late_medieval_england.pdf);
+  Harvey, *The Peasant Land Market in Medieval England*, 1984). *Held and inherited, never sold* turns
+  pledging and selling off.
+- **Estates under the ruler (15.7c).** An official paid in land (15c's "land" pay) is granted three fields
+  near their house for as long as the office; they go back when the office does (a benefice, a timar). A
+  people's own faith with a priest holds a glebe of two fields, for good, moving to each new priest's
+  house. This replaces the food an official paid in land used to draw from the store. Great households are
+  not granted land: they buy it, as above.
+- **Bounds that stay put (15.7d).** A village's reach grows as it grows and no longer shrinks when its
+  people do; a square once a village's stays that village's while it stands, and a neighbour's growth does
+  not take it. Land goes only when a village is abandoned.
+- **The land between (15.7e).** A people claims the land within three kilometres of its villages' fields
+  (the nearest village's people), woods, pasture and hunting grounds; foragers' and herders' camps claim
+  their ranges the same way. Somebody of another people who cuts wood, quarries, mines, herds or hunts there
+  pays that people a tenth of what it gave, in coin, or — with no coin, or in a shared-store world — it is
+  held against their people (a little grievance and ill will each time). At war nobody asks. Armies ask
+  leave to cross it (15.6f).
+- **Records and disputes (15.7f).** Without writing, an inheritance split between several heirs is
+  quarrelled over three times in ten; a judge (15c) settles it, otherwise the heirs fall out. A greedy,
+  dishonest head may move a boundary — take a neighbour's field — about once in thirty months; a judge
+  with a written record puts it back. A greedy chief or rich ruler (sooner where the great families have
+  the say) may enclose a village's commons: whoever works the land nobody holds then pays a third to the
+  barn, as on a leader's land. Enclosure is the ruler's call only, pushed by a council of the great (my
+  choice in Ric's absence, 2026-11-23; his to change).
+- **Measured** (seed 2, families' fields, a year): 37 pledges, 3 sales, 5 boundaries moved, 281 tolls and
+  741 trespasses on claimed land; nobody starved either way (0 against 0), births 25 against 22. After a
+  month, 2% of households held no land, the most any held was 5 fields, and the share of land was spread
+  with a Gini of 0.25. The question the item asks — does a landless class grow of itself, and how fast —
+  needs generations, and is left to the long runs (the speed of a year, below, is unchanged).
+- **Read** with `landView()` (households, landless share, mean and largest holding, Gini, pledges, grants,
+  enclosed villages).
 
 ### Paths and roads, carts and boats (2026-11-16)
 

@@ -17,7 +17,8 @@ const AT_WAR = 3998479614;   // print() of the two-people war below before 15.6e
   a.step(24 * 60); b.step(24 * 60);
   assert.equal(print(a), print(b), "a default world is the world it was");
 }
-const war = (battle) => { const w = People.create({ seed: 4, people: 300, factions: 2, battle }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };
+const LATER = { property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" };   // the parts built after this one, off for the fingerprint
+const war = (battle) => { const w = People.create({ seed: 4, people: 300, factions: 2, battle, ...LATER }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };   // this part as it was built
 {
   const old = war("old");
   assert.equal(print(old), AT_WAR, "\"as before\" is the old war, exactly");

@@ -720,6 +720,16 @@ nobody had linked was a page nobody could find.
   choice"): `giveBattle` weighs the odds once when armies meet, armies rest after a battle (`restUntil`), and
   a walled place with food is invested, not stormed. Measure soldiers, not only the people
   (`test/soldierdead.mjs`), and don't tune blows or odds toward a target — Ric decides.
+  **Item 15 is finished (2026-11-23, Ric: "finish 15 … write all of them")**: 15.6f to 15.9 went in together, his
+  "Ric decides" questions answered in his absence with the recommended choice and each new part a setting with
+  the old way kept and fingerprinted — Land as property, Crossing another people's land, Taking a place, Where
+  coins come from, How know-how moves. Rules they leave: **every coin made or lost moves `count.minted`** (silver,
+  debasement, wear, hoards never dug up — `test/mint.test.mjs` adds it all up); **a new technique goes at the
+  end of `TECH`, and only when its setting is on** (`coining`, `telephone`), so every other bit and every old
+  world stays where it was; **fields move only through `moveField`**, which keeps `held` and the pledges in
+  step; a village's bounds never shrink while it stands (`boundOf`); and the era label is read off what a
+  people knows (`eraNow`) and never decides anything itself. An older test pins each new default off in its
+  `LATER` list; a new part adds its key there. Soldiers still die at villages that nobody attacks: 15.6h.
   **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
   it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
   nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the

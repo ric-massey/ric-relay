@@ -16,14 +16,14 @@ const ready = w => {
   const w = make(), [p,v] = ready(w);
   v.goods = 0; w.outfit(p,v); assert.deepEqual(w.equipment(p), [], "no supply means no free equipment");
   v.goods = 5; for (const q of w.people) q.coins = 0; w.outfit(p,v); assert.deepEqual(p.gear, {}, "no money means no free purchase");   // the whole household: it spends as one (2026-11-14)
-  p.coins = 20; const money = w.stats().money, goods = v.goods;
+  p.coins = 20; const money = (w.stats().money - w.stats().minted), goods = v.goods;
   w.outfit(p,v);
   assert.equal(p.gear.tool, 1); assert.ok(Math.abs(v.goods - goods + 0.6) < 1e-10);
-  assert.ok(Math.abs(w.stats().money - money) < 1e-10, "purchase conserves coins");
+  assert.ok(Math.abs((w.stats().money - w.stats().minted) - money) < 1e-10, "purchase conserves coins");
   p.gear.tool = 0.2; const repairStock = v.goods;
   w.outfit(p,v); assert.equal(p.gear.tool,1);
   assert.ok(Math.abs(repairStock - v.goods - 0.48) < 1e-10, "repair pays for only the worn material");
-  assert.ok(Math.abs(w.stats().money - money) < 1e-10);
+  assert.ok(Math.abs((w.stats().money - w.stats().minted) - money) < 1e-10);
   // A tool only helps the jobs it is for, and a broken one does not help at all.
   p.job = "child"; assert.equal(w.equipment(p)[0].equipped,false); assert.equal(w.harvestCapacity(p),1.8);
   p.job = "farmer"; p.gear.tool = 0; assert.equal(w.harvestCapacity(p),1.8);

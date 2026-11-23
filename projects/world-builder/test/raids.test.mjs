@@ -18,7 +18,7 @@ const AT_WAR = 2185467059;        // print() of a two-people war before, below, 
   a.step(24 * 60); b.step(24 * 60);
   assert.equal(print(a), print(b), "a default world is the world it was");
 }
-const war = (raids) => { const w = People.create({ seed: 4, people: 300, factions: 2, raids, battle: "old" }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };   // battle: the part built after this one, off
+const war = (raids) => { const w = People.create({ seed: 4, people: 300, factions: 2, raids, battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };   // battle: the part built after this one, off
 {
   assert.equal(print(war("old")), AT_WAR, "\"as before\" is the old raid, exactly");
 }

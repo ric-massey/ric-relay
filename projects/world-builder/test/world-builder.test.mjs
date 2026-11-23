@@ -215,11 +215,11 @@ function other(it, base, alt) {
 if (!physicsOnly && !process.argv.includes("--generations")) {
   for (const preset of People.PRESETS) {
     const w = People.create(preset.set);
-    const money = w.stats().money;
+    const money = (w.stats().money - w.stats().minted);
     for (let day = 0; day < 7; day++) {
       w.step(24);
       const st = w.stats();
-      check(Math.abs(st.money - money) < 1e-6 * Math.max(1, money), "people daily preset " + preset.name + ": coins changed");
+      check(Math.abs((st.money - st.minted) - money) < 1e-6 * Math.max(1, money), "people daily preset " + preset.name + ": coins changed");
       check(w.days === day + 1, "people daily preset " + preset.name + ": calendar drift");
       check(w.people.every(p => Number.isFinite(p.x + p.y + p.age + p.food + p.hp) && p.food >= 0 && p.coins >= -1e-9 && p.loyal >= 0 && p.loyal <= 1), "people daily preset " + preset.name + ": invalid state");
     }
@@ -264,11 +264,11 @@ if (!physicsOnly && process.argv.includes("--generations")) {
     console.log("world builder: checking people preset — " + p.name);
     const set = Object.assign({}, p.set, { people: Math.min(240, People.clean(p.set).people) });
     const w = People.create(set);
-    const coins = w.stats().money;
+    const coins = (w.stats().money - w.stats().minted);
     for (let y = 0; y < 15; y++) {
       w.step(Y);
       const s = w.stats();
-      if (s.people > 0) check(Math.abs(s.money - coins) < 1e-6 * Math.max(1, coins), `people preset "${p.name}": year ${y + 1}, coins went from ${coins} to ${s.money}`);
+      if (s.people > 0) check(Math.abs((s.money - s.minted) - coins) < 1e-6 * Math.max(1, coins), `people preset "${p.name}": year ${y + 1}, coins went from ${coins} to ${(s.money - s.minted)}`);
     }
     const s = w.stats();
     check(s.people > 20, `people preset "${p.name}": ${s.people} people left after 15 years`);
@@ -341,7 +341,7 @@ if (!physicsOnly) {
   /* Spaced-out bodies: what is checked here is that they keep their spacing (real size,
      the default since TODO 7a, has nobody in anybody's way). */
   const w = People.create({ people: 80, map: "small", talk: 0, seed: 17, bodies: "drawn" });
-  const coins = w.stats().money;
+  const coins = (w.stats().money - w.stats().minted);
   const separated = () => w.people.every((p, i) => w.people.slice(i + 1).every(q => Math.hypot(p.x - q.x, p.y - q.y) >= 0.42 - 1e-8));
   check(separated(), "people: initial bodies overlap");
   const a = w.people[0], b = w.people[1];
@@ -373,7 +373,7 @@ if (!physicsOnly) {
   }
   check(Math.abs(w.days - 1) < 1e-9, "people: DAY_SECONDS at 1× is not one day");
   check(w.people.length === 80 && w.stats().starved === 0, "people: the first watchable day lost people");
-  check(Math.abs(w.stats().money - coins) < 1e-6, "people: the watchable clock created or lost money");
+  check(Math.abs((w.stats().money - w.stats().minted) - coins) < 1e-6, "people: the watchable clock created or lost money");
   check(walking, "people: the activity clock never started walking");
   const crowded = People.create({ people: 2000, map: "small", villages: 1, factions: 1, bodies: "drawn" });
   let overlap = false;

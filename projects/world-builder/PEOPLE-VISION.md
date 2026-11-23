@@ -302,6 +302,9 @@ There is no agreed technology tree, invention schedule or final technological er
 
 Continue supporting the existing economic settings, including coins and shared stores.
 Exact property rules, employment, debts and market institutions need refinement.
+Since 2026-11-23 (TODO 15.7, 15.8): fields are held, inherited, pledged and sold, a village's bounds stay put,
+peoples claim the land between villages, and coins come from mined silver, are lost, buried and debased, and stop
+being taken for food where nobody trusts them (README, "Land as property" and "Where money comes from").
 
 ## 12. From villages to civilizations
 

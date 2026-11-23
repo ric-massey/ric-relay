@@ -2477,7 +2477,7 @@
     "<span class='step'><button class='btn' data-go='" + go + ":-1' aria-label='Less " + esc(label.replace(/<[^>]*>/g, "")) + "'>\u2212</button><span class='val'>" + value + "</span>" +
     "<button class='btn' data-go='" + go + ":1' aria-label='More " + esc(label.replace(/<[^>]*>/g, "")) + "'>+</button></span>" + (extra || "") + "</div>";
   /* Who holds the land (TODO 7c), as the faction list and the ruling panel say it. */
-  const LAND = { family: "Each family its own fields", village: "The village, in common", leader: "The leader, worked for a share" };
+  const LAND = { family: "Each family its own fields", village: "The village, in common", leader: "The leader, worked for a share", commune: "The village, shared out by need" };
   /* Dealings short of war (TODO 13): the other side answers as its own leader would. */
   function dealButtons(f, o, d) {
     const r = f.rel[o.id] || {};
@@ -2519,6 +2519,20 @@
     if (!k || (!k.extra.length && !k.lost.length)) return "";
     return "<span class='ln'>" + (k.extra.length ? "Know-how: " + k.extra.map(esc).join(", ") + (k.writes ? " (" + k.writes + " can write)" : "") : "") +
       (k.lost.length ? (k.extra.length ? " · " : "") + "Lost: " + k.lost.map(esc).join(", ") : "") + "</span>";
+  }
+  /* What a people knows, how widely and how well, what is within its reach, and what it lost (TODO 15.9i).
+     Nothing here sets anything: finding stays by chance and need, so it shows what is near, never a date. */
+  const AGE_NAMES = { foragers: "Foragers", early: "Farmers", bronze: "Bronze Age", ancient: "Iron Age", medieval: "Middle ages", earlymodern: "Print and powder", industrial: "Steam", modern: "Engines and radio", information: "Telephones" };
+  const techOpen = new Set();   // which peoples' research is unfolded: the panel is drawn again often
+  document.addEventListener("toggle", e => { const id = e.target && e.target.dataset && e.target.dataset.tech; if (id != null) { if (e.target.open) techOpen.add(id); else techOpen.delete(id); } }, true);
+  function techBox(k, fid) {
+    if (!k) return "";
+    const bar = (share, skill) => "<span style='display:inline-block;vertical-align:middle;width:60px;height:6px;background:rgba(127,127,127,.25);margin:0 6px'><span style='display:block;height:6px;width:" + Math.round(Math.min(1, share) * 100) + "%;background:currentColor;opacity:" + (0.35 + 0.65 * Math.min(1, Math.max(0, (skill - 0.6) / 0.6))).toFixed(2) + "'></span></span>";
+    const known = k.known.slice().sort((a, b) => b.share - a.share).map(x => "<div class='ln'><span style='display:inline-block;min-width:10em'>" + esc(x.name) + "</span>" + bar(x.share, x.skill) + Math.round(x.share * 100) + "%" + (x.skill < 0.85 ? ", still learning it" : "") + (x.banned ? ", forbidden" : "") + (x.cant ? ", nothing here to make it with" : "") + "</div>").join("");
+    const next = k.next.slice(0, 5).map(x => esc(x.name)).join(", ");
+    const lost = k.lost.map(x => esc(x.name) + (x.written ? " (written down)" : "")).join(", ");
+    return "<details class='ln' data-tech='" + fid + "'" + (techOpen.has(String(fid)) ? " open" : "") + "><summary>Research: " + esc(AGE_NAMES[k.era] || k.era) + (k.next.length ? " · " + k.next.length + " within reach" : "") + "</summary>" + known +
+      (next ? "<div class='ln'>Within reach: " + next + "</div>" : "") + (lost ? "<div class='ln'>Lost: " + lost + "</div>" : "") + "</details>";
   }
   /* A people's marriage customs (TODO 15b). */
   function matchLine(c) {
@@ -2638,7 +2652,7 @@
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + (f.era && f.era !== "early" ? "<span class='ln'>Era at the start: " + esc(ERA_NAMES[f.era] || f.era) + (f.arms ? " · fights with " + esc(f.arms) : "") + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
+            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + (f.era && f.era !== "early" ? "<span class='ln'>Era at the start: " + esc(ERA_NAMES[f.era] || f.era) + (f.arms ? " · fights with " + esc(f.arms) : "") + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + techBox(f.tech, f.id) + (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");

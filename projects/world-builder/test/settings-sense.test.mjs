@@ -28,11 +28,11 @@ const People = createRequire(import.meta.url)("../people.js");
     const mum = w.byId.get(kid.mum), mate = mum.partner && w.byId.get(mum.partner);
     mum.coins = 0; if (mate) mate.coins = 0; kid.coins = 30; mum.food = 0;
     w.villages[mum.home].food = 50;
-    const money = w.stats().money;
+    const money = w.stats().money, minted0 = w.stats().minted;
     w.step(24);
     if (kid.coins < 30) spent = true;
     assert.ok(mum.food > 0, "and the parent eats (seed " + seed + ")");
-    assert.ok(Math.abs(w.stats().money - money) < 1e-6, "no coin is made or lost by a household purse");
+    assert.ok(Math.abs(w.stats().money - money - (w.stats().minted - minted0)) < 1e-6, "no coin is made or lost by a household purse");   // less what was mined and lost (TODO 15.8)
     if (spent) break;
   }
   assert.ok(spent, "a parent with nothing buys the household's food with the child's coins");
