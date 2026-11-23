@@ -2279,6 +2279,23 @@ war** under War (on by default; off leaves the 15r world exactly as it was, fing
   work most of the light; harvests unchanged.
 - Hook `w.slackOf(p)`; `test/homefront.test.mjs`.
 
+### Quarrels between villages (2026-11-22)
+
+TODO item 15.5i2 (Ric, choosing from 15.5i: "Quarrels between villages"). Setting **Quarrels between
+villages** under War (on by default; off leaves the 15.5i1 world exactly as it was, fingerprinted).
+
+- **Measured first:** in seven worlds every quarrel (55 to 232 a world) was between neighbours of one
+  village: the hot-tempered went looking only for somebody of their own village they could not stand
+  (item 10), so a grudge against a thief, a robber or a rival of the next village never came out.
+- **Now** a grudge deeper than -0.5 against somebody of another village, not of a people at war with
+  theirs, may be had out too: when that person is within 1 km (met at market or the fields' edge), or
+  their village is within 5 km and they go to find them. The same weighing as any quarrel (temper,
+  patience, the walk, hunger, tiredness).
+- **Measured after** (a year, two default seeds and one of old enemies): 2 to 4 quarrels between
+  villages a world against 44 to 66 within, fights alike either way. Few, because grudges against
+  people of other villages are few.
+- `test/feuds.test.mjs`.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

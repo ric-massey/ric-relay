@@ -197,6 +197,7 @@ const SUITES = [
   ['world-builder prisoners, mutiny and war loans', ['projects/world-builder/test/spoils.test.mjs']],   // TODO 15q
   ['world-builder wounds, small wars and the sea', ['projects/world-builder/test/smallwar.test.mjs']],   // TODO 15r
   ['world-builder working harder at war', ['projects/world-builder/test/homefront.test.mjs']],   // TODO 15.5i1
+  ['world-builder quarrels between villages', ['projects/world-builder/test/feuds.test.mjs']],   // TODO 15.5i2
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

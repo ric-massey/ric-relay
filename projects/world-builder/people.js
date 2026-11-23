@@ -431,6 +431,8 @@
         help: "Some badly wounded soldiers die days later, fewer with healing herbs, a healer or medicine. Peoples who do not farm make war by raid and ambush, not with armies and sieges. Pirates (bandits of a place with a boat) rob boats; enemy boats near a port keep its boats in." },
       { key: "homeFront", label: "Working harder at war", type: "toggle", def: true,   // TODO 15.5i1, 2026-11-22
         help: "Those left at home take up the slack of the hands gone to the army: the more have gone from a village, the harder the rest work and the less they rest." },
+      { key: "feuds", label: "Quarrels between villages", type: "toggle", def: true,   // TODO 15.5i2, 2026-11-22
+        help: "Somebody hot-tempered may have it out with somebody they cannot stand from another village: met near at market or the fields' edge, or, if the grudge is deep, sought out in a village within 5 km. Not with a people at war: that is war." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -2372,6 +2374,7 @@
        set so that about three or four are wounded for each one killed, as found. */
     const SMALL_WAR = S.smallWar !== "old" && S.war !== false, DYING = new Map(), WOUND_DIE = 0.2, PIRATE_REACH = 4, BLOCKADE_REACH = 40;
     const HOME_FRONT = S.homeFront !== false;   // TODO 15.5i1
+    const FEUDS = S.feuds !== false;   // TODO 15.5i2: quarrels between villages
     const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
@@ -4596,7 +4599,7 @@
          with grudges kept for years, weekly made a feud of every grudge, ten times the fights). */
       if (p.temper > 0.35 && !(t - (p.quarrelAt ?? -1e9) < (0.5 + p.patient) * 30 * DAY_HOURS)) {   // the patient bide their time
         let foe = null, worst = -0.35;
-        for (const [id, sc] of tiesOf(p)) if (sc < worst) { const q = byId.get(id); if (q && q.hp > 0 && q.home === p.home && adult(q)) { worst = sc; foe = q; } }
+        for (const [id, sc] of tiesOf(p)) if (sc < worst) { const q = byId.get(id); if (q && q.hp > 0 && adult(q) && (q.home === p.home || (FEUDS && sc < -0.5 && !atWar(p.f, q.f) && (dist(p, q) < 4 || Math.hypot(villages[q.home].x - villages[p.home].x, villages[q.home].y - villages[p.home].y) < 20)))) { worst = sc; foe = q; } }   // 15.5i2: of another village, met nearby, or near enough to go and find
         if (foe) weigh("quarrel", (-worst - 0.2) * (p.temper - 0.35) * 2.5 - away(dist(p, foe)) * 0.5 - n.food * 0.5 - n.rest * 0.4 - n.safety * 0.3 - dark * 0.4, () => {
           go(p, foe.x + (R() - 0.5) * 0.6, foe.y + (R() - 0.5) * 0.6, "quarrel"); p.askOf = foe.id; p.quarrelAt = t; p.wait = 0;
         });

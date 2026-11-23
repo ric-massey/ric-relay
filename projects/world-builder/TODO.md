@@ -3339,7 +3339,7 @@ and between villages, thefts by honesty and hunger, and days from widowhood to a
 **Ric (2026-11-22), which to work on: "Work at war", "Quarrels between villages", "Roads built on purpose",
 "Water: boats and bridges"** — all four, as 15.5i1 to 15.5i4 below; the rest stand as found.
 - **[x] 15.5i1 Work at war.** *Done 2026-11-22.* Setting "Working harder at war" (off = the 15r world, fingerprinted). Measured first over the same months: 58% of non-soldiers at work at midday at war and at peace. Villages now count grown-ups away with the army; those at home want to provide more and rest less by the share gone. After: 6.46 work hours a day against 6.26 (+3%), small because few are away at once and the day is already full. `test/homefront.test.mjs`; README, "Working harder at war".
-- **15.5i2 Quarrels between villages.** People of different villages who meet may fall out.
+- **[x] 15.5i2 Quarrels between villages.** *Done 2026-11-22.* Setting "Quarrels between villages" (off = the 15.5i1 world, fingerprinted). Quarrels looked only for somebody of one's own village; now a deep grudge (under -0.5) against somebody of another village at peace is had out when they are within 1 km or their village within 5 km. After: 2 to 4 a world-year between villages against 44 to 66 within. `test/feuds.test.mjs`; README, "Quarrels between villages".
 - **15.5i3 Roads built on purpose.** Between places that trade a lot.
 - **15.5i4 Water.** Why bridges and grain boats stay rare, and make them happen where they would.
 
