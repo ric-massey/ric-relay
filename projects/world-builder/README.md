@@ -2622,8 +2622,45 @@ not at war is unchanged.
 - **Measured** (`test/raiddead.mjs`, a year of old enemies, 600 people, seeds 1–3; before → after):
   war dead a year early 2.8% → 1.8%, medieval 4.9% → 2.9%, industrial 6.4% → 4.4%, modern 3.4% → 3.0%.
   The share falling at a raided village went from 28–64% to 0–3%. Villagers killed in raids, a year a
-  world: 1 to 5; carried off 1 to 11. What is left is the fight at a village an army is at, and the line
-  — over half of the dead at a village are soldiers cut down running from a rout. That is TODO 15.6e.
+  world: 1 to 5; carried off 1 to 11. What was left was armies fighting most days, not the rout it
+  first looked like (one seed misled): see "Battle by choice".
+
+### Battle by choice (2026-11-23)
+
+TODO item 15.6e. It began as "soldiers cut down in the rout", and measuring by the soldier showed the rout
+was not it: of those routed, 0–5% were killed running. Soldiers died at 16–47% a year because armies met
+and fought most days — 35 to 125 engagements a world a year, nearly all ended at nightfall with neither
+side broken and taken up again the next morning. Ric asked (2026-11-23) "is it actually .3-1% of people
+who went onto the battlefield died? i feel like if ou were on the battlefild it was more likley" — it is
+not: that figure is of a whole people — and then chose "Battle by choice". Setting **Battle** under War:
+*Given when the general chooses* (the default) or *Whenever armies meet (as before)*, which is the old war
+exactly (`test/battle.test.mjs`). A world not at war is unchanged.
+
+- **Giving battle.** When the enemy's army first comes within 3 km, the general weighs it with the same
+  nerve that decides whether to march out to meet them: about as many of ours as theirs for a bold
+  general, more for a cautious or patient one, a third better on ground chosen to stand on. Short of
+  that, the army draws off to where it gathered — unless it is caught within a kilometre, or the enemy has
+  twice its horse (half the time).
+- **Resting.** After drawing off it does not come on again for a week; after a drawn battle, two; after a
+  rout, a month. While resting it neither marches nor goes out to meet anybody.
+- **Investing.** While a place's wall stands and it has a day's food a head, an army come against it
+  stands in a ring just outside the wall and its people stay behind it; neither goes for the other, though
+  the ring turns on anybody who comes at it from outside (a relief). Once the wall is breached or the
+  store is empty, it is stormed. The siege runs as before (`siegeWorks`: engines, guns, mines, hunger).
+- **Why.** Greek hoplite battles killed about 5% of the winners and 14% of the losers, most once one side
+  broke (Krentz 1985, [GRBS](https://grbs.library.duke.edu/article/viewFile/5321/5325)); pursuit was cut
+  short by ground, night and tiredness ([*Pursuit as closure*](https://camws.org/sites/default/files/meeting2016/049.PursuitasClosure.pdf)).
+  France lost about 15–18% of the men it mobilised in 1914–18, some 4% a year
+  ([INED](https://ined.fr/en/everything_about_population/demographic-facts-sheets/focus-on/farewell-life-farewell-love)) —
+  about the worst on record. Medieval commanders mostly avoided pitched battle, the cost of defeat being
+  too great (Gillingham, Morillo, France; [Morillo](https://www.medievalists.net/2012/10/battle-seeking-the-contexts-and-limits-of-vegetian-strategy/)).
+- **Measured** (`test/soldierdead.mjs`, a year of old enemies, 600 people, seeds 4–9, old way against new in
+  the same worlds): army engagements medieval 297 → 95, industrial 218 → 79; dead in the line 22 → 20 and
+  79 → 36. But soldiers killed a year moved little — medieval 22% → 21%, industrial 56% → 46% — because the
+  dead at villages did not fall (46 → 39) or rose (66 → 87): soldiers who no longer meet in the field meet
+  at the places they march on. A first measurement on seeds 1–3 read "medieval 30% → 18%"; it was three
+  seeds and a version with a bug in it, and is not to be quoted. Fights at villages are TODO 15.6g. Not
+  tuned toward the record: the odds a general takes are `meeting`'s, unchanged.
 
 ### Eras (2026-11-22)
 

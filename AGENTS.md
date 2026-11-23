@@ -716,9 +716,10 @@ nobody had linked was a page nobody could find.
   list's 32 bits are full — don't add war keys to `TECH`. **Soldiers stand in units** (15.6b): an army in
   the field is units with real officers, each soldier holding a place, only the striking ranks striking;
   a battle ends in a day. **Blasts and what is left in the ground** (`blast`, `LEFT`) only come from
-  what a war did; nothing places one. **War dead are still above the record** (1.8–4.4% a year in a world
-  always at war, after 15.6d): most now fall in a rout at a village; that is TODO 15.6e's question for
-  Ric — don't tune formations or blows to bring deaths down.
+  what a war did; nothing places one. **Battle is given by choice** (TODO 15.6e, 2026-11-23; Ric: "Battle by
+  choice"): `giveBattle` weighs the odds once when armies meet, armies rest after a battle (`restUntil`), and
+  a walled place with food is invested, not stormed. Measure soldiers, not only the people
+  (`test/soldierdead.mjs`), and don't tune blows or odds toward a target — Ric decides.
   **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
   it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
   nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the
