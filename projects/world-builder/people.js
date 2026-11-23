@@ -433,6 +433,8 @@
         help: "Those left at home take up the slack of the hands gone to the army: the more have gone from a village, the harder the rest work and the less they rest." },
       { key: "feuds", label: "Quarrels between villages", type: "toggle", def: true,   // TODO 15.5i2, 2026-11-22
         help: "Somebody hot-tempered may have it out with somebody they cannot stand from another village: met near at market or the fields' edge, or, if the grudge is deep, sought out in a village within 5 km. Not with a people at war: that is war." },
+      { key: "builtRoads", label: "Roads built on purpose", type: "toggle", def: true,   // TODO 15.5i3, 2026-11-22
+        help: "Once a year at peace a people builds a road along its most walked way between two of its places, or along a caravan route: a kilometre a day, paid from the treasury, or levied work fed by the village store when there are no coins. A road built stays a road." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -758,7 +760,10 @@
        little faster, and a cart goes best on a road. README, "Paths and roads". */
     const trod = new Uint16Array(tiles), track = new Uint8Array(tiles), trodList = [];
     let trackStamp = 0;
-    const PATH_ON = 3200, PATH_OFF = 2000, ROAD_ON = 12000, ROAD_OFF = 8000;   // about 25 and 95 crossings a day, held
+    const PATH_ON = 3200, PATH_OFF = 2000, ROAD_ON = 12000, ROAD_OFF = 8000;
+    /* Roads built on purpose (TODO 15.5i3): a square of one stays a road however little it is walked. */
+    const ROADS = S.builtRoads !== false, builtRoad = ROADS ? new Uint8Array(cols * rows) : null;
+    const ROAD_DAY = 4, ROAD_PAY = 2;   // squares a crew builds a day (a kilometre); coins a square to the crew   // about 25 and 95 crossings a day, held
     function tread(i) { if (trod[i] === 0) trodList.push(i); if (trod[i] < 65535) trod[i]++; }
     /* How fast this square is walked, against open ground. */
     const paceAt = i => track[i] === 2 ? 1.15 : track[i] === 1 ? Math.max(PACE[ground[i]], 0.9) : PACE[ground[i]];
@@ -833,7 +838,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1577,15 +1582,67 @@
         if (leave && list.length > 2 && !list.some(q => q.waitHouse >= 0)) startHouse(leave, v);
       }
     }
+    /* Roads built on purpose (TODO 15.5i3; Ric: "Roads built on purpose"). Once a year at peace a people
+       chooses the way most walked between two of its places within 10 km, or along a caravan route of
+       its own (15l), that is not a road yet; a crew builds a kilometre a day; the ruler pays it from the
+       treasury, two coins a square to the nearest village's till, or, with no coins, levies the work and
+       the village store feeds the crew (a day's food for four a square). Roman roads were built by
+       soldiers and levied labour and paid for by the state; medieval ones were kept up by levies on the
+       places they served. A square built stays a road, walked or not. */
+    function roadLine(a, b) {
+      const out = [], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
+      for (let k = 0; k <= n; k++) {
+        const x = Math.floor(a.x + (b.x - a.x) * k / n), y = Math.floor(a.y + (b.y - a.y) * k / n), i = y * cols + x;
+        if (deep(ground[i]) || (cross !== null && cross[i] === 1)) return null;   // water in the way: not this road
+        if (out[out.length - 1] !== i) out.push(i);
+      }
+      return out;
+    }
+    function roadDay(f) {
+      const job = f.roadJob;
+      if (job) {
+        if (atWarAnywhere(f)) return;
+        const v = villages[job.v];
+        for (let k = 0; k < ROAD_DAY && job.at < job.line.length; k++) {
+          const i = job.line[job.at];
+          if (!shared && f.treasury >= ROAD_PAY) { f.treasury -= ROAD_PAY; v.till += ROAD_PAY; count.roadPaid += ROAD_PAY; }
+          else { const need = 4 * 1.0; if (v.food < need) return; v.food -= need; count.roadLevied++; }
+          builtRoad[i] = 1; if (track[i] !== 2) { track[i] = 2; trackStamp++; ways.clear(); }
+          if (trod[i] === 0) trodList.push(i);
+          job.at++; count.roadSquares++;
+        }
+        if (job.at >= job.line.length) {
+          f.roadJob = null; count.roadsBuilt++;
+          note("build", f.name + " has finished a road from " + villages[job.a].name + " to " + villages[job.b].name + ".", 1.5, villages[job.a].x, villages[job.a].y, f.id);
+        }
+        return;
+      }
+      if (t - (f.roadAt ?? -1e9) < YEAR || atWarAnywhere(f)) return;
+      f.roadAt = t;
+      const mine = villages.filter(v => v.alive && v.f === f.id);
+      const pairs = [];
+      for (let i = 0; i < mine.length; i++) for (let j = i + 1; j < mine.length; j++) if (Math.hypot(mine[i].x - mine[j].x, mine[i].y - mine[j].y) < 40) pairs.push([mine[i], mine[j]]);
+      if (CARAVANS) for (const [k, r] of ROUTES) if (r.n >= 3) { const [a, b] = k.split(">").map(Number); if (villages[a].alive && villages[a].f === f.id && villages[b].alive && !atWar(villages[b].f, f.id)) pairs.push([villages[a], villages[b]]); }
+      let best = null, bs = PATH_OFF;
+      for (const [a, b] of pairs) {
+        const line = roadLine(a, b); if (!line || line.length < 4) continue;
+        let walked = 0, built = 0;
+        for (const i of line) { walked += trod[i]; if (track[i] === 2) built++; }
+        if (built > line.length * 0.8) continue;   // a road already
+        const sc = walked / line.length;
+        if (sc > bs) { bs = sc; best = { a: a.id, b: b.id, v: a.id, line, at: 0 }; }
+      }
+      if (best) { f.roadJob = best; count.roadsBegun++; note("build", f.name + " is building a road from " + villages[best.a].name + " to " + villages[best.b].name + ".", 1.5, villages[best.a].x, villages[best.a].y, f.id); }
+    }
     /* Once a day: under 1% of every square's treading wears off, and paths and roads follow it. */
     function wearOff() {
       let w = 0, changed = false;
       for (let k = 0; k < trodList.length; k++) {
         const i = trodList[k];
         trod[i] = Math.max(0, trod[i] - Math.max(1, trod[i] >> 7));   // under 1% a day: a path outlasts a winter
-        const was = track[i], now = trod[i] >= ROAD_ON || (was === 2 && trod[i] >= ROAD_OFF) ? 2 : trod[i] >= PATH_ON || (was >= 1 && trod[i] >= PATH_OFF) ? 1 : 0;
+        const was = track[i], now = builtRoad !== null && builtRoad[i] ? 2 : trod[i] >= ROAD_ON || (was === 2 && trod[i] >= ROAD_OFF) ? 2 : trod[i] >= PATH_ON || (was >= 1 && trod[i] >= PATH_OFF) ? 1 : 0;
         if (now !== was) { track[i] = now; changed = true; }
-        if (trod[i] > 0) trodList[w++] = i;
+        if (trod[i] > 0 || (builtRoad !== null && builtRoad[i])) trodList[w++] = i;
       }
       trodList.length = w;
       if (changed) { trackStamp++; ways.clear(); }
@@ -9863,6 +9920,7 @@
       if (RAIN && THIRST && t % DAY_HOURS === 0 && t > 0) rainDay();
       if (t % DAY_HOURS === 1) { if (!THIRST) countHouses(); housing(); }   // TODO 7b
       if (t % DAY_HOURS === 3) wearOff();                                       // TODO 7d
+      if (ROADS && t % DAY_HOURS === 4) for (const f of factions) if (f.alive) roadDay(f);   // TODO 15.5i3
       if (t % (DAY_HOURS * 30) === 2 && t > DAY_HOURS * 30) for (const v of villages) if (v.alive && landOf(v) === "family") allot(v);   // new households, and empty houses' land back (TODO 7c)
       if (THIRST) countHouses();
       if (!PLAIN) { wakeAll(); changedHomes(); }   // the hour may touch anybody
@@ -10216,6 +10274,7 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      roadDay: fid => roadDay(factions[fid]), roadJob: fid => factions[fid].roadJob, builtRoad: i => !!(builtRoad && builtRoad[i]),   // TODO 15.5i3
       slackOf: p => { const v = villages[p.home]; return HOME_FRONT && adult(p) && atWarAnywhere(factions[p.f]) && p.job !== "soldier" ? clamp((v.away || 0) / Math.max(1, v.adults - (v.away || 0)), 0, 0.6) : 0; },   // TODO 15.5i1
       waylay: (q, p, ux, uy, step) => { lurk.set(q, t); q.task = "waylay"; waylaid(p, ux, uy, step); }, dying: p => DYING.get(p.id),
       woundDeaths: () => woundDeaths(), bandAtWar: fid => bandAtWar(factions[fid]), blockaded: vid => SMALL_WAR && blockaded(villages[vid]),   // TODO 15r

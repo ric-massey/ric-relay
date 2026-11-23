@@ -2296,6 +2296,28 @@ villages** under War (on by default; off leaves the 15.5i1 world exactly as it w
   people of other villages are few.
 - `test/feuds.test.mjs`.
 
+### Roads built on purpose (2026-11-22)
+
+TODO item 15.5i3 (Ric, choosing from 15.5i: "Roads built on purpose"). Setting **Roads built on
+purpose** under How it starts' neighbours (on by default; off leaves the 15.5i2 world exactly as it
+was, fingerprinted).
+
+- **Before:** roads only wore in where people walked most (7d), and wore away again.
+- **Now** once a year, at peace, a people chooses the way most walked — the straight line between two
+  of its places within 10 km, or along a caravan route of its own gone three times or more (15l) —
+  that is not a road yet and has no deep water across it, and builds it: a crew does a kilometre (four
+  squares) a day. The ruler pays the crew two coins a square into the nearest village's till; with no
+  coins in the treasury the work is levied and the village store feeds the crew (a day's food for four
+  a square). Work stops while the people is at war. A square built stays a road however little it is
+  walked; walking on it is as fast as on any road. Roman roads were built by soldiers and levied
+  labour for the state; medieval ones were kept up by levies on the places they served.
+- Counts `roadsBegun`, `roadsBuilt`, `roadSquares`, `roadPaid`, `roadLevied`; hooks `w.roadDay`,
+  `w.roadJob`, `w.builtRoad`. `test/roadwork.test.mjs`.
+
+**Measured** (400 days, two default seeds): 4 roads (50 squares) in one, nearly all levied
+(treasuries are almost always empty, 15.5b2's finding); none in the other, at war most of the time.
+**Left out:** keeping roads up (built ones never decay), bridges on built roads (15.5i4), tolls.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
