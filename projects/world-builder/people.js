@@ -437,6 +437,8 @@
         help: "Once a year at peace a people builds a road along its most walked way between two of its places, or along a caravan route: a kilometre a day, paid from the treasury, or levied work fed by the village store when there are no coins. A road built stays a road." },
       { key: "waterWork", label: "Fishing boats and road bridges", type: "toggle", def: true,   // TODO 15.5i4, 2026-11-22
         help: "A village by the sea, a lake or a big river whose people go fishing builds a boat, and its fishers catch a third more from it; with a boat, grain can go by water. A road built over a stream bridges it." },
+      { key: "meeting", label: "Armies meet", type: "toggle", def: true,   // 2026-11-22, Ric: "do the peoplle at war just run past each other to go to the cities?"
+        help: "An army sees an enemy army on the march within 5 km of its soldiers or places (10 km with horsemen); if it is coming for one of its places, its leader marches to meet it when the numbers are well in its favour, by nature, and keeps clear otherwise. A place under siege is relieved when the odds are clearly good." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -840,7 +842,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2432,12 +2434,16 @@
     /* Wounds measured, war between bands, war at sea (TODO 15r). DYING: the badly wounded who will die
        of it, by id, and when. Of soldiers knocked out of the line one in five dies of it within ten days:
        set so that about three or four are wounded for each one killed, as found. */
-    const SMALL_WAR = S.smallWar !== "old" && S.war !== false, DYING = new Map(), WOUND_DIE = 0.2, PIRATE_REACH = 4, BLOCKADE_REACH = 40;
+    const SMALL_WAR = S.smallWar !== "old" && S.war !== false, DYING = new Map(), WOUND_DIE = 0.6, WOUND_SEVERE = 0.25, PIRATE_REACH = 4, BLOCKADE_REACH = 40;
     const HOME_FRONT = S.homeFront !== false;   // TODO 15.5i1
     const FEUDS = S.feuds !== false;   // TODO 15.5i2: quarrels between villages
     /* Boats and bridges (TODO 15.5i4): a fishing village builds a boat, and fishes further out from it, a
        third more; a road built over a stream bridges it. */
     const WATER_WORK = S.waterWork !== false, BOAT_CATCH = 1.3;
+    /* Armies that meet (Ric, 2026-11-22: "do the peoplle at war just run past each other to go to the
+       cities?"). SIGHT in squares: 5 km, 10 km for horsemen. MEET: armies sent to meet another, or to
+       relieve a place of their own, until when. */
+    const MEETING = ARMIES && S.meeting !== false, SIGHT = 20, SIGHT_HORSE = 40;
     const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
@@ -3435,7 +3441,10 @@
       if (SMALL_WAR && wasUp && foe.hp < 0.45 && foe.hp > 0 && foe.job === "soldier") {   // TODO 15r
         count.knockedOut++;
         const care = (has(foe.f, "medicine") ? 0.3 : 1) * (KNOW && knows(foe.f, "herbs") ? 0.8 : 1) * (WORKS && villages[foe.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1);
-        if (!DYING.has(foe.id) && RW() < WOUND_DIE * care) DYING.set(foe.id, t + (1 + Math.floor(RW() * 10)) * DAY_HOURS);
+        /* Only a severe wound kills later, the worse the likelier (calibrated 2026-11-22: one in five of every
+           knock out of the line killed 5 to 9% of a warring people a year, ten times the worst societies on record). */
+        const severe = clamp((WOUND_SEVERE - foe.hp) / WOUND_SEVERE, 0, 1);
+        if (severe > 0 && !DYING.has(foe.id) && RW() < WOUND_DIE * severe * care) DYING.set(foe.id, t + (1 + Math.floor(RW() * 10)) * DAY_HOURS);
       }
       if (SPOILS && wasUp && foe.hp < 0.45 && foe.hp > 0 && foe.job === "soldier" && !HELD.has(foe.id) && R() < (GENERALS && (ROUT.get(foe.id) ?? -1) > t ? TAKE_ROUTED : TAKE_ODDS)) takePrisoner(foe, p);   // TODO 15q
       wound(foe, damage);
@@ -5416,8 +5425,8 @@
           return;
         }
         /* Lying in wait on their road (TODO 15o). */
-        if (camp && camp.ready && camp.ambush) {
-          const a = camp.ambush;
+        if (camp && camp.ready && (camp.ambush || (camp.meet && camp.meet.until > t))) {
+          const a = camp.meet && camp.meet.until > t ? camp.meet : camp.ambush;
           if (Math.hypot(p.x - a.x, p.y - a.y) > 1.5) { go(p, a.x + (R() - 0.5), a.y + (R() - 0.5), "march"); p.wait = 0; }
           else { p.task = "patrol"; p.wait = TK(6); }
           return;
@@ -8646,6 +8655,7 @@
         note("war", f.name + "'s army has fallen back to " + muster.name + ": " + o.name + " stands across the road it is fed by.", 2.5, muster.x, muster.y, f.id);
       }
       c.cut = cut;
+      if (MEETING && meeting(f, o, c, lead, all, here)) return;
       /* Plans that do not march the army on a place (TODO 15o): raiding goes by f.raid, waiting sits at home;
          lying in wait goes out only when theirs is on the road, to a point two-thirds along it. */
       if (GENERALS) {
@@ -8668,6 +8678,45 @@
       }
       /* Too few left of what marched: back to gather again. */
       if (c.ready && all < c.out * 0.4) { c.ready = false; c.since = t; }
+    }
+    /* Armies that meet (2026-11-22). Once a day, with the campaign: an enemy place of ours under attack is
+       relieved if we are strong enough against what is at it; an enemy army seen on the march (its soldiers
+       away from their own places, within sight of ours) is met if the numbers suit the leader's nature,
+       the bold taking on more, the patient fewer; else kept clear of. Returns true when the army goes. */
+    function meeting(f, o, c, lead, all, here) {
+      const bold = ruling(lead, "bold", f), patient = ruling(lead, "patient", f);
+      const nerve = 1.1 - (bold - 0.5) * 0.8 + (patient - 0.5) * 0.4;   // how many of ours to each of theirs it wants
+      const go = (x, y, why) => {
+        const fresh = !(c.meet && c.meet.until > t && Math.hypot(c.meet.x - x, c.meet.y - y) < 8);
+        c.meet = { x, y, until: t + 2 * DAY_HOURS };
+        if (!c.ready && here >= 3) { c.ready = true; c.out = all; }
+        if (fresh) { count[why]++; note("war", f.name + "'s army marches " + (why === "reliefs" ? "to relieve " + villages.reduce((b, u) => u.alive && Math.hypot(u.x - x, u.y - y) < 1 ? u : b, villages[0]).name : "to meet " + o.name + "'s army") + ".", 2, x, y, f.id); }
+        return true;
+      };
+      /* A place of ours with their soldiers at it. */
+      let worst = null;
+      for (const u of villages) if (u.alive && u.f === f.id && u.siege > 0 && u.foes >= 3 && (!worst || u.foes > worst.foes)) worst = u;   // a siege, not a raid at the edge
+      if (worst && all >= worst.foes * nerve * 1.5) return go(worst.x, worst.y, "reliefs");   // only with clearly better odds
+      /* Their army on the march, seen. */
+      const eyes = [];
+      for (const p of people) if (p.f === f.id && p.hp > 0 && p.job === "soldier") eyes.push(p.x, p.y, GENERALS && horseman(p) ? SIGHT_HORSE : SIGHT);
+      for (const u of villages) if (u.alive && u.f === f.id) eyes.push(u.x, u.y, SIGHT);
+      let n = 0, sx = 0, sy = 0;
+      for (const q of people) {
+        if (q.f !== o.id || q.hp <= 0 || q.job !== "soldier" || !(q.task === "march" || onCampaign(q))) continue;
+        let home = false; for (const u of villages) if (u.alive && u.f === o.id && Math.hypot(u.x - q.x, u.y - q.y) < 12) { home = true; break; }
+        if (home) continue;
+        let seen = false; for (let i = 0; i < eyes.length && !seen; i += 3) if (Math.hypot(eyes[i] - q.x, eyes[i + 1] - q.y) < eyes[i + 2]) seen = true;
+        if (seen) { n++; sx += q.x; sy += q.y; }
+      }
+      if (n < 3) return false;
+      count.armiesSeen++;
+      /* Met only when it is coming for a place of ours (its plan, as their marching shows it). */
+      const oc = o.camp && o.camp[f.id];
+      if (!(oc && oc.ready && oc.goal >= 0 && villages[oc.goal].alive && villages[oc.goal].f === f.id)) { count.armyAvoided++; return false; }
+      if (all >= n * nerve * 1.2) return go(sx / n, sy / n, "armyMeets");
+      count.armyAvoided++;
+      return false;
     }
     /* In an army gathering or marching (TODO 15j): one of those who march (15h), of a people at war. */
     function onCampaign(p) {
@@ -10294,6 +10343,7 @@
       campSickness: fid => campSickness(factions[fid], true), campFoulOf: p => ARMY_SICK ? campFoulOf(p) : 0,   // TODO 15m
       routes: () => [...ROUTES].map(([k, r]) => ({ key: k, trips: r.n, last: r.last })), caravanRoute: (pid, vid) => CARAVANS ? caravanRoute(byId.get(pid), villages[vid]) : null,   // TODO 15l
       onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j
+      meeting: (fid, oid) => { const f = factions[fid], o = factions[oid], c = f.camp[oid]; let all = 0; for (const p of people) if (p.f === fid && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0) all++; return MEETING && meeting(f, o, c, byId.get(f.leader), all, all); },   // armies that meet
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },

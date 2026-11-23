@@ -200,6 +200,7 @@ const SUITES = [
   ['world-builder quarrels between villages', ['projects/world-builder/test/feuds.test.mjs']],   // TODO 15.5i2
   ['world-builder roads built on purpose', ['projects/world-builder/test/roadwork.test.mjs']],   // TODO 15.5i3
   ['world-builder fishing boats and road bridges', ['projects/world-builder/test/waterwork.test.mjs']],   // TODO 15.5i4
+  ['world-builder armies that meet', ['projects/world-builder/test/meeting.test.mjs']],   // 2026-11-22
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

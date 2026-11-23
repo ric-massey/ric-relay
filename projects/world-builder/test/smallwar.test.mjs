@@ -2,7 +2,7 @@
 //
 // What is held:
 //   1. with "As before" the world is the one 15q left, step for step;
-//   2. some soldiers knocked out of the line die of it days later, fewer with medicine;
+//   2. some soldiers badly wounded die of it days later, fewer with medicine; a light knock never;
 //   3. a band at war raises no army: it raids;
 //   4. a boat is robbed only by pirates, from further off than a cart; a port near an enemy boat is shut.
 //
@@ -10,12 +10,12 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { homeFront: false, feuds: false, builtRoads: false, waterWork: false };   // the parts built after this one, off: this part as it was built
+const LATER = { homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 2553129383;   // print() of 15q's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false });
+  const w = People.create({ seed: 2, smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15r");
 }
@@ -29,17 +29,19 @@ const make = (extra = {}) => {
 
 // 2. Dying of wounds.
 {
-  const knock = era => {
+  const knock = (era, from = 0.5, base = 0.4) => {
     const w = make({ era }), a = w.people.find(p => p.f === 0 && p.job === "soldier" && p.hp > 0);
     const foes = w.people.filter(p => p.f === 1 && p.job === "soldier" && p.hp > 0);
     let n = 0, dying = 0;
-    for (let i = 0; i < 2000; i++) { const q = foes[i % foes.length]; if (w.dying(q)) continue; q.hp = 0.5; q.gear = {}; w.strike(a, q, 0.08, 0); if (q.hp < 0.45 && q.hp > 0) { n++; if (w.dying(q)) dying++; } }
+    for (let i = 0; i < 2000; i++) { const q = foes[i % foes.length]; if (w.dying(q)) continue; q.hp = from; q.gear = {}; w.strike(a, q, base, 0); if (q.hp < 0.45 && q.hp > 0) { n++; if (w.dying(q)) dying++; } }
     return [n, dying, w];
   };
-  const [n, dying, w] = knock("early"), [n2, d2] = knock("modern");
+  const [n, dying, w] = knock("early"), [n2, d2] = knock("modern"), [n3, d3] = knock("early", 0.5, 0.08);
   console.log("  knocked out " + n + " times: " + dying + " will die of it (" + Math.round(dying / n * 100) + "%); with medicine " + d2 + " of " + n2 + " (" + Math.round(d2 / n2 * 100) + "%)");
   assert.ok(n > 20, "knocked out");
-  assert.ok(dying / n > 0.1 && dying / n < 0.35, "about one in five will die of it");
+  console.log("  a light knock out of the line (life left about 0.4): " + d3 + " of " + n3 + " will die of it");
+  assert.ok(dying / n > 0.15 && dying / n < 0.6, "a severe wound often kills later");
+  assert.equal(d3, 0, "a light knock never does (calibrated 2026-11-22)");
   assert.ok(d2 / n2 < dying / n * 0.6, "far fewer with medicine");
   w.step(24 * 11); w.woundDeaths();
   assert.ok(w.stats().diedOfWounds > 0, "and do, days later");

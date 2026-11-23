@@ -2237,6 +2237,11 @@ ransoms; prisoners as a source of news for generals (15o); a ruler's own ransom 
 TODO item 15r, from 15k's gaps 8, 9 and 10. Setting **Wounds, small wars and the sea** under War: "As
 found" (default) or "As before", which leaves the 15q world exactly as it was (fingerprinted).
 
+- **Calibrated 2026-11-22** (with "Armies that meet"): one in five of *every* knock out of the line
+  dying later killed 5 to 9% of a warring people a year (soldiers were knocked out 160 to 290 times a
+  year, many again and again; nearly all the battle dead were these). Now only a severe wound (life
+  left under a quarter) can kill later, the worse the likelier, up to three in five; a light knock
+  never. Battle dead in a year of old enemies: 3 to 13 among 600.
 - **Wounds measured** (15k gap 8: in 18th- and 19th-century battles about three or four were wounded
   for each killed, and many of the wounded died later; Encyclopedia.com's casualty figures; ACOUP).
   Measured first: in a year of medieval war about five or six soldiers were knocked out of the line
@@ -2342,6 +2347,38 @@ roads; fish caught about the same. No grain went by boat in a year: grain trade 
 boats is still rare. People alive at the year's end varied with which worlds fell into wars (battle
 dead 61 against 31, 20 against 0), not with the boats. **Left out:** coastal trade of goods by boat
 (caravans by sea), boats lost at sea while fishing.
+
+### Armies that meet (2026-11-22)
+
+Ric (2026-11-22): "do the peoplle at war just run past each other to go to the cities?" They did: a
+soldier noticed an enemy only within 750 m, armies marched straight at the place they meant to take,
+and nothing sent an army to meet another or to relieve a place of its own. Ric: "Yes, add both".
+Setting **Armies meet** under War (on by default; off leaves the 15.5i4 world exactly as it was,
+fingerprinted).
+
+- **Relief.** Once a day, with the campaign (15h): a place of a people's own under siege (a siege
+  begun, three or more of them at it; a raid at its edge is not enough) is relieved — its army goes
+  there — when the odds are clearly good: half as many again as its ruler's nerve asks. Most battles of
+  the past came out of a raid met or a siege relieved (15k's research).
+- **Armies seen.** An enemy army on the march (its soldiers away from their own places) is seen when
+  within 5 km of a soldier or a place of the people, 10 km of a horseman (15o). It is met only when it
+  is coming for one of the people's places, and only if the numbers suit the ruler's nature — about
+  1.3 of ours to each of theirs, fewer for the bold, more for the patient (commanders avoided pitched
+  battle unless the odds were good: Vegetius); otherwise it is kept clear of.
+- The army goes to the meeting point as to an ambush point (15o); it fights whatever it finds there
+  (soldiers still strike only within reach). A new meeting is news.
+- Counts `armiesSeen`, `armyMeets`, `armyAvoided`, `reliefs`; hook `w.meeting(fid, oid)`.
+  `test/meeting.test.mjs`.
+
+**Measured** (a year, 600 people, three old enemies, three seeds). First built, it met every army seen
+and relieved every place with three enemies at its edge: 22 to 44 relief marches a year and 32 to 56
+battle dead among 600 people. Ric asked "is that more realistic?": the where was, the how much was not —
+5 to 9% of a people dead in battle a year, against about 0.5% for the most warlike societies on record.
+Tuned as above, and with 15r's dying of wounds put right (below): armies met 0 to 6 times a year, kept
+clear of 7 to 72 sightings, sieges relieved up to 8 times; battle dead 3, 5 and 13 (0.5 to 2% of the
+people); places taken 1 to 2. **Left out:** an army seen but
+not met falling back from a stronger one; an army caught on the march by one that met it head on
+gets no surprise (only a lying in wait does, 15o).
 
 ### Eras (2026-11-22)
 
