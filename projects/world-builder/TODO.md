@@ -3947,7 +3947,84 @@ each era's typical way of fighting shows up in its battles without being told to
 is unchanged; battle dead a year by era are measured and set against the record (15.5i7).
 **Budget:** default.
 
-Research notes: (none yet)
+Research notes (2026-11-23, Ric: "lets do the research"; read as search summaries, books not read
+in full; nothing built). Shared with 15.6b, whose notes carry formations, ground and command.
+
+**Weapons and lethality.** Dupuy's Theoretical Lethality Index scores a weapon by how many it could
+kill in an hour in theory; the Operational index divides by how spread out troops stand. The table
+is in HERO's 1964 report and *The Evolution of Weapons and Warfare* (1980); the engine already uses
+its sword 23, bow 19, crossbow 33, longbow 36, flintlock 43, breech-loader 153, WWII machine gun
+4,973 (`BOWS`, `ARMS`). Across 1600–1815 dispersion stayed about constant; after 1816 it grew a
+little faster than lethality, which is why losses a day fell as weapons grew deadlier
+([TDI, TLI](https://dupuyinstitute.org/tag/theoretical-lethality-index-tli/);
+[TDI, weapon lethality trends](https://dupuyinstitute.org/2017/01/27/trevor-dupuy-and-historical-trends-related-to-weapon-lethality/);
+[TDI, effects of dispersion](https://dupuyinstitute.org/2017/10/18/the-effects-of-dispersion-on-combat/);
+[DTIC AD0458759](https://apps.dtic.mil/sti/pdfs/AD0458759.pdf)).
+
+**A technology makes a way of fighting possible, not inevitable.** The stirrup is the warning case:
+Lynn White (1962) said it caused heavy shock cavalry and feudalism; Sawyer called it technical
+determinism and Bachrach (1970) took the argument apart — mounted shock combat became common only
+in the 12th century, four hundred years after the stirrup arrived, and good infantry that held its
+ranks could stop a charge ([Great Stirrup Controversy](https://en.wikipedia.org/wiki/Great_Stirrup_Controversy);
+[KPU textbook chapter](https://kpu.pressbooks.pub/ancientandmedievalworld/chapter/the-great-stirrup-controversy/)).
+So a find should open an option a people can take up when it pays, never switch the army over.
+
+**Gunpowder came in slowly and changed sieges first.** First military use in China in the late
+900s; in Europe from the 1300s, guns anti-personnel until the French heavy artillery of the 1370s
+([Andrade, *The Gunpowder Age*, Princeton 2016](https://press.princeton.edu/isbn/9780691178141);
+[Foreign Policy review](https://foreignpolicy.com/2016/08/18/gunpowder-age-a-strong-and-thorough-new-study-of-global-military-history-2/)).
+The "military revolution": Roberts (1955) put it in tactics, musketeers in lines displacing lance
+and pike 1560–1660, and armies growing; Parker (1976) put it in the bastioned fort, which made war
+a run of long sieges; Parrott says shot was long a secondary weapon; the pike went only with the
+ring bayonet, about 1670 ([Military Revolution](https://en.wikipedia.org/wiki/Military_Revolution);
+[Parker 2022](https://rosa.uniroma1.it/rosa02/dimensioni_ricerca_storica/article/download/1487/1358/4493)).
+Volley fire and the countermarch (Maurice of Nassau, Gustavus Adolphus) were drill, not hardware —
+they need a paid, drilled army as well as the musket.
+
+**Bronze Age chariots** were firing platforms for archers and javelins, not rams; they struck first
+and ran down the broken, and worked best against loose militia; deep spear blocks with archers
+behind were the answer; dear and fragile
+([Chariotry in ancient Egypt](https://en.wikipedia.org/wiki/Chariotry_in_ancient_Egypt);
+[Kadesh, National Geographic](https://www.nationalgeographic.com/history/history-magazine/article/hittite-fast-war-chariots-threatened-egypt)).
+Chariots then need carts, horses and smithing and a rich people, not "the Bronze Age".
+
+**Modern war is a way of standing as much as a weapon.** Biddle's *modern system* (2004): cover,
+concealment, dispersion, suppression, small units moving on their own and combined arms, with depth
+and reserves above; without it an army cannot live long enough under modern fire for its numbers to
+count, and judging by equipment alone overrates a badly handled army
+([Princeton](https://press.princeton.edu/isbn/9780691128023); [Project MUSE](https://muse.jhu.edu/book/64836)).
+It grew out of the trenches: Laffargue's 1915 pamphlet, Rohr's assault troops of 1916–17, the
+short bombardment and infiltration of 1918, then tanks and aircraft with it
+([Infiltration tactics](https://en.wikipedia.org/wiki/Infiltration_tactics);
+[1914-1918-online, Infantry](https://encyclopedia.1914-1918-online.net/article/infantry/)).
+Stormtroops stayed few because they took long training — again drill as well as kit.
+
+**What this means for the engine (proposed, for Ric).**
+- *One "kit" per people, worked out from what it knows and can pay for,* read everywhere war now
+  reads the era: weapon, bow, armour, horse, chariot, siege engine, wall. A find adds an option;
+  whether a people takes it up is weighed (cost in ore, wood, coins and training against what it
+  stops or kills of the enemy's kit), so armour is dropped when guns go through it and comes back as
+  helmets, as it did.
+- *New know-how in `TECH`* (each needing what is in brackets; to be confirmed): bronze casting
+  (smithing), chariots (carts, horses, smithing), composite bow (herding), crossbow (smithing,
+  writing), stirrup (horses, smithing), steel (iron, mill), the counterweight engine (carts,
+  writing), cannon (gunpowder, iron), bayonet (gunpowder, steel), drill (writing — a paid army that
+  practises), rifling and breech-loading (steel, steam), the machine gun (rifling, steam),
+  explosives (gunpowder, medicine), and if Ric wants: motor transport (the engine), tanks (engine,
+  steel, the machine gun), aircraft (engine, radio). Rifles stop coming from the railway and
+  machine guns from the engine.
+- *How an army is raised from the people's government and purse, not the era* (ACOUP: armies mirror
+  civilian status lines; a paid standing army needs administration —
+  [Pre-Modern Armies for Worldbuilders I](https://acoup.blog/2026/06/05/collections-pre-modern-armies-for-worldbuilders-part-i-why-they-fight/),
+  [IIa](https://acoup.blog/2026/06/12/collections-pre-modern-armies-for-worldbuilders-part-iia-mobilization-without-administration/)):
+  paid where a treasury and writing can keep it, owed service where the land is the leader's or the
+  lords' (13, 15c), a levy otherwise. The fighting season follows food and carriage (rail and
+  engines let an army winter in the field), not the era.
+- *Cost:* the kit is worked out once a day per people (a handful of `has()` reads), so nothing per
+  soldier per step is added.
+
+**Not found:** Dupuy's full TLI and dispersion tables by period (need the 1964 report or the book);
+how fast a weapon spread to a neighbour, in years (Andrade's chapters would have it).
 
 ### [ ] 15.6b. Where soldiers stand: ground, formation, flanks and reserves
 
@@ -3979,6 +4056,14 @@ a rout.
 3. **Flanks, rear and reserve.** Horsemen on the wings where a people has them; a reserve held back
    and sent where the line bends; a blow from the side or rear lands harder and shakes morale
    faster. Ground covers a flank (a river, a wood, a steep slope).
+3b. **A commander and the ranks under them** (Ric, 2026-11-23: "having a comander and the ranks
+   but again equivilant to the weapons and eras and stuff right? like all of that needs to be
+   figured out"). A chain of real people — the general, the officers or captains under them, the
+   ranks — each leading a unit of a size that fits how the army fights and how orders travel (a
+   voice, a horn, a flag, a rider, a telegraph, a radio). Who becomes an officer comes from the
+   people (birth, wealth, skill, election, rank won by service), by what the people is like and what
+   it knows, never by the era's name. An officer lost leaves a unit slower to answer and nearer to
+   breaking. Orders reach a unit only as fast as their way of travelling allows.
 4. **Cohesion.** A formation that holds fights better than a crowd; losing its shape (crossing a
    river or a wood, a charge, heavy losses) brings it nearer to breaking. The rout stays where most
    of the dead fall.
@@ -4009,7 +4094,97 @@ comes from its weapons; a default world with the setting off is unchanged; 15.5i
 and set against the record; a 20,000-person world at war is within the speed budget.
 **Budget:** default.
 
-Research notes: (none yet)
+Research notes (2026-11-23, with 15.6's; read as search summaries; nothing built).
+
+**How close they stood.** Dupuy (*Understanding War*, 1986) splits history in three by ground per
+soldier in battle: about 10 m² a foot soldier in antiquity, about 250 m² from the 1650s to 1871,
+about 27,500 m² in the Second World War; people per kilometre of front held about constant
+1600–1861 ([Troop density](https://en.wikipedia.org/wiki/Troop_density);
+[TDI, frontage](https://dupuyinstitute.org/tag/frontage/)). A Roman of the mid-Republic had about
+1–2 m of front (Polybius's "three feet" is read both ways); maniples of 120–160 in three lines,
+chequered, 10–20 m apart; a legion's front about 365 m (Goldsworthy)
+([Roman infantry tactics](https://en.wikipedia.org/wiki/Roman_infantry_tactics);
+[Imperium Romanum](https://imperiumromanum.pl/en/curiosities/space-in-formation-and-width-of-front-of-roman-legion/amp/)).
+Napoleonic infantry stood three deep in line to shoot (the rear ranks steadied the front, and a
+shot struck fewer in a line than a column); the column moved and struck but could fire little;
+the French blended skirmishers, line and column (*ordre mixte*); Wellington kept his line behind a
+crest with skirmishers in front ([Napoleonic tactics](https://en.wikipedia.org/wiki/Napoleonic_tactics);
+[Reverse slope](https://en.wikipedia.org/wiki/Reverse_slope_defense); Arnold 2004 on Oman's
+over-simple "column versus line", [MUSE](https://muse.jhu.edu/article/54286)).
+
+**Most of the dead fell after one side broke.** Losses were light until one side retreated
+(Krentz 1985, [GRBS](https://grbs.library.duke.edu/article/viewFile/5321/5325)); the pursuit is the
+commonest thing in surviving battle accounts; ACOUP: popular fiction has armies fight on through
+losses no real army took, most casualties come in the retreat, and a unit that keeps together can
+withdraw as a body and deter pursuit where a broken one is run down
+([Morale and cohesion](https://acoup.blog/2022/07/01/collections-total-generalship-commanding-pre-modern-armies-part-iiic-morale-and-cohesion/);
+[Cohesion](https://acoup.blog/2026/07/24/collections-pre-modern-armies-for-worldbuilders-part-ivb-cohesion/));
+an army suffers most once it breaks down as an organisation, not from the blows themselves
+([Cliodynamics](https://journalpub.escholarship.org/cliodynamics/article/38143/galley/28710/download)).
+Napoleonic engagements: having more men went with winning and with losing more
+([Hickman 2023](https://reference-global.com/article/10.2478/jms-2023-0004)). This is 15.5i7's
+answer in outline: today the engine has no "apart" — contact never stops.
+
+**The ground.** Dupuy treats posture and terrain as multipliers on combat power: even a hasty
+defence on rolling ground with some cover is worth more than half again; fortification always helped
+the defender and slowed the attacker ([TDI, the power of defence](https://dupuyinstitute.org/2018/05/30/dupuys-verities-the-power-of-defense/);
+QJM report [DTIC ADA129095](https://apps.dtic.mil/sti/pdfs/ADA129095.pdf)). High ground slows and
+tires an attacker and leaves them in the open longer (Fredericksburg, Gettysburg), but it was also
+given up on purpose (Austerlitz) and is no good to an army that leaves it
+([High ground](https://en.wikipedia.org/wiki/High_ground)). Total War's height bonus is about 25%
+(a game's number, not history's); in Combat Mission height matters little for shooting at men, more
+against armour. The exact QJM terrain factors were not found.
+
+**Commanders, officers and ranks.** Pre-modern command came by birth and wealth, not proven skill;
+professional officer castes were rare; armies copied the civil order, and local great men held the
+real power; a retinue fought with its lord (ACOUP,
+[Leadership](https://acoup.blog/2026/07/18/collections-pre-modern-armies-for-worldbuilders-part-iva-leadership/),
+[Officers](https://acoup.blog/2022/06/24/collections-total-generalship-commanding-pre-modern-armies-part-iiib-officers/),
+which counts anybody commanding others as an officer, sergeants included). Britain sold commissions
+1683–1871, so officers were rich men and about one in ten came from the ranks; Prussia and Russia
+never sold them ([Purchase of commissions](https://en.wikipedia.org/wiki/Purchase_of_commissions_in_the_British_Army);
+[Social background 1750–1815](https://en.wikipedia.org/wiki/Social_background_of_officers_and_other_ranks_in_the_British_Army,_1750%E2%80%931815)).
+Rome: eight to a tent (*contubernium*), eighty to a century under a centurion, six centuries a
+cohort, ten cohorts a legion ([Contubernium](https://en.wikipedia.org/wiki/Contubernium_(Roman_army_unit));
+[Centuria](https://en.wikipedia.org/wiki/Centuria); [Cohort](https://en.wikipedia.org/wiki/Cohort_(military_unit))).
+Van Creveld (*Command in War*, 1985): until about 1800 a general could command little beyond what
+he could see and shout to; flags, drums, bugles and riders, then the telegraph (Moltke ran two
+armies from Berlin in 1866, imperfectly), then radio; each brought new limits with its new reach
+([review, MUSE](https://muse.jhu.edu/journals/international_security/summary/v011/11.4.bond.html);
+[CFC paper](https://www.cfc.forces.gc.ca/papers/amsc/amsc2/harrison1.pdf)).
+
+**How models place soldiers cheaply.** ISAAC/EINSTein and MANA give each agent a few weights
+(towards friends, enemies, its goal; MANA adds waypoints, threat levels and "triggers" that change
+the weights when shot at, wounded or in contact) and move it to the neighbouring cell with the
+lowest penalty ([Ilachinski, *Artificial War*](https://www.globalspec.com/reference/48217/203279/html-head-chapter-5-einstein-methodology);
+[MANA metamodel, arXiv](https://arxiv.org/pdf/nlin/0607051); [CNA](https://www.cna.org/CNA_files/PDF/D0018865.A1.pdf)).
+
+**What this means for the engine (proposed, for Ric).**
+- *Units with leaders, sized by how orders travel.* A voice and a standard hold about a hundred
+  (century, company); horns, flags and riders tie a few of those to the general; the telegraph ties
+  armies to the capital; radio lets units of ten move on their own (Biddle). Each unit's leader is a
+  real person; a sergeant-like second under them where the people's ways have one. A unit whose
+  leader falls slows and is nearer to breaking.
+- *Who leads, from the people:* birth and wealth by default (most of history), bought where coins
+  and rule by the rich allow, by service and skill where a standing paid army keeps records,
+  chosen by the soldiers where the people votes. Read from 15c's government and item 10's traits,
+  never from the era.
+- *A shape per unit from its kit and drill:* how wide each soldier stands (about 1 m close order to
+  scores of metres apart), how deep, shooters ahead or behind, horse on the wings, a reserve behind;
+  the shape is worked out once when the unit forms or turns, and each soldier is handed a slot.
+  Soldiers move to their slot (or, under fire, to the nearest cover, as MANA's triggers do) instead
+  of to the nearest enemy; only the front ranks and those in reach fight.
+- *Breaking and pursuit as the place most die.* A unit holds while its morale lasts (losses, its
+  leader, flanked, tired, hungry); a unit that keeps together withdraws, one that breaks runs and is
+  pursued. Expect battle dead to fall, and say by how much (15.5i7).
+- *The ground as a multiplier,* for the defender who stands on it: height, cover, a river in front,
+  walls and dug-in positions, worth more against guns than against swords. The general chooses where
+  to stand from the land on the way the enemy is coming.
+- *Cost:* per unit per hour, not per soldier per step; a soldier only steps toward a slot. Checked
+  against 20,000 people at war on the bench.
+
+**Not found:** QJM's terrain and posture numbers; casualty shares in the fight against the rout with
+numbers (Krentz's appendix); how long drill took to learn.
 
 ### [ ] 16. Ruins and scavenging
 
