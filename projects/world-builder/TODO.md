@@ -3941,6 +3941,17 @@ tactics cheaply. Write it under **Research notes** below, with links.
 - Whether the old behaviour stays as a setting ("By era label (as before)"), as each 15 item did.
 - Whether war know-how is found by soldiers and smiths only, or by anybody (as 15e).
 
+**Answered 2026-11-23** (Ric: "the other 8 are your recomendation"; the five that are 15.6's):
+- *How far forward:* through the machine gun, artillery and motor transport. Tanks and aircraft are
+  item 15.6c, so this one can be finished whole.
+- *Armour and weapons:* each people weighs what a piece costs against what the enemy carries, so
+  armour is dropped when guns go through it and comes back as helmets — not fixed by know-how alone.
+- *How an army is raised:* from the people's government and treasury (paid, owed service or a
+  levy), never from the era.
+- *The old behaviour:* stays, as a setting ("By era label (as before)"), default world unchanged.
+- *Who finds war know-how:* mostly smiths and soldiers, faster while at war.
+- (Whether a tactic is the general's choice is answered under 15.6b: it is, as each unit's shape.)
+
 **Done when:** no war figure reads the era label; an early people that finds gunpowder fights like
 a people with guns, armour and all, and a medieval people that gets it builds the walls to stand it;
 each era's typical way of fighting shows up in its battles without being told to; a default world
@@ -4090,6 +4101,15 @@ keep the cost down. Write it under **Research notes** below, with links.
   2026-11-23, Ric: "for drawing it on the page its a yes but make it a toggle."** Drawn when zoomed
   in (unit outlines, facing, a mark on each unit's leader), behind a toggle on the page.
 
+**Answered 2026-11-23** (Ric: "the other 8 are your recomendation"; the three that are 15.6b's):
+- *Drawing an army up by hand:* not yet. The general does it; the watcher can choose the general.
+- *How finely:* units with leaders, sized by how orders travel — not one shape per army (Ric's
+  "having a comander and the ranks").
+- *Who becomes an officer:* from the people's ways — birth or wealth by default, bought where coins
+  and rule by the rich allow, by service and skill where a standing paid army keeps records, chosen
+  where the people votes.
+- *The old behaviour:* stays, as a setting ("Every soldier for the nearest enemy (as before)").
+
 **Done when:** soldiers hold places in a shape instead of chasing; a general uses the real ground
 and it shows in who wins; flanks, rear and reserves change battles; each period's way of standing
 comes from its weapons; a default world with the setting off is unchanged; 15.5i7 is measured again
@@ -4187,6 +4207,21 @@ lowest penalty ([Ilachinski, *Artificial War*](https://www.globalspec.com/refere
 
 **Not found:** QJM's terrain and posture numbers; casualty shares in the fight against the rout with
 numbers (Krentz's appendix); how long drill took to learn.
+
+### [ ] 15.6c. Tanks and aircraft
+
+**Ric (2026-11-23):** split off 15.6 on its first question ("the other 8 are your recomendation"),
+so 15.6 can be finished whole. After 15.6 and 15.6b.
+**Do:** armoured vehicles and aircraft as things a people builds, owns, fuels and loses, like the
+cars (15d) — found from the engine, steel, the machine gun and radio (15.6's `TECH`), weighed in
+the kit like any other piece, and fitted into 15.6b's units and shapes (combined arms, Biddle).
+**Research first:** what tanks and aircraft actually did to battle and to casualties (1916–1945 on),
+what they cost to build and keep running, and how other simulations keep them cheap.
+**Ric decides:** what aircraft do (scouting, bombing, carrying), and whether anything past the
+Second World War comes in.
+**Done when:** a people that can build them does, when they pay; they change battles the way the
+record says; a world without them is unchanged.
+**Budget:** default.
 
 ### [ ] 16. Ruins and scavenging
 
