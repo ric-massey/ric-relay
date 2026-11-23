@@ -709,6 +709,17 @@ nobody had linked was a page nobody could find.
   squares — with the current, across it, against it — and moves eight ways, past fords and bridges
   (four ways and fords as walls made rivers impassable to boats). A boatload is `BOAT_LOADS` carts.
   `test/rivers.test.mjs`.
+  **War follows what a people knows, not its era** (TODO 15.6, 2026-11-23; Ric: "technology and weaponry
+  should be coorilated"): `kitOf(f)`, once a day, is the one place war reads weapons, armour, service,
+  siege days, walls and the season; do not read `f.era` for war again ("By era label" keeps the old
+  engine). War know-how is a second list (`WAR_TECH`) held in `WK` beside the people, because the first
+  list's 32 bits are full — don't add war keys to `TECH`. **Soldiers stand in units** (15.6b): an army in
+  the field is units with real officers, each soldier holding a place, only the striking ranks striking;
+  a battle ends in a day. **Blasts and what is left in the ground** (`blast`, `LEFT`) only come from
+  what a war did; nothing places one. **Most war dead are raiding, not battle** (measured 2026-11-23,
+  TODO 15.6d): don't tune formations or blows to bring deaths down; that is 15.6d's question for Ric.
+  **Parole, deserters and the unfree are kept beside the people** (`PAROLE`, `DESERTED`; 15.5u), and
+  what happens to a deserter or an unfree person is the leader's call, not a fixed rule.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,
   weapons and shields live in each person's `gear`. Village outfitting buys/consumes goods,
   repairs pay for worn material, and gear helps only while suitable and unbroken. The renderer

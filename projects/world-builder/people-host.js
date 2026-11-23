@@ -193,7 +193,7 @@
     function frame(m) {
       const w = world, P = w.people, n = P.length, cam = m.cam, s = cam.s, began = now();
       const wantLand = !!m.land && (m.land.force || w.sceneTick - m.land.at >= 5);
-      const key = [cam.x, cam.y, s, cam.w, cam.h, m.view, m.picked || 0, m.follow ? 1 : 0, m.pair ? m.pair.join("+") : "", w.sceneTick].join("|");
+      const key = [cam.x, cam.y, s, cam.w, cam.h, m.view, m.picked || 0, m.follow ? 1 : 0, m.pair ? m.pair.join("+") : "", w.sceneTick, m.units ? 1 : 0].join("|");
       if (key === frameKey && !m.fresh && !wantLand) { send({ t: "frame", same: true, speed: speed, rate: rate, paused: paused, held: held(), heldFor: maxWall, days: world.days }); return; }
       frameKey = key;
       const hw = cam.w / 2 / s, hh = cam.h / 2 / s, edge = 20 / s;
@@ -244,6 +244,8 @@
         out.speech = out.speech.map(r => { const q = byId.get(r.p.talkingTo); return { k: r.k, text: r.p.name + (q ? " → " + q.name : "") + ": " + r.p.say }; });
       }
       if (pickedId) { const p = byId.get(pickedId); out.picked = p ? { id: p.id, x: p.x, y: p.y, name: p.name } : { id: pickedId, gone: true }; }
+      /* Armies' units, with the page's toggle on and zoomed in (TODO 15.6b). */
+      if (m.units && s >= 6 && w.units) out.units = w.units().filter(u => u.x > x0 && u.x < x1 && u.y > y0 && u.y < y1);
       if (m.pair) out.pair = m.pair.map(id => { const p = byId.get(id); return p ? [p.x, p.y] : null; });
       /* Households that moved, while their trail has not faded, and the big
          news of the last fortnight, where it happened. */

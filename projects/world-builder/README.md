@@ -2408,6 +2408,186 @@ modern 28, 19, 31 (4.3%). Rising with the era, but all still above the about 0.5
 most warlike societies on record: three old enemies at war all year round in a small land is the
 worst case, and the gap is open (see TODO).
 
+### Parole, deserters and the books (2026-11-23)
+
+TODO item 15.5u. Ric (2026-11-23): "there are a few bugs that need to be added in", pasting an outside
+review; then, of deserters and the unfree, "this should be dependednt on the leaders". Setting
+"Parole, deserters and the books" under War ("As each leader decides" by default; "As before" is the
+world before, fingerprinted).
+
+- **Spare food and spare coins.** `stats` set `v.spare` to food held above what people keep back;
+  `workDay` set it again to spare coins a household. Whichever ran last won, so grain carts and riots
+  sometimes read coins and a workplace's pay sometimes read food. Now `v.spare` is food and
+  `v.spareCoins` is coins.
+- **Parole.** A prisoner let go (ransomed, exchanged or released) gave their word not to fight again,
+  and nothing remembered it. `PAROLE` (beside the people, not a field on them) keeps the people they
+  gave it to; no levy or hiring takes them while that war lasts.
+- **A default pays the lenders.** A people that could not pay its war loans set its treasury to
+  nothing and paid nobody: coins left the world (seen in ordinary play, 115 coins on one day of
+  "Too many people", seed 4). What is left now goes to the lenders by what each was owed.
+- **Deserters, as the leader decides.** A forgiving leader (warm, or slow to anger) takes them back
+  when the army is short; a hard one (hot-tempered and cold, or under a law of death for killing)
+  has them caught and fined, beaten or, where the law is death, killed, and keeps them out of the army
+  for the war; one in between lets them be until the war is over. Armies did all three.
+- **The unfree.** Kept out of the levy, as hiring already kept them out. A leader whose army is badly
+  short (under half of what it wants) arms them, the bold and the ruthless sooner, and the warm and
+  the honest free them for it (Rome's *volones* after Cannae, 216 BC). Armed and not freed, they desert
+  twice as readily.
+- `test/warbooks.test.mjs`.
+
+### War by what a people knows (2026-11-23)
+
+TODO item 15.6. Ric (2026-11-23): "the weapons and how people fite and the stategies … all by era. and
+the technology and era need to be coorilated and technology and weaponry should be coorilated." Setting
+"What war follows" ("What each people knows and can pay for"; "By era label (as before)" is the world
+before in every era). A default world — early farmers, eras standing still — is byte for byte the
+world it was either way, because an early people that has found nothing has exactly the early kit.
+
+**War know-how** is a second list beside the first (`WAR_TECH`), found, passed on, written down and
+lost like any other technique (15e), but mostly by smiths and soldiers, three times as often at war,
+and only where eras move on by themselves. Each needs what came before (research notes in TODO 15.6):
+bronze casting (smithing) → the war chariot (carts, bronze) and the composite bow (bronze); steel (iron,
+the mill) → the crossbow; the stirrup (horses, smithing); cannon (gunpowder, iron); drill and volley
+fire (gunpowder, writing; taught, not seen); the bayonet (gunpowder, steel); rifled breech-loaders
+(steel, steam); high explosives (gunpowder, steam); the machine gun (rifling, steam); motor lorries
+(the engine); the tank (lorries, steel, machine gun); the aeroplane (engine, steel); and past the
+Second World War (Ric: "Go past WWII") the jet engine, the helicopter and guided weapons. Each era
+starts with what it really had. It is kept in its own word of bits because the first list's 32 would
+overrun; who holds any is kept beside the people (`WK`), as rare state is. A people fights with a
+piece once one in twenty of them holds it.
+
+**The kit** (`kitOf`), worked out once a day for each people, is everything war read off the era:
+- the weapon (hand, bronze, iron, steel, musket, rifle, machine gun), the bow and how many shoot (half
+  of a people that does not farm, three in ten of one that does, four with composite bows or
+  crossbows, a quarter of a paid army with iron), chariots (with the chariot and no riding), horses
+  and the stirrup;
+- armour, weighed against what the enemy carries: the best a people can make (padding, bronze scale,
+  mail, plate), dropped against rifles and back as steel helmets — not bought where it does not pay;
+- how an army is raised, from government and treasury (ACOUP, "Pre-Modern Armies for
+  Worldbuilders"): a levy where nothing is written; owed service where writing meets land held by the
+  leader or great families with the say; paid where the treasury holds a month's wages, kept while it
+  holds a week's;
+- the fighting season (none once rail or lorries can carry an army through winter), the standing army
+  and the most called for a season, and how many soldiers a unit holds (15.6b);
+- siege work: days under a wall to break it (40 by hand, 25 with bronze, 20 with iron and writing, 8
+  with cannon, 4 with high explosives, 3 with tanks), and gunpowder without cannon mines a wall in
+  half the time and blows it, with those on it.
+
+**Walls answer the guns** (Parker 1976, the trace italienne). A wall's worth is the wall's (what its
+builders could raise: 1 by hand, 1.2 with bronze, 1.4 with iron and writing) and the guns' brought
+against it: cannon take 43% off a high wall, exploding shells 70%, tanks and bombers half again. A
+people facing cannon, with its wall up and danger near, builds a low, thick wall of stone over twice
+the days; that stands cannon whole and keeps half against shells. The worths the era table gave
+(0.8 early modern, 0.4 industrial, 0.2 modern) come out of this arithmetic.
+
+`test/warknow.test.mjs`.
+
+### Blasts (2026-11-23)
+
+TODO 15.6 step 6. Ric (2026-11-23): "what about bombs?", then "Yes, add them". Before, every blow was one
+soldier striking one other. A blast (`blast`) hurts everybody within its reach, more the nearer, soldier
+or not — a civilian killed counts among the war's dead (14b) — breaks a wall it falls on, burns houses
+under it and blows a bridge. Where they come from, all from what a people knows:
+- **Grenades:** a blow in close fighting is sometimes one, one in sixty with gunpowder, one in twenty
+  with explosives; it hurts all within 3 m (6 m with explosives).
+- **Guns:** one for every forty soldiers, bought from a village's smiths by the treasury (30 coins,
+  goods and iron; no coin made or lost). In battle each fires every hour at the nearest enemy unit
+  within reach (1 km for cannon, 2 km for shells, 5 km for rifled artillery), scattered more by a poor
+  general's gunners; solid shot ploughs a line through a close rank, an exploding shell hurts all
+  within 15 m. At a siege they fire into the place, a couple a gun a day. Half are lost when an army
+  breaks, and the winner takes what it can use.
+- **Mines:** an army holding ground for six hours with explosives lays a few in front of it.
+- **Demolition:** an army that breaks with explosives blows a bridge of its own behind it. A blown
+  bridge can be waded where it stood at a ford's pace, and its village may build it again.
+- **Left in the ground:** about one shell in five did not go off in the First World War (the estimates
+  run from a fifth to nearly a third: [CWGC](https://admin.cwgc.org/our-work/news/the-iron-harvest-a-warning-from-history/);
+  [Military History](https://www.military-history.org/behind-the-image/behind-the-image-the-iron-harvest-on-the-western-front.htm);
+  [Scientific American, 1915](https://www.scientificamerican.com/blog/anecdotes-from-the-archive/clearing-explosives-1915/));
+  one in ten here once a people has aircraft, three in a hundred with guided weapons, and half that for
+  bombs. They lie where they fell (`LEFT`) until somebody stands on them — one chance in twenty a day
+  for each person within 25 m — or a people that knows explosives clears them from its own land at
+  peace, about half in two years. Around Ypres alone such shells have killed 260 people since 1918
+  ([Iron harvest](https://en.wikipedia.org/wiki/Iron_harvest)); the Landmine Monitor still records
+  thousands of casualties a year ([2023](https://www.the-monitor.org/en-gb/reports/2023/landmine-monitor-2023/major-findings.aspx)).
+  Nothing places one that a war did not leave.
+
+### Where soldiers stand (2026-11-23)
+
+TODO item 15.6b. Ric (2026-11-23): "what abuout actual. strategicplacement of the people?"; "having a
+comander and the ranks but again equivilant to the weapons and eras"; drawing "a yes but make it a
+toggle". Setting "Where soldiers stand" ("Units in formation, on ground the general chooses"; "Every
+soldier for the nearest enemy (as before)" is the world before). Research notes are in TODO 15.6b.
+
+- **An army in the field forms units** once a day while it is not fighting (`formArmy`): its horsemen
+  in two wings, the rest in units of as many as orders reach — about 150 by voice and standard, 100
+  with writing, drums and riders, 60 under a captain with the telegraph, 12 with radio (van Creveld,
+  *Command in War*). With three or more, the last is the reserve.
+- **Each unit has an officer**, a real person chosen as the people choose (ACOUP on officers; the sale
+  of British commissions, 1683–1871): by vote where the people votes, bought where the rich rule (5
+  coins to the treasury), by service and skill in a paid army, else birth and wealth. An officer lost
+  leaves the unit slower to answer and nearer breaking until a sergeant steps up two hours later.
+- **The way of fighting is a unit's shape**, chosen by the general by nature and skill against what
+  they know the enemy carries (`chooseShape`), never by era: a shield wall or a deep block of spears
+  (against horse) or loose order before guns; pikes guarding shot with muskets and no bayonets; a
+  firing line where a paid army has drilled, or a column a bold general sends; open order, dug in,
+  with rifles; small units spread out with radio. Each shape is how deep it stands, how far apart its
+  files are (Dupuy: about 10 m² a soldier in antiquity, 250 m² from the 1650s to 1871, 27,500 m² in
+  1939–45), which ranks strike, whether it stops a charge, and what is left of shots at it once dug in.
+- **Each soldier holds a place**, walked to the last metre, instead of running at the nearest enemy;
+  only the ranks that strike in that shape strike (archers always shoot, guns fire from the first three
+  ranks).
+- **The general chooses the ground** where the army stands to meet an enemy or lie in wait
+  (`chooseGround`): height over the way the enemy comes, a river or marsh in front, a wood for cover
+  (not for horse), open ground for horse; a poor general reads it worse. In a blow, striking uphill or
+  crossing water lands less often, and shots into a wood far less (Dupuy's terrain and posture factors
+  were not found in numbers; these are guesses and said so).
+- **Flanks, rear and reserve.** Horse on the wings; with the stirrup and a bold general, they ride
+  round to the enemy's side and rear. A blow from the side lands half as hard again and from behind
+  twice as hard, and shakes the unit more. The reserve goes where a unit of the line is losing.
+- **Cohesion** falls on the move, more through woods, marshes and rivers and in a charge, and with
+  losses; it comes back standing still, and blows are harder from a unit that holds together.
+- **Breaking.** A unit holds while its losses are under what its morale bears; then, if it has kept
+  together and its officer stands, it withdraws in order and is not hunted, else it breaks and runs
+  and is cut down (most of a battle's dead: Krentz; ACOUP). When half an army's units have gone, the
+  army breaks (`rout`).
+- **Night.** An attacker draws off 600 m for the night, out of reach of a bow or a musket.
+- The page draws units when zoomed in with **Units** on: an outline in its people's colour, a tick for
+  its facing, a diamond on its officer, the reserve dashed.
+- The work is an hour per army, not a step per soldier. `test/formations.test.mjs`.
+
+### Tanks and aircraft (2026-11-23)
+
+TODO item 15.6c. Ric (2026-11-23): aircraft "Scout, bomb and carry"; anything past the Second World War,
+"Go past WWII". Part of "What war follows"; a people that does not know them is unchanged.
+
+- **Built when they pay**, at a works with power, by a people at war that knows them and can bear the
+  cost after a week's wages: a tank 120 coins, an aircraft 100, with goods and iron, from the treasury
+  into the village's till. War orders count as work for a works, so a people at war that knows them
+  will put one up. Up to a tank for every 25 soldiers and an aircraft for every 40. A helicopter for
+  about one aircraft in four once known; jets once known.
+- **Fuelled** from the works' stores (half a load of wood a tank a day, a load an aircraft); short of
+  fuel, some stay idle.
+- **Tanks** go with the line's units: each fires on the enemy's front, the soldiers with them are hit
+  a quarter less often, and a line with nothing to stop them (no tanks, shells or explosives) is
+  shaken. They break down and are knocked out: about one in a hundred an hour in battle, more against
+  shells, tanks and guided weapons. At Flers in 1916 about a third of the first tanks broke down before
+  the attack ([Spartacus](https://spartacus-educational.com/FWWflers.htm);
+  [Tank Museum](https://tankmuseum.org/article/tanks-at-flers)).
+- **Aircraft** fly once a day, a jet twice. Every flight looks over the enemy's places (what the
+  general knows of them is then current). An aircraft carries rations to soldiers in the field who are
+  short, bought from a store at home, or ten soldiers to an army in battle and outnumbered; a
+  helicopter only carries. Otherwise it bombs: the enemy's army if it is in the field, else, under a
+  hot-tempered, cold leader, a town (killing those who live there), else a bridge or a store. Bombs miss
+  by about half a kilometre with propellers — kinder than the record, where of night bombers that said
+  they had attacked only a third were within five miles ([Butt Report](https://en.wikipedia.org/wiki/Butt_Report)) —
+  by a few hundred metres with jets, and land where aimed with guided weapons.
+- **Lost** to the enemy's aircraft and guns: about 1.5 in a hundred a sortie against fighters, one more
+  against machine guns, three more against guided weapons, half that for jets. Bomber Command lost
+  about 2.3% a sortie over the war, 6% in its worst months
+  ([Lancaster Archive](https://lancaster-archive.com/bc_stats.htm);
+  [Canada, *Crucible of War*](https://www.canada.ca/content/dam/themes/defence/caf/militaryhistory/dhh/popular/crucible-war-1939-1945-14.pdf)).
+- `test/machines.test.mjs`.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

@@ -441,6 +441,15 @@
         help: "An army sees an enemy army on the march within 5 km of its soldiers or places (10 km with horsemen); if it is coming for one of its places, its leader marches to meet it when the numbers are well in its favour, by nature, and keeps clear otherwise. A place under siege is relieved when the odds are clearly good." },
       { key: "dispersion", label: "Armies spread out", type: "toggle", def: true,   // 2026-11-22
         help: "As weapons grow deadlier armies spread out and take cover, so a blow lands less often: muskets 70%, rifles 35%, machine guns 20% as often as hand weapons (Dupuy's dispersion). Off, modern war kills about a tenth of a people a year." },
+      { key: "warBooks", label: "Parole, deserters and the books", type: "select", def: "kept",   // TODO 15.5u, 2026-11-23
+        options: [["kept", "As each leader decides"], ["old", "As before"]],
+        help: "A soldier let go on their word stays home until that war is over. A deserter is taken back, let be or punished, and people held unfree are kept out of the levy or armed when the army is badly short, each as the people's leader would. When a people cannot pay its war loans, what is left goes to its lenders; and a village's spare food and spare coins are counted apart." },
+      { key: "warBy", label: "What war follows", type: "select", def: "know",   // TODO 15.6, 2026-11-23
+        options: [["know", "What each people knows and can pay for"], ["era", "By era label (as before)"]],
+        help: "Weapons, bows, armour, chariots, horsemen, siege guns, walls, how an army is raised and the fighting season come from what a people knows and can pay for, never from the era it started in: a people that finds gunpowder fights with guns, and walls are built low and thick to stand cannon. Gunpowder, cannon and explosives bring blasts that hurt everybody near them, break walls, bridges and houses, and leave shells and mines in the ground. Tanks and aircraft come with the engine, steel and the machine gun; aircraft scout, bomb and carry; jets, helicopters and guided weapons after them." },
+      { key: "formations", label: "Where soldiers stand", type: "select", def: "units",   // TODO 15.6b, 2026-11-23
+        options: [["units", "Units in formation, on ground the general chooses"], ["nearest", "Every soldier for the nearest enemy (as before)"]],
+        help: "An army forms units, each led by an officer chosen as the people choose (birth and wealth, bought, by service, or by vote), sized by how orders travel. Each unit takes a shape from what it carries (a shield wall, pikes guarding shot, a firing line, spread out and dug in) and each soldier holds a place in it; only the front ranks fight. Horsemen go on the wings, a reserve waits behind. The general chooses high ground, a river line or a wood to stand on. A blow from the side or rear lands harder and shakes a unit sooner; most die when a unit breaks and runs." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -844,7 +853,11 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { desertersBack: 0, desertersLetBe: 0, desertersPunished: 0, freedToFight: 0,   // TODO 15.5u
+                    warFinds: 0, forts: 0, gunsLost: 0, gunsBought: 0, shots: 0, grenades: 0, blasts: 0, blastDead: 0, blastCivilians: 0, blastHouses: 0, leftInGround: 0, leftWentOff: 0, leftCleared: 0, bridgesBlown: 0,   // TODO 15.6
+                    commissions: 0, drawnBattles: 0, lineDead: 0, lineKnocked: 0, unitsFormed: 0, officersLost: 0, battles: 0, contactHours: 0, nightsApart: 0, reservesSent: 0, flankBlows: 0, unitsWithdrew: 0, unitsBroke: 0,   // TODO 15.6b
+                    tanksBuilt: 0, tanksLost: 0, aircraftBuilt: 0, aircraftLost: 0, sorties: 0, airScouted: 0, bombs: 0, storesBombed: 0, airRations: 0, airlifted: 0,   // TODO 15.6c
+                    armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1339,7 +1352,7 @@
     const WAR_ERA = { season: true, standing: 0.04, campaign: 0.2, wallWorth: 1, wallHold: 20, wallDays: 30 };
     let fightDay = -1, fightNow = true;
     function fighting(f) {
-      if (!(f && ERA_ANY ? eraWar(f) : WAR_ERA).season) return true;   // TODO 15d: each people's own
+      if (!(KIT_ON && f ? kitOf(f).season : (f && ERA_ANY ? eraWar(f) : WAR_ERA).season)) return true;   // TODO 15d: each people's own; 15.6: from what it knows
       const d = today();
       if (d !== fightDay) { fightDay = d; const sn = season(); fightNow = (sn.name === "spring" || sn.name === "summer") && sn.ripe < 1.05; }
       return fightNow;
@@ -1851,6 +1864,7 @@
         setView(p, clamp(f.views * 0.5 + camp * S.divided * 0.7 + (R() - 0.5) * (0.3 + S.divided * 0.5), -1, 1));
       }
       if (KNOW) { if (mum || dad) bornKnowing(p, mum, dad); else p.know = ERA_ANY ? eraMask(v.f) : BASE_KNOW; }   // TODO 15e; 15d: the era's
+      if (KNOW && WAR_TECH.length) { if (mum || dad) bornWar(p, mum, dad); else { const m = warEraMask(v.f); if (m) WK.set(p.id, m); } }   // TODO 15.6
       p.ix = people.length; people.push(p); byId.set(p.id, p);
       if (!PLAIN) {
         changedHomes();
@@ -2370,6 +2384,51 @@
     ERA_KNOW.modern = ERA_KNOW.industrial.concat(["engine", "medicine", "radio"]);
     ERA_KNOW.information = ERA_KNOW.modern.concat(["phone"]);
     const ERA_DEF = Object.fromEntries(ERA_LIST.map(k => [k, { know: ERA_KNOW[k] }]));
+    /* War know-how (TODO 15.6, 2026-11-23; Ric: "technology and era need to be coorilated and technology
+       and weaponry should be coorilated"). Each needs what is listed, of either list; found, passed on and
+       lost like any other technique (15e), mostly by smiths and soldiers and faster at war, and only where
+       eras move on by themselves (as iron and gunpowder are). The order things came in, and what each
+       needed: README, "War by what a people knows". Kept in a list of its own because the first list's
+       bits are a 32-bit word, and this would overrun it: who holds any of it is kept beside the people
+       (WK), as rare state is, so a world where nobody does is the world it was. With "By era label" the
+       list is empty and nothing here exists. KIT_ON: off, every war figure is read from the era label. */
+    const KIT_ON = S.warBy !== "era";
+    const WAR_TECH = KIT_ON ? [
+      { key: "bronze", name: "bronze casting", needs: ["smithing"] },
+      { key: "chariot", name: "the war chariot", needs: ["carts", "bronze"] },
+      { key: "composite", name: "the composite bow", needs: ["bronze"] },
+      { key: "steel", name: "steel", needs: ["iron", "mill"] },
+      { key: "crossbow", name: "the crossbow", needs: ["steel"] },
+      { key: "stirrup", name: "the stirrup", needs: ["horses", "smithing"] },
+      { key: "cannon", name: "cannon", needs: ["gunpowder", "iron"] },
+      { key: "drill", name: "drill and volley fire", needs: ["gunpowder", "writing"], taught: true },
+      { key: "bayonet", name: "the bayonet", needs: ["gunpowder", "steel"] },
+      { key: "rifling", name: "rifled breech-loaders", needs: ["steel", "steam"] },
+      { key: "explosives", name: "high explosives", needs: ["gunpowder", "steam"] },
+      { key: "machinegun", name: "the machine gun", needs: ["rifling", "steam"] },
+      { key: "motor", name: "motor lorries", needs: ["engine"] },
+      { key: "tanks", name: "the tank", needs: ["motor", "steel", "machinegun"] },
+      { key: "aircraft", name: "the aeroplane", needs: ["engine", "steel"] },
+      { key: "jets", name: "the jet engine", needs: ["aircraft"] },
+      { key: "helicopter", name: "the helicopter", needs: ["aircraft", "motor"] },
+      { key: "guided", name: "guided weapons", needs: ["radio", "explosives", "phone"] },
+    ] : [];
+    const WI = Object.fromEntries(WAR_TECH.map((x, i) => [x.key, i]));
+    for (const x of WAR_TECH) {
+      x.civ = x.needs.filter(k => k in TI_K).reduce((m, k) => m | (1 << TI_K[k]), 0);
+      x.war = x.needs.filter(k => k in WI).reduce((m, k) => m | (1 << WI[k]), 0);
+      x.eraOnly = !ONWARD_EARLY;
+    }
+    /* What each era starts with of it: what it really had. */
+    const ERA_WARS = { foragers: [], early: [] };
+    ERA_WARS.bronze = ["bronze", "chariot", "composite"];
+    ERA_WARS.ancient = ERA_WARS.bronze.slice();
+    ERA_WARS.medieval = ERA_WARS.ancient.concat(["steel", "crossbow", "stirrup"]);
+    ERA_WARS.earlymodern = ERA_WARS.medieval.concat(["cannon", "drill"]);
+    ERA_WARS.industrial = ERA_WARS.earlymodern.concat(["bayonet", "rifling", "explosives"]);
+    ERA_WARS.modern = ERA_WARS.industrial.concat(["machinegun", "motor", "tanks", "aircraft"]);
+    ERA_WARS.information = ERA_WARS.modern.concat(["jets", "helicopter", "guided"]);
+    const WK = new Map();   // person id → the war know-how they hold, a bit each of WAR_TECH
     const ERA_WAR = {
       foragers: { season: true, standing: 0, campaign: 0.25, wallWorth: 0, wallHold: 0, wallDays: 30 },
       bronze: { season: true, standing: 0.01, campaign: 0.15, wallWorth: 1.2, wallHold: 25, wallDays: 30 },
@@ -2388,6 +2447,13 @@
     const ARMS = { hand: { reach: 0.8, hit: 1, spread: 1, name: "hand weapons" }, iron: { reach: 0.8, hit: 1.2, spread: 1, name: "iron weapons" }, musket: { reach: 1.5, hit: 1.5, spread: 0.7, name: "muskets" },
                    rifle: { reach: 2.5, hit: 2, spread: 0.35, name: "rifles" }, modern: { reach: 3, hit: 2.5, spread: 0.2, name: "machine guns" } };
     const SPREAD = S.dispersion !== false;
+    /* TODO 15.6: bronze and steel blades, between hand weapons and iron, and above it. */
+    ARMS.bronze = { reach: 0.8, hit: 1.1, spread: 1, name: "bronze weapons" };
+    ARMS.steel = { reach: 0.8, hit: 1.3, spread: 1, name: "steel blades" };
+    /* TODO 15.5u (2026-11-23): parole kept, deserters and the unfree the leader's call, war loans paid out
+       on a default, and a village's spare food and spare coins apart. PAROLE: who gave their word, and to
+       which people; DESERTED: deserters kept out of their people's army until it is at peace. */
+    const BOOKS = S.warBooks !== "old", PAROLE = new Map(), DESERTED = new Map();
     /* A gun's greater power is more hits, not a harder one: a bullet wound is no deadlier than a lance's
        twice over. No one blow more than one and a half times a sword's; the rest of `hit` goes into how
        often blows land. */
@@ -3471,7 +3537,15 @@
     const eraOf = f => (f && f.era) || "early";
     const idHash = p => (Math.imul(p.id + 1, 2654435761) >>> 0) % 100;
     function bowFor(p) {
-      const f = factions[p.f], era = eraOf(f), share = ARCHERS[era] || 0;
+      const f = factions[p.f];
+      if (KIT_ON) {   // TODO 15.6: from what the people knows
+        const k = kitOf(f);
+        if (GENERALS && horseArcher(p) && !k.guns) return { reach: 1.6, hit: 1.2, name: "horse archers" };
+        if (!k.archers || idHash(p) >= k.archers * 100 || !k.bow) return null;
+        const b = k.bow === "crossbow" ? (f.mean && f.mean[TRAIT_AT.hard] > 0.55 ? BOWS.longbow : BOWS.crossbow) : BOWS[k.bow];
+        return chariot(p) ? { reach: b.reach + 0.3, hit: b.hit * 1.2, name: "chariot archers" } : b;
+      }
+      const era = eraOf(f), share = ARCHERS[era] || 0;
       if (GENERALS && horseArcher(p) && !(WIRED && has(f.id, "gunpowder"))) return { reach: 1.6, hit: 1.2, name: "horse archers" };   // TODO 15o: the steppe
       if (!share || idHash(p) >= share * 100 || (WIRED && has(f.id, "gunpowder"))) return null;
       const b = era === "medieval" ? (f.mean && f.mean[TRAIT_AT.hard] > 0.55 ? BOWS.longbow : BOWS.crossbow) : era === "bronze" || era === "ancient" ? BOWS.composite : BOWS.bow;
@@ -3508,7 +3582,9 @@
     }
     function ransomOf(q) { const f = factions[q.f]; return 5 + worth(q) * 0.5 + (q.id === f.leader ? 60 : 0) + (GOV && f.gov && officeIds(f.gov).includes(q.id) ? 20 : 0); }
     function releasePrisoner(q, why) {
+      const h = HELD.get(q.id);
       HELD.delete(q.id);
+      if (BOOKS && h && q.hp > 0) PAROLE.set(q.id, h.by);   // TODO 15.5u: their word holds while this war lasts
       if (q.hp <= 0) return;
       q.job = "farmer"; q.task = "idle"; q.wait = 0;   // home on their word not to fight again
       const home = villages[q.home]; go(q, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol");
@@ -3593,9 +3669,13 @@
         const credit = (f.pop || 1) * 2 * Math.pow(0.5, f.defaults || 0);
         if (debt > credit * 3 || f.behind > 60) {
           LOANS.delete(f.id); f.defaults = (f.defaults || 0) + 1; f.defaultAt = t; f.behind = 0; count.defaults++;
-          f.treasury = 0;   // what was left went to the most pressing lenders; the soldiers go unpaid
+          /* What was left goes to the lenders by what each was owed (TODO 15.5u: before, it went to nobody
+             and the coins left the world); the soldiers go unpaid. */
+          let lost = debt;
+          if (BOOKS && f.treasury > 0) { const left = Math.min(f.treasury, debt); payLenders(f, book, left, debt, false); f.treasury -= left; lost -= left; }
+          if (!BOOKS) f.treasury = 0;
           const v = villages.find(u => u.alive && u.f === f.id);
-          if (v) note("war", f.name + " cannot pay what it borrowed for the war: its lenders have lost " + Math.round(debt) + " coins.", 2.5, v.x, v.y, f.id);
+          if (v) note("war", f.name + " cannot pay what it borrowed for the war: its lenders have lost " + Math.round(lost) + " coins.", 2.5, v.x, v.y, f.id);
           return;
         }
         if (!wars && f.treasury > f.soldiers * WAGE * 14) {
@@ -3634,10 +3714,15 @@
        gone. Hunger: a place shut in (more of them than our soldiers) for a fortnight, its store under a
        third of a day a head and half its grown-ups hungry, gives itself up (Kenilworth, 1266, near six months). */
     function siegeWorks(v, sides, theirs, attackers, ours, foesHere) {
-      const era = eraOf(factions[sides.length ? +sides.sort((a, b) => theirs[b] - theirs[a])[0] : v.f]), days = ENGINE_DAYS[era] || 0;
+      const by = factions[sides.length ? +sides.sort((a, b) => theirs[b] - theirs[a])[0] : v.f], era = eraOf(by), bk = KIT_ON ? kitOf(by) : null;
+      /* 15.6: by what the besiegers know; gunpowder without cannon digs mines under the wall, in half the time. */
+      const days = bk ? (bk.guns && !bk.cannon && bk.engineDays > 10 ? bk.engineDays / 2 : bk.engineDays) : ENGINE_DAYS[era] || 0;
       if (attackers >= 3 && v.wall > 0.2 && days > 0) {
         const was = v.breach; v.breach = Math.min(1, v.breach + 1 / days);
-        if (was < 0.5 && v.breach >= 0.5) { count.breached++; note("wall", (era === "earlymodern" || era === "industrial" || era === "modern" || era === "information" ? "Guns have" : era === "medieval" ? "Engines and miners have" : "The besiegers' ramp and rams have") + " broken the wall of " + v.name + ".", 2, v.x, v.y, v.f); }
+        if (was < 0.5 && v.breach >= 0.5) {
+          count.breached++; note("wall", (bk ? (bk.guns && !bk.cannon ? "A mine under it has" : bk.breach) : era === "earlymodern" || era === "industrial" || era === "modern" || era === "information" ? "Guns have" : era === "medieval" ? "Engines and miners have" : "The besiegers' ramp and rams have") + " broken the wall of " + v.name + ".", 2, v.x, v.y, v.f);
+          if (bk && bk.guns && foesHere.length) blast(v.x + v.radius * 0.7, v.y, bk.shells ? 0.08 : 0.05, 0.8, by.id, "mine", foesHere[0]);   // the mine goes up under the wall, and those on it
+        }
       } else if (attackers === 0) v.breach = Math.max(0, v.breach - 0.05);
       if (attackers > ours && attackers >= 3) v.blockade++; else v.blockade = Math.max(0, v.blockade - 2);
       if (v.blockade >= 14 && v.food < v.pop * 0.3 && v.hungry > v.adults * 0.5 && v.alive) {
@@ -3649,7 +3734,7 @@
       return false;
     }
     /* How a people raises its army (TODO 15p): feudal service in the Middle Ages, a paid standing army in antiquity; else the levy as before. */
-    function serviceOf(f) { const e = eraOf(f); return e === "medieval" ? "feudal" : e === "ancient" ? "paid" : "levy"; }
+    function serviceOf(f) { if (KIT_ON) return kitOf(f).service; const e = eraOf(f); return e === "medieval" ? "feudal" : e === "ancient" ? "paid" : "levy"; }   // 15.6: from government and treasury
     function servedOut(p) { const d = SERVED.get(p.id); return !!d && d.year === Math.floor(t / YEAR) && d.days >= SERVICE_DAYS; }
     /* Once a day for a feudal people: forty days with the army and home they go; the well-off at home pay instead. */
     function service(f) {
@@ -3693,10 +3778,10 @@
         if (!v.alive || v.f !== o.id) continue;
         let seen = false;
         for (let i = 0; i < eyes.length && !seen; i += 3) if (Math.hypot(eyes[i] - v.x, eyes[i + 1] - v.y) < eyes[i + 2]) seen = true;
-        if (seen) intel[v.id] = { g: (felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + eraWar(o).wallWorth * v.wall)) * (1 + (R() - 0.5) * (1 - sk)), at: t };
+        if (seen) { intel[v.id] = { g: (felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + wallWorth(v, f.id) * v.wall)) * (1 + (R() - 0.5) * (1 - sk)), at: t }; if (KIT_ON) (f.foeKit || (f.foeKit = {}))[o.id] = kitOf(o); }   // 15.6: and what they carry
       }
     }
-    function knownGuard(f, v) { const k = f.intel && f.intel[v.id]; return k ? k.g : v.pop * 0.2 * (1 + eraWar(factions[v.f]).wallWorth * v.wall); }
+    function knownGuard(f, v) { const k = f.intel && f.intel[v.id]; return k ? k.g : v.pop * 0.2 * (1 + wallWorth(v, f.id) * v.wall); }
     /* The plan, by the general's nature and what they know (Ric: "All five"). */
     function choosePlan(f, o, c, g) {
       let ours = 0; for (const p of people) if (p.f === f.id && p.job === "soldier" && p.hp > 0) ours++;
@@ -3714,12 +3799,14 @@
       for (const k in score) { const v = score[k] + R() * 0.1; if (v > bs) { bs = v; best = k; } }
       if (best !== c.plan) { count.plans++; if (c.plan !== undefined) note("war", (g ? g.name : f.name) + ", at the head of " + f.name + "'s army, " + PLAN_WORDS[best] + ".", 2, villages[c.v >= 0 ? c.v : 0].x, villages[c.v >= 0 ? c.v : 0].y, f.id); }
       c.plan = best; c.planAt = t; c.gen = g ? g.id : -1;
+      if (UNITS) chooseShape(f, o, c, g);   // TODO 15.6 step 3: and the way of fighting
     }
     const PLAN_WORDS = { battle: "seeks out the enemy's army", raid: "sends it raiding and burning", siege: "lays siege", wait: "waits and wears them down", ambush: "lies in wait on the enemy's road" };
     /* A soldier knocked out of the line (TODO 15o): the shock to their army, fading over hours; past what
        its morale bears, it breaks. Most of a battle's dead fell when one side broke and was pursued
        (ACOUP on morale and cohesion; Krentz on hoplite battles). */
     function fellOut(foe, by) {
+      if (UNITS && UNIT_OF.size) { const u = UNIT_OF.get(foe.id); if (u) { unitShock(foe, by, u); return; } }   // TODO 15.6b: the unit's losses
       const f = factions[foe.f], c = f.camp[by.f];
       if (!c || !(c.v >= 0)) return;
       c.fell = (c.fell || 0) * Math.pow(0.5, (t - (c.fellAt ?? t)) / FELL_HALF) + 1; c.fellAt = t;
@@ -3736,17 +3823,554 @@
       }
       for (const id of [c.gen, o.camp[f.id] && o.camp[f.id].gen]) if (id >= 0) GEN_EXP.set(id, (GEN_EXP.get(id) || 0) + 1);
       if (at) note("war", f.name + "'s army has broken and is running from " + o.name + ".", 2.5, at.x, at.y, f.id);
+      if (UNITS) disband(f.id);   // TODO 15.6b
+      /* Guns left on the field (TODO 15.6): half of them, and the winner takes what it can use. */
+      if (KIT_ON && f.guns > 0) { const lost = Math.ceil(f.guns / 2); f.guns -= lost; count.gunsLost += lost; if (kitOf(o).cannon) o.guns = (o.guns || 0) + Math.floor(lost / 2); }
+      if (KIT_ON && kitOf(f).sappers) for (const v of villages) if (v.alive && v.f === f.id && v.bridge && at && Math.hypot(v.x - at.x, v.y - at.y) < 30) { blowBridge(v, f.id); break; }   // a bridge blown behind them
+    }
+
+    /* ── where soldiers stand (TODO 15.6b, 2026-11-23) ─────────────────────
+       Ric: "what abuout actual. strategicplacement of the people?"; "having a comander and the ranks but
+       again equivilant to the weapons and eras". Before, every soldier ran at the nearest enemy within
+       750 m, contact never stopped, and the land played no part. Now an army that meets the enemy forms
+       units, each a real officer and the soldiers under them, sized by how orders travel; each unit takes
+       a shape its general chooses from what it carries, and each soldier holds a place in it, only the
+       front ranks fighting. Horsemen go on the wings and a reserve waits behind; the general picks the
+       ground to stand on; a blow from the side or rear lands harder and shakes a unit more; a unit holds
+       while its losses are under what its morale bears, then withdraws in order if it keeps together, or
+       breaks and runs and is cut down. At night the attacker draws off. The work is an hour per army,
+       not a step per soldier (EINSTein and MANA place agents as cheaply: Ilachinski, *Artificial War*).
+       Nothing here starts a battle: armies come together only by the marching that was there. README,
+       "Where soldiers stand". */
+    const UNITS = ARMIES && S.formations !== "nearest";
+    /* How each shape stands (Dupuy, *Understanding War*: about 10 m² a soldier in antiquity, 250 m² from
+       the 1650s to 1871, 27,500 m² in 1939–45): ranks that strike, ranks deep, metres between files, whether
+       it stops a charge, how often its shots land, and what is left of shots at it once dug in. */
+    const SHAPES = {
+      mass: { fr: 2, dep: 4, sp: 1.2, guard: false, fire: 1, cover: 1, name: "a shield wall" },
+      block: { fr: 3, dep: 8, sp: 1, guard: true, fire: 1, cover: 1, name: "a deep block of spears" },
+      loose: { fr: 99, dep: 2, sp: 5, guard: false, fire: 0.8, cover: 0.8, name: "loose order" },
+      pikeshot: { fr: 3, dep: 6, sp: 1, guard: true, fire: 1, cover: 1, name: "pikes guarding shot" },
+      line: { fr: 3, dep: 3, sp: 0.8, guard: false, fire: 1.3, cover: 1, name: "a firing line" },
+      column: { fr: 1, dep: 12, sp: 0.8, guard: true, fire: 0.6, cover: 1, name: "a column" },
+      open: { fr: 99, dep: 2, sp: 10, guard: false, fire: 1, cover: 0.5, name: "open order, dug in" },
+      spread: { fr: 99, dep: 1, sp: 50, guard: false, fire: 1, cover: 0.35, name: "small units spread out" },
+      horse: { fr: 2, dep: 2, sp: 3, guard: false, fire: 1, cover: 1, name: "horsemen" },
+    };
+    const UNIT_OF = new Map(), ARMY = new Map(), ENGAGE = 12, METRE = 1 / TILE_METRES, SHAPES_USED = {};
+    let unitSeq = 0;
+    /* What a unit's choices read: the people's kit, or with "By era label" the same few things off the era. */
+    function warKit(f) {
+      if (KIT_ON) return kitOf(f);
+      const arms = WIRED ? armsOf(f.id) : ARMS.hand, guns = WIRED && has(f.id, "gunpowder");
+      return { arms, level: KIT_LEVEL[ARMS_KEY.get(arms)], guns, pike: guns, bayonet: false, drill: false, dig: arms === ARMS.rifle || arms === ARMS.modern,
+               horses: hasHorses(f), stirrup: eraOf(f) === "medieval", archers: ARCHERS[eraOf(f)] || 0, radio: has(f.id, "radio"), telegraph: has(f.id, "telegraph"),
+               writes: has(f.id, "writing"), unitCap: has(f.id, "radio") ? 12 : has(f.id, "telegraph") ? 60 : has(f.id, "writing") ? 100 : 150,
+               officers: f.rule === "elected" ? "vote" : f.rule === "rich" && !shared ? "bought" : "birth", cannon: false, shells: false, grenade: 0, mines: false, tanks: false, aircraft: false };
+    }
+    /* The way of fighting (TODO 15.6 step 3, 15.6b step 2): an option the general weighs, by their nature
+       and skill and by what they know the enemy carries — pikes to guard slow muskets, a firing line where
+       a paid army has drilled, spread out and dug in where rifles and machine guns make open ground
+       deadly; a bold general may still send a column at rifles. Nothing names an era. */
+    function chooseShape(f, o, c, g) {
+      const k = warKit(f), seen = f.foeKit && f.foeKit[o.id], foe = seen || { level: 0, horses: false, chariot: false };
+      const b = g ? g.bold : 0.5, pt = g ? g.patient : 0.5, sk = skillOf(g), deadly = foe.level >= KIT_LEVEL.rifle;
+      const score = {};
+      if (!k.guns) {
+        score.mass = 0.5;
+        score.block = 0.3 + pt * 0.3 + (foe.horses || foe.chariot ? 0.4 : 0) + (k.writes ? 0.1 : 0);
+        score.loose = 0.1 + (k.archers >= 0.4 ? 0.3 : 0) + (1 - b) * 0.2;
+      } else if (k.pike) {
+        score.pikeshot = 0.8 + (foe.horses ? 0.3 : 0);
+        score.loose = 0.2 + (1 - b) * 0.2;
+      } else {
+        score.line = (k.drill ? 0.9 : 0.4) + pt * 0.3 - (deadly ? 0.4 * sk : 0);
+        score.column = 0.3 + b * 0.5 - (deadly ? 0.7 * sk : 0);
+        score.loose = 0.2 + (deadly ? 0.3 : 0);
+        if (k.dig) score.open = 0.6 + pt * 0.3 + (deadly ? 0.5 : 0);
+        if (k.radio || k.level >= KIT_LEVEL.modern) score.spread = 0.7 + sk * 0.5 + (foe.level >= KIT_LEVEL.modern ? 0.5 : 0);
+      }
+      let best = "mass", bs = -1e9;
+      for (const key in score) { const v = score[key] + R() * 0.1; if (v > bs) { bs = v; best = key; } }
+      if (best !== c.shape && c.shape !== undefined) { const v = villages[c.v >= 0 ? c.v : 0]; note("war", f.name + "'s army is drawn up in " + SHAPES[best].name + ".", 1.5, v.x, v.y, f.id); }
+      c.shape = best; c.charge = k.stirrup && b > 0.4;
+      SHAPES_USED[best] = (SHAPES_USED[best] || 0) + 1;
+    }
+    /* Who leads a unit, as the people choose (kit.officers); one who buys it pays the treasury. */
+    function officerOf(members, k, f) {
+      let best = null, bs = -1e9;
+      for (const q of members) {
+        const s = k.officers === "vote" ? standing(q) : k.officers === "bought" ? q.coins : k.officers === "merit" ? (GEN_EXP.get(q.id) || 0) * 0.5 + q.patient + (q.bold + q.curious) * 0.5 + Math.min(q.age, 40) * 0.01 : worth(q) + (f.leader && (q.mum === f.leader || q.dad === f.leader) ? 100 : 0);
+        if (s > bs) { bs = s; best = q; }
+      }
+      if (best && k.officers === "bought" && !shared && best.coins > 10) { best.coins -= 5; f.treasury += 5; count.commissions++; }
+      return best;
+    }
+    /* The ground (15.6b step 1): of the squares within 4 of where the army would stand, the one with height
+       over the way the enemy comes, a river or marsh in front, a wood for cover (not for horse), open
+       ground for horse; a poor general reads it worse. */
+    function chooseGround(f, x, y, ex, ey, g) {
+      const sk = skillOf(g), horsy = warKit(f).horses;
+      let best = { x, y }, bs = -1e9;
+      for (let r = 0; r <= 4; r += 2) for (let a = 0; a < (r ? 8 : 1); a++) {
+        const cx = x + Math.cos(a * Math.PI / 4) * r, cy = y + Math.sin(a * Math.PI / 4) * r;
+        if (cx < 1 || cy < 1 || cx > cols - 1 || cy > rows - 1) continue;
+        const i = tileAt(cx, cy); if (stopAt(i) || ground[i] === G_RIVER) continue;
+        const dx = ex - cx, dy = ey - cy, d = Math.hypot(dx, dy) || 1, j = tileAt(cx + dx / d, cy + dy / d);
+        const s = clamp((height[i] - height[j]) / 20, -1, 1.5) + (ground[i] === G_FOREST ? (horsy ? -0.2 : 0.3) : 0)
+                + (ground[j] === G_RIVER || ground[j] === G_MARSH || (cross !== null && cross[j] === 1) ? 0.5 : 0) + (horsy && ground[i] === G_GRASS ? 0.2 : 0)
+                - r * 0.04 + (R() - 0.5) * (1 - sk) * 0.6;
+        if (s > bs) { bs = s; best = { x: cx, y: cy }; }
+      }
+      return best;
+    }
+    /* Each hour, every army in the field. One army a people, against the first enemy it is at war with,
+       as its soldiers march (soldier() does the same). */
+    function armiesHour() {
+      for (const f of factions) {
+        if (!f.alive) continue;
+        let o = null;
+        for (const q of factions) if (q.alive && atWar(f.id, q.id)) { o = q; break; }
+        const c = o && f.camp[o.id], a = ARMY.get(f.id);
+        const out = c && c.v >= 0 && (c.ready || (c.meet && c.meet.until > t) || c.ambush);
+        if (!out) { if (a) disband(f.id); continue; }
+        if (!a || a.o !== o.id || (!a.engaged && t - a.formed >= DAY_HOURS)) formArmy(f, o, c);
+        armyHour(ARMY.get(f.id), f, o, c);
+      }
+    }
+    function disband(fid) {
+      const a = ARMY.get(fid); if (!a) return;
+      for (const u of a.units) for (const id of u.members) if (UNIT_OF.get(id) === u) UNIT_OF.delete(id);
+      ARMY.delete(fid);
+    }
+    function formArmy(f, o, c) {
+      const old = ARMY.get(f.id);
+      disband(f.id);
+      const k = warKit(f), foot = [], horse = [];
+      for (const p of people) {
+        if (p.f !== f.id || p.job !== "soldier" || p.hp < 0.45 || !onCampaign(p) || (ROUT.get(p.id) ?? -1) > t || (SPOILS && HELD.has(p.id))) continue;
+        (horseman(p) ? horse : foot).push(p);
+      }
+      const a = { f: f.id, o: o.id, units: [], formed: t, engaged: false, cx: 0, cy: 0, face: old ? old.face : 0, hold: null, n: foot.length + horse.length };
+      ARMY.set(f.id, a);
+      if (c.shape === undefined || !old) chooseShape(f, o, c, byId.get(c.gen));
+      const make = (list, shape, role) => {
+        if (!list.length) return;
+        const sh = SHAPES[shape], lead = officerOf(list, k, f);
+        list.sort((x, y) => (x === lead ? -1 : y === lead ? 1 : 0) || x.id - y.id);
+        const u = { id: ++unitSeq, f: f.id, a, members: list.map(q => q.id), slot: new Map(), files: Math.max(1, Math.ceil(list.length / Math.min(sh.dep, list.length))), lead: lead ? lead.id : -1, leadLost: -1e9,
+                    shape, role, face: a.face, sx: 0, sy: 0, next: null, coh: 1, fell: 0, fellAt: t, broken: false, committed: false, still: 0, dug: false, tanks: 0, size: list.length };
+        list.forEach((q, i) => { u.slot.set(q.id, i); UNIT_OF.set(q.id, u); });
+        a.units.push(u);
+      };
+      const cap = k.unitCap, nU = Math.max(1, Math.ceil(foot.length / cap)), per = Math.ceil(foot.length / nU);
+      for (let i = 0; i < nU; i++) make(foot.slice(i * per, (i + 1) * per), c.shape || "mass", nU >= 3 && i === nU - 1 ? "reserve" : "line");
+      if (horse.length >= 2) { const h = Math.ceil(horse.length / 2); make(horse.slice(0, h), "horse", "left"); make(horse.slice(h), "horse", "right"); }
+      else make(horse, "horse", "left");
+      count.unitsFormed += a.units.length;
+    }
+    function armyHour(a, f, o, c) {
+      const k = warKit(f), g = byId.get(c.gen);
+      /* Who is still with it, and where it stands. */
+      let n = 0, sx = 0, sy = 0;
+      for (const u of a.units) {
+        let w = 0;
+        for (const id of u.members) { const q = byId.get(id); if (q && q.hp >= 0.45 && q.job === "soldier" && UNIT_OF.get(id) === u) { u.members[w++] = id; sx += q.x; sy += q.y; n++; } else if (UNIT_OF.get(id) === u) UNIT_OF.delete(id); }
+        u.members.length = w;
+        if (u.lead >= 0 && !(byId.get(u.lead) && byId.get(u.lead).hp > 0 && UNIT_OF.get(u.lead) === u)) { u.lead = -1; u.leadLost = t; count.officersLost++; }
+        /* A sergeant steps up after a couple of hours. */
+        if (u.lead < 0 && w && t - u.leadLost >= 2) { const q = officerOf(u.members.map(id => byId.get(id)), k, f); u.lead = q ? q.id : -1; }
+      }
+      if (!n) { disband(f.id); return; }
+      a.cx = sx / n; a.cy = sy / n; a.n = n;
+      /* The enemy within 3 km of it. */
+      let en = 0, ex = 0, ey = 0;
+      const x0 = Math.max(0, Math.floor(a.cx) - ENGAGE), x1 = Math.min(cols - 1, Math.floor(a.cx) + ENGAGE), y0 = Math.max(0, Math.floor(a.cy) - ENGAGE), y1 = Math.min(rows - 1, Math.floor(a.cy) + ENGAGE);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) for (const q of bucketAt(y * cols + x)) if (q.job === "soldier" && q.hp >= 0.45 && atWar(f.id, q.f) && !(SPOILS && HELD.has(q.id)) && (UNIT_OF.has(q.id) || onCampaign(q))) { en++; ex += q.x; ey += q.y; }   // their army in the field, not a garrison at home
+      const was = a.engaged;
+      a.engaged = en >= 3;
+      if (!a.engaged) { for (const u of a.units) { u.dug = false; u.still = 0; } return; }
+      ex /= en; ey /= en;
+      if (!was) { count.battles++; a.since = t; a.fought = 0; }
+      count.contactHours++;
+      /* A battle is a day (most were): after ten hours of daylight fighting with no side broken, the weaker
+         falls back to where it gathered, to come on again (`campaign`), rather than fight on for weeks. */
+      if (!isDark(t % DAY_HOURS) && ++a.fought >= 10) {
+        const theirs = ARMY.get(o.id), weaker = !theirs || a.n <= theirs.n;
+        if (weaker && !(c.meet && c.meet.until > t)) { c.ready = false; c.since = t; c.ambush = null; count.drawnBattles++; disband(f.id); return; }
+      }
+      const dark = isDark(t % DAY_HOURS);
+      /* Where it means to stand: the ground chosen to meet them on, or, coming on, the enemy itself. */
+      const holding = !!((c.meet && c.meet.until > t) || c.ambush);
+      if (holding && !a.hold) a.hold = chooseGround(f, c.meet && c.meet.until > t ? c.meet.x : c.ambush.x, c.meet && c.meet.until > t ? c.meet.y : c.ambush.y, ex, ey, g);
+      if (!holding) a.hold = null;
+      a.face = Math.atan2(ey - a.cy, ex - a.cx);
+      const fx = Math.cos(a.face), fy = Math.sin(a.face), lx = -fy, ly = fx;
+      /* Out of reach of the enemy's weapons for the night: 600 m, beyond a bow or a musket. */
+      if (dark && !a.hold) { if (!a.night) { a.night = { x: a.cx - fx * 2.4, y: a.cy - fy * 2.4 }; count.nightsApart++; } } else a.night = null;
+      const P = a.hold ? a.hold : a.night ? a.night : { x: ex, y: ey };   // at night the attacker draws off
+      /* The line: units side by side across the front, the reserve behind, horse on the wings. */
+      const width = u => u.files * SHAPES[u.shape].sp * METRE;
+      const line = a.units.filter(u => u.role === "line" && !u.broken), gap = 20 * METRE;
+      let W = 0; for (const u of line) W += width(u) + gap;
+      let at = -W / 2;
+      const station = new Map();
+      for (const u of line) { const m = at + width(u) / 2; station.set(u, { x: P.x + lx * m, y: P.y + ly * m }); at += width(u) + gap; }
+      const reserve = a.units.find(u => u.role === "reserve" && !u.broken);
+      if (reserve) {
+        const weak = !reserve.committed && line.find(u => u.coh < 0.45 || u.fell > u.size * 0.08);
+        if (weak) { reserve.committed = true; reserve.goTo = weak; count.reservesSent++; }
+        if (reserve.committed && reserve.goTo && station.has(reserve.goTo)) station.set(reserve, station.get(reserve.goTo));
+        else if (reserve.committed) station.set(reserve, P);
+        else station.set(reserve, { x: P.x - fx * 0.4, y: P.y - fy * 0.4 });
+      }
+      for (const u of a.units) if (u.shape === "horse" && !u.broken) {
+        const side = u.role === "right" ? 1 : -1;
+        /* With the stirrup and a bold general, round the enemy's flank to its side and rear once the lines are at it. */
+        if (c.charge && !dark && Math.hypot(ex - a.cx, ey - a.cy) < 3) station.set(u, { x: ex + lx * side * 0.5 + fx * 0.3, y: ey + ly * side * 0.5 + fy * 0.3 });
+        else station.set(u, { x: P.x + lx * side * (W / 2 + 0.3), y: P.y + ly * side * (W / 2 + 0.3) });
+      }
+      /* Orders reach a unit as fast as they travel: shouted, by horn, flag and runner, by rider, by wire. */
+      const speed = k.radio ? Infinity : k.telegraph ? 60 : k.horses ? 40 : 8;
+      for (const [u, s] of station) {
+        const gx = g && g.hp > 0 ? g.x : a.cx, gy = g && g.hp > 0 ? g.y : a.cy;
+        const lag = (u.lead < 0 ? 2 : 0) + Math.hypot(u.sx - gx, u.sy - gy) / speed;
+        if (!u.placed) { u.sx = s.x; u.sy = s.y; u.placed = true; }   // the first place: where it already stands in the field
+        if (!u.next || Math.hypot(u.next.x - s.x, u.next.y - s.y) > 0.2) u.next = { x: s.x, y: s.y, at: t + Math.floor(lag) };
+        const moved = Math.hypot(u.sx - u.next.x, u.sy - u.next.y);
+        if (t >= u.next.at) { u.sx = u.next.x; u.sy = u.next.y; }
+        u.face = u.shape === "horse" ? Math.atan2(ey - u.sy, ex - u.sx) : a.face;
+        /* Cohesion: a unit that keeps still pulls itself together; one on the move, through a wood, a marsh
+           or a river, loses its order. Dug in after two hours still, where its shape takes cover. */
+        const i = tileAt(u.sx, u.sy), rough = ground[i] === G_FOREST || ground[i] === G_MARSH || ground[i] === G_RIVER || (cross !== null && cross[i] === 2);
+        if (moved > 0.3 && t >= u.next.at) { u.coh = Math.max(0.2, u.coh - 0.03 - (rough ? 0.1 : 0) - (u.shape === "horse" && c.charge ? 0.05 : 0)); u.still = 0; u.dug = false; }
+        else { u.coh = Math.min(1, u.coh + 0.1); if (++u.still >= 2 && SHAPES[u.shape].cover < 1) u.dug = true; }
+      }
+      if (KIT_ON) {
+        artillery(a, f, o, k, ex, ey);
+        if (f.tanksReady > 0) tanksHour(a, f, o, k);
+        /* Mines laid in front of ground held a while (explosives). */
+        if (k.mines && a.hold && !a.mined && t - a.since >= 6) { a.mined = true; for (let m = -2; m <= 2; m++) leave(a.hold.x + fx * 0.15 + lx * m * 0.08, a.hold.y + fy * 0.15 + ly * m * 0.08, 0.02, 0.9, "mine", f.id); }
+      }
+    }
+    /* A soldier in a unit in battle: strike if in its fighting ranks and an enemy is in reach, else hold
+       their place in the shape. */
+    function inUnit(p, u, f) {
+      const k = KIT_ON ? kitOf(f) : null, sh = SHAPES[u.shape];
+      let arms = k ? k.arms : WIRED ? armsOf(p.f) : ARMS.hand, shot = arms.reach > 1 ? 2 : 0;
+      if (OLD_ARMS) { const b = bowFor(p); if (b) { arms = b; shot = 1; } }
+      const slot = u.slot.get(p.id) || 0, rank = Math.floor(slot / u.files), col = slot % u.files;
+      if (rank < sh.fr || shot === 1 || (shot === 2 && rank < Math.max(sh.fr, 3))) {
+        const foe = foeNear(p, arms.reach);
+        if (foe) { unitBlow(p, foe, u, arms, shot, sh, k); p.task = "form"; p.wait = 0; return; }
+      }
+      const fx = Math.cos(u.face), fy = Math.sin(u.face), lat = (col - (u.files - 1) / 2) * sh.sp * METRE, back = rank * Math.max(1.5, sh.sp) * METRE;
+      const tx = u.sx - fy * lat - fx * back, ty = u.sy + fx * lat - fy * back;
+      if (Math.hypot(p.tx - tx, p.ty - ty) > 0.004 || p.task !== "form") go(p, tx, ty, "form");
+      p.wait = 0;
+    }
+    /* A blow struck from a unit: as any blow (soldier()), with the side or rear it comes from, the ground,
+       cover dug, the tanks with them, the unit's order, and a charge against what can or cannot stop it. */
+    function unitBlow(p, foe, u, arms, shot, sh, k) {
+      const fu = UNIT_OF.get(foe.id);
+      let chance = 0.25 * S.deadly * (SPREAD && arms.spread ? arms.spread * arms.hit / Math.min(arms.hit, BLOW_MAX) : 1) * (shot ? sh.fire : 1);
+      let harm = (SPREAD ? Math.min(arms.hit, BLOW_MAX) : arms.hit) * (0.6 + 0.4 * S.deadly);
+      let side = 1;
+      if (fu) { const dx = p.x - foe.x, dy = p.y - foe.y, d = Math.hypot(dx, dy) || 1, cs = (Math.cos(fu.face) * dx + Math.sin(fu.face) * dy) / d; side = cs > 0.5 ? 1 : cs > -0.5 ? 1.5 : 2; }
+      harm *= side;
+      const ip = tileAt(p.x, p.y), iq = tileAt(foe.x, foe.y), up = height[ip] - height[iq];
+      if (up < -10) chance *= shot ? 0.8 : 0.9; else if (up > 10) chance *= 1.1;   // up a slope, and down one
+      if (ground[iq] === G_FOREST) chance *= shot ? 0.6 : 0.9;
+      if (ground[ip] === G_RIVER || ground[ip] === G_MARSH || (cross !== null && cross[ip] === 2)) chance *= 0.7;   // crossing water
+      if (fu && fu.dug && shot) chance *= SHAPES[fu.shape].cover;
+      if (fu && fu.tanks > 0) chance *= 0.75;
+      harm *= 0.6 + 0.4 * u.coh;
+      if (horseman(p) && u.shape === "horse" && factions[p.f].camp[foe.f] && factions[p.f].camp[foe.f].charge) harm *= fu && SHAPES[fu.shape].guard ? 0.6 : 1.5;
+      if (R() < 1 - Math.pow(1 - Math.min(0.95, chance), 1 / ACTIONS_PER_HOUR)) {
+        if (k && k.grenade && !shot && R() < k.grenade) { count.grenades++; blast(foe.x, foe.y, 3 * METRE * (k.mines ? 2 : 1), harm * 0.35, p.f, "grenade", p); }
+        else { const up = foe.hp >= 0.45; strike(p, foe, (0.15 + R() * 0.3) * harm, shot); if (up && foe.hp < 0.45) count.lineKnocked++; }
+        if (side > 1 && fu) { fu.fell += (side - 1) * 0.5; count.flankBlows++; }
+        if (foe.hp <= 0 && foe.hp !== -99) { if (GENERALS && (ROUT.get(foe.id) ?? -1) > t) count.pursuitDead++; count.lineDead++; die(foe, "battle", p); }
+      }
+    }
+    /* A unit's losses (15.6b step 4): it holds while they are under what its morale bears, then it
+       withdraws in order if it has kept together and its officer stands, or breaks and runs. When half an
+       army's units have gone, the army breaks (`rout`). */
+    function unitShock(foe, by, u) {
+      u.fell = u.fell * Math.pow(0.5, (t - u.fellAt) / FELL_HALF) + 1; u.fellAt = t; u.coh = Math.max(0.2, u.coh - 0.03);
+      const f = factions[foe.f], c = f.camp[by.f]; if (!c) return;
+      const g = byId.get(c.gen), morale = clamp(0.3 + 0.4 * skillOf(g) + 0.3 * f.loyal - (f.hungry > f.pop * 0.2 ? 0.15 : 0) + 0.2 * (u.coh - 0.5) - (u.lead < 0 ? 0.15 : 0), 0.1, 1);
+      if (u.broken || u.fell < Math.max(2, u.size * (0.1 + 0.2 * morale))) return;
+      u.broken = true;
+      const inOrder = u.coh >= 0.6 && u.lead >= 0;
+      count[inOrder ? "unitsWithdrew" : "unitsBroke"]++;
+      for (const id of u.members) {
+        const q = byId.get(id); if (!q || q.hp <= 0) continue;
+        UNIT_OF.delete(id); wakeUp(q);
+        if (!inOrder) ROUT.set(id, t + ROUT_DAYS * DAY_HOURS);
+        const home = villages[q.home]; go(q, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); q.wait = 0;
+      }
+      const a = u.a, gone = a.units.filter(x => x.broken).length;
+      if (gone * 2 >= a.units.length && ARMY.get(a.f) === a) rout(f, factions[by.f], c);
+    }
+    function leaveUnit(p) {
+      const u = UNIT_OF.get(p.id); if (!u) return;
+      UNIT_OF.delete(p.id);
+      if (u.lead === p.id) { u.lead = -1; u.leadLost = t; count.officersLost++; }
+    }
+
+    /* ── blasts (TODO 15.6 step 6; Ric, 2026-11-23: "what about bombs?") ──────
+       Before, every blow was one soldier striking one other. A blast hits everybody near it, so standing
+       close costs more than standing spread out; it breaks walls, bridges and houses; it hits whoever is
+       there, soldier or not, and they count among the war's dead; and some do not go off and lie in the
+       ground until somebody steps on them or a people that knows explosives clears them. Nothing places
+       one that a war did not leave. Distances and how often shells failed: README, "Blasts". */
+    const LEFT = [];   // shells, bombs and mines in the ground
+    function hurt(q, dmg, by) {
+      wakeUp(q);
+      const a = equipped(q, "armour") ? armourOf(factions[q.f]) : null;
+      if (a) dmg *= 1 - a.blow * 0.4;   // a helmet or a breastplate against splinters, a little
+      const wasUp = q.hp >= 0.45;
+      q.hp -= dmg;
+      if (q.job === "soldier" && wasUp && q.hp < 0.45) { if (UNITS && by && UNIT_OF.has(q.id)) unitShock(q, by, UNIT_OF.get(q.id)); else if (GENERALS && by) fellOut(q, by); }
+      wound(q, dmg);
+      if (q.hp <= 0) { count.blastDead++; if (q.job !== "soldier") count.blastCivilians++; die(q, "battle", by && by.hp !== -99 ? by : null); }
+    }
+    function blast(x, y, r, power, fid, kind, by) {
+      count.blasts++;
+      const k = Math.ceil(r), cx = Math.floor(x), cy = Math.floor(y);
+      for (let yy = Math.max(0, cy - k); yy <= Math.min(rows - 1, cy + k); yy++) for (let xx = Math.max(0, cx - k); xx <= Math.min(cols - 1, cx + k); xx++) {
+        const b = bucketAt(yy * cols + xx);
+        for (let n = b.length - 1; n >= 0; n--) {
+          const q = b[n];
+          if (q.hp <= 0 || q.f === fid || (fid >= 0 && !atWar(fid, q.f) && q.job === "soldier")) continue;
+          const d = Math.hypot(q.x - x, q.y - y);
+          if (d < r) hurt(q, power * (1 - d / r) * (0.5 + R() * 0.7), by && by.hp > 0 ? by : null);
+        }
+      }
+      if (kind === "grenade") return;
+      /* What it falls on: a wall, houses, a bridge. */
+      for (const v of villages) {
+        if (!v.alive || Math.hypot(v.x - x, v.y - y) > v.radius + r) continue;
+        if (v.wall > 0.2 && SIEGECRAFT) v.breach = Math.min(1, v.breach + power * 0.02);
+        for (const h of homesOf(v)) if (h.v === v.id && h.built && Math.hypot(h.x - x, h.y - y) < r + 10 * METRE && R() < power * 0.6) { burnHouse(v, h); count.blastHouses++; }
+        if (v.bridge && power >= 0.8 && Math.hypot(v.bridge.x - x, v.bridge.y - y) < r + 0.1) blowBridge(v, fid);
+      }
+    }
+    /* A shell or bomb that did not go off, or a mine: in the ground until it does or is cleared. */
+    function leave(x, y, r, power, kind, fid) { LEFT.push({ x, y, r, power, kind, f: fid, at: t }); count.leftInGround++; }
+    /* How often a shell or bomb fails to go off: about one in five in the First World War (some
+       batches far worse), one in ten in the Second, a few in a hundred with modern fuzes. */
+    function dud(k) { return k.guided ? 0.03 : k.aircraft ? 0.1 : 0.2; }
+    /* A bridge blown: the wreck can be waded at a ford's pace, and the village may build it again. */
+    function blowBridge(v, fid) {
+      if (!v.bridge || !CROSS) return;
+      const c = crossings(v).bridge;
+      if (c) cross[c.i] = 2;
+      v.bridge = null; v.blownAt = t; ways.clear(); count.bridgesBlown++;
+      note("war", "The bridge at " + v.name + " has been blown.", 2, v.x, v.y, v.f);
+    }
+    /* Once a day: what lies in the ground and somebody near it, and what a people that knows explosives
+       clears from its own land in peace (it took decades after both world wars; README, "Blasts"). */
+    function leftDay() {
+      let w = 0;
+      for (const m of LEFT) {
+        const i = tileAt(m.x, m.y);
+        let off = null;
+        for (const q of bucketAt(i)) if (q.hp > 0 && Math.hypot(q.x - m.x, q.y - m.y) < 0.1 && R() < 0.05) { off = q; break; }
+        if (off) {
+          count.leftWentOff++;
+          const peace = m.f >= 0 && factions[m.f] && !atWar(m.f, off.f);
+          blast(m.x, m.y, Math.max(m.r, 0.02), m.power, -1, m.kind, null);
+          if (peace && off.hp <= 0 && t - (factions[off.f].leftNews ?? -1e9) > 60 * DAY_HOURS) { factions[off.f].leftNews = t; note("war", (m.kind === "mine" ? "A mine" : "A shell") + " left from the war has killed " + off.name + ".", 2, m.x, m.y, off.f); }
+          continue;
+        }
+        const v = owner[i] >= 0 ? villages[owner[i]] : null;
+        if (v && v.alive && !atWarAnywhere(factions[v.f]) && kitOf(factions[v.f]).sappers && R() < 1 / (2 * 365)) { count.leftCleared++; continue; }
+        LEFT[w++] = m;
+      }
+      LEFT.length = w;
+    }
+    /* Guns bought for the war (TODO 15.6): one for every forty soldiers, from a village's store and smiths,
+       paid by the treasury as any wartime gear is (15.5h). */
+    const GUN_COST = 30, TANK_COST = 120, PLANE_COST = 100;
+    function buyGuns(f, wars) {
+      const k = kitOf(f);
+      if (!wars || shared || !k.cannon) return;
+      const want = Math.max(1, Math.floor((f.soldiers || 0) / 40));
+      if ((f.guns || 0) >= want || f.treasury < GUN_COST + f.soldiers * WAGE * 7) return;
+      const v = villages.find(u => u.alive && u.f === f.id && u.goods >= 5 && (!MATS || u.iron >= 2));
+      if (!v) return;
+      f.treasury -= GUN_COST; v.till += GUN_COST; v.goods -= 5; if (MATS) v.iron -= 2;
+      f.guns = (f.guns || 0) + 1; count.gunsBought++;
+    }
+    /* The guns, each hour of a battle within their reach: solid shot ploughs a line through a close rank;
+       an exploding shell hits all near where it lands. Aimed at the nearest enemy unit, or where the enemy
+       stands; a poor general's gunners scatter worse; guided shells land where aimed. */
+    function artillery(a, f, o, k, ex, ey) {
+      if (!k.cannon || !(f.guns > 0) || Math.hypot(ex - a.cx, ey - a.cy) > k.range) return;
+      const g = byId.get(f.camp[o.id] && f.camp[o.id].gen), by = g && g.hp > 0 ? g : byId.get(a.units[0] && a.units[0].lead);
+      const foeArmy = ARMY.get(o.id), sigma = k.guided ? 0.01 : (0.03 + (1 - skillOf(g)) * 0.12) * (k.shells ? 1.5 : 1);
+      for (let s = 0; s < Math.min(f.guns, 12); s++) {
+        let tx = ex, ty = ey;
+        if (foeArmy && foeArmy.units.length) { const u = foeArmy.units[s % foeArmy.units.length]; if (!u.broken && u.placed) { tx = u.sx; ty = u.sy; } }
+        tx += (R() + R() - 1) * sigma * 2; ty += (R() + R() - 1) * sigma * 2;
+        count.shots++;
+        if (k.shells && R() < dud(k)) { leave(tx, ty, 0.06, 0.8, "shell", f.id); continue; }
+        if (k.shells) blast(tx, ty, 15 * METRE, 0.8, f.id, "shell", by);
+        else { const dx = Math.cos(a.face) * 5 * METRE, dy = Math.sin(a.face) * 5 * METRE; for (let b = 0; b < 3; b++) blast(tx + dx * b, ty + dy * b, 2 * METRE, 0.9, f.id, "grenade", by); }
+      }
+    }
+    /* Guns at a siege: shells into the place, a couple a gun a day — those in it die, houses burn. */
+    function shellPlace(v, by, foesHere) {
+      const k = kitOf(by);
+      if (!k.cannon || !(by.guns > 0) || !foesHere.length) return;
+      for (let s = 0; s < Math.min(by.guns * 2, 10); s++) {
+        const a = R() * 6.2832, d = R() * v.radius, x = v.x + Math.cos(a) * d, y = v.y + Math.sin(a) * d;
+        count.shots++;
+        if (k.shells && R() < dud(k)) { leave(x, y, 0.06, 0.8, "shell", by.id); continue; }
+        blast(x, y, k.shells ? 15 * METRE : 3 * METRE, k.shells ? 0.8 : 0.9, by.id, k.shells ? "shell" : "shot", foesHere[0]);
+      }
+      if (t - (v.shelledNews ?? -1e9) > 30 * DAY_HOURS) { v.shelledNews = t; note("war", by.name + "'s guns are firing into " + v.name + ".", 2, v.x, v.y, v.f); }
+    }
+
+    /* ── tanks and aircraft (TODO 15.6c, 2026-11-23) ───────────────────────
+       Ric: aircraft "Scout, bomb and carry"; "Go past WWII". Things a people builds at a works with power,
+       owns, fuels from its store and loses, as cars are (15d), and only when they pay: at war, with the
+       treasury able to bear it after wages. Tanks go with the army's units, shield the soldiers with them,
+       fire on the enemy's front and shake a line that has nothing to stop them; they break down and are
+       knocked out by guns, shells and other tanks. Aircraft fly once a day (a jet twice): they scout the
+       enemy's places, carry rations and soldiers to an army in the field, and bomb an army, a bridge, a
+       store or a town, missing by hundreds of metres until guided weapons; fighters and guns bring them
+       down. Helicopters carry and scout. README, "Tanks and aircraft". */
+    function machinesDay(f, wars) {
+      const k = kitOf(f);
+      f.tanksReady = 0;
+      if (!k.tanks && !k.aircraft) return;
+      const works = villages.filter(v => v.alive && v.f === f.id && v.works && v.works.works && v.works.works.built && v.power);
+      /* Built when they pay. */
+      if (wars && !shared && works.length) {
+        const v = works[0], wages = f.soldiers * WAGE * 7;
+        const can = cost => f.treasury >= cost + wages && v.goods >= 8 && (!MATS || v.iron >= 4);
+        const pay = cost => { f.treasury -= cost; v.till += cost; v.goods -= 8; if (MATS) v.iron -= 4; };
+        if (k.tanks && (f.tanks || 0) < Math.max(1, Math.floor(f.soldiers / 25)) && can(TANK_COST)) { pay(TANK_COST); f.tanks = (f.tanks || 0) + 1; count.tanksBuilt++; if (f.tanks === 1) note("war", f.name + " has built its first tank.", 2, v.x, v.y, f.id); }
+        const air = f.air || (f.air = []);
+        if (k.aircraft && air.length < Math.max(1, Math.floor(f.soldiers / 40)) && can(PLANE_COST)) {
+          const kind = k.helicopter && air.filter(x => x === "heli").length * 3 < air.length ? "heli" : k.jets ? "jet" : "prop";
+          pay(PLANE_COST); air.push(kind); count.aircraftBuilt++;
+          if (air.length === 1) note("war", f.name + " has built its first aircraft.", 2, v.x, v.y, f.id);
+        }
+      }
+      /* Fuel: half a load of wood a tank, a load an aircraft, from the works' stores. */
+      const need = (f.tanks || 0) * 0.5 + (f.air ? f.air.length : 0);
+      if (!need || !wars) return;
+      let got = 0;
+      for (const v of works) { const x = MATS ? Math.min(v.wood || 0, need - got) : need - got; if (MATS) v.wood -= x; got += x; if (got >= need) break; }
+      const share = need ? got / need : 0;
+      f.tanksReady = Math.floor((f.tanks || 0) * share);
+      if (f.air) sorties(f, k, Math.floor(f.air.length * share));
+    }
+    function tanksHour(a, f, o, k) {
+      const line = a.units.filter(u => !u.broken && u.shape !== "horse");
+      if (!line.length) return;
+      for (const u of line) u.tanks = 0;
+      const ok = kitOf(o), stops = ok.tanks || ok.shells || ok.mines;
+      for (let n = 0; n < f.tanksReady; n++) {
+        const u = line[n % line.length]; u.tanks++;
+        const lead = byId.get(u.lead) || byId.get(u.members[0]); if (!lead) continue;
+        for (let s = 0; s < 3; s++) { const q = foeNear(lead, 1.2); if (!q) break; if (R() < 0.5) hurt(q, 0.3 + R() * 0.3, lead); }
+        const fu = ARMY.get(o.id); if (!stops && fu) for (const x of fu.units) if (!x.broken && Math.hypot(x.sx - u.sx, x.sy - u.sy) < 1.5) x.fell += 0.5;   // a line with nothing to stop them is shaken
+        if (R() < 0.01 + (ok.shells ? 0.02 : 0) + (ok.tanks ? 0.02 : 0) + (ok.guided ? 0.03 : 0)) { f.tanks--; f.tanksReady--; count.tanksLost++; }
+      }
+    }
+    function sorties(f, k, ready) {
+      const air = f.air;
+      let o = null;
+      for (const q of factions) if (q.alive && atWar(f.id, q.id)) { o = q; break; }
+      if (!o || !ready) return;
+      const ok = kitOf(o), lead = byId.get(f.leader), c = f.camp[o.id];
+      const ruthless = lead ? ruling(lead, "temper", f) > 0.6 && ruling(lead, "warm", f) < 0.4 : false;
+      /* Scatter in squares: the Butt report (1941) found a third of night bombers that said they had attacked were within five miles; a world here is too small for that, so half a kilometre, kinder than the record. */
+      const scatter = k.guided ? 0.02 : k.jets ? 0.5 : 2, bombs = k.jets ? 6 : 4;
+      let flown = 0, scouted = false;
+      for (let i = 0; i < air.length && flown < ready; i++) {
+        const kind = air[i];
+        for (let s = 0; s < (kind === "jet" ? 2 : 1); s++) {
+          flown++; count.sorties++;
+          /* Over the enemy's land, every flight is a look at it. */
+          if (!scouted) { scouted = true; const intel = f.intel || (f.intel = {}); for (const v of villages) if (v.alive && v.f === o.id) intel[v.id] = { g: felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + wallWorth(v, f.id) * v.wall), at: t }; (f.foeKit || (f.foeKit = {}))[o.id] = ok; count.airScouted++; }
+          /* Carrying: rations to an army short of them, or soldiers to it. */
+          const army = ARMY.get(f.id);
+          if (army && kind !== "jet" && carry(f, army, kind)) continue;
+          if (kind === "heli") continue;
+          /* Bombing: their army first, else, by the leader's nature, a town, or a bridge and a store. */
+          let tx = -1, ty = -1, what = "army";
+          const theirs = ARMY.get(o.id);
+          if (theirs && theirs.n > 0) { tx = theirs.cx; ty = theirs.cy; }
+          else {
+            const places = villages.filter(v => v.alive && v.f === o.id);
+            if (!places.length) break;
+            const v = places.reduce((b, x) => x.pop > b.pop ? x : b);
+            if (ruthless) { tx = v.x; ty = v.y; what = "town"; }
+            else { const br = places.find(x => x.bridge); const tgt = br || v; tx = br ? br.bridge.x : tgt.x; ty = br ? br.bridge.y : tgt.y; what = br ? "bridge" : "store"; }
+          }
+          for (let b = 0; b < bombs; b++) {
+            const x = tx + (R() + R() - 1) * scatter * 2, y = ty + (R() + R() - 1) * scatter * 2;
+            count.bombs++;
+            if (R() < dud(k) * 0.5) { leave(x, y, 0.08, 1, "bomb", f.id); continue; }
+            blast(x, y, 20 * METRE, 1, f.id, "bomb", byId.get(f.leader));
+            if (what === "store") for (const v of villages) if (v.alive && v.f === o.id && Math.hypot(v.x - x, v.y - y) < v.radius) { v.food *= 0.92; count.storesBombed++; }
+          }
+          if (what === "town" && t - (o.bombedNews ?? -1e9) > 30 * DAY_HOURS) { o.bombedNews = t; const v = villages.find(u => Math.hypot(u.x - tx, u.y - ty) < 1); if (v) note("war", "Aircraft of " + f.name + " have bombed " + v.name + ".", 2.5, v.x, v.y, o.id); }
+          /* Lost: to their fighters and their guns; a jet against slower aircraft less. */
+          /* Bomber Command lost about 2.3% a sortie over the war, 6% in its worst months. */
+          const loss = ((ok.aircraft ? 0.015 : 0) + (ok.level >= KIT_LEVEL.modern ? 0.01 : 0) + (ok.guided ? 0.03 : 0)) * (kind === "jet" ? 0.5 : 1);
+          if (R() < loss) { air.splice(i, 1); i--; count.aircraftLost++; break; }
+        }
+      }
+    }
+    /* What an aircraft carries to an army in the field: rations, bought from a store at home, for soldiers
+       short of them; or, to an army in battle and outnumbered, soldiers from home — ten in a helicopter or
+       a transport. Returns whether it flew to carry. */
+    function carry(f, army, kind) {
+      const need = [];
+      for (const u of army.units) for (const id of u.members) { const q = byId.get(id); if (q && q.hp > 0 && q.food < dailyNeed(q)) need.push(q); }
+      if (need.length >= 3) {
+        const v = villages.filter(u => u.alive && u.f === f.id).reduce((b, x) => !b || x.food > b.food ? x : b, null);
+        if (!v || v.food < 10) return false;
+        for (const q of need.slice(0, 20)) {
+          const amount = Math.min(dailyNeed(q) * 3, v.food), cost = amount * v.priceFood;
+          if (!shared) { if (f.treasury < cost) break; f.treasury -= cost; v.till += cost; }
+          v.food -= amount; q.food += amount; count.airRations += amount;
+        }
+        return true;
+      }
+      if (army.engaged) {
+        const o = factions[army.o], theirs = ARMY.get(o.id);
+        if (theirs && theirs.n > army.n * 1.2) {
+          let moved = 0;
+          for (const q of people) {
+            if (moved >= 10) break;
+            if (q.f !== f.id || q.job !== "soldier" || q.hp < 0.45 || UNIT_OF.has(q.id) || q.id % 3 === 0 || !onCampaign(q)) continue;
+            wakeUp(q); jump(q, army.cx + (R() - 0.5) * 0.3, army.cy + (R() - 0.5) * 0.3); q.tx = q.x; q.ty = q.y; q.task = "patrol"; q.wait = 0; moved++;
+          }
+          if (moved) { count.airlifted += moved; return true; }
+        }
+      }
+      return false;
     }
 
     /* A Bronze Age archer on a chariot, one soldier in ten: a moving platform, harder to hit and steadier to shoot from. */
-    function chariot(p) { return p.job === "soldier" && eraOf(factions[p.f]) === "bronze" && idHash(p) < 10; }
+    function chariot(p) { return p.job === "soldier" && (KIT_ON ? kitOf(factions[p.f]).chariot : eraOf(factions[p.f]) === "bronze") && idHash(p) < 10; }
     function armourOf(f) {
+      if (KIT_ON) return kitOf(f).armour;   // TODO 15.6: weighed against what the enemy carries; null when it does not pay
       const era = eraOf(f);
       return era === "medieval" || era === "earlymodern" ? ARMOUR.plate : era === "ancient" ? ARMOUR.mail : era === "bronze" ? ARMOUR.scale : ARMOUR.padding;
     }
     function armourCut(foe, shot) {
       if (!equipped(foe, "armour")) return 0;
       const a = armourOf(factions[foe.f]);
+      if (!a) return 0;
       return shot === 1 ? a.arrow : shot === 2 ? a.blow * 0.4 : a.blow;
     }
     /* Out of their own purse, after a winter's bread, as a cart is; of hide where people have no iron to work. */
@@ -3755,7 +4379,8 @@
       if (condition > 0.25) return;
       const needed = GEAR.armour.cost * (1 - condition);
       if (shared || funds(p) - needed * v.priceGoods < reserve(p) * v.priceFood) return;
-      const era = eraOf(factions[p.f]), mat = MATS ? (era === "early" || era === "foragers" ? "hide" : "iron") : undefined;
+      if (KIT_ON && !kitOf(factions[p.f]).armour) return;   // TODO 15.6: not worth buying against rifles
+      const era = eraOf(factions[p.f]), mat = MATS ? (KIT_ON ? kitOf(factions[p.f]).mat : era === "early" || era === "foragers" ? "hide" : "iron") : undefined;
       if (mat && v[mat] < needed) return;
       if (p.goods < needed) buy(p, v, "goods", needed - p.goods);
       if (p.goods + 1e-10 < needed) return;
@@ -4399,7 +5024,7 @@
       /* A bridge or a boat for the village (TODO 6d). */
       if (CROSS && v.alive && p.job !== "soldier") {
         const c = crossings(v);
-        if (c.bridge && !v.bridge && cross[c.bridge.i] === 1 && knows(v.f, "bridges"))   // and nobody has bridged it since; and they know how (TODO 15e)
+        if (c.bridge && !v.bridge && (cross[c.bridge.i] === 1 || (v.blownAt !== undefined && cross[c.bridge.i] === 2)) && knows(v.f, "bridges"))   // 15.6: or built again where it was blown   // and nobody has bridged it since; and they know how (TODO 15e)
           weigh("bridge", 0.4 - away(Math.hypot(c.bridge.x - p.x, c.bridge.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, c.bridge.x, c.bridge.y, "bridge"); p.wait = 0; });
         if (c.landing && !v.boat && ((v.wantBoat || 0) >= 3 || (WATER_WORK && (v.fishTrips || 0) >= 30)) && knows(v.f, "boats"))   // 15.5i4: or a fishing boat, where people fish
@@ -4769,6 +5394,7 @@
     function work(p) {
       const v = villages[p.home];
       if (KNOW && AT_WORK.has(p.task)) findTech(p);   // TODO 15e
+      if (KNOW && ONWARD_EARLY && WAR_TECH.length && (AT_WORK.has(p.task) || p.job === "soldier")) findWar(p);   // TODO 15.6: smiths and soldiers
       /* A shift of building or digging is spent at the work, and shows as that work; what it
          did is counted when it ends (TODO 7b: before, the hours showed as resting). */
       if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear" || p.task === "ditch" || p.task === "serve" || p.task === "worksbuild") && !p.shift) {
@@ -5051,7 +5677,7 @@
       /* A watch lasts a watch. Marching and fighting carry on while the enemy
          is there; a quiet circuit ends and the soldier decides again — which is
          how a soldier gets to eat and sleep like everybody else. */
-      if (p.task === "march" || p.task === "fight") { soldier(p); return; }
+      if (p.task === "march" || p.task === "fight" || p.task === "form") { soldier(p); return; }
       if (p.task === "patrol") {
         if (t < p.until) { soldier(p); return; }
         p.task = "idle"; p.wait = 0;
@@ -5399,9 +6025,11 @@
         const depot = nearestOwn(p) || home;
         go(p, depot.x + (R() - 0.5), depot.y + (R() - 0.5), "patrol"); p.wait = 0; p.supplyRun = true; return;
       }
-      const foe = foeNear(p, 3);
+      /* In a unit, in battle (TODO 15.6b): their place in its shape, not the nearest enemy. */
+      if (UNITS && UNIT_OF.size) { const u = UNIT_OF.get(p.id); if (u && !u.broken && u.a.engaged && ARMY.get(u.f) === u.a) { inUnit(p, u, f); return; } }
+      const foe = foeNear(p, UNITS && UNIT_OF.has(p.id) ? 1.5 : 3);   // 15.6b: in a unit, no chasing lone enemies across the country
       if (foe) {
-        let arms = WIRED ? armsOf(p.f) : ARMS.hand, shot = arms.reach > 1 ? 2 : 0;   // TODO 15d: what reaches, and how hard
+        let arms = KIT_ON ? kitOf(f).arms : WIRED ? armsOf(p.f) : ARMS.hand, shot = arms.reach > 1 ? 2 : 0;   // TODO 15d: what reaches, and how hard; 15.6: from what they know
         if (OLD_ARMS) { const b = bowFor(p); if (b) { arms = b; shot = 1; } }   // TODO 15n: a bow
         if (dist(p, foe) < arms.reach) {
           p.hit = TK(6);
@@ -5473,6 +6101,9 @@
       count[why]++;
       if (why === "sick" && p.job === "soldier") count.soldierSick++;   // TODO 15m
       dropOrder(p);
+      if (BOOKS) { PAROLE.delete(p.id); DESERTED.delete(p.id); }   // TODO 15.5u
+      if (WK.size) WK.delete(p.id);   // TODO 15.6
+      if (UNIT_OF.size) leaveUnit(p);   // TODO 15.6b
       const v = villages[p.home], f = factions[p.f];
       /* Gone over the edge (TODO 15.5c): what they have goes with them, coins out of the world's sum. */
       if (why === "left") { count.minted -= p.coins; p.coins = 0; p.food = 0; p.goods = 0; p.cargo = null; p.gear = {}; }
@@ -5675,6 +6306,7 @@
       a.alone = 0; b.alone = 0;
       if (FAITH) faithTalk(a, b);   // TODO 15g
       if (KNOW) learnFrom(a, b);   // TODO 15e
+      if (KNOW && WK.size && (WK.has(a.id) || WK.has(b.id))) learnWar(a, b);   // TODO 15.6
       if (S.records === "light") { exchange(a, b); return; }
       keepState(csWas[0], 0, a, b); keepState(csWas[1], 1, b, a);
       const previous = nextExchange, fa = a.f, fb = b.f, dipA = fa !== fb ? factions[fa].rel[fb].op : 0, dipB = fa !== fb ? factions[fb].rel[fa].op : 0;
@@ -6063,6 +6695,7 @@
       if (p.task === "quarrel") return walking ? "Going to have it out with somebody" : "Quarrelling";
       if (p.task === "gear") return walking ? "Going for tools" : "Fitting tools";
       if (p.task === "fight") return "Fighting";
+      if (p.task === "form") return "In the line";
       if (p.task === "scout") return "Checking the market in " + villages[p.at].name;
       if (p.task === "pickup") return "Going to load goods in " + villages[p.at].name;
       if (p.cargo) return "Carrying " + p.cargo.what + " to " + villages[p.at].name;
@@ -7128,6 +7761,7 @@
         /* Going to bed means into the house, not within 125 m of it: the last
            stretch is walked at the usual pace (TODO 7a). */
         if (p.task === "sleep" && REAL_BODIES && d > 0.006) { const k = Math.min(pace, d) / d; move(p, dx * k, dy * k); return; }
+        if (p.task === "form" && d > 0.004) { const k = Math.min(pace, d) / d; move(p, dx * k, dy * k); return; }   // TODO 15.6b: to their place in the line, not within 125 m of it
         if (p.wait > 0) { p.wait--; counted = true; } else work(p);
       }
 
@@ -7416,7 +8050,8 @@
       const sides = Object.keys(theirs);
       /* Behind a wall the same people count for more (TODO 14e). */
       const wallNow = SIEGECRAFT ? v.wall * (1 - v.breach) : v.wall;   // TODO 15p: what the engines have left of it
-      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), defence = (ours + v.adults * 0.25) * (1 + eraWar(factions[v.f]).wallWorth * wallNow);
+      const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), strongest = sides.length ? +sides.reduce((a, b) => theirs[b] > theirs[a] ? b : a) : -1;
+      const defence = (ours + v.adults * 0.25) * (1 + (KIT_ON ? wallWorth(v, strongest) : eraWar(factions[v.f]).wallWorth) * wallNow);
       v.foes = attackers;
       if (RIOTS && attackers === 0) riot(v, ours);   // not with an enemy at the edge: then the doors are barred
       if (BANDITS) { v.watch = ours; if (attackers === 0) bandRide(v); }   // TODO 15.5b4
@@ -7426,12 +8061,19 @@
          village at war, every one was walled within a month and nothing was taken in 13 forced wars. */
       if (S.war) {
         if (v.wall < 1 && (t - v.dangerAt < 60 * DAY_HOURS || t - v.raidAt < YEAR) && v.foes === 0) {   // built between attacks, not under them
-          const need = (10 + v.pop * 0.5) / eraWar(factions[v.f]).wallDays;   // a day's wood, stone or goods
+          if (KIT_ON) { const kb = kitOf(factions[v.f]).wallBase; v.wallBase = v.wall > 0.05 && v.wallBase != null ? Math.max(v.wallBase, kb) : kb; }   // 15.6: the wall is what its builders could raise
+          const need = (10 + v.pop * 0.5) / (KIT_ON ? 30 : eraWar(factions[v.f]).wallDays);   // a day's wood, stone or goods
           let got = 0;
           if (MATS) { const st = Math.min(v.stone, need); v.stone -= st; got += st; const wd = Math.min(Math.max(0, v.wood - v.wantWood * 0.5), need - got); if (wd > 0) { v.wood -= wd; got += wd; } }
           else { const g = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= g; got += g; }
-          if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / eraWar(factions[v.f]).wallDays); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f); } }
-        } else if (v.wall > 0 && !atWarAnywhere(factions[v.f])) v.wall = Math.max(0, v.wall - 1 / (4 * 365));   // gone in about four years of peace
+          if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / (KIT_ON ? 30 : eraWar(factions[v.f]).wallDays)); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f); } }
+        } else if (KIT_ON && v.wall >= 1 && (v.fort || 0) < 1 && (t - v.dangerAt < 60 * DAY_HOURS || t - v.raidAt < YEAR) && v.foes === 0 && gunsFaced(v)) {
+          /* 15.6 step 4: against guns, a low, thick wall with bastions, of stone, twice the work over twice the days. */
+          const need = (10 + v.pop * 0.5) / 30;
+          let got = 0;
+          if (MATS) { got = Math.min(v.stone, need); v.stone -= got; } else { got = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= got; }
+          if (got > 0) { const was = v.fort || 0; v.fort = Math.min(1, was + got / need / 60); if (was < 0.5 && v.fort >= 0.5) { count.forts++; note("wall", v.name + " has built a low, thick wall to stand the guns.", 2, v.x, v.y, v.f); } }
+        } else if (v.wall > 0 && !atWarAnywhere(factions[v.f])) { v.wall = Math.max(0, v.wall - 1 / (4 * 365)); if (v.fort > 0) v.fort = Math.max(0, v.fort - 1 / (20 * 365)); }   // gone in about four years of peace; a fort of stone stands longer
       }
       /* What an army does where it stands (TODO 14b): spoils the crops, burns what it can, takes
          the food; and people run from it, and come home when it has gone. */
@@ -7448,10 +8090,11 @@
       if (v.sick > 0 && v.gone) v.dangerAt = t;   // those who left for a sickness wait a week past it (TODO 12b)
       if (v.siege > 0) flee(v);
       else if (v.gone && t - v.dangerAt > 7 * DAY_HOURS) comeHome(v);
+      if (KIT_ON && strongest >= 0 && attackers >= 3) shellPlace(v, factions[strongest], foesHere);   // TODO 15.6: guns into the place
       if (SIEGECRAFT && siegeWorks(v, sides, theirs, attackers, ours, foesHere)) v.siege = 0;   // TODO 15p: starved out, taken
       else if (sides.length && attackers > defence * 1.2) {
         v.siege += 1;
-        if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(wallNow * eraWar(factions[v.f]).wallHold)) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
+        if (v.siege >= 4 + Math.floor(v.pop / 15) + Math.round(wallNow * (KIT_ON ? 20 * wallWorth(v, strongest) : eraWar(factions[v.f]).wallHold))) { sides.sort((a, b) => theirs[b] - theirs[a]); capture(v, factions[+sides[0]], foesHere); }
       } else v.siege = Math.max(0, v.siege - 1);
 
       /* Too full: some of them go and start somewhere new, if there is land. */
@@ -8410,9 +9053,78 @@
        technique: it is taught, not seen; written news passes word for word; a collector who keeps
        accounts is checked by a scribe; a law that is written outlasts more. README, "Know-how". */
     function eraMask(fid) { return ERA_KNOW[factions[fid].era].reduce((m, k) => m | (1 << TI_K[k]), 0); }   // TODO 15d
+    /* War know-how (TODO 15.6): the same five things as above, on the second list. */
+    function warEraMask(fid) { return (ERA_WARS[factions[fid].era] || []).reduce((m, k) => m | (1 << WI[k]), 0); }
+    const warOf = p => WK.get(p.id) || 0;
+    function warNeedsMet(p, x) { return ((p.know || 0) & x.civ) === x.civ && (warOf(p) & x.war) === x.war; }
+    /* Found at work: mostly by smiths and soldiers, three times as often at war; anybody else at a fifth. */
+    function findWar(p) {
+      const v = villages[p.home], f = factions[p.f], trade = p.job === "soldier" || p.job === "crafter";
+      const rate = FIND_RATE * (0.5 + p.curious) * (trade ? (atWarAnywhere(f) ? 3 : 1) : 0.2) * (v.hungry > v.pop * 0.15 ? 1.5 : 1);
+      if (R() >= rate) return;
+      const has = warOf(p), can = [];
+      for (let i = 0; i < WAR_TECH.length; i++) if (!(has & (1 << i)) && warNeedsMet(p, WAR_TECH[i])) can.push(i);
+      if (!can.length) return;
+      const i = can[Math.floor(R() * can.length)];
+      WK.set(p.id, has | (1 << i)); count.finds++; count.warFinds++;
+      if (f.wk && f.wk[i] > 0) return;
+      const again = f.wKnewOnce && (f.wKnewOnce & (1 << i));
+      if (f.wk) f.wk[i]++;
+      note("found", p.name + " of " + v.name + " has " + (again ? "worked out again " : "found ") + WAR_TECH[i].name + ".", 2.5, v.x, v.y, p.f);
+    }
+    function learnWar(a, b) {
+      for (const [x, y] of [[a, b], [b, a]]) {
+        if (y.know == null || !adult(y)) continue;
+        const missing = warOf(x) & ~warOf(y);
+        if (!missing) continue;
+        let i = -1, n = 0;
+        for (let k = 0; k < WAR_TECH.length; k++) if ((missing & (1 << k)) && !WAR_TECH[k].taught && R() < 1 / ++n) i = k;
+        if (i >= 0 && R() < SEE_DONE * (0.5 + y.curious)) { WK.set(y.id, warOf(y) | (1 << i)); count.learned++; }
+      }
+    }
+    function bornWar(c, mum, dad) {
+      const from = (mum ? warOf(mum) : 0) | (dad ? warOf(dad) : 0);
+      if (!from) return;
+      let k = 0;
+      for (let i = 0; i < WAR_TECH.length; i++) {
+        if (!(from & (1 << i))) continue;
+        if (WAR_TECH[i].taught) { if (R() < 0.5) k |= 1 << i; }   // drill is taught in an army, not at home: half
+        else if (R() < COPY) k |= 1 << i;
+      }
+      if (k) WK.set(c.id, k);
+    }
+    /* Once a day, with knowDay: what each people holds of it, what it has lost, and what is read again. */
+    function warKnowDay() {
+      for (const f of factions) { if (!f.wk) f.wk = new Int32Array(WAR_TECH.length); else f.wk.fill(0); }
+      for (const [id, m] of WK) {
+        const p = byId.get(id);
+        if (!p || p.hp === -99) { WK.delete(id); continue; }
+        const fk = factions[p.f].wk;
+        for (let i = 0; i < WAR_TECH.length; i++) if (m & (1 << i)) fk[i]++;
+      }
+      for (const f of factions) {
+        if (!f.alive) continue;
+        let now = 0;
+        for (let i = 0; i < WAR_TECH.length; i++) if (f.wk[i] > 0) now |= 1 << i;
+        if (f.know && f.know[TI_K.writing] > 0) f.wWritten = (f.wWritten || 0) | now;
+        const lost = (f.wKnowWas || 0) & ~now;
+        for (let i = 0; i < WAR_TECH.length; i++) if (lost & (1 << i)) {
+          count.lost++;
+          const v = villages.find(x => x.alive && x.f === f.id);
+          if (v) note("lost", f.name + " has lost " + WAR_TECH[i].name + ": nobody left knows it.", 2.5, v.x, v.y, f.id);
+        }
+        const back = (f.wWritten || 0) & ~now;
+        if (back && f.know && f.know[TI_K.writing] > 0) for (const p of people) {
+          if (p.f !== f.id || p.hp <= 0 || !adult(p) || !knowsP(p, "writing") || R() > 0.02) continue;
+          for (let i = 0; i < WAR_TECH.length; i++) if (back & (1 << i)) { WK.set(p.id, warOf(p) | (1 << i)); f.wk[i]++; now |= 1 << i; count.relearned++; break; }
+          break;
+        }
+        f.wKnowWas = now; f.wKnewOnce = (f.wKnewOnce || 0) | now;
+      }
+    }
     function knowsP(p, k) { return p.know != null && (p.know & (1 << TI_K[k])) !== 0; }
     /* A people knows it while one of them holds it. Before the first count, as at the start. */
-    function knows(fid, k) { return !KNOW || !factions[fid].know || factions[fid].know[TI_K[k]] > 0; }
+    function knows(fid, k) { if (k in WI) return !KNOW || !factions[fid].wk ? (ERA_WARS[factions[fid].era] || []).includes(k) : factions[fid].wk[WI[k]] > 0; return !KNOW || !factions[fid].know || factions[fid].know[TI_K[k]] > 0; }
     function findTech(p) {
       if (p.know == null || !adult(p)) return;
       const v = villages[p.home];
@@ -8510,7 +9222,8 @@
           else if (p.age >= 6) kids++;
           if (p.sick > 0) sick++;
         }
-        v.spare = homesN ? spare / homesN : 0; v.sickN = sick; v.kids = kids; v.hands = hands;
+        if (BOOKS) v.spareCoins = homesN ? spare / homesN : 0; else v.spare = homesN ? spare / homesN : 0;   // TODO 15.5u: coins, apart from the food `stats` counts as spare
+        v.sickN = sick; v.kids = kids; v.hands = hands;
         /* The power works burns two loads of wood a day from the store; without it, no power. */
         const pw = v.works && v.works.power;
         v.powerUse = v.works && v.works.tower && v.works.tower.built ? 1 : 0;   // TODO 15d: a tower runs on power
@@ -8530,7 +9243,7 @@
     /* What a service would bring somebody here, beside the land and the bench. */
     function serviceWorth(v, job) {
       if (!v.hands) return 0;
-      const pay = clamp((v.spare || 0) / 8, 0, 1), held = 1 + (v.hands[job] || 0);
+      const pay = clamp(((BOOKS ? v.spareCoins : v.spare) || 0) / 8, 0, 1), held = 1 + (v.hands[job] || 0);
       if (job === "healer") return clamp(v.sickN / Math.max(1, v.pop) * 25, 0, 1.2) * pay / held;
       if (job === "teacher") return KNOW && knows(v.f, "writing") ? clamp(v.kids / 15, 0, 1) * pay / held : 0;
       if (job === "miller") return v.works && v.works.mill && v.works.mill.built ? clamp(v.pop / 60, 0, 1) * pay / held : 0;
@@ -8557,8 +9270,9 @@
       const w = v.works || (v.works = {});
       const want = [];
       if (KNOW && knows(v.f, "mill") && (v.riverNear ??= ditchFrom(v) >= 0) && !(w.mill && w.mill.built)) want.push("mill");
-      if (KNOW && knows(v.f, "steam") && !(w.power && w.power.built) && (!MATS || (v.wood || 0) > 10) && (asked(v) > 2 || v.wantPower)) want.push("power");   // only with work for it: goods asked for, or (15d) a tower or a line
-      if (w.power && w.power.built && !(w.works && w.works.built) && asked(v) > 2) want.push("works");
+      const warOrders = KIT_ON && (kitOf(factions[v.f]).tanks || kitOf(factions[v.f]).aircraft) && atWarAnywhere(factions[v.f]);   // TODO 15.6c: tanks and aircraft are ordered for a war
+      if (KNOW && knows(v.f, "steam") && !(w.power && w.power.built) && (!MATS || (v.wood || 0) > 10) && (asked(v) > 2 || v.wantPower || warOrders)) want.push("power");   // only with work for it: goods asked for, or (15d) a tower or a line
+      if (w.power && w.power.built && !(w.works && w.works.built) && (asked(v) > 2 || warOrders)) want.push("works");
       if (WIRED && has(v.f, "telegraph") && !(w.line && w.line.built)) want.push("line");   // TODO 15d
       if (WIRED && has(v.f, "phone") && !(w.tower && w.tower.built)) { if (w.power && w.power.built) want.push("tower"); else v.wantPower = true; }
       return want;
@@ -8625,7 +9339,7 @@
       }
       return s;
     }
-    const reachOf = f => CAMPAIGN_DAYS * (KNOW && knows(f.id, "carts") ? 1.5 : 1) * (WIRED && has(f.id, "horses") ? 1.5 : 1) * (WIRED && has(f.id, "rail") ? 2 : 1) / 2 * MARCH_DAY;   // 15d: horses and rail
+    const reachOf = f => CAMPAIGN_DAYS * (KNOW && knows(f.id, "carts") ? 1.5 : 1) * (WIRED && has(f.id, "horses") ? 1.5 : 1) * (WIRED && has(f.id, "rail") ? 2 : 1) * (KIT_ON && WIRED && has(f.id, "motor") ? 1.5 : 1) / 2 * MARCH_DAY;   // 15d: horses and rail; 15.6: lorries
     function campaign(f, o, lead) {
       const c = f.camp[o.id] || (f.camp[o.id] = { v: -1, goal: -1, ready: false, since: t, cut: false, out: 0 });
       const reach = reachOf(f), bold = ruling(lead, "bold", f), patient = ruling(lead, "patient", f);
@@ -8640,7 +9354,7 @@
         let near = null, d = 1e9;
         for (const u of villages) if (u.alive && u.f === f.id) { const dd = Math.hypot(u.x - v.x, u.y - v.y); if (dd < d) { d = dd; near = u; } }
         if (!near || d > reach) continue;
-        const worth = (v.food * 0.05 + v.pop + 1), guard = GENERALS ? knownGuard(f, v) : felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + eraWar(o).wallWorth * v.wall);
+        const worth = (v.food * 0.05 + v.pop + 1), guard = GENERALS ? knownGuard(f, v) : felt(o.id, v.x, v.y) + v.adults * 0.25 * (1 + wallWorth(v, f.id) * v.wall);
         /* Seeking a battle (TODO 15o): to where their soldiers are, not away from them. */
         const s = GENERALS && c.plan === "battle" ? Math.pow(worth, 0.3) * (1 + guard) / (1 + d * 0.02) : Math.pow(worth, 0.5 + bold) / Math.pow(1 + guard, 0.5 + patient) / (1 + d * 0.02);
         if (s > bs) { bs = s; best = v; from = near; }
@@ -8745,13 +9459,56 @@
       let n = 0, home = null;
       for (const p of people) {
         if (p.f !== f.id || p.job !== "soldier" || p.hp <= 0 || !onCampaign(p)) continue;
-        const rate = DESERT_DAY * (p.hungry > 0 ? 3 : 1) * (1 + Math.min(10, p.unpaid || 0) * 0.3) * (1.6 - p.loyal) * (0.5 + p.fear) * (losing ? 1.5 : 1) * (harsh ? 0.6 : 1) * (HIRED.has(p.id) ? 1.5 : 1);
+        const rate = DESERT_DAY * (p.hungry > 0 ? 3 : 1) * (1 + Math.min(10, p.unpaid || 0) * 0.3) * (1.6 - p.loyal) * (0.5 + p.fear) * (losing ? 1.5 : 1) * (harsh ? 0.6 : 1) * (HIRED.has(p.id) ? 1.5 : 1) * (BOOKS && p.unfree ? 2 : 1);   // TODO 15.5u: armed and not freed, likelier to go
         if (R() >= rate) continue;
         p.job = "farmer"; p.task = "idle"; p.wait = 0; HIRED.delete(p.id); n++; count.deserted++;
         home = villages[p.home];
         go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol");
+        if (BOOKS) deserterJudged(f, p, harsh);
       }
       if (n && t - (f.desertNews ?? -1e9) > 30 * DAY_HOURS) { f.desertNews = t; note("war", n + (n === 1 ? " soldier has" : " soldiers have") + " deserted " + f.name + "'s army and gone home.", 1.5, home.x, home.y, f.id); }
+    }
+    /* A deserter, as the leader would have it (TODO 15.5u; Ric, 2026-11-23: "this should be dependednt on
+       the leaders"). One who forgives takes them back when the army is short (nothing marks them); a hard
+       one — hot-tempered and cold, or under a law of death for killing — has them sought and punished,
+       fined, beaten or, where the law is death, killed, and kept out of the army for the war; one in
+       between lets them be until the war is over. Armies did all three: the French took deserters back
+       under amnesties, the British flogged them, and some armies shot them. */
+    function deserterJudged(f, p, harsh) {
+      const lead = byId.get(f.leader);
+      const warm = lead ? ruling(lead, "warm", f) : 0.5, temper = lead ? ruling(lead, "temper", f) : 0.5;
+      if (warm > 0.6 || temper < 0.35) { count.desertersBack++; return; }
+      DESERTED.set(p.id, f.id);
+      if (!(harsh || (temper > 0.6 && warm < 0.45))) { count.desertersLetBe++; return; }
+      count.desertersPunished++;
+      let what;
+      if (harsh && temper > 0.6 && R() < 0.3) { what = "put to death"; die(p, "law"); }
+      else if (p.coins >= 5 && !shared) { const fine = Math.min(p.coins, 10); p.coins -= fine; f.treasury += fine; what = "fined"; }
+      else { p.hp = Math.max(0.2, p.hp - 0.25); wound(p, 0.25); what = "beaten"; }
+      if (t - (f.deserterNews ?? -1e9) > 30 * DAY_HOURS) { f.deserterNews = t; const v = villages[p.home]; note("war", "A deserter from " + f.name + "'s army has been caught and " + what + ".", 1.5, v.x, v.y, f.id); }
+    }
+    /* Whether somebody may be called up or hired (TODO 15.5u): not while on their word to an enemy still
+       at war with them, not a deserter kept out, and not held unfree unless the leader arms them. */
+    function mayServe(p, f) {
+      if (!BOOKS) return true;
+      const by = PAROLE.get(p.id);
+      if (by !== undefined) { if (factions[by] && factions[by].alive && atWar(p.f, by)) return false; PAROLE.delete(p.id); }
+      if (DESERTED.has(p.id)) { if (DESERTED.get(p.id) === p.f && atWarAnywhere(factions[p.f])) return false; DESERTED.delete(p.id); }
+      if (p.unfree && !f.armUnfree) return false;
+      return true;
+    }
+    /* Arming the unfree (TODO 15.5u): kept out by default, as hiring keeps them out; a leader whose army is
+       badly short may arm them, the bold and the ruthless sooner, and the warm and the honest free them for
+       it — Rome's volones after Cannae, 216 BC, slaves bought by the state, armed and freed for service. */
+    function armingUnfree(f, lead, wars) {
+      const was = !!f.armUnfree;
+      f.armUnfree = false;
+      if (!BOOKS || !wars || !lead || !GOV || !f.gov || !f.gov.bound || !f.gov.bound.length) return;
+      const short = f.soldiers < f.army * f.adults * 0.5;
+      const nerve = (ruling(lead, "bold", f) - 0.5) + (0.5 - ruling(lead, "warm", f)) * 0.6;
+      f.armUnfree = short && nerve > 0.05;
+      f.freeArmed = ruling(lead, "warm", f) > 0.5 || ruling(lead, "honest", f) > 0.6;
+      if (f.armUnfree && !was) { const v = villages.find(u => u.alive && u.f === f.id); if (v) note("war", f.name + " is arming those it holds unfree" + (f.freeArmed ? ", and freeing them for it." : "."), 2, v.x, v.y, f.id); }
     }
     /* Sickness in an army (TODO 15m), once a day: how foul its camp is, a fever starting there as in a
        town that foul, and the sick carrying it to the places they pass. */
@@ -8813,7 +9570,7 @@
       let took = 0;
       for (const p of people) {
         if (took >= 3) break;
-        if (p.hp <= 0 || !adult(p) || HIRED.has(p.id) || p.unfree || p.id === factions[p.f].leader || (p.job !== "bandit" && !(p.coins < 2 && p.f !== f.id)) || atWar(p.f, f.id)) continue;
+        if (p.hp <= 0 || !adult(p) || HIRED.has(p.id) || p.unfree || p.id === factions[p.f].leader || (p.job !== "bandit" && !(p.coins < 2 && p.f !== f.id)) || atWar(p.f, f.id) || (BOOKS && !mayServe(p, f))) continue;
         if ((1 - p.lame) * (HEALTH ? ageVigour(p) : 1) < 0.6 || p.bold < 0.35) continue;
         let to = null, d = 30;
         for (const v of mine) { const dd = Math.hypot(v.x - p.x, v.y - p.y); if (dd < d) { d = dd; to = v; } }
@@ -8963,9 +9720,98 @@
        down; industrial armies fought the year round. */
     function eraWar(f) { return (f && ERA_WAR[f.era]) || WAR_ERA; }
     function eraHas(fid, k) { const e = ERA_DEF[factions[fid].era]; return !!e && e.know.includes(k); }
+    /* ── war by what a people knows (TODO 15.6, 2026-11-23) ────────────────
+       Ric: "the weapons and how people fite and the stategies … all by era. and the technology and era
+       need to be coorilated and technology and weaponry should be coorilated." Everything war read off
+       the era label is worked out here, once a day for each people, from what it knows (`has`) and can
+       pay for: its weapon, bow and share of archers, armour (weighed against what the enemy carries, so
+       it is dropped when rifles go through it and comes back as helmets), chariots, horsemen and the
+       stirrup, siege guns and how long a wall stands them, how an army is raised (from the people's
+       government and treasury: a levy, owed service, or paid), the fighting season (rail and engines let
+       an army winter in the field), the standing army and campaign size, blasts, and the machines of
+       15.6c. A find opens an option; it never switches an army over by itself (the stirrup debate:
+       Bachrach 1970 against White 1962). An early people that has found nothing has exactly the kit the
+       early era had, so a default world is the world it was. README, "War by what a people knows". */
+    const KIT_LEVEL = { hand: 0, bronze: 1, iron: 2, steel: 3, musket: 4, rifle: 5, modern: 6 };
+    const ARMS_KEY = new Map(Object.entries(ARMS).map(([k, a]) => [a, k]));
+    ARMOUR.helmet = { blow: 0.15, arrow: 0.2, name: "steel helmets" };
+    function kitOf(f) {
+      const day = Math.floor(t / DAY_HOURS);
+      if (f.kit && f.kitAt === day) return f.kit;
+      const was = f.kit, h = k => has(f.id, k);
+      const farms = h("farming") && bandFarms(f), writes = h("writing"), guns = h("gunpowder");
+      const arms = h("machinegun") ? ARMS.modern : h("rifling") ? ARMS.rifle : guns ? ARMS.musket : h("steel") ? ARMS.steel : h("iron") ? ARMS.iron : h("bronze") ? ARMS.bronze : ARMS.hand;
+      /* Raised as the people can (ACOUP, "Pre-Modern Armies for Worldbuilders"): a levy where nothing is
+         written down; owed service where the land is the leader's or the great families have the say;
+         paid where a treasury can keep a month's wages, and stays paid while it can keep a week's. */
+      let service = "levy";
+      if (writes) {
+        if (f.land === "leader" || (GOV && f.gov && f.gov.say === "few")) service = "feudal";
+        else if (!shared && f.treasury > Math.max(20, (f.soldiers || 0) * WAGE * (was && was.service === "paid" ? 7 : 30))) service = "paid";
+      }
+      /* The best the enemy carries, as of yesterday. */
+      let foe = 0;
+      for (const o of factions) if (o !== f && o.alive && o.kit && f.rel[o.id] && f.rel[o.id].war) foe = Math.max(foe, o.kit.level);
+      const best = h("steel") ? ARMOUR.plate : h("iron") ? ARMOUR.mail : h("bronze") ? ARMOUR.scale : ARMOUR.padding;
+      const armour = foe >= KIT_LEVEL.rifle ? (h("steel") ? ARMOUR.helmet : null) : best;
+      const cannon = h("cannon"), shells = cannon && h("explosives");
+      const motor = h("motor"), tanks = h("tanks"), aircraft = h("aircraft");
+      const k = {
+        arms, level: KIT_LEVEL[ARMS_KEY.get(arms)], guns, service, armour,
+        bow: guns ? null : h("crossbow") ? "crossbow" : h("composite") ? "composite" : "bow",
+        archers: !farms ? 0.5 : h("crossbow") || h("composite") ? (service === "paid" && h("iron") ? 0.25 : 0.4) : 0.3,
+        chariot: h("chariot") && !h("horses"), horses: h("horses"), stirrup: h("stirrup"),
+        pike: guns && !h("bayonet"), bayonet: h("bayonet"), drill: h("drill") && service === "paid", dig: h("rifling"),
+        cannon, shells, range: shells ? (h("rifling") ? 20 : 8) : cannon ? 4 : 0,
+        grenade: h("explosives") ? 1 / 20 : guns ? 1 / 60 : 0, mines: h("explosives"), sappers: h("explosives"),
+        motor, tanks, aircraft, jets: h("jets"), helicopter: h("helicopter"), guided: h("guided"),
+        radio: h("radio"), telegraph: h("telegraph"), writes,
+        engineDays: !farms && !h("smithing") ? 0 : motor || tanks ? 3 : h("explosives") ? 4 : cannon ? 8 : h("iron") && writes ? 20 : h("bronze") ? 25 : 40,
+        breach: cannon ? "Guns have" : h("steel") || (h("iron") && writes) ? "Engines and miners have" : "The besiegers' ramp and rams have",
+        wallBase: !farms && !h("smithing") ? 0 : h("iron") && writes ? 1.4 : h("bronze") ? 1.2 : 1,
+        season: !(h("rail") || motor),
+        standing: !farms ? 0 : !writes ? 0.04 : service === "feudal" ? 0.005 : 0.01,
+        campaign: !farms ? 0.25 : !writes ? 0.2 : h("rail") ? 0.1 : service === "feudal" ? 0.08 : service === "paid" ? 0.1 : 0.15,
+        mat: h("bronze") || h("iron") ? "iron" : "hide",
+        /* Units sized by how orders travel (van Creveld, *Command in War*): a voice and a standard hold
+           about a hundred and fifty; with writing, drums and riders a company of a hundred; the telegraph
+           a company of sixty under a captain who reads orders; radio a squad of a dozen that moves on its own. */
+        unitCap: h("radio") ? 12 : h("telegraph") ? 60 : writes ? 100 : 150,
+        /* Who leads a unit, from the people's ways (ACOUP on officers; the British sale of commissions,
+           1683–1871): chosen where the people votes, bought where the rich rule, by service and skill in a
+           paid army that keeps records, else birth and wealth. */
+        officers: f.rule === "elected" ? "vote" : f.rule === "rich" && !shared ? "bought" : service === "paid" ? "merit" : "birth",
+      };
+      f.kit = k; f.kitAt = day;
+      if (was && was.arms !== k.arms && t > 0) { const v = villages.find(u => u.alive && u.f === f.id); if (v) note("war", f.name + "'s soldiers now carry " + k.arms.name + ".", 2, v.x, v.y, f.id); }
+      return k;
+    }
+    /* What a wall adds to a place's defence against an attacker (TODO 15.6 step 4): a property of the wall
+       built and of the guns brought against it, never of the era. A high wall stands rams and engines and
+       falls to cannon; the low, thick bastioned wall (the trace italienne, Parker 1976) stands cannon and
+       not exploding shells; against tanks and bombers little does. */
+    function wallWorth(v, byFid) {
+      if (!KIT_ON) return eraWar(factions[v.f]).wallWorth;
+      const base = v.wallBase ?? kitOf(factions[v.f]).wallBase;
+      if (!(byFid >= 0) || !factions[byFid]) return base;
+      const k = kitOf(factions[byFid]), fort = (v.fort || 0) >= 0.5;
+      let w = fort ? Math.max(base, 1.4) : base;
+      if (k.shells) w *= fort ? 0.5 : 0.3; else if (k.cannon) w *= fort ? 1 : 0.57;
+      if (k.tanks || k.aircraft) w *= 0.5;
+      return w;
+    }
+    /* Whether a place faces guns, and so would build to stand them. */
+    function gunsFaced(v) {
+      const f = factions[v.f];
+      if (kitOf(f).cannon) return true;
+      for (const o of factions) if (o !== f && o.alive && f.rel[o.id] && f.rel[o.id].war && kitOf(o).cannon) return true;
+      return false;
+    }
     /* Whether a people has something: what its people know, where know-how is held (15e); else its era's list. */
     function has(fid, k) {
       const f = factions[fid];
+      /* War know-how (TODO 15.6): a people fights with it once one in twenty of them holds it — smiths and soldiers are a small share. */
+      if (k in WI) return KNOW && f.wk ? f.wk[WI[k]] >= Math.max(1, (f.pop || 1) * 0.05) : (ERA_WARS[f.era] || []).includes(k);
       /* A new thing changes a whole people (its arms, its medicine) only once one in ten of them holds it: one man who has heard of the railway does not arm an army. */
       if (KNOW && f.know) { const i = TI_K[k], n = f.know[i]; return BASE_KNOW & (1 << i) ? n > 0 : n >= Math.max(1, (f.pop || 1) * 0.1); }
       return eraHas(fid, k);
@@ -9725,8 +10571,8 @@
          peace). Before, a side at war kept about a quarter of its people under arms all year round. */
       const inSeason = fighting(f);
       f.army = f.yours ? f.yours.army : !wars ? (f.peace ?? S.soldiers)
-             : inSeason ? Math.min(eraWar(f).campaign, clamp((f.peace ?? S.soldiers) * 2.6 + 0.08, 0, 0.6))
-             : Math.max(f.peace ?? S.soldiers, eraWar(f).standing);
+             : inSeason ? Math.min(KIT_ON ? kitOf(f).campaign : eraWar(f).campaign, clamp((f.peace ?? S.soldiers) * 2.6 + 0.08, 0, 0.6))
+             : Math.max(f.peace ?? S.soldiers, KIT_ON ? kitOf(f).standing : eraWar(f).standing);
       /* Stand soldiers down when there are more than are wanted, call some up
          when there are too few. */
       if (f.soldiers > f.army * f.adults * 1.25 + 1) {
@@ -9742,13 +10588,18 @@
            farmers alone stalled short of what its leader asked (4 of 23 wanted 6). Then any other
            trade (TODO 15.5a): once crafters made only to order there were few, and in rule.test's
            world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
-        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && !(SIEGECRAFT && servedOut(p)) && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25)) { p.job = "soldier"; p.task = "idle"; p.wait = 0; need--; } }
+        if (BOOKS) armingUnfree(f, lead, wars);   // TODO 15.5u
+        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && !(SIEGECRAFT && servedOut(p)) && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25) && mayServe(p, f)) {
+          p.job = "soldier"; p.task = "idle"; p.wait = 0; need--;
+          if (BOOKS && p.unfree && f.freeArmed) { const g = f.gov; p.unfree = 0; p.loyal = clamp(p.loyal + 0.3, 0, 1); if (g && g.bound) g.bound = g.bound.filter(id => id !== p.id); count.freedToFight++; }
+        } }
       }
       if (SPOILS) { borrow(f, wars); ransoms(f); mutinyDay(f, wars); }   // TODO 15q: before hiring, so a loan can hire
       if (ARMIES && !shared) hire(f, wars, f.soldiers * WAGE * 7);   // TODO 15h
       if (CAMPAIGN && wars) desertions(f);   // TODO 15j
       if (ARMY_SICK) campSickness(f, wars);   // TODO 15m
       if (SIEGECRAFT && wars) service(f);   // TODO 15p
+      if (KIT_ON) { buyGuns(f, wars); machinesDay(f, wars); }   // TODO 15.6, 15.6c
       /* Money: enough to pay the soldiers, no more than the people will bear.
          A leader who believes in sharing feeds the hungry from the treasury. */
       if (!shared) {
@@ -9809,7 +10660,7 @@
               if (!v.alive || v.f !== o.id || v.id === f.target[o.id]) continue;
               let near = 1e9; for (const u of villages) if (u.alive && u.f === f.id) near = Math.min(near, Math.hypot(u.x - v.x, u.y - v.y));
               if (near > 30) continue;
-              const sc = (v.food + v.pop) / (1 + v.adults * 0.25 * (1 + eraWar(o).wallWorth * v.wall)) / (1 + near * 0.05);
+              const sc = (v.food + v.pop) / (1 + v.adults * 0.25 * (1 + wallWorth(v, f.id) * v.wall)) / (1 + near * 0.05);
               if (sc > bs) { bs = sc; best = v; }
             }
             f.raid[o.id] = { v: best ? best.id : -1, until: t + 5 * DAY_HOURS };
@@ -10004,6 +10855,7 @@
         if (frost > 0 && stock[i] > 0) stock[i] -= stock[i] * frost;
       }
       rebucket();
+      if (UNITS && ARMIES) armiesHour();   // TODO 15.6b
       for (let i = 0; i < people.length; i++) {
         const p = people[i];
         if (p.hp === -99) continue;
@@ -10036,7 +10888,8 @@
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
         if (SMALL_WAR && DYING.size && t % DAY_HOURS === 0) woundDeaths();   // TODO 15r
         if (FAITH && t % DAY_HOURS === 0 && faiths.length) faithDay();   // TODO 15g
-        if (KNOW && t % DAY_HOURS === 0) knowDay();   // TODO 15e
+        if (KNOW && t % DAY_HOURS === 0) { knowDay(); if (WAR_TECH.length) warKnowDay(); }   // TODO 15e; 15.6
+        if (KIT_ON && LEFT.length && t % DAY_HOURS === 0) leftDay();   // TODO 15.6: what lies in the ground
         if (WORKS && t % DAY_HOURS === 0) workDay();   // TODO 15f
         if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
         if (BEASTS && t % (30 * DAY_HOURS) === 0) for (const f of factions) ploughOf(f);   // TODO 15.5o
@@ -10355,10 +11208,17 @@
       campSickness: fid => campSickness(factions[fid], true), campFoulOf: p => ARMY_SICK ? campFoulOf(p) : 0,   // TODO 15m
       routes: () => [...ROUTES].map(([k, r]) => ({ key: k, trips: r.n, last: r.last })), caravanRoute: (pid, vid) => CARAVANS ? caravanRoute(byId.get(pid), villages[vid]) : null,   // TODO 15l
       onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j
-      blowOf: (fid, deadly) => { const arms = WIRED ? armsOf(fid) : ARMS.hand, d = deadly ?? S.deadly; return { chance: Math.min(0.95, 0.25 * d * (SPREAD && arms.spread ? arms.spread * arms.hit / Math.min(arms.hit, BLOW_MAX) : 1)), harm: (SPREAD ? Math.min(arms.hit, BLOW_MAX) : arms.hit) * (0.6 + 0.4 * d), arms: arms.name }; },   // 2026-11-22: armies spread out; the slider
+      /* TODO 15.5u, 15.6, 15.6b, 15.6c: for the tests and the page. */
+      kitOf: fid => KIT_ON ? kitOf(factions[fid]) : null, wallWorth: (vid, by) => wallWorth(villages[vid], by), parole: PAROLE, deserted: DESERTED, mayServe: p => mayServe(p, factions[p.f]),
+      releasePrisoner: (p, why) => releasePrisoner(p, why || "released"), heldOf: () => HELD, loans: () => LOANS, borrow: (fid, wars) => borrow(factions[fid], wars), deserterJudged: (p, harsh) => deserterJudged(factions[p.f], p, !!harsh),
+      blast: (x, y, r, power, fid, kind) => blast(x, y, r, power, fid, kind || "shell", null), left: () => LEFT, leftDay: () => leftDay(), leave: (x, y, r, power, kind, fid) => leave(x, y, r, power, kind, fid),
+      armyOf: fid => ARMY.get(fid) || null, unitOf: p => UNIT_OF.get(p.id) || null, armiesHour: () => armiesHour(), chooseShape: (fid, oid) => { const c = { v: 0 }; chooseShape(factions[fid], factions[oid], c, null); return c.shape; }, SHAPES: SHAPES, shapesUsed: SHAPES_USED, chooseGround: (fid, x, y, ex, ey) => chooseGround(factions[fid], x, y, ex, ey, null), warKit: fid => warKit(factions[fid]),
+      machinesDay: (fid, wars) => machinesDay(factions[fid], wars), blowBridge: vid => blowBridge(villages[vid], -1),
+      units: () => { const out = []; for (const a of ARMY.values()) if (a.engaged) for (const u of a.units) { if (u.broken) continue; const sh = SHAPES[u.shape], l = byId.get(u.lead); out.push({ f: u.f, x: u.sx, y: u.sy, face: u.face, w: u.files * sh.sp * METRE, d: Math.max(1, Math.ceil(u.size / u.files)) * Math.max(1.5, sh.sp) * METRE, role: u.role, shape: u.shape, lead: l ? [l.x, l.y] : null }); } return out; },
+      blowOf: (fid, deadly) => { const arms = KIT_ON ? kitOf(factions[fid]).arms : WIRED ? armsOf(fid) : ARMS.hand, d = deadly ?? S.deadly; return { chance: Math.min(0.95, 0.25 * d * (SPREAD && arms.spread ? arms.spread * arms.hit / Math.min(arms.hit, BLOW_MAX) : 1)), harm: (SPREAD ? Math.min(arms.hit, BLOW_MAX) : arms.hit) * (0.6 + 0.4 * d), arms: arms.name }; },   // 2026-11-22: armies spread out; the slider
       meeting: (fid, oid) => { const f = factions[fid], o = factions[oid], c = f.camp[oid]; let all = 0; for (const p of people) if (p.f === fid && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0) all++; return MEETING && meeting(f, o, c, byId.get(f.leader), all, all); },   // armies that meet
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
-      TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) knowDay(); }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { p.know = (p.know || 0) | (1 << TI_K[k]); },   // TODO 15e
+      TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) { knowDay(); if (WAR_TECH.length) warKnowDay(); } }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { if (k in WI) WK.set(p.id, warOf(p) | (1 << WI[k])); else p.know = (p.know || 0) | (1 << TI_K[k]); }, WAR_TECH: WAR_TECH.map(x => x.key), warKnowDay: () => { if (KNOW && WAR_TECH.length) warKnowDay(); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },
       wedWealth: wedWealth, wouldWed: wouldWed, marriageDay: fid => { const f = factions[fid], l = byId.get(f.leader); if (MARRY && l) marriageDay(f, l); return f.match; }, worth: worth,   // TODO 15b
       faithOf: id => { const fa = faiths[id]; return fa ? { name: faithName(fa), rite: fa.rite, rule: fa.rule, holyWar: fa.holyWar, mode: fa.mode, every: fa.every, holders: fa.holders } : null; },

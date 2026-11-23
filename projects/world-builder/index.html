@@ -353,6 +353,7 @@
     <span class="seg" id="speeds" role="group" aria-label="Speed"></span>
     <span class="cap" aria-hidden="true">Colour</span>
     <span class="seg" id="views" role="group" aria-label="Colour by"></span>
+    <button class="btn" id="units" aria-pressed="false" title="Draw each army's units, their facing and their officers, when zoomed in" hidden>Units</button>
     <button class="btn" id="fit">Whole world</button>
     <button class="btn" id="again">Start again</button>
     <button class="btn" id="share">Copy link</button>
@@ -728,6 +729,8 @@
   const canvas = $("view"), ctx = canvas.getContext("2d");
   let world = null, raf = 0, paused = false, rate = 1, last = 0, lag = 0, reached = 0, readAt = 0;
   let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, follow = false, tab = "", paneAt = 0;
+  /* TODO 15.6b (Ric, 2026-11-23: "for drawing it on the page its a yes but make it a toggle"): armies' units, when zoomed in. */
+  let showUnits = false;
   let land = null;
   let populationPage = 0, populationScroll = 0, selectedExchange = null, talkScroll = 0;
   /* The People world is not on this page (TODO item 3, 2026-11-15). It lives
@@ -954,6 +957,8 @@
   }
 
   function buildBar() {
+    $("units").hidden = mode !== "people";
+    $("units").setAttribute("aria-pressed", String(showUnits));
     const sp = $("speeds"); sp.textContent = "";
     const list = mode === "physics" ? [0.25, 0.5, 1, 2, 4] : [0.5, 1, 2, 4, 8, 16, 50, 100, 250, 1000];
     if (list.indexOf(rate) < 0) list.push(rate);
@@ -1064,6 +1069,7 @@
     $("key-shut").textContent = packed ? "?" : "×";
   });
   $("fit").addEventListener("click", fit);
+  $("units").addEventListener("click", () => { showUnits = !showUnits; $("units").setAttribute("aria-pressed", String(showUnits)); });
   if (window.ResizeObserver) {
     let first = true;
     new ResizeObserver(() => {
@@ -1209,7 +1215,7 @@
     if (!asked && now - askedAt >= askGap) {
       asked = true; askedAt = now;
       const big = world.cols * 8 > 4096;
-      keeper.send({ t: "frame", cam: { x: cam.x, y: cam.y, s: cam.s, w: r.width, h: r.height }, view: viewMode,
+      keeper.send({ t: "frame", cam: { x: cam.x, y: cam.y, s: cam.s, w: r.width, h: r.height }, view: viewMode, units: showUnits,
                     picked: picked && picked.person ? picked.person : 0, follow: follow,
                     pair: tab === "talk" && selectedExchange ? [selectedExchange.a, selectedExchange.b] : null,
                     /* The fields: every few steps and at most five times a second; a big land,
@@ -2129,6 +2135,20 @@
       ctx.fillStyle = m[1]; ctx.fillText(m[0], x, y - r - 3);
     }
     ctx.globalAlpha = 1;
+    /* Units (TODO 15.6b), with the toggle on and zoomed in: each unit's outline in its people's colour,
+       a tick for the way it faces, and a small diamond on its officer. A reserve is dashed. */
+    if (showUnits && f.units && s >= 6) {
+      for (const u of f.units) {
+        const x = ox + u.x * s, y = oy + u.y * s, hw = Math.max(3, u.w * s / 2), hd = Math.max(2, u.d * s);
+        if (x < -hw - 40 || y < -hw - 40 || x > W + hw + 40 || y > H + hw + 40) continue;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(u.face);
+        ctx.strokeStyle = factionColour(u.f); ctx.lineWidth = 1.5; ctx.setLineDash(u.role === "reserve" ? [4, 3] : []);
+        ctx.strokeRect(-hd, -hw, hd, hw * 2);   // forward is +x: the front rank on the line through the station
+        ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.max(6, hd * 0.6), 0); ctx.stroke();
+        ctx.restore();
+        if (u.lead) { const lx = ox + u.lead[0] * s, ly = oy + u.lead[1] * s; ctx.fillStyle = "#e3e9e6"; ctx.beginPath(); ctx.moveTo(lx, ly - 4); ctx.lineTo(lx + 3, ly); ctx.lineTo(lx, ly + 4); ctx.lineTo(lx - 3, ly); ctx.closePath(); ctx.fill(); }
+      }
+    }
     /* Job and what they are doing, beside whoever is picked and, close in,
        the first dozen in view. The keeper chose who; the page finds room. */
     const used = [];

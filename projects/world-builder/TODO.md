@@ -3344,7 +3344,7 @@ and between villages, thefts by honesty and hunger, and days from widowhood to a
 - **[x] 15.5i4 Water.** *Done 2026-11-22.* Setting "Fishing boats and road bridges" (off = the 15.5i3 world, fingerprinted). Found: unwadeable rivers are only on 100 km lands and few, and boats were wanted only to cross water one could not walk round or for grain, which never happened. Now a village whose people fish (thirty trips) builds a boat and fishes a third more from it; a built road bridges streams. Measured: 4 to 6 boats a world-year, 2 road bridges; still no grain by boat. `test/waterwork.test.mjs`; README, "Fishing boats and road bridges". Left: goods by sea, boats lost fishing.
 - **[x] 15.5i5 Armies that meet.** *Done 2026-11-22.* Ric: "do the peoplle at war just run past each other to go to the cities?" (they did: enemies noticed only within 750 m, nothing sent to meet an army or relieve a place); "Yes, add both". Setting "Armies meet" (off = the 15.5i4 world, fingerprinted). An army relieves a place of its own with enemies at it, and meets an enemy army seen within 5 km (10 with horsemen) when the numbers suit its ruler's nerve. First built it met every army seen and relieved every place with enemies at its edge: 32 to 56 battle dead a year among 600 (5 to 9%, against about 0.5% for the most warlike societies on record). Ric: "is that more realistic?", then "Yes, tune it": relief only of a real siege with clearly good odds; an army met only when coming for one of our places; and 15r's dying of wounds only for severe wounds (it was most of the battle dead). After: battle dead 3, 5 and 13 a year (0.5 to 2%); armies met 0 to 6 times, kept clear of 7 to 72 sightings; sieges relieved up to 8 times. `test/meeting.test.mjs`; README, "Armies that meet".
 - **[x] 15.5i6 Armies spread out, and the slider.** *Done 2026-11-22.* Ric: "and this changes per era correct? and there is a slider to make them more dangerous"; "Yes, fix both". Modern war killed 9% of a people a year and the slider did nothing above 1. Now blows land less often with guns (muskets 70%, rifles 35%, machine guns 20%; Dupuy's dispersion) and no blow is harder than one and a half swords'; the slider makes blows harder and severe wounds deadlier too. Setting "Armies spread out" (default world unchanged). Measured, three worlds an era: 2.0% (early) rising to 3.3% (medieval) and 4.3% (modern) of the people dead in battle a year; slider 0.3/1/3: 4/25/40. `test/dispersion.test.mjs`; README, "Armies spread out, and the deadliness slider".
-- [ ] **15.5i7 War deaths still high.** Even tuned, three old enemies at war all year lose 2 to 4% of their people a year in battle against about 0.5 to 1% for the most warlike societies on record. Look at how often armies clash and soldiers are knocked out (160 to 350 a year among about 60 soldiers), not at the weapons. Ric decides whether it matters. Looked at again in item 15.6 (step 5).
+- [x] **15.5i7 War deaths still high.** *Measured again 2026-11-23 with 15.6 and 15.6b* (`test/wardead.mjs`, a year of old enemies, 600 people, seeds 1–3, battle dead a year): before 1.7% early, 3.3% medieval, 7.3% industrial, 4.1% modern; after 2.8%, 4.9%, 6.4%, 3.4%. Hours armies spend in contact fell from up to 7,900 a year (first build) to 23–1,300, and battles now end in a day. But deaths hardly moved, because **most of them are not in battles**: of soldiers knocked out in a year, only 9–24% fell in a unit's line; the rest fell in raids (about 100–130 raiding bands a year in these worlds) and fights at villages, and most of the dead die later of wounds (20 of 35 in the medieval world). So the answer is not where soldiers stand; it is how often a people raids. That is item 15.6d. Not tuned. Even tuned, three old enemies at war all year lose 2 to 4% of their people a year in battle against about 0.5 to 1% for the most warlike societies on record. Look at how often armies clash and soldiers are knocked out (160 to 350 a year among about 60 soldiers), not at the weapons. Ric decides whether it matters. Looked at again in item 15.6 (step 5).
 
 **[x] 15.5j. Speed.** *Measured 2026-11-22* (speed log): 20,000 people on 80 km 10.8 → 11.7–12.9 s a day (28× → 23–26×), 5,000 on 40 km 1.71 → 2.06–2.17 s, against 15.5r, old and new alternated; nothing found that 15.25 does not cover, so no pass added. 20,000 people on 80 km ran at 52× after 2b and about 19× by item 13, a little
 lost with each item; the row has not been run since item 13, and the M1 rows for item 2 on were
@@ -3871,7 +3871,9 @@ the house) → d (clearing, wear, fallow by choice, manure, shifting cultivation
 → p (irrigation) → q (climate over centuries) → s (sleep) → f (household firewood) → g (news of plenty) → c (2 km²,
 finer land, the edge as an option) → j, then i after 15. l comes before k because k's mothers need it.
 
-### [ ] 15.5u. Bugs found by an outside check (2026-11-23)
+### [x] 15.5u. Bugs found by an outside check (2026-11-23)
+
+**Done 2026-11-23** (Ric: "working on 15.5 and 15.6 i want them done all the way then the big tests after"). Setting "Parole, deserters and the books" ("As before" = the world before, fingerprinted): `v.spare` is food and `v.spareCoins` coins; parole kept in `PAROLE` until that war ends; a default pays what is left to the lenders by what each was owed (no coin leaves the world); deserters and the unfree as the leader decides (5 and 6 below). `test/warbooks.test.mjs`; README, "Parole, deserters and the books". The default world changes from its second month (the spare fix moves what a workplace is paid).
 
 **Ric (2026-11-23):** "there are a few bugs that need to be added in", pasting an outside review.
 Each was read in `people.js` the same day and is real; none is fixed yet. Do this before 15.6:
@@ -3939,7 +3941,9 @@ they are small, and 15.6 measures war, which two of them change.
 before and after, and what moved is said; README updated where it describes them.
 **Budget:** default.
 
-### [ ] 15.6. War by what a people knows: weapons, technology and ways of fighting
+### [x] 15.6. War by what a people knows: weapons, technology and ways of fighting
+
+**Done 2026-11-23.** Setting "What war follows" ("By era label (as before)" = the world before in every era; a default world is the same either way, fingerprinted). Eighteen war techniques (`WAR_TECH`, kept beside the people in `WK` because the first list's 32 bits were full), found mostly by smiths and soldiers; one kit a day per people (`kitOf`) read everywhere war read the era; armour weighed against the enemy's weapons; service from government and treasury; walls whose worth is the wall's and the guns', and low, thick walls against cannon; ways of fighting as the general's choice of unit shape (15.6b); blasts: grenades, guns, mines, blown bridges, shells and mines left in the ground. `test/warknow.test.mjs`; README, "War by what a people knows" and "Blasts". Step 5 (15.5i7) measured: see there and 15.6d.
 
 **Ric (2026-11-23):** "the weapons and how people fite and the stategies. those need looked at no?
 all by era. and the technology and era need to be coorilated and technology and weaponry should be
@@ -4123,7 +4127,9 @@ Stormtroops stayed few because they took long training — again drill as well a
 **Not found:** Dupuy's full TLI and dispersion tables by period (need the 1964 report or the book);
 how fast a weapon spread to a neighbour, in years (Andrade's chapters would have it).
 
-### [ ] 15.6b. Where soldiers stand: ground, formation, flanks and reserves
+### [x] 15.6b. Where soldiers stand: ground, formation, flanks and reserves
+
+**Done 2026-11-23.** Setting "Where soldiers stand" ("Every soldier for the nearest enemy (as before)" = the world before, fingerprinted). Units sized by how orders travel, each with a real officer chosen as the people choose; a shape each soldier holds to the metre; only the striking ranks strike; horse on the wings and round the flank, a reserve; ground chosen by the general; flank and rear blows; cohesion; units that withdraw in order or break; the attacker drawing off at night; a battle that ends in a day. The page draws units behind a **Units** toggle. `test/formations.test.mjs`; README, "Where soldiers stand". Left: the watcher drawing an army up by hand (Ric: "not yet"). 15.5i7 measured again: see there.
 
 **Ric (2026-11-23):** "what abuout actual. strategicplacement of the people?" Then "Yes, add 15.6b".
 After 15.6, because a formation follows from what an army carries.
@@ -4294,7 +4300,17 @@ lowest penalty ([Ilachinski, *Artificial War*](https://www.globalspec.com/refere
 **Not found:** QJM's terrain and posture numbers; casualty shares in the fight against the rout with
 numbers (Krentz's appendix); how long drill took to learn.
 
-### [ ] 15.6c. Tanks and aircraft
+### [x] 15.6c. Tanks and aircraft
+
+**Ric (2026-11-23):** aircraft "Scout, bomb and carry"; past the Second World War, "Go past WWII".
+**Done 2026-11-23**, part of "What war follows": tanks and aircraft built at a works with power when they pay (war orders count as work for a works), fuelled from the store, lost; tanks with the line's units; aircraft scout, carry rations and soldiers, and bomb an army, a bridge, a store or a town; jets, helicopters and guided weapons after them. `test/machines.test.mjs`; README, "Tanks and aircraft" (sources: the Butt Report, Bomber Command's loss rates, the tanks at Flers). Left: missiles as their own weapon, aircraft fighting each other in the air (a loss rate stands in).
+
+### [ ] 15.6d. Raiding kills most soldiers
+
+Found measuring 15.5i7 (2026-11-23): of soldiers knocked out in a year of old enemies, only 9–24% fell in field battles; the rest in raids (about 100–130 raiding bands a year in a 600-person world of three peoples) and fights at villages, and most of the dead die later of wounds. War dead stay at 3–6% of a people a year against about 0.5–1% for the most warlike societies on record.
+**Ric decides:** whether this matters, and if so whether to look first at how often a people sends raiders, at how a raid's fight goes (raiders and villagers chasing each other, the old way), or at how many of the wounded die.
+**Research first:** how often raids came and how many they killed (Keeley; the Border reivers; Plains warfare), and the share of war dead that were raiding against battle.
+**Budget:** default.
 
 **Ric (2026-11-23):** split off 15.6 on its first question ("the other 8 are your recomendation"),
 so 15.6 can be finished whole. After 15.6 and 15.6b.

@@ -9,12 +9,12 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false };   // the parts built after this one, off: this part as it was built
+const LATER = { armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest" };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 322919713;   // print() of 15j's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false });
+  const w = People.create({ seed: 2, caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15l");
 }
@@ -35,7 +35,7 @@ const FINGERPRINT = 322919713;   // print() of 15j's engine, seed 2, 60 days
   const e = People.create({ ...LATER, seed: 5, map: 60, villages: 8, people: 1500, factions: 2 });
   e.step(24 * 20);
   assert.equal(e.stats().caravans, 0, "no caravans among early farmers");
-  const w = People.create({ ...LATER, seed: 5, map: 60, villages: 8, people: 1500, factions: 2, caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false });
+  const w = People.create({ ...LATER, seed: 5, map: 60, villages: 8, people: 1500, factions: 2, caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest" });
   w.step(24 * 10);
   assert.equal(w.stats().caravans, 0, "no caravans when off");
 }
