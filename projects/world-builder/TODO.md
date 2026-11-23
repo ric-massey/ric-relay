@@ -4086,7 +4086,9 @@ keep the cost down. Write it under **Research notes** below, with links.
 - How finely: one shape per army (cheap), or smaller units each with a shape of their own
   (companies, wings) — which costs more but gives flanks and reserves something to be.
 - Whether the old behaviour stays as a setting ("Every soldier for the nearest enemy (as before)").
-- Whether the page draws the line, the facing and the reserve when zoomed in.
+- Whether the page draws the line, the facing and the reserve when zoomed in. **Answered
+  2026-11-23, Ric: "for drawing it on the page its a yes but make it a toggle."** Drawn when zoomed
+  in (unit outlines, facing, a mark on each unit's leader), behind a toggle on the page.
 
 **Done when:** soldiers hold places in a shape instead of chasing; a general uses the real ground
 and it shows in who wins; flanks, rear and reserves change battles; each period's way of standing
