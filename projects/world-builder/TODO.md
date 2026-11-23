@@ -3949,6 +3949,68 @@ is unchanged; battle dead a year by era are measured and set against the record 
 
 Research notes: (none yet)
 
+### [ ] 15.6b. Where soldiers stand: ground, formation, flanks and reserves
+
+**Ric (2026-11-23):** "what abuout actual. strategicplacement of the people?" Then "Yes, add 15.6b".
+After 15.6, because a formation follows from what an army carries.
+
+**Now** (read from `people.js` on 2026-11-23, not run). Nobody is placed. In a fight each soldier
+looks for the nearest enemy within 3 squares (`foeNear(p, 3)`) and walks straight at them, striking
+when in reach; there is no line, flank, reserve or held position. On the march each soldier heads
+for the target village give or take a square, so an army is a cloud, not a column. The only placed
+thing is the ambush: soldiers wait within a square of a point two-thirds of the way along the
+enemy's road. The land plays no part in a fight — the map has height in metres, forest, rivers and
+fords, and none of it changes a blow. An army holds together only by `rout()`: it breaks when its
+losses pass a share set by its morale.
+This is the likeliest cause of most of 15.5i7: with everybody running at the nearest enemy,
+contact never stops, where real armies spent most of their time apart and most of the dead fell in
+a rout.
+
+**Do:**
+1. **The general chooses the ground.** Reading the real map near the enemy's line of march: high
+   ground, a river line or a ford to hold, a pass, a wood for cover or concealment, open ground for
+   horse. Weighed by the general's nature and skill and by what is known of the enemy (`scout`), as
+   the plans are. A defender may stand and wait on good ground rather than walk out to meet.
+2. **An army takes a shape, and each soldier holds a place in it.** The army works out its shape
+   once (a front, a facing, depth, spacing) and hands each soldier an offset to hold, rather than
+   each soldier chasing the nearest enemy. The shape follows from the weapons and know-how 15.6
+   gives (close order with shields and spears, archers behind a line, pike guarding shot, a thin
+   firing line, spread out and dug in with rifles and machine guns), never from the era's name.
+3. **Flanks, rear and reserve.** Horsemen on the wings where a people has them; a reserve held back
+   and sent where the line bends; a blow from the side or rear lands harder and shakes morale
+   faster. Ground covers a flank (a river, a wood, a steep slope).
+4. **Cohesion.** A formation that holds fights better than a crowd; losing its shape (crossing a
+   river or a wood, a charge, heavy losses) brings it nearer to breaking. The rout stays where most
+   of the dead fall.
+5. **The land in a blow.** Height, cover and crossing water change the chance to land a blow and to
+   be hit, for shooting more than for hand weapons.
+6. **Measure 15.5i7 again** after it: battle dead a year by era, how often armies are in contact,
+   how many of the dead fell in a rout. Say how far it moved.
+
+**Research first:** how armies were drawn up and how far apart they stood in each period (Greek and
+Roman lines, the shield wall, medieval battles, pike and shot, linear tactics, skirmish order,
+trench and modern dispersal); the worth of high ground, rivers and cover in real battles and in
+wargame rules; flanking and reserves (Lanchester, Dupuy's QJM factors for terrain and posture);
+ACOUP and Sabin (*Lost Battles*) on how battles were actually decided and lost; how strategy games
+and agent-based combat models (e.g. Total War's formations, ISAAC/EINSTein, MANA) place units and
+keep the cost down. Write it under **Research notes** below, with links.
+
+**Ric decides** (with a recommendation each, asked all at once once the research is done):
+- Whether the watcher can draw an army up by hand when ruling a faction (Factions tab), or only the
+  general does it.
+- How finely: one shape per army (cheap), or smaller units each with a shape of their own
+  (companies, wings) — which costs more but gives flanks and reserves something to be.
+- Whether the old behaviour stays as a setting ("Every soldier for the nearest enemy (as before)").
+- Whether the page draws the line, the facing and the reserve when zoomed in.
+
+**Done when:** soldiers hold places in a shape instead of chasing; a general uses the real ground
+and it shows in who wins; flanks, rear and reserves change battles; each period's way of standing
+comes from its weapons; a default world with the setting off is unchanged; 15.5i7 is measured again
+and set against the record; a 20,000-person world at war is within the speed budget.
+**Budget:** default.
+
+Research notes: (none yet)
+
 ### [ ] 16. Ruins and scavenging
 
 **Now:** a dead village leaves nothing.
