@@ -3891,11 +3891,35 @@ they are small, and 15.6 measures war, which two of them change.
 3. **Coins vanish when a people defaults on its war loans.** `borrow()` (about line 3595) says "what
    was left went to the most pressing lenders" but sets `f.treasury = 0` and credits nobody. Fix:
    share what is left among the lenders by what each is owed (as `payLenders` does), then clear the
-   books. A test that forces a default and checks every coin is still somewhere.
+   books. A test that forces a default and checks every coin is still somewhere. **Seen in ordinary
+   play too** (the scan below): "Too many people", seed 4, lost 115 coins on day 233 and 2 on day
+   352, both on days a people defaulted — so it is not only a forced case.
 4. **War rules tied to the starting era** — the review's own third finding, which it called a
    possible design choice. It is real (read the same day: bows, armour, chariots, service, siege
    engines, walls and the season read the era label) and is the whole of item 15.6, so it is not
    repeated here.
+
+**A scan for more of the same** (2026-11-23, Ric: "scan for similar bugs please"), three kinds:
+- *One field, two meanings* — a script listing every village, people, person and house field set
+  with `=` in more than one function (90 fields), each read through. Only `spare` (1) is a real
+  clash; the rest set the same meaning from different places (a person's `loyal`, `say`, `cargo`)
+  or are on different things with the same name (a house's `cold` and a village's `cold`).
+- *Coins that vanish or appear* — every place a purse, till, treasury or store is set to nothing
+  read (death and inheritance, leaving over the edge, a people falling, a breakaway, a village
+  moving: all hand what they hold on, or take it out of `minted` on purpose); and the books checked
+  every day for a year in eight worlds (default, "Two old enemies" twice, "Chiefs and soldiers",
+  "Too many people", the edge open, Modern with eras moving on, Medieval). Seven held to the coin;
+  the eighth lost coins only on default days (3).
+- *A rule nothing remembers* — every way into the army read against who it should not take:
+  5. **A deserter can be mustered again the next day.** `desertions()` sends them home to farm and
+     nothing marks them, so the muster (about line 9745) takes them back. README ("Soldiers on
+     campaign") leaves out "deserters caught and punished". **Ric decides:** may a deserter be
+     levied again in the same war (some armies did take them back), or are they kept out like the
+     paroled (2), or punished where the law is harsh?
+  6. **The muster takes people held unfree; hiring does not.** `hire()` skips `p.unfree`, the
+     muster does not, and nothing else says which is meant. Most societies kept the unfree out of
+     the levy (some armed them in a crisis). **Ric decides:** keep them out (recommended, as hiring
+     does), or let a ruler arm them when the army is short.
 
 **Done when:** each of 1–3 has a test that failed before and passes after; a default year measured
 before and after, and what moved is said; README updated where it describes them.
