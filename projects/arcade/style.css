@@ -424,3 +424,9 @@ body[data-look="terminal"] #options-toggle::before{content:'[ '}body[data-look="
   body .game-actions.has-options:not(.open) :is(#new-game,#save-game){padding-left:7px!important;padding-right:7px!important}
 }
 
+
+/* Sudoku, 2026-11-22 (Ric: "The sudoku boxes are messed up"): a square's notes fill it as
+   a 3 × 3 grid (1 top-left … 9 bottom-right) instead of shrinking into a thin column,
+   and every style uses lining numerals so 1, 2 and 9 sit level with the others. */
+.board.sudoku .square .notes-grid{position:absolute;inset:6%;font-size:clamp(9px,1.45vw,14px);line-height:1;width:auto;height:auto;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center;pointer-events:none}
+.board.sudoku .square{font-variant-numeric:lining-nums tabular-nums}

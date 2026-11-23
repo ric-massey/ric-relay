@@ -90,7 +90,10 @@ dialog :is(button,input){background:var(--btn,#fff);color:var(--btn-ink,var(--in
   .sd-tray{width:min(100%,520px)}
   .sd-tray .numpad{grid-template-columns:repeat(9,1fr);gap:4px;padding:6px}
   .sd-tray .numpad button{min-height:48px;font-size:20px}
-  .sd-tools .tools{grid-template-columns:repeat(3,1fr)}
+  .sd-tools .tools{grid-template-columns:repeat(3,minmax(0,1fr))}
+  /* Long labels wrap inside their button rather than pushing the row off the screen (2026-11-22, the Highlights switch made a fifth helper). */
+  .sd-tools .tools button{white-space:normal;line-height:1.15}
+  body[data-look="terminal"] .sd-tools .tools{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sd-head{grid-template-columns:1fr 1fr;margin-bottom:10px;padding-bottom:6px;gap:2px 12px}.sd-head h1{grid-column:1/-1;order:-1;font-size:22px}.sd-no{font-size:20px}.sd-page{padding-top:10px}
   .sd-records{grid-template-columns:1fr}
   .sd-page{width:100%;margin:0 0 30px;border-radius:0}
@@ -238,6 +241,10 @@ body[data-look="terminal"] .sudoku-ascii .cell.chosen{background:#8dffa6;color:#
 body[data-look="terminal"] .sudoku-ascii .cell:is(.conflict,.wrong){color:#ff6b6b;background:#ff6b6b26}
 body[data-look="terminal"] .sudoku-ascii .cell:focus-visible{outline:1px solid #8dffa6}
 body[data-look="terminal"] .sudoku-ascii.brushing .cell.empty:hover{background:#0f2a16}
+/* With notes on the grid every square is 3 x 3 characters (2026-11-22), so the text is set smaller to fit the screen. */
+body[data-look="terminal"] .sudoku-ascii.with-notes{font-size:clamp(8px,min(2.95vw,1.75vh),17px);line-height:1.02}
+body[data-look="terminal"] .sudoku-ascii .cell.noted{color:#7fe596}
+body[data-look="terminal"] .sudoku-ascii .cell.noted.chosen{color:#021004}
 body[data-look="terminal"] .ascii-notes{margin:6px 0 0;font:13px var(--term-font);color:#8dffa6}
 body[data-look="terminal"] .sudoku .square.empty:not(:has(.notes-grid))::before{content:'.';color:#2f7a42}
 body[data-look="terminal"] .sd-head h1::before{content:'$ ./';color:#4fae66}

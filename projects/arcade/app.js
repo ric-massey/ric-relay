@@ -1157,7 +1157,11 @@
   // ---- Sudoku --------------------------------------------------------------
   const peersOf=i=>{const r=Math.floor(i/9),c=i%9,out=[];for(let j=0;j<81;j++){const rr=Math.floor(j/9),cc=j%9;if(j!==i&&(rr===r||cc===c||(Math.floor(rr/3)===Math.floor(r/3)&&Math.floor(cc/3)===Math.floor(c/3))))out.push(j);}return out;};
   function renderSudoku(){
-    const b=grid(9,'sudoku'+(brush?' brushing':'')),sameN=brush||(selected!==null?s.b[selected]:0),peers=selected!==null&&!brush?new Set(peersOf(selected)):new Set();
+    /* Highlights (the chosen square's row, column and box, and every square with the
+       same number) are off unless turned on (Ric, 2026-11-22: "a setting for turning
+       off the highlights. Actually that should be normal."). The chosen square, the
+       held number on the pad, conflicts and Show mistakes are not highlights. */
+    const lit=!!opts.highlights,b=grid(9,'sudoku'+(brush?' brushing':'')+(lit?' lit':'')),sameN=lit?(brush||(selected!==null?s.b[selected]:0)):0,peers=lit&&selected!==null&&!brush?new Set(peersOf(selected)):new Set();
     puzzleHeader();
     s.b.forEach((n,i)=>{
       const r=Math.floor(i/9),c=i%9,conflict=n&&!E.Sudoku.candidates(s.b.map((v,j)=>j===i?0:v),i).includes(n),wrong=opts.mistakes&&n&&!s.given[i]&&n!==s.answer[i];
@@ -1171,20 +1175,7 @@
        the numbers. Like the ascii"), +-------+ rules and | walls, each square a
        3-character button so the highlights still work; a square's notes are
        listed under the board. */
-    if(look()==='terminal'){
-      const pre=el('pre','ascii-board sudoku-ascii'+(brush?' brushing':''));pre.setAttribute('role','grid');pre.setAttribute('aria-label','Sudoku grid');
-      const cells=[...b.children],rule='   +---------+---------+---------+\n';
-      pre.append('     1  2  3    4  5  6    7  8  9\n',rule);
-      for(let r=0;r<9;r++){
-        pre.append(` ${'ABCDEFGHJ'[r]} |`);
-        for(let c=0;c<9;c++){const i=r*9+c,sq=cells[i],n=s.b[i];sq.replaceChildren(` ${n||(notes[i]?.length?'·':'.')} `);sq.classList.add('cell');pre.append(sq);if(c===2||c===5)pre.append('|');}
-        pre.append('|\n');if(r===2||r===5)pre.append(rule);
-      }
-      pre.append(rule);
-      const out=[pre];
-      if(selected!==null&&!s.b[selected]&&notes[selected]?.length)out.push(el('p','ascii-notes',`notes ${'ABCDEFGHJ'[Math.floor(selected/9)]}${selected%9+1}: ${notes[selected].slice().sort().join(' ')}`));
-      stage.replaceChildren(...out);
-    }
+    if(look()==='terminal')asciiSudoku(b);
     const count=Array(10).fill(0);for(const n of s.b)count[n]++;
     const pad=el('div','numpad');for(let n=1;n<=9;n++){const k=button('',()=>sudokuPad(n),(count[n]>=9?'done':'')+(brush===n?' held':''));k.setAttribute('aria-pressed',brush===n);k.append(el('span',null,String(n)),el('small',null,count[n]>=9?'✓':String(9-count[n])));k.setAttribute('aria-label',`${n}, ${Math.max(0,9-count[n])} left`);pad.append(k);}
     // A page with a tray (#pad-slot) keeps the pad beside the grid.
@@ -1195,12 +1186,55 @@
       button('✎ Notes '+(notesMode?'on':'off'),()=>{notesMode=!notesMode;renderSudoku();},notesMode?'on':'')
     ],[
       button('Fill notes',()=>{if(finished)return;sudokuHistory();for(let i=0;i<81;i++)if(!s.b[i])notes[i]=E.Sudoku.candidates(s.b,i);renderSudoku();}),
+      button(lit?'Highlights: on':'Highlights: off',()=>{opts.highlights=!opts.highlights;saveOpts();renderSudoku();},lit?'on':''),
       button(opts.mistakes?'Mistakes: shown':'Show mistakes',()=>{opts.mistakes=!opts.mistakes;saveOpts();if(opts.mistakes&&!finished)eligible=false;renderSudoku();},opts.mistakes?'on':''),
       button('Reveal square',()=>{if(selected===null||s.given[selected]||finished){hint('Select an editable square first.');return;}sudokuHistory();eligible=false;s.b[selected]=s.answer[selected];delete notes[selected];beginClock();renderSudoku();sudokuFinish();}),
       button(opts.showTimer?'Hide timer':'Show timer',()=>{opts.showTimer=!opts.showTimer;saveOpts();updateMetric();renderSudoku();})
     ]);
     status(s.b.filter(Boolean).length+'/81 filled'+(!eligible?' · helped':''));
     hint(brush?`Placing ${brush}s: tap each square it goes in. Tap ${brush} again to stop.`:selected===null?'Tap a square then a number, or pick a number first and tap every square it goes in.':'Now a number (N for notes, Backspace to erase). Tap the square again to let go of it.');moved=new Set();persist();
+  }
+  /* Terminal: the grid drawn in ASCII (Ric, 2026-11-21: "a style for sudoku that is
+     the numbers. Like the ascii"), +---+ rules and | walls, each square a button so
+     the highlights still work. Once any square has notes, every square grows to 3 × 3
+     characters and its notes sit in it the way a pencil would put them, 1 top-left to
+     9 bottom-right (Ric, 2026-11-22: "show all your notes … not just the box you click
+     in"); until then the grid stays compact. */
+  function asciiSudoku(b){
+    const pre=el('pre','ascii-board sudoku-ascii'+(brush?' brushing':''));pre.setAttribute('role','grid');pre.setAttribute('aria-label','Sudoku grid');
+    const cells=[...b.children],rows='ABCDEFGHJ',hasNotes=s.b.some((n,i)=>!n&&notes[i]?.length);
+    if(!hasNotes){
+      const rule='   +---------+---------+---------+\n';
+      pre.append('     1  2  3    4  5  6    7  8  9\n',rule);
+      for(let r=0;r<9;r++){
+        pre.append(` ${rows[r]} |`);
+        for(let c=0;c<9;c++){const i=r*9+c,sq=cells[i],n=s.b[i];sq.replaceChildren(` ${n||'.'} `);sq.classList.add('cell');pre.append(sq);if(c===2||c===5)pre.append('|');}
+        pre.append('|\n');if(r===2||r===5)pre.append(rule);
+      }
+      pre.append(rule);
+    }else{
+      pre.classList.add('with-notes');
+      const box='-------------',rule='   +'+box+'+'+box+'+'+box+'+\n',blank='   |'+' '.repeat(13)+'|'+' '.repeat(13)+'|'+' '.repeat(13)+'|\n';
+      // Column numbers sit over the middle of each 3-character square.
+      const head=Array(43).fill(' ');[6,10,14,20,24,28,34,38,42].forEach((p,k)=>{head[p]=String(k+1);});pre.append(head.join('')+'\n',rule);
+      for(let r=0;r<9;r++){
+        for(let line=0;line<3;line++){
+          pre.append(line===1?` ${rows[r]} |`:'   |');
+          for(let c=0;c<9;c++){
+            const i=r*9+c,n=s.b[i],marks=notes[i]||[];
+            const text=n?(line===1?` ${n} `:'   '):marks.length?[1,2,3].map(k=>marks.includes(line*3+k)?String(line*3+k):'.').join(''):(line===1?' . ':'   ');
+            // The middle line is the square's button; the lines above and below answer taps too.
+            const part=line===1?cells[i]:el('span',cells[i].className);
+            part.replaceChildren(text);part.classList.add('cell','line'+line);if(!n&&marks.length)part.classList.add('noted');if(line!==1)part.onclick=()=>sudokuTap(i);
+            pre.append(' ',part);if(c%3===2)pre.append(' |');
+          }
+          pre.append('\n');
+        }
+        if(r===2||r===5)pre.append(rule);else if(r<8)pre.append(blank);
+      }
+      pre.append(rule);
+    }
+    stage.replaceChildren(pre);
   }
   /* Both ways in (Ric, 2026-11-21: "Both ways"): with a square chosen, a number
      goes into it; with none chosen, the number is held and every square you tap
@@ -1643,7 +1677,7 @@
     blockColors=['',...['#69cad2','#e5be54','#b293d5','#82bd72','#e58276','#799ad7','#dca45b'].map((v,i)=>read('--block-'+(i+1),v))];
     if(game&&['snake','tetris'].includes(game.id)){drawAction();if(game.id==='tetris'){const nc=$('next-canvas'),hc=$('hold-canvas');if(nc&&hc)drawAction();}}
     // Board games whose pieces are drawn differently per style redraw the same position.
-    else if(game&&s&&['checkers','chess','solitaire','minesweeper','wordle','tictactoe'].includes(game.id)){render();renderStats();}
+    else if(game&&s&&['checkers','chess','solitaire','minesweeper','wordle','tictactoe','sudoku'].includes(game.id)){render();renderStats();}
   }
   /* Terminal frames (Ric, 2026-11-21): every [data-frame] panel gets an ASCII
      top rule with its name and a bottom rule, as many characters long as the

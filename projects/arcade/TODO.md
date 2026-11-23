@@ -299,6 +299,19 @@ into the help dialog wherever the page has no room for them. Page concepts:
   number whose flags are all placed).
 
 ### Sudoku: what players want (Ric, 2026-11-21: "So duly" [Sudoku], then his answers) — built the same day
+Fixes, 2026-11-22 (Ric: "The soduku boxes are messed up. There also needs to be a
+setting for turning off the highlights. Actually that should be normal. Also a bug
+where you go to the terminal one and play then switch and the look of it is all
+wrong. And in the terminal it should show all your notes … not just the box you
+click in."):
+- [x] Notes fill their square as a 3 × 3 grid (they had shrunk into a thin column),
+      and the digits use lining numerals so 1, 2 and 9 sit level with the rest.
+- [x] Highlights (row, column, box and same number) are off by default; the
+      Highlights switch among the helpers turns them on (`classics:opt:sudoku`).
+- [x] Changing style redraws the grid, so Terminal's ASCII grid no longer stays
+      behind under another style.
+- [x] Terminal shows every square's notes on the grid: once any square has notes,
+      each square is 3 × 3 characters with its notes in pencil positions.
 - [x] The page is a puzzle-book page (concept above): the puzzle's number, level
       and date as a header, the grid centred, the number pad as a tray beside it,
       notes and checks as pencil tools.
