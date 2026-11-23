@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People0 = createRequire(import.meta.url)("../people.js");
 /* TODO 15.5 (2026-11-22): these checks were made on worlds before 15.5's later parts and sit near their thresholds by seed (each passes with any of several of those parts off, 2026-11-22); so its worlds keep these at their old values unless a check sets them. */
-const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old" };
+const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false };
 const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 const base = { people: 120, map: "small", factions: 3, villages: 2, seed: 7 };
 const print = w => JSON.stringify({ people: w.people.map(p => [p.id, p.x, p.y, p.food, p.coins, p.task]), stats: w.stats() });

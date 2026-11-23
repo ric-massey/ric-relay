@@ -2260,6 +2260,25 @@ found" (default) or "As before", which leaves the 15q world exactly as it was (f
 **Left out:** landings (armies carried by boat); warships and sea battles; pirates of their own (they
 are 15.5b4's bandits with a boat at home); measuring band war's deaths against the 2% found.
 
+### Working harder at war (2026-11-22)
+
+TODO item 15.5i1 (Ric, choosing from 15.5i's measurements: "Work at war"). Setting **Working harder at
+war** under War (on by default; off leaves the 15r world exactly as it was, fingerprinted).
+
+- **Measured first:** among grown-ups who are not soldiers, at midday in the same months, 58% were at
+  work at war and 58% at peace (three seeds, old enemies, with and without wars); 14a's wartime push
+  (provide a fifth more, rest a little less) was there but showed nothing. A snapshot at midday also
+  hid the length of the day.
+- **Now** each village counts its grown-ups away with the army (`v.away`, soldiers more than 1 km
+  beyond its edge) and those left at home feel the slack — the share gone against those left, up to
+  0.6 — wanting to provide up to three times that more and resting less, as wives, the old and the
+  young took over the fields.
+- **Measured after** (work hours a day of grown-ups not soldiers, the second half of a year of war,
+  three seeds): 6.46 against 6.26 off (+3%; 6.71 against 6.20 on one seed, the same on another). Small,
+  because an army is about a tenth of a people and not all of it away at once, and people already
+  work most of the light; harvests unchanged.
+- Hook `w.slackOf(p)`; `test/homefront.test.mjs`.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then

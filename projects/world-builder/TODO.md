@@ -3306,6 +3306,43 @@ the world, and only then decide whether it needs work; write what was found here
 - Even wars mostly outlast two years (3 of 13 ended, 14c, 14e).
 - Widows remarry no sooner or later for a war (14b); remarriage itself is 15b.
 
+*Measured again 2026-11-22, after item 15* (Ric: "do 15.5i"). Seven worlds: the default 17 km land,
+seeds 2, 3, 4, two years each; 600 people of three old enemies at war, seeds 1, 2, 3, three years
+each; 2,000 people on 100 km, seed 3, one year. A scratch copy of the engine counted quarrels within
+and between villages, thefts by honesty and hunger, and days from widowhood to a new partner
+(scratchpad `measure.cjs`, `inst.py`; nothing of it is in the engine).
+- **Water.** On 100 km: 9 ford squares, no bridge built, no boat. On 17 km: one boat in six world-years,
+  no bridge, no ford. Boats carried no grain anywhere. *Still rare*, as before.
+- **Houses and roads.** Houses built: 26, 26 and 1 in two default years; 38 to 85 in three years of
+  war; 2 in a year among 2,000 people. 17 to 49 stretches of road worn in; none built on purpose (the
+  engine has no road building). *Unchanged.*
+- **News.** 70 to 100% of grown-ups hold some news, its newest piece 25 to 67 days old on average.
+  *No longer forgotten within days* (item 12's mind changes since): no work needed.
+- **Family in another village.** None at the start; 4 to 9% of grown-ups after two default years,
+  10 to 15% after three years of war, 16% after a year on 100 km. Food sent to family: none in the
+  default worlds, 24 and 285 days of it in two war worlds. *Rare early by how worlds start; it grows.*
+- **Fights.** Every quarrel was between neighbours of one village: 55 to 232 within, 0 between, in
+  every world. *Unchanged.* **Honesty:** nobody honest stole, fed or hungry; nearly all thefts were by
+  the hungry and dishonest (63 to 366), the fed and dishonest 0 to 9. Honesty matters now, but only
+  once hungry: *unchanged in that.*
+- **Moving house.** 126 to 287 moves in two default years (63 to 143 a year, fewer than the 248 a year
+  after item 11); 1,059 to 1,421 in three years of war (refugees); 3,007 in a year among 2,000 people
+  on 100 km. *Still not explained*, but no longer high in the default world.
+- **Work at war.** A people at war has 37 to 53% of its grown-ups at work at midday against 55 to 70%
+  at peace: *less, not the same and not more* (soldiers and the afraid are counted in).
+- **War length.** Of the wars that ended, they lasted 281 to 800 days, most one to two years. Three
+  of eleven ended within two years of the default worlds; eight of ten in three years among old
+  enemies. *Shorter than before (generals, 15o).*
+- **Widows.** Among old enemies, those widowed by a battle waited 185 to 365 days on average for a new
+  partner, others 69 to 122: *a war now delays remarriage.* Default worlds: too few to say (1 to 9 each).
+
+**Ric (2026-11-22), which to work on: "Work at war", "Quarrels between villages", "Roads built on purpose",
+"Water: boats and bridges"** — all four, as 15.5i1 to 15.5i4 below; the rest stand as found.
+- **[x] 15.5i1 Work at war.** *Done 2026-11-22.* Setting "Working harder at war" (off = the 15r world, fingerprinted). Measured first over the same months: 58% of non-soldiers at work at midday at war and at peace. Villages now count grown-ups away with the army; those at home want to provide more and rest less by the share gone. After: 6.46 work hours a day against 6.26 (+3%), small because few are away at once and the day is already full. `test/homefront.test.mjs`; README, "Working harder at war".
+- **15.5i2 Quarrels between villages.** People of different villages who meet may fall out.
+- **15.5i3 Roads built on purpose.** Between places that trade a lot.
+- **15.5i4 Water.** Why bridges and grain boats stay rare, and make them happen where they would.
+
 **[x] 15.5j. Speed.** *Measured 2026-11-22* (speed log): 20,000 people on 80 km 10.8 → 11.7–12.9 s a day (28× → 23–26×), 5,000 on 40 km 1.71 → 2.06–2.17 s, against 15.5r, old and new alternated; nothing found that 15.25 does not cover, so no pass added. 20,000 people on 80 km ran at 52× after 2b and about 19× by item 13, a little
 lost with each item; the row has not been run since item 13, and the M1 rows for item 2 on were
 never filled in. Run the full bench, find what each item added at 20,000, and win back what does

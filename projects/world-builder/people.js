@@ -429,6 +429,8 @@
       { key: "smallWar", label: "Wounds, small wars and the sea", type: "select", def: "real",   // TODO 15r, 2026-11-22
         options: [["real", "As found"], ["old", "As before"]],
         help: "Some badly wounded soldiers die days later, fewer with healing herbs, a healer or medicine. Peoples who do not farm make war by raid and ambush, not with armies and sieges. Pirates (bandits of a place with a boat) rob boats; enemy boats near a port keep its boats in." },
+      { key: "homeFront", label: "Working harder at war", type: "toggle", def: true,   // TODO 15.5i1, 2026-11-22
+        help: "Those left at home take up the slack of the hands gone to the army: the more have gone from a village, the harder the rest work and the less they rest." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -2369,6 +2371,7 @@
        of it, by id, and when. Of soldiers knocked out of the line one in five dies of it within ten days:
        set so that about three or four are wounded for each one killed, as found. */
     const SMALL_WAR = S.smallWar !== "old" && S.war !== false, DYING = new Map(), WOUND_DIE = 0.2, PIRATE_REACH = 4, BLOCKADE_REACH = 40;
+    const HOME_FRONT = S.homeFront !== false;   // TODO 15.5i1
     const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
@@ -2710,7 +2713,7 @@
       workedList = list;
     }
     function census() {
-      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; v.crafters = 0; v.bandits = 0; }
+      for (const v of villages) { v.pop = 0; v.adults = 0; v.hungry = 0; v.loyal = 0; v.sick = 0; v.held = 0; v.crafters = 0; v.bandits = 0; v.away = 0; }
       for (const f of factions) { f.pop = 0; f.soldiers = 0; f.hungry = 0; f.loyal = 0; f.adults = 0; f.mean.fill(0); }
       for (const p of people) {
         const v = villages[p.home], f = factions[p.f];
@@ -2718,7 +2721,7 @@
         if (p.hungry > 0) { v.hungry++; f.hungry++; }
         if (p.sick > 0) v.sick++;
         if (adult(p)) {
-          v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") f.soldiers++; else if (p.job === "crafter") v.crafters++; else if (p.job === "bandit") v.bandits++;
+          v.adults++; v.loyal += p.loyal; f.adults++; f.loyal += p.loyal; if (p.job === "soldier") { f.soldiers++; if (Math.hypot(p.x - v.x, p.y - v.y) > v.radius + 4) v.away++; } else if (p.job === "crafter") v.crafters++; else if (p.job === "bandit") v.bandits++;
           /* Each by name, in the order of TRAITS: read by a name held in a list, it was most of the census (TODO 15.25). */
           const m = f.mean; m[0] += p.bold; m[1] += p.warm; m[2] += p.greed; m[3] += p.stub; m[4] += p.patient; m[5] += p.temper; m[6] += p.hard; m[7] += p.curious; m[8] += p.honest;
         }
@@ -4097,11 +4100,14 @@
          things nduiring wartime"): away from the fighting people work and put by more and rest a
          little less, the loyal most. Danger at their own door is fear (in `live`), not this. */
       const push = adult(p) && atWarAnywhere(factions[p.f]) ? 0.6 + 0.4 * p.loyal : 0;
+      /* The hands gone to the army (TODO 15.5i1; Ric: "Work at war"): those left at home take up the
+         slack, the more the more have gone — wives, the old and the young took over the fields. */
+      const slack = HOME_FRONT && push > 0 && p.job !== "soldier" ? clamp((v.away || 0) / Math.max(1, v.adults - (v.away || 0)), 0, 0.6) : 0;
       return {
         food: clamp((1.7 - days) * 0.5, 0, 1.4) * (0.55 + S.hunger * 0.45),
         /* Squared, so an ordinary evening does not outrank a day's work but a
            second night awake outranks everything except hunger. */
-        rest: p.rest * p.rest * 1.2 * (1 - 0.12 * push),
+        rest: p.rest * p.rest * 1.2 * (1 - 0.12 * push - 0.6 * slack),
         water: THIRST ? waterNeed(p) : 0,
         safety: clamp(p.fear, 0, 1.2),
         company: clamp(p.alone / 30, 0, 1) * (0.2 + S.talk * 0.9),
@@ -4113,7 +4119,7 @@
            off the wish to work in October as surely as in May. */
         provide: clamp(0.3 + household - Math.max(0, days - 2 - winterAhead()) * 0.1 +
                        clamp((winterAhead() - days) / (winterAhead() + 1), 0, 1) * 0.5 * S.winter -
-                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v) + ambition * 0.7, 0, 1.3) * (0.5 + p.greed * 0.6) * (0.7 + 0.6 * p.hard) * (1 + 0.2 * push),   // TODO 10: and the hardworking work
+                       Math.min(0.25, shared ? storeDays(v) * 0.02 : p.coins * 0.01) + putBy(v) + ambition * 0.7, 0, 1.3) * (0.5 + p.greed * 0.6) * (0.7 + 0.6 * p.hard) * (1 + 0.2 * push + 3 * slack),   // TODO 10: and the hardworking work
         ambition: ambition,
       };
     }
@@ -10207,6 +10213,7 @@
       eraOf: f => f.era, armsOf: fid => armsOf(fid), has: (fid, k) => has(fid, k), wire: e => wire(e), eraWar: f => eraWar(f), sizeHome: (h, w) => sizeHome(h, w),   // TODO 15d
       bandDay: fid => bandDay(factions[fid]), campFood: vid => campFood(villages[vid]), makeBand: fid => makeBand(factions[fid]),   // TODO 15i
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
+      slackOf: p => { const v = villages[p.home]; return HOME_FRONT && adult(p) && atWarAnywhere(factions[p.f]) && p.job !== "soldier" ? clamp((v.away || 0) / Math.max(1, v.adults - (v.away || 0)), 0, 0.6) : 0; },   // TODO 15.5i1
       waylay: (q, p, ux, uy, step) => { lurk.set(q, t); q.task = "waylay"; waylaid(p, ux, uy, step); }, dying: p => DYING.get(p.id),
       woundDeaths: () => woundDeaths(), bandAtWar: fid => bandAtWar(factions[fid]), blockaded: vid => SMALL_WAR && blockaded(villages[vid]),   // TODO 15r
       takePrisoner: (q, by) => takePrisoner(q, by), prisonerOf: p => HELD.get(p.id), ransoms: fid => ransoms(factions[fid]), mutinyDay: fid => mutinyDay(factions[fid], true), borrow: (fid, wars) => borrow(factions[fid], wars), debtOf: fid => { const b = LOANS.get(fid); let d = 0; if (b) for (const a of b.values()) d += a; return d; },   // TODO 15q
