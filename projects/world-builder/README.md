@@ -2299,7 +2299,7 @@ villages** under War (on by default; off leaves the 15.5i1 world exactly as it w
 ### Roads built on purpose (2026-11-22)
 
 TODO item 15.5i3 (Ric, choosing from 15.5i: "Roads built on purpose"). Setting **Roads built on
-purpose** under How it starts' neighbours (on by default; off leaves the 15.5i2 world exactly as it
+purpose** under War (on by default; off leaves the 15.5i2 world exactly as it
 was, fingerprinted).
 
 - **Before:** roads only wore in where people walked most (7d), and wore away again.
@@ -2317,6 +2317,31 @@ was, fingerprinted).
 **Measured** (400 days, two default seeds): 4 roads (50 squares) in one, nearly all levied
 (treasuries are almost always empty, 15.5b2's finding); none in the other, at war most of the time.
 **Left out:** keeping roads up (built ones never decay), bridges on built roads (15.5i4), tolls.
+
+### Fishing boats and road bridges (2026-11-22)
+
+TODO item 15.5i4 (Ric, choosing from 15.5i: "Water: boats and bridges"). Setting **Fishing boats and
+road bridges** under War (on by default; off leaves the 15.5i3 world exactly as it was, fingerprinted).
+
+- **Measured first:** rivers that cannot be waded are only on lands of about 100 km and up, and few
+  (87 to 184 squares of 160,000); where a village sits beside one it does bridge it (three in sixty
+  days on one land), but everywhere else every river is waded, so no bridge is ever wanted. A boat was
+  wanted only by people who could not walk round water to where they were going, or for a grain
+  cargo, and on these coasts neither happened: no village anywhere built one, though a tenth of the
+  land is sea.
+- **Now** a village with a landing on the sea, a lake or a big river whose people have been out
+  fishing thirty times wants a boat, the more the more they fish (up to as much again as a bridge),
+  and its fishers catch a third more from it, further out. With a boat, grain may go by water as it
+  could since 15.5b1. A road built on purpose (15.5i3) across a stream bridges it, and the news says so.
+- Village field `fishTrips`; count `roadBridges`. `test/waterwork.test.mjs`.
+- Found on the way: counting the fisher's job was the wrong measure; fishing is mostly done on the side
+  by farmers and hunters, and no village had two fishers.
+
+**Measured** (a year, default lands): 4 to 6 boats a world; 2 road bridges in the one world that built
+roads; fish caught about the same. No grain went by boat in a year: grain trade between villages with
+boats is still rare. People alive at the year's end varied with which worlds fell into wars (battle
+dead 61 against 31, 20 against 0), not with the boats. **Left out:** coastal trade of goods by boat
+(caravans by sea), boats lost at sea while fishing.
 
 ### Eras (2026-11-22)
 

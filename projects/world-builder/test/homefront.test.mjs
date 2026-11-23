@@ -9,11 +9,11 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { feuds: false, builtRoads: false };   // the parts built after this one, off: this part as it was built
+const LATER = { feuds: false, builtRoads: false, waterWork: false };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 2553129383;   // print() of 15r's engine, seed 2, 60 days
 
 {
-  const w = People.create({ seed: 2, homeFront: false, feuds: false, builtRoads: false });
+  const w = People.create({ seed: 2, homeFront: false, feuds: false, builtRoads: false, waterWork: false });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15.5i1");
 }

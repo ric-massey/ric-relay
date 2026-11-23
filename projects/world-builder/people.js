@@ -435,6 +435,8 @@
         help: "Somebody hot-tempered may have it out with somebody they cannot stand from another village: met near at market or the fields' edge, or, if the grudge is deep, sought out in a village within 5 km. Not with a people at war: that is war." },
       { key: "builtRoads", label: "Roads built on purpose", type: "toggle", def: true,   // TODO 15.5i3, 2026-11-22
         help: "Once a year at peace a people builds a road along its most walked way between two of its places, or along a caravan route: a kilometre a day, paid from the treasury, or levied work fed by the village store when there are no coins. A road built stays a road." },
+      { key: "waterWork", label: "Fishing boats and road bridges", type: "toggle", def: true,   // TODO 15.5i4, 2026-11-22
+        help: "A village by the sea, a lake or a big river whose people go fishing builds a boat, and its fishers catch a third more from it; with a boat, grain can go by water. A road built over a stream bridges it." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -838,7 +840,7 @@
     const villages = [], factions = [];
     const events = [], chatter = [], history = [], moves = [];
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
-    const count = { roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+    const count = { roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1608,12 +1610,13 @@
           if (!shared && f.treasury >= ROAD_PAY) { f.treasury -= ROAD_PAY; v.till += ROAD_PAY; count.roadPaid += ROAD_PAY; }
           else { const need = 4 * 1.0; if (v.food < need) return; v.food -= need; count.roadLevied++; }
           builtRoad[i] = 1; if (track[i] !== 2) { track[i] = 2; trackStamp++; ways.clear(); }
+          if (WATER_WORK && ground[i] === G_RIVER) { job.bridges = (job.bridges || 0) + 1; count.roadBridges++; }   // 15.5i4: a bridge where it crosses a stream
           if (trod[i] === 0) trodList.push(i);
           job.at++; count.roadSquares++;
         }
         if (job.at >= job.line.length) {
           f.roadJob = null; count.roadsBuilt++;
-          note("build", f.name + " has finished a road from " + villages[job.a].name + " to " + villages[job.b].name + ".", 1.5, villages[job.a].x, villages[job.a].y, f.id);
+          note("build", f.name + " has finished a road from " + villages[job.a].name + " to " + villages[job.b].name + (job.bridges ? ", bridging the streams it crosses" : "") + ".", 1.5, villages[job.a].x, villages[job.a].y, f.id);
         }
         return;
       }
@@ -2432,6 +2435,9 @@
     const SMALL_WAR = S.smallWar !== "old" && S.war !== false, DYING = new Map(), WOUND_DIE = 0.2, PIRATE_REACH = 4, BLOCKADE_REACH = 40;
     const HOME_FRONT = S.homeFront !== false;   // TODO 15.5i1
     const FEUDS = S.feuds !== false;   // TODO 15.5i2: quarrels between villages
+    /* Boats and bridges (TODO 15.5i4): a fishing village builds a boat, and fishes further out from it, a
+       third more; a road built over a stream bridges it. */
+    const WATER_WORK = S.waterWork !== false, BOAT_CATCH = 1.3;
     const ARMY_SICK = S.armySick !== false && ARMIES, CAMP_HALF = 150, CAMP_DEADLY = 3, ARMY_CARRY = 0.05, CAMP_CATCH = 0.008;
     const CAMPAIGN = ARMIES && S.campaign !== "home";   // TODO 15j: soldiers who live with the army, and desert
     /* A fed, paid army at war loses about a fifth a year to desertion (a French estimate for 1700–63;
@@ -4375,8 +4381,8 @@
         if (c.bridge && !v.bridge && cross[c.bridge.i] === 1 && knows(v.f, "bridges"))   // and nobody has bridged it since; and they know how (TODO 15e)
           weigh("bridge", 0.4 - away(Math.hypot(c.bridge.x - p.x, c.bridge.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, c.bridge.x, c.bridge.y, "bridge"); p.wait = 0; });
-        if (c.landing && !v.boat && (v.wantBoat || 0) >= 3 && knows(v.f, "boats"))
-          weigh("boat", 0.4 + Math.min(0.3, v.wantBoat * 0.01) - away(Math.hypot(c.landing.x - p.x, c.landing.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
+        if (c.landing && !v.boat && ((v.wantBoat || 0) >= 3 || (WATER_WORK && (v.fishTrips || 0) >= 30)) && knows(v.f, "boats"))   // 15.5i4: or a fishing boat, where people fish
+          weigh("boat", 0.4 + Math.min(0.3, (v.wantBoat || 0) * 0.01) + (WATER_WORK ? Math.min(0.3, (v.fishTrips || 0) / 1000) : 0) - away(Math.hypot(c.landing.x - p.x, c.landing.y - p.y)) * 0.5 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, c.landing.x, c.landing.y, "boatwork"); p.wait = 0; });
       }
       /* Sleep, in their own house. The one thing a night is for. */
@@ -4884,7 +4890,7 @@
         if (!p.fishing) { p.fishing = true; p.wait = spell("harvest"); return; }
         p.fishing = false;
         const g = fishGround(v);
-        let need = g ? fishDay() * (p.job === "fisher" ? 1 : 0.7) * p.vig : 0;
+        let need = g ? fishDay() * (p.job === "fisher" ? 1 : 0.7) * p.vig * (WATER_WORK && v.boat ? BOAT_CATCH : 1) : 0;   // 15.5i4: from a boat, further out
         const want = need;
         if (g) for (const i of g.tiles) {
           if (need <= 0.01) break;
@@ -4892,6 +4898,7 @@
           if (got > 0) { fishStock.set(i, [have - got, t]); need -= got; }
         }
         p.food += want - need; count.fish += want - need;
+        if (WATER_WORK && want - need > 0.05) v.fishTrips = (v.fishTrips || 0) + 1;   // 15.5i4: a fishing place
         p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "home");
         return;
       }
