@@ -64,7 +64,7 @@ const make = era => {
   v.goods = 60; v.iron = 60;
   for (const p of [rich, poor]) { w.place(p, v.x, v.y); p.food = 30; p.goods = 0; p.gear = {}; }
   rich.coins = 1000; poor.coins = 20;
-  w.outfit(rich, v.id); w.outfit(poor, v.id);
+  w.outfit(rich, v); w.outfit(poor, v);
   console.log("  armour: the well-off soldier " + (rich.gear.armour || 0) + ", the poor one " + (poor.gear.armour || 0));
   assert.equal(rich.gear.armour, 1, "the well-off buy armour");
   assert.ok(!(poor.gear.armour > 0), "the poor go without");

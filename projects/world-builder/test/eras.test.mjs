@@ -21,7 +21,7 @@ const FINGERPRINT = 322919713;   // print() of 15i's engine, seed 2, 60 days
 
 // 1. As before.
 {
-  const w = People.create({ seed: 2 });
+  const w = People.create({ ...LATER, seed: 2 });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "early farmers, not moving on, are the world before 15d");
 }

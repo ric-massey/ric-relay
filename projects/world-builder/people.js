@@ -5040,8 +5040,9 @@
        length counts a fifth as much as a short haul's: a caravan's cost is its weeks, not each step. */
     function caravanFor(p, here) {
       if (!CARAVANS || here.id !== p.home || p.coins <= 5 || p.job === "soldier" || p.job === "bandit" || !adult(p) || !(p.job === "trader" || p.greed > 0.55) || t - (here.caravanAt ?? -1e9) <= CARAVAN_GAP) return null;
-      if (t - (here.caravanLook ?? -1e9) >= DAY_HOURS) { here.caravanLook = t; here.caravanPlan = caravanRoute(p, here); }
-      return here.caravanPlan;
+      if (t - (here.caravanLook ?? -1e9) >= DAY_HOURS) { here.caravanLook = t; const r = caravanRoute(p, here); here.caravanPlan = r ? { to: r.best.id, gain: r.gain, what: r.what } : null; }   // an id, not the place: no loops between villages
+      const c = here.caravanPlan;
+      return c ? { best: villages[c.to], gain: c.gain, what: c.what } : null;
     }
     function caravanRoute(p, here) {
       let best = null, gain = 0.3, what = null;
@@ -10177,12 +10178,12 @@
       muster: (p, at) => MUSTER.set(p.id, at), hasCar: p => CARS.has(p.id),   // for the tests (TODO 15h, 15d)
       waylay: (q, p, ux, uy, step) => { lurk.set(q, t); q.task = "waylay"; waylaid(p, ux, uy, step); }, dying: p => DYING.get(p.id),
       woundDeaths: () => woundDeaths(), bandAtWar: fid => bandAtWar(factions[fid]), blockaded: vid => SMALL_WAR && blockaded(villages[vid]),   // TODO 15r
-      takePrisoner: (q, by) => takePrisoner(q, by), held: p => HELD.get(p.id), ransoms: fid => ransoms(factions[fid]), mutinyDay: fid => mutinyDay(factions[fid], true), borrow: (fid, wars) => borrow(factions[fid], wars), debtOf: fid => { const b = LOANS.get(fid); let d = 0; if (b) for (const a of b.values()) d += a; return d; },   // TODO 15q
+      takePrisoner: (q, by) => takePrisoner(q, by), prisonerOf: p => HELD.get(p.id), ransoms: fid => ransoms(factions[fid]), mutinyDay: fid => mutinyDay(factions[fid], true), borrow: (fid, wars) => borrow(factions[fid], wars), debtOf: fid => { const b = LOANS.get(fid); let d = 0; if (b) for (const a of b.values()) d += a; return d; },   // TODO 15q
       siegeWorks: (vid, fid, attackers, ours) => siegeWorks(villages[vid], [String(fid)], { [fid]: attackers }, attackers, ours, []),
       serviceOf: fid => SIEGECRAFT ? serviceOf(factions[fid]) : "levy", service: fid => service(factions[fid]), servedOut: p => SIEGECRAFT && servedOut(p),   // TODO 15p
       generalOf: fid => GENERALS ? generalOf(factions[fid]) : null, skillOf: p => skillOf(p), planOf: (fid, oid) => factions[fid].camp[oid] && factions[fid].camp[oid].plan, choosePlan: (fid, oid) => { const f = factions[fid], c = f.camp[oid]; choosePlan(f, factions[oid], c, generalOf(f)); return c.plan; },
       scout: (fid, oid) => scout(factions[fid], factions[oid], generalOf(factions[fid])), intelOf: fid => factions[fid].intel || {}, rout: (fid, oid) => rout(factions[fid], factions[oid], factions[fid].camp[oid]), routing: p => (ROUT.get(p.id) ?? -1) > t, horseman: p => horseman(p), horseArcher: p => GENERALS && horseArcher(p), battlesOf: id => GEN_EXP.get(id) || 0,   // TODO 15o
-      bowFor: p => OLD_ARMS ? bowFor(p) : null, armourOf: fid => armourOf(factions[fid]), strike: (p, foe, base, shot) => strike(p, foe, base, shot), outfit: (p, vid) => outfit(p, villages[vid]), chariot: p => OLD_ARMS && chariot(p),   // TODO 15n
+      bowFor: p => OLD_ARMS ? bowFor(p) : null, armourOf: fid => armourOf(factions[fid]), chariot: p => OLD_ARMS && chariot(p),   // TODO 15n
       campSickness: fid => campSickness(factions[fid], true), campFoulOf: p => ARMY_SICK ? campFoulOf(p) : 0,   // TODO 15m
       routes: () => [...ROUTES].map(([k, r]) => ({ key: k, trips: r.n, last: r.last })), caravanRoute: (pid, vid) => CARAVANS ? caravanRoute(byId.get(pid), villages[vid]) : null,   // TODO 15l
       onCampaign: p => CAMPAIGN && onCampaign(p), desertions: fid => desertions(factions[fid]),   // TODO 15j

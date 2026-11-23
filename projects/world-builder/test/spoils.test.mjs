@@ -35,15 +35,15 @@ const soldiersOf = (w, fid) => w.people.filter(p => p.f === fid && p.job === "so
   const w = make(), [by] = soldiersOf(w, 0), [q] = soldiersOf(w, 1);
   q.coins = 40; by.coins = 0;
   w.takePrisoner(q, by);
-  const h = w.held(q);
+  const h = w.prisonerOf(q);
   assert.ok(h && w.villages[h.v].f === 0, "held at a place of the captor's");
   w.step(24 * 3);
   const hv = w.villages[h.v];
   console.log("  held three days: " + Math.hypot(q.x - hv.x, q.y - hv.y).toFixed(1) + " squares from " + hv.name);
   assert.ok(Math.hypot(q.x - hv.x, q.y - hv.y) < 3, "kept there");
-  for (let d = 0; d < 12 && w.held(q); d++) { w.step(24); w.ransoms(0); }
-  console.log("  ransomed: " + !w.held(q) + "; the one who took them has " + by.coins.toFixed(1) + " coins");
-  assert.ok(!w.held(q) && q.job !== "soldier", "ransomed and home on their word");
+  for (let d = 0; d < 12 && w.prisonerOf(q); d++) { w.step(24); w.ransoms(0); }
+  console.log("  ransomed: " + !w.prisonerOf(q) + "; the one who took them has " + by.coins.toFixed(1) + " coins");
+  assert.ok(!w.prisonerOf(q) && q.job !== "soldier", "ransomed and home on their word");
   assert.ok(by.coins > 10, "a living for the soldier who took them");
 }
 
@@ -54,16 +54,16 @@ const soldiersOf = (w, fid) => w.people.filter(p => p.f === fid && p.job === "so
   w.takePrisoner(c, a);   // ours hold one of theirs
   w.takePrisoner(b, d);   // and they one of ours
   w.step(24 * 61); w.ransoms(0);
-  assert.ok(!w.held(c) && !w.held(b), "exchanged after two months");
+  assert.ok(!w.prisonerOf(c) && !w.prisonerOf(b), "exchanged after two months");
   const [e] = soldiersOf(w, 1).filter(p => p !== c && p !== d), lead = w.people.find(p => p.id === w.factions[0].leader);
   e.coins = 0; e.mum = e.dad = 0; e.partner = 0; e.wards = null;
   lead.temper = 1; lead.honest = 0;
   const [g] = soldiersOf(w, 0);
   w.takePrisoner(e, g);
-  assert.ok(w.held(e), "taken");
+  assert.ok(w.prisonerOf(e), "taken");
   for (let d = 0; d < 61; d++) { e.coins = 0; w.step(24); }
   w.ransoms(0);
-  console.log("  after two months: exchanged " + w.stats().exchanged + ", killed by a hard captor " + w.stats().prisonersKilled + " (ransomed " + w.stats().ransomed + ", released " + w.stats().released + ", e " + e.hp.toFixed(2) + " " + e.job + ", held " + !!w.held(e) + ", temper " + lead.temper + ")");
+  console.log("  after two months: exchanged " + w.stats().exchanged + ", killed by a hard captor " + w.stats().prisonersKilled + " (ransomed " + w.stats().ransomed + ", released " + w.stats().released + ", e " + e.hp.toFixed(2) + " " + e.job + ", held " + !!w.prisonerOf(e) + ", temper " + lead.temper + ")");
   assert.ok(e.hp <= 0 && w.stats().prisonersKilled === 1, "a hard, dishonest captor kills");
 }
 
