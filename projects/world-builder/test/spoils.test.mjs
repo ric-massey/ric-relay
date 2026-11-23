@@ -33,7 +33,7 @@ const soldiersOf = (w, fid) => w.people.filter(p => p.f === fid && p.job === "so
 // 2. Taken and ransomed.
 {
   const w = make(), [by] = soldiersOf(w, 0), [q] = soldiersOf(w, 1);
-  q.coins = 40; by.coins = 0;
+  q.coins = 40; by.coins = 0; q.food = 30;   // fed, so the test is of the ransom, not of a captor's empty store
   w.takePrisoner(q, by);
   const h = w.prisonerOf(q);
   assert.ok(h && w.villages[h.v].f === 0, "held at a place of the captor's");

@@ -8598,7 +8598,7 @@
     }
     /* In an army gathering or marching (TODO 15j): one of those who march (15h), of a people at war. */
     function onCampaign(p) {
-      if (p.id % 3 === 0 || villages[p.home].heldTo > t) return false;
+      if (p.id % 3 === 0 || villages[p.home].heldTo > t || (SPOILS && HELD.has(p.id))) return false;   // a prisoner is with no army (TODO 15q)
       const f = factions[p.f];
       for (const k in f.camp) { const c = f.camp[k]; if (c.v >= 0 && f.rel[k] && f.rel[k].war && factions[k].alive) return true; }
       return false;
