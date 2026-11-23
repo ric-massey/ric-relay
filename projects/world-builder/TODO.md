@@ -3871,6 +3871,36 @@ the house) → d (clearing, wear, fallow by choice, manure, shifting cultivation
 → p (irrigation) → q (climate over centuries) → s (sleep) → f (household firewood) → g (news of plenty) → c (2 km²,
 finer land, the edge as an option) → j, then i after 15. l comes before k because k's mothers need it.
 
+### [ ] 15.5u. Bugs found by an outside check (2026-11-23)
+
+**Ric (2026-11-23):** "there are a few bugs that need to be added in", pasting an outside review.
+Each was read in `people.js` the same day and is real; none is fixed yet. Do this before 15.6:
+they are small, and 15.6 measures war, which two of them change.
+1. **A village's `spare` means food in one place and coins in another.** `stats` (about line 2877)
+   sets `v.spare` to the food held above what people keep back; `workDay()` (about line 8513) sets it
+   again to the spare coins per household. Readers then get whichever ran last: the grain trade
+   (about line 5121) and riots (about line 9554) want food; a workplace's pay (about line 8533) wants
+   coins. Fix: two names (e.g. `spareFood` and `spareCoins`), each reader on the right one; then
+   measure a default year both ways, because grain carts, riots and wages may all move.
+2. **A soldier freed on their word is taken for the army again.** `releasePrisoner()` makes them a
+   farmer "home on their word not to fight again", and README ("Prisoners and ransom") says not in
+   this war — but nothing remembers the word, so the next muster can take them (the review saw it
+   the next day). Fix: keep the parole (rare state beside the people, like `HELD`, not a new field on
+   every person — 15's 70% lesson) until that war ends, and let no muster, hiring or mutiny take
+   them before then. A test: release one, run a muster, they stay home; end the war, they may go.
+3. **Coins vanish when a people defaults on its war loans.** `borrow()` (about line 3595) says "what
+   was left went to the most pressing lenders" but sets `f.treasury = 0` and credits nobody. Fix:
+   share what is left among the lenders by what each is owed (as `payLenders` does), then clear the
+   books. A test that forces a default and checks every coin is still somewhere.
+4. **War rules tied to the starting era** — the review's own third finding, which it called a
+   possible design choice. It is real (read the same day: bows, armour, chariots, service, siege
+   engines, walls and the season read the era label) and is the whole of item 15.6, so it is not
+   repeated here.
+
+**Done when:** each of 1–3 has a test that failed before and passes after; a default year measured
+before and after, and what moved is said; README updated where it describes them.
+**Budget:** default.
+
 ### [ ] 15.6. War by what a people knows: weapons, technology and ways of fighting
 
 **Ric (2026-11-23):** "the weapons and how people fite and the stategies. those need looked at no?
