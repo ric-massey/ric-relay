@@ -7310,7 +7310,7 @@
       for (let y = Math.max(0, Math.floor(v.y) - k); y <= Math.min(rows - 1, Math.floor(v.y) + k); y++)
         for (let x = Math.max(0, Math.floor(v.x) - k); x <= Math.min(cols - 1, Math.floor(v.x) + k); x++)
           for (const p of bucketAt(y * cols + x)) {
-            if (p.job !== "soldier") continue;
+            if (p.job !== "soldier" || (SPOILS && HELD.has(p.id))) continue;   // a prisoner held here is no attacker (TODO 15q)
             if (p.f === v.f) ours++; else if (atWar(p.f, v.f)) { theirs[p.f] = (theirs[p.f] || 0) + 1; foesHere.push(p); }
           }
       /* A village defends itself: a quarter of its grown-ups take up arms
@@ -7472,7 +7472,7 @@
       let n = 0;
       for (let y = Math.max(0, Math.floor(v.y) - 3); y <= Math.min(rows - 1, Math.floor(v.y) + 3); y++)
         for (let x = Math.max(0, Math.floor(v.x) - 3); x <= Math.min(cols - 1, Math.floor(v.x) + 3); x++)
-          for (const p of bucketAt(y * cols + x)) if (p.job === "soldier" && atWar(p.f, v.f)) n++;
+          for (const p of bucketAt(y * cols + x)) if (p.job === "soldier" && atWar(p.f, v.f) && !(SPOILS && HELD.has(p.id))) n++;   // not a prisoner held there (TODO 15q)
       return n;
     }
     function ravage(v, foes, winning, band) {
