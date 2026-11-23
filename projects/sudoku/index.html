@@ -172,8 +172,15 @@ body[data-look="glass"]{--desk:radial-gradient(circle at 15% 20%,#3b2a6d,#0000 4
   --peer:#ffffff17;--same:#8b7cff40;--chosen:#8b7cff66;--chosen-ring:0 0 0 2px #8b7cff,0 0 18px #8b7cff66;--note:#9aa3bd;--note-hot:#c9bfff;--bad:#ff8fa3;--bad-bg:#ff8fa326;
   --key:#ffffff12;--key-ink:#fff;--key-border:1px solid #ffffff22;--key-radius:12px;--key-shadow:none;--key-font:500 24px/1 var(--display-font);--held:#8b7cff;--small-font:600 11px/1.3 var(--body-font);--no-font:300 26px/1 var(--display-font)}
 body[data-look="glass"] .sd-page{backdrop-filter:blur(16px)}
-body[data-look="glass"] .sudoku .square.box-right{margin-right:5px}
-body[data-look="glass"] .sudoku .square.box-bottom{margin-bottom:5px}
+/* Glass, 2026-11-22 (Ric: "look at the glass boxes they aren't all the same size"): the
+   gaps between 3 x 3 boxes used to be margins taken out of the edge squares, which made
+   those squares 5px smaller. Now the gaps are their own grid tracks, so all 81 panes are
+   the same size: tight inside a box, a clear channel between boxes. app.js gives each
+   square --sd-c / --sd-r, its line counting those gap tracks. */
+body[data-look="glass"] .board.sudoku{grid-template-columns:repeat(3,minmax(0,1fr)) 9px repeat(3,minmax(0,1fr)) 9px repeat(3,minmax(0,1fr))!important;grid-template-rows:repeat(3,minmax(0,1fr)) 9px repeat(3,minmax(0,1fr)) 9px repeat(3,minmax(0,1fr));gap:3px}
+body[data-look="glass"] .board.sudoku .square{grid-column:var(--sd-c);grid-row:var(--sd-r);margin:0;aspect-ratio:auto;width:auto;height:auto}
+/* Those tracks have no natural width, so the column holding the grid takes the free space beside the pad. */
+@media(min-width:761px){body[data-look="glass"] .sd-body>.stage{flex:1 1 0;min-width:0}}
 
 /* =====================================================================================
    6. Terminal: the grid as text, dots for empty squares, the pad as keys.

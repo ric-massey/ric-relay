@@ -1167,6 +1167,8 @@
       const r=Math.floor(i/9),c=i%9,conflict=n&&!E.Sudoku.candidates(s.b.map((v,j)=>j===i?0:v),i).includes(n),wrong=opts.mistakes&&n&&!s.given[i]&&n!==s.answer[i];
       const cls=['square'];if(s.given[i])cls.push('given');if(conflict)cls.push('conflict');if(wrong)cls.push('wrong');if(peers.has(i))cls.push('peer');if(sameN&&n===sameN&&i!==selected)cls.push('same');if(selected===i)cls.push('chosen');if(c===2||c===5)cls.push('box-right');if(r===2||r===5)cls.push('box-bottom');if(moved.has(i)&&!reduced())cls.push('drop');
       const sq=button(n?String(n):'',()=>sudokuTap(i),cls.join(' '));if(!n)sq.classList.add('empty');
+      // Grid line and column counting the gaps between boxes, for styles that leave a real gap there (Glass).
+      sq.style.setProperty('--sd-c',c+1+Math.floor(c/3));sq.style.setProperty('--sd-r',r+1+Math.floor(r/3));
       sq.setAttribute('aria-label',`Row ${r+1}, column ${c+1}, ${n||'empty'}${s.given[i]?', given':''}`);
       if(!n&&notes[i]?.length){const marks=el('span','notes-grid');for(let v=1;v<=9;v++)marks.append(el('span',sameN===v&&notes[i].includes(v)?'hot':'',notes[i].includes(v)?String(v):' '));sq.append(marks);}
       b.append(sq);

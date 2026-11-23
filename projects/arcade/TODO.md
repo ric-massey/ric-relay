@@ -312,6 +312,10 @@ click in."):
       behind under another style.
 - [x] Terminal shows every square's notes on the grid: once any square has notes,
       each square is 3 × 3 characters with its notes in pencil positions.
+- [x] Glass: every pane the same size (Ric, 2026-11-22: "look at the glass boxes they
+      aren't all the same size. And they are kinda squared placement"). The gaps between
+      3 × 3 boxes were margins cut out of the edge squares; now they are grid tracks of
+      their own, so the panes are equal and the boxes read as groups.
 - [x] The page is a puzzle-book page (concept above): the puzzle's number, level
       and date as a header, the grid centred, the number pad as a tray beside it,
       notes and checks as pencil tools.
