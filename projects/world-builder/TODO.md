@@ -3344,7 +3344,7 @@ and between villages, thefts by honesty and hunger, and days from widowhood to a
 - **[x] 15.5i4 Water.** *Done 2026-11-22.* Setting "Fishing boats and road bridges" (off = the 15.5i3 world, fingerprinted). Found: unwadeable rivers are only on 100 km lands and few, and boats were wanted only to cross water one could not walk round or for grain, which never happened. Now a village whose people fish (thirty trips) builds a boat and fishes a third more from it; a built road bridges streams. Measured: 4 to 6 boats a world-year, 2 road bridges; still no grain by boat. `test/waterwork.test.mjs`; README, "Fishing boats and road bridges". Left: goods by sea, boats lost fishing.
 - **[x] 15.5i5 Armies that meet.** *Done 2026-11-22.* Ric: "do the peoplle at war just run past each other to go to the cities?" (they did: enemies noticed only within 750 m, nothing sent to meet an army or relieve a place); "Yes, add both". Setting "Armies meet" (off = the 15.5i4 world, fingerprinted). An army relieves a place of its own with enemies at it, and meets an enemy army seen within 5 km (10 with horsemen) when the numbers suit its ruler's nerve. First built it met every army seen and relieved every place with enemies at its edge: 32 to 56 battle dead a year among 600 (5 to 9%, against about 0.5% for the most warlike societies on record). Ric: "is that more realistic?", then "Yes, tune it": relief only of a real siege with clearly good odds; an army met only when coming for one of our places; and 15r's dying of wounds only for severe wounds (it was most of the battle dead). After: battle dead 3, 5 and 13 a year (0.5 to 2%); armies met 0 to 6 times, kept clear of 7 to 72 sightings; sieges relieved up to 8 times. `test/meeting.test.mjs`; README, "Armies that meet".
 - **[x] 15.5i6 Armies spread out, and the slider.** *Done 2026-11-22.* Ric: "and this changes per era correct? and there is a slider to make them more dangerous"; "Yes, fix both". Modern war killed 9% of a people a year and the slider did nothing above 1. Now blows land less often with guns (muskets 70%, rifles 35%, machine guns 20%; Dupuy's dispersion) and no blow is harder than one and a half swords'; the slider makes blows harder and severe wounds deadlier too. Setting "Armies spread out" (default world unchanged). Measured, three worlds an era: 2.0% (early) rising to 3.3% (medieval) and 4.3% (modern) of the people dead in battle a year; slider 0.3/1/3: 4/25/40. `test/dispersion.test.mjs`; README, "Armies spread out, and the deadliness slider".
-- [ ] **15.5i7 War deaths still high.** Even tuned, three old enemies at war all year lose 2 to 4% of their people a year in battle against about 0.5 to 1% for the most warlike societies on record. Look at how often armies clash and soldiers are knocked out (160 to 350 a year among about 60 soldiers), not at the weapons. Ric decides whether it matters.
+- [ ] **15.5i7 War deaths still high.** Even tuned, three old enemies at war all year lose 2 to 4% of their people a year in battle against about 0.5 to 1% for the most warlike societies on record. Look at how often armies clash and soldiers are knocked out (160 to 350 a year among about 60 soldiers), not at the weapons. Ric decides whether it matters. Looked at again in item 15.6 (step 5).
 
 **[x] 15.5j. Speed.** *Measured 2026-11-22* (speed log): 20,000 people on 80 km 10.8 → 11.7–12.9 s a day (28× → 23–26×), 5,000 on 40 km 1.71 → 2.06–2.17 s, against 15.5r, old and new alternated; nothing found that 15.25 does not cover, so no pass added. 20,000 people on 80 km ran at 52× after 2b and about 19× by item 13, a little
 lost with each item; the row has not been run since item 13, and the M1 rows for item 2 on were
@@ -3870,6 +3870,84 @@ women) → k (children and mothers dying; the gap between births) → m (childre
 the house) → d (clearing, wear, fallow by choice, manure, shifting cultivation) → o (animals that work)
 → p (irrigation) → q (climate over centuries) → s (sleep) → f (household firewood) → g (news of plenty) → c (2 km²,
 finer land, the edge as an option) → j, then i after 15. l comes before k because k's mothers need it.
+
+### [ ] 15.6. War by what a people knows: weapons, technology and ways of fighting
+
+**Ric (2026-11-23):** "the weapons and how people fite and the stategies. those need looked at no?
+all by era. and the technology and era need to be coorilated and technology and weaponry should be
+coorilated." Then "Yes, write it up".
+
+**Now** (read from `people.js` on 2026-11-23, not run). An era is already only a starting set of
+know-how (`ERA_KNOW`), so era and technology are linked. But war reads two different things:
+- **From what a people knows (`has()`):** guns (`armsOf()`: muskets from gunpowder, rifles from
+  *the railway*, machine guns from *the engine*), horsemen (`hasHorses`).
+- **From the era label (`eraOf()` / `eraWar()`):** the share who shoot and which bow (`ARCHERS`,
+  `BOWS`), armour (`ARMOUR`, picked by era), chariots (`chariot()`: Bronze Age only), how an army is
+  raised (`serviceOf()`: levy / feudal / paid), siege engines (`ENGINE_DAYS`), what a wall is worth,
+  the fighting season, the standing army and campaign size (`ERA_WAR`), the wall-breach wording,
+  and the material gear is made of.
+
+So the two disagree as soon as a people learns something its label did not give it — with "Eras
+move on by themselves" on, or by learning from a neighbour. An early people that finds gunpowder
+fires muskets in hides, as a levy that goes home for harvest. A medieval people that learns
+gunpowder keeps plate and longbows and still takes 25 days to break a wall: cannon count only
+where the label says early modern.
+
+**Also missing.** The weapons chain has no bronze step (smithing without iron is the farmer's hand
+weapons), and nothing for the stirrup, steel, cannon apart from hand guns, rifling or breech-loading,
+the machine gun as its own find, explosives, motor vehicles, tanks or aircraft. The five plans in
+`choosePlan()` (battle, raid, siege, wait, ambush) are the same in every age, chosen by the
+general's nature. No way of fighting follows from the weapons: no shield wall or phalanx, no
+legion, no cavalry charge, no pike and shot, no line infantry, no skirmishing or digging in. Walls
+lose worth against guns (`wallWorth`), but nobody builds a lower, thicker wall in answer (the
+star fort).
+
+**Do:**
+1. **War reads only what a people knows.** Every figure above that is keyed on the era comes from
+   a technology a people holds (or holds enough of, as `has()` already judges). The era stays what
+   it is: where a people starts. A default world (every people early, eras not moving on) must be
+   byte for byte the world it was; fingerprint it.
+2. **Military know-how in `TECH`**, each needing what came before, found and spread and lost like
+   any other (15e) — for example bronze → iron → steel; horses → stirrup; gunpowder → cannon;
+   steel + gunpowder → rifling → the machine gun; the engine → motor transport → tanks and
+   aircraft. Each era's starting list gains what it really had. Which ones, and what each needs,
+   comes out of the research, not this list.
+3. **Ways of fighting follow from the weapons and the people, never from a script per era.** A
+   formation or tactic is an option a general can choose when what the army carries makes it worth
+   it — pikes to guard slow-loading muskets, spreading out and digging in where rifles and machine
+   guns make open ground deadly, a charge where there are stirrups and heavy horse — weighed in
+   `choosePlan()` with the plans already there. What a general knows of the enemy's weapons
+   (`scout`) may move the choice. Nothing names an era in it.
+4. **Fortification answers the guns.** Where a people faces cannon, a wall can be built to stand
+   them (lower and thicker, at a cost in stone and days), so `wallWorth` is a property of the wall
+   built, not of the era.
+5. **Look at 15.5i7 while in here.** Battles come too often (160 to 350 soldiers knocked out a year
+   among about 60). Digging in and armies keeping their distance may answer much of it; measure
+   battle dead a year by era before and after, and say how far it moved.
+
+**Research first:** the order things were really found in and what each needed (bronze, iron,
+steel, stirrup, gunpowder, cannon, rifling, breech-loaders, the machine gun, motor vehicles, tanks,
+aircraft), and how long each took to spread to a neighbour; how each changed battle — Dupuy's
+lethality and dispersion (already used), Lanchester, the "military revolution" debate (Roberts,
+Parker) on pike and shot and the star fort, the stirrup debate (White and his critics), Biddle's
+*Military Power* on the modern system of dispersion, cover and combined arms; casualty rates a day
+of battle and a year of war by period (to check against 15.5i7); how other simulations model
+tactics cheaply. Write it under **Research notes** below, with links.
+
+**Ric decides** (with a recommendation each, asked all at once once the research is done):
+- How far forward: stop at the machine gun and motor transport, or go to tanks, aircraft and beyond?
+- Whether a tactic is a choice the general makes (recommended: it is a choice, weighed like the
+  five plans) or comes automatically with the weapons.
+- Whether the old behaviour stays as a setting ("By era label (as before)"), as each 15 item did.
+- Whether war know-how is found by soldiers and smiths only, or by anybody (as 15e).
+
+**Done when:** no war figure reads the era label; an early people that finds gunpowder fights like
+a people with guns, armour and all, and a medieval people that gets it builds the walls to stand it;
+each era's typical way of fighting shows up in its battles without being told to; a default world
+is unchanged; battle dead a year by era are measured and set against the record (15.5i7).
+**Budget:** default.
+
+Research notes: (none yet)
 
 ### [ ] 16. Ruins and scavenging
 
