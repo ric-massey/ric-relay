@@ -12,11 +12,11 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { dispersion: false, warBooks: "old", warBy: "era", formations: "nearest" };   // the parts built after this one, off: this part as it was built
+const LATER = { dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old" };   // the parts built after this one, off: this part as it was built
 const FINGERPRINT = 1505646459;   // print() of 15.5i4's engine, seed 2, 60 days
 
 {
-  const w = People.create({ seed: 2, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest" });
+  const w = People.create({ seed: 2, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before");
 }

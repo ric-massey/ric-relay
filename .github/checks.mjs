@@ -206,6 +206,7 @@ const SUITES = [
   ['world-builder war by what a people knows', ['projects/world-builder/test/warknow.test.mjs']],   // TODO 15.6
   ['world-builder where soldiers stand', ['projects/world-builder/test/formations.test.mjs']],   // TODO 15.6b, about a minute
   ['world-builder tanks and aircraft', ['projects/world-builder/test/machines.test.mjs']],   // TODO 15.6c
+  ['world-builder raids', ['projects/world-builder/test/raids.test.mjs']],   // TODO 15.6d
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

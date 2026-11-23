@@ -450,6 +450,9 @@
       { key: "formations", label: "Where soldiers stand", type: "select", def: "units",   // TODO 15.6b, 2026-11-23
         options: [["units", "Units in formation, on ground the general chooses"], ["nearest", "Every soldier for the nearest enemy (as before)"]],
         help: "An army forms units, each led by an officer chosen as the people choose (birth and wealth, bought, by service, or by vote), sized by how orders travel. Each unit takes a shape from what it carries (a shield wall, pikes guarding shot, a firing line, spread out and dug in) and each soldier holds a place in it; only the front ranks fight. Horsemen go on the wings, a reserve waits behind. The general chooses high ground, a river line or a wood to stand on. A blow from the side or rear lands harder and shakes a unit sooner; most die when a unit breaks and runs." },
+      { key: "raids", label: "Raids", type: "select", def: "real",   // TODO 15.6d, 2026-11-23
+        options: [["real", "Strike the weakly held, take and go"], ["old", "A band stays and fights for days (as before)"]],
+        help: "A band is sent only where a place is held by fewer than it brings. It burns and takes what it can carry and goes home; met by as many as it is, or once it has lost a quarter of its number, it breaks off, and the village does not chase it past its own fields. Those in a house a band burns may be killed or carried off, the carried off held unfree where the raiders' law allows it." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
         say: scale(["only when cornered", "slow to anger", "ordinary", "touchy", "over anything"]),
@@ -855,7 +858,7 @@
     const lasting = new Set();   // events held as long as a grudge: old feuds (TODO 13)
     const count = { desertersBack: 0, desertersLetBe: 0, desertersPunished: 0, freedToFight: 0,   // TODO 15.5u
                     warFinds: 0, forts: 0, gunsLost: 0, gunsBought: 0, shots: 0, grenades: 0, blasts: 0, blastDead: 0, blastCivilians: 0, blastHouses: 0, leftInGround: 0, leftWentOff: 0, leftCleared: 0, bridgesBlown: 0,   // TODO 15.6
-                    commissions: 0, drawnBattles: 0, lineDead: 0, lineKnocked: 0, unitsFormed: 0, officersLost: 0, battles: 0, contactHours: 0, nightsApart: 0, reservesSent: 0, flankBlows: 0, unitsWithdrew: 0, unitsBroke: 0,   // TODO 15.6b
+                    commissions: 0, drawnBattles: 0, raidKilled: 0, raidTaken: 0, raids_met: 0, raids_lost: 0, raids_took: 0, raids_walled: 0, koRaid: 0, koRaiders: 0, koAtVillage: 0, koOpen: 0, koLine: 0, deadRaid: 0, deadRaiders: 0, deadAtVillage: 0, deadOpen: 0, deadLine: 0, lineDead: 0, lineKnocked: 0, unitsFormed: 0, officersLost: 0, battles: 0, contactHours: 0, nightsApart: 0, reservesSent: 0, flankBlows: 0, unitsWithdrew: 0, unitsBroke: 0,   // TODO 15.6b
                     tanksBuilt: 0, tanksLost: 0, aircraftBuilt: 0, aircraftLost: 0, sorties: 0, airScouted: 0, bombs: 0, storesBombed: 0, airRations: 0, airlifted: 0,   // TODO 15.6c
                     armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
@@ -1495,6 +1498,7 @@
                   cold: 0,   // TODO 9c: the share of the village unwarmed today
                   raidAt: -1e9, raidSeen: -1e9, yearSeen: undefined,   // TODO 10: the last time enemies struck here, and the year last looked back on
                   foes: 0,   // TODO 14a: enemy soldiers at its edge, counted each day with the siege
+                  garrisonNow: 0,   // TODO 15.6d: its own soldiers at hand, counted each day with the siege
                   dangerAt: -1e9, gone: null, dearAt: -1e9,
                   riotAt: -1e9, putDown: -1e9,   // TODO 15.5b3: the last riot here, and the last one soldiers broke up
                   manure: 0, clearAt: -1, clearWork: 0,
@@ -3516,6 +3520,7 @@
       const wasUp = foe.hp >= 0.45;
       foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
       if (GENERALS && wasUp && foe.hp < 0.45 && foe.job === "soldier") fellOut(foe, p);
+      if (foe.job === "soldier" && ((wasUp && foe.hp < 0.45) || foe.hp <= 0)) koWhere(p, foe, wasUp && foe.hp < 0.45);   // TODO 15.6d: where war's dead fall, counted only
       if (SMALL_WAR && wasUp && foe.hp < 0.45 && foe.hp > 0 && foe.job === "soldier") {   // TODO 15r
         count.knockedOut++;
         const care = (has(foe.f, "medicine") ? 0.3 : 1) * (KNOW && knows(foe.f, "herbs") ? 0.8 : 1) * (WORKS && villages[foe.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1);
@@ -3530,6 +3535,34 @@
       const hv = villages[foe.home];
       if (hv && hv.f !== p.f && Math.hypot(foe.x - hv.x, foe.y - hv.y) < hv.radius + 1) hv.raidAt = t;
       return damage;
+    }
+
+    /* Where soldiers fall (TODO 15.6d), counted and nothing else: no dice, no change to anybody. "raid": at a
+       village a band was sent to (koRaiders: of them, the raiders); "village": at a village otherwise (a siege,
+       an army at it); "line": a unit's fight; "open": anywhere else. KO_AT keeps it for a death of wounds later. */
+    const KO_AT = new Map();
+    function koWhere(p, foe, down) {
+      let at = "open", raidAt = null;
+      if (UNIT_OF.size && (UNIT_OF.has(foe.id) || UNIT_OF.has(p.id))) at = "line";
+      else for (const v of villages) {
+        if (!v.alive || Math.hypot(foe.x - v.x, foe.y - v.y) > v.radius + 2) continue;
+        const o = v.f === foe.f ? p.f : foe.f, rd = factions[o] && factions[o].raid[v.f];
+        at = rd && rd.v === v.id && t < rd.until + DAY_HOURS ? (foe.f === o ? "raider" : "raid") : "village";
+        raidAt = v;
+        break;
+      }
+      KO_AT.set(foe.id, at);
+      if (!down) return;
+      if (at === "raider" && RAIDS && raidAt) { const rd = factions[foe.f].raid[raidAt.f]; if (rd && rd.v === raidAt.id) rd.lost++; }   // TODO 15.6d: the one count that is read
+      if (at === "raider") { count.koRaid++; count.koRaiders++; } else if (at === "raid") count.koRaid++;
+      else if (at === "village") count.koAtVillage++; else if (at === "line") count.koLine++; else count.koOpen++;
+    }
+    function koDead(p) {
+      const at = KO_AT.get(p.id); if (at === undefined) return;
+      KO_AT.delete(p.id);
+      if (p.hp !== -99) return;
+      if (at === "raider") { count.deadRaid++; count.deadRaiders++; } else if (at === "raid") count.deadRaid++;
+      else if (at === "village") count.deadAtVillage++; else if (at === "line") count.deadLine++; else count.deadOpen++;
     }
 
     /* Bows, armour and chariots (TODO 15n). Whether somebody shoots is fixed by who they are (a hash of
@@ -3843,6 +3876,10 @@
        Nothing here starts a battle: armies come together only by the marching that was there. README,
        "Where soldiers stand". */
     const UNITS = ARMIES && S.formations !== "nearest";
+    /* Raids as the record has them (TODO 15.6d; Ric, 2026-11-23: "whatever is realistic"). LEAVING: raiders
+       on their way home from a raid, by id, until when; they fight nobody and are chased only across the
+       raided village's own fields. RAID_LOOK: days after a band is home before the next is weighed. */
+    const RAIDS = S.raids !== "old" && S.war !== false, LEAVING = new Map(), RAID_LOOK = 3, RAID_KILL = 0.1, RAID_TAKE = 0.1;
     /* How each shape stands (Dupuy, *Understanding War*: about 10 m² a soldier in antiquity, 250 m² from
        the 1650s to 1871, 27,500 m² in 1939–45): ranks that strike, ranks deep, metres between files, whether
        it stops a charge, how often its shots land, and what is left of shots at it once dug in. */
@@ -4134,7 +4171,7 @@
       q.hp -= dmg;
       if (q.job === "soldier" && wasUp && q.hp < 0.45) { if (UNITS && by && UNIT_OF.has(q.id)) unitShock(q, by, UNIT_OF.get(q.id)); else if (GENERALS && by) fellOut(q, by); }
       wound(q, dmg);
-      if (q.hp <= 0) { count.blastDead++; if (q.job !== "soldier") count.blastCivilians++; die(q, "battle", by && by.hp !== -99 ? by : null); }
+      if (q.hp <= 0) { KO_AT.delete(q.id); count.blastDead++; if (q.job !== "soldier") count.blastCivilians++; die(q, "battle", by && by.hp !== -99 ? by : null); }
     }
     function blast(x, y, r, power, fid, kind, by) {
       count.blasts++;
@@ -5966,6 +6003,7 @@
             /* The wounded leaving the field are let go (2026-11-14): chased and
                cut down as they walked home, they were most of a war's dead. */
             if (q.job !== "soldier" || (q.hp < 0.45 && !(GENERALS && (ROUT.get(q.id) ?? -1) > t)) || !atWar(p.f, q.f) || (SPOILS && HELD.has(q.id))) continue;   // TODO 15o: the running are hunted
+            if (LEAVING.size && LEAVING.has(q.id) && Math.hypot(q.x - villages[p.home].x, q.y - villages[p.home].y) > villages[p.home].radius + 1) continue;   // TODO 15.6d: not past their own fields
             const d = dist(p, q);
             if (d < bd) { bd = d; best = q; }
           }
@@ -6015,6 +6053,10 @@
       /* Risen for their pay (TODO 15q): they hold their own place and march nowhere. */
       if (SPOILS && f.mutiny && f.mutiny.ids.has(p.id)) { const d = home.radius * R(); go(p, home.x + (R() - 0.5) * d, home.y + (R() - 0.5) * d, "patrol"); p.wait = TK(12); return; }
       /* Running from a broken army (TODO 15o): home, fighting nobody. */
+      if (LEAVING.size && LEAVING.has(p.id)) {   // TODO 15.6d: home from a raid, fighting nobody
+        if (LEAVING.get(p.id) > t && !atHome) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; }
+        LEAVING.delete(p.id);
+      }
       if (GENERALS && (ROUT.get(p.id) ?? -1) > t) { if (!atHome) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; } ROUT.delete(p.id); }
       /* The wounded go home to heal; a fight is for the whole. */
       if (p.hp < 0.45 && !atHome) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; }
@@ -6104,6 +6146,8 @@
       if (BOOKS) { PAROLE.delete(p.id); DESERTED.delete(p.id); }   // TODO 15.5u
       if (WK.size) WK.delete(p.id);   // TODO 15.6
       if (UNIT_OF.size) leaveUnit(p);   // TODO 15.6b
+      if (LEAVING.size) LEAVING.delete(p.id);   // TODO 15.6d
+      if (KO_AT.size) { if (why === "battle") koDead(p); else KO_AT.delete(p.id); }   // TODO 15.6d
       const v = villages[p.home], f = factions[p.f];
       /* Gone over the edge (TODO 15.5c): what they have goes with them, coins out of the world's sum. */
       if (why === "left") { count.minted -= p.coins; p.coins = 0; p.food = 0; p.goods = 0; p.cargo = null; p.gear = {}; }
@@ -8052,7 +8096,7 @@
       const wallNow = SIEGECRAFT ? v.wall * (1 - v.breach) : v.wall;   // TODO 15p: what the engines have left of it
       const attackers = sides.reduce((m, k) => Math.max(m, theirs[k]), 0), strongest = sides.length ? +sides.reduce((a, b) => theirs[b] > theirs[a] ? b : a) : -1;
       const defence = (ours + v.adults * 0.25) * (1 + (KIT_ON ? wallWorth(v, strongest) : eraWar(factions[v.f]).wallWorth) * wallNow);
-      v.foes = attackers;
+      v.foes = attackers; v.garrisonNow = ours;
       if (RIOTS && attackers === 0) riot(v, ours);   // not with an enemy at the edge: then the doors are barred
       if (BANDITS) { v.watch = ours; if (attackers === 0) bandRide(v); }   // TODO 15.5b4
       /* A wall raised in wartime by the people of the place, out of what is in its store (murage, asked
@@ -8212,7 +8256,7 @@
           for (const p of bucketAt(y * cols + x)) if (p.job === "soldier" && atWar(p.f, v.f) && !(SPOILS && HELD.has(p.id))) n++;   // not a prisoner held there (TODO 15q)
       return n;
     }
-    function ravage(v, foes, winning, band) {
+    function ravage(v, foes, winning, band, by) {
       const ripe = (season().ripe - 1) / 3, share = 0.1 + 0.5 * ripe;   // of what stands, a day, on a soldier's square and the eight round it
       const mine = factions[v.f];
       for (const p of foes) {
@@ -8233,13 +8277,72 @@
       if (n <= 0) return;
       const homes2 = homesOf(v).filter(h => h.v === v.id && h.built).sort((a, b) => Math.hypot(b.x - v.x, b.y - v.y) - Math.hypot(a.x - v.x, a.y - v.y));
       let loot = 0;
-      for (const h of homes2) { if (n-- <= 0) break; loot += burnHouse(v, h); if (band) count.raidBurned++; }
+      for (const h of homes2) { if (n-- <= 0) break; if (by) raidHouse(v, h, by); loot += burnHouse(v, h); if (band) count.raidBurned++; }
       for (const p of foes) { if (loot <= 0) break; const take = Math.min(loot, Math.max(0, 10 - p.food)); p.food += take; loot -= take; }
       /* A band takes what it can carry from the store besides, and goes (TODO 14e). */
       if (band) for (const p of foes) { const take = Math.min(v.food, Math.max(0, 10 - p.food)); if (take <= 0) continue; v.food -= take; p.food += take; count.looted += take; }
     }
     /* A house burned: its household lose half of what they had in it, sleep in the ruin, and
        must build it again (TODO 7b's building, from nothing). Returns the food taken. */
+    /* A raid, hour by hour (TODO 15.6d). Raiders came to take, not to fight: Keeley's raids broke off after a
+       handful of casualties, and on the Plains a party left a fight it was winning when the cost ran high.
+       At the place: met by as many of its soldiers as they are, or a quarter of the band down, they break
+       off; more of them than what holds it, and no wall, they burn and take what they can carry (`ravage`),
+       kill some who stand in a burning house's way and carry some off, and go. */
+    function raidsHour() {
+      for (const f of factions) {
+        if (!f.alive) continue;
+        for (const k in f.raid) {
+          const rd = f.raid[k];
+          if (!rd || rd.v < 0 || t >= rd.until) continue;
+          const v = villages[rd.v];
+          if (!v.alive || v.f !== +k) { rd.until = t; continue; }
+          const raiders = [];
+          let held = 0;
+          const r = Math.ceil(v.radius + 2);
+          for (let y = Math.max(0, Math.floor(v.y) - r); y <= Math.min(rows - 1, Math.floor(v.y) + r); y++)
+            for (let x = Math.max(0, Math.floor(v.x) - r); x <= Math.min(cols - 1, Math.floor(v.x) + r); x++)
+              for (const p of bucketAt(y * cols + x)) {
+                if (p.job !== "soldier" || p.hp < 0.45 || (SPOILS && HELD.has(p.id)) || Math.hypot(p.x - v.x, p.y - v.y) > v.radius + 2) continue;
+                if (p.f === f.id && !LEAVING.has(p.id)) raiders.push(p); else if (p.f === v.f) held++;
+              }
+          if (!raiders.length) continue;
+          rd.size = Math.max(rd.size || 0, raiders.length);
+          let why;
+          if (held >= raiders.length) why = "met";
+          else if ((rd.lost || 0) >= Math.max(2, Math.ceil(rd.size / 4))) why = "lost";
+          else if (wallWorth(v, f.id) * v.wall * (1 - (v.breach || 0)) < 0.5) {
+            ravage(v, raiders, true, true, f);
+            v.raidAt = t; v.dangerAt = t;
+            why = "took";
+          } else why = "walled";
+          rd.until = t;
+          count["raids_" + why]++;
+          for (const p of people) {
+            if (p.f !== f.id || p.job !== "soldier" || p.hp <= 0) continue;
+            if (Math.hypot(p.x - v.x, p.y - v.y) > v.radius + 4) continue;   // the band at the place; one still on the road simply stops being a band
+            const home = villages[p.home];
+            if (home && Math.hypot(p.x - home.x, p.y - home.y) > 2.5) { wakeUp(p); LEAVING.set(p.id, t + 4 * DAY_HOURS); p.wait = 0; }
+          }
+        }
+      }
+    }
+    /* Those in a house a band burns (TODO 15.6d): a few who stand in the way are killed, a few, the young
+       likeliest, carried off to the raiders' nearest place, held unfree where its law allows. */
+    function raidHouse(v, h, by) {
+      const lead = byId.get(by.leader);
+      let to = null, best = Infinity;
+      for (const u of villages) if (u.alive && u.f === by.id) { const d = Math.hypot(u.x - v.x, u.y - v.y); if (d < best) { best = d; to = u; } }
+      for (const q of (PLAIN ? people : residents(v.id)).slice()) {
+        if (q.hp <= 0 || q.dwelling !== h.id || q.job === "soldier" || q.id === factions[v.f].leader || Math.hypot(q.x - v.x, q.y - v.y) > v.radius + 1) continue;
+        if (adult(q) && R() < RAID_KILL) { count.raidKilled++; die(q, "battle", lead && lead.hp > 0 ? lead : null); continue; }
+        if (to && R() < RAID_TAKE * (q.age < 25 ? 2 : 1)) {
+          count.raidTaken++;
+          rehome(q, to, "taken"); q.loyal = 0.1;
+          if (GOV && by.gov && by.gov.laws.unfree === "allowed" && lead && adult(q)) bind(q, lead, "captive");
+        }
+      }
+    }
     function burnHouse(v, h) {
       h.built = false; h.work = 0; h.goodsIn = 0; h.paid = false; h.water = 0; h.taken = false; h.burned = t;
       h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
@@ -10654,16 +10757,19 @@
           /* A band sent raiding (TODO 14e): every fortnight or so, to the open place of theirs within
              reach whose store is worth most against what defends it, never where the army is going. */
           const rd = f.raid[o.id];
-          if (!rd || t > rd.until + 10 * DAY_HOURS) {
+          if (!rd || t > rd.until + (RAIDS ? RAID_LOOK : 10) * DAY_HOURS) {
             let best = null, bs = 0;
+            /* TODO 15.6d: only where the band would be more than what holds the place, and no wall to climb. */
+            const brings = RAIDS ? f.soldiers * ((GENERALS && f.camp[o.id] && f.camp[o.id].plan === "raid") || bandAtWar(f) ? 0.67 : 0.2) : 0;
             for (const v of villages) {
               if (!v.alive || v.f !== o.id || v.id === f.target[o.id]) continue;
               let near = 1e9; for (const u of villages) if (u.alive && u.f === f.id) near = Math.min(near, Math.hypot(u.x - v.x, u.y - v.y));
               if (near > 30) continue;
+              if (RAIDS && (v.garrisonNow * 1.5 >= brings || wallWorth(v, f.id) * v.wall >= 0.5)) continue;
               const sc = (v.food + v.pop) / (1 + v.adults * 0.25 * (1 + wallWorth(v, f.id) * v.wall)) / (1 + near * 0.05);
               if (sc > bs) { bs = sc; best = v; }
             }
-            f.raid[o.id] = { v: best ? best.id : -1, until: t + 5 * DAY_HOURS };
+            f.raid[o.id] = { v: best ? best.id : -1, until: t + 5 * DAY_HOURS, size: 0, lost: 0 };
             if (best) count.bands++;
           }
           /* Weariness builds with the dead, the years and the hungry. A war
@@ -10856,6 +10962,7 @@
       }
       rebucket();
       if (UNITS && ARMIES) armiesHour();   // TODO 15.6b
+      if (RAIDS) raidsHour();   // TODO 15.6d
       for (let i = 0; i < people.length; i++) {
         const p = people[i];
         if (p.hp === -99) continue;
@@ -11212,6 +11319,7 @@
       kitOf: fid => KIT_ON ? kitOf(factions[fid]) : null, wallWorth: (vid, by) => wallWorth(villages[vid], by), parole: PAROLE, deserted: DESERTED, mayServe: p => mayServe(p, factions[p.f]),
       releasePrisoner: (p, why) => releasePrisoner(p, why || "released"), heldOf: () => HELD, loans: () => LOANS, borrow: (fid, wars) => borrow(factions[fid], wars), deserterJudged: (p, harsh) => deserterJudged(factions[p.f], p, !!harsh),
       blast: (x, y, r, power, fid, kind) => blast(x, y, r, power, fid, kind || "shell", null), left: () => LEFT, leftDay: () => leftDay(), leave: (x, y, r, power, kind, fid) => leave(x, y, r, power, kind, fid),
+      raidHouse: (vid, h, fid) => raidHouse(villages[vid], h, factions[fid]), leaving: () => LEAVING.size,   // TODO 15.6d
       armyOf: fid => ARMY.get(fid) || null, unitOf: p => UNIT_OF.get(p.id) || null, armiesHour: () => armiesHour(), chooseShape: (fid, oid) => { const c = { v: 0 }; chooseShape(factions[fid], factions[oid], c, null); return c.shape; }, SHAPES: SHAPES, shapesUsed: SHAPES_USED, chooseGround: (fid, x, y, ex, ey) => chooseGround(factions[fid], x, y, ex, ey, null), warKit: fid => warKit(factions[fid]),
       machinesDay: (fid, wars) => machinesDay(factions[fid], wars), blowBridge: vid => blowBridge(villages[vid], -1),
       units: () => { const out = []; for (const a of ARMY.values()) if (a.engaged) for (const u of a.units) { if (u.broken) continue; const sh = SHAPES[u.shape], l = byId.get(u.lead); out.push({ f: u.f, x: u.sx, y: u.sy, face: u.face, w: u.files * sh.sp * METRE, d: Math.max(1, Math.ceil(u.size / u.files)) * Math.max(1.5, sh.sp) * METRE, role: u.role, shape: u.shape, lead: l ? [l.x, l.y] : null }); } return out; },

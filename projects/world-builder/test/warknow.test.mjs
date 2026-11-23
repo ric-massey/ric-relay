@@ -15,7 +15,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { formations: "nearest" };   // the parts built after this one, off
+const LATER = { formations: "nearest", raids: "old" };   // the parts built after this one, off
 const FINGERPRINT = 1505646459;   // print() of the world before, seed 2, 60 days
 
 {

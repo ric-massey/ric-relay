@@ -716,8 +716,13 @@ nobody had linked was a page nobody could find.
   list's 32 bits are full — don't add war keys to `TECH`. **Soldiers stand in units** (15.6b): an army in
   the field is units with real officers, each soldier holding a place, only the striking ranks striking;
   a battle ends in a day. **Blasts and what is left in the ground** (`blast`, `LEFT`) only come from
-  what a war did; nothing places one. **Most war dead are raiding, not battle** (measured 2026-11-23,
-  TODO 15.6d): don't tune formations or blows to bring deaths down; that is 15.6d's question for Ric.
+  what a war did; nothing places one. **War dead are still above the record** (1.8–4.4% a year in a world
+  always at war, after 15.6d): most now fall in a rout at a village; that is TODO 15.6e's question for
+  Ric — don't tune formations or blows to bring deaths down.
+  **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
+  it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
+  nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the
+  village's people hold — the garrison count is `v.garrisonNow`; reusing `held` changed every world.
   **Parole, deserters and the unfree are kept beside the people** (`PAROLE`, `DESERTED`; 15.5u), and
   what happens to a deserter or an unfree person is the leader's call, not a fixed rule.
   **People equipment uses real goods** (2026-11-12 continuation): work tools, trade packs,

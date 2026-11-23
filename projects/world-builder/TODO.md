@@ -4305,13 +4305,6 @@ numbers (Krentz's appendix); how long drill took to learn.
 **Ric (2026-11-23):** aircraft "Scout, bomb and carry"; past the Second World War, "Go past WWII".
 **Done 2026-11-23**, part of "What war follows": tanks and aircraft built at a works with power when they pay (war orders count as work for a works), fuelled from the store, lost; tanks with the line's units; aircraft scout, carry rations and soldiers, and bomb an army, a bridge, a store or a town; jets, helicopters and guided weapons after them. `test/machines.test.mjs`; README, "Tanks and aircraft" (sources: the Butt Report, Bomber Command's loss rates, the tanks at Flers). Left: missiles as their own weapon, aircraft fighting each other in the air (a loss rate stands in).
 
-### [ ] 15.6d. Raiding kills most soldiers
-
-Found measuring 15.5i7 (2026-11-23): of soldiers knocked out in a year of old enemies, only 9–24% fell in field battles; the rest in raids (about 100–130 raiding bands a year in a 600-person world of three peoples) and fights at villages, and most of the dead die later of wounds. War dead stay at 3–6% of a people a year against about 0.5–1% for the most warlike societies on record.
-**Ric decides:** whether this matters, and if so whether to look first at how often a people sends raiders, at how a raid's fight goes (raiders and villagers chasing each other, the old way), or at how many of the wounded die.
-**Research first:** how often raids came and how many they killed (Keeley; the Border reivers; Plains warfare), and the share of war dead that were raiding against battle.
-**Budget:** default.
-
 **Ric (2026-11-23):** split off 15.6 on its first question ("the other 8 are your recomendation"),
 so 15.6 can be finished whole. After 15.6 and 15.6b.
 **Do:** armoured vehicles and aircraft as things a people builds, owns, fuels and loses, like the
@@ -4326,6 +4319,87 @@ what they cost to build and keep running, and how other simulations keep them ch
 Second World War comes in.
 **Done when:** a people that can build them does, when they pay; they change battles the way the
 record says; a world without them is unchanged.
+**Budget:** default.
+
+### [x] 15.6d. Raiding kills most soldiers
+
+Found measuring 15.5i7 (2026-11-23): of soldiers knocked out in a year of old enemies, only 9–24% fell in field battles; the rest in raids (about 100–130 raiding bands a year in a 600-person world of three peoples) and fights at villages, and most of the dead die later of wounds. War dead stay at 3–6% of a people a year against about 0.5–1% for the most warlike societies on record.
+**Ric decides:** whether this matters, and if so whether to look first at how often a people sends raiders, at how a raid's fight goes (raiders and villagers chasing each other, the old way), or at how many of the wounded die.
+**Research first:** how often raids came and how many they killed (Keeley; the Border reivers; Plains warfare), and the share of war dead that were raiding against battle.
+**Budget:** default.
+
+**Measured 2026-11-23** (`test/raiddead.mjs`, new counters `ko*` / `dead*` that only count — the worlds are
+byte for byte the same; a year of old enemies, 600 people, seeds 1–3):
+
+| era | war dead a year | at a raided village | at a village otherwise (siege, assault) | in a unit's fight | blasts | died later of wounds |
+|---|---|---|---|---|---|---|
+| early | 2.8% | 64% | 28% | 8% | 0% | 60% |
+| medieval | 4.9% | 42% | 37% | 21% | 0% | 56% |
+| industrial | 6.4% | 28% | 27% | 43% | 3% | 35% |
+| modern | 3.4% | 34% | 34% | 19% | 13% | 29% |
+
+About 100–120 bands a year in each world. Of soldiers knocked out at a raided village, 40–54% were the
+raiders: a raid is a stand-up fight with the village's garrison, held for up to five days, and neither side
+leaves it. Nobody dies in the open.
+
+**Found:**
+- *How deadly war was:* Keeley's tallies, as Our World in Data gives them, put violent deaths at 320 a
+  100,000 a year for the Mae Enga (1900–50), 480 for the Dugum Dani, 1,000 for the Piegan — 0.3% to 1% of
+  a people a year, averaged over years of war and peace
+  ([OWID](https://ourworldindata.org/ethnographic-and-archaeological-evidence-on-violent-deaths)). The
+  Enga clan wars of 1991–2010, with guns, about 1% of the people in twenty years
+  ([Utah, 2012](https://www.sciencedaily.com/releases/2012/09/120927141259.htm)). States at total war
+  lost about 1% of their people a year in uniform (France 1914–18, Germany 1939–45, from their totals).
+  Reviewers call all of these numbers fragile.
+- *Raids killed most, by being many, not by being deadly:* Keeley — tribal warriors preferred raids,
+  ambushes and surprise attacks on settlements to formal battles, and the frequent raids, not the
+  stylised battles, killed most people; a raid often broke off after a handful of casualties
+  ([review](https://michaelgheller.substack.com/p/war-before-civilization-by-lawrence);
+  [Cambridge chapter](https://www.cambridge.org/core/product/955437C42DE2BD373787AB6AB36DF6EE/core-reader)).
+  Dani set battles were far less lethal than their raiding (Roscoe 2011,
+  [pdf](https://umaine.edu/anthropology/wp-content/uploads/sites/518/2013/08/RoscoeAA2011.pdf)).
+- *Raiders left when it cost them:* on the Plains, after about 1750, small parties slipped into a camp at
+  night for its horses; success was counted in horses taken, casualties were usually light, and warriors
+  broke off a fight even when winning if the cost was too high
+  ([Plains Humanities](https://plainshumanities.unl.edu/encyclopedia/doc/egp.war.023.html);
+  [Wikipedia](https://www.wikipedia.org/wiki/Indian_brave)). The Border reivers rode from a few dozen to
+  three thousand at a time; their victims' complaints list goods, captives and some killed
+  ([Wikipedia](https://www.Wikipedia.org/wiki/Reiver); [reivers.info](https://reivers.info/losses-from-reiver-raids/)).
+- *Not found:* a count of raids a year for one village, or a share of war dead by raid against battle
+  with numbers; Meggitt's *Blood Is Their Argument* and Heider on the Dani would have it.
+
+So the engine is wrong in the way a raid goes, more than in how often: raiders here stand and fight a
+garrison for days, where the record's raiders took what was weakly held and left when met.
+
+**Ric (2026-11-23):** asked what should change, "whatever is realsistiic"; asked whether raiders should kill
+or carry off villagers, "again whatever is most realistic".
+**Done 2026-11-23** (README, "Raids"): setting **Raids**, the old raid kept as "as before" and
+fingerprinted. A band goes only to a place held by fewer than two-thirds of it, with no wall worth
+climbing, weighed three days after the last came home. Met by as many, or a quarter down, it breaks off;
+more, it burns a house for every three, takes what it can carry and goes; going home it fights nobody and
+is chased only across the village's own fields. In a burned house a grown-up is killed one time in ten and
+somebody carried off one in ten (the young twice), held unfree where the raiders' law allows.
+**Measured after** (same worlds): war dead a year early 2.8% → 1.8%, medieval 4.9% → 2.9%, industrial
+6.4% → 4.4%, modern 3.4% → 3.0%; dead at a raided village 28–64% → 0–3%; villagers killed 1–5 and
+carried off 1–11 a year a world. A first version sent home every soldier of the people who was marching
+when a raid ended, the main army with them; found in the bug hunt and fixed before these numbers.
+**Not done, and why:** the rest of the excess is at villages under an army and in the line (15.6e).
+
+### [ ] 15.6e. Soldiers cut down in the rout
+
+Found finishing 15.6d (2026-11-23): with raids as the record has them, war dead are still 1.8–4.4% of a
+people a year in a world always at war, against 0.3–1% on record. Of the dead at a village an army is at,
+more than half were cut down running from a rout (seed 2, early: 9 of 14), where a routed soldier takes
+three or four times the blow and is hunted wherever they run; in modern worlds a quarter are blasts.
+**Ric decides:** whether this matters, and if so whether a rout should be chased only so far, or how
+often a village fight ends in a rout at all.
+**Research first:** how far and for how long the routed were pursued, and what share of a battle's dead
+fell in the pursuit, by age (Krentz on hoplite battles; Clausewitz; the casualty studies 15.6b read).
+**Measure first** (Ric, 2026-11-23: "is it actually .3-1% of people who went onto the battlefield died? i
+feel like if ou were on the battlefild it was more likley"): the 0.3–1% is of a whole people a year, over
+years of war and peace, and these worlds are at war all year. So measure soldiers too: the share killed in
+one battle, winners and losers apart (hoplites about 5% and 14%, Krentz, from memory, to be checked), and
+the share of an army dead in a year of campaigning; judge the rout against those, not only the people's.
 **Budget:** default.
 
 ### [ ] 16. Ruins and scavenging

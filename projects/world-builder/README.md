@@ -2588,6 +2588,43 @@ TODO item 15.6c. Ric (2026-11-23): aircraft "Scout, bomb and carry"; anything pa
   [Canada, *Crucible of War*](https://www.canada.ca/content/dam/themes/defence/caf/militaryhistory/dhh/popular/crucible-war-1939-1945-14.pdf)).
 - `test/machines.test.mjs`.
 
+### Raids (2026-11-23)
+
+TODO item 15.6d. Measuring 15.5i7 found most of war's dead falling at raided villages: a band sent every
+fortnight stood and fought the village's soldiers for up to five days. Ric (2026-11-23), asked what should
+change and whether raiders should harm villagers: "whatever is realsistiic", "again whatever is most
+realistic". Setting **Raids** under War: *Strike the weakly held, take and go* (the default) or *A band
+stays and fights for days (as before)*, which is the old world exactly (`test/raids.test.mjs`). A world
+not at war is unchanged.
+
+- **Where a band goes.** Three days after a band is home, the next is weighed: only a place of the
+  enemy's within reach held by fewer than two-thirds of what the band would bring (a fifth of the
+  people's soldiers; two-thirds under a raiding plan, or for a people that does not farm), and with no
+  wall worth climbing. No such place, no band.
+- **What it does there**, looked at every hour. Met by as many of the place's soldiers as it is, it
+  breaks off. A quarter of it down, it breaks off. More of them than hold the place, it burns a house for
+  every three of them and takes what it can carry from the houses and the store, and goes. Raiders on
+  their way home fight nobody, and the village's soldiers chase them only across its own fields.
+- **Those in a burned house.** A grown-up in the way is killed one time in ten; somebody is carried off
+  one time in ten, the young twice as often, to the raiders' nearest place, and held unfree where the
+  raiders' law allows. They count as war dead, and as people taken.
+- **Why.** Keeley: tribal warriors preferred raids, ambushes and surprise attacks on settlements to
+  battles, and the many raids, not the battles, killed most people, though a raid often broke off after a
+  handful of casualties ([review](https://michaelgheller.substack.com/p/war-before-civilization-by-lawrence);
+  [Cambridge](https://www.cambridge.org/core/product/955437C42DE2BD373787AB6AB36DF6EE/core-reader)).
+  On the Plains a party slipped into a camp at night for its horses, success was counted in horses, and
+  warriors left a fight they were winning when it cost too much
+  ([Plains Humanities](https://plainshumanities.unl.edu/encyclopedia/doc/egp.war.023.html)). Violent
+  deaths ran from 0.3% (Mae Enga) to 1% (Piegan) of a people a year
+  ([Our World in Data](https://ourworldindata.org/ethnographic-and-archaeological-evidence-on-violent-deaths)).
+  The odds of being killed or carried off are guesses, said as such: the reivers' victims' complaints
+  list goods, captives and some killed, but no source found gives a rate.
+- **Measured** (`test/raiddead.mjs`, a year of old enemies, 600 people, seeds 1–3; before → after):
+  war dead a year early 2.8% → 1.8%, medieval 4.9% → 2.9%, industrial 6.4% → 4.4%, modern 3.4% → 3.0%.
+  The share falling at a raided village went from 28–64% to 0–3%. Villagers killed in raids, a year a
+  world: 1 to 5; carried off 1 to 11. What is left is the fight at a village an army is at, and the line
+  — over half of the dead at a village are soldiers cut down running from a rout. That is TODO 15.6e.
+
 ### Eras (2026-11-22)
 
 TODO item 15d. Ric (2026-11-19, 20): eras "Ancient, Medieval, Industrial (1800s), Modern", then
