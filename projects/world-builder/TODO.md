@@ -3924,6 +3924,20 @@ star fort).
 5. **Look at 15.5i7 while in here.** Battles come too often (160 to 350 soldiers knocked out a year
    among about 60). Digging in and armies keeping their distance may answer much of it; measure
    battle dead a year by era before and after, and say how far it moved.
+6. **Blasts** (Ric, 2026-11-23: "what about bombs?", then "Yes, add them"). Today there are none:
+   every blow, guns included, is one soldier striking one other. A blast is different four ways,
+   and each is built:
+   - *It hits everybody near it,* not one target — so standing close costs more than standing
+     spread out and dug in (ties to 15.6b's shapes and Dupuy's dispersion).
+   - *It breaks things:* a mine under a wall, a shell on a gate, a bridge blown, houses and fields
+     burned — the walls, bridges, houses and fields that are already real things.
+   - *It hits whoever is there,* soldier or not: a shell into a village kills those in it, and they
+     count among the war's dead and its aftermath (14b).
+   - *Some stay:* mines and shells that did not go off are left in the ground and can kill a farmer
+     or a child years after the war, until cleared; nothing places one that a war did not leave.
+   They come from what a people knows: gunpowder gives mines under walls and early grenades;
+   cannon give solid shot, then exploding shells; explosives give shells, grenades, landmines and
+   demolition. Bombs from the air are 15.6c's.
 
 **Research first:** the order things were really found in and what each needed (bronze, iron,
 steel, stirrup, gunpowder, cannon, rifling, breech-loaders, the machine gun, motor vehicles, tanks,
@@ -3932,7 +3946,9 @@ lethality and dispersion (already used), Lanchester, the "military revolution" d
 Parker) on pike and shot and the star fort, the stirrup debate (White and his critics), Biddle's
 *Military Power* on the modern system of dispersion, cover and combined arms; casualty rates a day
 of battle and a year of war by period (to check against 15.5i7); how other simulations model
-tactics cheaply. Write it under **Research notes** below, with links.
+tactics cheaply; for blasts (6): how far a shell or grenade kills and wounds by period, how often
+shells failed to go off, and how long left mines and shells went on killing after a war. Write it
+under **Research notes** below, with links.
 
 **Ric decides** (with a recommendation each, asked all at once once the research is done):
 - How far forward: stop at the machine gun and motor transport, or go to tanks, aircraft and beyond?
@@ -3955,7 +3971,9 @@ tactics cheaply. Write it under **Research notes** below, with links.
 **Done when:** no war figure reads the era label; an early people that finds gunpowder fights like
 a people with guns, armour and all, and a medieval people that gets it builds the walls to stand it;
 each era's typical way of fighting shows up in its battles without being told to; a default world
-is unchanged; battle dead a year by era are measured and set against the record (15.5i7).
+is unchanged; battle dead a year by era are measured and set against the record (15.5i7); a blast
+hurts everybody near it and the walls, bridges and houses it falls on, and what one leaves in the
+ground can kill after the war.
 **Budget:** default.
 
 Research notes (2026-11-23, Ric: "lets do the research"; read as search summaries, books not read
@@ -4215,7 +4233,10 @@ so 15.6 can be finished whole. After 15.6 and 15.6b.
 **Do:** armoured vehicles and aircraft as things a people builds, owns, fuels and loses, like the
 cars (15d) — found from the engine, steel, the machine gun and radio (15.6's `TECH`), weighed in
 the kit like any other piece, and fitted into 15.6b's units and shapes (combined arms, Biddle).
+Aircraft drop bombs with 15.6's blasts (Ric, 2026-11-23: "what about bombs?"): on armies, on
+bridges, roads and stores, and on towns, which kills those who live there.
 **Research first:** what tanks and aircraft actually did to battle and to casualties (1916–1945 on),
+what bombing from the air did to armies, to supply and to towns (and how often it missed),
 what they cost to build and keep running, and how other simulations keep them cheap.
 **Ric decides:** what aircraft do (scouting, bombing, carrying), and whether anything past the
 Second World War comes in.
