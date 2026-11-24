@@ -34,11 +34,16 @@ about *their world*:
 | **The world** | ~10 | How big, how many, when, where | land size, people, factions, villages each, era, where they live at first, seed |
 | **Dials** | ~30 | A number that tilts how things go | how rich the land, winter, births, life, talk, aggression, deadly, rebel, the ten traits |
 | **Real alternatives** | ~15 | Two or more ways a society can genuinely work | money (coins / shared store), who leads, who holds the land, how factions start, sickness, thirst, marriage, inheritance |
-| **Engine versions** ("as before") | **38** | Switch a newer mechanism off and run the engine as it was before that item shipped | `ruins: real/old`, `battle: choice/old`, `armies: march/trickle`, `tills: both/old`, `discovery: builds/roll` … |
+| **Engine versions** ("as before") | **about 40** (43 carry an "as before" option; see below) | Switch a newer mechanism off and run the engine as it was before that item shipped | `ruins: real/old`, `battle: choice/old`, `armies: march/trickle`, `tills: both/old`, `discovery: builds/roll` … |
 | **Mechanism layers** | ~33 | Turn one piece of a system off; default on | 26 faith toggles (Prophets, Pilgrims, Martyrs, Sacred land …), Caravans, Feuds, Built roads, Armies meet … |
 | **Running the page** | 3 | Not the world — the computer | Bodies (real / spaced), Conversations (full / light), Clock |
 
-The 38 engine-version switches are the biggest single finding. They exist for a good reason —
+(Audit, 2026-11-24: this first pass counted 38; **43 settings offer an "as before" option**, and
+some of them — Men and women, Who marries whom, Babies and mothers, Land as property, Government —
+are real ways a society can work rather than developer switches. The split is a judgement; TODO 21c
+writes the list setting by setting for Ric.)
+
+The engine-version switches are the biggest single finding. They exist for a good reason —
 every item since 15 was shipped "with the old way kept and fingerprinted", and the tests use
 them to prove a new part changed nothing when off — but on the page they read as 38 decisions a
 visitor is being asked to make, with option labels like "As before" that only mean something to
@@ -58,7 +63,8 @@ somebody who read the TODO. They are a developer's comparison tool, not world se
   (up to a dozen lines of text each: rule, tax, loyalty, land, law, marriage customs, research,
   armies, faith, dealings) and the "Rule … yourself" controls.
 - **World** is seven line graphs with no axes or time scale, the 13 live settings, and 22
-  lifetime counters.
+  lifetime counters (of the 406 that `stats()` keeps). Its graphs say "since the world began", but
+  the engine keeps the last 600 days (about 1.6 game years), so after that the line is untrue.
 - **News** is the last 80 events, each with its "because" and "after" chain. A tap jumps the map.
 - **Talk** is the last 40 exchanges.
 - **Person** (also used for a village) is the inspector.
@@ -268,11 +274,13 @@ page** — Land & climate · People & lives · Economy · Society & power · War
 a short "changed from the usual" summary on each tab and a search box over every label and help
 line ("plague", "tax", "boats").
 
-**Layer 3 — Model** (Advanced). The 38 engine-version switches and the 33 mechanism layers, in
+**Layer 3 — Model** (Advanced). The engine-version switches and the 33 mechanism layers, in
 one place, said plainly for what they are: *"Each switch turns one part of the simulation off or
 back to an earlier version. They exist to compare. A visitor never needs them."* The faith layer's
-26 toggles collapse under one Faith switch with a "choose parts" fold. The page's own settings
-(Bodies, Conversations) go to a small Performance fold here too.
+26 toggles collapse under one Faith switch with a "choose parts" fold. Conversations (light) goes to
+a small Performance fold here too. *(Audit, 2026-11-24: Bodies was proposed for that fold as well,
+but section 3 measured it moving people's days by 0.95 — it changes the world, so it is not a
+performance setting. TODO 21c keeps it with the world.)*
 
 The Surprise me, Reset, Copy link and "N settings changed" controls stay, in a bar that follows the
 page.
@@ -290,9 +298,11 @@ page.
 - **A world strip** along the bottom on a desktop (behind a tap on a phone): five or six
   sparklines with labelled axes and real time — People, Food in store (days), Hungry,
   Deaths a month, At war, Loyalty — each tap opening the full graph.
-- **Headlines.** An event the engine weighs ≥ 3.5 (it already weighs them) appears briefly as a
-  line at the top of the map — "Far Fold declares war on Stone Compact" — tap it to go there and
-  pause. Never more than one at a time; the News list keeps all of them.
+- **Headlines.** ~~An event the engine weighs ≥ 3.5~~ appears briefly as a line at the top of the
+  map — "Far Fold declares war on Stone Compact" — tap it to go there and pause. Never more than one
+  at a time; the News list keeps all of them. *(Superseded: a fixed 3.5 misses a famine, weighed
+  2.5, and most events, which are weighed 1.5 to 3. TODO 21f ranks how big an event is and how much
+  it matters to what the visitor follows separately.)*
 
 ### 4c. Clicking: everything drawn can be looked at
 
@@ -359,10 +369,13 @@ whole run. These are recorded proposals, not shipped features; TODO.md remains t
 
 ## 5. Questions for Ric
 
+*(Audit, 2026-11-24: these questions now live as the "Ric decides" lines of TODO 21a to 21h, which
+is where answers go — keep one list. Question 7 is answered: item 21 exists.)*
+
 1. **The Essentials list** (section 3's table) — keep it as measured, or are there settings you
    want on the front because they are what the sim is *about*, even if they move a short run
    less?
-2. **The 38 engine-version switches** — move them to an Advanced → Model section (recommended),
+2. **The engine-version switches** — move them to an Advanced → Model section (recommended),
    or take them off the page entirely and keep them for tests and shared links only?
 3. **The faith toggles** — one Faith switch with its 26 parts folded under it (recommended), or
    keep each part a setting of its own on the Customise tabs?

@@ -6093,6 +6093,15 @@ Item 21h (2026-11-24) makes this concrete: the engine keeps 600 daily samples, u
 and 160 conversations, and a save cannot bring back what was dropped. Decide here what is kept
 before 21h promises an export of a whole run; 21h uses this item's one save format for saving,
 copying and comparing a world, and its record of the visitor's changes.
+Audit (2026-11-24), two things to settle here:
+- **Where a save lives.** "In the visitor's own browser" (above) and 21h's research disagree: 21h
+  found that Safari wipes script-written storage after seven days without a visit and any browser may
+  evict it, and recommends the **file** as the save and the browser's storage as a convenience. Ask
+  Ric which, with that finding, before building; 21h asks the same question and must get the same
+  answer.
+- **What the record forgets.** The 600 daily samples are about 1.6 game years, and past 400 events
+  `note()` drops the lowest-weighted first, so famines (2.5) and personal events go before wars. The
+  page's graphs and 21f's followed people depend on what is kept; decide it with them in mind.
 **Done when:** a saved world reopened carries on exactly as it would have; any living person's
 grandparents can be found.
 **Budget:** default; history must not grow without limit.
@@ -6101,8 +6110,10 @@ Research notes:
 
 ### [ ] 20. Making a person small
 
-**Now:** a person is 61 fields and about 1.5 KB. Memory is not the limit below about a million
-people.
+**Now:** a person is 127 fields (counted 2026-11-24 on a new default world; 61 when this item was
+written — items 6 to 16 added the rest, and the speed log's 15.12a row records the four that made
+every step 70% slower until they went into one object) and about 1.6 KB. Memory is not the limit
+below about a million people.
 **Do:** only if the bench by then shows memory, or the cost of walking through large objects, is
 what stops a bigger crowd: pack people into plain number arrays.
 **Research first:** struct-of-arrays layouts and what they bought other JavaScript simulations.
@@ -6139,13 +6150,37 @@ read the engine, the keeper and the page again and added what the first missed:
 Each was checked against `people.js` and its sources on 2026-11-24 and holds. They are folded into
 the parts below. Everything in 21 is a proposal until Ric answers its questions.
 
+**Audited 2026-11-24** (Claude, at Ric's request: "audit the 21st. make sure you reserch the sim and
+uis"; then "Yes, write them in"). Every figure in this item was checked against `people.js`,
+`people-host.js`, `index.html` in a browser at 1,024 and 375 px, and a fresh year of the default
+world (seed 11). **What holds:** 157 settings in 12 groups and 13 live; the setup page 14,467 px and
+157 rows; the year (382 → 381 → 376 → 374 people, wars 0 → 0 → 2 → 5, 3 battle deaths, 18 sickness
+deaths by day 90); the engine's 600 / 400 / 160 limits and a famine's weight of 2.5; every colour
+figure in 21b; the run screen as described. **What did not**, and is corrected in the parts below:
+the 38 engine-version switches (43 offer "as before", and the split is a judgement — 21c), the 22
+counters (the page shows 22 of the engine's 406 — 21a), what the engine records about an event
+(id, kind and faction are kept; only the panel drops them — 21f), the history (600 days, and the page
+already claims more — 21a, 21f), faction colours past eight (21b), the Physics sandbox sharing this
+page (rules below), "Bodies" being a world setting (21c), two "Done when" lines that are true today
+(21c, 21d) and tap targets on a phone (21d).
+
+**Before starting 21:** items 17 to 20 are unticked, and "Do not start an item whose earlier items
+are unticked unless Ric says to" applies — only 21h truly waits on one of them (19), but starting
+21a still needs Ric's word. And the research under "Research for all of 21" was read as search
+summaries; step 3 of "How to do an item" asks for the sources themselves, so each part reads what it
+cites before it designs.
+
 **What the page is today**, in short (`UI-REVAMP.md` has the detail):
 
 - **Setup** is 157 settings on one page, 14,467 px tall, about 7,000 words of help.
 - **Of the 157:** about 10 decide what the world is, about 30 are dials, about 15 are real
-  alternatives (coins or a shared store, who leads …), **38 are engine-version switches**
+  alternatives (coins or a shared store, who leads …), **about 40 are engine-version switches**
   ("as before", kept so tests can prove a new part changes nothing when off), about 33 switch one
-  part of a system off (26 of them faith), and 3 are about the computer.
+  part of a system off (26 of them faith), and 3 are about the computer. (The audit counted **43
+  settings with an "as before" option**, Era's default label aside; the first pass said 38. Some of
+  the 43 are choices a visitor would really make — Men and women, Who marries whom, Babies and
+  mothers, Land as property, Government — so the split is a judgement, written down nowhere. 21c
+  makes the list.)
 - **Measured** (`test/settings-impact.mjs`): 60 settings make a byte-identical world for two months;
   **41 still do after a year** — 24 of the 26 faith settings, the election term, and Breaking away,
   a live control. They are slow, not dead: `world-builder.test.mjs` proves each moves a world within
@@ -6177,7 +6212,13 @@ the parts below. Everything in 21 is a proposal until Ric answers its questions.
   An attractive mock-up is not evidence it works — looks make people forgive flaws in testing
   ([NN/g, aesthetic-usability effect](https://www.nngroup.com/articles/aesthetic-usability-effect/)).
 - **Speed:** a frame costs no more than it does now on a 5,000-person world (`people-host.js`
-  reports what a frame cost).
+  reports what a frame cost), and no more than now on the largest world the bench runs (20,000):
+  People has no top, so a budget set only at 5,000 says nothing about the worlds that strain.
+- **The Physics sandbox shares this page** (audit, 2026-11-24). `index.html` is both sandboxes:
+  the bar (`buildBar` — Physics' own speeds 0.25× to 4× and its Kind / Heat / Speed views), the
+  tabs, the key and the colour tokens in `:root` serve Physics too, and the opening page with the two
+  doors is outside 21. Each part that changes shared furniture either leaves Physics and the Lab
+  working as they are, checked in a browser, or brings them into scope after asking Ric.
 
 **Order:** 21a decides what matters, 21b how it looks, then the screens: 21c → 21d → 21e → 21f →
 21g. **21h waits on item 19**, which owns the one save format.
@@ -6278,6 +6319,17 @@ person has heard and believes, and estimates are shown as three different things
 keeper now. History — budgets over time, how inequality changed, flows — needs a check of what the
 engine keeps first; accounting it does not keep is a new item.
 
+*Audit, 2026-11-24 — what there is to choose from, and how far back it goes:*
+- **The counters:** the World tab shows 22, but `stats()` holds **406** lifetime counts — every war,
+  faith, trade, land and household tally. "Keep the ones that move" chooses from all 406, not the 22
+  on the page; most of the war and faith ones stay at zero for years (see `UI-REVAMP.md` §3), which is
+  itself a reason to show only what has moved.
+- **The graphs:** `sample()` writes one row a day and the engine keeps the last 600 — about 1.6 game
+  years. "Up 12% since last year" works only inside that; a world older than 600 days has lost its
+  start until item 19 keeps more. The page already says more than it has: the World tab reads "One
+  point a day, since the world began (the last N days)", which is untrue after day 600. Say "the last
+  N days" only — that one line can be fixed before the rest of 21.
+
 **Research first:** what players of simulation games say brings them back and what they find noise.
 **Ric decides:** what goes behind a tap.
 **Done when:** each view's first screen holds only the "in front" list, the rest is one tap away,
@@ -6302,8 +6354,9 @@ up to eight factions; contrast for small text on a dark map.
 **Ric decides:** which mock-up direction; whether the land keeps its current palette; the faction
 colours (Okabe–Ito, Tol's, or the current twelve with the two that merge replaced).
 **Done when:** Ric has picked a direction; every colour that carries words clears 4.5:1; eight
-faction colours stay apart for the common colour blindnesses; the five tasks work on the mock-ups at
-desktop and phone width, with readable type, touch targets and keyboard focus.
+faction colours stay apart for the common colour blindnesses, and a world with more than eight still
+tells every faction apart by something other than colour; the five tasks work on the mock-ups at
+desktop and phone width, with readable type, touch targets of at least 44 px and keyboard focus.
 **Budget:** none — no code changes.
 
 Research notes (2026-11-24; read off the page's CSS and `people.js`, measured with a contrast and
@@ -6330,21 +6383,39 @@ colour-blindness script — Machado et al. 2009 simulation, CIE Lab ΔE):
   capitals. Use the serif small instead.
 - **Graphs:** no axes, time or units; the faction chart is a stacked area with nothing to read a
   number off. Every graph gets a time axis in game years and a labelled top value.
+- **More than eight factions happen** (audit, 2026-11-24). Setup allows up to eight, but a breakaway
+  makes a new faction (`secede` → `newFaction`), and `newFaction` takes
+  `COLOURS[factions.length % COLOURS.length]` from twelve — so the thirteenth faction ever made is the
+  accent colour again and shares a colour with the first. Okabe–Ito has eight. Plan for it: a
+  palette past eight, a second cue beyond colour (a pattern on land, a letter or mark on the marker,
+  the name in the legend), and never reuse a colour while both factions are alive. That is a page
+  change wherever it can be one; a change to how `newFaction` picks a colour is an engine change, and
+  21 asks first.
 
 #### [ ] 21c. Setting up a world in three layers
 
 **Now:** one wall of 157 settings.
 **Do:** **Start** — the presets as cards and about 14 Essentials, help behind ⓘ; **Customise** —
-the rest of the world and the dials in tabs, with search over labels and help; **Model** — the 38
+the rest of the world and the dials in tabs, with search over labels and help; **Model** — the
 engine-version switches and the mechanism switches, said plainly for what they are. The "what this
 computer can run" line stays under How many people.
+- **Write the list first, setting by setting.** 43 settings offer "as before" (audit, 2026-11-24).
+  For each, say which layer it goes on and why, and give Ric the list. The ones that are a real way a
+  society or a body can work (Men and women, Who marries whom, Babies and mothers, Land as property,
+  Government, …) belong on Customise even though they carry an old-engine option.
+- **"Bodies" is not a computer setting.** It moved how people spend their days nearly as much as
+  reseeding a world does (0.95 in `UI-REVAMP.md` §3). Do not file it under Performance; it goes with
+  the world, said for what it does. Conversations (light) made no difference in a year and can go
+  with the computer settings.
 **Research first:** progressive disclosure in the setup screens of sims and strategy games.
 **Ric decides:** the Essentials (`UI-REVAMP.md` §3 has the measured list); whether the
 engine-version switches stay on the page (Model) or only in tests and links; one Faith switch with
 its parts folded, or each part its own setting.
-**Done when:** a first-time visitor understands the starting choice and finds Run without scrolling
-on a laptop; every setting is reachable and searchable; every old link opens the same world. Do
-not shrink the cards and controls to force everything onto one screen.
+**Done when:** a first-time visitor can say what the starting point they chose will be like, and
+change the Essentials, without scrolling on a laptop; every setting is reachable and searchable;
+every old link opens the same world. Do not shrink the cards and controls to force everything onto
+one screen. ("Finds Run without scrolling" was the old wording; it is true today — Run sits in a
+fixed bar at the foot of the setup page — so it tested nothing.)
 **Budget:** none on the engine.
 
 Research notes: the Essentials in `UI-REVAMP.md` came from what changed a short run soonest and
@@ -6373,11 +6444,17 @@ that run from real time to years a minute.
 **Ric decides:** which layers; ten speeds or three plus a menu; which "run until" targets and pause
 conditions to offer.
 **Done when:** every layer says what its colours mean; pause, speed and date are readable and
-reachable at 375 px; "run until spring" stops at spring.
+reachable at 375 px, with every control in the bar at least 44 px tall (today the speed buttons
+there are 32–44 × 34 px); the map's middle is clear at 375 px (today the key, 340 × 147 px, covers
+most of a 375 × 344 map); "run until spring" stops at spring.
 **Budget:** a frame no slower than now. Detecting a pause condition the keeper cannot see is a new item.
 
 Research notes: see "Research for all of 21" — Cities: Skylines' views grouped by question, CK3's
 detail by zoom. The page already draws in three zoom ranges (item 5); layers follow those.
+Audit (2026-11-24): a person's colour is worked out in the keeper (`tint(p, view)` in
+`people-host.js`, inside the loop over people in view), so a per-person layer — hunger, sickness,
+loyalty, faith — is one more case there and costs about what Mood does. Land held, roads and war are
+drawn from what the frame already sends (`fields`, `tracks`, `vs`).
 
 #### [ ] 21e. Everything drawn can be looked at: one inspector
 
@@ -6400,8 +6477,13 @@ a caravan and a news item.
 **Research first:** how sims with thousands of agents let you inspect one (RimWorld, Dwarf Fortress,
 Crusader Kings, Cities: Skylines).
 **Ric decides:** what a person's first screen shows.
-**Done when:** every kind of thing drawn on the map opens something true about it.
-**Budget:** a tap answered in under 100 ms on a 5,000-person world.
+**Done when:** every kind of thing drawn on the map opens something true about it. (Until then, the
+line under the map — "tap anything to look at it" — promises more than the page does: only people
+and village markers answer. Say "tap a person or a village" until 21e ships.)
+**Budget:** a tap answered in under 100 ms on a 5,000-person world, and measured on 20,000 too.
+Today a person's panel goes through every person to find their children (`pane` in
+`people-host.js`), which is fine at 5,000 and grows with the world; a household view must not add
+another pass like it.
 
 Research notes: see "Research for all of 21" — hair complexity, apophenia, short first layers,
 Factoriopedia's two directions.
@@ -6421,9 +6503,15 @@ so far), **People**, **News** (Talk as a filter) and the **Inspector**.
 - **Not by weight alone.** The engine weighs a village's famine 2.5, so a fixed 3.5 would never show
   one. Rank how big an event is and how much it matters to what you follow separately. Never change
   the engine's weights to suit headlines.
-- **News needs more from the keeper:** the pane today sends text, place, year and the why/after
-  lines, not an event's id or who it concerns. Add those to what `people-host.js` sends; where the
-  engine does not record who an event concerns, that is a new item.
+- **News needs more from the keeper:** the pane today sends text, weight, place, year and the
+  why/after lines. The engine's events already carry an `id`, a `kind` and the faction they concern
+  (`f`) — `note()` in `people.js` — and the pane drops them (audit, 2026-11-24). Sending those is
+  keeper-only work, inside 21. What the engine does not record is **which people** an event
+  concerns; that is a new item, asked about first.
+- **The record forgets the small things first.** Past 400 events `note()` removes the
+  lowest-weighted one outside the last 50, so in a long world a village's famine (2.5) or a pinned
+  person's wedding goes before a war (4). "What happened to the people you pinned" can only show what
+  survived; until item 19 keeps more, the page says when a pinned subject's older record may be gone.
 
 **Research first:** event logs and notifications in sims; how story generators make players notice
 a story.
