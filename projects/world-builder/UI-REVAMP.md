@@ -348,6 +348,15 @@ two faction colours identical under deuteranopia), what to show and what to put 
 recipe plus snapshots, a CSV export of the history). This file stays the analysis; TODO.md is
 where the work and its research go from here.
 
+A second review was added to the matching parts of item 21 on 2026-11-24 at Ric's request
+("add it to the correct section"): persistent watched subjects, deliberate time controls,
+household access to resources, unmet requirements, facts versus beliefs, and branching a saved
+world to compare interventions. Those notes refine this first proposal: a fixed headline
+threshold misses famine events (weight 2.5), comfortable controls take priority over fitting
+every setting on one screen or every phone control in one row, and 21g's information priorities
+inform 21a's mock-ups. Item 19 must settle retained history before 21h promises an export of the
+whole run. These are recorded proposals, not shipped features; TODO.md remains the work list.
+
 ## 5. Questions for Ric
 
 1. **The Essentials list** (section 3's table) — keep it as measured, or are there settings you
