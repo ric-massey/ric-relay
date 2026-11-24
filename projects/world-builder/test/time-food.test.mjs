@@ -96,16 +96,22 @@ for(const inherit of ["kids","faction","village"]){
 // Births add people, not a newly minted bag of food. Use fed couples and
 // stop at a real birth; never shorten their calendar or force an outcome.
 function families(births) {
- const w=People.create({...options,people:400,factions:1,villages:4,crowd:200,life:20,grown:6,births,war:false,talk:0,soldiers:0});
- for(const p of w.people){p.age=8;p.dieAt=20;p.food=100;p.partner=0;p.mum=0;p.dad=0;p.job="farmer";p.wait=1000000;p.task="idle";p.tx=p.x;p.ty=p.y;}
- for(const v of w.villages){const people=w.people.filter(p=>p.home===v.id);for(let i=0;i+1<people.length;i+=2){people[i].partner=people[i+1].id;people[i+1].partner=people[i].id;}}
+ const w=People.create({...options,people:400,factions:1,villages:4,crowd:200,life:20,grown:6,births,war:false,talk:0,soldiers:0,thirst:"off"});   // thirst off: a thirsty idler gets up for water and then to work, and work brings food in
+ for(const p of w.people){p.age=8;p.dieAt=20;p.food=100;p.partner=0;p.mum=0;p.dad=0;p.job="farmer";p.wait=1e9;p.task="idle";p.tx=p.x;p.ty=p.y;}   // 1e9: idle past the months a first birth can take (1e6 ran out in 139 days, and they went to the fields)
+ /* A man and a woman in each couple (2026-11-24: paired as they came, most couples were two men or two
+    women, and with 15.12a's dice none of the few others was already due within the week). */
+ for(const v of w.villages){const men=w.people.filter(p=>p.home===v.id&&p.sex!==0),women=w.people.filter(p=>p.home===v.id&&p.sex===0);for(let i=0;i<Math.min(men.length,women.length);i++){men[i].partner=women[i].id;women[i].partner=men[i].id;}}
  return w;
 }
 {
  const w=families(1),off=families(0),total=w=>w.people.reduce((n,p)=>n+p.food,0)+w.villages.reduce((n,v)=>n+v.food,0),before=total(w);
- for(let h=0;h<168 && w.stats().births===0;h+=6){w.step(6);off.step(6);}
+ /* Nobody here works, so the food there is can only fall: a step in which it rose brought food with a
+    birth. (It was `before - 400 a day`, which a week held; with women eating less than men (15.5l) it
+    does not over the months a first birth now takes, 2026-11-24.) */
+ let rose=0,last=before;
+ for(let h=0;h<24*200 && w.stats().births===0;h+=6){w.step(6);off.step(6);const now=total(w);rose=Math.max(rose,now-last);last=now;}
  assert.ok(w.stats().births>0,"fed-couple fixture must include an actual birth");
  assert.equal(off.stats().births,0,"births disabled must hold under the same fertile circumstances");
- assert.ok(total(w)<=before-400*w.tick/24+1e-5,"a newborn must be fed from existing supplies, not bring setup rations");
+ assert.ok(rose<=1e-5&&total(w)<before,"a newborn must be fed from existing supplies, not bring setup rations (rose "+rose+", "+before+" -> "+total(w)+")");
 }
 console.log("Time and food: same world through frames/hours/batches, daily rations, child needs, household meals, crop growth and sustained hunger pass.");

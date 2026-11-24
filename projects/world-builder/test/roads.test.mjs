@@ -38,7 +38,7 @@ const People = createRequire(import.meta.url)("../people.js");
 
 // 3 and 4. By boat along a coast, and lost.
 {
-  const w = People.create({ seed: 4, sea: 0.5, map: 40 });
+  const w = People.create({ seed: 5, sea: 0.5, map: 40 });   // seed 5 since 15.12a's dice (2026-11-24) placed seed 4's villages elsewhere
   w.step(24);
   let pair = null;
   /* Two villages with landings on the sea, far enough apart that the water is quicker. */

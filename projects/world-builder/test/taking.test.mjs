@@ -10,11 +10,12 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
+const LATER2 = { folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" };   // 15.11b to z and 15.12b to d, built after this one, off: its worlds as they were picked
 
 {
   const peace = taking => { const w = People.create({ seed: 4, people: 300, factions: 2, taking, war: false }); w.step(24 * 60); return w; };
   assert.equal(print(peace("terms")), print(peace("old")), "a world at peace is the world it was");
-  const war = taking => { const w = People.create({ seed: 4, people: 300, factions: 2, taking }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };
+  const war = taking => { const w = People.create({ seed: 4, people: 300, factions: 2, taking, ...LATER2 }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };
   const s = war("terms").stats();
   assert.ok(s.calledOff > 0, "an army at a place too strongly held to take draws off (" + s.calledOff + ")");
   console.log("  100 days of war: called off " + s.calledOff + " (soldiers' deaths are measured over seeds by test/soldierdead.mjs)");

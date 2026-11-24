@@ -3260,7 +3260,7 @@ world exactly as it was, fingerprinted).
 holder took it up, 2.8% of the rest. At the first rate tried (twenty times faster) every grown-up
 of a village held it within forty days, against Stark's 40% a decade; at the rate kept a faith
 spreads over years, not weeks. Cost: one sum over the people a day while any faith is held, and a
-few comparisons in each talk.
+few comparisons in each talk. (Since 15.12a's dice, 2026-11-24, five such worlds pooled: 6% against 2.1%, three times.)
 
 **Left out:** splits when two leaders hold different versions; faith in marriage (15b, since done);
 festivals with feasting beyond gathering; writing a faith down (15e). All of it, and what is not true to
@@ -3351,6 +3351,105 @@ three faiths a world where any arose. So in an ordinary world these five do almo
 faith seldom starts there; that is 15.11a's question (measure 15g alone over years), not answered here.
 **Cost:** the same runs took 294–306 s with the five on and 287–299 s off, inside run-to-run noise: one more
 tally over the people a day, and the rest only after a hard event, one village at a time.
+
+### Each one's own dice (2026-11-24)
+
+TODO 15.12a. Ric: "Separate people's random draws. Tie randomness to the person, decision type, and simulation time
+… Skipping a robbery option shouldn't redistribute everyone's rolls." Until this date every draw came off one stream,
+`R`, in the order people happened to be visited, so one extra draw anywhere changed everybody's dice after it.
+
+- **A draw is a hash** (`draw` in `people.js`): of the seed, who is deciding (`ACT`: a person's `p.dc`, a village's,
+  a people's, or the world's), the step, which of their draws this step it is, and the kind of draw (the old
+  separate streams for traits, foul water, wounds, sexes, babies and minds are kinds now). MurmurHash3's finaliser
+  mixes it; it is counter-based, as Philox and Threefry are (Salmon, Moraes, Dror and Shaw, "Parallel random
+  numbers: as easy as 1, 2, 3", SC11, 2011), so it costs one hash a draw.
+- **Who decides** is set where a person, a village or a people takes its turn (`act`, `live`, `reflect`,
+  `chooseJob`, `market`, `villageTurn`, `decide`), and a loop over many people draws each on their own (`Rp`).
+- So feeding one person reaches another only through what the world models — a talk, a trade, a store, a price, a
+  ruler's order. `test/dice.test.mjs`: one person fed, and the 120 people of a far village of another people do
+  exactly what they did.
+- **Ric chose "New only"**: every seed gives a new world from this date; the old stream is not kept. Every
+  fingerprint was pinned again, and the tests whose worlds had been picked by seed were looked at one by one
+  (TODO 15.12a says which and how).
+- **A person is at V8's edge.** Four more fields on a person made every step 70% slower: the object no longer fit
+  what V8 keeps in it. The dice are one small object, `p.dc`, and everything 15.11 and 15.12 added to a person is in
+  one more, `p.lf`. Anything new a person holds goes in an object of its own.
+- **Measured:** the bench as before (400, 2,000 and 5,000 people), and 5,000 people over three seeds 2.36 s a day
+  with the old dice and the new.
+
+### Faith, deeper (2026-11-24)
+
+TODO 15.11a to h and n to z. Ric: "i just want it to be realistic you know?", then "finnish all of 15". Each part is
+a setting under Minds, shown while Faith is on, on by default; with all of them off the world is the one before
+(`test/faithdeep.test.mjs`, fingerprinted with three faiths held). Ric decided three questions on 2026-11-24 — a
+ruler may force a faith ("Yes, by nature"), shrines and temples are built now ("Build now, simply") — and the
+rest were answered with the recommended choice, written in TODO.md for him to overturn. **None of the research
+named in TODO.md was read this session**: the works are cited as remembered, and every number below is a guess
+to be checked, not a measurement of the world's record.
+
+**Before (15.11a, `test/faithcount.mjs`).** Four default worlds, ten years each, before these parts: 4 to 12 faiths
+made, 1 to 4 named; almost nobody held one for three years, then one took the world over: 89% to 97% of grown-ups held
+a faith by the tenth year. Faiths lasted three to five years on average. A people whose ruler held a faith was no
+more loyal, and had fewer births (2 to 4 a year per hundred against 4 to 5, few people-years).
+
+**After** (seeds 1 and 2, every part on): 3 and 4 faiths in ten years, and 34% and 52% of grown-ups holding one by the
+tenth, still rising; nobody let one go. Folk belief holds off a faith that does not keep it, so faiths come slower.
+
+- **Belief before faiths** (b). Everybody holds a folk belief (`lf.folk`), taken after their parents, of their
+  people's kind: the ancestors, the spirits of places, or both (`folkOf`). A faith that keeps it passes more readily
+  to those who hold it, one that does not less; letting a faith go falls back on it.
+- **What a faith can hold** (b2). `widen` gives a new faith what is sacred, what comes after death, food and drink,
+  harm, who leads and who joins, pilgrimage, monks, healing, how it stands toward others, giving, lending, rank,
+  washing, a truce and turning from new things — each from its maker's nature and what went wrong, the clashing kept
+  out (nothing that harms no one asks for a sacrifice). Each does something: see TODO 15.11b2. Boyer, *Religion
+  Explained*; the Seshat and Pulotu databases for the range.
+- **Fading** (c). Zeal fades six times slower for somebody who cannot read, faster in towns and among other faiths,
+  and offerings that failed take it away (`fadeOf`). Norris and Inglehart; Stark; Festinger.
+- **From the ruler** (d). The loyal come over to the ruler's faith, the household and officials first; a hot,
+  stubborn, zealous ruler taxes or forces it, and the forced keep theirs hidden and go back to it. Bulliet's
+  conversion curve; *cuius regio*; the Kakure Kirishitan. 13 → 52 of 169 in 120 days, 17 without.
+- **When faiths meet** (e). Sects of a faith held by two rulers; tolerant sects join back; two faiths side by side
+  borrow days; a faith bound to win others over presses them. Stark and Bainbridge; Allport.
+- **Faiths that change** (f). Rite and days drift to the holders' nature, a fifth as fast written down; a large
+  faith of rites turns to teaching; a written faith can be found again. Whitehouse, *Modes of Religiosity*.
+- **What a faith owns** (g). A keeper in each village (its priest, else its most zealous); a tithe of half a
+  hundredth a month to them, coins from hand to hand; shrines; a greedy ruler of another faith takes half of what its
+  keepers hold. 69 coins of tithe and two shrines in 90 days for a people of 30 holders.
+- **Feasts and the dead** (h). Harvest, midwinter, spring and a day for the dead, paid for by the store; burials paid
+  for by the household. A year: 24 feasts, 63 days of food.
+- **Comfort** (n), **oaths, courts and sanctuary** (o), **who is above whom** (p), **rites of a life** (q), **reading**
+  (r), **keeping and forbidding** (s), **days without war** (t), **martyrs and morale** (u), **fleeing for faith**
+  (v), **great temples** (w), **pilgrims** (x), **sacred land** (y), **washing and healing** (z): each as TODO.md says,
+  with its numbers. Bentzen 2019; Leeson 2012; Becker and Woessmann 2009; the Peace of God; Berman; Hornung 2014;
+  Lansing, *Priests and Programmers*.
+
+**Left** (TODO 15.13): a faith made by hand on the page, land given to a faith, trial by ordeal, more than one wife,
+what faith does in an epidemic (with the plague item), and reading the research.
+
+### Lives with a history (2026-11-24)
+
+TODO 15.12b to e, in Ric's words in TODO.md. Three settings, on by default, each off the world after 15.11 exactly;
+the links of why things happened are always kept and change nothing (`test/lives.test.mjs`). Research, as for
+faith: cited as remembered, not read this session.
+
+- **Hearing of a thing** (b). `lf.heard` beside `know`: a talk passes word first; it is learned beside somebody who
+  does it as their own work three times as readily as before, by seeing it done half as readily; children have heard
+  of what their parents know. Epstein 1998 and De la Croix, Doepke and Mokyr 2018 on apprenticeship; Polanyi on
+  tacit knowledge. The plough: 135 talks beside a farmer, 193 seeing it done.
+- **Experience** (c). Years in ten kinds of work (`lf.xp`), an hour at a time, slowly forgotten, never to nothing.
+  Yield is 0.8 of a seasoned hand's for a beginner, 1.0 at three years, 1.15 at ten (Wright 1936, Arrow 1962). A
+  change of work costs a season (0.12 of a day's worth), so people keep to a lane: 7.4% changed work in 120 days,
+  10.6% before. A people's skill at a technique is its people's at that work (15.9d's per-people skill, replaced, as
+  Ric chose).
+- **How things are found** (d). One aim at a time, picked as 15.9b picks and three times as readily something heard
+  of, only in work the person practises (a hundred hours at it); headway comes now and then, a third of the way, so a
+  find takes about as long as the old daily chance said, but is built up, and the news says over how many days and at
+  what. Arthur, *The Nature of Technology*; Ogburn and Thomas 1922. A smooth version, a little every day, was tried
+  first: everybody's finds would have come together, years in.
+- **Why it happened** (e). A link (`because`) for each real change in a life — not paid, took to the road, robbed,
+  lost a load, a change of work, a find, learned a thing, a move, an office — pointing at the one before. A robbery,
+  a mutiny, a famine and a find carry the chain on the News tab ("after: …"), five links back; the person panel shows
+  theirs, what they are best at, and what they are working toward. The newest 20,000 links are kept.
 
 ### A land of one village, and beyond its edge (2026-11-22)
 

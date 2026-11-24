@@ -424,7 +424,7 @@
           out.wedCands = { f: wp.f, o: wp.o, a: list(wp.f), b: list(wp.o) };
         }
       } else if (tab === "news") {
-        out.events = w.events.slice(-80).reverse().map(e => ({ weight: e.weight, x: e.x, y: e.y, year: e.year, text: e.text, why: e.why }));   // why: the numbers the decision was made on (2026-11-23)
+        out.events = w.events.slice(-80).reverse().map(e => ({ weight: e.weight, x: e.x, y: e.y, year: e.year, text: e.text, why: e.why, after: e.after || "" }));   // after: the chain that led to it (TODO 15.12e)   // why: the numbers the decision was made on (2026-11-23)
       } else if (tab === "talk") {
         out.chatter = w.chatter.slice(-40).reverse();
         for (const c of out.chatter) { name(c.a); name(c.b); }
@@ -449,6 +449,7 @@
               food: p.food, coins: p.coins, goods: p.goods, mood: p.mood, loyal: p.loyal, bold: p.bold, warm: p.warm, stub: p.stub, greed: p.greed, patient: p.patient, temper: p.temper, hard: p.hard, curious: p.curious, honest: p.honest,
               rest: p.rest, alone: p.alone, fear: p.fear, hungry: p.hungry, sick: p.sick, say: p.say,
               faith: p.faith != null && w.faiths ? w.faithOf(p.faith) : null, unfree: !!p.unfree,   // TODO 15g, 15c
+              life: w.lifeOf ? w.lifeOf(p) : null,   // TODO 15.11b, 15.12c to e
               cargo: p.cargo ? { what: p.cargo.what, amount: p.cargo.amount } : null,
               friends: friends, mind: w.inMind(p), mcap: p.mcap, children: children, listener: other && other.sayT > 0 && other.talkingTo === p.id ? other.id : 0,
               activity: w.activity(p), adult: w.adult(p), leans: w.leans(p), dailyNeed: w.dailyNeed(p), urgency: w.urgency(p),

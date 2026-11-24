@@ -5,7 +5,7 @@ const People0 = createRequire(import.meta.url)("../people.js");
 const PIN = { sexes: "none", beasts: "none", childwork: "none" };
 const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 // The goods economy as it was; real materials are held at the end (TODO 9a).
-const make = extra => People.create({ people: 20, map: "small", factions: 1, villages: 2, war: false, talk: 0, seed: 7, materials: "goods", ...extra });
+const make = extra => People.create({ people: 20, map: "small", factions: 1, villages: 2, war: false, talk: 0, seed: 7, materials: "goods", experience: "people", ...extra });   // experience (15.12c) off: these are the README's figures for a day's work, before skill
 const ready = w => {
   for (const p of w.people) { p.wait = 9999; p.task = "idle"; p.tx = p.x; p.ty = p.y; }
   const p = w.people[0], v = w.villages[p.home];

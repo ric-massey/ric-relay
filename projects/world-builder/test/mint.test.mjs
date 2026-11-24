@@ -14,10 +14,10 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const OLD = 1158156353;   // the world below before 15.7, 15.6f, 15.6g and 15.8
+const OLD = 1267386687;   // the world below before 15.7, 15.6f, 15.6g and 15.8
 
 {
-  const w = People.create({ seed: 3, people: 200, era: "medieval", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, property: "old", passage: "old", taking: "old" });
+  const w = People.create({ seed: 3, people: 200, era: "medieval", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", property: "old", passage: "old", taking: "old" });
   w.step(1500);
   assert.equal(print(w), OLD, "a fixed stock is the old money, exactly");
 }
@@ -45,7 +45,7 @@ const money = w => w.people.reduce((a, p) => a + (p.hp !== -99 ? p.coins : 0), 0
 }
 {
   const w = People.create({ seed: 2, people: 300 }); w.step(24 * 3);
-  const v = w.villages.find(u => u.alive && u.food > 5);
+  const v = w.villages.find(u => u.alive && w.people.some(q => q.hp > 0 && q.home === u.id && w.adult(q))); v.food = Math.max(v.food, 20);   // a store with food in it (15.12a: in this world's third day every store happens to be empty)
   const p = w.people.find(q => q.hp > 0 && q.home === v.id && w.adult(q)); p.coins = 100;
   v.siege = 1;
   assert.ok(w.trustOf(v.id) < 0.35, "under siege coins are not trusted");

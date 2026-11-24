@@ -16,8 +16,8 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const OFF = { soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, pursuit: "old" };
-const OLD = 1585413095;   // the world below before 15.10 and 15.6h
+const OFF = { soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", pursuit: "old" };
+const OLD = 3231074319;   // the world below before 15.10 and 15.6h
 
 function print(w) {
   let h = 2166136261;
@@ -69,7 +69,7 @@ const money = w => w.people.reduce((a, p) => a + (p.hp !== -99 ? p.coins : 0), 0
 }
 {
   const w = People.create({ seed: 2, people: 300 }); w.step(3);
-  const v = w.villages.find(u => u.alive && u.food > 20);
+  const v = w.villages.find(u => u.alive && w.people.filter(q => q.hp > 0 && w.adult(q) && q.home === u.id).length > 2); v.food = Math.max(v.food, 25);   // a store with food in it (2026-11-24: in this world's third hour every store happens to be low)
   const here = w.people.filter(q => q.hp > 0 && w.adult(q) && q.home === v.id);
   const lender = here[0], p = here.find(q => q !== lender && q.partner !== lender.id);
   p.mum = lender.id;
@@ -85,7 +85,7 @@ const money = w => w.people.reduce((a, p) => a + (p.hp !== -99 ? p.coins : 0), 0
 }
 {
   const w = People.create({ seed: 2, people: 300 }); w.step(3);
-  const v = w.villages.find(u => u.alive && u.food > 20);
+  const v = w.villages.find(u => u.alive && w.people.filter(q => q.hp > 0 && w.adult(q) && q.home === u.id).length > 2); v.food = Math.max(v.food, 25);   // as above
   const giver = w.people.find(q => q.hp > 0 && w.adult(q) && q.home === v.id);
   const p = w.people.find(q => q.hp > 0 && w.adult(q) && q.home === v.id && q !== giver && q.id !== giver.partner && q.partner !== giver.id && q.mum !== giver.id && q.dad !== giver.id && giver.mum !== q.id && giver.dad !== q.id);
   for (const q of w.people) q.faith = null;

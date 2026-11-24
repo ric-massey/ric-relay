@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const OLD = 2600205387;   // the world below before 15.6h and 15.10
+const OLD = 2704337721;   // the world below before 15.6h and 15.10
 
 function print(w) {
   let h = 2166136261;
@@ -24,7 +24,7 @@ function print(w) {
   return h;
 }
 {
-  const w = People.create({ seed: 4, people: 200, era: "medieval", neighbours: "enemies", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false }); w.step(1500);
+  const w = People.create({ seed: 4, people: 200, era: "medieval", neighbours: "enemies", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" }); w.step(1500);
   assert.equal(print(w), OLD, "wherever they run is the old world, exactly");
 }
 {

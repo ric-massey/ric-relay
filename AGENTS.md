@@ -750,6 +750,17 @@ nobody had linked was a page nobody could find.
   (`against` in `reflect`), or a content life hides it; a movement founds a people only through the breakaway
   that exists (`secede`), never by a rule of its own; and the research behind them was not read this session —
   the README says so, and the numbers are guesses to be checked, not tuned toward anything.
+  **Each one's own dice** (TODO 15.12a, 2026-11-24; Ric chose "New only", so every seed is a new world from that
+  date): a draw is a hash of the seed, who decides (`ACT`), the step and the draw's place, not the next number off one
+  stream. **Anything new that runs a person's, village's or people's turn sets `ACT` (`as(p.dc)`, `as(v.dc)`); a loop
+  over many people draws each with `Rp(p)`**, or one person's extra draw moves strangers' dice again
+  (`test/dice.test.mjs`). **A person is at V8's edge**: four more fields made every step 70% slower. New per-person
+  state goes in `p.lf` (or an object of its own), never as a new field of the person.
+  **Item 15 is done, all of it** (2026-11-24, Ric: "finnish all of 15"): 15.11a to h and n to z (faith, deeper) and
+  15.12b to e (lives with a history), each a setting on by default and off the old world exactly; their keys are in
+  every older test's `LATER` list, and a new part adds its own there. The links of why things happened (`because`,
+  `chainNote`) only report — never read one in a decision. The research for 15.11 and 15.12 was not read that
+  session; the README says so, and reading it is item 15.13, with what was left out.
   **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
   it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
   nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the

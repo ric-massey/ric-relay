@@ -342,6 +342,15 @@
       { key: "tech", label: "How know-how moves", type: "select", def: "moves",   // TODO 15.9, 2026-11-23; Ric: "i dont want it linear because it isnt"
         options: [["moves", "By need, the land, practice and meeting"], ["old", "As before: some things only by era"]],
         help: "Anything can be found once its parts are known; a people's age is only a name for what it knows. What somebody is short of points their finding — the hungry toward the plough and the mill, the sick toward herbs, traders toward carts and boats — and their work too. Iron, steam and boats are found and used only where ore, wood or timber is within reach or bought in. A thing new to a people is done poorly at first and better as more of them do it. A stubborn ruler may forbid a new thing, until a war with a people that has it changes their mind. Towns, big villages and a ruler with money to spare for scholars find more." },
+      /* Lives with a history (TODO 15.12b to d, 2026-11-24; Ric's own words in TODO.md). Each off is the world before it. */
+      { key: "heardOf", when: s => s.finds > 0, label: "Hearing of a thing", type: "toggle", def: true,
+        help: "Hearing of a thing is not knowing how. Talk spreads word of it; doing it takes learning beside somebody who does it as their work, or seeing it done again and again. Having heard of something makes it likelier to be found." },
+      { key: "experience", label: "Experience", type: "select", def: "person",
+        options: [["person", "Each person's own"], ["people", "As before: each people's"]],
+        help: "Everybody keeps years of experience in each kind of work they have done, which makes them better at it and slowly fades when unused. Changing work costs something, so people mostly keep to a lane, and a people is as skilled at a thing as its people are." },
+      { key: "discovery", when: s => s.finds > 0, label: "How things are found", type: "select", def: "builds",
+        options: [["builds", "Built up by work"], ["roll", "As before: a lucky day"]],
+        help: "Somebody working at a thing builds toward what is next to it — a smith near ore toward iron, a farmer toward the plough — faster for the curious, the hard-pressed and those who have heard of it. Only those who practise the work can find what belongs to it." },
       { key: "faith", label: "Faith", type: "toggle", def: true,   // TODO 15g, 2026-11-22
         help: "After something hard they cannot explain — a famine, a sickness, a drought, a war lost — now and then somebody makes up what lay behind it and what must be done. Their nature makes its rite, its rule and its holy days; it passes from friend to friend and to children, binds those who hold it, can become a people's own, and may call for sacrifice or holy war. It fades where life is safe." },
       /* TODO 15.11i to 15.11m, 2026-11-23 (Ric: "do 15.11 the stars"): what a faith does to rule, blame,
@@ -356,6 +365,51 @@
         help: "The devout have a few more children, more where their faith bids it and fewer where it bids restraint; a faith may have its people marry young; and a faith whose teachers keep apart has them, and its most zealous, marry no one." },
       { key: "faithTrade", when: s => s.faith !== false, label: "Trust in trade", type: "toggle", def: true,   // TODO 15.11m
         help: "Traders trust those of their own faith further: they would sooner carry to a place that holds it and go further to reach one, and are warier of a place that holds another. Somebody whose faith is not their people's own is drawn to trading." },
+      /* Faith, deeper (TODO 15.11b to h, n to z, 2026-11-24; Ric: "i just want it to be realistic"). Each off is the world before it. */
+      { key: "folk", when: s => s.faith !== false, label: "Belief before faiths", type: "toggle", def: true,
+        help: "Every people starts with a belief of its own, kept house by house: its ancestors, the spirits of places, or both. A faith made up later that keeps them is taken up more readily, one that does not is held off by it, and those who let a faith go fall back on it, not on nothing." },
+      { key: "faithRules", when: s => s.faith !== false, label: "What a faith can hold", type: "select", def: "wide",
+        options: [["wide", "Many things"], ["few", "As before: a rite, a rule, war, its days"]],
+        help: "A faith holds much more than a rite and a rule: what is sacred, what comes after death, foods and drink, harm to animals or anyone, who may lead it and who may join, pilgrimage, those who leave the world, healing, how it stands toward others, giving and lending. Each piece comes from its maker and does something." },
+      { key: "fading", when: s => s.faith !== false, label: "How faith fades", type: "select", def: "time",
+        options: [["time", "With the times"], ["old", "As before: with a good year"]],
+        help: "Zeal wears down with reading, towns and other faiths near, and when a faith's offerings fail to keep the hard times off; where nobody reads, belief mostly lasts." },
+      { key: "fromTop", when: s => s.faith !== false, label: "Faith from the ruler", type: "toggle", def: true,
+        help: "When a ruler holds a faith, those who look up to them lean toward it over the years, their household and officials first. A zealous, hard ruler may tax those outside it or order everyone into it; those forced keep their old faith hidden and go back to it when they can." },
+      { key: "faithsMeet", when: s => s.faith !== false, label: "When faiths meet", type: "toggle", def: true,
+        help: "A faith held by two rulers splits into sects that know they were one, and tolerant sects may join back. Two faiths side by side may borrow each other's days; one bound to win others over presses those outside it." },
+      { key: "faithDrift", when: s => s.faith !== false, label: "Faiths that change", type: "toggle", def: true,
+        help: "A faith comes to hold what its holders now are: its rite and days drift toward their nature, slower once written down; grown large, a faith of rites turns to teaching; and a dead faith that was written down can be found and taken up again." },
+      { key: "faithWealth", when: s => s.faith !== false, label: "What a faith owns", type: "toggle", def: true,
+        help: "A people's faith may take a tithe for its keeper, a village raises a shrine, and a greedy ruler who does not hold a rich faith may take what its keepers hold." },
+      { key: "faithYear", when: s => s.faith !== false, label: "Feasts and the dead", type: "toggle", def: true,
+        help: "Feasts at the harvest, midwinter and the start of spring, and a day for the dead where the ancestors are kept: the store pays, and everybody gathers. A household buries its dead, more dearly where the dead go to the ancestors or are born again." },
+      { key: "comfort", when: s => s.faith !== false, label: "Comfort", type: "toggle", def: true,
+        help: "Belief makes fear and life's blows smaller, so the devout recover sooner; and hard times make those with no faith hold their old beliefs harder." },
+      { key: "faithLaw", when: s => s.faith !== false, label: "Oaths, courts and sanctuary", type: "toggle", def: true,
+        help: "An alliance between peoples of one faith holds through more; where there is no judge a teaching faith's priest hears an accusation; and a shrine that shelters takes in somebody the village would kill." },
+      { key: "faithRank", when: s => s.faith !== false, label: "Who is above whom", type: "toggle", def: true,
+        help: "A faith that holds all equal frees the unfree who hold it and will not hold them; one that keeps each in their place weighs a match across stations heavily." },
+      { key: "lifeRites", when: s => s.faith !== false, label: "Rites of a life", type: "toggle", def: true,
+        help: "A birth, coming of age and a wedding are each a gathering: the household spends a little food, and those who come grow closer." },
+      { key: "faithSchools", when: s => s.faith !== false, label: "Faith and reading", type: "toggle", def: true,
+        help: "A faith that wants its holders to read teaches its children, and some grown-ups, to read where its keeper can." },
+      { key: "faithKeeps", when: s => s.faith !== false, label: "Keeping and forbidding", type: "toggle", def: true,
+        help: "A faith's readers keep what their people knew, and give it back after it is lost; a faith that turns from new things has its zealous holders refuse what was not known when it was made." },
+      { key: "truce", when: s => s.faith !== false, label: "Days without war", type: "toggle", def: true,
+        help: "A faith may forbid war on its holy days or in a month of the year; its people's armies keep it as hard as their zeal holds." },
+      { key: "martyrs", when: s => s.faith !== false, label: "Martyrs and morale", type: "toggle", def: true,
+        help: "Soldiers who hold their people's faith hard hold longer in battle, more where it promises a reward after death; and a death in battle makes the friends who shared it hold it harder." },
+      { key: "flight", when: s => s.faith !== false, label: "Fleeing for faith", type: "toggle", def: true,
+        help: "Somebody pressed hard for their faith may leave with their household for a place that lets them be." },
+      { key: "greatWorks", when: s => s.faith !== false, label: "Great temples", type: "toggle", def: true,
+        help: "A people that holds its faith hard and can spare the food may raise a great temple at its first village over years of its people's work, fed from the store; it stands after, and pilgrims come to it." },
+      { key: "pilgrims", when: s => s.faith !== false, label: "Pilgrims", type: "toggle", def: true,
+        help: "Once a year the zealous of a faith with a pilgrimage go to its holy place: they spend at its market, meet strangers and may bring a sickness home." },
+      { key: "sacredLand", when: s => s.faith !== false, label: "Sacred land", type: "toggle", def: true,
+        help: "Where a people's faith or its old belief holds the land holy, one grove or peak near each village is not cut or hunted." },
+      { key: "faithHealth", when: s => s.faith !== false, label: "Faith and health", type: "toggle", def: true,
+        help: "A faith of washing keeps its holders a little safer from foul water, one that heals tends its sick, and pilgrims can carry a sickness." },
       { key: "plenty", label: "News of plenty", type: "toggle", def: true,   // TODO 15.5g, 2026-11-22
         help: "A village with grain to spare after the harvest becomes news, passed on by word of mouth like news of a famine. Traders who hear it go to load there, the hungry think of moving there, and a hungry household with coins goes there to buy." },
       { key: "switch", label: "Changing sides", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
@@ -591,6 +645,11 @@
     return S;
   }
 
+  function fmix(h) {
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b);
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35);
+    return (h ^ (h >>> 16)) >>> 0;
+  }
   function rng(seed) {
     let s = seed >>> 0;
     return function () {
@@ -765,27 +824,52 @@
        (item 2). It is what the tests hold the short cuts equal to. `audit`
        makes the short cuts check themselves as they go; it is for tests. */
     const PLAIN = !!(check && check.plainWalking), AUDIT = !!(check && check.audit);
-    const R = rng(S.seed * 1597334677);
-    /* The five traits item 10 added are drawn from a stream of their own, so each person's
-       bold, warm, greedy and stubborn come out as they did before item 10. Who they become does
-       not: hot temper now counts in who takes up soldiering on the first day, and from there on. */
-    const RT = rng((S.seed | 0) * 2246822519 + 7);
-    /* Deaths of foul water (TODO 15.5r) draw from their own stream: every person is looked at every
-       hour, and drawing that from `R` made every world a different one from its first hour, where
-       now a world changes only once somebody dies of it. */
-    const RD = rng((S.seed | 0) * 3266489917 + 11);
-    /* Whether a wound lasts (TODO 15.5e), from its own stream for the same reason. */
-    const RW = rng((S.seed | 0) * 2654435761 + 13);
-    /* Men and women (TODO 15.5l): who is which, how strong, and the dates of their children, from
-       their own stream, so a world with "Nobody is either" is the one before. */
-    const RS = rng((S.seed | 0) * 1597334677 + 17);
-    /* Babies and mothers (TODO 15.5k): children's deaths and childbirth, their own stream too. */
-    const RK = rng((S.seed | 0) * 3812015801 + 19);
+    /* Each one's own dice (TODO 15.12a, 2026-11-24; Ric: "Separate people's random draws. Tie
+       randomness to the person, decision type, and simulation time"). A draw is not the next number
+       off one stream shared by everybody, in the order they happen to be visited; it is a hash of
+       the seed, who is deciding (`ACT`: a person, a village, a people, or the world itself), the
+       step it is, which of that one's draws this step it is, and the kind of draw (`kind`: the
+       streams below, which were once separate streams because sharing one changed every world from
+       its first hour). So a draw one person makes or skips moves nobody else's dice: a change to
+       one person reaches another only through what the world models (meeting, trade, a price, a
+       store, a ruler's order). Counter-based, as Philox and Threefry are (Salmon et al. 2011,
+       "Parallel random numbers: as easy as 1, 2, 3"); the mixing is MurmurHash3's finaliser.
+       Ric chose "New only": every seed gave a new world once, on this date, and the old stream is
+       not kept. `test/dice.test.mjs` holds that strangers' dice do not move. */
+    const SEEDH = fmix(Math.imul((S.seed | 0) ^ 0x2c1b3c6d, 0x297a2d39) ^ 0x68e31da4);
+    const WORLD = { dk: 0x7ffffff0, dt: -1, dn: 0, dh: 0 };   // the world's own draws: weather, the land in use, anything nobody in particular decides
+    let ACT = WORLD;
+    function draw(kind) {
+      const a = ACT;
+      /* The part that is the same for all of one's draws this step is worked out once (`dh`). */
+      if (a.dt !== activityTicks) { a.dt = activityTicks; a.dn = 0; a.dh = fmix(SEEDH ^ Math.imul(a.dk + 1, 0x9e3779b1) ^ Math.imul(activityTicks + 1, 0x85ebca77)); }
+      return fmix((a.dh + Math.imul(++a.dn, 0x27d4eb2f)) ^ kind) / 4294967296;
+    }
+    /* A draw for somebody else than who is deciding: a person met in a loop over many, each by their own dice.
+       A person's dice are kept in one small object (`p.dc`), not as four fields of the person: four more
+       fields took a person past what V8 keeps in the object itself and made every step 70% slower
+       (measured 2026-11-24). A person is at that edge, so anything new a person holds goes in an object
+       or an array of its own. */
+    function Rp(p) { const was = ACT; ACT = p ? p.dc : WORLD; const r = draw(0x1000); ACT = was; return r; }
+    /* Who decides from here on; gives back who did before, to put back with `ACT = was`. */
+    function as(a) { const was = ACT; ACT = a; return was; }
+    const R = () => draw(0x1000);
+    /* The five traits item 10 added: a kind of their own, so they come out the same whatever else
+       is drawn at a birth. */
+    const RT = () => draw(0x2000);
+    /* Deaths of foul water (TODO 15.5r). */
+    const RD = () => draw(0x3000);
+    /* Whether a wound lasts (TODO 15.5e). */
+    const RW = () => draw(0x4000);
+    /* Men and women (TODO 15.5l): who is which, how strong, and the dates of their children. */
+    const RS = () => draw(0x5000);
+    /* Babies and mothers (TODO 15.5k): children's deaths and childbirth. */
+    const RK = () => draw(0x6000);
     /* The minds (TODO 11). Everybody's slots in four flat arrays, a block of MB a person, so a
        mind is no object of its own and is never copied: slot 0 is what they think about sharing
        (what was `views`), the rest whatever they hold. A dead person's block goes to the next
-       born. How much each holds (`p.mcap`) is drawn from a stream of its own. */
-    const RM = rng((S.seed | 0) * 3266489917 + 11);
+       born. How much each holds (`p.mcap`) is a kind of draw of its own. */
+    const RM = () => draw(0x7000);
     const MB = Math.ceil(S.memory * 1.25) + 1;
     const M0 = MB * (Math.ceil(S.people * 1.1) + 16);   // room for the first people and a few born; grows by half after
     let mKind = new Uint8Array(M0), mAbout = new Int32Array(M0), mStr = new Float32Array(M0), mAt = new Float32Array(M0);
@@ -1605,7 +1689,7 @@
       }
       const near = u => u && u.alive && u.f === p.f && dist(p, u) < u.radius + 1;
       const here = near(villages[p.home]) ? villages[p.home] : near(villages[p.at]) ? villages[p.at] : null;   // `at` is the last market, not where they stand
-      if (here) {
+      if (here && !(WIDE && p.faith != null && faiths[p.faith].food === "drink" && p.zeal > 0.4)) {   // TODO 15.11b2: a faith that forbids drink
         const x = Math.min(p.coins, DRINK * WAGE + Math.max(0, p.coins - 14 * WAGE) * PAY_BURN);
         if (x > 0.01) { p.coins -= x; here.till += x; count.drunk += x; }
       }
@@ -1633,7 +1717,7 @@
         for (const q of residents(p.home)) {
           if (q === p || q.faith !== p.faith || q.hp <= 0 || !adult(q)) continue;
           const spare = q.coins - 90 * dailyNeed(q) * v.priceFood; if (spare <= 0) continue;
-          const g = GAVE.get(q.id), left = spare * ALMS_RATE - (g && g.year === yr ? g.sum : 0);
+          const g = GAVE.get(q.id), left = spare * ALMS_RATE * (WIDE && q.faith != null && faiths[q.faith].give ? 1 + faiths[q.faith].give * 10 * q.zeal : 1) - (g && g.year === yr ? g.sum : 0);
           if (left > room) { room = left; best = q; }
         }
         if (best) {
@@ -1656,7 +1740,7 @@
           }
           if (best) {
             best.coins -= short; p.coins += short; count.lent += short;
-            if (owed) owed.sum += short; else OWED.set(p.id, { from: best.id, sum: short, at: t, rate: kin(p, best) ? 0 : LOAN_YEAR });
+            if (owed) owed.sum += short; else OWED.set(p.id, { from: best.id, sum: short, at: t, rate: kin(p, best) || (WIDE && best.faith != null && best.faith === p.faith && faiths[best.faith].lend) ? 0 : LOAN_YEAR });
             short = 0;
           }
         }
@@ -1830,7 +1914,7 @@
     }
     function matSpot(v, k) {
       const g = matGround(v);
-      if (k === "wood") { for (const i of g.wood) if (woodIn(i) >= 1) return i; return -1; }
+      if (k === "wood") { for (const i of g.wood) if (woodIn(i) >= 1 && !(SACRED && i === sacredOf(v) && ++count.sacredSpared)) return i; return -1; }
       return k === "stone" ? g.stone : g.iron;
     }
     const matYield = (k, i) => k === "wood" ? 1 : k === "stone" ? (ground[i] === G_MOUNTAIN ? 1 : 0.8) : Math.min(1.2, ore[i] * 1.6);
@@ -1874,7 +1958,7 @@
     function wildSpot(v, k) {
       const list = wildList(v, k);
       if (k === "herd") { for (let j = 0; j < list.length; j++) if (!held.has(list[j]) && stockIn(grazeStock, list[j], GRAZE_YEAR) >= 2) return j; return -1; }
-      for (let j = 0; j < list.length; j++) if (stockIn(gameStock, list[j], GAME_YEAR) >= 1) return j;
+      for (let j = 0; j < list.length; j++) if (stockIn(gameStock, list[j], GAME_YEAR) >= 1 && !(SACRED && list[j] === sacredOf(v) && ++count.sacredSpared)) return j;
       return -1;
     }
     /* What a day with the herd or the bow would bring, against a full day's fishing: 0 to about 1.2. */
@@ -1902,7 +1986,7 @@
 
     /* ── who and what there is ─────────────────────────────────────────── */
     function newFaction(name, leaderViews) {
-      const f = { id: factions.length, name: name, colour: COLOURS[factions.length % COLOURS.length],
+      const f = { id: factions.length, dc: { dk: 0x50000000 + factions.length, dt: -1, dn: 0, dh: 0 }, name: name, colour: COLOURS[factions.length % COLOURS.length],
                   leader: 0, treasury: 0, tax: S.tax, harvest: S.harvestTax || 0, chest: 0, reaping: false, reapedYear: 0, relief: false, army: S.soldiers, peace: S.soldiers, rule: S.rule, revolt: -1e9, land: "",
                   rel: {}, alive: true, founded: t, voteAt: t + S.term * YEAR * (0.5 + R() * 0.5),
                   views: leaderViews || 0, target: {}, raid: {}, pop: 0, soldiers: 0, hungry: 0, loyal: 0.6, dearAt: -1e9,
@@ -1924,7 +2008,7 @@
        when this side last made a demand of the other. */
     function blankRel() { return { op: 0, war: false, since: 0, grief: 0, dead: 0, peaceAt: -1e9, bond: 0, ally: false, trade: false, pays: false, askedAt: -1e9, began: 0, sold: 0, rate: 0, wed: null, lost: 0, took: 0, spoiled: 0 }; }   // lost, took, spoiled: this war's places and crops (TODO 14e)   // sold, rate, wed: TODO 14d   // began: this side's leader when the war began (TODO 14c)
     function newVillage(x, y, f) {
-      const v = { id: villages.length, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0, given: 0,
+      const v = { id: villages.length, dc: { dk: 0x40000000 + villages.length, dt: -1, dn: 0, dh: 0 }, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0, given: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0, breach: 0, blockade: 0,
                   alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
                   /* A public order for grain (TODO 15.5b2): coins the treasury has set aside here, the days of food
@@ -2219,7 +2303,10 @@
 
     function newPerson(v, age, mum, dad) {
       const f = factions[v.f];
-      const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
+      /* A newborn's own dice from the first draw (TODO 15.12a): who they are is theirs, not the
+         next numbers after whatever their mother or the world drew. */
+      const me = { dk: nextId, dt: -1, dn: 0, dh: 0 }, was = as(me);
+      const p = { id: nextId++, dc: me, lf: { folk: 0, hid: -1, hidZ: 0, press: 0, rites: 0, pilgrim: -1, until: 0, xp: null, heard: 0, aim: -1, prog: 0, aimAt: 0, why: 0 }, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
                   tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30 * STEP_SCALE), food: 0.8 + R() * 0.6, coins: 0, goods: 0, order: 0, orderV: -1, orderT: 0, gear: {},
                   hp: 1, bold: nature(R(), ownOf(v.f, "bold")), warm: nature(R(), ownOf(v.f, "warm")), greed: nature(R(), ownOf(v.f, "greedy")), stub: clamp(ownOf(v.f, "stubborn") + (R() - 0.5) * S.differ, 0, 1), loyal: clamp(0.35 + ownOf(v.f, "loyalty") * 0.5 + (R() - 0.5) * 0.2, 0, 1),
@@ -2318,6 +2405,13 @@
           w.set(wake); k.set(kind); z.set(since); wake = w; kind = k; since = z;
         }
       }
+      /* Folk belief (TODO 15.11b): held house by house, taken after the parents, a little stronger in the
+         patient and loyal and weaker in the curious. */
+      if (FOLK) p.lf.folk = mum && dad ? clamp((mum.lf.folk + dad.lf.folk) / 2 + (R() - 0.5) * 0.1, 0, 1)
+                                         : clamp(0.5 + (p.patient - 0.5) * 0.4 + (p.loyal - 0.35) * 0.4 - (p.curious - 0.5) * 0.4 + (R() - 0.5) * 0.2, 0, 1);
+      if (RITES && mum && dad) { p.lf.rites |= 1; lifeRite(mum, "named"); }   // TODO 15.11q
+      if (EXP && (mum || dad)) p.lf.xp = new Float32Array(XP_KINDS.length);   // TODO 15.12c: born knowing no work (the first people get theirs on the first day)
+      ACT = was;
       return p;
     }
 
@@ -2703,7 +2797,7 @@
        `size`: how much of it there was — a parent lost counts twice, a house burned is a raid of
        its own, every week without food another famine, a war lost as its share of places lost. */
     function shaken(p, d, size) {
-      const m = plastic(p.age) * (size || 1);
+      const m = plastic(p.age) * (size || 1) * (COMFORT && p.faith != null ? 1 - 0.3 * p.zeal : 1);   // TODO 15.11n: belief softens the blow
       if (m <= 0) return;
       if (!p.fade) p.fade = new Float32Array(TRAITS.length);
       for (let i = 0; i < TRAITS.length; i++) {
@@ -2998,7 +3092,35 @@
     /* What a faith does to everything else (TODO 15.11i to m; see "what faith does"). Each off is the old world. */
     const FAVOUR = FAITH && S.favour !== false, PROPHETS = FAITH && S.prophets !== false, WITCHES = FAITH && S.witches !== false,
           FAITH_KIDS = FAITH && S.faithKids !== false, FAITH_TRADE = FAITH && S.faithTrade !== false;
+    /* Faith, deeper (TODO 15.11b to h, n to z, 2026-11-24; see "faith, deeper"). Each off is the world before it. */
+    const FOLK = FAITH && S.folk !== false, WIDE = FAITH && S.faithRules !== "few", FADE_T = FAITH && S.fading !== "old",
+          TOP = FAITH && S.fromTop !== false, MEET = FAITH && S.faithsMeet !== false, DRIFT = FAITH && S.faithDrift !== false,
+          WEALTH = FAITH && S.faithWealth !== false, FYEAR = FAITH && S.faithYear !== false, COMFORT = FAITH && S.comfort !== false,
+          FLAW = FAITH && S.faithLaw !== false, RANK = FAITH && S.faithRank !== false, RITES = FAITH && S.lifeRites !== false,
+          SCHOOLS = FAITH && S.faithSchools !== false, KEEPS = FAITH && S.faithKeeps !== false, TRUCE = FAITH && S.truce !== false,
+          MARTYRS = FAITH && S.martyrs !== false, FLIGHT = FAITH && S.flight !== false, GREAT = FAITH && S.greatWorks !== false,
+          PILGRIMS = FAITH && S.pilgrims !== false, SACRED = FAITH && S.sacredLand !== false, FHEALTH = FAITH && S.faithHealth !== false;
+    /* A great temple is 30,000 hours (a guess: some years of a village's slack); a shrine 400. Sacred squares (15.11y). */
+    const TEMPLE_HOURS = 30000, SHRINE_HOURS = 400, SACRED_AT = new Set();
+    const DEEP = FOLK || WIDE || FADE_T || TOP || MEET || DRIFT || WEALTH || FYEAR || RANK || SCHOOLS || KEEPS || TRUCE || MARTYRS || FLIGHT || GREAT || PILGRIMS || SACRED;
+    if (DEEP || RITES || COMFORT || FLAW || FHEALTH) Object.assign(count, { forced: 0, followed: 0, faithTax: 0, faithLaws: 0, backToHidden: 0, pressed: 0, fledFaith: 0, sects: 0, rejoined: 0, blended: 0,
+      drifted: 0, written: 0, revived: 0, tithe: 0, offerings: 0, seized: 0, shrinesBegun: 0, shrines: 0, templesBegun: 0, temples: 0, feasts: 0, feastFood: 0, feastHours: 0, funerals: 0,
+      funeralFood: 0, lifeRites: 0, riteFood: 0, faithTaught: 0, keptBack: 0, refusedNew: 0, truceKept: 0, martyrs: 0, pilgrimages: 0, pilgrims: 0, fairCoins: 0, pilgrimSick: 0,
+      sacredPlaces: 0, sacredSpared: 0, freedByFaith: 0, rankRefused: 0, sanctuary: 0, priestJudged: 0, failedRite: 0, comforted: 0, washed: 0, healed: 0 });
     const faiths = [];
+    /* Lives with a history (TODO 15.12b to d, 2026-11-24; see "lives with a history"). Each off is the world before it. */
+    const HEARD = S.heardOf !== false && S.finds > 0, EXP = S.experience !== "people", DISC = S.discovery !== "roll" && S.finds > 0;
+    if (HEARD) { count.heardOf = 0; count.apprenticed = 0; }
+    const XP_KINDS = ["farming", "herding", "hunting", "fishing", "making", "trading", "building", "cutting and mining", "soldiering", "serving"];
+    const TASK_XP = { field: 0, gather: 0, herd: 1, hunt: 2, fish: 3, make: 4, carry: 5, trade: 5, boat: 5, build: 6, house: 6, bridge: 6, boatwork: 6, well: 6, ditch: 6, clear: 6,
+                      shrine: 6, temple: 6, worksbuild: 6, cut: 7, quarry: 7, mine: 7, patrol: 8, serve: 9 };
+    const JOB_XP = { farmer: 0, herder: 1, hunter: 2, fisher: 3, crafter: 4, trader: 5, woodcutter: 7, miner: 7, soldier: 8, healer: 9, teacher: 9, miller: 9 };
+    const XP_HOUR = 1 / 2000, XP_FADE = 0.0001, SWITCH = 0.12;   // a working year of hours; about 3.6% a year forgotten while unused; what a change of work costs in the first season
+    const LINKS = new Map(), LINK_MAX = 20000, CHAIN = 5;   // 15.12e: see "why it happened"
+    let linkId = 0, xpBegun = false, jobWhy = "";
+    /* Which work each technique is done in (15.9's farming, metal and trade lists, and boats and healing). */
+    const TECH_WORK = { plough: 0, rotation: 0, collar: 0, mill: 0, ditches: 0, smithing: 4, iron: 4, steam: 4, printing: 4, coining: 4, gunpowder: 4, telegraph: 4,
+                        carts: 5, horses: 5, rail: 5, engine: 5, bridges: 5, boats: 3, herbs: 9, medicine: 9 };
     const GOV = S.govern !== "leader";   // TODO 15c: councils, offices and laws (see "government")
     /* What one ruler can see to alone (TODO 15c): three villages, a dispute a day, and the tax of
        about 480 people, which is the Western Han's one official for every 480 or so. */
@@ -3482,6 +3604,13 @@
     }
 
     function chooseJob(p) {
+      const was = as(p.dc); jobWhy = ""; const j = chooseJobIn(p); ACT = was;   // TODO 15.12a: their own dice
+      if (j !== p.job && p.job !== "child" && t > 0) because(p, "job", (j === "bandit" ? "took to the road" : j === "soldier" ? "took up arms" : "became a " + j) + " from " + p.job, j === "bandit" ? robWhy(p) : jobWhy);   // TODO 15.12e
+      return j;
+    }
+    /* What put somebody on the road, as read where they decided. */
+    function robWhy(p) { return [p.hungry > 0 ? "hungry" : "", p.unpaid > 0 ? "unpaid " + p.unpaid + " days" : "", p.coins < 1 ? "no coins" : "", p.dwelling < 0 ? "no house" : ""].filter(Boolean).join(", ") || "honesty " + r1(p.honest); }
+    function chooseJobIn(p) {
       const v = villages[p.home], f = factions[p.f];
       if (f.adults > 0 && f.soldiers < f.army * f.adults && p.bold + (p.temper - 0.5) * 0.3 > 0.35 && p.vig >= 0.6 && (p.sex === 1 || !SEXES || split(f) < 0.25) && R() < 0.8) { f.soldiers++; return "soldier"; }   // p.vig: TODO 15.5e, no lame or old soldiers
       /* Robbing for a living (TODO 15.5b4), weighed against what honest work would bring: by the hungry,
@@ -3516,9 +3645,10 @@
       let job = ROAM && !bandFarms(f) ? "hunter" : "farmer", bs = -Infinity;
       for (const k of ["farmer", "crafter", "trader", "fisher", "woodcutter", "miner", "herder", "hunter", "healer", "teacher", "miller"]) {
         if (score[k] === undefined) continue;
-        const s = score[k] + (R() - 0.5) * 0.15;
+        const s = score[k] * (EXP ? xpSkill(p, JOB_XP[k]) : 1) - (EXP && p.job !== "child" && p.job !== k && JOB_XP[p.job] !== undefined ? SWITCH : 0) + (R() - 0.5) * 0.15;   // 15.12c: experience, and what a change costs
         if (s > bs) { bs = s; job = k; }
       }
+      jobWhy = "worth " + r1(bs) + (score[p.job] !== undefined && p.job !== job ? " against " + r1(score[p.job]) + " as a " + p.job : "");
       return job;
     }
     function go(p, x, y, task) {
@@ -3939,7 +4069,7 @@
        (2.7%). Now it is the hours, which is how farming labour actually
        differs — capped at what daylight allows, after which they bring back
        what they managed. */
-    function harvestCapacity(p) { return CARRY * (WIRED && has(p.f, "engine") ? 3 : 1) * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p) * (p.job === "child" ? childShare(p) : 1) * (BEASTS ? plough(villages[p.home]) : 1); }   // p.vig: TODO 15.5e; brawn: 15.5l
+    function harvestCapacity(p) { return CARRY * (WIRED && has(p.f, "engine") ? 3 : 1) * (equipped(p, "tool") ? 1.25 : 1) * season().ripe * p.vig * brawn(p) * (p.job === "child" ? childShare(p) : 1) * (BEASTS ? plough(villages[p.home]) : 1) * (EXP ? xpSkill(p, 0) : 1); }   // p.vig: TODO 15.5e; brawn: 15.5l; experience: 15.12c
     function harvestPace() { return 0.5 + 0.5 * S.rich; }
 
     function tradeCapacity(p) { return equipped(p, "pack") ? 5 : 3; }
@@ -4187,7 +4317,7 @@
         p.unpaid = Math.max(0, Math.round((owed - c - g) / WAGE));
       }
       f.mutiny = { since: t, v: v.id, ids: new Set(unpaid.map(p => p.id)) }; count.mutinies++; count.mutinyTook += took;
-      note("riot", unpaid.length + " of " + f.name + "'s soldiers, unpaid, have risen at " + v.name + " and taken what they are owed.", 2.5, v.x, v.y, f.id, unpaid.length + " of " + all + " soldiers unpaid " + MUTINY_DAYS + " days or more");
+      chainNote(note("riot", unpaid.length + " of " + f.name + "'s soldiers, unpaid, have risen at " + v.name + " and taken what they are owed.", 2.5, v.x, v.y, f.id, unpaid.length + " of " + all + " soldiers unpaid " + MUTINY_DAYS + " days or more"), unpaid[0]);   // 15.12e
     }
     /* War loans (TODO 15q; Slantchev, *Borrowed Power*: borrowing lets wars start, last longer, end
        harder). At war with too little to pay its soldiers a fortnight, a people borrows from the richest
@@ -4346,7 +4476,7 @@
       const f = factions[foe.f], c = f.camp[by.f];
       if (!c || !(c.v >= 0)) return;
       c.fell = (c.fell || 0) * Math.pow(0.5, (t - (c.fellAt ?? t)) / FELL_HALF) + 1; c.fellAt = t;
-      const g = byId.get(c.gen), morale = clamp(0.3 + 0.4 * skillOf(g) + 0.3 * f.loyal - (f.hungry > f.pop * 0.2 ? 0.15 : 0), 0.1, 1);
+      const g = byId.get(c.gen), morale = clamp(0.3 + 0.4 * skillOf(g) + 0.3 * f.loyal + (MARTYRS ? faithNerve(f) : 0) - (f.hungry > f.pop * 0.2 ? 0.15 : 0), 0.1, 1);
       if (c.fell >= Math.max(3, (c.out || f.soldiers || 10) * (0.1 + 0.2 * morale)) && t - (c.routAt ?? -1e9) > 3 * DAY_HOURS) rout(f, factions[by.f], c);
     }
     /* Whether to give battle (TODO 15.6e), weighed once, when the enemy's army is first within 3 km: the same
@@ -4354,6 +4484,7 @@
        a third better on ground chosen to stand on. Too close to slip away (1 km), or outpaced by their
        horse, it fights; otherwise it draws off to where it gathered and does not come on for a week. */
     function giveBattle(a, f, o, c, en, ex, ey) {
+      if (TRUCE && f.truceToday) { count.truceKept++; return false; }   // TODO 15.11t
       const g = byId.get(c.gen), lead = byId.get(f.leader);
       const bold = g ? g.bold : ruling(lead, "bold", f), patient = g ? g.patient : ruling(lead, "patient", f);
       const nerve = 1.1 - (bold - 0.5) * 0.8 + (patient - 0.5) * 0.4;
@@ -4393,7 +4524,7 @@
         if (p.f !== f.id || p.job !== "soldier" || p.hp <= 0 || !(p.task === "march" || p.task === "fight" || onCampaign(p))) continue;
         if (!ROUT.has(p.id) || ROUT.get(p.id) <= t) count.routedSoldiers++;   // TODO 15.6e: counted only
         ROUT.set(p.id, t + ROUT_DAYS * DAY_HOURS); n++; at = at || p;
-        const home = villages[p.home]; go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0;
+        const home = villages[p.home]; go(p, home.x + (Rp(p) - 0.5), home.y + (Rp(p) - 0.5), "patrol"); p.wait = 0;
       }
       for (const id of [c.gen, o.camp[f.id] && o.camp[f.id].gen]) if (id >= 0) GEN_EXP.set(id, (GEN_EXP.get(id) || 0) + 1);
       if (at) note("war", f.name + "'s army has broken and is running from " + o.name + ".", 2.5, at.x, at.y, f.id);
@@ -4683,7 +4814,7 @@
     function unitShock(foe, by, u) {
       u.fell = u.fell * Math.pow(0.5, (t - u.fellAt) / FELL_HALF) + 1; u.fellAt = t; u.coh = Math.max(0.2, u.coh - 0.03);
       const f = factions[foe.f], c = f.camp[by.f]; if (!c) return;
-      const g = byId.get(c.gen), morale = clamp(0.3 + 0.4 * skillOf(g) + 0.3 * f.loyal - (f.hungry > f.pop * 0.2 ? 0.15 : 0) + 0.2 * (u.coh - 0.5) - (u.lead < 0 ? 0.15 : 0), 0.1, 1);
+      const g = byId.get(c.gen), morale = clamp(0.3 + 0.4 * skillOf(g) + 0.3 * f.loyal + (MARTYRS ? faithNerve(f) : 0) - (f.hungry > f.pop * 0.2 ? 0.15 : 0) + 0.2 * (u.coh - 0.5) - (u.lead < 0 ? 0.15 : 0), 0.1, 1);
       if (u.broken || u.fell < Math.max(2, u.size * (0.1 + 0.2 * morale))) return;
       u.broken = true;
       const inOrder = u.coh >= 0.6 && u.lead >= 0;
@@ -4937,7 +5068,7 @@
           for (const q of people) {
             if (moved >= 10) break;
             if (q.f !== f.id || q.job !== "soldier" || q.hp < 0.45 || UNIT_OF.has(q.id) || q.id % 3 === 0 || !onCampaign(q)) continue;
-            wakeUp(q); jump(q, army.cx + (R() - 0.5) * 0.3, army.cy + (R() - 0.5) * 0.3); q.tx = q.x; q.ty = q.y; q.task = "patrol"; q.wait = 0; moved++;
+            wakeUp(q); jump(q, army.cx + (Rp(q) - 0.5) * 0.3, army.cy + (Rp(q) - 0.5) * 0.3); q.tx = q.x; q.ty = q.y; q.task = "patrol"; q.wait = 0; moved++;
           }
           if (moved) { count.airlifted += moved; return true; }
         }
@@ -5440,7 +5571,7 @@
     /* A job is what somebody is good at and what their village expects of them,
        not a script. It is worth about a third again at the work it names, and
        anybody may still do anybody's work when their circumstances call for it. */
-    const skilled = (p, job) => (p.job === job ? 1.35 : 0.6 + 0.24 * p.curious);   // TODO 10: the curious try other work
+    const skilled = (p, job) => (p.job === job ? 1.35 : 0.6 + 0.24 * p.curious) * (EXP && JOB_XP[job] !== undefined ? xpSkill(p, JOB_XP[job]) : 1);   // TODO 10: the curious try other work; 15.12c: and what they have done before
     /* At war with anybody (TODO 14a): read at every choice, so worked out once an hour per faction,
        and again whenever any war starts or ends (`warMoves`). Kept in the engine's own table, not
        on the faction: the page reading somebody's needs at an odd hour must change nothing that
@@ -5552,8 +5683,9 @@
         p.until = t + SPELL.guard; p.chose = "patrol"; soldier(p); return;
       }
       /* A holy day (TODO 15g): its holders gather in the village, and talk, rather than work. */
-      if (FAITH && p.faith != null && !dark && holyDay(faiths[p.faith]))
+      if (FAITH && p.faith != null && !dark && (holyDay(faiths[p.faith]) || (WIDE && faiths[p.faith].monks && p.zeal > 0.9)))
         weigh("worship", 0.35 + p.zeal * 0.5 - n.food * 0.8 - n.water - n.rest * 0.5, () => { const [x, y] = plaza(v, 1.2); go(p, x, y, "idle"); p.wait = spell("visit"); count.holyDays++; });
+      if (DEEP) faithChoices(p, v, f, n, dark, away, weigh);   // TODO 15.11: feasts, shrines, temples, pilgrims
       /* Water (TODO 6a): fetch it when the house runs low; and where it is far and there is no
          well, dig one. */
       if (THIRST && p.dwelling >= 0) {
@@ -5667,6 +5799,7 @@
         }
         /* A day with the herd or hunting (TODO 9b): food, as fishing is, with wool or a hide besides. */
         if (MATS) for (const k of ["herd", "hunt"]) {
+          if (WIDE && k === "hunt" && p.faith != null && p.zeal > 0.4 && (faiths[p.faith].food === "meat" || faiths[p.faith].harm)) continue;   // TODO 15.11b2
           const j = wildSpot(v, k); if (j < 0) continue;
           const i = wildList(v, k)[j], sx = i % cols + 0.5, sy = ((i / cols) | 0) + 0.5;
           weigh(k, (n.food * 0.8 + n.provide * 0.9 + 0.12 + lay) * skilled(p, k === "herd" ? "herder" : "hunter") * wildWorth(v, k, j) * (k === "hunt" ? heavyWish(p) : 1)
@@ -5982,7 +6115,7 @@
       if (KNOW && ONWARD_EARLY && WAR_TECH.length && (AT_WORK.has(p.task) || p.job === "soldier")) findWar(p);   // TODO 15.6: smiths and soldiers
       /* A shift of building or digging is spent at the work, and shows as that work; what it
          did is counted when it ends (TODO 7b: before, the hours showed as resting). */
-      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear" || p.task === "ditch" || p.task === "serve" || p.task === "worksbuild") && !p.shift) {
+      if ((p.task === "build" || p.task === "well" || p.task === "bridge" || p.task === "boatwork" || p.task === "house" || p.task === "spin" || p.task === "clear" || p.task === "ditch" || p.task === "serve" || p.task === "worksbuild" || p.task === "shrine" || p.task === "temple") && !p.shift) {
         p.shift = true; p.wait = p.task === "build" ? Math.round(BUILD_SHIFT * ACTIONS_PER_HOUR) : p.task === "house" || p.task === "spin" ? TK(HOUSE_SPELL * 60) : TK(240); return;
       }
       p.shift = false;
@@ -6034,6 +6167,7 @@
       if (p.task === "wander") { arrive(p); return; }   // TODO 15i
       if (p.task === "serve") { serve(p, v); p.task = "idle"; p.wait = spell("market"); return; }   // TODO 15f
       if (p.task === "worksbuild") { const k = worksWanted(v)[0]; if (k) buildWorks(v, k, 4); p.task = "idle"; p.wait = spell("market"); return; }
+      if (p.task === "shrine" || p.task === "temple") { holyWork(p, p.task); p.task = "idle"; p.wait = 0; return; }   // TODO 15.11g, w
       if (p.task === "ditch") {                        // TODO 15.5p: four hours digging or cleaning
         const h = 4 * p.vig * brawn(p);
         if (v.ditch) { v.cleanWork += h; count.ditchCleaned += h; }
@@ -6122,7 +6256,7 @@
         if (!p.fishing) { p.fishing = true; p.wait = spell("harvest"); return; }
         p.fishing = false;
         const g = fishGround(v);
-        let need = g ? fishDay() * (p.job === "fisher" ? 1 : 0.7) * p.vig * (WATER_WORK && v.boat ? BOAT_CATCH : 1) : 0;   // 15.5i4: from a boat, further out
+        let need = g ? fishDay() * (p.job === "fisher" ? 1 : 0.7) * p.vig * (WATER_WORK && v.boat ? BOAT_CATCH : 1) * (EXP ? xpSkill(p, 3) : 1) : 0;   // 15.5i4: from a boat, further out
         const want = need;
         if (g) for (const i of g.tiles) {
           if (need <= 0.01) break;
@@ -6139,7 +6273,7 @@
         p.gathering = false;
         const herd = p.task === "herd", m = herd ? grazeStock : gameStock, cap = herd ? GRAZE_YEAR : GAME_YEAR;
         const list = wildList(v, p.task), j0 = wildSpot(v, p.task);
-        let need = (herd ? herdDay() : huntDay()) * (p.job === (herd ? "herder" : "hunter") ? 1 : 0.7) * p.vig * (p.job === "child" ? childShare(p) : 1);
+        let need = (herd ? herdDay() : huntDay()) * (p.job === (herd ? "herder" : "hunter") ? 1 : 0.7) * p.vig * (p.job === "child" ? childShare(p) : 1) * (EXP ? xpSkill(p, herd ? 1 : 2) : 1);
         const want = need;
         if (j0 >= 0) for (let j = j0; j < list.length && need > 0.01; j++) {
           const i = list[j]; if (herd && held.has(i)) continue;
@@ -6162,7 +6296,7 @@
         const k = p.task === "cut" ? "wood" : p.task === "quarry" ? "stone" : "iron", i = matSpot(v, k);
         let got = 0;
         if (i >= 0) {
-          got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1) * p.vig * brawn(p);
+          got = matYield(k, i) * (p.job === MAT_JOB[k] ? 1 : 0.7) * (equipped(p, "tool") ? 1.2 : 1) * p.vig * brawn(p) * (EXP ? xpSkill(p, 7) : 1);
           if (k === "wood") { const have = woodIn(i); got = Math.min(got, have); woodStock.set(i, [have - got, t]); }
           if (claim) useLand(p, i, got * 3);   // TODO 15.7e: a load is worth about three days' food
           if (MINT && k === "iron") silverFrom(p, v, i, got);   // TODO 15.8
@@ -6242,7 +6376,7 @@
         /* Only what is asked for, and one in hand, counting what they already hold unsold (TODO 15.5a):
            made for orders a till could not pay, goods piled up in the hands of people who made them in
            their spare hours, 10–14 each by autumn. */
-        const room = asked(v), made = Math.min(craftOutput(p, v), Math.max(0, room + 1 - p.goods));
+        const room = asked(v), made = Math.min(craftOutput(p, v) * (EXP ? xpSkill(p, 4) : 1), Math.max(0, room + 1 - p.goods));
         if (made > 0) wear(p, "tool");
         if (MATS) {
           /* The wood and ore it took, bought from the store (TODO 9a). */
@@ -6710,6 +6844,7 @@
       if (LEAVING.size) LEAVING.delete(p.id);   // TODO 15.6d
       if (KO_AT.size) { if (why === "battle") koDead(p); else { KO_AT.delete(p.id); VDEAD_AT.delete(p.id); } }   // TODO 15.6d
       const v = villages[p.home], f = factions[p.f];
+      if (MARTYRS || FYEAR || RITES) deathRites(p, why, v);   // TODO 15.11h, q, u
       if (PROP) passLand(p);   // TODO 15.7b
       if (HOARD.size) hoardLost(p);   // TODO 15.8: buried, and nobody left who knows where
       if (OWED.size && OWED.has(p.id)) { count.loansLost += OWED.get(p.id).sum; OWED.delete(p.id); }   // TODO 15.10: the lender loses it
@@ -7115,6 +7250,7 @@
       wakeUp(p);
       /* A leader does not walk out on their own faction. */
       if (v.f !== p.f && factions[p.f].leader === p.id) return;
+      if (adult(p) && p.home !== v.id) because(p, "moved", "moved to " + v.name, why);   // TODO 15.12e
       if (adult(p) && p.home !== v.id) {
         const was = villages[p.home];
         moves.push({ t: t, from: [was.x, was.y], to: [v.x, v.y], why: why, f: v.f });
@@ -7144,8 +7280,10 @@
     }
 
     /* ── one person, one tick ──────────────────────────────────────────── */
-    function live(p) {
+    function live(p) { const was = as(p.dc); liveIn(p); ACT = was; }   // TODO 15.12a: their own dice
+    function liveIn(p) {
       p.age += 1 / YEAR;
+      if (EXP && p.lf.xp) { const k = TASK_XP[p.task]; if (k !== undefined) p.lf.xp[k] += XP_HOUR; }   // TODO 15.12c: an hour at the work
       if (HOUSEWORK) p.clothes = Math.max(0, p.clothes - CLOTHES_WEAR);   // TODO 15.5n
       /* Light after dark is the fire (TODO 15.5s): staying up burns the village's wood. */
       if (SLEEP && FIRE && p.task !== "sleep" && isDark(t % DAY_HOURS)) { const hv = HEARTH ? homes[p.dwelling] : villages[p.home]; if (hv && hv.wood > 0.5 && Math.hypot(p.x - p.hx, p.y - p.hy) < 1) { hv.wood -= LIGHT_WOOD; count.lightWood += LIGHT_WOOD; } }
@@ -7168,7 +7306,7 @@
       else p.rest = Math.min(1, p.rest + (p.task === "field" || p.task === "make" || p.task === "fight" || p.task === "march" ? 0.075 : 0.05));
       p.alone++;
       const near0 = villages[p.home];
-      p.fear = clamp(p.fear + (near0.siege > 0 ? 0.3 : 0) + (near0.foes > 0 ? 0.15 : 0) + (t - near0.raidAt < 3 * DAY_HOURS ? 0.08 : 0) + (p.hit > 0 ? 0.35 : 0) - 0.05, 0, 1);
+      p.fear = clamp(p.fear + (near0.siege > 0 ? 0.3 : 0) + (near0.foes > 0 ? 0.15 : 0) + (t - near0.raidAt < 3 * DAY_HOURS ? 0.08 : 0) + (p.hit > 0 ? 0.35 : 0) - 0.05 - (COMFORT ? comfortOf(p) : 0), 0, 1);
 
       /* Drinking (TODO 6a): at a river or lake shore, there; else from the house's water. */
       if (THIRST) {
@@ -7235,7 +7373,7 @@
       if (p.goods > 0) p.goods = Math.max(0, p.goods - (TILLS && p.goods > 1 && p.job !== "crafter" && p.job !== "trader" ? p.goods : 1) / (YEAR * 1.5));   // TODO 15.10: each thing in a house wears out
       if (p.sick > 0) {
         p.sick--;
-        if (R() < SICK_HAZARD * frailty(p) * (ARMY_SICK && p.job === "soldier" && campFoulOf(p) > 0 ? CAMP_DEADLY : 1) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1) * (WIRED && has(p.f, "medicine") ? 0.3 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
+        if (R() < SICK_HAZARD * frailty(p) * (ARMY_SICK && p.job === "soldier" && campFoulOf(p) > 0 ? CAMP_DEADLY : 1) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1) * (WIRED && has(p.f, "medicine") ? 0.3 : 1) * (FHEALTH && tended(p) ? 0.8 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
         if (p.sick === 0) p.immune = true;
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
@@ -7257,7 +7395,7 @@
         /* Ric (2026-11-20): "There shouldn't be a town fixed death rate it should all be of actual
            causes" (TODO 15.5r): the flux, typhoid and the fevers of foul water (`foulness`). */
         const foul = villages[p.home].foul;
-        if (foul > 0.001 && RD() < FOUL_DEATHS * foul * frailty(p) / YEAR) { count.foul++; die(p, "sick"); return; }
+        if (foul > 0.001 && RD() < FOUL_DEATHS * foul * frailty(p) * (FHEALTH && washes(p) ? 0.8 : 1) / YEAR) { count.foul++; die(p, "sick"); return; }
       }
       /* Children dying (TODO 15.5k) of what killed them: the fevers and the flux of infancy, and
          accidents, on top of the sickness, hunger and cold already here. */
@@ -8193,6 +8331,7 @@
     }
     let sceneTick = 0, visits = 0;
     function actionTick() {
+      ACT = WORLD;
       sceneTick++;
       cur = 0;                 // nobody has had this step yet
       let fresh = null;
@@ -8284,7 +8423,8 @@
     }
 
     const LOCAL_TASK = new Set(["sleep", "rest", "idle", "visit", "field", "home", "make", "patrol"]);
-    function act(p) {
+    function act(p) { const was = as(p.dc); actIn(p); ACT = was; }   // TODO 15.12a: their own dice
+    function actIn(p) {
       let counted = false;
       if (p.sayT > 0) p.sayT--;
       if (p.hit > 0) p.hit--;
@@ -8419,7 +8559,8 @@
     }
 
     /* ── slower things: every six simulated hours per person ─────────────────── */
-    function reflect(p) {
+    function reflect(p) { const was = as(p.dc); reflectIn(p); ACT = was; }   // TODO 15.12a: their own dice
+    function reflectIn(p) {
       if (p.fade !== null) settle(p);   // TODO 10: hard times wearing off (a plain check first: calling it for everybody cost 8% of a 5,000-person world)
       const v = villages[p.home], f = factions[p.f];
       const anyWar = Object.keys(f.rel).some(k => f.rel[k].war);
@@ -8447,6 +8588,7 @@
       if (!adult(p)) return;
       /* Wages. */
       if (p.job === "soldier" && !shared && t % DAY_HOURS === 0) {
+        if (p.unpaid === 0 && f.treasury < WAGE && !(v.f === p.f && v.levy >= WAGE && v.food >= WAGE)) because(p, "unpaid", "not paid", f.name + "'s treasury held " + r1(f.treasury));   // TODO 15.12e
         if (f.treasury >= WAGE) {
           const s = SPEND ? Math.min(p.stop, WAGE * STOP_MAX) : 0;   // TODO 15.10: stopped for what they were fed and armed with
           if (s > 0) { p.stop -= s; count.stopped += s; }
@@ -8536,14 +8678,15 @@
       else if (BANDITS && t >= 30 * DAY_HOURS && p.job !== "soldier" && !p.cargo && p.id !== f.leader && (p.job === "bandit" ? !(p.hungry > 0) : p.hungry > 0 && p.honest < 0.6)) {
         if (R() < rethink * (p.job === "bandit" ? BANDIT_MENDED : BANDIT_RETHINK)) {
           const v = villages[p.home];
-          if (p.job !== "bandit" && v.food >= v.pop * 0.5 && wouldRob(p, v)) { p.job = "bandit"; count.banditry++; p.task = "idle"; p.at = p.home; }
+          if (p.job !== "bandit" && v.food >= v.pop * 0.5 && wouldRob(p, v)) { because(p, "job", "took to the road from " + p.job, robWhy(p)); p.job = "bandit"; count.banditry++; p.task = "idle"; p.at = p.home; }
           else if (p.job === "bandit" && !wouldRob(p, v)) { p.job = chooseJob(p); if (p.job !== "bandit") { p.task = "idle"; p.at = p.home; } }
         }
       }
     }
 
     /* ── villages ──────────────────────────────────────────────────────── */
-    function market(v) {
+    function market(v) { const was = as(v.dc); marketIn(v); ACT = was; }   // TODO 15.12a: their own dice
+    function marketIn(v) {
       if (S.prices === "float" && !shared) {
         v.priceFood = clamp(Math.pow((v.pop * 0.5 + 1) / Math.max(v.food, 0.4), 0.6), 0.3, 7);
         /* Goods are dear while orders wait and cheap while the shelf holds more than a season's use (TODO 15.5a). */
@@ -8567,7 +8710,8 @@
         } else { v.priceWood = 1; v.priceStone = 1; v.priceIron = 2; v.priceWool = 1.5; v.priceHide = 1.5; }
       }
     }
-    function villageTurn(v) {
+    function villageTurn(v) { const was = as(v.dc); villageTurnIn(v); ACT = was; }   // TODO 15.12a: their own dice
+    function villageTurnIn(v) {
       v.used *= USED_KEEP;   // TODO 15.5a: the season's use, a running sum
       if (v.pop === 0) {
         /* Everybody fled (TODO 14b): the place stands while its own wait to come back, and they
@@ -8633,7 +8777,7 @@
         if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; count.infected++; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f, "one of " + here.length + " not yet immune fell ill" + (DIRT && v.foul > 0.05 ? "; foul water " + r1(v.foul) : "")); if (FAITH) hardTimes(v, "sick", 1); }
       }
       if (v.hungry > v.pop * 0.4 && v.pop > 8 && (!v.famine || t - v.famine >= 30 * DAY_HOURS)) {
-        v.famine = t; note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f, pc(v.hungry / v.pop) + " of " + v.pop + " going hungry; " + r1(v.food / Math.max(1, v.pop)) + " days of food a head in the store");
+        v.famine = t; chainNote(note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f, pc(v.hungry / v.pop) + " of " + v.pop + " going hungry; " + r1(v.food / Math.max(1, v.pop)) + " days of food a head in the store"), null, v.lastWhy || 0);
         if (FAITH) hardTimes(v, "famine", 1.5);   // TODO 15g
       }
       /* Word that food is dear (TODO 12b): one household in seven going hungry with money to pay, not
@@ -8906,6 +9050,7 @@
         for (const k in f.raid) {
           const rd = f.raid[k];
           if (!rd || rd.v < 0 || t >= rd.until) continue;
+          if (TRUCE && f.truceToday) continue;   // TODO 15.11t
           const v = villages[rd.v];
           if (!v.alive || v.f !== +k) { rd.until = t; continue; }
           const raiders = [];
@@ -8988,7 +9133,7 @@
       const lead = factions[v.f].leader;
       for (const p of (PLAIN ? people : residents(v.id)).slice()) {
         if (p.home !== v.id || p.hp <= 0 || !adult(p) || p.job === "soldier" || p.id === lead || p.fear < 0.6) continue;
-        if (R() > 0.25 * (1.2 - p.bold)) continue;
+        if (Rp(p) > 0.25 * (1.2 - p.bold)) continue;
         const mate = byId.get(p.partner), us = [p];
         if (mate && mate.hp > 0 && mate.home === v.id && mate.job !== "soldier" && mate.id !== lead) us.push(mate);
         for (const q of PLAIN ? people : residents(v.id)) if (q.hp > 0 && !adult(q) && q.home === v.id && us.some(a => q.mum === a.id || q.dad === a.id || q.carer === a.id)) us.push(q);
@@ -9106,8 +9251,8 @@
       let fled = 0, stayed = 0;
       for (const p of people) {
         if (p.home !== v.id) continue;
-        if (refuge && (p.job === "soldier" || p.id === old.leader || R() < 0.3 + p.loyal * 0.4)) { rehome(p, refuge, "fled"); fled++; }
-        else if (out && !p.unfree && (p.id === old.leader || R() < 0.3 + p.loyal * 0.4)) {   // TODO 15c: the way out
+        if (refuge && (p.job === "soldier" || p.id === old.leader || Rp(p) < 0.3 + p.loyal * 0.4)) { rehome(p, refuge, "fled"); fled++; }
+        else if (out && !p.unfree && (p.id === old.leader || Rp(p) < 0.3 + p.loyal * 0.4)) {   // TODO 15c: the way out
           if (!nv) { nv = newVillage(out.x, out.y, old.id); nv.food = v.food * 0.15; v.food -= nv.food; }
           if (p.job === "soldier") p.job = "farmer";
           rehome(p, nv, "founded"); went++;
@@ -9115,9 +9260,9 @@
         else {
           if (p.id === old.leader) continue;
           if (p.job === "soldier") p.job = "farmer";
-          p.f = by.id; p.loyal = 0.12 + R() * 0.15; p.mood -= 0.2; stayed++; count.switched++;
+          p.f = by.id; p.loyal = 0.12 + Rp(p) * 0.15; p.mood -= 0.2; stayed++; count.switched++;
           if (captor && p.unfree) p.unfree = 0;
-          if (captor && !terms && R() < 0.25 * (1.2 - p.bold)) bind(p, captor, "captive");   // TODO 15c: taken captive (not on terms, TODO 15.6g)
+          if (captor && !terms && Rp(p) < 0.25 * (1.2 - p.bold)) bind(p, captor, "captive");   // TODO 15c: taken captive (not on terms, TODO 15.6g)
         }
       }
       /* Held (TODO 14c): half of the soldiers who took it stay as its garrison for a year, as the
@@ -9224,7 +9369,7 @@
         const v = villages.find(x => x.f === b.id) || villages[0];
         const e = note("feud", pick(WRONGS)(a, b, v), 4.5, v.x, v.y, b.id);   // weighty, so the record keeps it
         lasting.add(e.id);   // an old feud is held as long as a grudge, and kept before other news
-        for (const p of people) if ((p.f === a.id || p.f === b.id) && adult(p)) heard(p, M_NEWS, e.id, 0.7 + R() * 0.3, -2, 0);
+        for (const p of people) if ((p.f === a.id || p.f === b.id) && adult(p)) heard(p, M_NEWS, e.id, 0.7 + Rp(p) * 0.3, -2, 0);
       }
     }
     /* A leader's own nature, as it shows in what the faction does: in full for a chief or the
@@ -9327,6 +9472,7 @@
     function bind(p, holder, why) {
       const g = factions[holder.f].gov;
       if (!g || p.unfree || p.id === factions[p.f].leader) return false;
+      if (RANK && holder.faith != null && holder.faith === p.faith && faiths[holder.faith].rank === "equal" && holder.zeal > 0.5) { count.rankRefused++; return false; }   // TODO 15.11p
       p.unfree = holder.id; p.loyal = Math.min(p.loyal, 0.15); g.bound.push(p.id); count.bound++;
       return true;
     }
@@ -9358,6 +9504,7 @@
         const s = g.pay === "lot" ? R() : why === "captain" ? q.bold * 2 + (q.job === "soldier" ? 1 : 0) : why === "judge" ? q.honest + q.patient + q.age / S.life : standing(q);
         if (s > bs) { bs = s; best = q; }
       }
+      if (best) because(best, "office", "made " + why + " of " + f.name, g.pay === "lot" ? "by lot" : "the likeliest");   // TODO 15.12e
       return best;
     }
     function officeCount(g) { let n = (g.collector ? 1 : 0) + (g.judge ? 1 : 0) + (g.captain ? 1 : 0); for (const k in g.head) n++; for (const k in g.governor) n++; return n; }
@@ -9588,6 +9735,7 @@
                    wed: p.stub + p.warm > 1.2 ? "young" : "",
                    celibate: mode === "teaching" && p.patient + p.stub - p.warm > 0.7,
                    move: false, from: -1, failed: 0 };
+      if (WIDE) widen(fa, p, why);   // TODO 15.11b2
       faiths.push(fa);
       if (p.faith != null && faiths[p.faith]) faiths[p.faith].holders--;
       p.faith = fa.id; p.zeal = 0.6 + p.bold * 0.3; fa.holders = 1; count.faiths++;
@@ -9609,17 +9757,24 @@
           p.zeal = p.stub > 0.65 ? Math.min(1, p.zeal + 0.05) : Math.max(0, p.zeal - 0.3);
           (failed || (failed = new Set())).add(faiths[p.faith]); continue;
         }
-        if (p.faith != null) { p.zeal = Math.min(1, p.zeal + 0.1 * (size || 1)); continue; }
-        const s = (p.curious + p.bold * 0.5 + p.fear * 0.5) * (0.5 + R());
+        if (p.faith != null) {
+          /* A faith whose offerings promised to keep this away, and it came again within the year (TODO 15.11c). */
+          if (FADE_T && (faiths[p.faith].rite === "offering" || faiths[p.faith].rite === "sacrifice") && v.hardAt > t - YEAR && p.stub < 0.6) { p.zeal = Math.max(0, p.zeal - 0.1); count.failedRite++; }
+          else p.zeal = Math.min(1, p.zeal + 0.1 * (size || 1));
+          continue;
+        }
+        if (COMFORT && FOLK) p.lf.folk = Math.min(1, p.lf.folk + 0.05 * (size || 1));   // TODO 15.11n: disasters make the devout (Bentzen 2019)
+        const s = (p.curious + p.bold * 0.5 + p.fear * 0.5) * (0.5 + Rp(p));
         if (s > bs) { bs = s; best = p; }
       }
       /* Rare: about once in six such events somebody makes something of it. */
-      if (best && R() < FAITH_MAKE * (size || 1) * (0.5 + best.curious)) makeFaith(best, why);
+      if (best && R() < FAITH_MAKE * (size || 1) * (0.5 + best.curious)) { if (!(DRIFT && revive(best, v))) makeFaith(best, why); }
       /* A faith that calls for sacrifice, held hard here, asks for one in hard times. */
       let zealot = null;
       for (const p of residents(v.id)) if (p.hp > 0 && p.faith != null && faiths[p.faith].rite === "sacrifice" && p.zeal > 0.5 && (!zealot || p.zeal > zealot.zeal)) zealot = p;
       if (zealot && R() < 0.5) sacrifice(v, faiths[zealot.faith]);
       if (failed) for (const fa of failed) promiseFailed(fa, v);
+      if (FADE_T) v.hardAt = t;
       if (FAVOUR && why !== "taken") blameRuler(v, why, size || 1);   // a place taken is the old ruler's war lost, counted there
       if (PROPHETS) { v.trouble += size || 1; if (v.trouble >= PROPHET_AT) prophet(v); }
       if (WITCHES && (why === "famine" || why === "sick" || why === "dry")) hunt(v, why, size || 1);
@@ -9665,7 +9820,7 @@
       let best = null, bs = 0;
       for (const p of PLAIN ? people.filter(q => q.home === v.id) : residents(v.id)) {
         if (p.hp <= 0 || !adult(p) || p.id === factions[v.f].leader) continue;
-        const s = (p.curious + p.bold + p.fear + (1 - p.mood)) * (0.5 + R());
+        const s = (p.curious + p.bold + p.fear + (1 - p.mood)) * (0.5 + Rp(p));
         if (s > bs) { bs = s; best = p; }
       }
       if (!best) return;
@@ -9704,7 +9859,10 @@
       let rivals = 0, major = null, mn = 0;
       for (const [id, n] of held) { if (n >= here.length * 0.1) rivals++; if (n > mn) { mn = n; major = id; } }
       const pf = f.faith != null ? faiths[f.faith] : null;
-      const judge = GOV && f.gov && f.gov.judge ? byId.get(f.gov.judge) : null, heard = !!(judge && judge.hp > 0);
+      let judge = GOV && f.gov && f.gov.judge ? byId.get(f.gov.judge) : null;
+      /* No judge, and a people's faith that teaches: its priest hears it (TODO 15.11o, a church court). */
+      if (FLAW && !(judge && judge.hp > 0) && GOV && f.gov && f.gov.priest && pf && pf.mode === "teaching") { const pr = byId.get(f.gov.priest); if (pr && pr.hp > 0) { judge = pr; count.priestJudged++; } }
+      const heard = !!(judge && judge.hp > 0);
       const odds = HUNT_ODDS * size * (0.4 + fear + Math.max(0, temper - 0.5)) * (rivals >= 2 ? 1.8 : 1) *
                    (pf && pf.sorcery === "forbids" ? 0.3 : pf && pf.sorcery === "hunts" ? 1.8 : 1) * (heard ? 0.6 : 1);
       if (R() >= odds) return;
@@ -9732,7 +9890,9 @@
         note("witch", acc.name + " of " + v.name + " was blamed for " + said + " and brought before " + judge.name + ", who let them go.", 2, v.x, v.y, v.f, ground + "; the judge honest " + r1(judge.honest));
         return;
       }
-      const anger = (heard ? judge.temper : temper) + fear + R() * 0.3 + (pf && pf.sorcery === "hunts" ? 0.2 : 0);
+      let anger = (heard ? judge.temper : temper) + fear + R() * 0.3 + (pf && pf.sorcery === "hunts" ? 0.2 : 0);
+      /* Sanctuary (TODO 15.11o): a shrine of a faith that shelters takes them in; they leave alive. */
+      if (anger >= 1.3 && FLAW && v.shrine && v.shrine.built && faiths[v.shrine.fa] && (faiths[v.shrine.fa].toward === "tolerant" || faiths[v.shrine.fa].rule === "refuse")) { count.sanctuary++; anger = 1.2; }
       if (anger >= 1.3) {
         note("witch", acc.name + " of " + v.name + " was blamed for " + said + (heard ? ", condemned by " + judge.name + "," : "") + " and killed.", 3, v.x, v.y, v.f, ground + "; anger " + r1(anger) + " (killed from 1.3)");
         die(acc, "witch");
@@ -9791,6 +9951,9 @@
         let pull = FAITH_PASS * x.zeal * trust * (fa.mode === "teaching" ? 1.5 : 1) * (0.5 + y.fear + (y.hungry > 0 ? 0.5 : 0)) * (1.2 - y.stub) * (y.faith != null ? 1 - y.zeal : 1);
         /* A prophet's movement (TODO 15.11j): fast among the hungry, the frightened and the unhappy, and
            readily taken up by those of the faith it reads anew (their own zeal holds them back half as much). */
+        if (WIDE && fa.join === "born") continue;   // TODO 15.11b2: only the born
+        if (FOLK && y.faith == null) pull *= folkFits(fa, factions[y.f]) ? 1 + 0.5 * y.lf.folk : 1 - 0.4 * y.lf.folk;   // TODO 15.11b
+        if (MEET && WIDE && y.faith != null) pull *= fa.toward === "tolerant" ? 0.6 : fa.toward === "convert" || fa.toward === "fight" ? 1.4 : 1;   // TODO 15.11e
         if (PROPHETS && fa.move) pull *= (y.hungry > 0 || y.fear > 0.4 || y.mood < 0.4 ? 3 : 1.2) * (fa.from >= 0 && y.faith === fa.from && y.zeal < 1 ? (1 - y.zeal * 0.5) / (1 - y.zeal) : 1);
         if (R() < pull) { convert(y, fa, x.zeal * 0.5); return; }
       }
@@ -9806,14 +9969,559 @@
       }
     }
     const faithName = fa => fa.name || "what " + fa.founderName + " teaches";
+    /* ── faith, deeper (TODO 15.11a to h and n to z, 2026-11-24) ───────────
+       Ric, 2026-11-23: "i just want it to be realistic you know?" and "finnish all of 15". Each part is
+       its own setting, on by default; off, the world is the one before it (fingerprinted). README,
+       "Faith, deeper". What every part reads is kept on the faith (`fa`), the people (`f`), the village
+       (`v`) or a person's `lf` (one object, because a person is at V8's edge: see `Rp`). */
+    /* 15.11b: what a people believed before any faith was made up. Read off its grown-ups' natures the
+       first time it is asked: the warm keep their dead, the curious see spirits in places. */
+    function folkOf(f) {
+      if (f.folkKind) return f.folkKind;
+      let w = 0, c = 0, n = 0;
+      for (const p of people) if (p.f === f.id && p.hp > 0 && adult(p)) { w += p.warm; c += p.curious; if (++n >= 60) break; }
+      const d = n ? (w - c) / n : 0;
+      return (f.folkKind = Math.abs(d) < 0.03 ? "both" : d > 0 ? "ancestors" : "spirits");
+    }
+    function folkHas(f, k) { const x = folkOf(f); return x === "both" || x === k; }
+    /* 15.11b2: the many more things a faith can hold, put together from its maker's nature and from what
+       went wrong, each kept out where it clashes with another (no faith bound to harm nothing asks for a
+       sacrifice). */
+    function widen(fa, p, why) {
+      const f = factions[p.f], folk = FOLK ? p.lf.folk : 0;
+      fa.sacred = p.loyal > 0.75 && fa.tie > 0.55 ? "ruler" : folk > 0.6 && FOLK ? (folkHas(f, "ancestors") ? "ancestors" : "spirits")
+                : p.curious + p.patient > 1.3 ? "none" : p.warm + p.bold > 1.2 ? "one" : p.bold > 0.55 ? "founder" : "many";
+      fa.after = p.bold + p.temper > 1.2 ? "reward" : fa.sacred === "ancestors" ? "ancestors" : p.patient + p.curious > 1.2 ? "reborn" : p.warm > 0.55 ? "reward" : "none";
+      fa.food = p.patient > 0.65 && p.warm > 0.5 ? "meat" : p.honest + p.patient > 1.3 ? "drink" : why === "famine" && p.patient > 0.5 ? "fasts" : "";
+      fa.harm = p.warm + p.patient - p.temper > 1.15 ? "all" : p.warm + p.patient - p.temper > 0.85 ? "animals" : "";
+      if (fa.harm) { if (fa.rite === "sacrifice") fa.rite = "offering"; if (fa.harm === "all") fa.holyWar = false; }
+      if (fa.harm && fa.food === "") fa.food = "meat";
+      fa.lead = fa.mode === "rites" && p.loyal > 0.65 ? "born" : fa.mode === "teaching" ? "trained" : p.curious + p.bold > 1.3 ? "none" : "anyone";
+      if (SEXES && fa.lead === "anyone" && p.stub > 0.7) fa.lead = p.sex ? "men" : "women";
+      fa.join = p.warm < 0.35 && p.stub > 0.6 ? "born" : "all";
+      fa.pilgrim = p.curious + p.bold > 1.05;
+      fa.monks = fa.mode === "teaching" && p.patient > 0.55;
+      fa.heal = p.warm > 0.6 || why === "sick";
+      fa.reads = fa.mode === "teaching" && p.curious > 0.5;
+      fa.toward = fa.holyWar ? "fight" : p.temper + p.stub - p.warm > 0.8 ? "convert" : p.warm + p.curious > 1.1 ? "tolerant" : "wary";
+      fa.give = clamp(0.02 + p.warm * 0.08 - p.greed * 0.05, 0, 0.1);
+      fa.lend = p.honest > 0.65 && p.greed < 0.45;
+      fa.rank = p.loyal + p.stub - p.warm > 0.8 ? "birth" : p.warm + p.honest - p.greed > 1 ? "equal" : "";
+      fa.wash = p.patient + p.honest > 1.2;
+      fa.truce = fa.mode === "rites" && p.warm > 0.5 ? "holy days" : p.patient > 0.6 ? "a month" : "";
+      fa.bans = fa.mode === "rites" && p.curious < 0.35;
+      fa.feasts = fa.rite === "feast" || (FOLK && folk > 0.5);
+    }
+    /* What it holds, in words for the Factions tab (only what is set). */
+    function faithWords(fa) {
+      if (!fa.sacred) return "";
+      const w = { ruler: "the ruler is sacred", ancestors: "the ancestors", spirits: "the spirits of places", none: "a way, no gods", one: "one god", many: "many gods", founder: "its founder" };
+      const a = { reward: "a reward after death", ancestors: "the dead join the ancestors", reborn: "born again", none: "nothing after" };
+      const out = [w[fa.sacred], a[fa.after]];
+      if (fa.food === "meat") out.push("no meat"); else if (fa.food === "drink") out.push("no drink"); else if (fa.food === "fasts") out.push("fasts");
+      if (fa.harm === "all") out.push("harms no one"); else if (fa.harm === "animals") out.push("harms no animal");
+      out.push(fa.lead === "none" ? "no priests" : fa.lead === "born" ? "priests by birth" : fa.lead === "trained" ? "trained priests" : fa.lead === "men" ? "men lead" : fa.lead === "women" ? "women lead" : "anyone leads");
+      if (fa.join === "born") out.push("only the born");
+      if (fa.pilgrim) out.push("pilgrimage"); if (fa.monks) out.push("some leave the world"); if (fa.heal) out.push("heals");
+      out.push(fa.toward === "tolerant" ? "lives alongside others" : fa.toward === "wary" ? "wary of others" : fa.toward === "convert" ? "must win others over" : "fights others");
+      if (fa.rank === "equal") out.push("all equal"); else if (fa.rank === "birth") out.push("each in their place");
+      if (fa.truce) out.push("no war on " + fa.truce);
+      return out.join(", ");
+    }
+    /* 15.11c: zeal fades with what really wore it down: reading, towns, other faiths near, and a creed
+       with nothing after death. Where nobody reads it hardly fades at all. */
+    function fadeOf(p) {
+      const v = villages[p.home], fa = faiths[p.faith];
+      let k = KNOW && p.know != null && (p.know & (1 << TI_K.writing)) ? 1 : 0.15;
+      if (v.place === "town" || v.place === "city") k *= 1.5;
+      if (v.faiths > 1) k *= 1.4;
+      if (WIDE && fa.after === "none") k *= 1.5;
+      return 0.0015 * k;
+    }
+    /* 15.11d and e, 15.11v: hiding, pressing and leaving. Somebody made to take a faith keeps the old one
+       hidden (`lf.hid`) and goes back to it once nobody presses them. */
+    function forceFaith(p, fa) {
+      if (p.faith != null && p.faith !== fa.id) { p.lf.hid = p.faith; p.lf.hidZ = p.zeal; }
+      convert(p, fa, 0.1); p.loyal = Math.max(0, p.loyal - 0.15); p.lf.press += 1; count.forced++;
+    }
+    /* 15.11g: the faith's keeper in a village (its priest where it has one, else its most zealous holder
+       there): offerings and the tithe go to them, so every coin is still a coin in somebody's hand. */
+    function keeperOf(fa, v) {
+      const k = fa.keep && fa.keep[v.id] && byId.get(fa.keep[v.id]);
+      if (k && k.hp > 0 && k.faith === fa.id && k.home === v.id) return k;
+      let best = null;
+      for (const q of PLAIN ? people.filter(x => x.home === v.id) : residents(v.id)) if (q.hp > 0 && q.faith === fa.id && adult(q) && (!best || q.zeal > best.zeal)) best = q;
+      (fa.keep || (fa.keep = {}))[v.id] = best ? best.id : 0;
+      return best;
+    }
+    /* 15.11h: the feast days a people keeps: the harvest, midwinter and the start of spring, and a day
+       for the dead where the ancestors are kept. */
+    function feastToday(fa) {
+      const d = doy(), s = season();
+      if (!FYEAR || !fa.feasts) return "";
+      if (s.ripe >= 3.8 && (fa.harvestYr ?? -1) !== s.year) return "harvest";
+      if (d === 355) return "midwinter";
+      if (d === 79) return "spring";
+      if ((fa.sacred === "ancestors" || fa.after === "ancestors") && d === 305) return "the dead";
+      return "";
+    }
+    /* 15.11t: a day this faith forbids war, for a holder of it. */
+    function truceDay(fa) {
+      if (!TRUCE || !WIDE || !fa || !fa.truce) return false;
+      if (fa.truce === "a month") return doy() < 30;
+      return holyDay(fa);
+    }
+    /* 15.11t: does a people keep the truce today? As hard as its army's zeal holds. */
+    function keepsTruce(f) {
+      if (!TRUCE || f.faith == null) return false;
+      const fa = faiths[f.faith];
+      return truceDay(fa) && Rp(byId.get(f.leader)) < 0.3 + (f.armyZeal || 0) * 0.7;
+    }
+    /* 15.11y: one sacred place in each village's reach, if its people's faith or its folk belief holds the
+       land holy: the nearest forest, a spring (a lake's edge) or a peak, chosen once. */
+    function sacredOf(v) {
+      if (!SACRED || !v.alive) return -1;
+      if (v.sacredAt !== undefined) return v.sacredAt;
+      const f = factions[v.f], fa = f.faith != null ? faiths[f.faith] : null;
+      const holds = (fa && WIDE && fa.sacred === "spirits") || (FOLK && folkHas(f, "spirits"));
+      let best = -1, bd = 1e9;
+      if (holds) for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) {
+        const x = Math.floor(v.x) + dx, y = Math.floor(v.y) + dy;
+        if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+        const i = y * cols + x, g = ground[i];
+        if ((g === G_FOREST || g === G_MOUNTAIN || g === G_HILLS) && Math.hypot(dx, dy) < bd && Math.hypot(dx, dy) > 2) { bd = Math.hypot(dx, dy); best = i; }
+      }
+      v.sacredAt = best;
+      if (best >= 0) { count.sacredPlaces++; SACRED_AT.add(best); }
+      return best;
+    }
+    /* 15.11v: somebody pressed hard for what they hold leaves, with their household, for a place that lets
+       them be: one of their own faith, or one whose people's faith lives alongside others. */
+    function fleeFaith(p) {
+      const v = villages[p.home];
+      let to = null, bd = 1e9;
+      for (const o of villages) {
+        if (!o.alive || o === v || atWar(o.f, p.f)) continue;
+        const of = factions[o.f], ofa = of.faith != null ? faiths[of.faith] : null;
+        const welcome = (of.faith === p.faith) || !ofa || (WIDE && ofa.toward === "tolerant") || o.faith === p.faith;
+        if (!welcome) continue;
+        const d = Math.hypot(o.x - v.x, o.y - v.y);
+        if (d < bd && d < 160) { bd = d; to = o; }
+      }
+      if (!to) return false;
+      const going = [p];
+      for (const q of PLAIN ? people.filter(x => x.home === v.id) : residents(v.id)) if (q !== p && q.hp > 0 && (q.id === p.partner || q.mum === p.id || q.dad === p.id) && q.home === v.id) going.push(q);
+      for (const q of going) { if (q.id === factions[q.f].leader) continue; rehome(q, to, "fled"); q.lf.press = 0; count.fledFaith++; }
+      note("faith", p.name + " and their household have left " + v.name + " for " + to.name + ", where they may hold " + faithName(faiths[p.faith]) + " in peace.", 2, v.x, v.y, v.f,
+        "pressed " + r1(p.lf.press) + " for their faith; " + going.length + " went");
+      return true;
+    }
+    /* 15.11w: a great temple, raised over years at a people's first village by its own people, paid in
+       their work and fed from the store, once the faith is held hard and the people can spare it. */
+    function greatWorkFor(f) {
+      if (!GREAT || f.faith == null || !f.alive) return;
+      const fa = faiths[f.faith];
+      if (fa.templeAt != null || fa.holders < 80) return;
+      const lead = byId.get(f.leader); if (!lead) return;
+      const v = villages[lead.home];
+      if (!v || !v.alive || v.food < v.pop * 30 * 0.5 || (f.zealMean || 0) < 0.55) return;
+      fa.templeAt = v.id; v.temple = { fa: fa.id, work: 0, built: false, at: t, x: v.x - 0.6, y: v.y + 0.7 };
+      count.templesBegun++;
+      note("faith", lead.name + " has begun a great temple to " + faithName(fa) + " at " + v.name + ".", 3, v.x, v.y, f.id,
+        "held hard (zeal " + r1(f.zealMean) + ") by " + fa.holders + "; the store holds " + Math.round(v.food) + " for " + v.pop);
+    }
+    /* Once a day, after `faithDay`: what each place and people holds, rulers and their law, faiths that
+       meet, change, cost, keep and teach, and the year's feasts. One pass over the people, then the
+       villages, peoples and faiths. Everything here reads what happened; nothing is placed or timed. */
+    function deepDay() {
+      const d = today(), yr = season().year;
+      const NF = faiths.length, sum = new Float64Array(NF * 8), readers = new Int32Array(NF);
+      for (const v of villages) { v.faiths = 0; v.major = null; v.majorN = 0; v.second = null; v.secondN = 0; }
+      const tally = new Map(), zs = new Float64Array(factions.length), zn = new Int32Array(factions.length), as = new Float64Array(factions.length), an = new Int32Array(factions.length);
+      for (const p of people) {
+        if (p.hp <= 0) continue;
+        if (p.faith == null) continue;
+        const k = p.home * 65536 + p.faith; tally.set(k, (tally.get(k) || 0) + 1);
+        const f = factions[p.f];
+        if (f.faith === p.faith) { zs[f.id] += p.zeal; zn[f.id]++; if (p.job === "soldier") { as[f.id] += p.zeal; an[f.id]++; } }
+        if (DRIFT || KEEPS) {
+          const o = p.faith * 8; sum[o] += p.warm; sum[o + 1] += p.patient; sum[o + 2] += p.greed; sum[o + 3] += p.temper; sum[o + 4] += p.bold; sum[o + 5] += p.curious; sum[o + 6]++;
+          if (KNOW && p.know != null && (p.know & (1 << TI_K.writing))) { readers[p.faith]++; if (KEEPS && p.zeal > 0.5) faiths[p.faith].kept = (faiths[p.faith].kept || 0) | p.know; }
+        }
+      }
+      for (const [k, n] of tally) {
+        const v = villages[Math.floor(k / 65536)], id = k % 65536;
+        if (!v || !v.alive) continue;
+        if (n >= Math.max(2, v.pop * 0.1)) v.faiths++;
+        if (n > v.majorN) { v.second = v.major; v.secondN = v.majorN; v.majorN = n; v.major = id; }
+        else if (n > v.secondN) { v.secondN = n; v.second = id; }
+      }
+      for (const f of factions) { f.zealMean = zn[f.id] ? zs[f.id] / zn[f.id] : 0; f.armyZeal = an[f.id] ? as[f.id] / an[f.id] : 0; }
+
+      /* Rulers: their law on faith (15.11d), the tithe and what a greedy ruler takes (15.11g), freeing
+         (15.11p) and a great temple (15.11w). */
+      for (const f of factions) {
+        if (!f.alive) continue;
+        const lead = byId.get(f.leader);
+        if (TOP) {
+          let law = "";
+          if (lead && f.faith != null && lead.faith === f.faith && lead.zeal > 0.75) {
+            const temper = ruling(lead, "temper", f), stub = ruling(lead, "stub", f);
+            law = temper > 0.68 && stub > 0.6 ? "force" : (temper + stub) / 2 > 0.58 ? "tax" : "";
+          }
+          if (law !== (f.faithLaw || "")) {
+            if (law && lead) {
+              const v = villages[lead.home];
+              note("faith", lead.name + (law === "force" ? " has ordered everyone in " + f.name + " to hold " : " has laid a tax on those in " + f.name + " who do not hold ") + faithName(faiths[f.faith]) + ".", 3, v.x, v.y, f.id,
+                "the ruler's zeal " + r1(lead.zeal) + ", temper " + r1(ruling(lead, "temper", f)) + ", stubbornness " + r1(ruling(lead, "stub", f)));
+              count.faithLaws++;
+            }
+            f.faithLaw = law;
+          }
+        }
+        if (WEALTH) {
+          f.tithe = !!(lead && f.faith != null && lead.faith === f.faith && lead.zeal > 0.6 && (!WIDE || faiths[f.faith].lead !== "none"));
+          /* A rich faith the ruler does not hold, and a greedy ruler (Henry VIII and the monasteries): once a year. */
+          if (lead && d % 365 === 180 && ruling(lead, "greed", f) > 0.7) for (const fa of faiths) {
+            if (!fa.alive || fa.id === lead.faith || !fa.keep) continue;
+            let took = 0;
+            for (const vid in fa.keep) {
+              const v = villages[vid], k = byId.get(fa.keep[vid]);
+              if (v && v.alive && v.f === f.id && k && k.hp > 0 && k.coins > 40) { const x = k.coins * 0.5; k.coins -= x; f.treasury += x; took += x; }
+            }
+            if (took > 0) {
+              count.seized++;
+              for (const p of people) if (p.f === f.id && p.faith === fa.id && p.hp > 0) p.loyal = Math.max(0, p.loyal - 0.2);
+              const v = villages[lead.home];
+              note("faith", lead.name + " has taken " + Math.round(took) + " coins from those who keep " + faithName(fa) + " in " + f.name + ".", 3, v.x, v.y, f.id, "the ruler's greed " + r1(ruling(lead, "greed", f)) + "; the ruler does not hold it");
+            }
+          }
+        }
+        if (RANK && WIDE && f.faith != null && faiths[f.faith].rank === "equal" && f.gov && f.gov.bound.length) {
+          for (const id of f.gov.bound) { const q = byId.get(id); if (q && q.hp > 0 && q.unfree && q.faith === f.faith) { q.unfree = undefined; count.freedByFaith++; } }
+        }
+        if (GREAT) greatWorkFor(f);
+      }
+
+      /* Each grown-up, once a day: following the ruler (15.11d) and its law, the hidden going back, being
+         pressed by another faith (15.11e) and leaving (15.11v). */
+      for (const p of people) {
+        if (p.hp <= 0 || !adult(p)) continue;
+        const f = factions[p.f], lf = p.lf;
+        if (TOP && f.faith != null && p.faith !== f.faith && faiths[f.faith].alive) {
+          const fa = faiths[f.faith];
+          if (!(WIDE && fa.join === "born")) {
+            const lead = byId.get(f.leader);
+            const close = lead && p.home === lead.home && (p.id === lead.partner || p.mum === lead.id || p.dad === lead.id || lead.mum === p.id) ? 3 : 1;
+            const office = f.gov && (f.gov.judge === p.id || f.gov.collector === p.id || f.gov.captain === p.id || f.gov.council.includes(p.id)) ? 2 : 1;
+            const pull = 0.003 * p.loyal * close * office * (p.faith != null ? 1 - p.zeal : 1) * (1.2 - p.stub) * (FOLK && p.faith == null && !folkFits(fa, f) ? 1 - 0.4 * lf.folk : 1);
+            if (Rp(p) < pull) { convert(p, fa, 0.3); count.followed++; continue; }
+            if (f.faithLaw === "tax" && p.coins > 0.02) { const x = Math.min(p.coins, 0.02); p.coins -= x; f.treasury += x; count.faithTax += x; }
+            if (f.faithLaw === "force" && Rp(p) < 0.01) { forceFaith(p, fa); continue; }
+          }
+        }
+        if (lf.hid >= 0) {
+          const old = faiths[lf.hid];
+          if (!old || !old.alive) lf.hid = -1;
+          else if (f.faithLaw !== "force" && lf.press < 0.5 && Rp(p) < 0.05) { convert(p, old, lf.hidZ); lf.hid = -1; count.backToHidden++; }
+        }
+        if (MEET && p.faith != null && f.faith != null && p.faith !== f.faith && villages[p.home].major === f.faith) {
+          const fa = faiths[f.faith];
+          if ((WIDE ? fa.toward === "convert" || fa.toward === "fight" : fa.holyWar) && Rp(p) < 0.02 * f.zealMean) { p.fear = Math.min(1, p.fear + 0.1); p.mood -= 0.05; lf.press += 0.3; count.pressed++; }
+        }
+        if (FLIGHT && lf.press > 2 && p.faith != null && Rp(p) < 0.05 && fleeFaith(p)) continue;
+        if (lf.press > 0) lf.press *= 0.985;
+        /* The tithe (15.11g), once a month: half a hundredth of what a grown-up holds, to their village's keeper. */
+        if (WEALTH && f.tithe && d % 30 === 0 && p.coins > 1) {
+          const k = keeperOf(faiths[f.faith], villages[p.home]);
+          if (k && k !== p) { const x = p.coins * 0.005; p.coins -= x; k.coins += x; count.tithe += x; }
+        }
+      }
+
+      /* Each village: feasts (15.11h), shrines (15.11g), reading (15.11r). */
+      for (const v of villages) {
+        if (!v.alive || v.major == null) continue;
+        const fa = faiths[v.major];
+        if (!fa || !fa.alive) continue;
+        if (FYEAR && v.majorN >= 5) {
+          const feast = feastToday(fa);
+          if (feast && v.feastDay !== d) {
+            if (feast === "harvest") fa.harvestYr = yr;
+            v.feastDay = d; count.feasts++;
+            const food = Math.min(Math.max(0, v.food), v.majorN * 0.3);
+            v.food -= food; count.feastFood += food;
+          }
+        }
+        if (WEALTH && !v.shrine && v.majorN >= 15) {
+          const k = keeperOf(fa, v);
+          if (k && k.coins >= 15) { v.shrine = { fa: fa.id, work: 0, built: false, x: v.x + 0.7, y: v.y + 0.5 }; count.shrinesBegun++; }
+        }
+        if (SCHOOLS && WIDE && fa.reads && KNOW && d % 30 === 7) {
+          const k = keeperOf(fa, v), W = 1 << TI_K.writing;
+          if (k && k.know != null && (k.know & W)) for (const q of PLAIN ? people.filter(x => x.home === v.id) : residents(v.id)) {
+            if (q.hp <= 0 || q.know == null || (q.know & W)) continue;
+            const kid = !adult(q) && q.age >= 6, par = byId.get(q.mum) || byId.get(q.dad);
+            const holder = q.faith === fa.id || (!adult(q) && par && par.faith === fa.id);
+            if (holder && (kid || adult(q)) && Rp(q) < (kid ? 0.05 : 0.01) * (v.shrine && v.shrine.built ? 1.5 : 1)) { q.know |= W; count.faithTaught++; }
+          }
+        }
+      }
+
+      /* Each faith: sects and their joining back, blending (15.11e), drift and writing down (15.11f),
+         keeping what a people lost (15.11s), the pilgrimage (15.11x). */
+      for (const fa of faiths) {
+        if (!fa.alive) continue;
+        const o = fa.id * 8, n = sum[o + 6];
+        if (MEET) {
+          const rulers = factions.filter(f => f.alive && f.faith === fa.id);
+          if (rulers.length >= 2) {
+            fa.twoSince ??= t;
+            if (t - fa.twoSince > YEAR && Rp(byId.get(rulers[1].leader)) < 0.003) sect(fa, rulers[1]);
+          } else fa.twoSince = undefined;
+          if (fa.sect && fa.from >= 0 && faiths[fa.from].alive && WIDE && fa.toward === "tolerant" && faiths[fa.from].toward === "tolerant") {
+            for (const v of villages) if (v.alive && ((v.major === fa.id && v.second === fa.from) || (v.major === fa.from && v.second === fa.id)) && v.secondN >= v.pop * 0.3) {
+              if (Rp(byId.get(fa.founder)) < 0.002) rejoin(fa, v);
+              break;
+            }
+          }
+        }
+        if (DRIFT && n >= 10 && d % 91 === 45) drift(fa, sum, o, n, readers[fa.id]);
+        if (KEEPS && fa.kept && d % 30 === 15) keepBack(fa);
+        if (PILGRIMS && WIDE && fa.pilgrim && d % 365 === (fa.id * 37 + 120) % 365) pilgrimage(fa);
+      }
+      if (MEET && d % 30 === 20) for (const v of villages) if (v.alive && v.second != null && v.secondN >= v.pop * 0.2) blend(v);
+    }
+    /* Does a faith grow out of a people's folk belief (it keeps the ancestors, or the spirits of places)? */
+    function folkFits(fa, f) { return !WIDE || !FOLK ? true : (fa.sacred === "ancestors" && folkHas(f, "ancestors")) || (fa.sacred === "spirits" && folkHas(f, "spirits")) || fa.after === "ancestors"; }
+    /* 15.11e: a faith held by two rulers splits, the second's people its own sect, which knows it was one. */
+    function sect(fa, f) {
+      const lead = byId.get(f.leader); if (!lead) return;
+      const ns = Object.assign({}, fa, { id: faiths.length, name: "", founder: lead.id, founderName: lead.name, born: t, holders: 0, at: lead.home, from: fa.id, sect: true,
+                                         keep: null, templeAt: null, twoSince: undefined, failed: 0, move: false, kept: 0, borrowed: null });
+      ns.every = fa.every === 7 ? 10 : 7;
+      if (Rp(lead) < 0.5) ns.rite = fa.rite === "feast" ? "fast" : fa.rite === "fast" ? "feast" : fa.rite;
+      faiths.push(ns); count.sects++;
+      let moved = 0;
+      for (const p of people) if (p.hp > 0 && p.f === f.id && p.faith === fa.id) { fa.holders--; p.faith = ns.id; ns.holders++; moved++; }
+      f.faith = ns.id;
+      const v = villages[lead.home];
+      note("faith", "Those of " + faithName(fa) + " in " + f.name + " have gone their own way under " + lead.name + ".", 3, v.x, v.y, f.id, "held by two rulers for over a year; " + moved + " went with it");
+    }
+    function rejoin(fa, v) {
+      const to = faiths[fa.from];
+      let n = 0;
+      for (const p of people) if (p.hp > 0 && p.faith === fa.id) { fa.holders--; p.faith = to.id; to.holders++; n++; }
+      for (const f of factions) if (f.faith === fa.id) f.faith = to.id;
+      count.rejoined++;
+      note("faith", faithName(fa) + " and " + faithName(to) + " are one again, after living side by side in " + v.name + ".", 2.5, v.x, v.y, v.f, n + " came back; both live alongside others");
+    }
+    /* Two faiths side by side, neither bound to fight or win the other over: the smaller borrows the bigger's
+       holy day, or its rite, once. */
+    function blend(v) {
+      const big = faiths[v.major], small = faiths[v.second];
+      if (!big || !small || !big.alive || !small.alive || big === small) return;
+      function hard(x) { return WIDE ? x.toward === "fight" || x.toward === "convert" : x.holyWar; }
+      if (hard(big) || hard(small)) return;
+      small.borrowed ??= {};
+      if (small.borrowed[big.id]) return;
+      small.borrowed[big.id] = true; count.blended++;
+      if (small.every !== big.every) small.every = big.every; else if (small.rite !== big.rite && !(small.harm && big.rite === "sacrifice")) small.rite = big.rite;
+      note("faith", "In " + v.name + " those of " + faithName(small) + " have taken up the days of " + faithName(big) + ".", 1.5, v.x, v.y, v.f, "the two side by side: " + v.majorN + " and " + v.secondN + " of " + v.pop);
+    }
+    /* 15.11f: a faith comes to hold what its holders now are. Written down, it moves a fifth as fast. Grown
+       large, a faith of rites tends to teaching (Whitehouse's tedium effect). */
+    const RITE_WORD = { feast: "a feast", fast: "a fast", sacrifice: "a sacrifice", offering: "offerings" };
+    function drift(fa, sum, o, n, readers) {
+      if (!fa.written && KNOW && fa.mode === "teaching" && readers >= 3) { fa.written = true; count.written++; }
+      const m = { warm: sum[o] / n, patient: sum[o + 1] / n, greed: sum[o + 2] / n, temper: sum[o + 3] / n, bold: sum[o + 4] / n };
+      const lead = byId.get(fa.founder) || people.find(p => p.faith === fa.id && p.hp > 0);
+      if (!lead) return;
+      const r = Rp(lead);
+      if (r < (fa.written ? 0.05 : 0.25)) {
+        const rite = m.temper + m.bold - m.warm > 1.1 && !fa.harm ? "sacrifice" : m.warm >= Math.max(m.patient, m.greed) ? "feast" : m.patient >= m.greed ? "fast" : "offering";
+        const was = fa.rite;
+        if (rite !== was) {
+          fa.rite = rite; count.drifted++;
+          const v = villages[fa.at];
+          note("faith", "Those of " + faithName(fa) + " have come to keep " + RITE_WORD[rite] + " where they once kept " + RITE_WORD[was] + ".", 1.5, v.x, v.y, -1,
+            "its " + n + " holders now warm " + r1(m.warm) + ", patient " + r1(m.patient) + ", hot " + r1(m.temper) + (fa.written ? "; written down" : ""));
+        }
+        if (fa.every) fa.every = m.patient > 0.6 ? 7 : 10;
+      }
+      if (fa.mode === "rites" && fa.holders >= 150 && r > 0.85) { fa.mode = "teaching"; count.drifted++; }
+    }
+    /* 15.11s: what the faith's readers keep, given back to a people that has lost it. */
+    function keepBack(fa) {
+      for (const f of factions) {
+        if (!f.alive || !f.know || f.faith !== fa.id) continue;
+        const back = fa.kept & (f.knewOnce || 0) & ~(f.knowWas || 0);
+        if (!back) continue;
+        const W = 1 << TI_K.writing;
+        for (const p of people) {
+          if (p.f !== f.id || p.faith !== fa.id || p.hp <= 0 || !adult(p) || p.know == null || !(p.know & W) || Rp(p) > 0.05) continue;
+          for (let i = 0; i < TECH.length; i++) if (back & (1 << i)) {
+            p.know |= 1 << i; count.keptBack++;
+            const v = villages[p.home]; note("know", p.name + " has learned " + TECH[i].name + " again from what " + faithName(fa) + " kept.", 2, v.x, v.y, f.id);
+            break;
+          }
+          break;
+        }
+      }
+    }
+    /* 15.11x: once a year the zealous within 30 km go to its holy place. */
+    function pilgrimage(fa) {
+      const tv = fa.templeAt != null ? villages[fa.templeAt] : null;
+      const at = tv && tv.temple && tv.temple.built ? tv : villages[fa.at];
+      if (!at || !at.alive) return;
+      let n = 0;
+      for (const p of people) {
+        if (p.faith !== fa.id || p.hp <= 0 || !adult(p) || p.zeal < 0.6 || p.job === "soldier" || p.home === at.id || p.food < 3) continue;
+        const v = villages[p.home];
+        if (atWar(at.f, p.f) || Math.hypot(v.x - at.x, v.y - at.y) > 120 || Rp(p) > 0.3) continue;
+        p.lf.pilgrim = at.id; p.lf.until = t + 20 * DAY_HOURS; wakeUp(p); n++;
+      }
+      if (n) { count.pilgrimages++; note("faith", n + " of " + faithName(fa) + " have set out for " + at.name + ".", 1.5, at.x, at.y, at.f, "its yearly pilgrimage; the zealous within 30 km"); }
+    }
+    /* At the holy place: they pray, spend at its market, meet strangers, and may bring a sickness home. */
+    function arrived(p) {
+      const v = villages[p.lf.pilgrim]; p.lf.pilgrim = -1;
+      p.zeal = Math.min(1, p.zeal + 0.1); count.pilgrims++;
+      const x = Math.min(Math.max(0, p.coins - 2), 1); if (x > 0) { p.coins -= x; v.till += x; count.fairCoins += x; }
+      let k = 0, sick = false;
+      for (const q of PLAIN ? people.filter(z => z.home === v.id) : residents(v.id)) {
+        if (q.hp <= 0 || !adult(q)) continue;
+        if (q.sick > 0) sick = true;
+        if (k < 3 && Rp(q) < 0.2) { befriend(p, q, 0.05); k++; }
+      }
+      if (FHEALTH && sick && !(p.sick > 0) && !p.immune && Rp(p) < 0.15) { p.sick = ILLNESS_HOURS; count.infected++; count.pilgrimSick++; }
+    }
+    /* 15.11q: naming, coming of age, marrying and burying: the household spends food, and those who come
+       grow closer to each other. */
+    function lifeRite(p, what) {
+      const v = villages[p.home], cost = what === "wed" ? 2 : what === "dead" ? 1 : 0.5;
+      const host = p.food >= cost ? p : byId.get(p.mum) || byId.get(p.dad) || p;
+      const x = Math.min(Math.max(0, host.food), cost); host.food -= x; count.riteFood += x; count.lifeRites++;
+      let k = 0;
+      for (const q of PLAIN ? people.filter(z => z.home === v.id) : residents(v.id)) {
+        if (q === p || q.hp <= 0 || !adult(q) || Rp(q) > 0.15) continue;
+        befriend(p, q, 0.04); if (++k >= 4) break;
+      }
+    }
+    /* 15.11f: a reader in hard times may find a dead faith of their people in what was written, and take it
+       up again rather than make up a new one. */
+    function revive(p, v) {
+      if (!KNOW || p.know == null || !(p.know & (1 << TI_K.writing))) return false;
+      for (const fa of faiths) {
+        if (fa.alive || !fa.written || villages[fa.at].f !== p.f) continue;
+        fa.alive = true; fa.move = false; fa.failed = 0; count.revived++;
+        if (p.faith != null && faiths[p.faith]) faiths[p.faith].holders--;
+        p.faith = fa.id; p.zeal = 0.7; fa.holders = 1;
+        note("faith", p.name + " of " + v.name + " has found " + faithName(fa) + " in what was written, and taken it up again.", 2, v.x, v.y, p.f);
+        return true;
+      }
+      return false;
+    }
+    /* 15.11q: coming of age and marrying, once a day for whoever has just done either. */
+    let ritesBegun = false;
+    function ritesDay() {
+      for (const p of people) {
+        if (p.hp <= 0) continue;
+        const lf = p.lf;
+        if (!ritesBegun) { lf.rites |= 1 | (adult(p) ? 2 : 0) | (p.partner ? 4 : 0); continue; }   // not owed by those already grown and wed when the world began
+        if (!adult(p)) continue;
+        if (!(lf.rites & 2)) { lf.rites |= 2; lifeRite(p, "grown"); }
+        if (p.partner && !(lf.rites & 4)) { lf.rites |= 4; const q = byId.get(p.partner); if (q) q.lf.rites |= 4; lifeRite(p, "wed"); }
+      }
+      ritesBegun = true;
+    }
+    /* 15.11n: how much a person's belief takes off their fear in an hour. */
+    function comfortOf(p) { return p.faith != null ? 0.03 * p.zeal : FOLK ? 0.01 * p.lf.folk : 0; }
+    /* A death: a martyr's friends hold their faith harder (15.11u); the household buries them, at a cost
+       that is higher where the dead go to the ancestors or are born again (15.11h, q). */
+    function deathRites(p, why, v) {
+      const fa = p.faith != null ? faiths[p.faith] : null;
+      if (MARTYRS && fa && why === "battle") {
+        count.martyrs++;
+        for (const q of PLAIN ? people.filter(z => z.home === v.id) : residents(v.id)) if (q !== p && q.hp > 0 && q.faith === p.faith && feel(q, p.id) > 0.3) q.zeal = Math.min(1, q.zeal + 0.1);
+      }
+      if (!(FYEAR || RITES) || p.age < 1 || why === "left") return;
+      const kin = byId.get(p.partner) || byId.get(p.mum) || byId.get(p.dad);
+      if (!kin || kin.hp <= 0 || kin.home !== p.home) return;
+      const dear = fa && WIDE && (fa.after === "ancestors" || fa.after === "reborn") || (FOLK && folkHas(factions[p.f], "ancestors") && p.lf.folk > 0.5) ? 3 : 1;
+      const x = Math.min(Math.max(0, kin.food), dear);
+      kin.food -= x; count.funerals++; count.funeralFood += x;
+    }
+    /* 15.11h, g, w, x: what a holder may choose today besides their work. */
+    function faithChoices(p, v, f, n, dark, away, weigh) {
+      if (dark) return;
+      const lf = p.lf;
+      if (PILGRIMS && lf.pilgrim >= 0) {
+        if (t > lf.until || !villages[lf.pilgrim].alive) lf.pilgrim = -1;
+        else {
+          const pv = villages[lf.pilgrim];
+          if (Math.hypot(p.x - pv.x, p.y - pv.y) < pv.radius) arrived(p);
+          else weigh("pilgrim", 0.95 - n.food * 0.8 - n.water - n.rest * 0.5, () => { go(p, pv.x + (R() - 0.5), pv.y + (R() - 0.5), "idle"); p.wait = 0; });
+        }
+      }
+      if (p.faith == null) return;
+      if (FYEAR && v.feastDay === today() && p.faith === v.major)
+        weigh("feast", 0.5 + p.zeal * 0.4 - n.food * 0.5 - n.water - n.rest * 0.5, () => { const [x, y] = plaza(v, 1.4); go(p, x, y, "idle"); p.wait = spell("visit") * 2; count.feastHours++; });
+      if (WEALTH && v.shrine && !v.shrine.built && p.faith === v.shrine.fa && p.vig >= FRAIL)
+        weigh("shrine", 0.3 + p.zeal * 0.35 - away(Math.hypot(v.shrine.x - p.x, v.shrine.y - p.y)) - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - (season().ripe - 1) * 0.3,
+          () => { go(p, v.shrine.x, v.shrine.y, "shrine"); p.wait = 0; });
+      if (GREAT && f.faith === p.faith && faiths[p.faith].templeAt != null && p.vig >= FRAIL && p.job !== "soldier") {
+        const tv = villages[faiths[p.faith].templeAt], tm = tv && tv.temple;
+        if (tm && !tm.built && tv.alive && tv.f === p.f && Math.hypot(tv.x - p.x, tv.y - p.y) < 40)
+          weigh("temple", 0.28 + p.zeal * 0.3 - away(Math.hypot(tm.x - p.x, tm.y - p.y)) - n.food * 0.6 - n.water * 0.5 - n.rest * 0.4 - (season().ripe - 1) * 0.35,
+            () => { go(p, tm.x + (R() - 0.5) * 0.6, tm.y + (R() - 0.5) * 0.6, "temple"); p.wait = 0; });
+      }
+    }
+    /* Four hours at the shrine or the temple. A temple's builders are fed from the village store, as levied
+       work was (15.5i3); offerings go to the keeper on the way. */
+    function holyWork(p, task) {
+      const v = villages[p.home], h = 4 * p.vig * brawn(p);
+      if (task === "shrine" && WEALTH && v.shrine && !v.shrine.built && p.faith === v.shrine.fa && Math.hypot(v.shrine.x - p.x, v.shrine.y - p.y) < 2) {
+        v.shrine.work += h;
+        if (v.shrine.work >= SHRINE_HOURS) { v.shrine.built = true; count.shrines++; note("faith", v.name + " has raised a shrine to " + faithName(faiths[v.shrine.fa]) + ".", 1.5, v.shrine.x, v.shrine.y, v.f); }
+        return;
+      }
+      const fa = p.faith != null ? faiths[p.faith] : null, tv = fa && fa.templeAt != null ? villages[fa.templeAt] : null;
+      if (task === "temple" && GREAT && tv && tv.temple && !tv.temple.built && Math.hypot(tv.temple.x - p.x, tv.temple.y - p.y) < 3) {
+        const fed = Math.min(Math.max(0, tv.food), 0.3); tv.food -= fed; p.food += fed;
+        tv.temple.work += h;
+        if (tv.temple.work >= TEMPLE_HOURS) {
+          tv.temple.built = true; count.temples++;
+          note("faith", "The great temple to " + faithName(fa) + " at " + tv.name + " stands finished, after " + Math.round((t - (tv.temple.at || t)) / YEAR * 10) / 10 + " years.", 4, tv.temple.x, tv.temple.y, tv.f, Math.round(tv.temple.work) + " hours of work");
+        }
+      }
+    }
+    /* 15.11u: what belief adds to an army's nerve: its soldiers' zeal for their people's faith, more where
+       that faith promises a reward after death. */
+    function faithNerve(f) { return (f.armyZeal || 0) * 0.25 * (WIDE && f.faith != null && faiths[f.faith] && faiths[f.faith].after === "reward" ? 1.4 : 1); }
+    /* 15.11o: an alliance sworn by gods both peoples hold. */
+    function sworn(f, o) { return f.faith != null && f.faith === o.faith; }
+    /* 15.11s: a holder of a faith that turns from new things will not take up what was not known when it was made. */
+    function refuses(p, i) {
+      if (p.faith == null || p.zeal <= 0.6) return false;
+      const fa = faiths[p.faith];
+      if (!WIDE || !fa.bans) return false;
+      if (fa.oldKnow === undefined) fa.oldKnow = factions[villages[fa.at].f].knowWas || 0;
+      return !(fa.oldKnow & (1 << i));
+    }
+    /* 15.11p: what a person is born to, for a faith that keeps each in their place: the household's means. */
+    function rankOf(p) { return p.coins > 20 ? 2 : p.coins > 5 ? 1 : 0; }
+    /* 15.11z: a faith of washing; a faith that heals, with its keeper at hand. */
+    function washes(p) { return p.faith != null && WIDE && faiths[p.faith].wash && p.zeal > 0.5 && (count.washed++, true); }
+    function tended(p) { return p.faith != null && WIDE && faiths[p.faith].heal && p.zeal > 0.3 && villages[p.home].major === p.faith && (count.healed++, true); }
+
     /* Once a day: zeal fades where life is safe, the ruler's own faith becomes the people's, and the
        last holder's death is the end of a faith. */
     function faithDay() {
       for (const fa of faiths) fa.holders = 0;
       for (const p of people) {
         if (p.hp === -99 || p.faith == null) continue;
-        if (p.hungry <= 0 && p.fear < 0.3 && p.sick <= 0) p.zeal -= 0.0015;
-        if (p.zeal <= 0.02) { p.faith = null; p.zeal = 0; count.lapsed++; continue; }
+        if (p.hungry <= 0 && p.fear < 0.3 && p.sick <= 0) p.zeal -= FADE_T ? fadeOf(p) : 0.0015;
+        if (p.zeal <= 0.02) { p.faith = null; p.zeal = 0; count.lapsed++; if (FOLK) p.lf.folk = Math.max(p.lf.folk, 0.5); continue; }
         faiths[p.faith].holders++;
       }
       /* Where each place's people mostly stand (TODO 15.11m): the faith held by two in five of those who live there. */
@@ -9829,7 +10537,7 @@
         for (const fa of faiths) if (fa.alive && fa.move && t - fa.born > YEAR && villages[fa.at].trouble < 0.5) fa.move = false;
       }
       for (const fa of faiths) if (fa.alive && fa.holders === 0) {
-        fa.alive = false; count.faithsGone++;
+        fa.alive = false; fa.goneAt = t; count.faithsGone++;
         const v = villages[fa.at];
         if (fa.name) note("faith", "Nobody holds to " + fa.name + " any longer.", 2, v.x, v.y, -1);
       }
@@ -9865,7 +10573,9 @@
         }
         /* Standing: a people loyal to a ruler who holds what they hold. */
         if (f.faith != null) for (const p of people) if (p.f === f.id && p.faith === f.faith && p.hp > 0) p.loyal = Math.min(1, p.loyal + 0.0005);
+        if (TRUCE) f.truceToday = keepsTruce(f);   // TODO 15.11t
       }
+      if (DEEP) deepDay();   // TODO 15.11
     }
     /* A holy day, for a holder of faith fa today. */
     const holyDay = fa => fa.every > 0 && Math.floor(t / DAY_HOURS) % fa.every === fa.id % fa.every;
@@ -9937,6 +10647,7 @@
       let no = c.arranged * (0.4 + gap * 1.5);   // families who arrange would sooner choose, and not beneath them
       if (a.f !== b.f) no += c.arranged * 0.5;
       if (FAITH && a.faith !== b.faith) no += Math.max(a.faith != null ? a.zeal : 0, b.faith != null ? b.zeal : 0) * 0.7;
+      if (RANK && a.faith != null && faiths[a.faith].rank === "birth" && rankOf(a) !== rankOf(b)) no += a.zeal * 0.6;   // TODO 15.11p: each in their place
       if (R() < no) { count.wedRefused++; return false; }
       return true;
     }
@@ -10117,7 +10828,7 @@
         }
         const back = (f.wWritten || 0) & ~now;
         if (back && f.know && f.know[TI_K.writing] > 0) for (const p of people) {
-          if (p.f !== f.id || p.hp <= 0 || !adult(p) || !knowsP(p, "writing") || R() > 0.02) continue;
+          if (p.f !== f.id || p.hp <= 0 || !adult(p) || !knowsP(p, "writing") || Rp(p) > 0.02) continue;
           for (let i = 0; i < WAR_TECH.length; i++) if (back & (1 << i)) { WK.set(p.id, warOf(p) | (1 << i)); f.wk[i]++; now |= 1 << i; count.relearned++; break; }
           break;
         }
@@ -10131,6 +10842,7 @@
       if (p.know == null || !adult(p)) return;
       const v = villages[p.home];
       const rate = FIND_RATE * (0.5 + p.curious) * (p.hungry > 0 ? 0.3 : 1) * (v.hungry > v.pop * 0.15 || v.famine > t - YEAR ? 2 : 1) * (TECHMOVE ? meeting15(v) : 1);
+      if (DISC) { findBuilds(p, v, rate); return; }   // TODO 15.12d
       if (R() >= rate) return;
       const can = [];
       for (let i = 0; i < TECH.length; i++) if (!(p.know & (1 << i)) && (p.know & TECH[i].mask) === TECH[i].mask && !TECH[i].eraOnly && (!TECHMOVE || matOk(v, TECH[i].key))) can.push(i);
@@ -10194,7 +10906,7 @@
       if (lead && !shared && f.treasury > f.pop * 5 && lead.curious > 0.6) m *= 1.5;   // scholars kept
       return m;
     }
-    function techSkill(fid, k) { const f = factions[fid]; return f.skill ? f.skill[TI_K[k]] || 1 : 1; }
+    function techSkill(fid, k) { const f = factions[fid]; if (EXP && techWork(k) >= 0) return f.xpSkill ? f.xpSkill[techWork(k)] : 1; return f.skill ? f.skill[TI_K[k]] || 1 : 1; }   // 15.12c: what its people hold
     const ERA_ADDS = { bronze: ["writing"], ancient: ["iron", "horses", "rotation", "mill", "herbs"], medieval: ["collar"], earlymodern: ["printing", "gunpowder"],
                        industrial: ["steam", "rail", "telegraph"], modern: ["engine", "medicine", "radio"], information: ["phone"] };
     /* Once a day, after the count: skill, the age, what cannot be used here, and bans. */
@@ -10257,6 +10969,106 @@
       next.sort((a, b) => b.ready - a.ready);
       return { era: eraOf(f), known, next, lost };
     }
+    /* ── lives with a history (TODO 15.12b to e, 2026-11-24) ──────────────
+       Ric, 2026-11-23: "Separate hearing about something from knowing how to do it", "Give careers
+       continuity through accumulated skills and switching costs", "Make discovery accumulate over time",
+       "Record why important changes happened". README, "Lives with a history". */
+    /* 15.12c: the kinds of work a person keeps experience in, in years of it, and which task and which
+       living is which. Learning by doing (Wright 1936, Arrow 1962): a beginner does four-fifths of what a
+       hand of three years does, and the gain flattens after. */
+    function xpSkill(p, k) { const x = p.lf.xp ? p.lf.xp[k] : 0; return 0.8 + 0.35 * (1 - Math.exp(-x / 3)); }
+    /* What experience the first people bring: their years at their work since they were grown. */
+    function startXp(p) {
+      const xp = p.lf.xp || (p.lf.xp = new Float32Array(XP_KINDS.length));
+      const k = JOB_XP[p.job];
+      if (k !== undefined && adult(p)) xp[k] = Math.min(15, (p.age - S.grown) * 0.8);
+      xp[0] = Math.max(xp[0], adult(p) ? Math.min(3, (p.age - S.grown) * 0.2) : 0);   // everybody worked the fields some
+    }
+    /* Once a day: what is not used is slowly forgotten, never to nothing; and each people's skill at a thing
+       is read from what its people hold (15.9d's per-people skill, replaced). */
+    function xpDay() {
+      const sums = new Float64Array(factions.length * XP_KINDS.length), ns = new Int32Array(factions.length);
+      for (const p of people) {
+        if (p.hp <= 0 || !p.lf.xp) continue;
+        const xp = p.lf.xp, mine = JOB_XP[p.job];
+        for (let k = 0; k < xp.length; k++) if (k !== mine && xp[k] > 0.2) xp[k] -= xp[k] * XP_FADE;
+        if (adult(p)) { const o = p.f * XP_KINDS.length; for (let k = 0; k < xp.length; k++) sums[o + k] += xpSkill(p, k); ns[p.f]++; }
+      }
+      for (const f of factions) { const o = f.id * XP_KINDS.length; f.xpSkill = f.xpSkill || new Float32Array(XP_KINDS.length); for (let k = 0; k < XP_KINDS.length; k++) f.xpSkill[k] = ns[f.id] ? sums[o + k] / ns[f.id] : 1; }
+    }
+    /* Which work a technique is done in, for a people's skill at it and for who can find it (15.12d). */
+    function techWork(key) { const k = TECH_WORK[key]; return k === undefined ? -1 : k; }
+    /* 15.12d: a thing is found only by those who practise its work: a smith near ore, a farmer at the field.
+       Practise is a hundred hours at it (0.05 of a working year): half a year was tried first, and in a world of
+       farmers and hunters nobody reached it in four months, so nothing new was found at all (2026-11-24). */
+    function practised(p, key) { const k = techWork(key); return k < 0 || !EXP || (p.lf.xp && p.lf.xp[k] >= 0.05); }
+    /* 15.12d: work done toward one thing at a time. The aim is picked as the finds of 15.9b are, and more
+       readily something heard of; headway comes in steps, so a find takes as long on average as it did,
+       but it builds and can be read: who was close, for how long, why. Progress is the person's own
+       (Ric decides whether it can be handed on half-done; not yet). */
+    function findBuilds(p, v, rate) {
+      const lf = p.lf;
+      if (lf.aim >= 0 && (p.know & (1 << lf.aim))) lf.aim = -1;   // learned it from somebody meanwhile
+      if (lf.aim < 0) {
+        const can = [];
+        for (let i = 0; i < TECH.length; i++) if (!(p.know & (1 << i)) && (p.know & TECH[i].mask) === TECH[i].mask && !TECH[i].eraOnly && (!TECHMOVE || matOk(v, TECH[i].key)) && practised(p, TECH[i].key)) can.push(i);
+        if (!can.length) return;
+        let sum = 0; const w = can.map(k => { const x = (TECHMOVE ? needWeight(p, v, TECH[k].key) : 1) * (HEARD && (lf.heard & (1 << k)) ? 3 : 1); sum += x; return x; });
+        let r = R() * sum, j = 0; while (j < can.length - 1 && (r -= w[j]) > 0) j++;
+        lf.aim = can[j]; lf.prog = 0; lf.aimAt = t;
+      }
+      /* Headway comes now and then, a third of the way at a time, never a little every day: added up evenly,
+         everybody's finds would come together, years in (measured 2026-11-24: three years, 200 working toward
+         something, none found). Three steps on average take as many days as the old daily chance did. */
+      if (R() < 3 * rate * (HEARD && (lf.heard & (1 << lf.aim)) ? 2 : 1)) lf.prog += (0.5 + R()) / 3;
+      if (lf.prog < 1) return;
+      const i = lf.aim, days = Math.round((t - lf.aimAt) / DAY_HOURS);
+      lf.aim = -1; lf.prog = 0;
+      p.know |= 1 << i; count.finds++;
+      const f = factions[p.f];
+      const why = days + " days working toward it" + (techWork(TECH[i].key) >= 0 && EXP ? ", " + r1(p.lf.xp[techWork(TECH[i].key)]) + " years at " + XP_KINDS[techWork(TECH[i].key)] : "") + (HEARD && (lf.heard & (1 << i)) ? ", having heard of it" : "") + (MAT_OF[TECH[i].key] ? ", " + MAT_OF[TECH[i].key] + " to hand" : "");
+      because(p, "find", "found " + TECH[i].name, why);
+      if (f.know && f.know[i] > 0) return;
+      const again = f.know && f.knewOnce && (f.knewOnce & (1 << i));
+      if (f.know) f.know[i]++;
+      chainNote(note("found", p.name + " of " + v.name + " has " + (again ? "worked out again " : "found ") + TECH[i].name + ".", 2.5, v.x, v.y, p.f, why), p);
+    }
+    /* 15.12b: in a talk, one thing the other holds that this one does not: heard of first; then learned
+       beside somebody who does it as their own work (an apprentice by a master), or, slowly, by seeing it
+       done again and again. Writing must still be taught. */
+    function learnHeard(x, y, i) {
+      const bit = 1 << i, lf = y.lf;
+      if (!(lf.heard & bit)) { lf.heard |= bit; count.heardOf++; return; }
+      const master = x.home === y.home && x.job === y.job && techWork(TECH[i].key) === JOB_XP[x.job];
+      if (R() < SEE_DONE * (master ? 3 : 0.5) * (0.5 + y.curious)) { y.know |= bit; count.learned++; if (master) count.apprenticed++; because(y, "learned", "learned " + TECH[i].name + " from " + x.name, master ? "beside them at the same work" : "seen done again and again"); }
+    }
+
+    /* ── why it happened (15.12e) ─────────────────────────────────────────
+       A link is a real change of state in somebody's life — wages not paid, taking to the road, a load
+       stolen, a change of work, a find, a move, an office — with the link before it in that life. A note
+       of something they did carries the chain that led to it. Links only report: nothing reads them back
+       (`test/lives.test.mjs` holds the world unchanged by them). The newest 20,000 links in the world are
+       kept, and a chain is followed back five links (Ric decides how far and how long; this is the guess). */
+    function because(p, kind, text, why, prev) {
+      const id = ++linkId;
+      LINKS.set(id, { id, t, kind, who: p.id, name: p.name, text, why: why || "", prev: prev !== undefined ? prev : p.lf.why });
+      p.lf.why = id;
+      if (LINKS.size > LINK_MAX) LINKS.delete(LINKS.keys().next().value);
+      return id;
+    }
+    /* The chain that ends at link id, oldest first. */
+    function chainOf(id) {
+      const out = [];
+      for (let k = 0; k < CHAIN && id; k++) { const l = LINKS.get(id); if (!l) break; out.unshift(l); id = l.prev; }
+      return out;
+    }
+    function chainNote(e, p, id) {
+      if (!e) return e;
+      const c = chainOf(id !== undefined ? id : p.lf.why);
+      if (c.length) e.after = c.map(l => (p && l.who === p.id ? "" : l.name + ": ") + l.text + (l.why ? " (" + l.why + ")" : "")).join(" → ");
+      return e;
+    }
+
     /* Seen done, in a talk: one thing the other holds that this one does not, now and then. */
     function learnFrom(a, b) {
       for (const [x, y] of [[a, b], [b, a]]) {
@@ -10265,6 +11077,8 @@
         if (!missing) continue;
         let i = -1, n = 0;
         for (let k = 0; k < TECH.length; k++) if ((missing & (1 << k)) && !TECH[k].taught && R() < 1 / ++n) i = k;
+        if (i >= 0 && KEEPS && refuses(y, i)) { count.refusedNew++; continue; }   // TODO 15.11s
+        if (i >= 0 && HEARD) { learnHeard(x, y, i); continue; }   // TODO 15.12b
         if (i >= 0 && R() < SEE_DONE * (0.5 + y.curious)) { y.know |= 1 << i; count.learned++; }
       }
     }
@@ -10280,6 +11094,7 @@
         else if (R() < COPY) k |= 1 << i;
       }
       c.know = k;
+      if (HEARD) c.lf.heard = from;   // TODO 15.12b: a child has heard of all its parents do
     }
     /* Once a day: what each people holds, what it has lost, and what can be read again. */
     function knowDay() {
@@ -10304,7 +11119,7 @@
         /* Read again: somebody who can read finds a lost thing in what was written. */
         const back = (f.written || 0) & ~now;
         if (back && f.know[W] > 0) for (const p of people) {
-          if (p.f !== f.id || p.hp <= 0 || !adult(p) || !knowsP(p, "writing") || R() > 0.02) continue;
+          if (p.f !== f.id || p.hp <= 0 || !adult(p) || !knowsP(p, "writing") || Rp(p) > 0.02) continue;
           for (let i = 0; i < TECH.length; i++) if (back & (1 << i)) { p.know |= 1 << i; f.know[i]++; now |= 1 << i; count.relearned++; break; }
           break;
         }
@@ -10645,7 +11460,7 @@
         if (R() >= rate) continue;
         p.job = "farmer"; p.task = "idle"; p.wait = 0; HIRED.delete(p.id); n++; count.deserted++;
         home = villages[p.home];
-        go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol");
+        go(p, home.x + (Rp(p) - 0.5), home.y + (Rp(p) - 0.5), "patrol");
         if (BOOKS) deserterJudged(f, p, harsh);
       }
       if (n && t - (f.desertNews ?? -1e9) > 30 * DAY_HOURS) { f.desertNews = t; note("war", n + (n === 1 ? " soldier has" : " soldiers have") + " deserted " + f.name + "'s army and gone home.", 1.5, home.x, home.y, f.id); }
@@ -10706,11 +11521,11 @@
       const odds = CAMP_CATCH * (S.plague === "none" ? 0 : S.plague === "rare" ? 1 : 1.5) * (1 + f.campFoul * 3);
       const before = here.some(p => p.sick > 0);
       let caught = null;
-      for (const p of here) if (!(p.sick > 0) && R() < odds) { p.sick = ILLNESS_HOURS; count.infected++; caught = p; }
+      for (const p of here) if (!(p.sick > 0) && Rp(p) < odds) { p.sick = ILLNESS_HOURS; count.infected++; caught = p; }
       if (caught && !before) { count.campOutbreaks++; if (t - (f.feverNews ?? -1e9) > 30 * DAY_HOURS) { f.feverNews = t; note("sick", "A fever has broken out in " + f.name + "'s army.", 2, caught.x, caught.y, f.id); } }
       /* The sick passing through a place not their own, or home: one in twenty a day leaves it there. */
       for (const p of here) {
-        if (!(p.sick > 0) || R() >= ARMY_CARRY) continue;
+        if (!(p.sick > 0) || Rp(p) >= ARMY_CARRY) continue;
         let v = null, d = 3;
         for (const u of villages) if (u.alive && u.id !== p.home) { const dd = Math.hypot(u.x - p.x, u.y - p.y); if (dd < d) { d = dd; v = u; } }
         if (!v) continue;
@@ -11263,7 +12078,7 @@
          most neighbours liking each other, and with that every faction was allied to every other
          within a year and nobody fought at all. */
       if (rel.ally) {
-        if (rel.op < 0.05 || back.op < 0.05) { rel.ally = back.ally = false; note("ally", "The alliance between " + f.name + " and " + o.name + " is over.", 2, at.x, at.y, f.id); }
+        if (rel.op < (FLAW && sworn(f, o) ? -0.15 : 0.05) || back.op < (FLAW && sworn(f, o) ? -0.15 : 0.05)) { rel.ally = back.ally = false; note("ally", "The alliance between " + f.name + " and " + o.name + " is over.", 2, at.x, at.y, f.id); }
       } else if (!o.yours && !rel.pays && !back.pays) {
         let common = null;
         for (const x of factions) if (x.alive && x !== f && x !== o && (f.rel[x.id].war || f.rel[x.id].op < -0.4) && (o.rel[x.id].war || o.rel[x.id].op < -0.4)) { common = x; break; }
@@ -11507,11 +12322,12 @@
         p.coins -= coins; q.coins += coins;
         if (grain < 0.05 && coins < 0.05 && !c.caravan) continue;
         count.waylaid++; count.banditGrain += grain; count.banditCoins += coins;
+        { const l = because(q, "robbed", "robbed " + p.name, grain > 0.05 ? r1(grain) + " days of food" : r1(coins) + " coins"); const l2 = because(p, "robbed by", "lost " + (grain > 0.05 ? "a load of food" : "coins") + " to " + q.name, "", l); if (p.at >= 0 && villages[p.at]) villages[p.at].lastWhy = l2; }   // TODO 15.12e
         lurk.delete(q); wakeUp(q); q.stoleAt = t;
         befriend(p, q, -0.5); shaken(p, LIFE.robbed);
         p.say = "Robbed on the road!"; p.sayT = TK(60); q.say = grain > 0.05 ? "A good load. Home with it." : "Hand over the purse."; q.sayT = TK(60);
         const v = villages[q.home];
-        if (t - v.waylaidAt > 3 * DAY_HOURS) { v.waylaidAt = t; note("bandit", q.name + " of " + v.name + " robbed " + p.name + " on the road" + (grain > 0.5 ? ", and took a load of food" : "") + ".", 1, q.x, q.y, q.f); }
+        if (t - v.waylaidAt > 3 * DAY_HOURS) { v.waylaidAt = t; chainNote(note("bandit", q.name + " of " + v.name + " robbed " + p.name + " on the road" + (grain > 0.5 ? ", and took a load of food" : "") + ".", 1, q.x, q.y, q.f), q); }   // 15.12e: what put them on the road
         go(q, q.hx, q.hy, "idle"); q.wait = 0;
         return;
       }
@@ -11532,7 +12348,7 @@
       }
       if (!best || bs < band.length) return;
       v.banditAt = t; count.banditRaids++;
-      for (const q of band) { wakeUp(q); lurk.delete(q); bandOf.set(q.id, { v: best.id, n: band.length }); go(q, best.x + (R() - 0.5) * 2, best.y + (R() - 0.5) * 2, "maraud"); q.wait = 0; }
+      for (const q of band) { wakeUp(q); lurk.delete(q); bandOf.set(q.id, { v: best.id, n: band.length }); go(q, best.x + (Rp(q) - 0.5) * 2, best.y + (Rp(q) - 0.5) * 2, "maraud"); q.wait = 0; }
     }
     /* One of a band at the store: driven off if the soldiers there now are two to their three, or take
        what they can carry, the band no more than a third of the store between them, in the hurry of a
@@ -11706,7 +12522,8 @@
       }
       f.reapedYear = 0;
     }
-    function decide(f) {
+    function decide(f) { const was = as(f.dc); decideIn(f); ACT = was; }   // TODO 15.12a: their own dice
+    function decideIn(f) {
       let lead = byId.get(f.leader);
       if (!lead || lead.hp === -99 || lead.f !== f.id) { succeed(f, "left"); return; }
       if (f.rule === "elected" && t >= f.voteAt) vote(f, false);
@@ -11771,7 +12588,7 @@
            trade (TODO 15.5a): once crafters made only to order there were few, and in rule.test's
            world every grown-up of the faction had taken to mining, so the levy stalled at 3 of 25. */
         if (BOOKS) armingUnfree(f, lead, wars);   // TODO 15.5u
-        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && !(SIEGECRAFT && servedOut(p)) && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25) && mayServe(p, f)) {
+        for (const job of LEVY) for (const p of people) { if (need <= 0) break; if (p.f === f.id && adult(p) && p.job === job && p.bold > 0.3 && !(SIEGECRAFT && servedOut(p)) && p.id !== f.leader && (1 - p.lame) * (HEALTH ? ageVigour(p) : 1) >= 0.4 && (p.sex === 1 || !SEXES || split(f) < 0.25) && mayServe(p, f) && !(WIDE && p.faith != null && faiths[p.faith].harm === "all" && p.zeal > 0.5)) {
           p.job = "soldier"; p.task = "idle"; p.wait = 0; need--;
           if (BOOKS && p.unfree && f.freeArmed) { const g = f.gov; p.unfree = 0; p.loyal = clamp(p.loyal + 0.3, 0, 1); if (g && g.bound) g.bound = g.bound.filter(id => id !== p.id); count.freedToFight++; }
         } }
@@ -12020,6 +12837,7 @@
 
     /* ── the tick ──────────────────────────────────────────────────────── */
     function hour() {
+      ACT = WORLD;
       if (RAIN) { const y = season().year; if (y !== rainYear) newRainYear(y); }
       if (RAIN && THIRST && t % DAY_HOURS === 0 && t > 0) rainDay();
       if (t % DAY_HOURS === 1) { if (!THIRST) countHouses(); housing(); }   // TODO 7b
@@ -12075,6 +12893,8 @@
         if (DIRT && t % DAY_HOURS === 0) foulness();   // TODO 15.5r
         if (SMALL_WAR && DYING.size && t % DAY_HOURS === 0) woundDeaths();   // TODO 15r
         if (FAITH && t % DAY_HOURS === 0 && faiths.length) faithDay();   // TODO 15g
+        if (RITES && t % DAY_HOURS === 0) ritesDay();   // TODO 15.11q
+        if (EXP && t % DAY_HOURS === 0) { if (!xpBegun) { xpBegun = true; for (const p of people) if (!p.lf.xp) startXp(p); } xpDay(); }   // TODO 15.12c
         if (KNOW && t % DAY_HOURS === 0) { knowDay(); if (WAR_TECH.length) warKnowDay(); }   // TODO 15e; 15.6
         if (KIT_ON && LEFT.length && t % DAY_HOURS === 0) leftDay();   // TODO 15.6: what lies in the ground
         if (WORKS && t % DAY_HOURS === 0) workDay();   // TODO 15f
@@ -12088,7 +12908,7 @@
            (Until item 12 a whole side knew within hours.) */
         for (let i = events.length - 1; i >= 0 && events[i].t > t - REFLECT_HOURS; i--) {
           const e = events[i];
-          for (const p of people) if (Math.abs(p.x - e.x) < WITNESS && Math.abs(p.y - e.y) < WITNESS && Math.hypot(p.x - e.x, p.y - e.y) < WITNESS && newsOf(p) < e.id && R() < 0.6) {
+          for (const p of people) if (Math.abs(p.x - e.x) < WITNESS && Math.abs(p.y - e.y) < WITNESS && Math.hypot(p.x - e.x, p.y - e.y) < WITNESS && newsOf(p) < e.id && Rp(p) < 0.6) {
             hold(p, M_NEWS, e.id, 1);
             logHop(e, p, -1, "", 0);
             shunSick(p, e, 0);
@@ -12425,11 +13245,30 @@
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },
       wedWealth: wedWealth, wouldWed: wouldWed, marriageDay: fid => { const f = factions[fid], l = byId.get(f.leader); if (MARRY && l) marriageDay(f, l); return f.match; }, worth: worth,   // TODO 15b
       faithOf: id => { const fa = faiths[id]; return fa ? { name: faithName(fa), rite: fa.rite, rule: fa.rule, holyWar: fa.holyWar, mode: fa.mode, every: fa.every, holders: fa.holders,
-        tie: FAVOUR ? fa.tie : 0, move: PROPHETS && fa.move, sorcery: WITCHES ? fa.sorcery : "", kids: FAITH_KIDS ? fa.kids : "", wed: FAITH_KIDS ? fa.wed : "", celibate: FAITH_KIDS && fa.celibate } : null; },   // TODO 15.11
+        tie: FAVOUR ? fa.tie : 0, move: PROPHETS && fa.move, sorcery: WITCHES ? fa.sorcery : "", kids: FAITH_KIDS ? fa.kids : "", wed: FAITH_KIDS ? fa.wed : "", celibate: FAITH_KIDS && fa.celibate,
+        words: WIDE ? faithWords(fa) : "", sect: !!fa.sect, written: !!fa.written } : null; },   // TODO 15.11; words, sect, written: 15.11b2, e, f
       faiths: faiths, hardTimes: (vid, why, size) => hardTimes(villages[vid], why, size), makeFaith: (p, why) => makeFaith(p, why || "famine"), faithDay: () => faithDay(), convert: (p, id) => convert(p, faiths[id], 0.5), holyDay: id => holyDay(faiths[id]),   // TODO 15g
       steal: (p, q) => steal(p, q), capture: (vid, fid) => capture(villages[vid], factions[fid], null),   // for the tests (TODO 15c)
       /* For the tests (TODO 15.11i to m): each does what the engine does at that moment, and nothing else. */
       hunt: (vid, why, size) => hunt(villages[vid], why || "famine", size || 1), prophet: vid => prophet(villages[vid]), blameOn: (p, fid) => blameOn(p, factions[fid]),
+      /* Faith, deeper (TODO 15.11): doors for the tests, each the engine's own function. */
+      /* What the person panel says of a life (TODO 15.11b, 15.12c to e). Reads only. */
+      lifeOf: p => {
+        const lf = p.lf, out = { folk: FOLK ? lf.folk : null, hid: lf.hid >= 0 && faiths[lf.hid] ? faithName(faiths[lf.hid]) : "", best: "", years: 0, aim: "", prog: 0, after: "" };
+        if (EXP && lf.xp) { let b = -1; for (let k = 0; k < lf.xp.length; k++) if (lf.xp[k] > 0.05 && (b < 0 || lf.xp[k] > lf.xp[b])) b = k; if (b >= 0) { out.best = XP_KINDS[b]; out.years = lf.xp[b]; } }
+        if (DISC && lf.aim >= 0) { out.aim = TECH[lf.aim].name; out.prog = lf.prog; }
+        const c = chainOf(lf.why); if (c.length) out.after = c.map(l => l.text + (l.why ? " (" + l.why + ")" : "")).join(" → ");
+        return out;
+      },
+      lives: { xpSkill: (p, k) => xpSkill(p, k), kinds: XP_KINDS, chain: id => chainOf(id), links: () => LINKS.size, because: (p, kind, text) => because(p, kind, text), heard: (x, y, k) => learnHeard(x, y, TI_K[k]),
+               findBuilds: p => findBuilds(p, villages[p.home], 1), practised: (p, k) => practised(p, k), xpDay: () => xpDay() },
+      deep: { folkOf: fid => folkOf(factions[fid]), words: id => faithWords(faiths[id]), fadeOf: p => fadeOf(p), comfortOf: p => comfortOf(p), truceDay: id => truceDay(faiths[id]),
+              sect: (id, fid) => sect(faiths[id], factions[fid]), blend: vid => blend(villages[vid]), keepBack: id => keepBack(faiths[id]), pilgrimage: id => pilgrimage(faiths[id]),
+              flee: p => fleeFaith(p), rite: (p, what) => lifeRite(p, what), revive: (p, vid) => revive(p, villages[vid]), sacredOf: vid => sacredOf(villages[vid]),
+              greatWork: fid => greatWorkFor(factions[fid]), holyWork: (p, task) => holyWork(p, task || "temple"), refuses: (p, k) => refuses(p, TI_K[k]), nerve: fid => faithNerve(factions[fid]),
+              sworn: (a, b) => sworn(factions[a], factions[b]), deepDay: () => deepDay(), ritesDay: () => ritesDay(), force: (p, id) => forceFaith(p, faiths[id]),
+              driftNow: id => { const fa = faiths[id], sum = new Float64Array(faiths.length * 8); let r = 0; for (const p of people) if (p.hp > 0 && p.faith === fa.id) { const o = fa.id * 8; sum[o] += p.warm; sum[o + 1] += p.patient; sum[o + 2] += p.greed; sum[o + 3] += p.temper; sum[o + 4] += p.bold; sum[o + 5] += p.curious; sum[o + 6]++; if (KNOW && p.know != null && (p.know & (1 << TI_K.writing))) r++; } drift(fa, sum, fa.id * 8, sum[fa.id * 8 + 6], r); },
+              arrived: p => arrived(p), washes: p => washes(p), tended: p => tended(p), rankOf: p => rankOf(p), ti: k => TI_K[k] },
       faithBirths: (p, mate) => faithBirths(p, mate), celibate: p => celibate(p), tradeTrust: (p, vid) => tradeTrust(p, villages[vid]), bestRoute: (p, vid) => bestRoute(p, villages[vid]),
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },

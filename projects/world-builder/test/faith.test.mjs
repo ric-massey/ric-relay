@@ -13,12 +13,12 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false };   // the parts built after this one, off: this part as it was built
-const FINGERPRINT = 620498115;   // print() of 15c's engine, seed 2, 60 days
+const LATER = { marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" };   // the parts built after this one, off: this part as it was built
+const FINGERPRINT = 3845083790;   // print() of 15c's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
-  const w = People.create({ seed: 2, faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false });
+  const w = People.create({ seed: 2, faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15g");
 }
@@ -48,20 +48,33 @@ w.step(24 * 3);
 
 // 3. Along trust.
 {
-  /* Twenty holders across the world, so the numbers are big enough to tell apart. */
-  const fa = w.faiths[0];
-  const seeds = w.people.filter(p => w.adult(p) && p.hp > 0 && p.faith == null).filter((p, i) => i % 15 === 0).slice(0, 20);
-  for (const p of seeds) { w.convert(p, fa.id); p.zeal = 1; }
-  const ids = [fa.founder, ...seeds.map(p => p.id)];
-  w.byId.get(fa.founder).zeal = 1;
-  const others = w.people.filter(p => w.adult(p) && p.hp > 0 && p.faith == null);
-  const trusted = new Set(others.filter(p => ids.some(id => w.feel(p, id) > 0.25)).map(p => p.id));
-  w.step(24 * 60);
-  const took = others.filter(p => p.faith === fa.id);
-  const rate = (inSet) => { const pool = others.filter(p => trusted.has(p.id) === inSet); return pool.length ? pool.filter(p => p.faith === fa.id).length / pool.length : 0; };
-  console.log("  taken up in 60 days: " + took.length + " of " + others.length + "; " + (rate(true) * 100).toFixed(0) + "% of " + trusted.size + " who trusted a holder, " + (rate(false) * 100).toFixed(1) + "% of the rest");
-  assert.ok(took.length > 0, "it is taken up");
-  assert.ok(rate(true) > rate(false) * 3, "far more by those who trusted a holder");
+  /* Twenty holders across a world, so the numbers are big enough to tell apart; and four more worlds beside
+     this one, pooled, since 2026-11-24 (15.12a's dice): one world's dozen converts gave 2.7 times where the
+     README's world gave 4. */
+  const along = (w, fa) => {
+    const seeds = w.people.filter(p => w.adult(p) && p.hp > 0 && p.faith == null).filter((p, i) => i % 15 === 0).slice(0, 20);
+    for (const p of seeds) { w.convert(p, fa.id); p.zeal = 1; }
+    const ids = [fa.founder, ...seeds.map(p => p.id)];
+    w.byId.get(fa.founder).zeal = 1;
+    const others = w.people.filter(p => w.adult(p) && p.hp > 0 && p.faith == null);
+    const trusted = new Set(others.filter(p => ids.some(id => w.feel(p, id) > 0.25)).map(p => p.id));
+    w.step(24 * 60);
+    const r = { took: 0, all: others.length, inT: 0, nT: 0, inR: 0, nR: 0 };
+    for (const p of others) { const got = p.faith === fa.id ? 1 : 0; r.took += got; if (trusted.has(p.id)) { r.nT++; r.inT += got; } else { r.nR++; r.inR += got; } }
+    return r;
+  };
+  const runs = [along(w, w.faiths[0])];
+  for (const seed of [4, 5, 6, 7]) {
+    const x = People.create({ ...LATER, seed, people: 400, war: false, bandits: false, riots: false });
+    x.step(24 * 30);   // friendships first: a world's first day has none
+    const maker = x.people.find(p => x.adult(p) && p.hp > 0);
+    runs.push(along(x, x.makeFaith(maker, "famine")));
+  }
+  const sum = k => runs.reduce((a, r) => a + r[k], 0);
+  const rT = sum("inT") / Math.max(1, sum("nT")), rR = sum("inR") / Math.max(1, sum("nR"));
+  console.log("  taken up in 60 days, five worlds: " + sum("took") + " of " + sum("all") + "; " + (rT * 100).toFixed(0) + "% of " + sum("nT") + " who trusted a holder, " + (rR * 100).toFixed(1) + "% of the rest (" + (rT / rR).toFixed(1) + " times)");
+  assert.ok(runs[0].took > 0, "it is taken up");
+  assert.ok(rT > rR * 3, "far more by those who trusted a holder");
 }
 
 // 4. What it changes.

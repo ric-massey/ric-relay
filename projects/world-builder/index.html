@@ -2518,7 +2518,12 @@
   /* What else a faith holds (TODO 15.11i to l): each only where its setting is on, which the engine says by leaving it empty. */
   const faithMore = fa => (fa.move ? ", a movement promising the world put right" : "") + (fa.tie > 0.5 ? ", its gods stand behind the ruler" : "") +
     (fa.sorcery === "forbids" ? ", forbids blaming sorcery" : fa.sorcery === "hunts" ? ", sees sorcery everywhere" : "") +
-    (fa.kids === "many" ? ", bids many children" : fa.kids === "few" ? ", bids restraint" : "") + (fa.wed === "young" ? ", marries young" : "") + (fa.celibate ? ", its teachers marry no one" : "");
+    (fa.kids === "many" ? ", bids many children" : fa.kids === "few" ? ", bids restraint" : "") + (fa.wed === "young" ? ", marries young" : "") + (fa.celibate ? ", its teachers marry no one" : "") +
+    (fa.sect ? ", a sect" : "") + (fa.written ? ", written down" : "") + (fa.words ? "; " + fa.words : "");   // TODO 15.11b2, e, f
+  /* A life's history (TODO 15.11b, 15.12c to e): best at, working toward, keeps a faith hidden, and what led here. */
+  const lifeLine = l => !l ? "" : (l.best ? " Best at " + esc(l.best) + " (" + (l.years < 1 ? "under a year" : Math.round(l.years) + (Math.round(l.years) === 1 ? " year" : " years")) + ")." : "") +
+    (l.aim ? " Working toward " + esc(l.aim) + ", " + Math.round(l.prog * 100) + "% of the way." : "") + (l.hid ? " Keeps " + esc(l.hid) + " in secret." : "") +
+    (l.after ? "<span class='why'>after: " + esc(l.after) + "</span>" : "");
   /* What a people knows beyond the farming village's ways, and what it has lost (TODO 15e). */
   function knowLine(k) {
     if (!k || (!k.extra.length && !k.lost.length)) return "";
@@ -2665,7 +2670,7 @@
     if (tab === "news") {
       const list = d.events;
       if (!list.length) return "<p class='small'>Nothing has happened yet that anybody would remember.</p>";
-      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + (e.year + 1) + "</span>" + esc(e.text) + (e.why ? "<span class='why'>because: " + esc(e.why) + "</span>" : "") + "</button>").join("");
+      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + (e.year + 1) + "</span>" + esc(e.text) + (e.why ? "<span class='why'>because: " + esc(e.why) + "</span>" : "") + (e.after ? "<span class='why'>after: " + esc(e.after) + "</span>" : "") + "</button>").join("");
     }
     if (tab === "talk") {
       if (selectedExchange) return exchangePane(selectedExchange);
@@ -2715,6 +2720,7 @@
         "<p>" + fname(p.faction) + (p.from !== p.f ? " <span class='small'>— born under " + esc(p.bornUnder) + "</span>" : "") + "</p>" +
         "<p class='small'>" + (p.leans === "share" ? "Believes what is grown should be shared out." : p.leans === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
         (p.faith ? " Holds to " + esc(p.faith.name) + "." : "") + (p.unfree ? " <span style='color:var(--warn)'>Held unfree.</span>" : "") +
+        lifeLine(p.life) +
         (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
         "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + bar("Stubborn", p.stub ?? 0.5) + bar("Greedy", p.greed) + bar("Patient", p.patient ?? 0.5) + bar("Hot-tempered", p.temper ?? 0.5) + bar("Hardworking", p.hard ?? 0.5) + bar("Curious", p.curious ?? 0.5) + bar("Honest", p.honest ?? 0.5) + "</div>" +
         "<p class='small'>One ration supplies an adult for one day. Children’s needs rise as they grow.</p>" +

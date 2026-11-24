@@ -12,11 +12,11 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const FINGERPRINT = 481523178;   // print() of 15.5r's engine, seed 2, 60 days
+const FINGERPRINT = 2527300667;   // print() of 15.5r's engine, seed 2, 60 days
 
 // 1. "Simple": the world before.
 {
-  const w = People.create({ seed: 2, health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false });
+  const w = People.create({ seed: 2, health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "full strength until death is the world before 15.5e");
 }
@@ -83,7 +83,8 @@ const grown = w.people.filter(p => w.adult(p) && p.age < 40);
   s.step(2);
   /* nobody at the start has a grown child (the founders come without parents), so one is made one */
   const single = s.people.filter(q => s.adult(q) && !q.partner && q.job !== "soldier");
-  const par = single[0], kid = single.find(q => q.home === par.home && q !== par && q.age < par.age - 15);
+  const younger = p => s.people.find(q => s.adult(q) && q.hp > 0 && q.home === p.home && q !== p && q.id !== p.partner && q.age < p.age - 15);   // any such pair (2026-11-24: the first single had none in this world)
+  const par = single.find(p => younger(p)), kid = par && younger(par);
   assert.ok(kid, "two grown-ups of one village a generation apart");
   kid.mum = par.id; par.kids = 1;
   par.lame = par.harm = 0.9; par.food = 0; kid.food = 30;

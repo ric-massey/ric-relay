@@ -14,9 +14,9 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const OLD = 2621592913;   // print() of the world below before 15.7
+const OLD = 3006534269;   // print() of the world below before 15.7
 
-assert.equal(print(People.create({ seed: 3, people: 200, land: "family", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false }), 1500), OLD, "\"as before\" is the old land, exactly");
+assert.equal(print(People.create({ seed: 3, people: 200, land: "family", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" }), 1500), OLD, "\"as before\" is the old land, exactly");
 
 const make = (o) => { const w = People.create(Object.assign({ seed: 3, people: 200, land: "family", factions: 2, war: false }, o)); w.step(24 * 32); return w; };
 {
@@ -83,6 +83,7 @@ const make = (o) => { const w = People.create(Object.assign({ seed: 3, people: 2
   w.landMonth(v.id);
   assert.equal([...w.grants].filter(([, e]) => e.by === q.id).length, 0, "and they go back with the office");
   const lead = w.people.find(p => p.id === f.leader); lead.greed = 1;
+  g.n = 0;   // a chief who rules alone: with a council, its average greed is half the say (15c); 15.12a's dice gave this one a council (2026-11-24)
   for (let k = 0; k < 400 && !v.enclosed; k++) w.landMonth(v.id);
   assert.ok(v.enclosed, "a greedy chief encloses the commons");
 }

@@ -23,7 +23,7 @@ const People = Object.assign({}, People0, { create: (o, ...rest) => People0.crea
   const w = People.create({ seed: 11, rain: "off", fishing: "off" });
   assert.equal(w.rainK, null, "no rain map with Rain off");
   assert.equal(w.rainField(3), null, "and no year's rain");
-  for (let h = 0; h < 24 * 3; h++) { w.step(1); for (const p of w.people) assert.ok(!/fish/i.test(w.activity(p)), "nobody fishes with Fishing off"); }
+  for (let h = 0; h < 24 * 3; h++) { w.step(1); for (const p of w.people) assert.ok(p.task !== "fish" && !/^(going )?fishing/i.test(w.activity(p)), "nobody fishes with Fishing off"); }   // not /fish/: a name can hold it (Broufisheth, 15.12a)
   assert.equal(w.stats().fish, undefined, "no catch counted with Fishing off");
 }
 

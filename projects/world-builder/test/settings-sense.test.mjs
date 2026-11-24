@@ -88,12 +88,12 @@ const People = createRequire(import.meta.url)("../people.js");
 /* A rule of the rich that its people have turned on falls in a civil war;
    one they put up with stands. */
 {
-  const hated = People.create({ people: 100, map: "small", factions: 2, seed: 5, rule: "rich", unequal: 0.95, loyalty: 0, tax: 0.5 });
+  const hated = People.create({ people: 100, map: "small", factions: 2, seed: 6, rule: "rich", unequal: 0.95, loyalty: 0, tax: 0.5 });
   hated.step(24 * 90);
   assert.ok((hated.stats().revolutions || 0) >= 1, "a hated rule of the rich is overthrown");
   assert.ok(hated.factions.some(f => f.rule !== "rich"), "and replaced by another way of choosing leaders");
   assert.ok(hated.events.some(e => e.kind === "revolution"), "and it is in the news");
-  const borne = People.create({ people: 100, map: "small", factions: 2, seed: 5, rule: "rich", unequal: 0, loyalty: 1, tax: 0 });
+  const borne = People.create({ people: 100, map: "small", factions: 2, seed: 6, rule: "rich", unequal: 0, loyalty: 1, tax: 0 });
   borne.step(24 * 90);
   assert.equal(borne.stats().revolutions || 0, 0, "a rule of the rich its people put up with stands");
 }

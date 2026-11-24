@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People0 = createRequire(import.meta.url)("../people.js");
 /* TODO 15.5 (2026-11-22): the winter store checked (60 days) is a fixed guess that the climate's swing (15.5q) and households with children (15.5l, k) move; the rest sits near its thresholds by seed; so its worlds keep these at their old values unless a check sets them. */
-const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false };
+const PIN = { health: "simple", sexes: "none", childwork: "none", housework: "none", landchange: "fixed", beasts: "none", irrigation: "none", climate: 0, sleep: "simple", hearth: "village", plenty: false, govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" };
 const People = Object.assign({}, People0, { create: (o, ...rest) => People0.create(Object.assign({}, PIN, o), ...rest) });
 
 const city = w => w.villages.reduce((a, b) => (b.pop > a.pop ? b : a));
@@ -66,8 +66,13 @@ for (const bold of [1, 0]) {
   for (const p of mine) p.food = 0;
   const rich = mine.slice(0, 5);
   for (const p of rich) p.food = 600;   // well past a winter's store
+  /* Their households are left out of the hunger below: a partner or a child at home shares the pot, and
+     `hungry` empties everybody else's every hour, so a shared pot was emptied through them (found
+     2026-11-24, when 15.12a's dice gave one hoarder a household). */
+  const home = new Set(rich);
+  for (const p of rich) for (const q of w.people) if (q.home === p.home && (q.id === p.partner || q.mum === p.id || q.dad === p.id)) home.add(q);
   town.food = 0;
-  hungry(w, town, 30, null, new Set(rich));
+  hungry(w, town, 30, null, home);
   const sold = w.stats().forcedGrain;
   if (bold) {
     assert.ok(sold > 50, "a bold leader makes the hoarders sell (" + Math.round(sold) + " days)");

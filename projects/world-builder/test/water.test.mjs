@@ -46,10 +46,10 @@ for (const [thirst, lo, hi] of [["real", 2, 4.5], ["gentle", 9, 16]]) {
   const p = w.people.find(q => w.adult(q));
   for (const q of w.people) if (q.dwelling === p.dwelling && q !== p) q.dwelling = -1;
   const mate = w.byId.get(p.partner); if (mate) mate.partner = 0; p.partner = 0;
-  const h = w.homes[p.dwelling];
+  const h = w.homes[p.dwelling], v = w.villages[p.home];   // and no well beside her house: with 15.12a's dice (2026-11-24) the village dug one within her reach, and she drank there
   p.food = 1e3; p.task = "idle"; p.wait = 1e9; p.x = p.tx = h.x; p.y = p.ty = h.y;
   let hours = 0;
-  while (p.hp !== -99 && hours < 24 * 20) { for (let s = 0; s < People.ACTIONS_PER_HOUR; s++) { h.water = 0; p.wait = 1e9; w.advance(People.STEP); } hours++; }   // emptied every step: a lodger fetches for the house (TODO 7b)
+  while (p.hp !== -99 && hours < 24 * 20) { for (let s = 0; s < People.ACTIONS_PER_HOUR; s++) { h.water = 0; v.well = null; p.wait = 1e9; w.advance(People.STEP); } hours++; }   // emptied every step: a lodger fetches for the house (TODO 7b)
   const days = hours / 24;
   assert.ok(days >= lo && days <= hi, thirst + " thirst killed in " + days.toFixed(1) + " days, expected " + lo + " to " + hi);
 }

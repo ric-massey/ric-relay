@@ -4919,7 +4919,7 @@ people): after a year Gini 0.81 → 0.65, top tenth 68% → 43%, none 44% → 26
 Gini 0.76 at ten years and 0.82 at twenty against 0.88 and 0.96 the old way, top tenth 64% against 97%, tills kept (one seed; still drifting up in the second decade). **Found:** a soldier's `at` is their last market, not where they stand. **Not done:** gambling, servants
 and day wages, a faith's rule against interest.
 
-### [ ] 15.11. Faith, deeper and true to life
+### [x] 15.11. Faith, deeper and true to life
 
 **Ric (2026-11-23):** "should i make the religions deeper?", then "i just want it to be realistic you know?",
 then "15.11 needs to be about this about making it deeper and more realistic".
@@ -4961,7 +4961,7 @@ the record shows, so two worlds have different faiths and a faith may look like 
 Each part below is its own piece of work: research first, Ric's questions, measured before and after, the
 old way kept as a setting (fingerprinted, like 15.6f to 15.10).
 
-#### [ ] 15.11a. Measure what 15g does on its own first
+#### [x] 15.11a. Measure what 15g does on its own first
 **Wait for 15.12a** (Ric, 2026-11-23: "Yes, before 15.11"): each person's own dice come first, so that
 these numbers and every 15.11 part measured against them are the same world before and after.
 **Now:** 15g was measured only with twenty holders placed by hand. Nobody has checked a default world, with
@@ -4973,7 +4973,19 @@ every part after it.
 **Research first:** none; this is measurement.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11b. Belief before faiths: the dead, spirits and places
+**Done 2026-11-24** (`test/faithcount.mjs`, run by hand; counting only). After 15.12a, before b to z, four seeds of
+the default world for ten years each: faiths made 6, 4, 10 and 12; named 1 to 4; gone 2 to 8; alive at the end 1 to
+4, the largest held by 135 to 259. **Grown-ups holding any faith by year ten: 97%, 89%, 92%, 93%** — near nothing
+for three years, then a faith takes a world over (seed 1: 2.8%, 7.8%, 9.2%, 19.5%, 38%, 62%, 77%, 85%, 95%, 97%).
+Faiths last 2.8 to 4.8 years on average, the longest ten. A people whose ruler holds a faith against one whose ruler
+does not: loyalty 0.61 to 0.69 against 0.60 to 0.74, no different; births a year per hundred 1.9 to 3.8 against 3.9
+to 5.4, fewer (14 to 22 people-years each, few). So 15g does do something measurable on its own: it spreads to
+nearly everybody within a decade. **After** (every part of 15.11 and 15.12 on, seeds 1 and 2, ten years): faiths made
+3 and 4; grown-ups holding any by year ten **34% and 52%**, still rising (seed 1: 23% at year seven); nobody lapsed (a
+world where few read hardly fades); the largest faith 100 and 87. Folk belief holds off a faith that does not keep it,
+so faiths come slower and later. Each part's own numbers are under it below and in README, "Faith, deeper".
+
+#### [x] 15.11b. Belief before faiths: the dead, spirits and places
 **Do:** every people starts with folk belief: kept by households, with ancestors and the spirits of places,
 and no name, founder or priest. A named faith grows out of it, takes some of it in, or stands against it.
 Losing a named faith falls back to folk belief, not to nothing.
@@ -4982,7 +4994,15 @@ Cross-Cultural Sample, Murdock's *Ethnographic Atlas*); Peoples, Duda and Marlow
 belief and which kinds came first; Whitehouse's imagistic mode for small groups.
 **Ric decides:** whether folk belief is one thing for each people, or held differently house by house.
 
-#### [ ] 15.11b2. What a faith can hold: many more rules, made up
+**Done 2026-11-24** (setting **Belief before faiths**). Everybody holds `lf.folk`, 0 to 1, taken after the
+parents within 0.05 (house by house), stronger in the patient and loyal, weaker in the curious; each people's
+is of the ancestors, the spirits of places, or both (`folkOf`, from its grown-ups' warmth against curiosity). A
+faith made by somebody who holds it strongly keeps it (`sacred`); one that keeps it passes 1 + half the hearer's
+folk as readily, one that does not 1 − 0.4 of it; a faith let go falls back to at least 0.5. Hard times raise it
+in those with no faith (15.11n). **Ric decides** "one thing for each people, or house by house": not asked this session; answered with the recommended choice, for Ric to overturn — house by
+house, the kind each people's. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11b2. What a faith can hold: many more rules, made up
 **Now:** a faith is five choices: a rite (feast, fast, offerings, sacrifice), a rule (no stealing, or never
 turning the hungry away), holy war or not, rites or teaching, and a holy day every seven or ten days or none.
 **Do:** a faith is put together by its maker from a much wider range, each piece drawn from their nature and
@@ -5006,7 +5026,17 @@ change what holders do and how much.
 **Ric decides:** whether some rules are out (for example, rules about sex or about women), and whether a
 watcher can make up a faith by hand and drop it in.
 
-#### [ ] 15.11c. Fading that follows the time
+**Done 2026-11-24** (setting **What a faith can hold**, "As before" is the five-part faith). `widen` adds what
+is sacred, what comes after death, food and drink, harm, who leads, who joins, pilgrimage, monks, healing, how it
+stands toward others, giving, lending, rank, washing, a truce and turning from new things, each from the maker's
+nature and what went wrong; harm keeps sacrifice and holy war out. Each does something: no hunting for a faith of
+no meat or no harm, no drink at the till, nobody harming none taken in the levy, the born-only not passed on,
+monks at prayer every day, alms by its giving, loans without interest between holders, and the parts below. The
+Factions tab says them all. **Ric decides** "whether some rules are out" and "whether a watcher can make up a faith
+by hand": not asked this session; answered with the recommended choice, for Ric to overturn — nothing out, rules about sex kept to who may lead; making a faith by hand is a door in the engine
+(`makeFaith`) and not yet on the page (15.13). **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11c. Fading that follows the time
 **Do:** zeal falls with what really wore it down, not with one good year: schooling and reading (15e),
 towns and mixing with other faiths, and a faith that fails its holders (the famine it promised against comes
 anyway). In a world where nobody reads, belief mostly lasts.
@@ -5015,7 +5045,13 @@ anyway). In a world where nobody reads, belief mostly lasts.
 cognitive dissonance after a failed prophecy (Festinger, *When Prophecy Fails*).
 **Ric decides:** whether a world with no schooling can lose faith at all.
 
-#### [ ] 15.11d. Conversion from the top, and by pressure
+**Done 2026-11-24** (setting **How faith fades**). A day's fade for somebody fed and safe is 0.0015 times: 1 for a
+reader and 0.15 for one who cannot read, 1.5 in a town or city, 1.4 where another faith is held by a tenth, 1.5 for
+a faith with nothing after death (`fadeOf`). Offerings or a sacrifice that failed — hard times again within a year —
+take 0.1 of the zeal of all but the stubborn. **Ric decides** "whether a world with no schooling can lose faith at
+all": not asked this session; answered with the recommended choice, for Ric to overturn — yes, six times slower, and by failure. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11d. Conversion from the top, and by pressure
 **Do:** when a ruler takes a faith up, those who look up to them (their household, officials, the loyal)
 lean toward it, and its holders are favoured for offices, marriages and land. A ruler may press it by law
 (a tax on those outside it, offices closed to them, forced conversion) where their nature leads there. The
@@ -5026,7 +5062,14 @@ conversion to Islam (Bulliet's conversion curve); the Reformation's *cuius regio
 **Ric decides:** whether forced conversion is in (Ric has said a faith can drive harsh things, 15g; this is a
 ruler's harshness, which is a separate question).
 
-#### [ ] 15.11e. When faiths meet: blending, splitting, tolerance and persecution
+**Done 2026-11-24** (setting **Faith from the ruler**). Each day a grown-up of a people whose ruler holds its
+faith may come over: 0.003 times their loyalty, three times in the ruler's household, twice for an official, less
+for the zealous of another faith and the stubborn. A zealous ruler (over 0.75) who is hot and stubborn orders it
+(`force`: 1 in 100 a day forced, loyalty −0.15, the old faith kept hidden in `lf.hid` and gone back to once nobody
+presses), or, less hard, taxes those outside it 0.02 coins a day. **Ric decided** "Yes, by nature" (2026-11-24).
+**Measured:** 13 → 52 of 169 held the ruler's faith in 120 days, 17 without, the same ruler all along (`faithdeep`, d). **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11e. When faiths meet: blending, splitting, tolerance and persecution
 **Do:** a faith held far from its start, or by two leaders, drifts and may split into sects that know they
 were one. Two faiths side by side may borrow each other's rites and days (blending), live alongside, or turn
 against each other, by the nature of those who hold them and how hard. Splits and hatred come only from what
@@ -5036,7 +5079,14 @@ Santería, Japanese Shinto and Buddhism); Allport's contact hypothesis and its l
 (the Inquisition, the Decian persecution) and when tolerance held (al-Andalus, the Ottoman millets).
 **Ric decides:** whether a split faith can join back together.
 
-#### [ ] 15.11f. A faith that changes as it grows
+**Done 2026-11-24** (setting **When faiths meet**). A faith held by two rulers for over a year splits, 3 in 1,000
+a day, the second's people a sect (`from`, another holy day, perhaps the other rite); tolerant sects side by side,
+each a third of a village, join back, 2 in 1,000 a day. Two faiths each a fifth of a village, neither bound to
+fight or win others over, borrow the bigger's day or rite once. One bound to win others over presses the minority
+where it is the village's: fear, mood, `press` (15.11v). A tolerant faith passes 0.6 as readily, a converting one
+1.4. **Ric decides** "whether a split faith can join back": not asked this session; answered with the recommended choice, for Ric to overturn — yes. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11f. A faith that changes as it grows
 **Do:** what a faith holds can move: rites and rules drift toward the nature of those who hold it now, a
 faith grown large tends to turn from rites to teaching, and writing it down (15e) slows the drift and lets it
 be read back after it has gone.
@@ -5044,7 +5094,12 @@ be read back after it has gone.
 and moralising gods, and the Watts et al. results against it; how scripture fixed a faith (canon formation).
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11g. What a faith costs and owns
+**Done 2026-11-24** (setting **Faiths that change**). Each season a faith of ten or more re-reads its rite and
+days from its holders' mean nature, a quarter of the time (a twentieth once written down); one of 150 that keeps
+rites may turn to teaching. Written down once three of a teaching faith read; a dead written faith is taken up
+again by a reader in hard times instead of a new one being made (`revive`). **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11g. What a faith costs and owns
 **Do:** holders give offerings, and a people's own faith may take a tithe; that keeps priests who do not farm,
 pays for a shrine (the building list already holds a place for one), and lets the faith be given land and hold
 it. A rich faith is something a ruler wants on their side, or wants to take from.
@@ -5053,13 +5108,27 @@ monasteries as landholders and Henry VIII's dissolution; how many priests a peop
 **Ric decides:** whether shrines are built here or wait for the building item, and whether the tithe is
 always taken or only when a ruler makes it law.
 
-#### [ ] 15.11h. A year of the faith: seasons, feasts and the dead
+**Done 2026-11-24** (setting **What a faith owns**). Each faith has a keeper in each village (its priest, or its
+most zealous there). A zealous ruler of the people's faith takes a tithe: half a hundredth of a grown-up's coins
+once a month, to the keeper — coins from hand to hand. Fifteen holders and a keeper with 15 coins begin a shrine (400
+hours of their work). A greedy ruler who does not hold a rich faith takes half of what its keepers hold once a year,
+and its holders lose 0.2 of their loyalty. **Ric decided** "Build now, simply" (2026-11-24). **Measured:** a people
+of 30 holders paid 69 coins of tithe in 90 days and built two shrines. **Not done:** land given to a faith (15.13).
+**Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11h. A year of the faith: seasons, feasts and the dead
 **Do:** rites follow the year a people lives (planting, harvest, midwinter, the flood) and its dead (burials,
 days for the dead). A feast uses up food and draws people from round about, so news and matches pass; a fast
 saves it. 15g's holy day every seven or ten days stays where a faith has one.
 **Research first:** agricultural festivals across the record; the medieval feast-day count (15g's notes: a
 handful to about 30 a year, varying by manor); what a feast cost; funerary practice and its cost.
 **Ric decides:** nothing expected.
+
+**Done 2026-11-24** (setting **Feasts and the dead**). A faith of feasts, or a people strong in folk belief,
+keeps the harvest feast, midwinter (day 355), the start of spring (day 79) and, where the ancestors are kept, a day
+for the dead (day 305); the store gives 0.3 of a day's food for each holder there, and they gather. A death costs
+the household a day's food, three where the dead go to the ancestors or are born again. **Measured:** a year, 24
+feasts, 63 days of food, 1,177 gatherings; 7 buried, 11 days. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
 
 **What faith does to everything else** (Ric, 2026-11-23: "is there anything else that faith does that isnt in
 this?", then "add all of them"). Parts a to h are what a faith is; i to z are what it does to rule, fear,
@@ -5152,7 +5221,7 @@ another 1 − 0.2 of it, and a caravan goes half as far again to its own; a mino
 high. **Measured:** a best load worth 3.82, 4.97 to a place of the trader's faith, 3.06 to one of another.
 **Research:** not searched; Greif as remembered.
 
-#### [ ] 15.11n. Comfort
+#### [x] 15.11n. Comfort
 **Do:** belief makes fear and grief smaller after deaths and disasters, so holders recover sooner, and
 disasters make people more devout. Today a faith only feeds on fear.
 **Research first:** Bentzen 2019 (*Economic Journal*, "Acts of God") on earthquakes and religiosity; religious
@@ -5160,7 +5229,11 @@ coping in the psychology literature (Pargament).
 **Cost:** almost free.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11o. Law: oaths, ordeals, courts and sanctuary
+**Done 2026-11-24** (setting **Comfort**). Fear falls by 0.03 of their zeal an hour more for a holder, 0.01 of
+their folk belief for anybody else; life's blows move a holder's nature 1 − 0.3 of their zeal as far; a hard time
+raises the folk belief of those with no faith by 0.05. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11o. Law: oaths, ordeals, courts and sanctuary
 **Do:** promises sworn by a people's gods are kept more often (the sim's dealings and treaties, item 13);
 guilt may be judged by ordeal or by a faith's own court; a holy place may shelter somebody hunted until a deal
 is made.
@@ -5169,7 +5242,12 @@ England; oaths in early law.
 **Cost:** almost free to cheap.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11p. Who is above whom
+**Done 2026-11-24** (setting **Oaths, courts and sanctuary**). An alliance between peoples of one faith ends only
+below −0.15 of each other's regard, not 0.05; with no judge, a teaching faith's priest hears an accusation (15.11k);
+a built shrine of a tolerant or giving faith takes in somebody the village would kill, and they are driven out
+instead. **Not done:** trial by ordeal. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11p. Who is above whom
 **Do:** a faith can hold some people above others (by birth, caste or sex), make the unfree's state right or
 wrong, or say all holders are equal, and what it says moves who may marry, own, lead and be freed (15.5's
 unfree included). Abolition may come from a faith.
@@ -5178,14 +5256,21 @@ equality in early Christianity and Islam, and how far it went.
 **Cost:** almost free.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11q. Rites of a life
+**Done 2026-11-24** (setting **Who is above whom**). A ruler of a faith that holds all equal frees the unfree who hold
+it, and its zealous holders will not hold one of their own faith; a faith that keeps each in their place weighs a match
+across a household's means (under 5 coins, under 20, over) by 0.6 of the zeal. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11q. Rites of a life
 **Do:** naming a child, coming of age, marrying and burying (15.11h holds the dead's days), each a gathering that
 costs food and passes news and matches.
 **Research first:** van Gennep, *The Rites of Passage*; what weddings and funerals cost a household.
 **Cost:** almost free.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11r. Teaching people to read
+**Done 2026-11-24** (setting **Rites of a life**). A naming, a coming of age and a wedding cost the household half a
+day's food, half and two, and up to four of the village grow closer to them. **Measured:** in `faithdeep`. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11r. Teaching people to read
 **Do:** a faith that wants its holders to read its writings raises how many can (15e), and its houses of
 prayer may keep schools.
 **Research first:** Becker and Woessmann 2009 (*Quarterly Journal of Economics*, "Was Weber Wrong?") on
@@ -5193,7 +5278,11 @@ Protestant literacy; Jewish literacy (Botticini and Eckstein, *The Chosen Few*);
 **Cost:** cheap: it hooks into know-how, which already runs.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11s. Keeping knowledge, or holding it back
+**Done 2026-11-24** (setting **Faith and reading**). Once a month, where a faith that reads has a keeper who
+writes, each child of its holders learns to read one time in twenty, a grown-up holder one in a hundred, half again with
+a shrine. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11s. Keeping knowledge, or holding it back
 **Do:** a faith's houses may copy writings and keep know-how alive through hard times, and a faith may forbid
 a find or a teaching. 15.9e has a ban through a ruler; this lets the faith do it itself, and lets it keep things.
 **Research first:** monasteries and the copying of books; Chaney on religion and the rise and fall of Islamic
@@ -5201,7 +5290,11 @@ science; the Galileo affair and how typical it was; Buddhist monasteries as libr
 **Cost:** cheap.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11t. Days and seasons without fighting
+**Done 2026-11-24** (setting **Keeping and forbidding**). What its zealous readers know is kept (`kept`); once a
+month a people of that faith that has lost a thing gets it back through a reader, one in twenty. A faith that turns from
+new things has holders over 0.6 zeal refuse to take up from talk what their people did not know when it was made. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11t. Days and seasons without fighting
 **Do:** a faith may forbid war on its holy days or in a season; armies of that faith keep it as hard as their
 zeal holds.
 **Research first:** the Peace and Truce of God; the sacred months in pre-Islamic and Islamic Arabia; the Olympic
@@ -5209,7 +5302,10 @@ truce.
 **Cost:** almost free.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11u. Martyrs and morale
+**Done 2026-11-24** (setting **Days without war**). A faith's truce is its holy days or the first month of the year;
+each day a people keeps it 0.3 + 0.7 of its army's zeal of the time, and then gives no battle and sends no raid. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11u. Martyrs and morale
 **Do:** soldiers who believe hold longer in battle (15.6b's units), a death for the faith makes those who knew
 the dead hold it harder, and a faith that promises a reward after death (15.11b2) makes its holders bolder.
 **Research first:** Berman, *Radical, Religious, and Violent*; martyrdom in early Christianity and Shia Islam;
@@ -5217,7 +5313,11 @@ religion and cohesion in armies.
 **Cost:** almost free.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11v. Fleeing persecution
+**Done 2026-11-24** (setting **Martyrs and morale**). An army's nerve gains a quarter of its soldiers' zeal for the
+people's faith, 1.4 times that where the faith promises a reward; a holder killed in battle makes friends of the same
+faith in the village hold it 0.1 harder. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11v. Fleeing persecution
 **Do:** holders pressed hard (15.11d, 15.11e) may hide what they hold or leave together, settling where they are
 let be and taking their skills with them (15.9's know-how moves with them).
 **Research first:** the Huguenots and Prussia (Hornung 2014, *American Economic Review*); the Puritans; the
@@ -5225,7 +5325,11 @@ Parsis; the Jews expelled from Spain.
 **Cost:** cheap, but it is walking: measured against the crowd and walking budget.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11w. Great buildings
+**Done 2026-11-24** (setting **Fleeing for faith**). Pressed past 2 (15.11d, e), a holder leaves, one in twenty a day,
+with partner and children, for the nearest place within 40 km at peace where their faith is held or the people's
+faith lives alongside others. Know-how goes with them, as it is the person's. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11w. Great buildings
 **Do:** a faith may raise a great temple or monument over years, paid in labour, stone and food (items 7 and 9),
 and it stands after: a mark of a people's wealth and zeal and a place people come to.
 **Research first:** how the pyramids, the great cathedrals and Angkor were built and fed; Göbekli Tepe; what share
@@ -5233,7 +5337,12 @@ of a people's work went into them.
 **Cost:** real: years of labour weighed in people's daily choices. Must pass the 5% bench budget.
 **Ric decides:** whether these wait for the building item.
 
-#### [ ] 15.11x. Fairs and pilgrimages
+**Done 2026-11-24** (setting **Great temples**). A people's faith held by 80 with a mean zeal over 0.55 and a first
+village with half a year's food a head begins a temple of 30,000 hours (a guess) there; holders within 10 km weigh a
+day at it in the slack of the year, fed from the store. It stands after, and is where pilgrims go. **Ric decided**
+"Build now, simply" (2026-11-24). **Cost:** one more option in a day's choice for holders while it stands unbuilt. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11x. Fairs and pilgrimages
 **Do:** a great festival or a holy place draws people from far, and where they gather a market springs up, news
 and matches pass, and sickness spreads (15.11z).
 **Research first:** the Champagne fairs; the hajj; the Kumbh Mela; Santiago de Compostela; how many went and how far.
@@ -5241,7 +5350,11 @@ and matches pass, and sickness spreads (15.11z).
 and 2). Must pass the 5% bench budget.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11y. Sacred land
+**Done 2026-11-24** (setting **Pilgrims**). Once a year, on a day of its own, the zealous (over 0.6) of a faith of
+pilgrimage within 30 km, three in ten of them, go to its temple or its first village: there they hold it 0.1 harder,
+spend up to a coin at its till, meet strangers, and catch a sickness there 15 times in 100. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11y. Sacred land
 **Do:** a faith may hold a grove, a spring, a peak or an animal sacred, so it is not cut, drunk from, mined or
 hunted; and where water is shared, a faith's calendar may run it.
 **Research first:** India's sacred groves; Lansing, *Priests and Programmers* (Bali's water temples); taboo and
@@ -5249,13 +5362,21 @@ the commons in the Pacific.
 **Cost:** real: a mark on each square of land, so more memory on a big map. Must pass the bench budget.
 **Ric decides:** nothing expected.
 
-#### [ ] 15.11z. Health
+**Done 2026-11-24** (setting **Sacred land**). Where a people sees spirits in places, or its faith holds them sacred,
+the nearest forest, hill or peak 2 to 8 squares from each village is not cut or hunted. Kept as a set of squares, not a
+mark on every square. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.11z. Health
 **Do:** a faith's rules on food, drink and washing change sickness; its houses may care for the sick; and its
 gatherings (15.11x) may spread disease.
 **Research first:** hospitals in Byzantium, Islam and medieval Europe; the 1865 cholera and the hajj; food rules
 and health (what the evidence really shows, which is less than is often claimed).
 **Cost:** depends on the plague item (18), which is not built yet. Wait for it where it needs it.
 **Ric decides:** nothing expected.
+
+**Done 2026-11-24, in part** (setting **Faith and health**). A faith of washing: zealous holders die of foul water
+0.8 times as often; a faith that heals, where it is the village's: the sick die 0.8 times as often; pilgrims carry a
+sickness. **Left for the plague item (18):** what faith does to an epidemic (15.13). **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
 
 **Order:** a first (the measurement everything is held to), then b, b2 and c (where belief starts, what a faith
 can hold, and how it ends),
@@ -5270,7 +5391,7 @@ and every part is measured against 15.11a's numbers, with the old way kept as a 
 **Budget:** default, each part. Nothing may look at every person for each person, as now (`faithDay` is one
 pass a day).
 
-### [ ] 15.12. Lives with a history: their own dice, what they have done, and why things happened
+### [x] 15.12. Lives with a history: their own dice, what they have done, and why things happened
 
 **Ric (2026-11-23)** gave these six, in his words (shortened only where marked):
 1. "Separate people's random draws. Tie randomness to the person, decision type, and simulation time. Give
@@ -5304,7 +5425,7 @@ after 15.11.
 Each part below is its own piece of work: research first, Ric's questions, measured before and after, the old
 way kept as a setting where the world changes (fingerprinted, like 15.6f to 15.10).
 
-#### [ ] 15.12a. Each person's own dice
+#### [x] 15.12a. Each person's own dice
 **Now** (read from `people.js`, 2026-11-23): one stream, `R`, is drawn about 225 places in the code, in the
 order people are visited. A few things already have their own stream (`RT` traits, `RD` foul water, `RW`
 wounds, `RS` sexes, `RK` babies, `RM` minds), each added because sharing `R` made a world different from its
@@ -5324,7 +5445,25 @@ against `rng()`, measured on the bench.
 kept as a setting.
 **Budget:** no slower than 5% on the bench; a draw is a few multiplies, so keep it that.
 
-#### [ ] 15.12b. Hearing of a thing is not knowing how
+**Done 2026-11-24** (Ric: "finnish all of 15"; README, "Each one's own dice"). A draw is a hash of the seed, who
+decides (a person, a village, a people, or the world), the step, which of their draws this step it is, and the kind
+of draw (`draw`, `Rp`, `as` in `people.js`; MurmurHash3's finaliser, counter-based as Philox and Threefry are). A
+person's, village's and people's own turns (`act`, `live`, `reflect`, `market`, `villageTurn`, `decide`, `chooseJob`)
+draw on their own dice, and loops over many people draw each on theirs. **Ric decided** "New only": every seed is a
+new world from this date and the old stream is not kept. Every fingerprint in `test/` was pinned again
+(`fixpins`, run by hand), and 17 tests whose worlds were seed-picked were looked at one by one: new seeds where a
+layout was picked (fields 12, settings-sense 6, roads 5, rivers 19, crossing 5), several worlds pooled where a
+count was too small to tell (faith: five worlds, 3.1 times; battle: wars 4, 7 and 11; walls: three wars, most and
+in all; ways: twelve chiefs), and fixtures that had leaned on the old dice (a shared pot emptied by the test's
+own hunger, a name containing "fish", a well beside the house, a council halving a chief's greed, a fed-couple
+fixture of same-sex pairs). `dealings` now asks half again as long rather than twice: the hot leaders' wars were
+exactly twice the calm ones' over twelve seeds. Once 15.11 and 15.12 were in, five tests that pick a situation by seed (`column`, `crossing`'s island, `taking`, `equipment`'s day of work) were given the new parts off, as every older test's `LATER` list has them; `coins`, `health` and `crossing` had fixtures that leaned on a world's chance (an empty store, the first single grown-up, a landing on water that does not join). **Found:** four fields more on a person took it past what V8
+keeps in the object and made every step 70% slower; the dice live in one object, `p.dc` — and a person is at that
+edge, so anything new a person holds goes in an object of its own (`p.lf`). **Measured:** 400, 2,000 and 5,000
+people on the bench as before, 5,000 over three seeds 2.36 s a day both ways. `test/dice.test.mjs`: one person fed,
+and 120 far off do exactly what they did. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.12b. Hearing of a thing is not knowing how
 **Now:** `p.know` is one bit a technique. Seeing it done in a talk (`learnFrom`) sets the bit, so somebody who
 heard about iron can work iron. Writing must be taught; nothing else must.
 **Do:** two levels per person: *heard of* (from talk, as rumours already pass, item 12) and *can do*. Getting
@@ -5339,7 +5478,14 @@ seven years); Henrich on copying the skilled.
 crowded out) or beside them.
 **Budget:** default. `p.know` is 32 bits; a second mask of the same size is cheap.
 
-#### [ ] 15.12c. Skill held by the person, and careers with lanes
+**Done 2026-11-24** (setting **Hearing of a thing**). `lf.heard`, beside `know`: a talk passes word of a thing
+first; then it is learned at 3 times the old chance beside somebody who does it as their own work in the same village
+(an apprentice), at half by seeing it done; a child has heard of all its parents know. Something heard of is three
+times as likely to be worked toward and gains twice as fast (15.12d). **Ric decides** "in the mind's slots or beside
+them": not asked this session; answered with the recommended choice, for Ric to overturn — beside them. **Measured:** the plough learned in 135 talks beside a farmer who had it, 193 seeing it
+done. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.12c. Skill held by the person, and careers with lanes
 **Now:** a person's job is chosen by `chooseJob` from what each work would bring (`livelihood`), their nature
 and the village's want. Skill at a technique is per people (`f.skill`, 15.9d, answered in Ric's absence); a
 person is no better at farming after twenty years than on their first day, and a soldier sent home is a
@@ -5356,7 +5502,14 @@ to become a smith; what ex-soldiers did.
 answered for him), and how many kinds of experience a person keeps (one a job, or finer).
 **Budget:** default. A few floats a person in `newPerson`, updated when work finishes, never each step.
 
-#### [ ] 15.12d. Discoveries that build up
+**Done 2026-11-24** (setting **Experience**, "As before: each people's"). `lf.xp`, years in ten kinds of work,
+gained an hour at a time at the work, fading 0.01% a day while unused, never to nothing. The first people bring their
+years at their job. Yield is 0.8 + 0.35 × (1 − e^(−years/3)) of a hand's: farming, herding, hunting, fishing,
+making, cutting and mining. Choosing work weighs experience, and a change costs 0.12 (learning, tools, the lost
+season). A people's skill at a technique is its people's at that work (15.9d's, replaced). **Ric decided** "Per
+person, one per work" (2026-11-24). **Measured:** 7.4% of grown-ups changed work in 120 days, 10.6% before. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.12d. Discoveries that build up
 **Now:** `findTech` is one roll a day for each grown-up (curious, hungry and the village's want change the
 odds); if it hits, a technique whose parts they know is picked, steered by need (15.9b), and they know it at
 once. Nothing builds up, and a find has no history.
@@ -5372,7 +5525,13 @@ of Technology*); multiple independent discovery (Merton; Ogburn and Thomas 1922)
 notes, a workshop).
 **Budget:** default. Progress only for techniques next to what a person works at, a few at a time.
 
-#### [ ] 15.12e. Why it happened, link by link
+**Done 2026-11-24** (setting **How things are found**). One aim at a time (`lf.aim`), picked as 15.9b picks, three
+times as readily something heard of, only in work the person practises (a hundred hours at it; half a year was tried
+and nothing was ever found); headway comes now and then, a third of the way, with the old daily chance's mean, so
+finds come about as often as they did but are each built up; the news says how many days and at what. **Ric decides**
+"whether progress can be passed on half-done": not asked this session; answered with the recommended choice, for Ric to overturn — the person's only (15.13). **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
+#### [x] 15.12e. Why it happened, link by link
 **Now:** `note()` takes a seventh argument since 2026-11-23, the numbers a decision was made on, shown on the
 News tab and held by `test/why.test.mjs` not to change the world. It records one decision's inputs, not what
 led to them: a bandit's note says they took to the road, not that their pay stopped before it.
@@ -5386,6 +5545,13 @@ records) and what that costs.
 **Ric decides:** how far back a chain goes, and how long it is kept (memory grows with a world's years).
 **Budget:** default. A note keeps a few ids, not copies; old links are dropped when nothing points at them.
 
+**Done 2026-11-24** (always on; it only reports). A link (`because`) is a real change in somebody's life: not paid,
+took to the road, robbed and lost a load, a change of work, a find, learned a thing, a move, an office; each points at
+the one before in that life, and a robbery at the robber's. The news of a robbery, a mutiny, a famine (through the
+last load lost on the way there) and a find carries the chain, shown under it on the News tab ("after: …") and on the
+person panel. **Ric decides** "how far back, and how long": not asked this session; answered with the recommended choice, for Ric to overturn — five links, the newest 20,000 in the world.
+`test/lives.test.mjs` holds the world unchanged by them. **Research:** not searched this session; the works named above as remembered, written so, and the numbers are guesses to be checked, not tuned toward anything.
+
 **Order:** a first (it makes every comparison after it honest), then b and c together (they share the
 person's new fields), then d (it needs both), with e whenever, since it only reports. Like `note()`'s `why`,
 e must never change the world.
@@ -5393,6 +5559,21 @@ e must never change the world.
 and being able to do it are two things; people get better at their work and change it for reasons; a find has
 a history; and a chain of causes can be followed, each link a real change of state; with each measured before
 and after and the old way kept where the world changes.
+
+### [ ] 15.13. What 15.11 and 15.12 left
+
+Each from the part named; none started.
+- **A faith made by hand on the page** (15.11b2): the engine's `makeFaith` takes a person; the page has no way to
+  choose a faith's pieces and drop it into a village.
+- **Land given to a faith** (15.11g): gifts and bequests of fields to a faith's keeper, held by it (15.7's
+  `moveField`), and what a ruler takes when it takes from a faith.
+- **Trial by ordeal** (15.11o).
+- **More than one wife** (15.11l, b2): a household that holds more than one partner.
+- **What faith does to an epidemic** (15.11z), with the plague item (18).
+- **Progress handed on half-done** (15.12d): a master's work toward a thing passed to an apprentice or kept by a
+  workshop. Ric to say whether.
+- **Read the research.** Every part of 15.11 and 15.12 was built from the works named as remembered; read them, write
+  what they say beside each number, and change a number only where a source says so.
 
 ### [ ] 16. Ruins and scavenging
 
@@ -5951,4 +6132,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-23 | 15.6f, 15.6g, 15.7, 15.8, 15.9 | AMD Ryzen 5 3600, 24 GB | 2.39 s a day (2.55 before, the same run of the old engine) | *not run* | 7.8 MB, 1.52 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.17, 2,000 0.97 → 0.85, 5,000 2.55 → 2.39 s a day; no slower, within the machine's drift. |
 | 2026-11-23 | 15.6h, 15.6i, 15.10 | AMD Ryzen 5 3600, 24 GB | 2.31 s a day (2.25 before, the same run of the old engine) | *not run* | 8.2 MB, 1.60 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.19, 2,000 0.82 → 0.80, 5,000 2.25 → 2.31 s a day; within the 5% budget at 5,000 and within run-to-run noise below. |
 | 2026-11-23 | the log says why | AMD Ryzen 5 3600, 24 GB | 2.37 / 2.51 s a day (2.52 / 2.36 the last engine, alternated) | *not run* | 8.2 MB, 1.60 KB | a reason written only when an event is logged; no cost. |
+| 2026-11-24 | 15.11, 15.12 (item 15 finished) | AMD Ryzen 5 3600, 24 GB | 2.30 / 2.28 s a day (2.43 / 2.39 before 15.11, alternated) | *not run* | 8.2 MB, 1.60 KB | `--quick`: 400 0.18 → 0.19, 2,000 0.80 → 0.77, 5,000 2.41 → 2.29 s a day. 15.12a's dice alone, against the engine before them: 5,000 people over three seeds 2.36 s a day both ways; four fields on a person had made it 70% slower until the dice went in one object (`p.dc`). |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

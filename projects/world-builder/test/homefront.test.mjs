@@ -9,11 +9,11 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const LATER = { feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false };   // the parts built after this one, off: this part as it was built
-const FINGERPRINT = 2553129383;   // print() of 15r's engine, seed 2, 60 days
+const LATER = { feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" };   // the parts built after this one, off: this part as it was built
+const FINGERPRINT = 1030428611;   // print() of 15r's engine, seed 2, 60 days
 
 {
-  const w = People.create({ seed: 2, homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false });
+  const w = People.create({ seed: 2, homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" });
   w.step(24 * 60);
   assert.equal(print(w), FINGERPRINT, "off is the world before 15.5i1");
 }
@@ -21,7 +21,7 @@ const FINGERPRINT = 2553129383;   // print() of 15r's engine, seed 2, 60 days
 {
   const w = People.create({ ...LATER, seed: 5, people: 500, factions: 2, villages: 4, war: true, aggression: 0, map: 20, bandits: false });
   w.step(24 * 2);
-  const farmer = w.people.find(p => p.f === 0 && p.hp > 0 && p.age > 20 && p.job === "farmer");
+  const farmer = w.people.find(p => p.f === 0 && p.hp > 0 && p.age > 20 && p.job === "farmer") || w.people.find(p => p.f === 0 && p.hp > 0 && p.age > 20 && p.job !== "soldier");   // somebody at home (15.12a: new dice, a world with no farmer of the first people this day)
   assert.equal(w.slackOf(farmer), 0, "at peace, no slack");
   w.startWar(0, 1);
   const v = w.villages[farmer.home];
