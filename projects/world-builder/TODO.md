@@ -4485,7 +4485,7 @@ not read.
 17% → 20%, industrial 31% → 25% — noise at three seeds. **No place was asked to surrender or stormed in any of
 the six worlds**: the soldiers dying at villages are not dying in places being taken. That is 15.6h.
 
-### [ ] 15.6h. Who the soldiers dying at villages are
+### [x] 15.6h. Who the soldiers dying at villages are
 
 Found finishing 15.6g (2026-11-23): in a year of old enemies (seeds 4–6) no place was attacked in strength,
 asked to surrender or stormed, yet most soldiers who die still fall within a village's reach (`deadAtVillage`:
@@ -4496,6 +4496,38 @@ gathering or passing near a place, raiders' pursuers. **Measure first:** count t
 Also found then: `test/walls.test.mjs` (slow lane) had been red since 15.6e — with battle by choice no open
 place fell in five months in its worlds; it now runs with 15.6e onward off, as walls were built.
 **Budget:** default.
+**Done 2026-11-23** (Ric: "finish 15 … write all of them"; his question answered in his absence with what is
+realistic) (README, "Chasing an enemy home"). **Measured first** (`test/villagedead.mjs`, counted only — no
+dice, nobody changed): a year of old enemies, seeds 4 and 5, medieval: of 24 dead at a village, 21 at the
+enemy's, 19 alone, fighting its defenders, from a home 3–8 km off; for 10 the place was no goal of their
+people's, so they had followed a lone enemy home. Industrial (seeds 4–6) is different: 15 of 24 were
+defenders shot at their own village. **Chosen:** setting **Chasing an enemy home**, the old way kept and
+fingerprinted: a soldier alone lets an enemy go inside its own village's fields unless that place is their
+army's or raid's target or two of their side stand with them. **Measured after** (seeds 4–6, 15.10 off): 240–430
+chases a world-year let go, but dead at a village medieval 27 → 26, industrial 24 → 25, soldiers killed a year
+18% → 17%: **deaths did not fall**. Defenders at their own village rose as chasers fell, and the rest arrive one
+at a time at the place their army was sent to take: 15.6i.
+
+### [x] 15.6i. Armies that arrive one soldier at a time
+
+Found finishing 15.6h (2026-11-23): with lone chases stopped, most soldiers who die at a village are still
+attackers alone at the enemy's village, at the place their own army was sent to take (`test/villagedead.mjs`:
+"its army's target … alone"), and some are asleep there. Each soldier walks to the goal by themselves once the
+army marches (`soldier()`, `go(p, goal …, "march")`), so an army reaches a place strung out over the road and
+the first to come fight its garrison alone.
+**Measure first:** how long from the first of an army to reach a place to most of it; how many fall before the
+rest come. **Ric decides:** whether an army should march and arrive as one (the column waits for its slowest,
+as 15h's gathering already does before it sets out), and whether soldiers should sleep in a camp outside an
+enemy place rather than in it.
+**Budget:** default.
+**Ric (2026-11-23):** "do 15.6i too, whatever is realistic".
+**Done 2026-11-23** (README, "Coming to a place"): setting **Coming to a place**, the old way kept and
+fingerprinted. An army's soldiers go first to a camp outside the place's fields and go in together once three in
+five of the army are there, or three days after the first came (six if nobody can reach the camp). **Research:**
+search summaries only (HistoryNet on siegecraft: the besiegers came up, pitched camp near the walls, and
+attacked after). **Measured before** (`test/arrival.mjs`, medieval, seeds 4–5): first to most of an army at a
+place 217 h, most at once 6.2 soldiers. **After:** first to most 217 → 170 h; deaths unchanged within three seeds; an army marches on a place this way about once a world-year, so most who reach an enemy place come with a raid. **Bug hunt:** an unreachable camp never opened; a
+stale one opened at once; both fixed.
 
 ### [x] 15.6f. Leave to cross another people's land
 
@@ -4812,7 +4844,7 @@ The telephone is a new technique of its own (1876), before the radio; the phone 
 standard histories, from memory, and the README says so: to be checked one by one (15.9g's own ask).
 **Measured:** a year at the top of "how often new things are found", 34 finds, new things at 0.71–0.98 skill.
 
-### [ ] 15.10. Where the coins pile up, and how the penniless get by
+### [x] 15.10. Where the coins pile up, and how the penniless get by
 
 **Ric (2026-11-23):** "can we talk about the extreme wealth concentration that happens and how people with no
 money still survive. so we need to look into that and figure out what is most realistic", then, of the four
@@ -4862,6 +4894,19 @@ its source. What is expected, to be checked:
 coin moving, the penniless have more than their own pot to fall back on, and the Gini is measured over decades
 against the record, with the old way kept as a setting.
 **Budget:** default.
+**Done 2026-11-23** (README, "Where the coins go"). Three settings under Money, all three off the old world
+exactly (`test/coins.test.mjs`): **Soldiers' pay** — what the army feeds and arms them with is stopped from the
+pay, a tenth always left (the Masada pay slip; Britain's stoppages and its penny-a-day floor of 1847); half of
+what they hold beyond a week's pay goes to a parent at home; at a village of their own they spend a seventh of
+a day's pay and a tenth a day of what is beyond two weeks' pay at its till (a guess). **The village store** —
+whoever holds more than a season's bread in coins buys goods for the house, which wear out (a guess).
+**The penniless** — alms from somebody of their faith (a fortieth a year of what they hold beyond a season,
+zakat's rate), then a loan from kin or a neighbour, a tenth a year on top, none between kin (Briggs).
+**Research:** search summaries (Masada pay slip, Hansard on stoppages, Briggs, Boyer on the poor law, the
+tithe's quarter for the poor); Lindert and Williamson, and Milanovic, not read. **Measured** (seed 2, 400
+people): after a year Gini 0.81 → 0.65, top tenth 68% → 43%, none 44% → 26%, tills 2 → 1,276; over twenty years,
+Gini 0.76 at ten years and 0.82 at twenty against 0.88 and 0.96 the old way, top tenth 64% against 97%, tills kept (one seed; still drifting up in the second decade). **Found:** a soldier's `at` is their last market, not where they stand. **Not done:** gambling, servants
+and day wages, a faith's rule against interest.
 
 ### [ ] 16. Ruins and scavenging
 
@@ -5418,4 +5463,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-22 | 15.5 (e to c, j) | AMD Ryzen 5 3600, 24 GB | 2.17 / 2.06 s a day (1.71 before, 15.5r) | 12.9 / 11.7 s a day, 23–26× (10.8 / 10.8 before, 28×) | 7.6 MB, 1.48 KB (5,000); 2.8 KB (20,000) | **15.5j**: the whole of 15.5 since 15.5r at once — wounds, men and women, children and mothers, children working, house work, land that changes, oxen, ditches, climate, sleep, household firewood, news of plenty, the edge. Old and new alternated at 20,000 and 5,000: about a tenth slower at 20,000 and a fifth at 5,000, every part a different world. Still well above the 16× Ric chose for item 3, and he set no floor ("it can go under in massive runs"). Not profiled part by part: for 15.25's passes if wanted |
 | 2026-11-22 | 15 (c, g, b, e, f, h, i, d) | AMD Ryzen 5 3600, 24 GB | 2.12 s a day (2.17 before, 15.5) | *not run* | 7.8 MB, 1.53 KB | **item 15 whole**: `--quick` 400 0.16 → 0.16, 2,000 0.74 → 0.77, 5,000 2.17 → 2.12 s a day. Built, it was 0.25 / 1.39 / 3.55: one field more on every person had tipped V8 into a slow object shape, even with every new part off (worlds identical, 70% slower); five rarely used fields (a traveller's destination, a car, when a soldier reported in, hired, who keeps an old parent) moved to side tables keyed by person, and the speed came back. Rule: count a person's fields before adding one. |
 | 2026-11-23 | 15.6f, 15.6g, 15.7, 15.8, 15.9 | AMD Ryzen 5 3600, 24 GB | 2.39 s a day (2.55 before, the same run of the old engine) | *not run* | 7.8 MB, 1.52 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.17, 2,000 0.97 → 0.85, 5,000 2.55 → 2.39 s a day; no slower, within the machine's drift. |
+| 2026-11-23 | 15.6h, 15.6i, 15.10 | AMD Ryzen 5 3600, 24 GB | 2.31 s a day (2.25 before, the same run of the old engine) | *not run* | 8.2 MB, 1.60 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.19, 2,000 0.82 → 0.80, 5,000 2.25 → 2.31 s a day; within the 5% budget at 5,000 and within run-to-run noise below. |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

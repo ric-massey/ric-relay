@@ -729,7 +729,16 @@ nobody had linked was a page nobody could find.
   world stays where it was; **fields move only through `moveField`**, which keeps `held` and the pledges in
   step; a village's bounds never shrink while it stands (`boundOf`); and the era label is read off what a
   people knows (`eraNow`) and never decides anything itself. An older test pins each new default off in its
-  `LATER` list; a new part adds its key there. Soldiers still die at villages that nobody attacks: 15.6h.
+  `LATER` list; a new part adds its key there. **15.6h and 15.10 closed item 15 the same day**: who dies at
+  villages was measured (`test/villagedead.mjs`, counting only) and a lone soldier no longer chases an enemy into
+  its own fields ("Chasing an enemy home"); it did not lower the deaths. 15.6i ("Coming to a place") makes an
+  army camp outside a place and go in together; an army marches like that only about once a world-year, so it
+  hardly moved them either — most soldiers who reach an enemy place come with a raid. **Don't tune either to
+  make the number fall.** Coins no longer pile up with soldiers ("Soldiers' pay", "The village store", "The
+  penniless"): what the army feeds a soldier is stopped from the pay, soldiers spend at their own village's till,
+  the hungry get alms and loans. **Every coin still moves only from hand to hand** — a loan, alms, a stoppage or a
+  drink adds and removes nothing, so `test/mint.test.mjs`'s sum still holds; keep it so. The spending shares are
+  guesses, written as such in the README; measure over decades (`test/gini.mjs`) before changing one.
   **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
   it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
   nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the

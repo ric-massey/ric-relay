@@ -213,6 +213,9 @@ const SUITES = [
   ['world-builder taking a place', ['projects/world-builder/test/taking.test.mjs']],   // TODO 15.6g, under a minute
   ['world-builder where money comes from', ['projects/world-builder/test/mint.test.mjs']],   // TODO 15.8, under a minute
   ['world-builder how technology moves', ['projects/world-builder/test/tech.test.mjs']],   // TODO 15.9, under a minute
+  ['world-builder chasing an enemy home', ['projects/world-builder/test/pursuit.test.mjs']],   // TODO 15.6h, under a minute
+  ['world-builder coming to a place', ['projects/world-builder/test/column.test.mjs']],   // TODO 15.6i, under a minute
+  ['world-builder where coins go', ['projects/world-builder/test/coins.test.mjs']],   // TODO 15.10, about two minutes
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

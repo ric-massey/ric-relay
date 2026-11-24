@@ -17,7 +17,7 @@ const People = createRequire(import.meta.url)("../people.js");
 const OLD = 1158156353;   // the world below before 15.7, 15.6f, 15.6g and 15.8
 
 {
-  const w = People.create({ seed: 3, people: 200, era: "medieval", mint: "fixed", tech: "old", property: "old", passage: "old", taking: "old" });
+  const w = People.create({ seed: 3, people: 200, era: "medieval", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", property: "old", passage: "old", taking: "old" });
   w.step(1500);
   assert.equal(print(w), OLD, "a fixed stock is the old money, exactly");
 }

@@ -2712,6 +2712,61 @@ TODO item 15.6g. Setting **Taking a place** under War: *Surrender is demanded fi
   outside any unit — garrisons and armies passing or gathering near a place — which is what TODO 15.6h is
   for. (For comparison, before 15.6f–15.9 on seeds 4–9, 15.6e measured 21% and 46%.)
 
+### Chasing an enemy home (2026-11-23)
+
+TODO item 15.6h. Setting **Chasing an enemy home** under War: *Not alone into their own fields* (the default)
+or *Wherever they run (as before)*, which is the old world exactly (`test/pursuit.test.mjs`).
+
+- **Measured first.** 15.6g found that most soldiers who die fall within a village's reach, though no place was
+  being taken. `test/villagedead.mjs` now says who they are, counted and nothing else (no dice, nobody
+  changed): for each soldier knocked down or killed at a village, whether it was their own village, the
+  striker's or a third people's; where they were walking and on what; whether two of their side stood within
+  750 m; whether the striker was at home there; whether the place was their people's goal; and how far off
+  their home was. A year of old enemies, 600 people, seeds 4 and 5 — **medieval**: of 24 dead at a village, 21
+  died at the enemy's, 19 of them alone, fighting its defenders, from a home 3 to 8 km away; for 10 of them the
+  place was no goal of their people's (not the army's target, a raid's, or a gathering place) — they had
+  followed a lone enemy home. Seeds 4–6 **industrial** is different: 15 of 24 were defenders at their own
+  village, shot from outside it.
+- **What changed.** A soldier alone lets an enemy go once it is inside its own village's fields, unless that
+  place is their army's target or their raid's, or two of their own side stand within 750 m. They still fight
+  whoever comes within reach; choosing to fight is untouched. Drawing a pursuer in among one's own people is
+  the oldest trap there is.
+- **Measured after** (seeds 4–6, a year, 15.10 off in both): 240 to 430 chases a world-year let go; dead at a
+  village medieval 27 → 26, industrial 24 → 25; soldiers killed a year medieval 18% → 17%. **The deaths did
+  not fall.** Attackers dying where their people had no goal fell from about 10 to 5, but defenders dying at
+  their own village rose from about 3 to 10, and the rest are soldiers who arrive one at a time at the place
+  their own army was sent to take. That is item 15.6i, below.
+
+### Coming to a place (2026-11-23)
+
+TODO item 15.6i. Ric: "do 15.6i too, whatever is realistic". Setting **Coming to a place** under War: *The army
+camps outside and goes in together* (the default) or *Each soldier walks straight in (as before)*, which is the
+old world exactly (`test/column.test.mjs`).
+
+- **Measured first** (`test/arrival.mjs`: each army and the place it marches on, hour by hour; a year of old
+  enemies, medieval, seeds 4 and 5, 15.10 off): 36 times three or more of an army reached a place, and from the
+  first of them coming within its fields to the most of it standing there at once took 217 hours on average —
+  nine days — and that most was 6.2 soldiers. Each soldier, once fed and armed, walked to the goal by themselves,
+  so an army came strung out over the road and its first fought the garrison alone (15.6h).
+- **What changed.** A soldier of an army (not a raid) marching on a place goes first to a camp two squares
+  outside its fields, on the side the army set out from, and waits there until three in five of the army
+  (everybody but the garrison that stays home) are in the camp, or three days after the first came — six after
+  the camp was set, if nobody can reach it. Then the camp goes in together. A camp a month old is set afresh. A
+  medieval army that meant to take a place came up to it as a body, pitched camp not far off and attacked only
+  after ([HistoryNet](https://www.historynet.com/medieval-warfare-how-to-capture-a-castle-with-siegecraft/));
+  15h's gathering already makes it set out together. The three in five and the three days are guesses.
+- **Measured after:** the same worlds (seeds 4–6, a year, 15.10 off). First to most of an army at a place 217 → 170 h, most
+  at once 6.2 → 6.0; dead at a village medieval 26 → 25 and industrial 25 → 24; soldiers killed a year medieval 17%
+  → 17%, industrial 22% → 25%, and in industrial two places were taken where none had been. **It hardly moved the
+  deaths, and why was measured:** an army marched on a place like this only once a world-year in each world
+  (`columns`), so most soldiers who reach an enemy place come with a raid, which this leaves alone. In that first
+  build the camp waited for three in five of the whole army, of whom only a few had set out, so each camp
+  opened on the clock; it now counts those who set out for it, and the one camp in seed 4 filled and went in two
+  hours after its first came (seed 5 still waited out its three days). The 15.6h label "its army's target" also
+  matched raiders, whose raid and army can point at the same village.
+- **Found on the way:** a camp nobody could reach (on water, say) would never have opened, and the army never
+  attacked; and a camp left from an old war would have opened at once on a new one. Both fixed.
+
 ### Where money comes from (2026-11-23)
 
 TODO item 15.8. Ric: "how does the currency work i kinda want only one curency but how is it made?", then
@@ -2754,6 +2809,68 @@ war. or in apocolypses?" Setting **Where coins come from** under Money: *Mined, 
   costs; that is unchanged.
 - **Not done:** a coin's own metal (every coin here is the one money; debasing lowers trust in a people's
   coin, not the worth of particular coins), and Gresham's law, which needs coins that differ.
+
+### Where the coins go (2026-11-23)
+
+TODO item 15.10. Ric: "can we talk about the extreme wealth concentration that happens and how people with no
+money still survive. so we need to look into that and figure out what is most realistic", and of every choice
+in it, "the three questions should be answered by what is realistic". Three settings under Money, each with the
+old way kept; all three off is the old world exactly (`test/coins.test.mjs`).
+
+- **Measured first** (seed 2, 400 people, the default world, `test/gini.mjs`): grown-ups' coins went from a
+  Gini of 0.22 to 0.81 in a year; the top tenth held 68% of them, 44% held none, and the village tills went
+  from 853 coins to 2. The five richest were soldiers. Followed through: soldiers buy their food at the store
+  (about 7,600 days of it in a year, among 14,100 soldier-days) but it costs them about a quarter of their
+  pay, and they had nothing else to spend on; every tax on a sale goes from the till to the treasury and from
+  there to the soldiers. Nobody starved.
+- **Soldiers' pay** (*Stopped, sent home and spent* or *Kept whole (as before)*). What the army feeds and
+  arms a soldier with — rations drawn for a campaign, grain from the faction's share, gear the treasury buys
+  — is stopped from the pay, leaving at least a tenth of a day's pay. Gaius Messius's pay slip from Masada
+  has all fifty denarii of one payment taken for barley, food, boots, straps and a tunic
+  ([HC Magazine](https://www.hcamag.com/us/news/general/fun-friday-ancient-roman-soldier-penniless-after-hr-fees/246921));
+  British soldiers had up to sixpence of a shilling a day stopped for rations until the messing allowance
+  of 1898, and from 1847 had to be left at least a penny a day
+  ([Hansard 1901](https://api.parliament.uk/historic-hansard/commons/1901/may/14/pay-of-private-soldiers)).
+  A soldier with no partner and a parent living at home sends half of what they hold beyond a week's pay to
+  that parent. At a village of their own, they spend a seventh of a day's pay and a tenth a day of whatever
+  they hold beyond two weeks' pay on drink, food and company, into its till. **That share is a guess**: no
+  source found gives it. That soldiers kept little is the record's; with the seventh alone, soldiers were
+  still the richest after a year.
+- **The village store** (*Sells to whoever has coins to spare* or *Mostly buys (as before)*). Somebody holding
+  more than a season's bread in coins spends a sixtieth of the rest a day on goods for the house, up to a
+  stock that grows with what they hold (at most ten), ordering from the crafters what the shelf does not have;
+  such goods wear out in a year and a half each (crafters' and traders' stock does not). The rates are guesses.
+- **The penniless** (*Alms and loans as well as kin* or *Kin, neighbours and the ruler only (as before)*).
+  Before this, somebody with nothing ate what they reaped, hunted and fished, shared a household's pot, was
+  given food by kin and neighbours they asked, and in some peoples got the ruler's relief; that all stays.
+  Now, hungry at the store with no coins: first alms from somebody of their own faith, who gives at most a
+  fortieth a year of what they hold beyond a season (zakat's rate; the Church's quarter of the tithe for the
+  poor, after Gelasius in 496, is the harvest tax here already); then a loan from kin, a friend or a warm
+  neighbour with a season to spare, at most a month's bread owed, paid back once the borrower has it and a
+  few days' bread besides, a tenth a year on top and nothing between kin. A borrower who dies takes the debt
+  with them. Small debts between neighbours were everywhere in the court rolls, mostly for goods rather than
+  coin (Briggs, *Credit and Village Society in Fourteenth-Century England*, 2009,
+  [review](https://reviews.history.ac.uk/review/835/print)); England's poor law reached about one person in
+  eleven by 1813–15, mostly the old, orphans and widows ([Boyer, EH.Net](https://eh.net/encyclopedia/english-poor-laws/)).
+- **Measured after** (the same world, a year): Gini 0.81 → 0.65, top tenth 68% → 43%, none 44% → 26%, tills
+  2 → 1,276 coins; the five richest a hunter, a herder, a soldier, a hunter, a soldier. Most of the coin moved
+  by soldiers spending at their own village (4,696 coins), then stoppages, loans and house goods.
+- **Over decades:** twenty years of the same world (seed 2, 400 people at the start, about 290 throughout, nobody starved
+  either way). The old way climbs and stays: Gini 0.80 after a year, 0.88 by year 4, 0.93 by year 11 and 0.96 at
+  twenty, the top tenth holding 97% of the coins, three in four grown-ups with none, and the tills empty nearly
+  every year. The new way moves between 0.65 and 0.84 (0.76 at ten years, 0.82 at twenty), the top tenth holding
+  43–68%, the tills between 128 and 1,332 coins, and the richest a mix of hunters, herders, farmers and soldiers
+  rather than always soldiers. It still drifts upward over the second decade, and about half of grown-ups hold
+  no coin by the end, which for people who eat what they grow is not the same as being poor; what drives the
+  drift is not yet followed through. One seed: this says which way, not how far.
+- **Against the record.** Alfani's estimates for Italy give the top tenth 45–55% of all wealth about 1500 and
+  70–80% by 1800, over three centuries and counting land ([VoxEU](https://voxeu.org/article/europe-s-rich-1300));
+  these figures are coins only. Nothing was tuned to reach a number: the causes were taken away and the
+  distribution is what it came to.
+- **Found on the way:** a soldier's `at` is the last market they went to, not where they stand, so spending
+  first keyed to it almost never ran.
+- **Not done:** gambling (it moves coin between soldiers, not back to a till); servants and day wages paid by
+  the rich; interest hidden or forbidden by a faith's rule (no faith here makes one about lending).
 
 ### How technology moves (2026-11-23)
 

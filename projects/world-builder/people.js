@@ -312,6 +312,15 @@
       { key: "mint", when: s => s.money === "coins", label: "Where coins come from", type: "select", def: "real",   // TODO 15.8, 2026-11-23
         options: [["real", "Mined, struck, lost and debased"], ["fixed", "A fixed stock from the first day (as before)"]],
         help: "One money, reckoned the same everywhere. Silver comes out of the ground with the ore, a little at a time: a people that knows how to strike coins buys it into its mint and keeps a twentieth; before that it passes as weighed silver. Coins wear away and are lost, about one in fifty a year, and people running from an army bury theirs, and those who never come back leave them in the ground. A greedy ruler with an empty treasury may strike more coins than there is silver for, and then their coin is trusted less. Where nobody trusts what coins will buy — a famine, a siege, a debased coin — food is not sold for coins at all, only shared and given, until trust comes back." },
+      { key: "soldierPay", when: s => s.money === "coins", label: "Soldiers' pay", type: "select", def: "spent",   // TODO 15.10, 2026-11-23
+        options: [["spent", "Stopped, sent home and spent"], ["kept", "Kept whole (as before)"]],
+        help: "What the army feeds and arms a soldier with is stopped from their pay, as Rome's and Britain's armies did, leaving them at least a tenth of it. A soldier with a parent at home sends half of what they hold beyond a week's pay there, and some goes on drink wherever they are." },
+      { key: "tills", when: s => s.money === "coins", label: "The village store", type: "select", def: "both",   // TODO 15.10
+        options: [["both", "Sells to whoever has coins to spare"], ["old", "Mostly buys (as before)"]],
+        help: "Somebody holding more than a season's bread in coins spends some of it at the store on goods for the house — pots, cloth, tools — or orders them from the crafters, so coins come back to the till that paid them out." },
+      { key: "poor", when: s => s.money === "coins", label: "The penniless", type: "select", def: "help",   // TODO 15.10
+        options: [["help", "Alms and loans as well as kin"], ["old", "Kin, neighbours and the ruler only (as before)"]],
+        help: "Somebody hungry with no coins at the store is helped first by alms from a neighbour of their own faith, who gives a fortieth a year of what they hold beyond a season, then by a loan from kin or a neighbour, paid back when they can — a tenth a year on top, nothing between kin." },
       { key: "inherit", when: s => s.money === "coins", label: "When somebody dies", type: "select", def: "kids",
         options: [["kids", "Their children get their coins"], ["faction", "Their faction takes them"], ["village", "Shared round the village"]],
         help: "Who gets a person's coins. A child's share is kept for them until they are grown." },
@@ -468,6 +477,12 @@
       { key: "taking", label: "Taking a place", type: "select", def: "terms",   // TODO 15.6g, 2026-11-23
         options: [["terms", "Surrender is demanded first"], ["old", "Stormed as soon as the enemy is strong enough (as before)"]],
         help: "An army strong enough to take an open place demands its surrender before it attacks. A place that cannot hold — far outnumbered, few soldiers of its own, and not too stubborn a leader — gives in on terms: its soldiers and whoever will not stay march out, nothing is burned and a quarter of its till is paid. A place that refuses is stormed, and sacked when it falls, as the law of siege allowed." },
+      { key: "column", label: "Coming to a place", type: "select", def: "together",   // TODO 15.6i, 2026-11-23
+        options: [["together", "The army camps outside and goes in together"], ["old", "Each soldier walks straight in (as before)"]],
+        help: "An army marching on a place halts at a camp outside its fields, on the side it came from, and waits there until most of it has come up — or three days have passed — before it goes in together. Until then nobody walks into the place alone." },
+      { key: "pursuit", label: "Chasing an enemy home", type: "select", def: "fields",   // TODO 15.6h, 2026-11-23
+        options: [["fields", "Not alone into their own fields"], ["old", "Wherever they run (as before)"]],
+        help: "A soldier on their own does not follow an enemy back into that enemy's own village fields, where its people are waiting, unless that place is what their army came for or others of their side are with them. They still fight anybody who comes at them." },
       { key: "passage", label: "Crossing another people's land", type: "select", def: "ask",   // TODO 15.6f, 2026-11-23; Ric: "why wouldnt soldiers avoid areas that are others property unless they haave persmission?"
         options: [["ask", "Leave is asked first"], ["old", "Armies go where they please (as before)"]],
         help: "An army whose road crosses the land of a people it is not at war with asks that people's leader first. Leave is given to friends, allies and trading partners, to whoever marches on a people they hate, to the strong they dare not refuse, and for a price to the rest who will pay it. Refused, a bold general who can win forces the way and takes food from the fields as it goes, which that people holds against them; anybody else turns to another goal." },
@@ -1537,6 +1552,113 @@
          Radford's prisoner-of-war camp). Nothing switches money off by a rule: it fades as trust does.
        README, "Where money comes from". */
     const MINT = S.mint !== "fixed" && S.money !== "shared";
+    /* ── where the coins pile up, and how the penniless get by (TODO 15.10, 2026-11-23) ─────
+       Ric: "can we talk about the extreme wealth concentration that happens and how people with no
+       money still survive", and of every choice in it, "answered by what is realistic". Measured
+       first: grown-ups' coins went from a Gini of 0.22 to 0.81 in one year, because soldiers were
+       paid and fed and spent nothing, and the tills paid out for food and materials and took little
+       back. Three settings, each with the old way kept:
+       - Soldiers' pay (`SPEND`). What the army feeds and arms a soldier with is stopped from the
+         pay, leaving at least a tenth: Gaius Messius at Masada had all fifty denarii of a payment
+         taken for barley, food, boots, straps and a tunic, and Britain stopped up to half a
+         shilling a day for rations into the 1890s, with a penny a day the least a soldier might
+         get from 1847. A soldier with a parent at home sends half of what they hold beyond a
+         week's pay there, and at a village of their own they spend a seventh of a day's pay and a
+         tenth a day of whatever they hold beyond two weeks' pay, on drink, food and company at its
+         inns, the till's (a guess: no source found gives the share; that soldiers saved little is
+         the record's, and with only the seventh, soldiers were still the richest after a year).
+       - The village store (`TILLS`). Somebody holding more than a season's bread in coins spends a
+         sixtieth of the rest a day on goods for the house, up to a stock that grows with what they
+         hold, and such goods wear out in a year and a half each (a guess).
+       - The penniless (`POOR`). Hungry with no coins at the store: alms from somebody of their own
+         faith, who gives at most a fortieth a year of what they hold beyond a season (zakat's
+         rate); then a loan from kin, a friend or a neighbour with a season to spare, at most a
+         month's bread owed, paid back when they can, a tenth a year on top and nothing between
+         kin. Small debts between neighbours were everywhere in the court rolls (Briggs, Credit
+         and Village Society, 2009), mostly for goods rather than coin.
+       README, "Where the coins go". */
+    const SPEND = S.soldierPay !== "kept" && S.money !== "shared";
+    const TILLS = S.tills !== "old" && S.money !== "shared";
+    const POOR = S.poor !== "old" && S.money !== "shared";
+    const STOP_MAX = 0.9, DRINK = 1 / 7, PAY_BURN = 0.1, ALMS_RATE = 1 / 40, LOAN_YEAR = 0.1, LOAN_DAYS = 30;
+    const OWED = new Map(), GAVE = new Map();   // borrower id -> { from, sum, at, rate }; giver id -> { year, sum }
+    Object.assign(count, { stopped: 0, sentHome: 0, drunk: 0, spentSpare: 0, almsCoins: 0, lent: 0, loansRepaid: 0, loansLost: 0 });
+    /* A soldier's pay day, after the wage (SPEND). */
+    function spendPay(p) {
+      if (!p.partner) {
+        const m = byId.get(p.mum), d = byId.get(p.dad);
+        const par = m && m.hp > 0 && m.home === p.home ? m : d && d.hp > 0 && d.home === p.home ? d : null;
+        const give = par ? (p.coins - 7 * WAGE) / 2 : 0;
+        if (give > 0.01) { p.coins -= give; par.coins += give; count.sentHome += give; }
+      }
+      const near = u => u && u.alive && u.f === p.f && dist(p, u) < u.radius + 1;
+      const here = near(villages[p.home]) ? villages[p.home] : near(villages[p.at]) ? villages[p.at] : null;   // `at` is the last market, not where they stand
+      if (here) {
+        const x = Math.min(p.coins, DRINK * WAGE + Math.max(0, p.coins - 14 * WAGE) * PAY_BURN);
+        if (x > 0.01) { p.coins -= x; here.till += x; count.drunk += x; }
+      }
+    }
+    /* Coins beyond a season's bread spent on the house, once a day at home (TILLS). */
+    function spendSpare(p, v) {
+      if (v.f !== p.f || dist(p, v) > v.radius + 1 || p.job === "trader" || p.job === "crafter") return;
+      const season = 90 * dailyNeed(p) * v.priceFood, spare = p.coins - season;
+      if (spare <= 0) return;
+      const cap = Math.min(10, 1 + spare / (20 * v.priceGoods));
+      const want = Math.min(cap - p.goods, spare / 60 / v.priceGoods);
+      if (want < 0.01) return;
+      const c0 = p.coins, got = buy(p, v, "goods", want);
+      count.spentSpare += c0 - p.coins;
+      if (got < want - 0.01 && p.order <= 0) placeOrder(p, v, want - got);
+    }
+    /* Somebody hungry at the store with nothing to pay with (POOR): alms, then a loan. */
+    function helpPoor(p, v) {
+      const need = 1.1 - p.food, cost = need * v.priceFood;
+      if (need <= 0.05 || v.food < need || funds(p) >= cost) return;
+      const yr = Math.floor(t / YEAR);
+      let short = cost - funds(p);
+      if (FAITH && p.faith != null) {
+        let best = null, room = 0;
+        for (const q of residents(p.home)) {
+          if (q === p || q.faith !== p.faith || q.hp <= 0 || !adult(q)) continue;
+          const spare = q.coins - 90 * dailyNeed(q) * v.priceFood; if (spare <= 0) continue;
+          const g = GAVE.get(q.id), left = spare * ALMS_RATE - (g && g.year === yr ? g.sum : 0);
+          if (left > room) { room = left; best = q; }
+        }
+        if (best) {
+          const x = Math.min(room, short);
+          best.coins -= x; p.coins += x; short -= x; count.almsCoins += x;
+          const g = GAVE.get(best.id); if (g && g.year === yr) g.sum += x; else GAVE.set(best.id, { year: yr, sum: x });
+        }
+      }
+      if (short > 0.01) {
+        const owed = OWED.get(p.id);
+        if (!(owed && owed.sum + short > LOAN_DAYS * dailyNeed(p) * v.priceFood)) {
+          let best = null, bs = -1e9;
+          for (const q of residents(p.home)) {
+            if (q === p || q.hp <= 0 || !adult(q) || (owed && owed.from !== q.id)) continue;
+            const spare = q.coins - 90 * dailyNeed(q) * v.priceFood; if (spare < short) continue;
+            const k = kin(p, q), fq = feel(q, p.id);
+            if (!k && fq <= 0.2 && q.warm < 0.5) continue;
+            const sc = (k ? 2 : 0) + fq + q.warm;
+            if (sc > bs) { bs = sc; best = q; }
+          }
+          if (best) {
+            best.coins -= short; p.coins += short; count.lent += short;
+            if (owed) owed.sum += short; else OWED.set(p.id, { from: best.id, sum: short, at: t, rate: kin(p, best) ? 0 : LOAN_YEAR });
+            short = 0;
+          }
+        }
+      }
+      if (funds(p) > 0.05) buy(p, v, "food", need);
+    }
+    /* A loan paid back once the borrower has it and a few days' bread besides (POOR). */
+    function repay(p, v) {
+      const o = OWED.get(p.id), q = byId.get(o.from);
+      if (!q || q.hp === -99) { OWED.delete(p.id); return; }   // owed to the dead: to nobody
+      const due = o.sum * (1 + o.rate * (t - o.at) / YEAR);
+      if (p.coins < due + 3 * dailyNeed(p) * v.priceFood) return;
+      p.coins -= due; q.coins += due; count.loansRepaid += due; OWED.delete(p.id);
+    }
     const SILVER = 0.3, LOSS_DAY = 0.02 / 365, TRUST_MIN = 0.35, SEIGNIORAGE = 0.05;
     const HOARD = new Map();   // person id -> coins they buried before they fled
     if (MINT) { count.silver = 0; count.struck = 0; count.coinsLost = 0; count.buried = 0; count.dugUp = 0; count.hoardsLost = 0; count.debased = 0; count.barterDays = 0; }
@@ -2088,7 +2210,7 @@
                   hp: 1, bold: nature(R(), ownOf(v.f, "bold")), warm: nature(R(), ownOf(v.f, "warm")), greed: nature(R(), ownOf(v.f, "greedy")), stub: clamp(ownOf(v.f, "stubborn") + (R() - 0.5) * S.differ, 0, 1), loyal: clamp(0.35 + ownOf(v.f, "loyalty") * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40 * STEP_SCALE), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, sick: 0, immune: false,
-                  unpaid: 0, forced: 0, wronged: 0, hit: 0, from: v.f, ate: -999, at: v.id,
+                  unpaid: 0, forced: 0, wronged: 0, hit: 0, from: v.f, ate: -999, at: v.id, stop: 0,
                   /* What they need besides food, which `p.food` already holds.
                      Rest rises with the hours awake, falls while asleep; alone
                      counts the hours since anybody spoke to them; fear comes
@@ -3708,6 +3830,7 @@
         const f = factions[v.f];
         if (!shared && v.bidFor === "short" && f.cheap > 0 && v.f === p.f) ration(p, v, f, 1.1 - p.food);
         else buy(p, v, "food", 1.1 - p.food);
+        if (POOR && p.food < 0.6 && v.f === p.f && adult(p) && !(MINT && v.trust < TRUST_MIN)) helpPoor(p, v);   // TODO 15.10
         if (p.food < 0.2 && !shared && (v.relief != null ? v.relief : f.relief) && v.f === p.f) {
           /* Relief: the treasury buys bread for somebody who cannot. */
           /* From the faction's own grain first, for nothing (TODO 15.5t): paying for it was the treasury paying itself into the till. */
@@ -3781,6 +3904,7 @@
       if (n <= 0.01) return;
       const cost = n * v.priceGoods;
       f.treasury -= cost; v.till += cost; v.goods -= n; p.goods += n; tookGoods(p, v, n); count.armedBought += n;
+      if (SPEND && p.job === "soldier") p.stop += cost;   // TODO 15.10
     }
     function wear(p, key) { if (equipped(p, key)) p.gear[key] = Math.max(0, p.gear[key] - GEAR[key].wear); }
     /* What a day in the fields brings back, and how long it takes. How much
@@ -3876,15 +4000,48 @@
         break;
       }
       KO_AT.set(foe.id, at);
+      if (at === "village") VDEAD_AT.set(foe.id, whoFell(p, foe, raidAt, down));   // TODO 15.6h: counted only
       if (!down) return;
       if (at === "raider" && RAIDS && raidAt) { const rd = factions[foe.f].raid[raidAt.f]; if (rd && rd.v === raidAt.id) rd.lost++; }   // TODO 15.6d: the one count that is read
       if (at === "raider") { count.koRaid++; count.koRaiders++; } else if (at === "raid") count.koRaid++;
       else if (at === "village") count.koAtVillage++; else if (at === "line") count.koLine++; else count.koOpen++;
     }
+    /* Who the soldiers who fall at a village are (TODO 15.6h), counted and nothing else: read off where
+       each was walking to and who was round them, no dice drawn and nobody changed. Keyed "side errand
+       company striker": side, whether the village is the fallen's own ("own"), the striker's ("theirs")
+       or a third people's; errand, where the fallen was walking (to this village, home, a village of
+       their own, elsewhere) and on what (march, fight, patrol, rations); company, whether two or more of
+       their own side stood within 750 m; striker, whether who struck them was at home (their own
+       village) or had come. */
+    const VDEAD_AT = new Map(), VDEAD = {}, VKO = {};
+    function whoFell(p, foe, v, down) {
+      const side = v.f === foe.f ? "own" : v.f === p.f ? "theirs" : "third";
+      let to = "elsewhere";
+      const hv = villages[foe.home];
+      if (Math.hypot(foe.tx - v.x, foe.ty - v.y) < v.radius + 2) to = "here";
+      else if (hv && Math.hypot(foe.tx - hv.x, foe.ty - hv.y) < hv.radius + 2) to = "home";
+      else for (const u of villages) if (u.alive && u.f === foe.f && Math.hypot(foe.tx - u.x, foe.ty - u.y) < u.radius + 2) { to = "own village"; break; }
+      const on = foe.supplyRun ? "rations" : foe.task === "idle" && foe.hit > 0 ? "fight" : foe.task;   // "idle" after striking a blow is fighting
+      const ff = factions[foe.f], o = v.f === foe.f ? p.f : v.f;
+      const why = ff.target && ff.target[o] === v.id ? "its army's target" : ff.raid && ff.raid[o] && ff.raid[o].v === v.id ? "raid's target" : ff.camp && ff.camp[o] && ff.camp[o].v === v.id ? "gathering place" : "not a goal";
+      const far = hv ? Math.hypot(hv.x - v.x, hv.y - v.y) / 4 : 0;   // km: four squares a kilometre
+      let mates = 0;
+      const cx = Math.floor(foe.x), cy = Math.floor(foe.y);
+      for (let y = Math.max(0, cy - 3); y <= Math.min(rows - 1, cy + 3); y++)
+        for (let x = Math.max(0, cx - 3); x <= Math.min(cols - 1, cx + 3); x++) {
+          const b = bucketAt(y * cols + x);
+          for (let i = 0; i < b.length; i++) { const q = b[i]; if (q !== foe && q.f === foe.f && q.job === "soldier" && q.hp >= 0.45 && dist(q, foe) < 3) mates++; }
+        }
+      const key = side + " | " + to + " on " + on + " | " + (mates >= 2 ? "with others" : "alone") + " | struck by " + (v.f === p.f ? "a defender" : "a visitor") + " | " + why + " | home " + (far < 0.1 ? "here" : far < 3 ? "under 3 km" : far < 8 ? "3-8 km" : "over 8 km");
+      if (down) VKO[key] = (VKO[key] || 0) + 1;
+      return key;
+    }
     function koDead(p) {
       const at = KO_AT.get(p.id); if (at === undefined) return;
       KO_AT.delete(p.id);
+      const vk = VDEAD_AT.get(p.id); VDEAD_AT.delete(p.id);
       if (p.hp !== -99) return;
+      if (at === "village" && vk) VDEAD[vk] = (VDEAD[vk] || 0) + 1;
       if (at === "raider") { count.deadRaid++; count.deadRaiders++; } else if (at === "raid") count.deadRaid++;
       else if (at === "village") count.deadAtVillage++; else if (at === "line") count.deadLine++; else count.deadOpen++;
     }
@@ -6407,9 +6564,9 @@
         const take = Math.min(want, v.food * 0.5); v.food -= take; p.food += take; return;
       }
       /* The faction's own grain first, for nothing (TODO 15.5t). */
-      if (v.f === p.f && v.levy > 0.01) { const own = Math.min(want, v.levy, v.food); v.levy -= own; v.food -= own; p.food += own; got += own; count.levyEaten += own; }
+      if (v.f === p.f && v.levy > 0.01) { const own = Math.min(want, v.levy, v.food); v.levy -= own; v.food -= own; p.food += own; got += own; count.levyEaten += own; if (SPEND) p.stop += own * v.priceFood; }
       const fromStore = Math.min(want - got, v.food, f.treasury / Math.max(0.3, v.priceFood));
-      if (fromStore > 0.01) { const cost = fromStore * v.priceFood; f.treasury -= cost; v.till += cost; v.food -= fromStore; p.food += fromStore; got += fromStore; }
+      if (fromStore > 0.01) { const cost = fromStore * v.priceFood; f.treasury -= cost; v.till += cost; v.food -= fromStore; p.food += fromStore; got += fromStore; if (SPEND) p.stop += cost; }
       if (got < want - 0.2 && f.treasury > 0.5) {
         for (const q of PLAIN ? people : residents(v.id)) {
           if (got >= want - 0.2 || f.treasury < 0.3) break;
@@ -6418,6 +6575,7 @@
           const amount = Math.min(want - got, q.food - reserve(q), f.treasury / price);
           if (amount <= 0.01) continue;
           f.treasury -= amount * price; q.coins += amount * price; q.food -= amount; p.food += amount; got += amount;
+          if (SPEND) p.stop += amount * price;   // TODO 15.10
         }
       }
       count.rations = (count.rations || 0) + got;
@@ -6465,8 +6623,9 @@
             if (foe.hp <= 0) { if (GENERALS && (ROUT.get(foe.id) ?? -1) > t) count.pursuitDead++; die(foe, "battle", p); }
           }
           p.task = "idle"; p.wait = 0;
-        } else go(p, foe.x, foe.y, "fight");
-        return;
+          return;
+        }
+        if (!(HOLD && wontFollow(p, foe))) { go(p, foe.x, foe.y, "fight"); return; }   // TODO 15.6h: or let them go home
       }
       let enemy = -1;
       for (const o of factions) if (o.alive && atWar(f.id, o.id)) { enemy = o.id; break; }
@@ -6499,6 +6658,7 @@
           const need = dailyNeed(p);
           if (p.food >= need * 3 && (equipped(p, "weapon") || !S.war)) {
             p.supplyRun = false;
+            if (COLUMN && camp && column(p, f, camp, goal)) return;   // TODO 15.6i: to the camp outside first
             go(p, goal.x + (R() - 0.5) * 2, goal.y + (R() - 0.5) * 2, "march"); p.wait = 0; return;
           }
           if (!depot) { go(p, home.x + (R() - 0.5), home.y + (R() - 0.5), "patrol"); p.wait = 0; return; }
@@ -6524,10 +6684,11 @@
       if (WK.size) WK.delete(p.id);   // TODO 15.6
       if (UNIT_OF.size) leaveUnit(p);   // TODO 15.6b
       if (LEAVING.size) LEAVING.delete(p.id);   // TODO 15.6d
-      if (KO_AT.size) { if (why === "battle") koDead(p); else KO_AT.delete(p.id); }   // TODO 15.6d
+      if (KO_AT.size) { if (why === "battle") koDead(p); else { KO_AT.delete(p.id); VDEAD_AT.delete(p.id); } }   // TODO 15.6d
       const v = villages[p.home], f = factions[p.f];
       if (PROP) passLand(p);   // TODO 15.7b
       if (HOARD.size) hoardLost(p);   // TODO 15.8: buried, and nobody left who knows where
+      if (OWED.size && OWED.has(p.id)) { count.loansLost += OWED.get(p.id).sum; OWED.delete(p.id); }   // TODO 15.10: the lender loses it
       /* Gone over the edge (TODO 15.5c): what they have goes with them, coins out of the world's sum. */
       if (why === "left") { count.minted -= p.coins; p.coins = 0; p.food = 0; p.goods = 0; p.cargo = null; p.gear = {}; }
       if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else if (p.cargo.what === "goods") v.goods += p.cargo.amount; else v[p.cargo.what] += p.cargo.amount; }
@@ -7047,7 +7208,7 @@
         if (p.hungry > 0) p.hungry = Math.max(0, p.hungry - 4);
         if (p.hp < 1 && !(p.dry > 0)) p.hp = Math.min(1, p.hp + 0.004);   // no healing without water (TODO 6a)
       }
-      if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
+      if (p.goods > 0) p.goods = Math.max(0, p.goods - (TILLS && p.goods > 1 && p.job !== "crafter" && p.job !== "trader" ? p.goods : 1) / (YEAR * 1.5));   // TODO 15.10: each thing in a house wears out
       if (p.sick > 0) {
         p.sick--;
         if (R() < SICK_HAZARD * frailty(p) * (ARMY_SICK && p.job === "soldier" && campFoulOf(p) > 0 ? CAMP_DEADLY : 1) * (KNOW && knows(p.f, "herbs") ? 0.8 : 1) * (WORKS && villages[p.home].tendedAt > t - 2 * DAY_HOURS ? 0.7 : 1) * (WIRED && has(p.f, "medicine") ? 0.3 : 1)) { die(p, "sick"); return; }   // a healer's care (TODO 15f)
@@ -8258,13 +8419,22 @@
       if (!adult(p)) return;
       /* Wages. */
       if (p.job === "soldier" && !shared && t % DAY_HOURS === 0) {
-        if (f.treasury >= WAGE) { f.treasury -= WAGE; p.coins += WAGE; p.unpaid = Math.max(0, p.unpaid - 1); }
+        if (f.treasury >= WAGE) {
+          const s = SPEND ? Math.min(p.stop, WAGE * STOP_MAX) : 0;   // TODO 15.10: stopped for what they were fed and armed with
+          if (s > 0) { p.stop -= s; count.stopped += s; }
+          f.treasury -= WAGE - s; p.coins += WAGE - s; p.unpaid = Math.max(0, p.unpaid - 1);
+        }
         /* Or in grain, from the faction's share of their village store (TODO 15.5t): a day's food a day,
            as soldiers' pay so often was. */
         else if (v.f === p.f && v.levy >= WAGE && v.food >= WAGE) { v.levy -= WAGE; v.food -= WAGE; p.food += WAGE; p.unpaid = Math.max(0, p.unpaid - 1); count.levyEaten += WAGE; }
         else if (++p.unpaid > 6 && !anyWar) { p.job = "farmer"; p.unpaid = 0; p.task = "idle"; }
         /* Sent home lame or too old to fight (TODO 15.5e). */
         if (HEALTH && p.job === "soldier" && p.vig < 0.4 && (1 - p.lame) * ageVigour(p) < 0.4) { p.job = "farmer"; p.task = "idle"; count.discharged++; }   // not for a wound that will heal
+        if (SPEND && p.job === "soldier") spendPay(p);   // TODO 15.10
+      }
+      if (!shared && t % DAY_HOURS === 0) {   // TODO 15.10
+        if (TILLS) spendSpare(p, v);
+        if (POOR && OWED.size && OWED.has(p.id)) repay(p, v);
       }
       if (lead === p && !shared && t % DAY_HOURS === 0 && f.treasury >= 0.3) { f.treasury -= 0.3; p.coins += 0.3; }
       /* Starving people do something about it: steal if they are bold, and
@@ -8811,6 +8981,76 @@
     }
 
     const TERMS = S.taking !== "old";
+    /* Who the soldiers dying at villages were (TODO 15.6h, 2026-11-23), measured before anything was
+       changed (`test/villagedead.mjs`, a year of old enemies, medieval, seeds 4 and 5): of 24 dead at a
+       village, 21 died at the enemy's, nearly all alone (19), fighting its defenders, from a home 3 to
+       8 km off; for 10 that place was no goal of their people's at all, neither the army's target, nor
+       a raid's, nor a gathering place. They had followed a lone enemy home: `foeNear` looks 750 m round
+       and the soldier walks at whoever it finds, and the enemy walked back into its own village.
+       Running to where one's own people are and drawing a pursuer into them is the oldest trap there
+       is; a lone soldier who follows is what the record calls rash. So now (`HOLD`) a soldier alone
+       lets an enemy go once it is inside its own fields, unless that place is their army's target or
+       their raid's, or two of their own side stand within 750 m; they still fight whoever comes within
+       reach. Choosing a fight is untouched. */
+    /* Coming to a place (TODO 15.6i, 2026-11-23). Measured first (`test/arrival.mjs`): an army's soldiers
+       each walked to the place it marched on by themselves, so they came strung out over the road and the
+       first fought its garrison alone. Ric: "do 15.6i too, whatever is realistic". A medieval army that
+       meant to take a place came up to it as a body, pitched camp not far off and only then attacked
+       (HistoryNet, "How to capture a castle with siegecraft"); 15h's gathering already makes it set out
+       together. So now (`COLUMN`) a soldier of an army (not a raid) marching on a place goes first to a
+       camp outside its fields, two squares past its edge on the side the army set out from, and waits
+       there until three in five of those who set out for it are in the camp (at least three), or three days
+       after the first came, six after it was set if nobody can reach it. Then the camp goes in, and stays
+       gone in for a month (a second attack on the same place a month later camps again). The share and
+       the days are guesses. Measured: an army marches on a place like this about once a world-year in a
+       default world of old enemies; most soldiers who come to an enemy place come with a raid. */
+    const COLUMN = ARMIES && S.column !== "old";
+    count.columns = 0; count.columnHours = 0; count.columnTimedOut = 0;
+    function column(p, f, c, goal) {
+      let s = c.stage;
+      if (!s || s.v !== goal.id || t - (s.go ? s.goAt : s.made) > 30 * DAY_HOURS) {   // a camp a month old is from another march
+        const from = villages[c.v] && villages[c.v].alive ? villages[c.v] : villages[p.home];
+        const dx = from.x - goal.x, dy = from.y - goal.y, d = Math.hypot(dx, dy) || 1, r = goal.radius + 2;
+        s = c.stage = { v: goal.id, x: clamp(goal.x + dx / d * r, 1, cols - 1), y: clamp(goal.y + dy / d * r, 1, rows - 1), ids: new Set(), sent: new Map(), first: null, go: false, goAt: 0, made: t };
+      }
+      if (s.go) return false;
+      s.sent.set(p.id, t);   // who has set out for this camp, and when they last answered to it
+      const here = Math.hypot(p.x - s.x, p.y - s.y) < 2.5;
+      if (here) { s.ids.add(p.id); if (s.first === null) s.first = t; }
+      /* Late: three days since the first came, or six since the camp was set if nobody has reached it (water, a wall of rock). */
+      const late = s.first !== null ? t - s.first > 3 * DAY_HOURS : t - s.made > 6 * DAY_HOURS;
+      if (here || late) {
+        for (const id of s.ids) { const q = byId.get(id); if (!q || q.hp < 0.45 || q.job !== "soldier") s.ids.delete(id); }
+        let marching = 0;   // the column: those who set out for the camp and are still on their way to it, or in it
+        for (const [id, at] of s.sent) { const q = byId.get(id); if (!q || q.hp < 0.45 || q.job !== "soldier" || t - at > DAY_HOURS) s.sent.delete(id); else marching++; }
+        if (late || s.ids.size >= Math.max(3, Math.ceil(marching * 0.6))) {
+          s.go = true; s.goAt = t; count.columns++; count.columnHours += t - (s.first ?? s.made); if (late) count.columnTimedOut++;
+          return false;
+        }
+        go(p, s.x + (R() - 0.5) * 2, s.y + (R() - 0.5) * 2, "patrol"); p.wait = TK(3);
+        return true;
+      }
+      go(p, s.x + (R() - 0.5), s.y + (R() - 0.5), "march"); p.wait = 0;
+      return true;
+    }
+    const HOLD = S.pursuit !== "old";
+    count.letGo = 0;
+    function wontFollow(p, foe) {
+      let v = null;
+      for (const u of villages) if (u.alive && u.f === foe.f && Math.hypot(foe.x - u.x, foe.y - u.y) < u.radius + 0.5) { v = u; break; }
+      if (!v) return false;
+      const f = factions[p.f];
+      if ((f.target && f.target[v.f] === v.id) || (f.raid && f.raid[v.f] && f.raid[v.f].v === v.id && t < f.raid[v.f].until)) return false;
+      let mates = 0;
+      const cx = Math.floor(p.x), cy = Math.floor(p.y);
+      for (let y = Math.max(0, cy - 3); y <= Math.min(rows - 1, cy + 3); y++)
+        for (let x = Math.max(0, cx - 3); x <= Math.min(cols - 1, cx + 3); x++) {
+          const b = bucketAt(y * cols + x);
+          for (let i = 0; i < b.length; i++) { const q = b[i]; if (q !== p && q.f === p.f && q.job === "soldier" && q.hp >= 0.45 && dist(q, p) < 3 && ++mates >= 2) return false; }
+        }
+      count.letGo++;
+      return true;
+    }
     /* Whether a place gives itself up when asked (TODO 15.6g): far outnumbered (by twice and more, more
        again under a stubborn leader), with few soldiers of its own. */
     function yieldsOnTerms(v, attackers, defence, ours) {
@@ -11814,6 +12054,7 @@
         towns: villages.filter(v => v.alive && v.place === "town").length, cities: villages.filter(v => v.alive && v.place === "city").length,
         urban: people.length ? villages.reduce((n, v) => n + (v.alive && v.place && v.place !== "village" ? v.pop || 0 : 0), 0) / people.length : 0,
         paths: trodList.reduce((n, i) => n + (track[i] === 1 ? 1 : 0), 0), roads: trodList.reduce((n, i) => n + (track[i] === 2 ? 1 : 0), 0),
+        villageDead: Object.assign({}, VDEAD), villageKnocked: Object.assign({}, VKO),   // TODO 15.6h
       }, count);
     }
 
@@ -11910,6 +12151,10 @@
       needWeight: (id, k) => needWeight(byId.get(id), villages[byId.get(id).home], k), matOk: (vid, k) => matOk(villages[vid], k), techNeeds: k => (TECH.find(x => x.key === k) || {}).needs, learnAll: (fid, k, share) => { let n = 0; for (const p of people) if (p.f === fid && p.know != null && p.hp > 0 && (n++ % Math.round(1 / share)) === 0) p.know |= 1 << TI_K[k]; },   // TODO 15.9, for the tests
       moneyMonth: () => { if (MINT) moneyDay(true); }, trustOf: vid => { if (MINT) trustOf(villages[vid]); return villages[vid].trust; }, bury: id => { const q = byId.get(id); if (MINT) bury(q, villages[q.home]); }, hoards: HOARD,   // TODO 15.8, for the tests
       buyFood: (id, vid, n) => buy(byId.get(id), villages[vid], "food", n),
+      columnFor: (id, o) => { const p = byId.get(id), f = factions[p.f]; return COLUMN && column(p, f, f.camp[o], villages[f.target[o]]); },   // TODO 15.6i, for the tests
+      wontFollow: (id, fid) => { rebucket(); return HOLD && wontFollow(byId.get(id), byId.get(fid)); },   // TODO 15.6h, for the tests
+      shopAt: (id, vid) => shop(byId.get(id), villages[vid]), payDay: id => { const p = byId.get(id); spendPay(p); }, spendSpare: id => { const p = byId.get(id); spendSpare(p, villages[p.home]); },
+      owed: OWED, repay: id => { const p = byId.get(id); if (OWED.has(p.id)) repay(p, villages[p.home]); },   // TODO 15.10, for the tests
       yieldsOnTerms: (vid, a, d, o) => yieldsOnTerms(villages[vid], a, d, o), takeOnTerms: (vid, fid) => capture(villages[vid], factions[fid], [], true),   // TODO 15.6g, for the tests
       landMonth: vid => landMonth(villages[vid]), claimAt: i => claim ? claim[i] : -1, homes: homes, held: held, pledges: PLEDGE, grants: GRANT,
       knock: (vid, k) => knock(villages[vid], k), buildWorks: (vid, k, h) => buildWorks(villages[vid], k, h), workDay: () => { if (WORKS) workDay(); }, serviceWorth: (vid, job) => serviceWorth(villages[vid], job), worksWanted: vid => worksWanted(villages[vid]),   // TODO 15f

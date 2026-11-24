@@ -16,7 +16,7 @@ import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const OLD = 2621592913;   // print() of the world below before 15.7
 
-assert.equal(print(People.create({ seed: 3, people: 200, land: "family", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old" }), 1500), OLD, "\"as before\" is the old land, exactly");
+assert.equal(print(People.create({ seed: 3, people: 200, land: "family", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old" }), 1500), OLD, "\"as before\" is the old land, exactly");
 
 const make = (o) => { const w = People.create(Object.assign({ seed: 3, people: 200, land: "family", factions: 2, war: false }, o)); w.step(24 * 32); return w; };
 {
