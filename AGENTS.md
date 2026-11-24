@@ -537,6 +537,12 @@ nobody had linked was a page nobody could find.
   **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
+  **The People UI is being rethought** (Ric, 2026-11-24: "it needs a complete revamp"):
+  `projects/world-builder/UI-REVAMP.md` is the analysis — what the page shows, what a world
+  actually does, every setting measured by `test/settings-impact.mjs` — and a proposal that is
+  **not agreed**; its questions are Ric's. The work itself is item 21 of
+  `projects/world-builder/TODO.md` (21a to 21h), with the research under it. Read both before
+  changing the People page.
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
   (2026-11-12, Ric: "all the ideas we were talking about not ust the last ones"). It covers
   individual lives and civilization growth, production, learning, relationships, communication,
