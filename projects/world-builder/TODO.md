@@ -6089,10 +6089,10 @@ Families that include the dead. Saving a world and coming back to it, in the vis
 browser.
 **Research first:** keeping a long history small; saving large worlds in a browser.
 **Ric decides:** how far back history is kept in full.
-The UI review recorded on 2026-11-24 under 21h makes this decision concrete: the engine now
-keeps 600 daily samples, up to 400 events and 160 conversations. A save cannot recover records
-already discarded. Decide the archive policy here before promising an export of the whole run;
-21h uses this item's one save format for continuing, copying and comparing a world.
+Item 21h (2026-11-24) makes this concrete: the engine keeps 600 daily samples, up to 400 events
+and 160 conversations, and a save cannot bring back what was dropped. Decide here what is kept
+before 21h promises an export of a whole run; 21h uses this item's one save format for saving,
+copying and comparing a world, and its record of the visitor's changes.
 **Done when:** a saved world reopened carries on exactly as it would have; any living person's
 grandparents can be found.
 **Budget:** default; history must not grow without limit.
@@ -6116,522 +6116,404 @@ Research notes:
 ### [ ] 21. The People UI, rebuilt — split into 21a to 21h
 
 Ric, 2026-11-24: "i want to do a revamp on the ui and looks … it needs a complete revamp this is a
-high quality simulater and the ui needs to show it", then "all of this needs to be added in
-todo.md … research for sims and what makes them fun what makes people come back to them based on
-what they can learn. what information can we show that is going to be intresting what ifnormation
-is information they dont need? we will have a saving feature where you can save all the data for
-that run. but research is required".
+high quality simulater and the ui needs to show it", then "research for sims and what makes them
+fun what makes people come back to them based on what they can learn. what information can we
+show that is going to be intresting what ifnormation is information they dont need? we will have
+a saving feature where you can save all the data for that run."
 
-**The analysis this item is built on is `UI-REVAMP.md`** (2026-11-24): what the page shows and
-lets you click, what a default world actually does over two years, every setting measured by
-`test/settings-impact.mjs`, and a first proposal. Read it before any part of 21. In short:
+**Where this came from.** Two passes on 2026-11-24. The first (Claude) took the page apart,
+measured every setting and did the research below; it is written up in `UI-REVAMP.md`, which
+holds the full analysis. The second (ChatGPT, at Ric's request: "add it to the correct section")
+read the engine, the keeper and the page again and added what the first missed:
 
-- **Setup** is 157 settings on one page, 14,467 px tall, about 7,000 words of help; "How many
-  people" is in the fourth group.
+- watching a world you come to know: pinned people, families and places, and what changed for them;
+- time controlled by what you are waiting for ("run until spring"), not only a multiplier;
+- who can actually *get* the food, not only how much there is;
+- why something has *not* happened (a technique known but not used);
+- what a person believes as against what happened;
+- copying a world at a moment to try something and compare;
+- **a fixed headline threshold of 3.5 misses famines**, which the engine weighs 2.5;
+- **the engine keeps only 600 daily samples, 400 events and 160 conversations**, so "all the data
+  for a run" needs item 19 to decide what is kept first.
+
+Each was checked against `people.js` and its sources on 2026-11-24 and holds. They are folded into
+the parts below. Everything in 21 is a proposal until Ric answers its questions.
+
+**What the page is today**, in short (`UI-REVAMP.md` has the detail):
+
+- **Setup** is 157 settings on one page, 14,467 px tall, about 7,000 words of help.
 - **Of the 157:** about 10 decide what the world is, about 30 are dials, about 15 are real
   alternatives (coins or a shared store, who leads …), **38 are engine-version switches**
   ("as before", kept so tests can prove a new part changes nothing when off), about 33 switch one
   part of a system off (26 of them faith), and 3 are about the computer.
-- **Measured:** 60 settings make a byte-identical world for two months; **41 still do after a
-  year** — 24 of the 26 faith settings, the election term, and Breaking away, a live control.
-  They are slow, not dead (`world-builder.test.mjs` proves each moves a world within 7–30 years).
-- **A default world** over two years: population within 5%, five of six faction pairs at war from
-  month 12 with three battle deaths in two years, 18 of 22 sickness deaths in the first three
-  months, hunters halving while herders, crafters and miners appear. Almost none of that is
-  visible on the page.
-- **Run screen:** the bar is two rows on a laptop and four on a phone (ten speed buttons); the key
-  covers the map; the panel opens on an A–Z list; only people and village markers can be clicked;
-  armies, houses, ruins, roads, boats, caravans and faction land are drawn and cannot be.
+- **Measured** (`test/settings-impact.mjs`): 60 settings make a byte-identical world for two months;
+  **41 still do after a year** — 24 of the 26 faith settings, the election term, and Breaking away,
+  a live control. They are slow, not dead: `world-builder.test.mjs` proves each moves a world within
+  7–30 years. These figures describe the tested worlds, not what visitors want to change.
+- **A default world** over two years: population within 5%; five of six faction pairs at war from
+  month 12, with three battle deaths in two years; 18 of 22 sickness deaths in the first three months;
+  hunters halving while herders, crafters and miners appear. Almost none of it shows on the page.
+- **Run screen:** two rows of buttons on a laptop and four on a phone; the key covers the map; the
+  panel opens on an A–Z list; only people and village markers can be clicked.
 
 **Rules for all of 21**, on top of the list's rules:
 
 - **The page never reads the engine** (item 3). Anything new it shows is added to what
-  `people-host.js` sends, and `test/keeper.test.mjs` keeps holding a world read through the keeper
-  equal to the engine alone.
-- **Nothing hidden that exists.** Every setting stays reachable and does what it did. Shared links
-  name settings by key and keep working; a link made before 21 opens the same world after it.
+  `people-host.js` sends; `test/keeper.test.mjs` keeps a world read through the keeper equal to the
+  engine alone.
+- **No engine changes in 21.** Where a part needs something the engine does not keep (an event's
+  subjects, evidence that a rule was read, household budgets over time), that is item 19 or a new
+  numbered item, asked about first.
+- **Nothing hidden that exists.** Every setting stays reachable and does what it did. A link made
+  before 21 opens the same world after it.
 - **Nothing scripted or flattered.** The UI reports what the engine decided, from the numbers it
-  decided with. A headline, badge or chart never says more than the engine did.
-- **Mock-ups before code** (21a), as the front door was: still pages in `docs/mockups/`, looked at
+  decided with. A headline, chart or "why" never says more than the engine recorded; where the
+  record is gone or was never kept, the page says so.
+- **Mock-ups before code** (21b), as the front door was: still pages in `docs/mockups/`, looked at
   by Ric, before the real page changes.
-- **No engine changes.** 21 is the page. If a part needs a number the engine does not keep, that
-  is a new numbered item, asked about first.
-- **Speed:** a frame of the page costs no more than it does now on a 5,000-person world
-  (`people-host.js` reports what a frame cost; compare before and after).
+- **Judge it by tasks, not looks.** The test for every part is whether a visitor can: find a
+  struggling household, say what is wrong, follow it through a season, change something they are
+  allowed to, and find out what came of it. Do this with the mock-ups and again with the real page.
+  An attractive mock-up is not evidence it works — looks make people forgive flaws in testing
+  ([NN/g, aesthetic-usability effect](https://www.nngroup.com/articles/aesthetic-usability-effect/)).
+- **Speed:** a frame costs no more than it does now on a 5,000-person world (`people-host.js`
+  reports what a frame cost).
 
-**Research for all of 21** (2026-11-24, Ric: "research for sims and what makes them fun what
-makes people come back to them based on what they can learn"). Read as search summaries and one
-article read whole (Sylvester's, below); nothing built. Every part of 21 starts from these.
+**Order:** 21a decides what matters, 21b how it looks, then the screens: 21c → 21d → 21e → 21f →
+21g. **21h waits on item 19**, which owns the one save format.
+
+**Research for all of 21** (2026-11-24). Read as search summaries, one article read whole
+(Sylvester's) and the engine itself; nothing built, and no visitors watched.
 
 *What makes a simulation fun, and what brings people back:*
 
 - **Only what reaches the watcher's head counts.** Tynan Sylvester (RimWorld), "The Simulation
-  Dream" (2013, [Game Developer](https://gamedeveloper.com/design/the-simulation-dream)): the
-  game in the code is worth only what copies into the model the player builds by watching —
-  "anything in the Game Model that doesn't copy into the Player Model is worthless." Too many
-  interacting parts become *illegible*: events happen and are "lost in the silicon". **For us this
-  is the whole case for 21**: the measurement in `UI-REVAMP.md` found five wars a year that a
-  visitor would never see, a quarter of the settings silent for a year, and an economy that changes
-  its livings with nothing on screen saying so. The engine is not too simple; it is not *shown*.
-- **Story-richness**, Sylvester's term: the share of what happens that the watcher finds
-  interesting. Real life is not story-rich; a sim should *show* a condensed version even when it
-  *runs* the full one. For a UI that means choosing what to surface (21e, 21g), not changing the
-  engine.
-- **"Hair complexity"** (same article): detail that does not feed back into the main system —
-  appearances, life histories, what a conversation was about — costs only "a bit of interface
-  burden", casual watchers ignore it and interested ones love it. So detail belongs one tap
-  away, not on the first screen and not deleted.
-- **Apophenia.** Sylvester calls RimWorld a story generator, not a game: people read intent and
-  personality into simple events. Named characters, a small number to care about, and stakes
-  people already care about — health, relationships, life and death, wealth and poverty, alone
-  and together
+  Dream" ([Game Developer](https://gamedeveloper.com/design/the-simulation-dream)): the game in the
+  code is worth only what copies into the model the player builds by watching — "anything in the
+  Game Model that doesn't copy into the Player Model is worthless." Too many parts become
+  *illegible*; events are "lost in the silicon". For us this is the whole case for 21: the engine is
+  not too simple, it is not *shown*.
+- **Story-richness** (same article): the share of what happens that the watcher finds interesting.
+  A sim should *show* a condensed version even while it *runs* the full one.
+- **"Hair complexity"** (same article): detail that does not feed back into the main system costs
+  only "a bit of interface burden"; casual watchers ignore it and interested ones love it. So detail
+  goes one tap away — not on the first screen, and not deleted.
+- **Apophenia.** People read intent into simple events. Named characters, few enough to care about,
+  and stakes people already feel — health, relationships, life and death, wealth and poverty
   ([Stanford GDT](https://gdt.stanford.edu/how-do-you-create-apophenia/),
   [Rock Paper Shotgun](https://www.rockpapershotgun.com/2016/08/12/how-rimworld-generates-great-stories),
   [Game Developer](https://gamedeveloper.com/design/rimworld-dwarf-fortress-and-procedurally-generated-story-telling)).
-  RimWorld keeps about twelve colonists so each is a person; we have hundreds to thousands, so the
-  UI has to *pick* people for the visitor (the people worth looking at, the person followed, a
-  family) or every one of them is a box.
-- **Fun is learning a pattern.** Raph Koster, *A Theory of Fun* (2004; [O'Reilly](https://oreilly.com/library/view/theory-of-fun/9781449363208),
-  [summary](https://www.shortform.com/blog/what-is-the-meaning-of-fun/)): fun is the feeling of
-  mastering a pattern; boredom is when there is nothing left to learn. A sandbox has an
-  unusually deep pattern to learn — *why did this world go this way and not that one?* — and that
-  is what brings someone back for a second world. **The UI's job is to let a visitor learn cause
-  and effect**: the "because" chains, a setting's effect shown against what it started at, two
-  runs comparable.
-- **Autonomy and competence.** Ryan, Rigby and Przybylski (2006, *Motivation and Emotion*,
-  [Springer](https://link.springer.com/content/pdf/10.1007%2Fs11031-006-9051-8.pdf)): felt
-  autonomy and competence each predict enjoyment and coming back. Sandboxes give autonomy freely
-  but little competence, because there is no goal
-  ([Game Developer, "Why do we really play"](https://gamedeveloper.com/design/why-do-we-really-play-)) —
-  unless the player sets their own. For us: competence is *understanding*. A visitor who can
-  predict "if I make this people hungry they will break away" and then see it happen has it.
-  (Tyack and Mekler warn this framework is used uncritically in games research,
-  [arXiv](https://arxiv.org/html/2405.12639v1); take it as a direction, not a measurement.)
-- **A world's history is a thing people keep and share.** Dwarf Fortress's Legends mode lets a
-  player read the whole history of a world and export it (an XML dump, a text history, maps —
-  [DF wiki, XML dump](https://dwarffortresswiki.org/index.php/XML_dump),
-  [Legends](https://dwarffortresswiki.org/index.php/v0.34:Legends)); a whole outside tool, Legends
-  Viewer, grew up to read those exports
-  ([wiki](https://dwarffortresswiki.org/Utility:Legends_viewer)). That is the precedent for 21h:
-  a saved run is not only something to carry on, it is something to read.
+  RimWorld keeps about twelve colonists; we have hundreds or thousands, so the page must help the
+  visitor *choose* whom to care about and keep them (21f).
+- **Fun is learning a pattern.** Raph Koster, *A Theory of Fun*
+  ([O'Reilly](https://oreilly.com/library/view/theory-of-fun/9781449363208),
+  [summary](https://www.shortform.com/blog/what-is-the-meaning-of-fun/)): boredom is when there is
+  nothing left to learn. Here the pattern is *why did this world go this way?* — causes, a
+  setting's effect against where it started, two runs side by side (21g, 21h).
+- **Autonomy and competence** each predict enjoyment and returning (Ryan, Rigby and Przybylski 2006,
+  [Springer](https://link.springer.com/content/pdf/10.1007%2Fs11031-006-9051-8.pdf)). Sandboxes give
+  autonomy but little competence because there is no goal
+  ([Game Developer](https://gamedeveloper.com/design/why-do-we-really-play-)); here competence is
+  *understanding*. (Tyack and Mekler warn the framework is used uncritically,
+  [arXiv](https://arxiv.org/html/2405.12639v1); a direction, not a measurement.)
+- **A world's history is something people keep and share.** Dwarf Fortress's Legends mode and its
+  XML export ([DF wiki](https://dwarffortresswiki.org/index.php/XML_dump),
+  [Legends](https://dwarffortresswiki.org/index.php/v0.34:Legends)) grew a whole outside reader,
+  Legends Viewer ([wiki](https://dwarffortresswiki.org/Utility:Legends_viewer)).
 
 *How the dense ones show it:*
 
-- **Detail on demand, not on the screen.** Paradox's nested tooltips (Crusader Kings III,
-  Victoria 3) let a player "deep dive" into any term without every tooltip being a page, and
-  CK3 shows more or less depending on how far the map is zoomed
+- **Detail on demand.** Paradox's nested tooltips and zoom-dependent detail
   ([Victoria 3 dev diary 29](https://forum.paradoxplaza.com/forum/developer-diary/victoria-3-dev-diary-29-user-experience.1506484/page-5),
   [PC Gamer](https://pcgamer.com/the-crusader-kings-3-team-is-working-hard-to-make-the-game-easier-to-learn),
-  [PCGamesN review](https://www.pcgamesn.com/crusader-kings-3/review-ck3)). Players still call
-  them overwhelming when the first layer is already too long — the lesson is a short first layer,
-  not more layers.
-- **Map modes / info views.** Cities: Skylines shipped 19 info views grouped as services,
-  citizens and the map ([dev diary 9](https://admin-forum.paradoxplaza.com/forum/developer-diary/cities-skylines-dev-diary-9-info-views.833752/post-18849702));
-  the sequel has 33 ([guide](https://gameplay.tips/guides/cities-skylines-ii-info-views-guide.html)).
-  A view's use is to show *where* — "where you have gaps". 21c's layers follow that: each one
-  answers a where-question (where are people hungry, who holds the land, where is the war).
-- **Notifications are ranked.** RimWorld separates letters (an event, kept), alerts (a standing
-  problem, shown while it lasts) and readouts, and players hide the ones they do not want
-  ([wiki, Events](https://rimworldwiki.com/wiki/Events),
-  [Nexus "Hide and disable"](https://www.nexusmods.com/rimworld/mods/286)). We already have the
-  ranking — the engine weighs every event — but a weight threshold alone is not enough:
-  the famine event is 2.5 (see the second review under 21e).
+  [PCGamesN](https://www.pcgamesn.com/crusader-kings-3/review-ck3)) — players still call them
+  overwhelming when the first layer is long. The lesson is a short first layer.
+- **Map modes answer "where".** Cities: Skylines had 19 info views grouped by question
+  ([dev diary 9](https://admin-forum.paradoxplaza.com/forum/developer-diary/cities-skylines-dev-diary-9-info-views.833752/post-18849702));
+  its sequel 33 ([guide](https://gameplay.tips/guides/cities-skylines-ii-info-views-guide.html)).
+- **Notices are ranked.** RimWorld separates letters (an event), alerts (a problem, shown while it
+  lasts) and readouts, and players hide what they do not want
+  ([wiki](https://rimworldwiki.com/wiki/Events), [Nexus](https://www.nexusmods.com/rimworld/mods/286)).
+- **Keep what matters close, and look things up both ways.** Factorio's map pins keep a player's
+  important places one click away ([FFF #400](https://www.factorio.com/blog/post/fff-400)); its
+  Factoriopedia answers both "what does this need" and "what does this make"
+  ([FFF #397](https://www.factorio.com/blog/post/fff-397)).
+- **Show who has access, not only totals.** Cities: Skylines II models the economy as flows between
+  households, businesses and services
+  ([Paradox](https://www.paradoxinteractive.com/games/cities-skylines-ii/features/economy-production)) —
+  a way of presenting, not proof our engine records every flow.
 
-**Second review, recorded 2026-11-24.** Ric asked to look for what the UI research missed,
-then said "add it to the correct section." The additions below record that review as proposals,
-not shipped features or approval to build them. The engine, keeper and page were read; the
-published page was inspected because the local browser preview timed out. No new long-run
-measurements or visitor studies were made. Existing settings measurements describe the tested
-seeds, scenarios and durations, not what visitors most want to change.
+#### [ ] 21a. What matters: what to show, and what to put one tap away
 
-The missing experience is following a world that becomes familiar, then investigating what
-changes it: keep subjects the visitor cares about, navigate time deliberately, explain access
-to resources and blocked possibilities, and compare experiments from the same saved state.
-These belong in the existing parts below. New historical accounting or engine state remains
-item 19's work or a separately agreed engine item, under 21's no-engine-changes rule.
+**Now:** the person panel shows every trait as a bar and numbers to two places; rules of thumb
+("A ration supplies one adult for one day") repeat under every view; the World tab lists 22 lifetime
+counters; the amber bars for hunger, mood, loyalty and lifelong traits all look alike.
+**Do:** write the information hierarchy the mock-ups (21b) and every screen after follow:
 
-Order of implementation: **21a → 21b → 21c → 21d → 21e → 21f → 21g → 21h.** Before drawing
-21a, use 21g's questions to choose the information hierarchy; 21g's final cleanup can stay later.
-21a decides the look the rest use, and 19 supplies the persistence needed by 21h.
+*In front — what people learn from and come back for:*
+- *Change over time* — graphs with real time; "up 12% since last year"; a village becoming a town.
+- *Causes* — the engine already writes "because" and "after"; today they are small grey lines.
+- *Named people with something at stake* — the hungry, the sick, the newly married, the dead.
+- *Who can get what* — food that is scarce against food that is unaffordable; household reserves
+  against village stores; land held against hands to work it; dependants against working adults.
+  Ages and livings, not only world averages.
+- *What has not happened, and why* — where the engine records it (21e).
+- *Firsts and records* — the first town, the first war, the oldest person alive.
+- *Comparisons* — one people against another; this world against a copy of it (21h).
+- *The people and places the visitor chose to follow* (21f).
 
-#### [ ] 21a. The look: colour, type and furniture, as mock-ups
+*One tap away — true and kept, not on the first screen:*
+- numbers to two decimals (words or whole numbers first: "about two days of food");
+- all eleven trait bars (show the two that stand out);
+- the rules of thumb (once, in help);
+- most of the 22 counters (keep the ones that move);
+- the dozen-line faction cards (a short card; the rest in the inspector);
+- settings that have not come into play (21g).
 
-**Now:** dark, with the land painter's colours (item 5) and amber accents; panels of grey text; no
-type scale or colour roles written down; graphs with no axes; the faction colours are the only
-colour that means anything. See `UI-REVAMP.md` §1 and the colour notes under Research notes.
-**Do:** write the page's colour roles and type scale down, then draw the setup screen, the run
-screen (desktop and phone) and the inspector as still pages in `docs/mockups/world-builder/`.
-**Research first:** how strategy and simulation games colour a map that carries data (faction
-colours, a data overlay, a legend); colour-blind safe categorical palettes for up to eight
-factions; contrast for small text on a dark map; how dense information panels are laid out in
-well-regarded sims.
-**Ric decides:** which mock-up direction; whether the land keeps its current palette; the
-faction colours (Okabe–Ito, Tol's, or the current twelve with the two that merge replaced).
+*Say what a number is.* "Days of food" names whose food (carried, household, village store, all)
+and whose need it divides by, and is an estimate, not a promise anyone can reach it. Facts, what a
+person has heard and believes, and estimates are shown as three different things.
+
+*What is state and what is history.* Present stocks, ages, jobs and debts can be read through the
+keeper now. History — budgets over time, how inequality changed, flows — needs a check of what the
+engine keeps first; accounting it does not keep is a new item.
+
+**Research first:** what players of simulation games say brings them back and what they find noise.
+**Ric decides:** what goes behind a tap.
+**Done when:** each view's first screen holds only the "in front" list, the rest is one tap away,
+and the five tasks in the rules can be walked through on paper.
+**Budget:** none.
+
+Research notes: see "Research for all of 21" — Sylvester (what reaches the head; hair complexity),
+Koster (learning causes), apophenia (named people at stake), Cities: Skylines II (access, not
+totals).
+
+#### [ ] 21b. The look: colour, type and furniture, as mock-ups
+
+**Now:** dark, with the land painter's colours (item 5) and an ochre accent; panels of grey text; no
+colour roles or type scale written down; graphs with no axes.
+**Do:** write the page's colour roles and a five-step type scale, then draw the setup screen, the run
+screen (desktop and phone) and the inspector as still pages in `docs/mockups/world-builder/`,
+following 21a. Give urgent needs, lasting traits, the selected thing, the followed person and map
+symbols each a look of their own. Camera moves and control feedback are part of the look too.
+Use clearly labelled example states in the mock-ups; check with real engine data once built.
+**Research first:** how strategy games colour a map that carries data; colour-blind safe palettes for
+up to eight factions; contrast for small text on a dark map.
+**Ric decides:** which mock-up direction; whether the land keeps its current palette; the faction
+colours (Okabe–Ito, Tol's, or the current twelve with the two that merge replaced).
 **Done when:** Ric has picked a direction; every colour that carries words clears 4.5:1; eight
-faction colours stay apart for the common colour blindnesses.
+faction colours stay apart for the common colour blindnesses; the five tasks work on the mock-ups at
+desktop and phone width, with readable type, touch targets and keyboard focus.
 **Budget:** none — no code changes.
 
-Research notes (2026-11-24; read off the page's CSS and `people.js`, and measured with a
-contrast and colour-blindness script — Machado et al. 2009 simulation, CIE Lab ΔE):
+Research notes (2026-11-24; read off the page's CSS and `people.js`, measured with a contrast and
+colour-blindness script — Machado et al. 2009 simulation, CIE Lab ΔE):
 
-- **Text is fine.** `--ink` 14.4:1 on `--panel`, `--dim` 7.2, `--acc` 8.0, `--warn` 7.3,
-  `--good` 10.1. Keep them.
-- **Lines are too faint to read as structure.** `--line` (#2a383f) is 1.47:1 on `--panel` —
-  every border, input edge and the graphs' only axis. Non-text parts need 3:1 (WCAG 1.4.11).
-  #556a73 is 3.13:1 and #5e737c 3.57:1; use one for anything that must be *seen* (inputs, axes)
-  and keep the faint one for dividers.
-- **The first faction is the accent.** `COLOURS[0]` is #e0a340, the same as `--acc`, so the
-  first faction's name, a selected button and every link are one colour. Selection needs its own
-  colour, or the first faction a different one.
-- **Two faction colours vanish for the most common colour blindness.** Under deuteranopia
-  (one of the red–green colour blindnesses, the commonest kind), factions 6 and 7 (#e58fb6 pink, #4fc3b0 teal) are ΔE 1.3 apart — the same
-  colour. Even the default four's red and green are only ΔE 13.9 apart. The Okabe–Ito set
-  ([CTAN colorblind](https://ctan.math.illinois.edu/macros/latex/contrib/colorblind/documentation.pdf))
-  measured on our dark panel keeps its closest pair ΔE 7.1 apart for deuteranopia and 16–18 for
-  the others; Paul Tol's "bright" and "vibrant" schemes are the other tested choice
-  ([khroma, Tol's schemes](https://cran.r-project.org/web/packages/khroma/readme/README.html)).
-  Its dark blue #0072B2 is 3.4:1 on the panel, so a faction name in it needs a lighter text
-  version (the site's rule: a second variable for text where the brand colour fails).
-  Both sources say colour must not carry meaning alone; the map's labels and the people's dark
-  outline already help — a faction letter or pattern at close zoom would finish it.
-- **A person's colour against the land is hue only.** Every faction colour is 1.0–1.1:1 in
-  brightness against beach, dry ground, sand or snow; what makes a box visible there is the dark
-  outline the painter draws round people (keep it). Village markers and labels need the same.
+- **Text is fine.** `--ink` 14.4:1 on `--panel`, `--dim` 7.2, `--acc` 8.0, `--warn` 7.3, `--good` 10.1.
+- **Lines are too faint to read as structure.** `--line` (#2a383f) is 1.47:1 on `--panel` — every
+  border, input edge and the graphs' only axis. Non-text parts need 3:1 (WCAG 1.4.11). #556a73 is
+  3.13:1, #5e737c 3.57:1; use one for what must be *seen* and keep the faint one for dividers.
+- **The first faction is the accent.** `COLOURS[0]` is #e0a340, the same as `--acc`, so the first
+  faction, a selected button and every link are one colour.
+- **Two faction colours merge for the commonest colour blindness.** Under deuteranopia factions 6
+  and 7 (#e58fb6, #4fc3b0) are ΔE 1.3 apart — the same colour; the default four's red and green
+  only 13.9. Okabe–Ito on our panel keeps its closest pair 7.1 apart for deuteranopia and 16–18 for
+  the others ([CTAN colorblind](https://ctan.math.illinois.edu/macros/latex/contrib/colorblind/documentation.pdf));
+  Tol's "bright" and "vibrant" are the other tested choice
+  ([khroma](https://cran.r-project.org/web/packages/khroma/readme/README.html)). Its dark blue
+  #0072B2 is 3.4:1, so a faction *name* in it needs a lighter text version. Colour must never carry
+  meaning alone.
+- **People against the land are told apart by hue only.** Every faction colour is 1.0–1.1:1 in
+  brightness against beach, dry ground, sand or snow; the dark outline round each person is what
+  makes them visible there. Keep it, and give village markers and labels the same.
 - **One thing the site forbids:** `.shelf` ("STARTING POINTS", "EVERY SETTING") is letter-spaced
-  capitals — the front door's list of machine-made looks. Use the serif at a small size instead.
-- **Type:** three families are set (a serif for names, the system sans, a mono for numbers) with
-  no scale written down; sizes run 12, 13, 15 px and assorted rem. Write a scale of five steps.
-- **Graphs:** no axes, no time, no units; the faction chart is a stacked area with nothing to read
-  a number off. Every graph gets a time axis in game years and a labelled top value.
+  capitals. Use the serif small instead.
+- **Graphs:** no axes, time or units; the faction chart is a stacked area with nothing to read a
+  number off. Every graph gets a time axis in game years and a labelled top value.
 
-Second review (2026-11-24):
+#### [ ] 21c. Setting up a world in three layers
 
-- **Appearance helps people understand and want to explore.** The current person inspector
-  uses similar amber bars for urgent needs, mood, loyalty and enduring traits. Give these
-  different visual priorities; make selection, map symbols and the followed person immediately
-  recognisable. Camera movement and control feedback matter as well as colour and type.
-  [NN/G, The Aesthetic-Usability Effect](https://www.nngroup.com/articles/aesthetic-usability-effect/)
-  explains that visual appeal affects perceived usability, but can also mask problems during
-  testing. An attractive mock-up is not evidence that people can use it.
-- **Review by tasks as well as looks.** With 21g's priorities, walk through: find a struggling
-  household; explain its problem; follow it through a season; change a permitted decision; find
-  what happened afterward. Use clearly labelled example states in still mock-ups; validate with
-  real engine data when implemented. Check readable type, touch targets, keyboard focus and
-  selection at desktop and phone widths. These are proposed review tasks, not completed tests.
-
-#### [ ] 21b. Setting up a world in three layers
-
-**Now:** one wall of 157 settings (`UI-REVAMP.md` §1, §3).
-**Do:** **Start** — the presets as cards and about 14 proposed Essentials, help behind ⓘ;
-**Customise** — the rest of the world and the dials in tabs, with search over labels and help;
-**Model** — the 38 engine-version switches and the mechanism switches, said plainly for what they
-are. The "what this computer can run" line stays under How many people.
-**Research first:** progressive disclosure in setup screens of sims and strategy games; how many
-choices a first screen can carry before people start with the defaults anyway.
-**Ric decides:** the Essentials list (`UI-REVAMP.md` §3 has the measured one); whether the
+**Now:** one wall of 157 settings.
+**Do:** **Start** — the presets as cards and about 14 Essentials, help behind ⓘ; **Customise** —
+the rest of the world and the dials in tabs, with search over labels and help; **Model** — the 38
+engine-version switches and the mechanism switches, said plainly for what they are. The "what this
+computer can run" line stays under How many people.
+**Research first:** progressive disclosure in the setup screens of sims and strategy games.
+**Ric decides:** the Essentials (`UI-REVAMP.md` §3 has the measured list); whether the
 engine-version switches stay on the page (Model) or only in tests and links; one Faith switch with
 its parts folded, or each part its own setting.
-**Done when:** a first-time visitor can understand the starting choice and reach Run without
-scrolling on a laptop; every setting is still reachable and searchable; every old link opens
-the same world. Do not shrink all eight cards and fourteen controls to force them onto one screen.
+**Done when:** a first-time visitor understands the starting choice and finds Run without scrolling
+on a laptop; every setting is reachable and searchable; every old link opens the same world. Do
+not shrink the cards and controls to force everything onto one screen.
 **Budget:** none on the engine.
 
-Research notes (second review, 2026-11-24):
+Research notes: the Essentials in `UI-REVAMP.md` came from what changed a short run soonest and
+what the presets use. That is evidence about the tested worlds, not what visitors prefer — a slow,
+rare mechanism (faith, a breakaway) can be someone's reason to start a world. Check the list
+against the questions people come to ask, and draw the first screen at comfortable reading and
+touch sizes before fixing how many fit.
 
-- The impact measurements are evidence about the tested worlds, not a ranking of visitor
-  preferences. A slow or rare mechanism can be somebody's reason for starting a world. Check
-  the Essentials against the questions visitors want to explore as well as short-run impact.
-- Prototype the first screen at comfortable reading and touch sizes before fixing how many
-  Essentials fit. The starting action should be easy to find even when Customise needs scrolling.
+#### [ ] 21d. The run screen: the bar, the map, layers and time
 
-#### [ ] 21c. The run screen: one bar, the map, layers
+**Now:** two to four rows of buttons; a key over the map; four colour buttons; ten speeds.
+**Do:**
+- **One bar:** setup, play/pause, speed (saying the speed reached), the date and season, population,
+  Layers, ⋯. On a phone pause, speed and the date stay easy to reach even if that takes two rows.
+- **The map fills the window**; nothing covers its middle.
+- **Layers with a legend each:** Faction, Mood, Beliefs, Wealth, and from what the keeper can
+  already send — Hunger, Sickness, Loyalty, Faith, Who holds the land, Roads and trade, War. Each
+  answers a "where" question.
+- **Time by what you are waiting for:** run a day, run until spring, run a year and pause; pause
+  when something happens to what you follow (21f). Every step still runs as normal and nothing is
+  made to happen; a wait that never comes can be cancelled. A history to look back through is not
+  rewind — going back needs item 19's saves.
 
-**Now:** two to four rows of buttons, a key over the map, four colour buttons.
-**Do:** one bar (setup, play/pause, a speed control saying the speed reached, date and season,
-population, Layers, ⋯); the map filling the window; layers with a legend each — Faction, Mood,
-Beliefs, Wealth, and from what the keeper can already send: Hunger, Sickness, Loyalty, Faith, Who
-holds the land, Roads and trade, War.
-**Research first:** map modes and legends in grand strategy and city builders; speed controls in
-sims that run from real time to years a minute.
-**Ric decides:** which layers; whether speeds stay as ten steps or become three plus a menu;
-which time targets and optional pause conditions to offer (second review below).
-**Done when:** pause, speed and the current date remain easy to reach at 375 px with readable
-labels and usable touch targets; nothing covers the middle of the map; every layer has a legend
-that says what its colours mean. One row is a layout proposal, not a reason to bury essential controls.
-**Budget:** a frame no slower than now.
+**Research first:** map modes and legends in grand strategy and city builders; speed controls in sims
+that run from real time to years a minute.
+**Ric decides:** which layers; ten speeds or three plus a menu; which "run until" targets and pause
+conditions to offer.
+**Done when:** every layer says what its colours mean; pause, speed and date are readable and
+reachable at 375 px; "run until spring" stops at spring.
+**Budget:** a frame no slower than now. Detecting a pause condition the keeper cannot see is a new item.
 
-Research notes (2026-11-24): see "Research for all of 21" — Cities: Skylines' info views grouped
-by what question they answer, and CK3 showing less detail zoomed out. The page already draws by
-zoom (item 5's three ranges); layers should follow the same three ranges, not add a fourth.
+Research notes: see "Research for all of 21" — Cities: Skylines' views grouped by question, CK3's
+detail by zoom. The page already draws in three zoom ranges (item 5); layers follow those.
 
-Second review (2026-11-24): **control time by the thing being watched**, not only a multiplier.
-Consider advancing a working day, running until spring, or advancing a year and pausing, plus
-optional pause conditions for watched subjects (21e). Advancing still runs every normal engine
-step; it never triggers the event being waited for. Define what happens if a condition never
-occurs and allow cancellation. Keep commands in the keeper and stop at the requested boundary;
-if detecting a condition needs unrecorded engine information, agree that work separately.
-A history timeline is not rewind: returning to an earlier world requires item 19's snapshots
-or replay, and remains separate from forward time controls.
-
-#### [ ] 21d. Everything drawn can be looked at: one inspector
+#### [ ] 21e. Everything drawn can be looked at: one inspector
 
 **Now:** a person or a village marker opens the Person tab; nothing else on the map responds.
-**Do:** one inspector (side on a desktop, a sheet on a phone) with a back arrow, for a person,
-a village, a faction's land, an army, a house, a ruin, a field, a road, a boat, a caravan and a
-news item. The person view reorganised: who, what now and why, then folds for needs, nature,
-mind, family (as a small tree), friends and possessions.
-Include the household behind a person or house: its members, shared resources, fields and
-dependants, using what the engine actually holds. Make existing explanations of missing
-requirements navigable, alongside explanations of decisions already made (second review below).
-**Research first:** how sims with thousands of agents let you inspect one (RimWorld, Dwarf
-Fortress, Crusader Kings, Cities: Skylines); what the first lines of an inspector should be.
-**Ric decides:** what a person's first screen shows before any fold is opened.
+**Do:** one inspector (beside the map on a desktop, a sheet on a phone) with a back arrow, for a
+person, a household, a village, a faction's land, an army, a house, a ruin, a field, a road, a boat,
+a caravan and a news item.
+- **A person's first screen:** who they are, what they are doing and why, and the one thing at
+  stake for them. Needs, nature, mind, family (a small tree), friends and possessions fold below.
+- **The household** behind a person or a house: who is in it, the shared purse and pot, its fields
+  and its dependants — what the engine holds.
+- **Why it has not happened.** The research panel already gets each technique's holders, share,
+  skill, and whether it is forbidden or there is nothing to make it with (`techView`). Bring those
+  forward: knowing, being able to use and using are three different things. Link what is needed and
+  what it would allow, both ways, as Factoriopedia does. Never invent a reason, a date or a chain
+  the engine did not keep.
+- **What happened, what they heard, what they believe** stay apart; the telling traces already sent
+  (`newsTrail`) are kept.
+
+**Research first:** how sims with thousands of agents let you inspect one (RimWorld, Dwarf Fortress,
+Crusader Kings, Cities: Skylines).
+**Ric decides:** what a person's first screen shows.
 **Done when:** every kind of thing drawn on the map opens something true about it.
 **Budget:** a tap answered in under 100 ms on a 5,000-person world.
 
-Research notes (2026-11-24): see "Research for all of 21" — Sylvester's hair complexity (detail one
-tap away), apophenia (a named person with health and relationships at stake is what a visitor
-reads a story into), and Paradox's nested tooltips (a short first layer). So a person's first
-screen is: who they are, what they are doing and why, and the one thing at stake for them
-(hunger, sickness, a war, a partner) — the trait bars, mind and possessions folded under it.
+Research notes: see "Research for all of 21" — hair complexity, apophenia, short first layers,
+Factoriopedia's two directions.
 
-Second review (2026-11-24):
-
-- **Why has it not happened?** A visitor may ask why an army waits, a building is unfinished,
-  or a technique is not used. The research panel already receives holders, share, skill,
-  forbidden and cannot-use flags (`techView`); it already labels forbidden techniques and
-  missing materials. Bring those distinctions forward and link to relevant requirements,
-  people or places where recorded. Knowing, being able to use, and actually using are different.
-  Do not invent a diagnosis, ETA or complete decision trace where the engine keeps none.
-- **Explore requirements in both directions.** What does this technique need, and what would
-  it enable? [Factorio's Factoriopedia design](https://www.factorio.com/blog/post/fff-397)
-  addresses both questions, with related entries that can be followed directly. Apply that
-  navigation to this sim's real techniques and constraints, not Factorio's mechanics.
-- **Facts, beliefs and estimates stay distinct.** The person inspector already exposes
-  remembered news and some provenance. Preserve and clarify it: what happened, what this person
-  heard, and what they now believe may differ. Preserve existing telling traces rather than
-  treating rumours as authoritative world facts. Resource estimates identify their scope (21g).
-
-#### [ ] 21e. Knowing what is going on: overview, news, headlines
+#### [ ] 21f. Following a world: overview, news, the people you keep
 
 **Now:** six tabs; People opens A–Z; seven graphs with no axes; 80 news lines; 40 talk lines.
-**Do:** four tabs — Overview, People, News, Inspector. Overview: graphs with axes and real time,
-the counters, and the world's story so far. People opens on people worth looking at (leaders,
-newly married, hungry, sick, soldiers in the field). News takes Talk in as a filter. Headline
-selection considers event weight, standing problems and watched subjects (second review below);
-a tap goes there. Keep a watchlist of chosen people, families, villages and factions, with a
-view of what changed for them; suggested interesting people do not replace the visitor's choices.
-**Research first:** event logs and notifications in sims (what gets interrupted for, what is only
-logged); "story generators" — how RimWorld, Dwarf Fortress and Crusader Kings make players notice
-a story the simulation produced.
-**Ric decides:** headlines over the map or not; Talk its own tab or a filter of News; which
-watched-subject notifications can interrupt or pause, and which stay in the record.
-**Done when:** a visitor who looks away for a game-year can tell, in a minute, what happened.
+**Do:** four tabs — **Overview** (graphs with axes and real time, the counters that move, the story
+so far), **People**, **News** (Talk as a filter) and the **Inspector**.
+- **Keep what you care about:** pin people, families, villages and factions; a "what changed for
+  them" view; their record filtered out of News. Following with the camera and keeping a pin are
+  different things. Suggestions ("people worth looking at") never replace the visitor's own picks.
+  Pins and the last thing seen are saved with the world (21h).
+- **Three kinds of notice, as RimWorld has:** a *headline* (an important event, or anything to do
+  with what you pinned), a *standing problem* (a famine, a siege, a war — shown while it lasts, on
+  the map and the Overview), and the *record* (News). The visitor decides what may interrupt.
+- **Not by weight alone.** The engine weighs a village's famine 2.5, so a fixed 3.5 would never show
+  one. Rank how big an event is and how much it matters to what you follow separately. Never change
+  the engine's weights to suit headlines.
+- **News needs more from the keeper:** the pane today sends text, place, year and the why/after
+  lines, not an event's id or who it concerns. Add those to what `people-host.js` sends; where the
+  engine does not record who an event concerns, that is a new item.
+
+**Research first:** event logs and notifications in sims; how story generators make players notice
+a story.
+**Ric decides:** headlines over the map or not; Talk a tab or a filter; what may interrupt or pause.
+**Done when:** a visitor who looks away for a game-year can tell in a minute what happened, and what
+happened to the people they pinned. Where older records are gone, the page says so.
 **Budget:** a frame no slower than now.
 
-Research notes (2026-11-24): see "Research for all of 21" — RimWorld's letters, alerts and readouts
-are three different things, and so are ours: a headline (selected for significance and relevance),
-a standing problem (a famine, a siege, a war — shown while it lasts, on the map and the
-Overview), and the record (News). Sylvester's "lost in the silicon" is the reason for the
-headline: the measured default world had five wars from month 12 that nothing on screen would
-have made a visitor notice.
+Research notes: see "Research for all of 21" — RimWorld's letters, alerts and readouts; Factorio's
+pins; "lost in the silicon" (the default world had five wars nothing on screen would have shown).
 
-Second review (2026-11-24):
-
-- **Keep what the visitor cares about.** Pin people, families, villages and factions; provide
-  a filtered record and a "what changed" view for those subjects. A family's first winter can
-  matter more to its watcher than an unrelated war. Camera follow and bookmarks are different:
-  looking elsewhere should not forget the subject. Save watchlists and the last-seen point
-  through 19/21h; navigation to dead relatives depends on 19. Explain when older records are
-  unavailable rather than inventing a complete recap.
-  [Factorio's chart search and pins](https://www.factorio.com/blog/post/fff-400) provide a
-  precedent for keeping important places readily accessible; persistent subjects and personal
-  relevance here are proposals to test, not measured visitor preferences.
-- **A fixed 3.5 threshold misses a famine.** `people.js` gives its village famine event weight
-  2.5. Rank global significance and relevance to watched subjects separately; keep standing
-  problems visible while they last, and give visitors control of interruptions. Preserve stable
-  event IDs, time and subject information through the keeper where needed; the current News
-  pane sends flattened text and omits some of that metadata. Add fields to the keeper, not
-  direct engine reads from the page, and do not change simulation weights to suit headlines.
-
-#### [ ] 21f. Changing a running world, honestly
+#### [ ] 21g. Changing a running world, honestly
 
 **Now:** 13 live settings as steppers at the foot of the World tab; Breaking away did nothing in a
 year of a default world, and nothing says so.
-**Do:** a Rules drawer from the bar, grouped as setup is, each control showing its start value
-and, where the engine can tell, whether anything has called on it yet in this world. Ruling a
-faction stays on the faction. Leaves room for item 17's catastrophes as "Happenings".
+**Do:** a **Rules** drawer from the bar, grouped as setup is. Each control shows its value now and
+what it started at. Every change the visitor makes — a rule, a ruling decision — is recorded with
+its exact moment and what it applied to (the world, a people, a village), shown as a mark on the
+graphs with the old and new value. That record is the same action log item 19 and 21h use; there is
+not a second one. Ruling a faction stays on the faction. Leaves room for item 17 as "Happenings".
 **Research first:** how sandbox games let you change rules mid-run and show the effect.
-**Ric decides:** nothing beyond 21b's.
-**Done when:** every live control says what it is set to, what it started at, and whether it has
-come into play.
-**Budget:** none on the engine; the "has it come into play" figure must be a counter the engine
-already keeps or a new item.
+**Ric decides:** nothing beyond 21c's.
+**Done when:** every live control says what it is and what it started at, and every change shows on
+the graphs.
+**Budget:** none on the engine. "Has this come into play yet" needs real evidence that the engine
+read the setting; no visible event is not that evidence, so it waits on a new item.
 
-Research notes (second review, 2026-11-24): record each permitted intervention with its exact
-simulation time and scope (world rule, faction or village), with markers on the graphs. Show
-the previous and new values so a visitor remembers what they tried. This joins 21h's branch
-comparison and item 19's replay/save work; do not create a second action-log format. A trend
-after an intervention alone does not prove that intervention caused it. "Has come into play"
-must use actual recorded evidence; absence of a visible event is not evidence that a rule
-was never read.
+Research notes: a trend after a change does not prove the change caused it. That comparison is what
+a copy of the world is for (21h).
 
-#### [ ] 21g. What to show, what to leave out
+#### [ ] 21h. Saving a run, copying it, and its history — waits on item 19
 
-**Now:** the person panel shows every trait as a bar, every number to two places, and rules of
-thumb ("A ration supplies one adult for one day") under every view; the world tab lists 22
-lifetime counters.
-**Do:** from the research below, cut what a visitor does not need, keep it one tap away, and bring
-forward what makes a world interesting to come back to: change over time, causes, the people a
-visitor has followed, records and firsts.
-Use these priorities before 21a's mock-ups as well as in this final cleanup. Include household
-access to resources and population composition, not only world averages (second review below).
-**Research first:** what players of simulation games say makes them return; what they find noise.
-**Ric decides:** the list of what goes behind a tap.
-**Done when:** each view's first screen holds only what the research says people read.
-**Budget:** none.
-
-Research notes (2026-11-24): see "Research for all of 21". What the research says to keep in
-front, and what to put one tap away — applied to what the page shows today:
-
-**Show first (it is what people learn from and come back for):**
-- *Change over time* — graphs with real time, "up 12% since last year", a village that grew into
-  a town. Koster: the pattern is the fun; a pattern needs time on an axis.
-- *Causes* — the engine already writes "because" and "after" for its decisions. Today they are
-  small grey lines under news items; they are the most valuable thing the page has.
-- *Named people at stake* — the hungry, the sick, the newly married, the dead, the leader. Health
-  and relationships are what people read stories into (Sylvester).
-- *Firsts and records* — the first town, the first war, the oldest person alive, the largest
-  people. Cheap (the engine counts most of it) and they mark time.
-- *Comparisons* — one faction against another; this world against the last one (needs 21h).
-- *The person you followed* — their life as a short story: born, married, children, moved,
-  fought, died.
-
-**Behind a tap (true, and kept, but not on the first screen):**
-- Every number to two decimals (food 2.37 rations) — words or whole numbers first
-  ("about two days of food").
-- All eleven trait bars at once — show the two that stand out ("bold, quick-tempered").
-- The rules of thumb under every view ("A ration supplies one adult for one day") — once, in
-  help.
-- The 22 lifetime counters on the World tab — keep the five that move; the rest in a table.
-- Faction cards of a dozen lines (law, marriage customs, research, faith clauses) — a short card,
-  the rest in the faction's inspector.
-- Settings that have not come into play (21f).
-
-**Not shown at all:** nothing that exists — Ric's rule. What leaves the first screen goes into
-the inspector, a fold or the save (21h).
-
-Second review (2026-11-24):
-
-- **Who can get the food?** Show distribution and access alongside stocks: food scarce versus
-  food unaffordable, household reserves versus village stores, land held versus hands available
-  to work it, and dependants versus working adults. Link the overview to households (21d).
-  Age and occupation breakdowns connect individual lives to a growing or struggling society.
-  [Cities: Skylines II's economy design](https://www.paradoxinteractive.com/games/cities-skylines-ii/features/economy-production)
-  connects household circumstances with resource flows and shortages. That is a presentation
-  precedent, not evidence that our sim already records every income or spending flow.
-- **Separate state from history.** Current stocks, ages, jobs and recorded debts may be read
-  through the keeper. Historical household budgets, changing inequality and flow diagrams need
-  an audit of retained data first; missing accounting is a separately agreed engine item.
-- **Name the quantity.** "Days of food" says whether it counts carried food, household food,
-  village stores or their sum, and what daily need it divides by. A reserve estimate is not a
-  guaranteed survival time or proof everybody can obtain that food. Keep exact numbers one tap
-  away and distinguish estimates from recorded observations.
-- **Judge usefulness with tasks.** The proposed 21a review tasks are the test of this hierarchy:
-  can a visitor find a struggling household, explain its problem, follow it through a season,
-  change an allowed decision and discover what followed? Research and expert review suggest
-  priorities; they do not establish what these visitors read without observing them use it.
-
-#### [ ] 21h. Saving a run: all of its data
-
-**Now:** nothing is saved. A world lives only in the open tab; a shared link carries settings, not
-a world. Item 19 asks for saving a world and coming back to it.
+**Now:** nothing is saved. A world lives only in the open tab; a link carries settings, not a world.
 **Do:** Ric, 2026-11-24: "we will have a saving feature where you can save all the data for that
-run". Save a running world to a file the visitor keeps and open it again to carry on exactly as
-it would have; and export what happened (the history, the events, the people who lived) in a form
-that can be read outside the page. The UI for saving and opening lives in the bar's ⋯ and on the
-setup screen. **This shares its engine work with item 19** — do 19's save first or with it, and
-do not build two save formats.
-Include "make a copy at this moment" for experiments: keep the original and a branch with
-its common snapshot, engine version and timed interventions, then compare the same elapsed
-simulation period. Keep watchlists and the visitor's place with the saved world as well.
-**Research first:** saving large simulation state in a browser (File System Access, downloads,
-IndexedDB, compression with `CompressionStream`); how other sims version their saves so an old
-save still opens; what format makes the history readable elsewhere.
-**Ric decides:** a file the visitor keeps, the browser's own storage, or both; how much history
-goes in a save; whether a save made before an engine change must still open.
-**Done when:** a saved world reopened carries on step for step as the unsaved one would; a save
-from the largest world this machine runs opens in under the time it took to make; the exported
-history opens in a spreadsheet.
+run". Four separate actions, each saying what it is:
+- **Copy the starting settings** (the link, as now — it never promises the same people and events).
+- **Save this world** to a file the visitor keeps, and open it to carry on exactly as it would have.
+- **Make a copy at this moment** to try something: the original and the copy share their snapshot,
+  engine version and recorded changes, and are compared over the same stretch of time.
+- **Export its history** for reading outside the page.
+Pins and the visitor's place go into the save, apart from the world itself. The UI lives in the
+bar's ⋯ and on the setup screen. The engine work is **item 19's — one save format, not two.**
+**Research first:** saving large simulation state in a browser; how sims version saves; what format
+makes a history readable elsewhere.
+**Ric decides:** a file, the browser's storage, or both; whether a save must still open after an
+engine change; and, in item 19, how much history is kept.
+**Done when:** a saved world reopened carries on step for step; a copy and its original can be
+compared at the same elapsed time; an export opens in a spreadsheet and says what it covers and
+what it is missing.
 **Budget:** saving does not stall the world for more than a frame or two.
 
 Research notes (2026-11-24):
 
-- **How big a save is** (measured): the default world (400 people) after 60 days is about
-  1.4 MB as JSON — people 738 KB (127 fields each), events 261 KB, talk 182 KB, land 105 KB —
-  and **297 KB gzipped**. A 5,000-person world on 40 km after 10 days: people 9.2 MB, land 0.6 MB
-  raw; at the same ratio about 2.3 MB gzipped. Small enough for a download or the browser's
-  storage. People hold **shared references** (227 in the small world), so a save must write ids,
-  not objects.
-- **The engine is not saveable as it stands.** Much of its state lives in closures inside
-  `create()` (counters, the dice's place, tables such as `PAROLE`, `DESERTED`, `WK`, the kept
-  lists of items 1 and 2), not on the returned object. A snapshot needs the engine to hand all of
-  it over and take it back — that is item 19's work, and it must be one format for both.
-- **Two ways to save; replay still needs a recorded action log.** (1) A snapshot of the whole
-  state. (2) A *recipe*: the settings, the seed and every decision the watcher made with the step
-  it was made at (`rule`, `order`, `orderVillage`, `declare`, `set`) — the engine is fixed by its
-  seed and since 15.12a its dice are per actor, so replaying the recipe gives the same world step
-  for step on the same engine with the same command timing. The deterministic engine is the
-  foundation, not an implemented replay/save feature. A recipe is a few KB but is tied to its
-  engine version, and reopening a long run means
-  running it again (two years of the default world took about four minutes here). Recommended:
-  both — a recipe always, with a snapshot every so often to reopen from, as Factorio holds that a
-  save must reload to the same behaviour ([Friday Facts #270](https://cf-www.factorio.com/blog/post/fff-270)).
-- **Versions.** Factorio writes a version into every save and migrates old formats forward on
-  load, step by step; a save does not go backwards
+- **"All the data" needs item 19 first.** The engine keeps 600 daily samples, up to 400 events
+  (dropping the least important) and 160 conversations; the page shows fewer. A save cannot bring
+  back what was already dropped, and a full family history needs 19's records of the dead.
+- **Size** (measured): the default world after 60 days is about 1.4 MB as JSON — people 738 KB
+  (127 fields each), events 261 KB, talk 182 KB, land 105 KB — and 297 KB gzipped. A 5,000-person
+  world on 40 km is about 9.8 MB raw, roughly 2.3 MB gzipped. People share references (227 in the
+  small world), so a save writes ids, not objects.
+- **The engine cannot be saved as it stands.** Much of its state lives inside `create()` — counters,
+  the dice, `PAROLE`, `DESERTED`, `WK`, the kept lists of items 1 and 2 — not on the object it
+  returns. Handing all of it out and back is item 19's work.
+- **A snapshot and a recipe.** A recipe is the settings, the seed and every change the visitor made
+  with its exact step (`rule`, `order`, `orderVillage`, `declare`, `set`). The engine is fixed by its
+  seed and its dice are per actor (15.12a), so replaying a recipe on the *same engine* gives the same
+  world — but nothing records those changes yet, and a recipe is tied to its engine version.
+  Reopening a long run from a recipe means running it again (two years of the default world took
+  about four minutes). Recommended: always keep the recipe, with a snapshot every so often to reopen
+  from. Factorio holds that a save must reload to the same behaviour
+  ([FFF #270](https://cf-www.factorio.com/blog/post/fff-270)) and moves old formats forward on load
   ([Rseding's notes](https://gist.github.com/Rseding91/a309cf0a30782a2e96ef081c39326f42),
-  [forum](https://forums.factorio.com/viewtopic.php?p=519478)). Ours changes the engine often and
-  every change of dice makes "the same seed" a different world, so a save must carry the engine's
-  version, and a recipe from an older engine can only be *replayed on that engine*. Ric decides
-  whether old saves must open after an engine change; the honest default is "a snapshot opens and
-  carries on; its recipe says which engine made it".
-- **Writing the file.** `CompressionStream("gzip")` is in every current browser and in workers
-  (Chrome/Edge 80, Firefox 113, Safari 16.4; [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API),
-  [web.dev](https://web.dev/blog/compressionstreams)), so the keeper can compress off the page's
-  thread with no library. `showSaveFilePicker` is Chrome and Edge only, not Firefox or Safari
-  ([caniuse](https://caniuse.com/mdn-api_window_showsavefilepicker)); fall back to a download link
-  ([web.dev, saving a file](https://web.dev/articles/files/save-a-file)). Opening is a plain file
-  input everywhere.
-- **Keeping it in the browser.** IndexedDB quotas are large in Chrome (an origin up to 60% of the
-  disk) and Firefox, but Safari wipes script-written storage after seven days without a visit
-  unless the site is installed, and any browser may evict it unless `navigator.storage.persist()`
-  is granted ([MDN, quotas](https://developer.mozilla.org/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria),
-  [web.dev](https://web.dev/articles/storage-for-the-web)). So the browser's storage is a
-  convenience (recent worlds, an autosave); **the file is the save**.
-- **Readable outside the page.** Dwarf Fortress's Legends export (XML, a text history, maps) is
-  what people read and share ([wiki](https://dwarffortresswiki.org/index.php/XML_dump)). For
-  "all the data for that run": a gzipped JSON save to carry on from, and an export of the history
-  as CSV — one row a day of the graphs, one row per event (with its because/after), one row per
-  person who ever lived (born, died, of what, parents, faction) — which opens in a spreadsheet.
-  Keeping everyone who ever lived needs item 19's "families that include the dead".
-
-Second review (2026-11-24):
-
-- **Decide retention before promising all data.** Today the engine keeps only 600 daily
-  samples, up to 400 events (discarding less important older entries) and 160 conversations;
-  the page shows fewer again. A state snapshot cannot recover evicted history. Item 19 must
-  decide what is archived, downsampled or discarded and at what cost. Exports state their
-  coverage and gaps explicitly; complete lives and families need 19's dead-person records.
-- **Copy a world to learn from it.** Branch from the same saved moment, preserve the original,
-  change a permitted rule or ruling decision, then compare at equal elapsed time. Use the same
-  snapshot format and action log as saving and replay, with parent/branch identity and the
-  divergence time. A before/after graph alone is not a controlled comparison, and one pair of
-  runs is not proof of a general real-world effect. Exact continuation and branching depend
-  on item 19; a history viewer is not a rewind feature.
-- **Keep the visitor's connection to the world.** Save chosen subjects, last-seen position in
-  the record and relevant view state with the run, separately from simulation decisions. Make
-  "copy starting settings", "save this running world" and "export its history" distinct actions
-  so sharing a settings link never promises the recipient the current people and events.
+  [forum](https://forums.factorio.com/viewtopic.php?p=519478)).
+- **Writing the file.** `CompressionStream("gzip")` works in every current browser and in workers
+  ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API),
+  [web.dev](https://web.dev/blog/compressionstreams)), so the keeper compresses off the page's thread.
+  `showSaveFilePicker` is Chrome and Edge only
+  ([caniuse](https://caniuse.com/mdn-api_window_showsavefilepicker)); fall back to a download
+  ([web.dev](https://web.dev/articles/files/save-a-file)). Opening is a file input everywhere.
+- **The browser's storage is a convenience, the file is the save.** Safari wipes script-written
+  storage after seven days without a visit, and any browser may evict it unless
+  `navigator.storage.persist()` is granted
+  ([MDN](https://developer.mozilla.org/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria),
+  [web.dev](https://web.dev/articles/storage-for-the-web)).
+- **Readable outside the page,** as Dwarf Fortress's Legends export is
+  ([wiki](https://dwarffortresswiki.org/index.php/XML_dump)): gzipped JSON to carry on from, and CSV
+  — a row a day of the graphs, a row per event with its because/after, a row per person who ever
+  lived (needs item 19).
+- **A copy is a controlled comparison, not proof.** Two runs from one moment differ only by what was
+  changed and the dice that change moved; one pair says what happened in that world, not in general.
 
 ## Speed log
 

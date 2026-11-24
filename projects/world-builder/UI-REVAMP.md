@@ -342,9 +342,9 @@ what makes them fun … what information can we show that is going to be intrest
 a saving feature". **The work is item 21 of `TODO.md`, split 21a to 21h**, and the research lives
 under it: what makes a simulation fun and brings people back (Sylvester, Koster, self-determination
 research, Dwarf Fortress's Legends), how dense sims show information (Paradox, Cities: Skylines,
-RimWorld), the colour measurements (21a: borders at 1.47:1, the first faction sharing the accent,
+RimWorld), the colour measurements (21b: borders at 1.47:1, the first faction sharing the accent,
 two faction colours identical under deuteranopia), what to show and what to put one tap away
-(21g), and saving a run with all its data (21h: about 300 KB gzipped for the default world, a
+(21a), and saving a run with all its data (21h: about 300 KB gzipped for the default world, a
 recipe plus snapshots, a CSV export of the history). This file stays the analysis; TODO.md is
 where the work and its research go from here.
 
@@ -353,8 +353,8 @@ A second review was added to the matching parts of item 21 on 2026-11-24 at Ric'
 household access to resources, unmet requirements, facts versus beliefs, and branching a saved
 world to compare interventions. Those notes refine this first proposal: a fixed headline
 threshold misses famine events (weight 2.5), comfortable controls take priority over fitting
-every setting on one screen or every phone control in one row, and 21g's information priorities
-inform 21a's mock-ups. Item 19 must settle retained history before 21h promises an export of the
+every setting on one screen or every phone control in one row, and 21a's information priorities
+come before 21b's mock-ups (the parts were reordered so their letters are the order of work). Item 19 must settle retained history before 21h promises an export of the
 whole run. These are recorded proposals, not shipped features; TODO.md remains the work list.
 
 ## 5. Questions for Ric
