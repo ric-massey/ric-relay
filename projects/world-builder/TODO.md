@@ -50,13 +50,24 @@ Do these in order. Do not skip one because the item looks small.
    needed**, below). For the engine's steps that is `node --expose-gc test/bench.mjs` from this
    folder (`--quick` for the three small rows); for making a world, `--start`.
 6. **Build it**, following the rules below.
-7. **Test it.** Add tests for the new thing and list them in `/.github/checks.mjs`. While
-   working, run `node .github/checks.mjs --only world-builder` from the repo root (add `--slow`
-   if the engine changed), and once more just before pushing. **Only World Builder's checks, never
-   the whole site's** (Ric, 2026-11-21: "we just need to test this game. not the whole site" — the
-   whole set's `--slow` spent nine minutes on another project's traffic simulation). The one
-   exception: a change to a file other projects share (`/.github/`, the site's front door) runs
-   the quick set, `node .github/checks.mjs`, without `--slow`.
+7. **Test it.** Add tests for the new thing and list them in `/.github/checks.mjs`. Then run
+   only as much as the change reaches (Ric, 2026-11-24: "in the todo it says to check only what it
+   changes so why is it always running the full test suites?" — the old wording said "only what
+   changed" and then told every item to run all 89 World Builder suites twice, about 12 minutes
+   each time in parallel and 45 one at a time):
+   - **While working:** run the new test files and the ones for the code you touched, by name —
+     `node projects/world-builder/test/<file>` — and nothing else. Adding a key to an older test's
+     `LATER` list is not a reason to run that test now; the pass before pushing covers it.
+   - **Once, just before pushing:** `node .github/checks.mjs --only world-builder` (add `--slow`
+     only if the engine's steps changed). Once means once: if it fails, fix it and rerun the
+     failing suites by name, then the whole set one more time — not after every fix. Save its
+     output to a file (`> out.txt 2>&1`), never pipe it through `head` or `tail`, so a run is
+     never lost and done again.
+   - **Never the whole site's checks** (Ric, 2026-11-21: "we just need to test this game. not the
+     whole site" — the whole set's `--slow` spent nine minutes on another project's traffic
+     simulation). CI runs them on the push. The one exception: a change to a file other projects
+     share (`/.github/`, the site's front door) runs the quick set, `node .github/checks.mjs`,
+     without `--slow`, once.
 8. **Measure after**, the same things as step 5. A year-long run of the default world only if
    the item changed what happens once the world is running. Add a row to the Speed log. If the
    item made the world slower than its budget allows, fix that before going on.
@@ -95,8 +106,8 @@ No. Long runs are for proving something they can prove; check against what the i
 - **Keep the old answer instead of running the old code again.** Where a test compares against
   the old engine, save what the old engine gave once (a short fingerprint in `test/`) and
   compare against that.
-- **Only World Builder's checks** (`--only world-builder`), while working and before the push;
-  never the whole site's (Ric, 2026-11-21).
+- **The touched tests while working, World Builder's checks once before the push** (step 7);
+  never the whole site's (Ric, 2026-11-21, 2026-11-24).
 - **A browser only when the page changed.**
 
 ## Rules for every item
