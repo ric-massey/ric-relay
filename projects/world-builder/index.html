@@ -2658,7 +2658,11 @@
     const h = d.history;
     if (h.length < 2) return "<h3>How it is going</h3><p class='small'>The graphs start after the first day.</p>";
     const last = h[h.length - 1], prev = h[h.length - 2];
-    return "<h3>How it is going</h3><p class='small'>One point a day, since the world began (the last " + h.length + " days).</p>" +
+    /* The engine keeps the last 600 days (`sample` in people.js), so "since the world began" is
+       only true while the first row kept is the world's first day (audit of TODO 21, 2026-11-24). */
+    const from = h[0].day | 0;
+    return "<h3>How it is going</h3><p class='small'>" + (from === 0 ? "One point a day, since the world began."
+      : "One point a day, for the last " + h.length + " days. Days before day " + (from + 1) + " are not kept.") + "</p>" +
       GRAPHS.map(g => "<div class='graph'><div class='gl'><span>" + g[1] + "</span><b>" + g[3](g[2](last, prev)) + "</b></div>" +
         "<canvas data-graph='" + g[0] + "' width='632' height='96' aria-label='" + esc(g[1]) + ", now " + esc(String(g[3](g[2](last, prev)))) + "'></canvas></div>").join("");
   }
@@ -2786,7 +2790,7 @@
     return graphsPane(d) + livePane(d) + "<h3>Since this world began</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
       "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Larger filled squares are villages; outlined crop patches show harvesting. At 1× a day takes five minutes. A square of the map is 250 metres.</p>";
   }
-  /* Each faction's head count, stacked, since the world began. */
+  /* Each faction's head count, stacked, over the days the engine still keeps (the last 600). */
   function drawChart() {
     const c = $("chart"); if (!c || !paneData || !paneData.history) return;
     const g = c.getContext("2d"), W = c.width, H = c.height, hist = paneData.history, facs = paneData.factions;

@@ -6326,9 +6326,11 @@ engine keeps first; accounting it does not keep is a new item.
   itself a reason to show only what has moved.
 - **The graphs:** `sample()` writes one row a day and the engine keeps the last 600 — about 1.6 game
   years. "Up 12% since last year" works only inside that; a world older than 600 days has lost its
-  start until item 19 keeps more. The page already says more than it has: the World tab reads "One
-  point a day, since the world began (the last N days)", which is untrue after day 600. Say "the last
-  N days" only — that one line can be fixed before the rest of 21.
+  start until item 19 keeps more. The page said more than it had: the World tab read "One point a
+  day, since the world began (the last N days)", untrue after day 600. **Fixed 2026-11-24**
+  (`graphsPane` in `index.html`): it says "since the world began" only while the first row kept is
+  day 1, and otherwise "for the last N days. Days before day D are not kept." Checked on a fresh
+  world in the browser and on a 610-day world in node ("Days before day 12 are not kept").
 
 **Research first:** what players of simulation games say brings them back and what they find noise.
 **Ric decides:** what goes behind a tap.
