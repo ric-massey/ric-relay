@@ -1777,7 +1777,9 @@ migration marked "safe to re-run", and re-running it would have put the original
 ## Verifying a change
 
 There is no build. There is a test runner — `node .github/checks.mjs` runs every quick
-suite in the repo in a couple of seconds and `--slow` adds the two games' simulations, the
+suite in the repo, side by side, one per core (about nine minutes here since 2026-11-23, against
+about 45 one at a time — World Builder's simulations are most of it; `--jobs 1` runs them in
+turn, and an unknown flag prints the usage instead of running anything) and `--slow` adds the two games' simulations, the
 universe Lab's pre-flight and World Builder's two engines —
 and CI runs it on every push. So verification is: run that, serve the folder, and open
 the pages you touched.

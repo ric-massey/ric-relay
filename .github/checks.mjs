@@ -8,6 +8,16 @@
        node .github/checks.mjs            the quick ones — seconds
        node .github/checks.mjs --slow     and the simulations — about ten minutes
        node .github/checks.mjs --only movie
+       node .github/checks.mjs --jobs 1   one suite at a time, as it was
+
+   Suites run side by side, one per core the machine offers (2026-11-23, Ric:
+   "we cant speed up those tests at all?"): one at a time, the quick lane had
+   grown to about 45 minutes, nearly all of it World Builder's simulations,
+   each using one core while the rest sat idle. Every suite is its own
+   process, so they cannot share memory; what is printed is still in this
+   file's order, each suite as soon as it and everything above it is done.
+   A suite that only fails beside others is a real bug in that suite (a shared
+   file, a port, a clock), not a reason to go back to --jobs 1.
 
    Everything here runs with nothing installed: plain node, plus python3 for
    the halves of things that are written in Python. The one test left out is
@@ -17,7 +27,8 @@
    .github/workflows/checks.yml runs this on every push. If you add a test,
    add it here, or it joins the pile that used to pass. */
 
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { availableParallelism } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync } from 'node:fs';
@@ -245,8 +256,21 @@ const SUITES = [
 ];
 
 const args = process.argv.slice(2);
+/* An unknown flag stops here rather than running everything: `--help` once
+   started a full 45-minute run by accident (2026-11-23). */
+const KNOWN = new Set(['--slow', '--all', '--only', '--jobs']);
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--only' || args[i] === '--jobs') { i++; continue; }
+  if (!KNOWN.has(args[i])) {
+    console.log('node .github/checks.mjs [--slow] [--only <name>] [--jobs <n>]\n' +
+      '  --slow       add the simulations\n  --only <s>   suites whose name contains s\n' +
+      '  --jobs <n>   how many at once (default: one per core, ' + availableParallelism() + ' here)');
+    process.exit(args[i] === '--help' || args[i] === '-h' ? 0 : 2);
+  }
+}
 const slow = args.includes('--slow') || args.includes('--all');
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
+const jobs = args.includes('--jobs') ? Math.max(1, Number(args[args.indexOf('--jobs') + 1]) || 1) : availableParallelism();
 
 let ran = 0, failed = [], skipped = [];
 const started = Date.now();
@@ -272,37 +296,67 @@ const provedNothing = out => {
   return said ? said[0].trim() : '';
 };
 
+/* What will be printed, in order: a heading, then one entry per file that
+   fills in when its run ends. */
+const plan = [];
 for (const [name, files, speed] of SUITES) {
   if (speed === 'slow' && !slow) {
-    console.log(`\n── ${name} — skipped (--slow runs it)`);
+    plan.push({ text: `\n── ${name} — skipped (--slow runs it)` });
     continue;
   }
   if (only && !name.includes(only)) continue;
-
-  console.log(`\n── ${name}`);
-  for (const file of files) {
-    const t0 = Date.now();
-    const r = spawnSync('node', ['--test-reporter=tap', join(ROOT, file)], { cwd: ROOT, encoding: 'utf8' });
-    const secs = ((Date.now() - t0) / 1000).toFixed(1);
-    ran++;
-    const why = r.status === 0 ? provedNothing(r.stdout || '') : '';
-    if (why) {
-      skipped.push(file);
-      console.log(`   skip  ${file}  (${secs}s) — ${why}`);
-    } else if (r.status === 0) {
-      /* Green, but a suite that skipped some of its tests says how many. */
-      const { skip } = counts(r.stdout || '');
-      console.log(`   ok    ${file}  (${secs}s)${skip ? ` — ${skip} skipped` : ''}`);
-    } else {
-      failed.push(file);
-      console.log(`   FAIL  ${file}  (${secs}s)`);
-      /* The tail, because these suites print a line per assertion and the
-         answer is at the bottom. Enough to see what broke without opening it. */
-      const out = ((r.stdout || '') + (r.stderr || '')).trimEnd().split('\n');
-      for (const line of out.slice(-14)) console.log('         │ ' + line);
-    }
-  }
+  plan.push({ text: `\n── ${name}` });
+  for (const file of files) plan.push({ file, lines: null });
 }
+
+/* One file's run, with its output kept rather than streamed. */
+const run = file => new Promise(done => {
+  const t0 = Date.now();
+  const child = spawn('node', ['--test-reporter=tap', join(ROOT, file)], { cwd: ROOT });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', d => { stdout += d; });
+  child.stderr.on('data', d => { stderr += d; });
+  child.on('error', e => { stderr += String(e); });
+  child.on('close', status => done({ status, stdout, stderr, secs: ((Date.now() - t0) / 1000).toFixed(1) }));
+});
+const report = (file, r) => {
+  ran++;
+  const why = r.status === 0 ? provedNothing(r.stdout) : '';
+  if (why) {
+    skipped.push(file);
+    return [`   skip  ${file}  (${r.secs}s) — ${why}`];
+  }
+  if (r.status === 0) {
+    /* Green, but a suite that skipped some of its tests says how many. */
+    const { skip } = counts(r.stdout);
+    return [`   ok    ${file}  (${r.secs}s)${skip ? ` — ${skip} skipped` : ''}`];
+  }
+  failed.push(file);
+  /* The tail, because these suites print a line per assertion and the
+     answer is at the bottom. Enough to see what broke without opening it. */
+  const out = (r.stdout + r.stderr).trimEnd().split('\n');
+  return [`   FAIL  ${file}  (${r.secs}s)`, ...out.slice(-14).map(line => '         │ ' + line)];
+};
+
+let printed = 0;
+const flush = () => {
+  while (printed < plan.length && (plan[printed].text !== undefined || plan[printed].lines)) {
+    const e = plan[printed++];
+    if (e.text !== undefined) console.log(e.text); else for (const l of e.lines) console.log(l);
+  }
+};
+const queue = plan.filter(e => e.file);
+let next = 0;
+const worker = async () => {
+  while (next < queue.length) {
+    const e = queue[next++];
+    e.lines = report(e.file, await run(e.file));
+    flush();
+  }
+};
+flush();
+await Promise.all(Array.from({ length: Math.min(jobs, queue.length || 1) }, worker));
+flush();
 
 const mins = ((Date.now() - started) / 1000).toFixed(0);
 console.log(`\n${ran} suite${ran === 1 ? '' : 's'} in ${mins}s — ` +
