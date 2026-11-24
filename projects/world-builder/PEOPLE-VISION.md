@@ -808,12 +808,14 @@ when it is built.
   (2026-11-17, TODO 8: by the food brought into it.) (2026-11-21, TODO 15.5b2: a leader buys grain in for a hungry town, sells it cheap or gives it by their nature, makes hoarders sell, lays in after the harvest; a starting city still empties, because treasuries hold nothing — 15.5t.) (2026-11-21, TODO 15.5t: a tax on the harvest, in kind, set by each leader's nature; treasuries can pay; the city still empties, by people moving out.)
 - [x] The start: empty land, villages, towns, or cities already standing (Ric: "all of this
   being choices"). (2026-11-17, TODO 8: hamlets, villages, market towns, a city.)
-- [ ] Ruins: what a dead or destroyed place leaves behind. Ric, 2026-11-14: "ruins... seems like it
+- [x] Ruins: what a dead or destroyed place leaves behind. Ric, 2026-11-14: "ruins... seems like it
   needs to be viable for scavengers as well". So a ruin still holds real things — food that keeps,
   tools, weapons, materials, shelter — and they run out as they are taken. Nothing is made up
   to be found: what is in a ruin is what was there when it fell, less what rotted and what
-  others took first.
-- [ ] A world that starts already ruined, as a choice at the start.
+  others took first. (2026-11-24, TODO 16: every building wears while nobody is in it, stage by stage, and is
+  mended for less than new; a ruin's store rots by kind; scavenging; resettling a ruin.)
+- [x] A world that starts already ruined, as a choice at the start. (2026-11-24, TODO 16: "Places empty at the
+  start", none, a third, or all but one place a people.)
 
 **4. A person**
 - Now: five of the ten agreed traits (bold, warm, greedy, stubborn, loyal), set at birth and
@@ -847,7 +849,7 @@ when it is built.
   wood, stone, ore, wool and hides; Ric: "Few and clear".)
 - [x] Ways to live other than farming: fishing, herding, hunting, cutting wood, mining, and
   scavenging ruins — a living that lasts only as long as the ruins do.
-  (2026-11-16/17, TODO 6c and 9: all but scavenging, which is item 16.)
+  (2026-11-16/17, TODO 6c and 9: all but scavenging, which is item 16.) (2026-11-24, TODO 16: scavenging.)
 - [ ] Money kept simple (decided). What "almost no money" means for how people trade.
 - [x] Who owns land and buildings. (2026-11-16, TODO 7c: each faction's own land rule.)
 

@@ -5575,7 +5575,15 @@ Each from the part named; none started.
 - **Read the research.** Every part of 15.11 and 15.12 was built from the works named as remembered; read them, write
   what they say beside each number, and change a number only where a source says so.
 
-### [ ] 16. Ruins and scavenging
+### [x] 16. Ruins and scavenging
+
+**Done 2026-11-24** (Ric: "finnish all of 16"): buildings wear only while nobody is in them, five stages by
+what their walls are, mended for a share of new; every place has the buildings for what it does, each drawn in its
+own shape; walls stand while lived in; a ruin keeps what was there and it rots by kind; ruins known, told of,
+scavenged and resettled; a grudge from seeing or hearing of the taking; places empty at the start; grinding and
+baking with the mill's and an oven's share. Four settings; off is the old world exactly (`test/ruins.test.mjs`).
+README, "Ruins and scavenging; grinding and baking". What was left is 16b.
+
 
 **Now:** a dead village leaves nothing.
 **Ric (2026-11-20):** the unit is the **building**, not the village — any building nobody keeps up
@@ -5844,6 +5852,19 @@ means? Is grinding a household's chore for anybody in it, or by custom (15a)?
   no figure in years was found. *Still a guess.*
 - *Timber frames:* unrepaired reconstructions stood 13 to 40 years (above).
 - *Stone:* centuries; walls went when people took them down.
+
+### [ ] 16b. What item 16 left
+
+Each from item 16; none started.
+- **The family that left** holding a ruin as theirs, apart from their people (16 holds it at the level of the people).
+- **Building the store, market or hall by hand**: they come with what the place does, and are not worked on.
+- **A look of its own for each kind at each stage**: all buildings share the five stages, each in its own shape and
+  colour; a mill's wheel or a temple's columns falling are not drawn.
+- **What a common oven saves in firewood**: no figure was found; only the hours are saved.
+- **Who builds the first mill and oven, and whether people must use them** (TODO 16's "questions for later"):
+  answered in Ric's absence with the recommended choice — the village builds them, as the mill already was (15f),
+  and grinding at home stays open to all. A lord's mill people must use (suit of mill) is not built. Ric to say.
+- **Danger in ruins** stays with item 18 (Ric).
 
 ### [ ] 17. Catastrophes on the land
 
@@ -6133,4 +6154,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-23 | 15.6h, 15.6i, 15.10 | AMD Ryzen 5 3600, 24 GB | 2.31 s a day (2.25 before, the same run of the old engine) | *not run* | 8.2 MB, 1.60 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.19, 2,000 0.82 → 0.80, 5,000 2.25 → 2.31 s a day; within the 5% budget at 5,000 and within run-to-run noise below. |
 | 2026-11-23 | the log says why | AMD Ryzen 5 3600, 24 GB | 2.37 / 2.51 s a day (2.52 / 2.36 the last engine, alternated) | *not run* | 8.2 MB, 1.60 KB | a reason written only when an event is logged; no cost. |
 | 2026-11-24 | 15.11, 15.12 (item 15 finished) | AMD Ryzen 5 3600, 24 GB | 2.30 / 2.28 s a day (2.43 / 2.39 before 15.11, alternated) | *not run* | 8.2 MB, 1.60 KB | `--quick`: 400 0.18 → 0.19, 2,000 0.80 → 0.77, 5,000 2.41 → 2.29 s a day. 15.12a's dice alone, against the engine before them: 5,000 people over three seeds 2.36 s a day both ways; four fields on a person had made it 70% slower until the dice went in one object (`p.dc`). |
+| 2026-11-24 | 16 | AMD Ryzen 5 3600, 24 GB | 2.41 / 2.30 s a day (2.27 / 2.31 before, alternated) | *not run* | 19.0 MB at the start, 18.8 before | `--quick` old then new, twice: 400 0.19 0.18 → 0.18 0.18, 2,000 0.78 0.78 → 0.82 0.77; within the drift. The bench's 5,000 MB column read 17.3 against 8.2 both times; measured directly the start is the same (the column carries the row before). A ruin, a house's stage and grinding cost nothing measurable. |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

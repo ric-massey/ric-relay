@@ -3451,6 +3451,78 @@ faith: cited as remembered, not read this session.
   a mutiny, a famine and a find carry the chain on the News tab ("after: …"), five links back; the person panel shows
   theirs, what they are best at, and what they are working toward. The newest 20,000 links are kept.
 
+### Ruins and scavenging; grinding and baking (2026-11-24)
+
+TODO item 16, in Ric's answers of 2026-11-20 (written into the item). Four settings: **Buildings left alone** and
+**Grinding and baking**, on by default; **Scavenging**, on, under the first; **Places empty at the start**, "None" by
+default. With the first two "old" and scavenging off, the world is the one before item 16 exactly
+(`test/ruins.test.mjs` holds its fingerprint; every older test's `LATER` list turns them off).
+
+- **The unit is the building** (Ric: "it should be a dead building"). A house, and every other building a place has,
+  wears only while nobody lives or works in it (Ric: "If they are living in it it doesn't need patches") — `h.left`
+  is when it was last left empty, `stageOf` reads the stage off it: kept, **worn** at 3 years, **roof holed** at 10,
+  **roofless** at 20, **fallen** at 35 and **a mound** at 60 for timber walls; stone walls stand roofless until 200
+  and are a mound at 500. Guesses from unrepaired reconstructions standing 13 to 40 years (Mytum and Meek; West
+  Stow; *The Life Cycle of Structures in Experimental Archaeology*) and thatch lasting 15–30 years kept up (Historic
+  England; the Thatch Advice Centre); no figure was found for a roof nobody mends. A burned house is fallen, then a
+  mound. Walls are stone where most of what went in was stone (`buildShift`), and for the first houses where stone
+  lies within 2 km and the household is better off. Worked out once a day (`ruinsDay`), a look at every house.
+- **Mended before it is lived in** (Ric: "Needs to be fixed if it isn't but cost less then making a new one"). A
+  household looking for a house takes the least gone empty one; past worn, it is a building site again at a share
+  of new — a tenth worn, 30% holed, half roofless, three-quarters fallen, nine-tenths a mound (`mendHouse`).
+- **The other buildings** (Ric's table, TODO 16). A place has a **store**, a **market** once it is a town, a
+  **hall** where its people's leader lives, a **smithy** once it has twenty and knows smithing, a **landing** where
+  it has a boat, a **fort** once it has the low thick wall, and the workplaces, shrines and temples it has built,
+  each drawn in its own size and colour (`BL_SIZE`). They stand for what the place already does, so they are not
+  built by hand; they wear like houses once the place is empty, and when it is lived in again a workplace, shrine or
+  temple is work to finish again at the same shares, the rest are paid for from the store (`mendBuilding`).
+- **Walls** (Ric: "4 years of peace is that realistic for the walls?" — no: York, Worcester and the German towns
+  mended theirs for centuries). A wall no longer falls in peace; once its place is empty it goes in 30 years if
+  timber and 300 if stone (`v.wallSt`, `v.wallWd`: what went into it). Guesses; no figure for a palisade was found.
+- **What a ruin holds** is what was there: its store, and what its last people had (`die` already put a dead
+  person's food, goods and gear in it). It rots by kind (`ROT_DAY`): grain half in three months — a watched store
+  loses 2–5% a season (FAO), medieval farmers seldom kept wheat two years (McCloskey and Nash), an unwatched one is
+  a guess — wool and hides half a year, wood six, goods eight, iron fifteen, stone never. Measured: 400 of grain in
+  a ruin is 24 a year later, 20 goods 18, 30 stone 30.
+- **Knowing of a ruin** is held in the mind (item 11, `M_RUIN`, half gone in two years): its neighbours within
+  5 km when a place dies, whoever passes within a kilometre, and anybody told in a talk ("Nobody's left at X.
+  There's still things lying about."). Found empty, it is forgotten.
+- **Scavenging** is weighed in `choose` like cutting firewood: what they think is there against the walk, up to
+  15 km. Three hours of searching, then home with the most worth carrying of what is left — a back-load, 25 days of
+  grain or 3 goods (`SCAV_CARRY`) — never stone (Ric: no stone robbing). Food goes to the household, goods to the
+  person, the rest is sold to the village. Measured (seed 5, 300 people, a third of the places empty): 138 worth in
+  the ruins taken in a month by 28 trips, word passed 106 times, two ruins settled; three trips or fewer in the two
+  months after.
+- **Whose it was** (Ric: "Anyone. But people may still be protective of the land or view it as theirs", "only if
+  they see them or hear about it"). Taking from another people's ruin is news at the ruin, once a season a ruin and
+  a people: those who see it, and those told, hold it against the people the telling names (`lootedFrom`), so a
+  wrong telling blames the wrong people. The family that left is not singled out; the people is.
+- **Settling in a ruin.** A place sending families out may choose a ruin within reach over open land, a tenth more
+  for its houses; the new place takes the ruin's houses (to mend), store, buildings, wall, well and boat
+  (`takeRuin`). Most ruins stay ruins, as most English deserted villages did.
+- **Places empty at the start** (Ric: "if it starts empty then it is unknown"): the world is made as usual, then a
+  third of the places, or all but one place a people, are emptied with nothing said, what they had left in the
+  store, each a different number of years into its decay from the seed (a few months to thirty, the recent likelier).
+  The survivors know the empty places within 10 km.
+- **Grinding and baking** (Ric: "probably needs to be added"). The two hours of cooking (15.5n) become cooking
+  (1¼ hours, a quarter more a mouth), grinding — a fifth of an hour a mouth at a rotary quern, about an hour a day
+  for five (Mills Archive), 4.3 times that at a saddle quern before iron working (Journal of Archaeological Science
+  vol. 72), a ninth of it with a mill (ICAR, *Indian Farming*: three hours to a third) — and baking, half an hour at
+  home or a tenth at a common oven. The miller is paid in grain, a sixteenth (Chester's toll, British History
+  Online); a place of forty builds an oven (150 hours, a guess), and each household gives it a twenty-fourth of its
+  day's bread, into the store (banal ovens were paid in kind; the share is a guess). With "old", the 15.5n hours.
+
+**Measured** (a year of the default world, three seeds, before → after): people 383, 398, 387 → 382, 389, 386;
+nobody starved either way; births 56 → 53; hours of house work 455,000 → 665,000 (grinding by hand); an oven in
+six or seven places a world, taking 3,400 to 4,400 days of bread a year into the stores. The bench is the same
+within the machine's drift (5,000 people: 2.27–2.31 → 2.30–2.41 s a day). A wall after 500 days of peace: 1.00, was
+0.80.
+
+**Left out** (TODO 16b): the family who left holding a ruin as theirs, apart from their people; danger in ruins
+(Ric: item 18's); building a store, market or hall by hand; a separate look for each kind at each stage (they share
+the five stages, each in its own shape and colour); what an oven saves in firewood (no figure found); a ruin's
+fields going back to scrub on their own clock (they follow the land's, 15.5d).
+
 ### A land of one village, and beyond its edge (2026-11-22)
 
 TODO item 15.5c. Ric asked for land of about 2 km²; the smallest was 5 km across (25 km²), where the

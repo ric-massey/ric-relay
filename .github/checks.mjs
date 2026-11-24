@@ -232,6 +232,7 @@ const SUITES = [
   ['world-builder own dice', ['projects/world-builder/test/dice.test.mjs']],   // TODO 15.12a, seconds
   ['world-builder faith, deeper', ['projects/world-builder/test/faithdeep.test.mjs']],   // TODO 15.11b to z, a few minutes
   ['world-builder lives with a history', ['projects/world-builder/test/lives.test.mjs']],   // TODO 15.12b to e, a few minutes
+  ['world-builder ruins and scavenging', ['projects/world-builder/test/ruins.test.mjs']],   // TODO 16, under a minute
   ['world-builder births', ['projects/world-builder/test/births.test.mjs'], 'slow'],   // TODO 15.25
   // About eight minutes: forced wars through a harvest, a siege with and without a wall (TODO 14e).
   ['world-builder walls', ['projects/world-builder/test/walls.test.mjs'], 'slow'],

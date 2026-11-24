@@ -899,6 +899,7 @@
       snap = m; askGap = Math.max(15, m.cost * 6);
       if (m.vs) { vs = m.vs; washCheck(); }
       if (m.homes) homesArr = m.homes;
+      if (m.bl) blArr = m.bl;   // TODO 16
       if (m.tracks) { trackMap = new Map(); for (let k = 0; k < m.tracks.length; k += 2) trackMap.set(m.tracks[k], m.tracks[k + 1]); }
       if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
       if (m.fs) { fs = m.fs; washCheck(); }
@@ -1667,6 +1668,7 @@
      villages are. Making them every frame was a third of a frame at the
      usual size. */
   const FIELD_BLOCK = 64, fieldBlocks = new Map();
+  let blArr = null;   // the other buildings (TODO 16): nine numbers each, see people-host.js
   let fieldsFor = null, housesFor = null, houses = null, homesArr = null, heldMap = null, trackMap = null;   // trackMap: square -> 1 a path, 2 a road (TODO 7d)   // heldMap: square -> house holding it (TODO 7c)   // houses: where they stand, baked into the blocks
   function fieldBlock(bx, by) {
     const w = world, own = landNow.owner, key = bx + ":" + by;
@@ -1685,19 +1687,30 @@
   /* The houses, as the engine has them (TODO 7a): where each stands, how long and wide in
      squares, which way it faces, and whose village. Seen from above, a house is its roof:
      the colour of its people's faction over thatch, with the ridge along its length. */
+  /* Kinds as people.js numbers them (BL_KINDS there), and the colour of each from above (TODO 16). */
+  const BL_KINDS = ["store", "market", "hall", "smithy", "dock", "fort", "oven", "mill", "power", "works", "line", "tower", "shrine", "temple"];
+  const BL_COL = { store: "#a8875a", market: "#c9b27a", hall: "#9a6b4f", smithy: "#5d5650", dock: "#7c6248", fort: "#8d8a80", oven: "#b86b3c", mill: "#a0896a", power: "#6e6a66", works: "#7d7570", line: "#9c8f7a", tower: "#7a7a86", shrine: "#c9a0dc", temple: "#d8c8a8" };
   function makeHouses() {
     const out = [], H = homesArr;
     if (!H) return out;
     for (let k = 0; k < H.length; k += 7) {
       const v = vs[H[k + 5]];
       /* And how far built (TODO 7b): a site shows as its timber frame, its roof thatched by quarters. */
-      out.push({ x: H[k], y: H[k + 1], len: H[k + 2], wid: H[k + 3], ang: H[k + 4], col: v ? factionColour(v.f) : "#b9c4c1", v: H[k + 5], built: H[k + 6] >= 1 ? 1 : H[k + 6] < 0 ? -1 : Math.floor(H[k + 6] * 4) / 4 });
+      /* And how far gone (TODO 16): 1 + the stage, a half more for stone walls; -2 a burned house gone to a mound. */
+      const b = H[k + 6], stage = b >= 2 ? Math.floor(b - 1) : b === -2 ? 5 : 0;
+      out.push({ x: H[k], y: H[k + 1], len: H[k + 2], wid: H[k + 3], ang: H[k + 4], col: v ? factionColour(v.f) : "#b9c4c1", v: H[k + 5], built: b >= 1 ? 1 : b < 0 ? -1 : Math.floor(b * 4) / 4, stage: stage, stone: b >= 2 && b - Math.floor(b) > 0.25, round: H[k + 2] === H[k + 3] });
+    }
+    /* The village's other buildings (TODO 16), each its own colour and shape, worn as a house is. */
+    const B = blArr;
+    if (B) for (let k = 0; k < B.length; k += 9) {
+      const kind = BL_KINDS[B[k]];
+      out.push({ x: B[k + 1], y: B[k + 2], len: B[k + 3], wid: B[k + 4], ang: B[k + 5], v: B[k + 6], col: BL_COL[kind] || "#a08a6a", built: 1, stage: B[k + 7], stone: B[k + 8] > 0, kind: kind, round: kind === "oven" || kind === "tower" });
     }
     return out;
   }
   /* The houses changed: only the blocks round the ones that came, went or changed colour are drawn again. */
   function updateHouses() {
-    const next = makeHouses(), key = h => h.x.toFixed(4) + "," + h.y.toFixed(4) + "," + h.len.toFixed(5) + "," + h.col + "," + h.built;
+    const next = makeHouses(), key = h => h.x.toFixed(4) + "," + h.y.toFixed(4) + "," + h.len.toFixed(5) + "," + h.col + "," + h.built + "," + h.stage + (h.kind || "");
     const before = new Set((houses || []).map(key)), after = new Set(next.map(key));
     const moved = (houses || []).filter(h => !after.has(key(h))).concat(next.filter(h => !before.has(key(h))));
     if (moved.length) for (const k of [...chunks.keys()]) {
@@ -1709,7 +1722,8 @@
        or a city as one block when its houses are too small to tell apart (Ric: "Houses, then a block"). */
     hulls = new Map();
     const by = new Map(); for (const h of next) { const l = by.get(h.v); if (l) l.push(h); else by.set(h.v, [h]); }
-    for (const [vid, list] of by) {
+    for (const [vid, list0] of by) {
+      const list = list0.filter(h => h.stage < 3);   // a town's outline is round what still stands (TODO 16)
       if (list.length < 3) continue;
       const pts = list.map(h => [h.x, h.y]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
       const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -1729,16 +1743,35 @@
   function paintHouses(g, P, x0, y0, x1, y1) {
     if (!houses || !houses.length) return;
     const roofs = new Map(), ridges = new Path2D(), lines = new Path2D(), frames = new Path2D(), ash = new Path2D(), grow = Math.max(1, 3 / (0.016 * P));
+    /* How far gone (TODO 16): worn thatch greyed, the frame through a holed roof, roofless walls round
+       weeds, rubble, and at last a mound in the grass. Stone walls are drawn paler than timber ones. */
+    const worn = new Path2D(), wallsT = new Path2D(), wallsS = new Path2D(), weeds = new Path2D(), rubble = new Path2D(), mound = new Path2D(), rings = new Path2D();
+    const quad = (path, pts) => { path.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) path.lineTo(pts[k][0], pts[k][1]); path.closePath(); };
     for (const h of houses) {
       if (h.x < x0 - 0.2 || h.y < y0 - 0.2 || h.x > x1 + 0.2 || h.y > y1 + 0.2) continue;
       const X = (h.x - x0) * P, Y = (h.y - y0) * P, L = h.len * P * grow / 2, Wd = h.wid * P * grow / 2;
       const c = Math.cos(h.ang), sn = Math.sin(h.ang);
+      const corners = (k) => [[-L * k, -Wd * k], [L * k, -Wd * k], [L * k, Wd * k], [-L * k, Wd * k]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
+      const shape = (path, k) => { if (h.round) { path.moveTo(X + L * k, Y); path.arc(X, Y, L * k, 0, 6.2832); } else quad(path, corners(k)); };
+      if (h.stage === 5) { shape(mound, 1.15); continue; }   // TODO 16: a mound in the grass
       if (h.built < 0) {
         /* Burned (TODO 14b): a charred floor and its walls' stumps, until somebody starts on it again. */
         const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
         ash.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) ash.lineTo(pts[k][0], pts[k][1]); ash.closePath();
         continue;
       }
+      if (h.stage === 4) { shape(rubble, 1); continue; }
+      if (h.stage === 3) { shape(weeds, 0.92); shape(h.stone ? wallsS : wallsT, 1); continue; }
+      if (h.stage === 2) {
+        let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
+        const q = [[-L, -Wd], [0, -Wd], [0, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
+        if (h.round) shape(r, 0.6); else quad(r, q);
+        shape(h.stone ? wallsS : wallsT, 1);
+        for (let k = 1; k < 4; k++) { const u = -L + 2 * L * k / 4; frames.moveTo(X + c * u + sn * Wd, Y + sn * u - c * Wd); frames.lineTo(X + c * u - sn * Wd, Y + sn * u + c * Wd); }
+        continue;
+      }
+      if (h.kind === "fort") { shape(rings, 1); shape(rings, 0.8); if (h.stage === 1) shape(worn, 1); continue; }   // a fort: its walls round an open yard
+      if (h.stage === 1) shape(worn, 1);
       if (h.built < 1) {
         /* A building site: the outline, posts across it, and the roof as far as it has got. */
         const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
@@ -1752,7 +1785,7 @@
         continue;
       }
       let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
-      if (h.len === h.wid) { r.moveTo(X + L, Y); r.arc(X, Y, L, 0, 6.2832); lines.moveTo(X + L, Y); lines.arc(X, Y, L, 0, 6.2832); continue; }   // a round hut (TODO 15d)
+      if (h.round) { r.moveTo(X + L, Y); r.arc(X, Y, L, 0, 6.2832); lines.moveTo(X + L, Y); lines.arc(X, Y, L, 0, 6.2832); continue; }   // a round hut (TODO 15d); an oven or a tower (TODO 16)
       const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
       r.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) r.lineTo(pts[k][0], pts[k][1]); r.closePath();
       lines.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) lines.lineTo(pts[k][0], pts[k][1]); lines.closePath();
@@ -1762,6 +1795,11 @@
     g.lineWidth = Math.max(1, Math.min(2.5, P * 0.002)); g.strokeStyle = "#1c1710"; g.stroke(lines);
     g.strokeStyle = "rgba(42,35,24,.7)"; g.lineWidth = Math.max(1, P * 0.0025); g.stroke(ridges);
     g.strokeStyle = "#8a6a40"; g.lineWidth = Math.max(1, Math.min(3, P * 0.003)); g.stroke(frames);
+    g.fillStyle = "rgba(150,150,140,.45)"; g.fill(worn);
+    g.fillStyle = "rgba(96,128,72,.55)"; g.fill(weeds);
+    g.lineWidth = Math.max(1.5, Math.min(4, P * 0.004)); g.strokeStyle = "#6b5a44"; g.stroke(wallsT); g.strokeStyle = "#a7a294"; g.stroke(wallsS); g.strokeStyle = "#8d8a80"; g.stroke(rings);
+    g.fillStyle = "rgba(120,126,104,.7)"; g.fill(rubble); g.strokeStyle = "rgba(70,74,60,.8)"; g.lineWidth = Math.max(1, Math.min(2.5, P * 0.002)); g.setLineDash([2, 3]); g.stroke(rubble); g.setLineDash([]);
+    g.fillStyle = "rgba(110,140,90,.28)"; g.fill(mound);
     g.fillStyle = "rgba(38,30,26,.82)"; g.fill(ash); g.strokeStyle = "#0e0b09"; g.lineWidth = Math.max(1, Math.min(2.5, P * 0.002)); g.setLineDash([3, 2]); g.stroke(ash); g.setLineDash([]);
   }
   /* Hedges round the fields a household holds (TODO 7c): every side of a held square whose
@@ -2124,7 +2162,7 @@
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], works: ["Workplace", "#98a8a5"], camp: ["Camp", "#8fd39a"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], witch: ["Blamed", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
+                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], scavenged: ["Scavenging", "#98a8a5"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], works: ["Workplace", "#98a8a5"], camp: ["Camp", "#8fd39a"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], witch: ["Blamed", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
     ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     for (const e of f.marks) {
       const m = MARK[e.kind]; if (!m) continue;
@@ -2438,7 +2476,7 @@
       m.trace.slice().reverse().map(h => "<li>" + (h.day === null ? esc(h.name) + (h.place ? " in " + esc(h.place) : "") + (h.saw ? " saw it" : h.old ? " grew up knowing it" : " (heard it, but who from is not known)")
         : esc(h.from) + " told " + esc(h.name) + (h.place ? " in " + esc(h.place) : "") + ", day " + h.day + (h.changed ? ": <b>“" + esc(h.text) + "”</b> (changed in the telling)" : "")) + "</li>").join("") + "</ol></details>";
   }
-  const TALK_TOPICS = { gossip: "Talking about somebody", cold: "A cold word", fight: "A fight", quarrel: "A quarrel", help: "Asking for food", refuse: "Help refused", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
+  const TALK_TOPICS = { gossip: "Talking about somebody", cold: "A cold word", fight: "A fight", quarrel: "A quarrel", help: "Asking for food", refuse: "Help refused", tip: "Word of a ruin", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
   function exchangeTime(c) {
     const day = c.day || 0, minute = Math.floor(day % 1 * 1440);
     return "Year " + (Math.floor(day / 365) + 1) + " · day " + (Math.floor(day % 365) + 1) + " · " + String(Math.floor(minute / 60)).padStart(2, "0") + ":" + String(minute % 60).padStart(2, "0");

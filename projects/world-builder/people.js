@@ -96,8 +96,8 @@
   }
   /* The mind (TODO 11): what one slot can hold, and how long each lasts unrefreshed (Ric,
      2026-11-17: "Grudges last longest"). Half-lives in hours. */
-  const M_FRIEND = 1, M_KIN = 2, M_NEWS = 3, M_FOOD = 4, M_DEBT = 5, M_BELIEF = 6;
-  const M_HALF = [0, 365 * DAY_HOURS, 5 * 365 * DAY_HOURS, 90 * DAY_HOURS, 30 * DAY_HOURS, 5 * 365 * DAY_HOURS, Infinity];
+  const M_FRIEND = 1, M_KIN = 2, M_NEWS = 3, M_FOOD = 4, M_DEBT = 5, M_BELIEF = 6, M_RUIN = 7;   // M_RUIN: TODO 16, a ruin with something left in it
+  const M_HALF = [0, 365 * DAY_HOURS, 5 * 365 * DAY_HOURS, 90 * DAY_HOURS, 30 * DAY_HOURS, 5 * 365 * DAY_HOURS, Infinity, 2 * 365 * DAY_HOURS];
   const M_GRUDGE_HALF = 5 * 365 * DAY_HOURS;
   /* Turned away when hungry (2026-11-18): it cools things, so the hungry try somebody else
      next time, but on its own never makes an enemy (no lower than SNUB, short of the -0.35 at
@@ -288,6 +288,17 @@
       { key: "sleep", label: "Sleep", type: "select", def: "real",   // TODO 15.5s, 2026-11-22
         options: [["real", "As long nights make it: two sleeps far north in winter"], ["simple", "From dark to dawn in one piece (as before)"]],
         help: "Grown-ups go to bed a few hours after dark (longer by firelight, which burns the village's wood) and sleep what they need, about six and a half hours and an hour more in winter. Where the night is much longer than that — far from the equator in winter — they wake in the middle and are up an hour, talking and minding the fire, before a second sleep. Near the equator sleep stays in one piece." },
+      { key: "ruins", label: "Buildings left alone", type: "select", def: "real",   // TODO 16, 2026-11-24
+        options: [["real", "Fall in time; what was left stays and rots"], ["old", "Stand as built, and an empty place keeps all (as before)"]],
+        help: "A building nobody lives or works in wears: its roof first, then its walls, then it is a mound in the grass — timber in decades, stone walls in centuries. Moving into one means mending it first, for less than building new. What an emptied place held stays in it and rots: grain in months, wool and hides in a few years, tools and iron slowly, stone never. A wall stands while its place is lived in." },
+      { key: "scavenge", when: s => s.ruins !== "old", label: "Scavenging", type: "toggle", def: true,
+        help: "People who know of a ruin with something left in it may go and carry it off, weighed against any other work. A ruin empties as it is searched. Anybody may take; the people it belonged to hold it against whoever they see or hear of taking." },
+      { key: "startRuined", when: s => s.ruins !== "old", label: "Places empty at the start", type: "select", def: "none",
+        options: [["none", "None"], ["some", "About a third of them"], ["most", "All but one place a people"]],
+        help: "The world is made as usual, then some places are left standing empty, nobody knows since when or why. What was in them is still there, less what has rotted." },
+      { key: "bread", label: "Grinding and baking", type: "select", def: "real",   // TODO 16, 2026-11-24
+        options: [["real", "By hand at home, or at the mill and the oven for a share"], ["old", "Part of cooking (as before)"]],
+        help: "Grain is ground before it is bread: by hand at home, about an hour a day for a household with a rotary quern and four times that with a saddle quern before it, or at a mill for a sixteenth of the grain. A big village builds an oven, where bread is baked for a share of it. Needs Work in the house." },
     ]},
     { title: "Money", items: [
       { key: "money", label: "How they trade", type: "select", def: "coins",
@@ -990,7 +1001,7 @@
                     warFinds: 0, forts: 0, gunsLost: 0, gunsBought: 0, shots: 0, grenades: 0, blasts: 0, blastDead: 0, blastCivilians: 0, blastHouses: 0, leftInGround: 0, leftWentOff: 0, leftCleared: 0, bridgesBlown: 0,   // TODO 15.6
                     commissions: 0, drawnBattles: 0, routedSoldiers: 0, soldiersKilled: 0, battleDeclined: 0, battleCaught: 0, raidKilled: 0, raidTaken: 0, raids_met: 0, raids_lost: 0, raids_took: 0, raids_walled: 0, koRaid: 0, koRaiders: 0, koAtVillage: 0, koOpen: 0, koLine: 0, deadRaid: 0, deadRaiders: 0, deadAtVillage: 0, deadOpen: 0, deadLine: 0, lineDead: 0, lineKnocked: 0, unitsFormed: 0, officersLost: 0, battles: 0, contactHours: 0, nightsApart: 0, reservesSent: 0, flankBlows: 0, unitsWithdrew: 0, unitsBroke: 0,   // TODO 15.6b
                     tanksBuilt: 0, tanksLost: 0, aircraftBuilt: 0, aircraftLost: 0, sorties: 0, airScouted: 0, bombs: 0, storesBombed: 0, airRations: 0, airlifted: 0,   // TODO 15.6c
-                    armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, blamed: 0, favourLost: 0, prophets: 0, failed: 0, hunts: 0, witch: 0, drivenOut: 0, shunned: 0, acquitted: 0, celibate: 0, faithLoads: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+                    mended: 0, ruinGrudges: 0, ruinTips: 0, ruinRotted: 0, scavenged: 0, scavTrips: 0, resettled: 0, millToll: 0, ovenFee: 0, armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, blamed: 0, favourLost: 0, prophets: 0, failed: 0, hunts: 0, witch: 0, drivenOut: 0, shunned: 0, acquitted: 0, celibate: 0, faithLoads: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2066,8 +2077,12 @@
         if (!wet(x, y)) break;
       }
       const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
-                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9, chores: 0, small: 0, wood: 0, cold: 0 };   // wood, cold: TODO 15.5f   // chores, small: TODO 15.5n   // TODO 14b: when it last burned
+                  built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9, chores: 0, small: 0, wood: 0, cold: 0,
+                  left: Infinity, stage: 0, stone: 0 };   // TODO 16: empty since, how far gone, and stone walls (1) or timber   // wood, cold: TODO 15.5f   // chores, small: TODO 15.5n   // TODO 14b: when it last burned
       sizeHome(h, wealth);
+      /* TODO 16: the first houses are stone-walled where stone lies within 2 km and the household is
+         better off; later ones by what went into them (`buildShift`). No draw: the dice are untouched. */
+      if (RUINS) { const s = matGround(v).stone; h.stone = s >= 0 && Math.hypot(s % cols + 0.5 - v.x, ((s / cols) | 0) + 0.5 - v.y) <= 8 && wealth > 0.4 ? 1 : 0; }
       homes.push(h); (homesIn[v.id] || (homesIn[v.id] = [])).push(h);
       return h;
     }
@@ -2090,12 +2105,17 @@
     function startHouse(owner, v) {
       /* An empty house first: one whose household died out or moved away. */
       let empty = null;
-      for (const h of homesOf(v)) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { empty = h; break; }
-      if (empty) { empty.taken = true; moveIn(owner, empty); return empty; }
+      if (RUINS) { let es = 9; for (const h of homesOf(v)) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { const s = stageOf(h); if (s < es) { es = s; empty = h; if (s === 0) break; } } }   // the least gone (TODO 16)
+      else for (const h of homesOf(v)) if (h.v === v.id && h.built && h.n === 0 && !h.taken) { empty = h; break; }
+      /* TODO 16 (Ric: "Needs to be fixed if it isn't but cost less then making a new one"): a house
+         gone past kept is mended before it is lived in, a share of new by how far gone it is. */
+      if (empty && RUINS && stageOf(empty) >= 1) return mendHouse(owner, v, empty);
+      if (empty) { empty.taken = true; empty.left = Infinity; moveIn(owner, empty); return empty; }
       /* Or a site somebody gave up on. */
       /* (Or whose owner no longer waits on it: moved away, or fled and came back, TODO 14b.) */
       for (const h of homesOf(v)) if (h.v === v.id && !h.built && !waitsOn(h)) { h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood; owner.waitHouse = h.id; return h; }
       const h = newHome(v, clamp(funds(owner) / 40, 0, 1));
+      if (RUINS && MATS) h.stone = 0;   // TODO 16: a new house's walls are what goes into them
       h.built = false; h.owner = owner.id; sites.push(h); h.need = Math.round(floor(h) * 2); h.goodsNeed = Math.round(6 + floor(h) / 20);
       h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood;
       owner.waitHouse = h.id; count.sites++;
@@ -2212,15 +2232,17 @@
       const k = MATS ? (v.stone > v.wood ? "stone" : "wood") : "goods";
       if (h.goodsIn < h.goodsNeed && v[k] >= 1) {
         const price = MATS ? matPrice(v, k) : v.priceGoods;
-        if (shared) { v[k] -= 1; h.goodsIn++; if (!MATS) tookGoods(owner, v, 1); }
+        if (shared) { v[k] -= 1; h.goodsIn++; if (!MATS) tookGoods(owner, v, 1); if (RUINS && k === "stone") h.stoneIn = (h.stoneIn || 0) + 1; }
         else if (owner && funds(owner) - price >= keep) {
           const cost = price, tax = cost * taxOf(v);
           pay(owner, cost); v.till += cost - tax; factions[v.f].treasury += tax; v[k] -= 1; h.goodsIn++;
           if (!MATS) tookGoods(owner, v, 1);
+          if (RUINS && k === "stone") h.stoneIn = (h.stoneIn || 0) + 1;   // TODO 16
         }
       } else if (!MATS && h.goodsIn < h.goodsNeed && owner && owner.hp > 0) placeOrder(owner, v, h.goodsNeed - h.goodsIn);   // goods for the house, made to order (15.5a)
       if (h.work + h.goodsIn * GATHER_HOURS >= h.need + h.goodsNeed * GATHER_HOURS) {
         h.built = true; count.houses++;
+        if (RUINS) { h.left = Infinity; h.stage = 0; if (MATS) { h.stone = h.stone || ((h.stoneIn || 0) * 2 >= h.goodsNeed && h.goodsNeed > 0) ? 1 : 0; h.stoneIn = 0; } }   // TODO 16: walls of what went in; stone walls mended or rebuilt after a fire stay stone
         if (owner && owner.hp !== -99 && owner.home === h.v) moveIn(owner, h);
       }
     }
@@ -2278,7 +2300,7 @@
       if (HOUSEWORK) for (const h of homes) h.small = 0;
       for (const p of people) if (p.hp !== -99 && p.dwelling >= 0) { const h = homes[p.dwelling]; h.n++; if (adult(p)) h.head = p.id; if (HOUSEWORK && p.age < 5) h.small++; }   // and a grown-up of it, for its share (TODO 7c)
       /* The hours a household owes, an hour at a time (TODO 15.5n). */
-      if (HOUSEWORK) for (const h of homes) if (h.n > 0) h.chores = Math.min(CHORES_MAX, h.chores + ((COOKING + COOK_EACH * (h.n - 1)) * (KNOW && (WORKS ? villages[h.v].millRun : villages[h.v].mill) ? 0.75 : 1) + MINDING * h.small) / (THIRST ? DAY_HOURS : 1));   // a mill grinds what a quern did (TODO 15e)   // counted hourly with thirst on, daily without
+      if (HOUSEWORK) for (const h of homes) if (h.n > 0) h.chores = Math.min(CHORES_MAX, h.chores + ((BREAD ? breadHours(h) : (COOKING + COOK_EACH * (h.n - 1)) * (KNOW && (WORKS ? villages[h.v].millRun : villages[h.v].mill) ? 0.75 : 1)) + MINDING * h.small) / (THIRST ? DAY_HOURS : 1));   // a mill grinds what a quern did (TODO 15e)   // counted hourly with thirst on, daily without
       for (const v of villages) v.fullest = null;
       for (const h of homes) { const v = villages[h.v]; if (v && (!v.fullest || h.water > v.fullest.water)) v.fullest = h; }
     }
@@ -2632,11 +2654,24 @@
     /* People act on what they hold, right or wrong: news that names their own side and another,
        of a war or a village taken, is a grievance against the other side as told. */
     function actOn(p, e, said) {
+      if (e.kind === "scavenged") { lootedFrom(p, said); return; }   // TODO 16
       if (e.kind !== "war" && e.kind !== "taken" && e.kind !== "feud") return;
       const mine = factions[p.f];
       if (!mine || !said.includes(mine.name)) return;
       p.loyal = clamp(p.loyal + 0.02, 0, 1);
       for (const x of factions) if (x.alive && x !== mine && said.includes(x.name) && mine.rel[x.id]) mine.rel[x.id].op = clamp(mine.rel[x.id].op - 0.002, -1, 1);
+    }
+    /* TODO 16 (Ric: "people may still be protective of the land or view it as theirs" — "only if they see
+       them or hear about it"): somebody who saw, or was told, that another people is carrying off what was
+       left in a ruin of their own people's holds it against that people, as told; a wrong telling blames
+       the wrong one. */
+    function lootedFrom(p, said) {
+      const mine = factions[p.f];
+      if (!mine) return;
+      let r = null, len = 0;
+      for (const v of villages) if (!v.alive && v.name && v.name.length > len && said.includes(v.name)) { r = v; len = v.name.length; }
+      if (!r || r.f !== p.f) return;
+      for (const x of factions) if (x.alive && x !== mine && said.includes(x.name) && mine.rel[x.id]) { mine.rel[x.id].op = clamp(mine.rel[x.id].op - 0.003, -1, 1); count.ruinGrudges++; }
     }
     /* ── acting on more of what is heard (TODO 12b) ──────────────────────
        Ric, 2026-11-19: sickness, famine, and prices and harvests. Each is read from what the person
@@ -2723,6 +2758,13 @@
       for (let o = o0; o < o1; o++) if (mKind[o] === M_FOOD && mAbout[o] !== hungry.id) { const x = mNow(o); if (x > bs) { bs = x; best = o; } }
       return best;
     }
+    /* The ruin p would tell q of: one p holds that q does not (TODO 16). */
+    function ruinTip(p, q) {
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      let best = -1, bs = 0.1;
+      for (let o = o0; o < o1; o++) if (mKind[o] === M_RUIN && mNow(o) > bs && mFind(q, M_RUIN, mAbout[o]) < 0) { bs = mNow(o); best = o; }
+      return best;
+    }
     /* Children start with a weaker copy of some of what a parent holds (Ric: "a mix of both"):
        the parent's newest news, a larder they know of, and their strongest feelings about
        others, grudges included but no deeper than a snub. */
@@ -2776,8 +2818,9 @@
         }
         else if (k === M_FOOD) { if (!who) continue; const by = mFrom[o] >= 0 ? byId.get(mFrom[o]) : null; text = who.name + " had food to spare" + (mFrom[o] >= 0 ? " (told by " + (by ? by.name : "somebody now gone") + ")" : ""); }
         else if (k === M_DEBT) { if (!who) continue; text = "Owes " + who.name + " for food"; }
+        else if (k === M_RUIN) { const r = villages[mAbout[o]]; if (!r) continue; const by = mFrom[o] >= 0 ? byId.get(mFrom[o]) : null; text = "Knows there is something left in the ruins of " + r.name + (mFrom[o] >= 0 ? " (told by " + (by ? by.name : "somebody now gone") + ")" : ""); }   // TODO 16
         const by = k !== M_BELIEF && mFrom[o] >= 0 ? byId.get(mFrom[o]) : null;
-        out.push({ kind: ["", "friend", "family", "news", "food", "debt", "belief"][k], text: text, strength: s, days: ago, from: by ? by.name : null });
+        out.push({ kind: ["", "friend", "family", "news", "food", "debt", "belief", "ruin"][k], text: text, strength: s, days: ago, from: by ? by.name : null });
       }
       return out;
     }
@@ -3082,7 +3125,8 @@
     const WORKS = S.works !== "none";   // TODO 15f: livings a place needs and can pay for, and workplaces (see "work and workplaces")
     /* A mill about as long to build as a bridge; a power works twice that; the works between. A power
        works burns two loads of wood a day. Guesses, said as such. */
-    const WORKS_HOURS = { mill: 600, power: 1200, works: 800, line: 300, tower: 400 }, POWER_WOOD = 2;
+    const WORKS_HOURS = { mill: 600, power: 1200, works: 800, line: 300, tower: 400, oven: 150 }, POWER_WOOD = 2;   // oven: TODO 16, a guess
+    const RUINS = S.ruins !== "old", SCAV = RUINS && S.scavenge !== false;   // TODO 16 (see "ruins")
     const SERVICES = ["healer", "teacher", "miller"];
     const MARRY = S.marriage !== "liking";   // TODO 15b: each people's marriage customs (see "who marries whom")
     const FAITH = S.faith !== false;   // TODO 15g (see "faith")
@@ -5463,6 +5507,17 @@
        person to make good. A household more than `BEHIND` hours behind wastes food (a seventh more
        eaten) and its little ones come to more harm. */
     const COOKING = 2, COOK_EACH = 0.25, MINDING = 1, CHORES_MAX = 16, BEHIND = 8, HOUSE_SPELL = 2;
+    /* Grinding and baking (TODO 16; Ric: "probably needs to be added"). A household's day of bread took about
+       an hour at a rotary quern (Mills Archive), and a saddle quern was 4.3 times slower (Journal of
+       Archaeological Science vol. 72, sixteen volunteers on both); a mill cut three hours of hand grinding to
+       a third of an hour (ICAR, Indian Farming) for a sixteenth of the grain (the toll at Chester, British
+       History Online). Cooking without them, baking at home and at a common oven: guesses. */
+    const BREAD = HOUSEWORK && S.bread !== "old", COOK_BARE = 1.25, GRIND_EACH = 0.2, SADDLE = 4.3, MILL_SPEED = 1 / 9, BAKE_HOME = 0.5, BAKE_OVEN = 0.1, MILL_TOLL = 1 / 16, OVEN_TOLL = 1 / 24;
+    function breadHours(h) {
+      const v = villages[h.v], milled = KNOW && (WORKS ? v.millRun : v.mill);
+      const quern = !KNOW || knows(v.f, "iron") ? 1 : SADDLE;   // the rotary quern came with the iron age
+      return COOK_BARE + COOK_EACH * (h.n - 1) + GRIND_EACH * h.n * (milled ? MILL_SPEED : quern) + (v.works && v.works.oven && v.works.oven.built ? BAKE_OVEN : BAKE_HOME);
+    }
     const SPIN_HOURS = 300, CLOTHES_WEAR = 1 / (1.5 * YEAR);
     /* The worst-clothed of a household, if anybody's clothes are thin. */
     function threadbare(p) {
@@ -5722,6 +5777,14 @@
           weigh("firewood", clamp(1 - h.wood / want, 0, 1) * (0.55 + chill() * 0.6) * heavyWish(p) - away(Math.hypot(sx - p.x, sy - p.y)) * 0.6 - n.food * 0.5 - n.water * 0.5 - n.rest * 0.4 - dark * 0.6,
             () => { go(p, sx - 0.3 + R() * 0.6, sy - 0.3 + R() * 0.6, "firewood"); p.wait = 0; });
         }
+      }
+      /* Scavenging (TODO 16): a ruin they know of with something left in it, weighed like cutting wood —
+         what they think is there against the walk. A ruin empties as it is searched, and is forgotten when
+         found empty, so this lasts only while ruins do. */
+      if (SCAV && ruinList.length && !p.cargo && p.vig >= FRAIL && !dark && p.job !== "soldier" && !(SPOILS && HELD.has(p.id))) {
+        const o = bestRuin(p);
+        if (o) weigh("scavenge", (0.3 + n.food * 0.5 + n.provide * 0.4) * clamp(o.load / 15, 0.1, 1.2) * heavyWish(p) - away(o.d) * 0.6 - n.water * 0.5 - n.rest * 0.4,
+          () => { p.at = o.r.id; go(p, o.r.x + (R() - 0.5) * 0.8, o.r.y + (R() - 0.5) * 0.8, "scavenge"); p.wait = 0; });
       }
       /* A ditch from the river (TODO 15.5p): dug after a dry year, cleaned every year, in the slack of it. */
       if (IRRIGATION && v.alive && p.job !== "soldier" && p.vig >= FRAIL && (v.wantDitch && !v.ditch || v.ditch && v.cleanWork < DITCH_CLEAN)) {
@@ -6165,6 +6228,13 @@
         return;
       }
       if (p.task === "wander") { arrive(p); return; }   // TODO 15i
+      if (p.task === "scavenge") {                     // TODO 16: hours of searching, then home with a load
+        if (!p.gathering) { p.gathering = true; p.wait = TK(SCAV_HOURS * 60); return; }
+        p.gathering = false; scavengeAt(p);
+        p.wait = 0; go(p, p.hx + (R() - 0.5) * 0.8, p.hy + (R() - 0.5) * 0.8, "scavhome");
+        return;
+      }
+      if (p.task === "scavhome") { bringHome(p); p.task = "idle"; p.wait = 0; return; }
       if (p.task === "serve") { serve(p, v); p.task = "idle"; p.wait = spell("market"); return; }   // TODO 15f
       if (p.task === "worksbuild") { const k = worksWanted(v)[0]; if (k) buildWorks(v, k, 4); p.task = "idle"; p.wait = spell("market"); return; }
       if (p.task === "shrine" || p.task === "temple") { holyWork(p, p.task); p.task = "idle"; p.wait = 0; return; }   // TODO 15.11g, w
@@ -7119,6 +7189,11 @@
           return;
         }
       }
+      /* 1b — word of a ruin with something left in it (TODO 16), passed like a tip about a larder. */
+      if (SCAV && ruinList.length && !war && a.mb >= 0 && b.mb >= 0 && adult(a) && adult(b) && R() < 0.3) {
+        const [x, y] = R() < 0.5 ? [a, b] : [b, a], o = ruinTip(x, y);
+        if (o >= 0) { const r = villages[mAbout[o]]; heard(y, M_RUIN, r.id, mNow(o) * 0.8, x.id, 0); count.ruinTips++; said(y, x, "tip", "Anything worth having round here?", "Nobody's left at " + r.name + ". There's still things lying about."); return; }
+      }
       /* 2 — two people with nobody. */
       if (adult(a) && adult(b) && !a.partner && !b.partner && !kin(a, b) && !war &&
           a.age < a.dieAt * 0.75 && b.age < b.dieAt * 0.75 && (fr > 0.1 || like > 0.3) && mayPair(a, b) && R() < 0.5 && (!MARRY || wouldWed(a, b))) {
@@ -7415,6 +7490,8 @@
       if (p.task === "sleep") return walking ? "Going home to sleep" : "Asleep";
       if (p.task === "watch") return "Awake in the night";   // TODO 15.5s
       if (p.task === "firewood") return walking ? "Going for firewood" : "Cutting firewood";   // TODO 15.5f
+      if (p.task === "scavenge") return walking ? "Going to the ruins of " + ((villages[p.at] || {}).name || "a place") : "Searching the ruins";   // TODO 16
+      if (p.task === "scavhome") return "Carrying home what was found";
       if (p.task === "buyfar") return "Going to buy grain where there is plenty";   // TODO 15.5g
       if (p.task === "water") return "Fetching water";
       if (p.task === "fish") return walking ? "Going fishing" : "Fishing";
@@ -8721,6 +8798,7 @@
         if (++v.empty > 6 && !waiting) {
           v.alive = false;
           note("gone", v.name + " stands empty.", 2, v.x, v.y, v.f);
+          if (RUINS) ruinKnown(v);   // TODO 16: the neighbours know
           const f = factions[v.f];
           f.treasury += v.till + v.bid; v.till = 0; v.bid = 0; v.bidWant = 0; v.bidFor = "";
           if (!villages.some(o => o.alive && o.f === v.f)) fall(f, -1);
@@ -8845,7 +8923,7 @@
           if (KIT_ON) { const kb = kitOf(factions[v.f]).wallBase; v.wallBase = v.wall > 0.05 && v.wallBase != null ? Math.max(v.wallBase, kb) : kb; }   // 15.6: the wall is what its builders could raise
           const need = (10 + v.pop * 0.5) / (KIT_ON ? 30 : eraWar(factions[v.f]).wallDays);   // a day's wood, stone or goods
           let got = 0;
-          if (MATS) { const st = Math.min(v.stone, need); v.stone -= st; got += st; const wd = Math.min(Math.max(0, v.wood - v.wantWood * 0.5), need - got); if (wd > 0) { v.wood -= wd; got += wd; } }
+          if (MATS) { const st = Math.min(v.stone, need); v.stone -= st; got += st; const wd = Math.min(Math.max(0, v.wood - v.wantWood * 0.5), need - got); if (wd > 0) { v.wood -= wd; got += wd; } if (RUINS) { v.wallSt = (v.wallSt || 0) + st; v.wallWd = (v.wallWd || 0) + Math.max(0, wd); } }   // TODO 16: what it is made of
           else { const g = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= g; got += g; }
           if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / (KIT_ON ? 30 : eraWar(factions[v.f]).wallDays)); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f, (t - v.raidAt < YEAR ? "raided within the year" : "in danger within two months")); } }
         } else if (KIT_ON && v.wall >= 1 && (v.fort || 0) < 1 && (t - v.dangerAt < 60 * DAY_HOURS || t - v.raidAt < YEAR) && v.foes === 0 && gunsFaced(v)) {
@@ -8854,7 +8932,7 @@
           let got = 0;
           if (MATS) { got = Math.min(v.stone, need); v.stone -= got; } else { got = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= got; }
           if (got > 0) { const was = v.fort || 0; v.fort = Math.min(1, was + got / need / 60); if (was < 0.5 && v.fort >= 0.5) { count.forts++; note("wall", v.name + " has built a low, thick wall to stand the guns.", 2, v.x, v.y, v.f, "its enemies have guns, and its old wall would not stand them"); } }
-        } else if (v.wall > 0 && !atWarAnywhere(factions[v.f])) { v.wall = Math.max(0, v.wall - 1 / (4 * 365)); if (v.fort > 0) v.fort = Math.max(0, v.fort - 1 / (20 * 365)); }   // gone in about four years of peace; a fort of stone stands longer
+        } else if (!RUINS && v.wall > 0 && !atWarAnywhere(factions[v.f])) { v.wall = Math.max(0, v.wall - 1 / (4 * 365)); if (v.fort > 0) v.fort = Math.max(0, v.fort - 1 / (20 * 365)); }   // gone in about four years of peace; a fort of stone stands longer. TODO 16 (Ric: "4 years of peace is that realistic for the walls?" — no): with Buildings left alone, a wall stands while its place is lived in, and falls only once it is empty (`ruinsDay`)
       }
       /* What an army does where it stands (TODO 14b): spoils the crops, burns what it can, takes
          the food; and people run from it, and come home when it has gone. */
@@ -8922,6 +9000,19 @@
         if (THIRST) { const d = freshDist[tileAt(x, y)]; s *= d <= FAR ? 1 : d <= 2 * FAR ? 0.85 : 0.6; }
         if (s > bs) { bs = s; best = { x: x, y: y }; }
       }
+      /* TODO 16: or a ruin within reach, its houses there to mend and what is left in it (Ric: a ruined
+         house is "fixed" before it is lived in, for less than building new). */
+      if (RUINS) for (const o of villages) {
+        if (o.alive || o.resettled !== undefined || !homesOf(o).length) continue;
+        const d = Math.hypot(o.x - v.x, o.y - v.y);
+        if (d < v.radius + 3 || d > v.radius + 14 || o.x < 3 || o.y < 3 || o.x > cols - 3 || o.y > rows - 3) continue;
+        if (villages.some(q => q.alive && Math.hypot(q.x - o.x, q.y - o.y) < q.radius + 3.5)) continue;
+        let s = 0;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) s += fert[tileAt(o.x + dx, o.y + dy)];
+        s = s / 25 + 0.1;   // houses to mend: worth a tenth of the land
+        if (THIRST) { const fd = freshDist[tileAt(o.x, o.y)]; s *= fd <= FAR ? 1 : fd <= 2 * FAR ? 0.85 : 0.6; }
+        if (s > bs) { bs = s; best = { x: o.x, y: o.y, ruin: o }; }
+      }
       const f = factions[v.f];
       if (!best) {
         /* No land left. That is a pressure a leader can feel — see `decide`. */
@@ -8932,6 +9023,7 @@
         .sort((a, b) => b.bold - a.bold).slice(0, Math.max(6, Math.floor(v.pop * 0.22)));
       if (goers.length < 4) return;
       const nv = newVillage(best.x, best.y, v.f);
+      if (best.ruin) { takeRuin(nv, best.ruin); note("founded", "People of " + v.name + " have settled in the ruins of " + best.ruin.name + ".", 1.5, nv.x, nv.y, v.f); }   // TODO 16
       if (ROAM && v.camp) { nv.camp = true; nv.movedAt = t; }   // a band that splits makes two camps (TODO 15i)
       const share = goers.length / v.pop;
       nv.food = v.food * share; v.food -= nv.food;
@@ -11170,6 +11262,8 @@
         if (WIRED && v.works && ((v.works.line && v.works.line.built) || (v.works.tower && v.works.tower.built) || (v.power && has(v.f, "radio")))) wiresUp = true;
         if (WIRED) buyCars(v);   // TODO 15d
         if (v.mill) v.millRun = v.mill && v.works && v.works.mill && v.works.mill.built && (hands.miller > 0);
+        /* The oven's share (TODO 16): each household a twenty-fourth of its day's bread into the store. */
+        if (BREAD && v.works && v.works.oven && v.works.oven.built) for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) { const h = homes[q.dwelling], g = Math.min(q.food * 0.2, (h ? h.n : 1) * OVEN_TOLL); q.food -= g; v.food += g; count.ovenFee += g; }
       }
     }
     /* What a service would bring somebody here, beside the land and the bench. */
@@ -11194,6 +11288,9 @@
           got += fee(par, 0.1);
           if (KNOW && knowsP(p, "writing") && !knowsP(q, "writing") && R() < (WIRED && has(p.f, "printing") ? 0.09 : 0.03)) { q.know = (q.know || 0) | (1 << TI_K.writing); count.taught++; }
         }
+      } else if (p.job === "miller" && BREAD) {   // TODO 16: paid in grain, a sixteenth of what is ground — half a day's of each household's
+        v.milledAt = t;
+        for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) { const h = homes[q.dwelling], g = Math.min(q.food * 0.25, (h ? h.n : 1) * 0.5 * MILL_TOLL); q.food -= g; p.food += g; count.millToll += g; }
       } else if (p.job === "miller") { v.milledAt = t; for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) got += fee(q, 0.05); }
       count.servicePaid += got;
     }
@@ -11207,24 +11304,302 @@
       if (w.power && w.power.built && !(w.works && w.works.built) && (asked(v) > 2 || warOrders)) want.push("works");
       if (WIRED && has(v.f, "telegraph") && !(w.line && w.line.built)) want.push("line");   // TODO 15d
       if (WIRED && has(v.f, "phone") && !(w.tower && w.tower.built)) { if (w.power && w.power.built) want.push("tower"); else v.wantPower = true; }
+      if (BREAD && v.pop >= 40 && !(w.oven && w.oven.built)) want.push("oven");   // TODO 16: a common oven, once a place is big enough
       return want;
     }
     function buildWorks(v, kind, hours) {
       const w = v.works || (v.works = {});
-      const b = w[kind] || (w[kind] = { kind, x: v.x + (kind === "mill" ? 0.8 : kind === "power" ? -0.9 : -0.9), y: v.y + (kind === "works" ? 0.9 : -0.6), built: false, work: 0 });
+      const b = w[kind] || (w[kind] = { kind, x: v.x + (kind === "mill" ? 0.8 : kind === "oven" ? 0.35 : -0.9), y: v.y + (kind === "works" ? 0.9 : kind === "oven" ? 0.45 : -0.6), built: false, work: 0 });
       b.work += hours;
       if (!b.built && b.work >= WORKS_HOURS[kind]) {
         b.built = true; count.worksBuilt++;
-        note("works", v.name + " has built " + { mill: "a water mill", power: "a power works", works: "works by its power works", line: "a telegraph office on the line", tower: "a telephone tower" }[kind] + ".", 2, v.x, v.y, v.f);
+        note("works", v.name + " has built " + { mill: "a water mill", power: "a power works", works: "works by its power works", line: "a telegraph office on the line", tower: "a telephone tower", oven: "a common oven" }[kind] + ".", kind === "oven" ? 1 : 2, v.x, v.y, v.f);
       }
     }
     function knock(v, kind) {
       const b = v.works && v.works[kind];
       if (!b || !b.built) return false;
       b.built = false; b.work = 0; count.worksBroken++;
-      note("works", "The " + { mill: "water mill", power: "power works", works: "works", line: "telegraph line", tower: "telephone tower" }[kind] + " of " + v.name + " has been " + (kind === "line" ? "cut" : "knocked down") + ".", 2.5, v.x, v.y, v.f);
+      note("works", "The " + { mill: "water mill", power: "power works", works: "works", line: "telegraph line", tower: "telephone tower", oven: "oven" }[kind] + " of " + v.name + " has been " + (kind === "line" ? "cut" : "knocked down") + ".", 2.5, v.x, v.y, v.f);
       if (kind === "power") v.power = false;
       return true;
+    }
+    /* ── ruins and scavenging (TODO 16, 2026-11-24) ──────────────────────────
+       Ric, 2026-11-20: the unit is the building, not the village — "if a village has 1 person there
+       and 15 buildings the other buildings would start breaking down the same way". A building in use
+       does not wear ("If they are living in it it doesn't need patches"); one nobody lives or works in
+       goes through five stages after kept — worn, roof holed, roofless, fallen, a mound in the grass —
+       on the clock of what it is made of, and is mended for a share of new before it is used again.
+       What an emptied place held stays in it and rots by kind. People who know of a ruin with
+       something left may go and carry it off, weighed in `choose` like cutting wood; anybody may take
+       ("Anyone. But people may still be protective of the land"), and the people it belonged to hold
+       it against whoever they see or hear of taking ("only if they see them or hear about it").
+       Nothing is ever put in a ruin: what is there was there. README, "Ruins and scavenging". */
+    /* Years untended to worn, roof holed, roofless, fallen, earthwork. The roof is thatch or timber
+       either way; a stone wall outlasts it by centuries. Guesses from the unrepaired reconstructions
+       (13 to 40 years standing) and thatch's 15–30 kept up; TODO 16's notes. */
+    const ROT_TIMBER = [3, 10, 20, 35, 60], ROT_STONE = [3, 10, 20, 200, 500];
+    const MEND = [0, 0.1, 0.3, 0.5, 0.75, 0.9];          // share of a new building's work to mend one at each stage
+    const WALL_TIMBER = 30, WALL_STONE = 300;             // years an empty place's wall takes to go: guesses, no figure found
+    /* What a ruin's store loses a day: grain half in three months (gone within one to two years, a
+       watched store's loss many times over), wool and hides half a year, wood six, goods eight, iron
+       fifteen; stone never. Guesses, said as such in the README. */
+    const ROT_DAY = { food: Math.pow(0.5, 1 / 90), wool: Math.pow(0.5, 1 / 365), hide: Math.pow(0.5, 1 / 365), wood: Math.pow(0.5, 1 / (6 * 365)), goods: Math.pow(0.5, 1 / (8 * 365)), iron: Math.pow(0.5, 1 / (15 * 365)) };
+    /* What one person carries off in a trip (a back-load of 25 to 30 kg; a unit of food is a day's grain),
+       what each is worth at the old fixed prices, how far a ruin is gone to, and the hours of searching. */
+    const SCAV_CARRY = { food: 25, goods: 3, iron: 3, wool: 6, hide: 6, wood: 3 }, SCAV_PRICE = { food: 1, goods: 2, iron: 2, wool: 1.5, hide: 1.5, wood: 1 };
+    const SCAV_KINDS = ["food", "goods", "iron", "wool", "hide", "wood"];   // never stone: no stone robbing (Ric, "no")
+    const SCAV_FULL = 200, SCAV_REACH = 60, SCAV_HOURS = 3, SCAV_SEE = 4;
+    const BL_KINDS = ["store", "market", "hall", "smithy", "dock", "fort", "oven", "mill", "power", "works", "line", "tower", "shrine", "temple"];
+    /* Footprints in metres (length, width): a barn of 16 by 8, an open market square, a hall of 24 by 10
+       (Wharram Percy's manor), a smithy, a landing stage, a fort, a round oven, the workplaces. */
+    const BL_SIZE = { store: [16, 8], market: [28, 28], hall: [24, 10], smithy: [10, 7], dock: [14, 5], fort: [30, 30], oven: [5, 5], mill: [12, 9], power: [20, 14], works: [30, 14], line: [8, 6], tower: [6, 6], shrine: [8, 6], temple: [30, 15] };
+    const BL_COST = { store: 12, market: 4, hall: 20, smithy: 8, dock: 6, fort: 30 };   // loads of wood (or goods) for the kinds the place has without building them
+    let ruinStamp = 0;
+    const ruinList = [];
+    /* How far gone: 0 kept, 1 worn, 2 roof holed, 3 roofless, 4 fallen, 5 a mound. */
+    function stageOf(b) {
+      if (!RUINS) return 0;
+      if (b.burned !== undefined && !b.built && b.burned > -1e9 && b.work === 0 && b.goodsIn === 0)   // burned and not begun again: fallen, then a mound
+        return (t - b.burned) / YEAR >= ROT_TIMBER[4] - ROT_TIMBER[3] ? 5 : 4;
+      if (!(b.left < Infinity)) return 0;
+      const y = (t - b.left) / YEAR, L = b.stone ? ROT_STONE : ROT_TIMBER;
+      let s = 0; while (s < 5 && y >= L[s]) s++;
+      return s;
+    }
+    /* An empty house gone past kept, taken by a household: a site again, at a share of new. */
+    function mendHouse(owner, v, h) {
+      const fr = MEND[stageOf(h)];
+      h.built = false; h.work = 0; h.goodsIn = 0; h.taken = false; h.left = Infinity; h.stage = 0; h.stoneIn = 0;
+      h.need = Math.round(floor(h) * 2 * fr); h.goodsNeed = Math.round((6 + floor(h) / 20) * fr);
+      h.owner = owner.id; h.paid = funds(owner) >= 15 + reserve(owner) * v.priceFood;
+      if (!sites.includes(h)) sites.push(h);
+      owner.waitHouse = h.id; count.mended++;
+      return h;
+    }
+    function stoneNear(v) { const s = matGround(v).stone; return s >= 0 && Math.hypot(s % cols + 0.5 - v.x, ((s / cols) | 0) + 0.5 - v.y) <= 8; }
+    function sizeBl(b, kind) { const [l, w] = BL_SIZE[kind]; b.len = l * M; b.wid = w * M; if (b.ang === undefined) b.ang = BL_KINDS.indexOf(kind) * 0.9; if (b.left === undefined) { b.left = Infinity; b.stage = 0; b.stone = kind === "dock" ? 0 : 0; } }
+    function addBl(v, kind, x, y) {
+      const k = BL_KINDS.indexOf(kind);
+      if (x === undefined) for (let i = 0; i < 6; i++) {
+        const a = k * 2.2 + v.id * 0.7 + i * 1.05, r = kind === "fort" ? Math.max(0.3, v.radius * 0.85) : 0.07 + (k % 3) * 0.05;
+        x = clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6); y = clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6);
+        if (!wet(x, y)) break;
+      }
+      const b = { kind, x, y, ang: k * 0.9 + v.id * 0.3, built: true };
+      sizeBl(b, kind); b.stone = kind !== "dock" && kind !== "market" && stoneNear(v) ? 1 : 0;
+      v.bl.push(b); ruinStamp++;
+      return b;
+    }
+    /* The buildings a lived-in place has for what it already does (Ric's table, TODO 16): its store,
+       a market once it is a town, the hall where its people's leader lives, a smithy where it is big
+       enough and they know smithing, a landing where it has a boat, a fort, and the workplaces,
+       shrines and temples it has built. */
+    function keepBuildings(v) {
+      const bl = v.bl || (v.bl = []);
+      const has = k => { for (const b of bl) if (b.kind === k) return true; return false; };
+      const lead = byId.get(factions[v.f].leader);
+      if (!has("store")) addBl(v, "store");
+      if (v.place && v.place !== "village" && !has("market")) addBl(v, "market");
+      if (lead && lead.home === v.id && !has("hall")) addBl(v, "hall");
+      if (v.pop >= 20 && (!KNOW || knows(v.f, "smithing")) && !has("smithy")) addBl(v, "smithy");
+      if (v.boat && !has("dock")) addBl(v, "dock", v.boat.x, v.boat.y);
+      if ((v.fort || 0) >= 0.5 && !has("fort")) addBl(v, "fort");
+      if (v.works) for (const k of ["mill", "power", "works", "line", "tower", "oven"]) { const w = v.works[k]; if (w && w.built && !bl.includes(w)) { sizeBl(w, k); w.stone = stoneNear(v) ? 1 : 0; bl.push(w); ruinStamp++; } }
+      for (const k of ["shrine", "temple"]) { const w = v[k]; if (w && w.built && !bl.includes(w)) { w.kind = k; sizeBl(w, k); w.stone = stoneNear(v) ? 1 : 0; bl.push(w); ruinStamp++; } }
+    }
+    /* A building of a lived-in place that stood empty: taken back as it is while only worn; past that,
+       mended — a workplace, shrine or temple becomes work to finish again, the rest are paid for from
+       the store, and wait until the store can. */
+    function mendBuilding(v, b) {
+      const s = stageOf(b);
+      if (s <= 1) { b.left = Infinity; return; }
+      const fr = MEND[s];
+      if (WORKS_HOURS[b.kind] !== undefined || b.kind === "shrine" || b.kind === "temple") {
+        const full = WORKS_HOURS[b.kind] !== undefined ? WORKS_HOURS[b.kind] : b.kind === "shrine" ? SHRINE_HOURS : TEMPLE_HOURS;
+        b.built = false; b.work = full * (1 - fr); b.left = Infinity; count.mended++;
+        const i = v.bl.indexOf(b); if (i >= 0) v.bl.splice(i, 1);   // back on the list once it stands again
+        if (b.kind === "power") v.power = false;
+        ruinStamp++; return;
+      }
+      const k = MATS ? "wood" : "goods", cost = BL_COST[b.kind] * fr;
+      if ((v[k] || 0) >= cost) { v[k] -= cost; if (k === "goods") count.goodsUsed += cost; b.left = Infinity; count.mended++; }
+    }
+    function ruinWorth(v) { let w = 0; for (const k of SCAV_KINDS) w += Math.max(0, v[k] || 0) * SCAV_PRICE[k]; return w; }
+    /* Once a day. */
+    function ruinsDay() {
+      for (const h of homes) {
+        if (h.built) { if (h.n === 0) { if (!(h.left < Infinity)) h.left = t; } else h.left = Infinity; }
+        const s = stageOf(h); if (s !== h.stage) { h.stage = s; ruinStamp++; }
+      }
+      ruinList.length = 0;
+      for (const v of villages) {
+        const empty = !v.alive || (v.pop || 0) === 0;
+        if (!empty) keepBuildings(v);
+        if (v.bl) for (let i = v.bl.length - 1; i >= 0; i--) {
+          const b = v.bl[i];
+          if (empty) { if (!(b.left < Infinity)) b.left = t; }
+          else if (b.left < Infinity) { mendBuilding(v, b); if (!v.bl.includes(b)) continue; }
+          const s = stageOf(b); if (s !== b.stage) { b.stage = s; ruinStamp++; }
+        }
+        if (!empty) continue;
+        /* An empty place's wall falls on the clock of what it is made of (TODO 16's research: town walls
+           were mended for centuries while lived in; a timber rampart rotted). */
+        if (v.wall > 0) { const st = v.wallSt || 0, wd = v.wallWd || 0, sh = st + wd > 0 ? st / (st + wd) : 0; v.wall = Math.max(0, v.wall - 1 / (365 * (WALL_TIMBER * (1 - sh) + WALL_STONE * sh))); }
+        if (v.fort > 0) v.fort = Math.max(0, v.fort - 1 / (365 * WALL_STONE));
+        if (v.alive) continue;
+        for (const k of SCAV_KINDS) if (v[k] > 0) { const was = v[k]; v[k] *= ROT_DAY[k]; if (v[k] < 0.01) v[k] = 0; if (k === "food") count.ruinRotted += was - v[k]; }
+        v.levy = 0;
+        v.worth = ruinWorth(v);
+        if (v.worth > 1) ruinList.push(v);
+      }
+      if (SCAV) for (const r of ruinList) seeRuin(r);
+    }
+    /* Whoever is within a kilometre of a ruin sees what is left in it, and holds it (item 11). */
+    function seeRuin(r) {
+      const k = SCAV_SEE, cx = Math.floor(r.x), cy = Math.floor(r.y), sure = clamp(r.worth / SCAV_FULL, 0.05, 1);
+      for (let y = Math.max(0, cy - k); y <= Math.min(rows - 1, cy + k); y++)
+        for (let x = Math.max(0, cx - k); x <= Math.min(cols - 1, cx + k); x++)
+          for (const p of bucketAt(y * cols + x)) if (p.hp > 0 && p.mb >= 0 && adult(p)) hold(p, M_RUIN, r.id, sure);
+    }
+    /* A place that has just died: the neighbours within 5 km know it stands empty, and roughly what is in it. */
+    function ruinKnown(v) {
+      if (!SCAV) return;
+      const sure = clamp(ruinWorth(v) / SCAV_FULL, 0.05, 1) * 0.7;
+      if (sure <= 0.05 * 0.7 + 1e-9 && ruinWorth(v) <= 1) return;
+      for (const o of villages) if (o.alive && o !== v && Math.hypot(o.x - v.x, o.y - v.y) < 20) for (const p of PLAIN ? people : residents(o.id)) if (p.home === o.id && p.hp > 0 && adult(p) && p.mb >= 0) hold(p, M_RUIN, v.id, sure);
+    }
+    /* The ruin somebody would go to, from what they hold of it: what they think is there, and how far. */
+    function bestRuin(p) {
+      if (p.mb < 0) return null;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      let best = null, bs = 0;
+      for (let o = o0; o < o1; o++) {
+        if (mKind[o] !== M_RUIN) continue;
+        const r = villages[mAbout[o]]; if (!r || r.alive) continue;
+        const d = Math.hypot(r.x - p.x, r.y - p.y); if (d > SCAV_REACH) continue;
+        const load = Math.min(mNow(o) * SCAV_FULL, SCAV_CARRY.food), sc = load / (1 + d * 0.05);
+        if (sc > bs) { bs = sc; best = { r, d, load }; }
+      }
+      return best;
+    }
+    /* At the ruin, after hours of searching: the most worth carrying of what is left. */
+    function scavengeAt(p) {
+      const r = villages[p.at]; p.at = p.home;
+      if (!r || r.alive || Math.hypot(r.x - p.x, r.y - p.y) > (r.radius || 1) + 2) return;
+      let kind = null, bv = 0.05, amt = 0;
+      const can = p.vig * brawn(p);
+      for (const k of SCAV_KINDS) { const a = Math.min(Math.max(0, r[k] || 0), SCAV_CARRY[k] * can), val = a * SCAV_PRICE[k]; if (val > bv) { bv = val; kind = k; amt = a; } }
+      if (!kind) { r.worth = ruinWorth(r); forget(p, M_RUIN, r.id); return; }
+      r[kind] -= amt; if (r[kind] < 0.01) r[kind] = 0;
+      p.cargo = { what: kind, amount: amt, scav: true };
+      r.worth = ruinWorth(r);
+      if (r.worth > 1) hold(p, M_RUIN, r.id, clamp(r.worth / SCAV_FULL, 0.05, 1)); else forget(p, M_RUIN, r.id);
+      count.scavenged += bv; count.scavTrips++;
+      /* Seen taking from what was another people's: news, once a season a ruin and a people, seen by
+         whoever is near and passed on as any news is — a wrong telling can blame the wrong people. */
+      const owner = factions[r.f];
+      if (r.f !== p.f && owner && owner.alive) {
+        const seen = r.scavSeen || (r.scavSeen = {});
+        if (t - (seen[p.f] ?? -1e9) >= 60 * DAY_HOURS) { seen[p.f] = t; note("scavenged", "People of " + factions[p.f].name + " are carrying off what was left in " + r.name + ".", 0.8, r.x, r.y, p.f, "it was " + owner.name + "'s; " + r1(bv) + " worth of " + kind + " taken in one load"); }
+      }
+    }
+    /* Home with the load: food for the household, the rest sold to the village or put in its store. */
+    function bringHome(p) {
+      const c = p.cargo; p.cargo = null;
+      if (!c) return;
+      if (c.what === "food") { p.food += c.amount; return; }
+      if (c.what === "goods") { p.goods += c.amount; return; }
+      const v = villages[p.home], sold = sell(p, v, c.what, c.amount), rest = c.amount - sold;
+      if (rest > 0) v[c.what] = (v[c.what] || 0) + rest;
+    }
+    /* A village founded on a ruin takes it: its houses (to mend), what is left in its store, its
+       buildings, wall, well and boat. */
+    function takeRuin(nv, r) {
+      const hs = homesOf(r);
+      if (hs.length) { const into = homesIn[nv.id] || (homesIn[nv.id] = []); for (const h of hs) { h.v = nv.id; h.owner = 0; h.taken = false; into.push(h); } homesIn[r.id] = []; }
+      nv.plots = Math.max(nv.plots || 0, r.plots || 0);
+      for (const k of ["food", "goods", "wood", "stone", "iron", "wool", "hide"]) if (r[k] > 0) { nv[k] = (nv[k] || 0) + r[k]; r[k] = 0; }
+      if (r.bl) { nv.bl = r.bl; r.bl = []; }
+      if (r.works) { nv.works = r.works; r.works = null; }
+      if (r.shrine) { nv.shrine = r.shrine; r.shrine = null; }
+      nv.wall = Math.max(nv.wall || 0, r.wall || 0); nv.wallSt = r.wallSt || 0; nv.wallWd = r.wallWd || 0; r.wall = 0;
+      if (r.well && !nv.well) { nv.well = r.well; r.well = null; }
+      if (r.boat && !nv.boat) { nv.boat = r.boat; r.boat = null; }
+      r.worth = 0; r.resettled = nv.id; count.resettled++; ruinStamp++;
+      changedHomes();
+    }
+    /* "Places empty at the start" (TODO 16; Ric: "If it starts with a person then it's not in ruin. And
+       if it starts empty then it is unknown"): the world is made as usual, then the chosen places are
+       emptied — their people gone with nothing said, what they had left in the store — and each is set
+       some years into its decay, a different number for each, from the seed. */
+    function emptyAtStart() {
+      /* Never a people's first place; of the rest, all ("most") or a third of all the places, picked from the seed. */
+      const gone = new Set(), rest = [];
+      for (const f of factions) { const mine = villages.filter(v => v.alive && v.f === f.id); for (let i = 1; i < mine.length; i++) rest.push(mine[i]); }
+      const draw = v => fmix(Math.imul((S.seed | 0) + 3, 0x27d4eb2f) ^ Math.imul(v.id + 1, 0x165667b1));
+      rest.sort((a, b) => draw(a) - draw(b) || a.id - b.id);
+      const n = S.startRuined === "most" ? rest.length : Math.min(rest.length, Math.round(villages.filter(v => v.alive).length / 3));
+      for (let i = 0; i < n; i++) gone.add(rest[i].id);
+      if (!gone.size) return;
+      for (const p of people) {
+        if (!gone.has(p.home)) continue;
+        const v = villages[p.home];
+        v.food += p.food; v.goods += p.goods; v.till += p.coins;
+        for (const [key, cond] of Object.entries(p.gear)) v.goods += GEAR[key].cost * cond;
+        p.food = 0; p.goods = 0; p.coins = 0; p.gear = {}; dropOrder(p);
+        p.hp = -99;
+      }
+      sweepDead();
+      for (const v of villages) {
+        if (!gone.has(v.id)) continue;
+        /* Since when is not known: a few months to thirty years, the recent likelier (a cube of the draw:
+           a quarter under half a year's time-equivalent of two years, half under four). */
+        const u = fmix(Math.imul((S.seed | 0) + 1, 0x9e3779b1) ^ Math.imul(v.id + 7, 0x85ebca77)) / 4294967296, years = 0.1 + 29.9 * u * u * u, ago = years * YEAR;
+        const f = factions[v.f];
+        f.treasury += v.till + (v.bid || 0); v.till = 0; v.bid = 0;
+        v.alive = false; v.pop = 0; v.adults = 0; v.empty = 7; v.levy = 0;
+        keepBuildings(v);
+        for (const b of v.bl) b.left = -ago;
+        for (const h of homesOf(v)) { h.n = 0; h.left = -ago; h.head = 0; }
+        for (const k of SCAV_KINDS) if (v[k] > 0) v[k] *= Math.pow(ROT_DAY[k], years * 365);
+        if (v.wall > 0) v.wall = Math.max(0, v.wall - years / WALL_TIMBER);
+        v.worth = ruinWorth(v);
+      }
+      for (const f of factions) if (f.alive && !byId.has(f.leader)) succeed(f, "first");
+      for (const p of people) {   // the survivors know the empty places within 10 km
+        if (p.mb < 0 || !adult(p)) continue;
+        for (const id of gone) { const r = villages[id]; if (r.worth > 1 && Math.hypot(r.x - p.x, r.y - p.y) < 40) hold(p, M_RUIN, id, clamp(r.worth / SCAV_FULL, 0.05, 1) * 0.8); }
+      }
+      changedHomes(); census(); ruinsDay(); ruinStamp++;
+    }
+    /* The dead leave the list (the step's, and the start's when places are emptied, TODO 16). */
+    function sweepDead() {
+      let dead = false;
+      for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); }
+      if (dead) {
+        let w = 0;
+        for (let i = 0; i < people.length; i++) {
+          const p = people[i];
+          if (p.hp !== -99) { p.ix = w; people[w++] = p; continue; }
+          p.ix = -1;
+          freeMind(p);   // TODO 11: the next born takes the block
+          if (PLAIN) continue;
+          /* Off the lists that are no longer refilled: where they stood at
+             once (nobody could be blocked by the dead anyway), the square's
+             list at its next refill, as before. */
+          if (MEMO && p.on) unput(p);
+          if (p.bk >= 0) gone.push(p);
+        }
+        people.length = w; changedHomes();
+        if (freshList.length) { const left = freshList.filter(p => p.hp !== -99); freshList.length = 0; for (const p of left) freshList.push(p); }
+      }
+    }
+    /* Every public building now, for the page: kind, where, size, which way, whose, how far gone. */
+    function buildingsNow() {
+      const out = [];
+      for (const v of villages) if (v.bl) for (const b of v.bl) if (b.built !== false) out.push({ kind: b.kind, k: BL_KINDS.indexOf(b.kind), x: b.x, y: b.y, len: b.len, wid: b.wid, ang: b.ang, v: v.id, stage: b.stage || 0, stone: b.stone || 0 });
+      return out;
     }
     /* ── armies: what they carry, how far they go, and strategy (TODO 15h, 2026-11-22) ──
        Ric, 2026-11-20: "we need to cover what it is carrying with it so it knows how far they can
@@ -12867,26 +13242,7 @@
         live(p);
         if (p.hp !== -99 && t % REFLECT_HOURS === 0) reflect(p);
       }
-      /* The dead leave the list. */
-      let dead = false;
-      for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); }
-      if (dead) {
-        let w = 0;
-        for (let i = 0; i < people.length; i++) {
-          const p = people[i];
-          if (p.hp !== -99) { p.ix = w; people[w++] = p; continue; }
-          p.ix = -1;
-          freeMind(p);   // TODO 11: the next born takes the block
-          if (PLAIN) continue;
-          /* Off the lists that are no longer refilled: where they stood at
-             once (nobody could be blocked by the dead anyway), the square's
-             list at its next refill, as before. */
-          if (MEMO && p.on) unput(p);
-          if (p.bk >= 0) gone.push(p);
-        }
-        people.length = w; changedHomes();
-        if (freshList.length) { const left = freshList.filter(p => p.hp !== -99); freshList.length = 0; for (const p of left) freshList.push(p); }
-      }
+      sweepDead();
 
       if (t % REFLECT_HOURS === 0) {
         census();
@@ -12898,6 +13254,7 @@
         if (KNOW && t % DAY_HOURS === 0) { knowDay(); if (WAR_TECH.length) warKnowDay(); }   // TODO 15e; 15.6
         if (KIT_ON && LEFT.length && t % DAY_HOURS === 0) leftDay();   // TODO 15.6: what lies in the ground
         if (WORKS && t % DAY_HOURS === 0) workDay();   // TODO 15f
+        if (RUINS && t % DAY_HOURS === 0) ruinsDay();   // TODO 16
         if (soil && t % DAY_HOURS === 0) { rest(); if (t % (30 * DAY_HOURS) === 0) regrow(); }   // TODO 15.5d
         if (BEASTS && t % (30 * DAY_HOURS) === 0) for (const f of factions) ploughOf(f);   // TODO 15.5o
         if (OPEN && t % (7 * DAY_HOURS) === 0 && t > 0) overTheEdge();   // TODO 15.5c
@@ -12912,6 +13269,7 @@
             hold(p, M_NEWS, e.id, 1);
             logHop(e, p, -1, "", 0);
             shunSick(p, e, 0);
+            if (e.kind === "scavenged") lootedFrom(p, e.text);   // TODO 16: seen with their own eyes
           }
         }
       }
@@ -13127,7 +13485,11 @@
     allotted = true;
     actionTick();
     if (!PLAIN) settle();
+    if (RUINS && S.startRuined && S.startRuined !== "none") emptyAtStart();   // TODO 16
     return {
+      /* TODO 16: buildings, their stages, and ruins. The page reads `buildings()` and `ruinStamp`; the rest for the tests. */
+      buildings: buildingsNow, get ruinStamp() { return ruinStamp; }, stageOf: stageOf,
+      ruins: { day: () => { if (RUINS) ruinsDay(); }, list: () => ruinList.slice(), worth: vid => ruinWorth(villages[vid]), best: p => bestRuin(p), at: p => scavengeAt(p), home: p => bringHome(p), see: vid => seeRuin(villages[vid]), breadHours: h => breadHours(h), M_RUIN: M_RUIN, house: (pid, vid) => startHouse(byId.get(pid), villages[vid]), looted: (pid, text) => lootedFrom(byId.get(pid), text), holds: (p, vid) => mFind(p, M_RUIN, vid) >= 0 },
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
       fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, homes: homes,
       /* Rain (TODO 6b): this year's crops for the rain on each square, 100 an ordinary year (null with

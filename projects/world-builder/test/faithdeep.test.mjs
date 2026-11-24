@@ -28,7 +28,7 @@ import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const OFF = { folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false,
               faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false,
-              pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll" };   // 15.12b to d, built after, off too
+              pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old" };   // 15.12b to d, built after, off too
 const OLD = 2973522624;   // print() of the world below before 15.11b to z (after 15.12a's dice)
 function print(w) {
   let h = 2166136261;

@@ -761,6 +761,14 @@ nobody had linked was a page nobody could find.
   every older test's `LATER` list, and a new part adds its own there. The links of why things happened (`because`,
   `chainNote`) only report — never read one in a decision. The research for 15.11 and 15.12 was not read that
   session; the README says so, and reading it is item 15.13, with what was left out.
+  **Item 16 is done: ruins, scavenging, grinding and baking** (2026-11-24, Ric: "finnish all of 16"). Rules it
+  leaves: **the unit is the building** (Ric) — a building wears only while nobody lives or works in it (`h.left`,
+  `stageOf`), so never add upkeep hours to a lived-in place; **nothing is ever put in a ruin** — what is there is what
+  was, less what rotted (`ROT_DAY`) and what was taken, and the test fails if a ruin's worth ever rises; **no stone
+  robbing** (Ric: "no") — scavengers never take stone; **a grudge over a ruin comes only from seeing or being told**
+  (`lootedFrom`, the news kind `scavenged`), never from the taking itself; and **a wall no longer falls in peace**
+  while its place is lived in. Four settings, each off the old world exactly; their keys are in every older test's
+  `LATER` list. What was left is TODO 16b.
   **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
   it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
   nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the
