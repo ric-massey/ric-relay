@@ -278,6 +278,7 @@
   .item { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: .5rem 0; font-size: .92rem; }
   .item:first-child { border-top: 0; }
   .item .yr { color: var(--dim); font: 12px var(--mono); margin-right: .5rem; }
+  .item .why { display: block; color: var(--dim); font-size: .85rem; margin-top: .2rem; }   /* the numbers a decision was made on */
   .item.big { color: var(--ink); font-weight: 600; }
   .exchange-effects { padding-left: 20px; }
   .exchange-effects li { margin-bottom: 10px; }
@@ -2123,7 +2124,7 @@
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
     const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], works: ["Workplace", "#98a8a5"], camp: ["Camp", "#8fd39a"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
+                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], works: ["Workplace", "#98a8a5"], camp: ["Camp", "#8fd39a"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], witch: ["Blamed", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
     ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     for (const e of f.marks) {
       const m = MARK[e.kind]; if (!m) continue;
@@ -2514,6 +2515,10 @@
   const ERA_NAMES = { foragers: "Foragers", bronze: "Bronze Age", ancient: "Ancient", medieval: "Medieval", earlymodern: "Early modern", industrial: "Industrial", modern: "Modern", information: "Information" };   // TODO 15d
   /* A faction's government (TODO 15c): who rules with whom, its officials and its laws. */
   const RITE = { feast: "a feast", fast: "a fast", offering: "offerings", sacrifice: "sacrifice" };   // TODO 15g
+  /* What else a faith holds (TODO 15.11i to l): each only where its setting is on, which the engine says by leaving it empty. */
+  const faithMore = fa => (fa.move ? ", a movement promising the world put right" : "") + (fa.tie > 0.5 ? ", its gods stand behind the ruler" : "") +
+    (fa.sorcery === "forbids" ? ", forbids blaming sorcery" : fa.sorcery === "hunts" ? ", sees sorcery everywhere" : "") +
+    (fa.kids === "many" ? ", bids many children" : fa.kids === "few" ? ", bids restraint" : "") + (fa.wed === "young" ? ", marries young" : "") + (fa.celibate ? ", its teachers marry no one" : "");
   /* What a people knows beyond the farming village's ways, and what it has lost (TODO 15e). */
   function knowLine(k) {
     if (!k || (!k.extra.length && !k.lost.length)) return "";
@@ -2652,7 +2657,7 @@
             "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
             "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
             (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + (f.era && f.era !== "early" ? "<span class='ln'>Era at the start: " + esc(ERA_NAMES[f.era] || f.era) + (f.arms ? " · fights with " + esc(f.arms) : "") + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + techBox(f.tech, f.id) + (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + "</span>" : "") +
+            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + (f.era && f.era !== "early" ? "<span class='ln'>Era at the start: " + esc(ERA_NAMES[f.era] || f.era) + (f.arms ? " · fights with " + esc(f.arms) : "") + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + techBox(f.tech, f.id) + (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + faithMore(f.faith) + "</span>" : "") +
             (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
         }).join("") +
         (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");
@@ -2660,7 +2665,7 @@
     if (tab === "news") {
       const list = d.events;
       if (!list.length) return "<p class='small'>Nothing has happened yet that anybody would remember.</p>";
-      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + (e.year + 1) + "</span>" + esc(e.text) + "</button>").join("");
+      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + (e.year + 1) + "</span>" + esc(e.text) + (e.why ? "<span class='why'>because: " + esc(e.why) + "</span>" : "") + "</button>").join("");
     }
     if (tab === "talk") {
       if (selectedExchange) return exchangePane(selectedExchange);

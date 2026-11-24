@@ -344,6 +344,18 @@
         help: "Anything can be found once its parts are known; a people's age is only a name for what it knows. What somebody is short of points their finding — the hungry toward the plough and the mill, the sick toward herbs, traders toward carts and boats — and their work too. Iron, steam and boats are found and used only where ore, wood or timber is within reach or bought in. A thing new to a people is done poorly at first and better as more of them do it. A stubborn ruler may forbid a new thing, until a war with a people that has it changes their mind. Towns, big villages and a ruler with money to spare for scholars find more." },
       { key: "faith", label: "Faith", type: "toggle", def: true,   // TODO 15g, 2026-11-22
         help: "After something hard they cannot explain — a famine, a sickness, a drought, a war lost — now and then somebody makes up what lay behind it and what must be done. Their nature makes its rite, its rule and its holy days; it passes from friend to friend and to children, binds those who hold it, can become a people's own, and may call for sacrifice or holy war. It fades where life is safe." },
+      /* TODO 15.11i to 15.11m, 2026-11-23 (Ric: "do 15.11 the stars"): what a faith does to rule, blame,
+         births and trade. Each off is the world as it was before them. */
+      { key: "favour", when: s => s.faith !== false, label: "Heaven's favour", type: "toggle", def: true,   // TODO 15.11i
+        help: "Where a people's faith says the gods stand behind its ruler, every famine, sickness, drought and war lost is held against the ruler — the more, the more the faith ties the gods to them — and loyalty falls with it, until the risings a people already has follow. Good years earn it back, and a new ruler starts afresh." },
+      { key: "prophets", when: s => s.faith !== false, label: "Prophets", type: "toggle", def: true,   // TODO 15.11j
+        help: "Where hard times keep coming to one place, somebody may come forward promising the world will be put right: a new faith, or a new reading of the old one. It spreads fast among the hungry, the frightened and the beaten, turns them against a ruler who does not hold it, and burns out if the hard times come again." },
+      { key: "witches", when: s => s.faith !== false, label: "Blaming a neighbour", type: "toggle", def: true,   // TODO 15.11k
+        help: "After a famine, a sickness or a drought, frightened people may blame somebody among them — likelier the old, the poor, the disliked, somebody of another faith, a healer — and shun them, drive them out or kill them. Likelier where two faiths stand side by side; rarer where a judge hears it or the people's faith forbids it." },
+      { key: "faithKids", when: s => s.faith !== false, label: "Faith and children", type: "toggle", def: true,   // TODO 15.11l
+        help: "The devout have a few more children, more where their faith bids it and fewer where it bids restraint; a faith may have its people marry young; and a faith whose teachers keep apart has them, and its most zealous, marry no one." },
+      { key: "faithTrade", when: s => s.faith !== false, label: "Trust in trade", type: "toggle", def: true,   // TODO 15.11m
+        help: "Traders trust those of their own faith further: they would sooner carry to a place that holds it and go further to reach one, and are warier of a place that holds another. Somebody whose faith is not their people's own is drawn to trading." },
       { key: "plenty", label: "News of plenty", type: "toggle", def: true,   // TODO 15.5g, 2026-11-22
         help: "A village with grain to spare after the harvest becomes news, passed on by word of mouth like news of a famine. Traders who hear it go to load there, the hungry think of moving there, and a hungry household with coins goes there to buy." },
       { key: "switch", label: "Changing sides", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
@@ -894,7 +906,7 @@
                     warFinds: 0, forts: 0, gunsLost: 0, gunsBought: 0, shots: 0, grenades: 0, blasts: 0, blastDead: 0, blastCivilians: 0, blastHouses: 0, leftInGround: 0, leftWentOff: 0, leftCleared: 0, bridgesBlown: 0,   // TODO 15.6
                     commissions: 0, drawnBattles: 0, routedSoldiers: 0, soldiersKilled: 0, battleDeclined: 0, battleCaught: 0, raidKilled: 0, raidTaken: 0, raids_met: 0, raids_lost: 0, raids_took: 0, raids_walled: 0, koRaid: 0, koRaiders: 0, koAtVillage: 0, koOpen: 0, koLine: 0, deadRaid: 0, deadRaiders: 0, deadAtVillage: 0, deadOpen: 0, deadLine: 0, lineDead: 0, lineKnocked: 0, unitsFormed: 0, officersLost: 0, battles: 0, contactHours: 0, nightsApart: 0, reservesSent: 0, flankBlows: 0, unitsWithdrew: 0, unitsBroke: 0,   // TODO 15.6b
                     tanksBuilt: 0, tanksLost: 0, aircraftBuilt: 0, aircraftLost: 0, sorties: 0, airScouted: 0, bombs: 0, storesBombed: 0, airRations: 0, airlifted: 0,   // TODO 15.6c
-                    armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+                    armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, blamed: 0, favourLost: 0, prophets: 0, failed: 0, hunts: 0, witch: 0, drivenOut: 0, shunned: 0, acquitted: 0, celibate: 0, faithLoads: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -1475,7 +1487,7 @@
       const lead = byId.get(f.leader);
       if (!v.enclosed && lead && f.rule !== "elected" && ruling(lead, "greed", f) > (g && g.say === "families" ? 0.6 : 0.75) && R() < 0.02) {
         v.enclosed = true; count.enclosed++;
-        note("rule", f.name + " has enclosed the common land of " + v.name + ": whoever works it now pays a third to the barn.", 2, v.x, v.y, f.id);
+        note("rule", f.name + " has enclosed the common land of " + v.name + ": whoever works it now pays a third to the barn.", 2, v.x, v.y, f.id, "leader greedy " + r1(ruling(lead, "greed", f)));
       }
     }
     function fieldsNear(h, r) {
@@ -1694,7 +1706,7 @@
         const x = f.pop * 0.3;
         f.treasury += x; count.minted += x; count.debased++; f.coinTrust *= 0.8;
         const at = villages[lead.home];
-        note("rule", lead.name + " has struck coins for " + f.name + " with less silver in them, to pay the soldiers.", 1.5, at.x, at.y, f.id);
+        note("rule", lead.name + " has struck coins for " + f.name + " with less silver in them, to pay the soldiers.", 1.5, at.x, at.y, f.id, "treasury " + Math.round(f.treasury - x) + " against a month's pay of " + Math.round(f.soldiers * WAGE * 30) + "; leader greedy " + r1(ruling(lead, "greed", f)) + ", honest " + r1(ruling(lead, "honest", f)));
       }
     }
     /* Whether coins are taken for food here today. */
@@ -1707,7 +1719,8 @@
       v.trust = tr;
       if (tr < TRUST_MIN) count.barterDays++;
       if (was != null && (was < TRUST_MIN) !== (tr < TRUST_MIN) && v.pop > 20)
-        note("money", tr < TRUST_MIN ? "In " + v.name + " nobody will sell food for coins now." : "In " + v.name + " coins buy food again.", 1, v.x, v.y, v.f);
+        note("money", tr < TRUST_MIN ? "In " + v.name + " nobody will sell food for coins now." : "In " + v.name + " coins buy food again.", 1, v.x, v.y, v.f,
+          (v.siege > 0 ? "under siege; " : "") + pc(v.hungry / v.pop) + " going hungry, " + r1(v.food / v.pop) + " days of food a head in the store; the coin trusted " + r1(tr) + " (food is sold for it from " + TRUST_MIN + ")");
     }
 
     /* ── fishing (TODO 6c, 2026-11-16) ─────────────────────────────────────
@@ -1897,6 +1910,7 @@
                   era: factions.length === 0 && S.firstEra !== "same" ? S.firstEra : S.era,   // TODO 15d: where it started
                   camp: {}, hired: null,   // TODO 15h: each war's army (where it gathers, where it strikes, whether it marches), and who fights for pay
                   match: null,   // TODO 15b: its marriage customs
+                  blame: 0, blameBy: -1, favourSaid: -1,   // TODO 15.11i: the hard times held against its ruler, which ruler, and when it was said
                   faith: null,   // TODO 15g: the faith its ruler holds, when enough hold it
                   gov: null,   // TODO 15c: its council, officials and laws (see "government")
                   cheap: 0 };   // TODO 15.5b2: the share of a ration's price the treasury pays, in a village under a public order for grain
@@ -1916,6 +1930,7 @@
                   /* A public order for grain (TODO 15.5b2): coins the treasury has set aside here, the days of food
                      they are for, and whether for people going short now or to lay in after the harvest. */
                   bid: 0, bidWant: 0, bidFor: "",
+                  trouble: 0, faith: null,   // TODO 15.11j, m: how hard times have been here lately, and the faith most here hold
                   levy: 0,   // TODO 15.5t: days of food in the store that are the faction's, taken from the harvest
                   /* Wood, stone and ore in store, what each fetches and how much the village wants (TODO 9a). */
                   wood: 0, stone: 0, iron: 0, priceWood: 1, priceStone: 1, priceIron: 2, wantWood: 1, wantStone: 1, wantIron: 1, mats: undefined,
@@ -2081,7 +2096,7 @@
         const sc = walked / line.length;
         if (sc > bs) { bs = sc; best = { a: a.id, b: b.id, v: a.id, line, at: 0 }; }
       }
-      if (best) { f.roadJob = best; count.roadsBegun++; note("build", f.name + " is building a road from " + villages[best.a].name + " to " + villages[best.b].name + ".", 1.5, villages[best.a].x, villages[best.a].y, f.id); }
+      if (best) { f.roadJob = best; count.roadsBegun++; note("build", f.name + " is building a road from " + villages[best.a].name + " to " + villages[best.b].name + ".", 1.5, villages[best.a].x, villages[best.a].y, f.id, "the most walked way between two of its places not yet a road: walked " + Math.round(bs) + " times a square"); }
     }
     /* Once a day: under 1% of every square's treading wears off, and paths and roads follow it. */
     function wearOff() {
@@ -2980,6 +2995,9 @@
     /* How often a hard event makes a faith (one in six, Ric: "Rare" for finds, said as a guess), how
        readily it passes in one talk between people who trust each other, and how many make it a named faith. */
     const FAITH_MAKE = 0.15, FAITH_PASS = 0.001, FAITH_NAMED = 10;
+    /* What a faith does to everything else (TODO 15.11i to m; see "what faith does"). Each off is the old world. */
+    const FAVOUR = FAITH && S.favour !== false, PROPHETS = FAITH && S.prophets !== false, WITCHES = FAITH && S.witches !== false,
+          FAITH_KIDS = FAITH && S.faithKids !== false, FAITH_TRADE = FAITH && S.faithTrade !== false;
     const faiths = [];
     const GOV = S.govern !== "leader";   // TODO 15c: councils, offices and laws (see "government")
     /* What one ruler can see to alone (TODO 15c): three villages, a dispute a day, and the tax of
@@ -3011,9 +3029,13 @@
     const bandOf = new Map();   // TODO 15.5b4: a bandit out with a band: the place they ride for, and how many ride
 
     let wiresUp = false;   // TODO 15d: set once a line, a tower or a radio stands anywhere
-    function note(kind, text, weight, x, y, f) {
+    /* `why` (2026-11-23, Ric: "is there an easy log we can add that helps … and doesnt slow it down?"): the
+       numbers a decision was actually made on, read where it was made and written only when something is
+       logged — a few hundred times a world-year — so it costs nothing a step. It reports; nothing reads it. */
+    const r1 = x => (Math.round(x * 10) / 10).toString(), pc = x => Math.round(x * 100) + "%";
+    function note(kind, text, weight, x, y, f, why) {
       const e = { id: events.length ? events[events.length - 1].id + 1 : 0, t: t, year: Math.floor(year()), kind: kind, text: text,
-                  weight: weight, x: x, y: y, f: f == null ? -1 : f };
+                  weight: weight, x: x, y: y, f: f == null ? -1 : f, why: why || "" };
       events.push(e);
       if (ACT_DAYS[kind]) { acted.add(e.id); mindStamp++; }   // TODO 12b
       if (WIRED && wiresUp) wire(e);   // TODO 15d: news at the speed of what is built
@@ -3479,7 +3501,7 @@
       /* A house a household pays to have built is an order too (TODO 15.5a): a builder's wage, shared
          between the village's crafters. Before 15.5a the glut kept crafters about whether or not. */
       const building = v.paidSites > 0 ? BUILDER_PAY * clamp(v.paidSites / (1 + v.crafters * 0.5), 0, 1) : 0;
-      const score = { farmer: w.land, crafter: Math.max(w.bench, building) * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) };
+      const score = { farmer: w.land, crafter: Math.max(w.bench, building) * (0.85 + p.greed * 0.4), trader: w.load * (0.7 + p.greed * 0.6) * (FAITH_TRADE && p.faith != null && f.faith != null && p.faith !== f.faith ? 1.3 : 1) };   // TODO 15.11m: a minority to trade
       if (FISH && fishGround(v)) score.fisher = fishWorth(v) * 0.9;   // TODO 6c
       if (WORKS) for (const k of SERVICES) { if (k === "teacher" && !knowsP(p, "writing")) continue; const sw = serviceWorth(v, k); if (sw > 0) score[k] = sw * (0.85 + p.greed * 0.3); }   // TODO 15f: only who writes can teach it
       if (MATS) {                                                       // TODO 9a
@@ -4165,7 +4187,7 @@
         p.unpaid = Math.max(0, Math.round((owed - c - g) / WAGE));
       }
       f.mutiny = { since: t, v: v.id, ids: new Set(unpaid.map(p => p.id)) }; count.mutinies++; count.mutinyTook += took;
-      note("riot", unpaid.length + " of " + f.name + "'s soldiers, unpaid, have risen at " + v.name + " and taken what they are owed.", 2.5, v.x, v.y, f.id);
+      note("riot", unpaid.length + " of " + f.name + "'s soldiers, unpaid, have risen at " + v.name + " and taken what they are owed.", 2.5, v.x, v.y, f.id, unpaid.length + " of " + all + " soldiers unpaid " + MUTINY_DAYS + " days or more");
     }
     /* War loans (TODO 15q; Slantchev, *Borrowed Power*: borrowing lets wars start, last longer, end
        harder). At war with too little to pay its soldiers a fortnight, a people borrows from the richest
@@ -4210,7 +4232,7 @@
       }
       if (got > 0) {
         LOANS.set(f.id, b); count.borrowed += got;
-        if (t - (f.loanNews ?? -1e9) > 60 * DAY_HOURS) { f.loanNews = t; const v = villages.find(u => u.alive && u.f === f.id); if (v) note("war", f.name + " has borrowed " + Math.round(got) + " coins to pay for the war.", 1.5, v.x, v.y, f.id); }
+        if (t - (f.loanNews ?? -1e9) > 60 * DAY_HOURS) { f.loanNews = t; const v = villages.find(u => u.alive && u.f === f.id); if (v) note("war", f.name + " has borrowed " + Math.round(got) + " coins to pay for the war.", 1.5, v.x, v.y, f.id, "at war with the treasury under two weeks' pay; it could borrow " + Math.round(credit)); }
       }
     }
     /* Paid to lenders in proportion to what each is owed; a repayment also lowers what is owed. Owed to the dead goes to nobody. */
@@ -4311,7 +4333,7 @@
       };
       let best = "siege", bs = -1e9;
       for (const k in score) { const v = score[k] + R() * 0.1; if (v > bs) { bs = v; best = k; } }
-      if (best !== c.plan) { count.plans++; if (c.plan !== undefined) note("war", (g ? g.name : f.name) + ", at the head of " + f.name + "'s army, " + PLAN_WORDS[best] + ".", 2, villages[c.v >= 0 ? c.v : 0].x, villages[c.v >= 0 ? c.v : 0].y, f.id); }
+      if (best !== c.plan) { count.plans++; if (c.plan !== undefined) note("war", (g ? g.name : f.name) + ", at the head of " + f.name + "'s army, " + PLAN_WORDS[best] + ".", 2, villages[c.v >= 0 ? c.v : 0].x, villages[c.v >= 0 ? c.v : 0].y, f.id, "our soldiers " + r1(ratio) + " times what holds their places; general bold " + r1(b) + ", patient " + r1(pt) + ", skilled " + r1(sk) + (coming ? "; their army is on its way" : "")); }
       c.plan = best; c.planAt = t; c.gen = g ? g.id : -1;
       if (UNITS) chooseShape(f, o, c, g);   // TODO 15.6 step 3: and the way of fighting
     }
@@ -6294,7 +6316,7 @@
           if (g > gain) { gain = g; best = o; what = "food"; }
         } else {
           for (const w of ["food", "goods"]) {
-            const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02) * (w === "food" ? pull : 1);
+            const g = ((w === "food" ? o.priceFood : o.priceGoods) * 0.85 - (w === "food" ? here.priceFood : here.priceGoods)) / (1 + d * 0.02) * (w === "food" ? pull : 1) * (FAITH_TRADE ? tradeTrust(p, o) : 1);   // TODO 15.11m
             /* Goods only to where they are asked for and can be paid for (TODO 15.5a): a village with
                orders waiting looks dear, and carriers took packs there that its empty till could not
                buy, and kept them — 20 to 37 goods each by autumn. */
@@ -6302,7 +6324,7 @@
           }
           /* Wood, stone and ore from where they are cheap (TODO 9a): an ore village sells to a forest one. */
           if (MATS) for (const w of TRADED) {
-            const g = (matPrice(o, w) * 0.85 - matPrice(here, w)) / (1 + d * 0.02);
+            const g = (matPrice(o, w) * 0.85 - matPrice(here, w)) / (1 + d * 0.02) * (FAITH_TRADE ? tradeTrust(p, o) : 1);
             if (g > gain && here[w] > 1) { gain = g; best = o; what = w; }
           }
           /* Grain from houses with more than their winter to houses going
@@ -6318,7 +6340,7 @@
                winter starved more with grain trade than without it. */
             /* A boatload is worth what it moves, in carts (TODO 15.5b1). */
             const cart = grainLoad(p), load = cart * (byBoat(p, here, o) ? BOAT_LOADS : 1), moved = Math.min(here.spare, wantThere, load, ((o.purse || 0) + o.bid) / 2);
-            const g = moved / cart * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02) * pull;
+            const g = moved / cart * (0.5 + Math.min(1, o.short / (o.pop * 3 + 1)) * 0.7) / (1 + d * 0.02) * pull * (FAITH_TRADE ? tradeTrust(p, o) : 1);
             if (g > gain) { gain = g; best = o; what = "grain"; }
           }
         }
@@ -6340,14 +6362,15 @@
       for (const o of villages) {
         if (!o.alive || o === here || (o.f !== p.f && (atWar(o.f, p.f) || hostile(o.f, p.f)))) continue;
         const d = Math.hypot(o.x - here.x, o.y - here.y);
-        if (d <= 34 || d > CARAVAN_REACH) continue;
+        const trust = FAITH_TRADE ? tradeTrust(p, o) : 1;   // TODO 15.11m: further to a place of one's own faith
+        if (d <= 34 || d > CARAVAN_REACH * (trust > 1 ? 1.5 : 1)) continue;
         /* A route already gone is a road known, inns and buyers found: it pulls (a route grows where trade keeps going). */
         const r = ROUTES.get(Math.min(here.id, o.id) + ">" + Math.max(here.id, o.id)), known = 1 + 0.4 * Math.min(r ? r.n : 0, 5);
         /* Goods to where people have asked for them and the store has none (orders waiting): sold to them door to door. */
-        const g = Math.min(asked(o) - o.goods, here.goods - 2, 12) * 0.1 / (1 + d * 0.004) * known;
+        const g = Math.min(asked(o) - o.goods, here.goods - 2, 12) * 0.1 / (1 + d * 0.004) * known * trust;
         if (g > gain) { gain = g; best = o; what = "goods"; }
         if (MATS) for (const w of ["iron", "wool"]) {
-          const gm = Math.min(here[w] - 2, o.till / Math.max(0.1, matPrice(o, w)), 12) * (matPrice(o, w) * 0.85 - matPrice(here, w)) * 0.3 / (1 + d * 0.004) * known;
+          const gm = Math.min(here[w] - 2, o.till / Math.max(0.1, matPrice(o, w)), 12) * (matPrice(o, w) * 0.85 - matPrice(here, w)) * 0.3 / (1 + d * 0.004) * known * trust;
           if (gm > gain) { gain = gm; best = o; what = w; }
         }
       }
@@ -6367,6 +6390,7 @@
       p.goods = before;
       if (got <= 0.01) return false;
       here.caravanAt = t; here.caravanPlan = null; count.caravans++;
+      if (FAITH_TRADE && p.faith != null && dest.faith === p.faith) count.faithLoads++;   // TODO 15.11m: counted only
       const key = Math.min(here.id, dest.id) + ">" + Math.max(here.id, dest.id), r = ROUTES.get(key) || { n: 0, last: 0 };
       r.n++; r.last = t; ROUTES.set(key, r);
       if (r.n === 3) note("trade", "Caravans now go regularly between " + here.name + " and " + dest.name + ".", 1.5, here.x, here.y, here.f);
@@ -8410,7 +8434,11 @@
       const far = lead ? Math.abs(viewOf(p) - viewOf(lead)) : 0.5;
       const wantLoyal = p.mood * 0.85 + (S.loyalty - 0.5) * 0.7 + 0.2 - far * 0.22 - taxOf(v) * 0.4 -
                         (p.from !== p.f ? 0.18 : 0) - Math.min(0.3, p.unpaid * 0.06) - p.forced * 0.4 - p.wronged * 0.4 - (HARVEST_TAX && p.job === "farmer" ? f.harvest * 0.4 : 0);
-      p.loyal += (clamp(wantLoyal, 0, 1) - p.loyal) * 0.05;
+      /* What a faith holds against the ruler (TODO 15.11i, j), taken off after the rest is clamped, so a
+         content life does not hide it: the hard times held against them, and a movement that a ruler does not hold. */
+      const against = (FAVOUR && f.blame > 0 && f.faith != null ? blameOn(p, f) : 0) +
+                      (PROPHETS && p.faith != null && faiths[p.faith].move && f.faith !== p.faith ? MOVE_AGAINST * p.zeal : 0);
+      p.loyal += (clamp(clamp(wantLoyal, 0, 1) - against, 0, 1) - p.loyal) * 0.05;
       /* Grain a leader made them sell weighs as a tax on it would (TODO 15.5b2), and is half forgotten in a season. */
       if (p.forced > 0) { p.forced *= FORCED_FADE; if (p.forced < 0.005) p.forced = 0; }
       /* A riot broken up, or left unanswered (TODO 15.5b3): held against the leader as long. */
@@ -8486,7 +8514,7 @@
            cadence. Changing update frequency must not multiply fertility.
            Short-lived settings still compress their reproductive span. */
         const span = Math.max(3, S.life * 0.7 - S.grown);
-        if (R() < S.births * 14 * (REFLECT_HOURS / YEAR) * room / span / (1 + p.kids * 0.12) * (INFANCY ? fecund(p) : 1)) {
+        if (R() < S.births * 14 * (REFLECT_HOURS / YEAR) * room / span / (1 + p.kids * 0.12) * (INFANCY ? fecund(p) : 1) * (FAITH_KIDS ? faithBirths(p, mate) : 1)) {   // TODO 15.11l
           if (SEXES) { p.due = t + CARRY_DAYS * DAY_HOURS; p.babyDad = mate.id; count.conceived++; }
           else {
           const c = newPerson(v, 0, p, mate);
@@ -8602,10 +8630,10 @@
       const odds = (S.plague === "none" ? 0 : S.plague === "rare" ? 0.004 : 0.02) * (DIRT ? 1 + v.foul * FOUL_OUTBREAK : 1);   // TODO 15.5r
       if (v.sick === 0 && R() < odds) {
         const here = people.filter(p => p.home === v.id && !p.immune);
-        if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; count.infected++; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); if (FAITH) hardTimes(v, "sick", 1); }
+        if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; count.infected++; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f, "one of " + here.length + " not yet immune fell ill" + (DIRT && v.foul > 0.05 ? "; foul water " + r1(v.foul) : "")); if (FAITH) hardTimes(v, "sick", 1); }
       }
       if (v.hungry > v.pop * 0.4 && v.pop > 8 && (!v.famine || t - v.famine >= 30 * DAY_HOURS)) {
-        v.famine = t; note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f);
+        v.famine = t; note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f, pc(v.hungry / v.pop) + " of " + v.pop + " going hungry; " + r1(v.food / Math.max(1, v.pop)) + " days of food a head in the store");
         if (FAITH) hardTimes(v, "famine", 1.5);   // TODO 15g
       }
       /* Word that food is dear (TODO 12b): one household in seven going hungry with money to pay, not
@@ -8615,7 +8643,7 @@
          every two months it was as much news as everything else together, crowding the rest out
          (the newest is what is told). */
       if (!shared && t > 30 * DAY_HOURS && v.pop > 8 && v.hungry > v.pop * 0.15 && (v.purse || 0) > v.pop && t - v.dearAt >= 90 * DAY_HOURS && t - factions[v.f].dearAt >= 120 * DAY_HOURS && !(v.famine && t - v.famine < 30 * DAY_HOURS)) {
-        v.dearAt = t; factions[v.f].dearAt = t; note("dear", "Food is dear in " + v.name + ".", 1.5, v.x, v.y, v.f);
+        v.dearAt = t; factions[v.f].dearAt = t; note("dear", "Food is dear in " + v.name + ".", 1.5, v.x, v.y, v.f, pc(v.hungry / v.pop) + " going hungry with coins to pay; bread " + r1(v.priceFood) + " a day");
       }
       /* Word of plenty (TODO 15.5g): after the harvest, a village whose store and houses hold more than
          half a year's food a head and where it is cheap; at most once a village a year, once a faction
@@ -8623,7 +8651,7 @@
       if (PLENTY && t > 30 * DAY_HOURS && v.pop > 8 && v.hungry < v.pop * 0.05 && (v.food + (v.held || 0)) > v.pop * PLENTY_DAYS && (shared || v.priceFood < 0.9) &&
           t - (v.plentyAt ?? -1e9) >= YEAR * 0.8 && t - (factions[v.f].plentyAt ?? -1e9) >= 60 * DAY_HOURS) {
         v.plentyAt = t; factions[v.f].plentyAt = t; count.plenty++;
-        note("plenty", "There is grain to spare in " + v.name + ".", 1.2, v.x, v.y, v.f);
+        note("plenty", "There is grain to spare in " + v.name + ".", 1.2, v.x, v.y, v.f, r1((v.food + (v.held || 0)) / v.pop) + " days of food a head, store and houses; bread " + r1(v.priceFood) + " a day");
       }
       /* Under the walls: soldiers of a faction at war with this one, and
          nobody of ours near enough to stop them. */
@@ -8675,13 +8703,13 @@
           let got = 0;
           if (MATS) { const st = Math.min(v.stone, need); v.stone -= st; got += st; const wd = Math.min(Math.max(0, v.wood - v.wantWood * 0.5), need - got); if (wd > 0) { v.wood -= wd; got += wd; } }
           else { const g = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= g; got += g; }
-          if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / (KIT_ON ? 30 : eraWar(factions[v.f]).wallDays)); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f); } }
+          if (got > 0) { const was = v.wall; v.wall = Math.min(1, v.wall + got / need / (KIT_ON ? 30 : eraWar(factions[v.f]).wallDays)); if (was < 0.5 && v.wall >= 0.5) { count.walls++; note("wall", v.name + " has raised a wall.", 1.5, v.x, v.y, v.f, (t - v.raidAt < YEAR ? "raided within the year" : "in danger within two months")); } }
         } else if (KIT_ON && v.wall >= 1 && (v.fort || 0) < 1 && (t - v.dangerAt < 60 * DAY_HOURS || t - v.raidAt < YEAR) && v.foes === 0 && gunsFaced(v)) {
           /* 15.6 step 4: against guns, a low, thick wall with bastions, of stone, twice the work over twice the days. */
           const need = (10 + v.pop * 0.5) / 30;
           let got = 0;
           if (MATS) { got = Math.min(v.stone, need); v.stone -= got; } else { got = Math.min(Math.max(0, v.goods - v.pop * 0.2), need); v.goods -= got; }
-          if (got > 0) { const was = v.fort || 0; v.fort = Math.min(1, was + got / need / 60); if (was < 0.5 && v.fort >= 0.5) { count.forts++; note("wall", v.name + " has built a low, thick wall to stand the guns.", 2, v.x, v.y, v.f); } }
+          if (got > 0) { const was = v.fort || 0; v.fort = Math.min(1, was + got / need / 60); if (was < 0.5 && v.fort >= 0.5) { count.forts++; note("wall", v.name + " has built a low, thick wall to stand the guns.", 2, v.x, v.y, v.f, "its enemies have guns, and its old wall would not stand them"); } }
         } else if (v.wall > 0 && !atWarAnywhere(factions[v.f])) { v.wall = Math.max(0, v.wall - 1 / (4 * 365)); if (v.fort > 0) v.fort = Math.max(0, v.fort - 1 / (20 * 365)); }   // gone in about four years of peace; a fort of stone stands longer
       }
       /* What an army does where it stands (TODO 14b): spoils the crops, burns what it can, takes
@@ -8720,7 +8748,7 @@
           if (!c || c.goal !== v.id || walledOut(v, +k)) continue;
           if (theirs[k] < (c.out || 0) * 0.6) continue;   // still coming in: judged once most of it is here
           c.ready = false; c.goal = -1; factions[+k].target[v.f] = -1; (c.barred || (c.barred = {}))[v.id] = t + 60 * DAY_HOURS; count.calledOff++;
-          note("war", factions[+k].name + "'s army has drawn off from " + v.name + ", too strongly held to take.", 1.5, v.x, v.y, +k);
+          note("war", factions[+k].name + "'s army has drawn off from " + v.name + ", too strongly held to take.", 1.5, v.x, v.y, +k, attackers + " attacking against " + r1(defence) + " defending; it needs more than " + r1(defence * 1.2));
         }
       }
 
@@ -8774,7 +8802,7 @@
         for (const q of kidsOf.get(p.id) || []) if ((q.mum === p.id || q.dad === p.id) && !adult(q) && q.home === v.id) rehome(q, nv, "founded");
       }
       count.founded++;
-      note("founded", goers[0].name + " led " + goers.length + " families out of " + v.name + " to found " + nv.name + ".", 2, nv.x, nv.y, v.f);
+      note("founded", goers[0].name + " led " + goers.length + " families out of " + v.name + " to found " + nv.name + ".", 2, nv.x, nv.y, v.f, v.pop + " living where " + Math.round(crowdOf(v)) + " fit; its fields feed " + r1((v.feeds || 0) / Math.max(1, v.pop)) + " a head");
       territory();
     }
 
@@ -8794,7 +8822,7 @@
           const next = here.filter(p => p !== old).sort((a, b) => (b.bold + circle(b) * 0.1) - (a.bold + circle(a) * 0.1))[0];
           if (!next) return;
           f.leader = next.id; f.views = viewOf(next);
-          note("coup", next.name + " has thrown " + (old ? old.name : "the old leader") + " out and taken " + f.name + ".", 3.5, v.x, v.y, f.id);
+          note("coup", next.name + " has thrown " + (old ? old.name : "the old leader") + " out and taken " + f.name + ".", 3.5, v.x, v.y, f.id, "loyalty in " + v.name + ", where the leader lives, fell to " + r1(v.loyal) + "; " + next.name + " the boldest there");
           for (const p of people) if (p.f === f.id) p.loyal = clamp(p.loyal + 0.2 - Math.abs(viewOf(p) - viewOf(next)) * 0.15, 0, 1);
         }
         return;
@@ -8802,7 +8830,7 @@
       if (!villages.some(o => o.alive && o.f === v.f && o !== v)) return;
       const rebels = here.filter(p => p.loyal < 0.5);
       if (rebels.length < 6) return;
-      const head = rebels.slice().sort((a, b) => (b.bold + circle(b) * 0.1) - (a.bold + circle(a) * 0.1))[0];
+      const head = rebels.slice().sort((a, b) => (b.bold + circle(b) * 0.1 + (PROPHETS && isProphet(b) ? 1 : 0)) - (a.bold + circle(a) * 0.1 + (PROPHETS && isProphet(a) ? 1 : 0)))[0];   // TODO 15.11j: a prophet first
       const names = new Set(factions.map(o => o.name));
       let name; do { name = R() < 0.5 ? "Free " + v.name : pick(F_FIRST) + " " + pick(F_LAST); } while (names.has(name) && names.size < 150);
       const nf = newFaction(name, viewOf(head));
@@ -8820,7 +8848,7 @@
       }
       nf.rel[f.id].grief = 0.5; nf.rel[f.id].op = -0.5; f.rel[nf.id].grief = 0.9; f.rel[nf.id].op = -0.6;
       count.secessions++;
-      note("secede", v.name + " has broken from " + f.name + " under " + head.name + " and calls itself " + nf.name + "." + (leftN ? " " + leftN + " who stayed loyal have left." : ""), 4, v.x, v.y, nf.id);
+      note("secede", v.name + " has broken from " + f.name + " under " + head.name + " and calls itself " + nf.name + "." + (leftN ? " " + leftN + " who stayed loyal have left." : ""), 4, v.x, v.y, nf.id, rebels.length + " of " + here.length + " grown-ups there no longer loyal; the village's loyalty " + r1(v.loyal));
       census();
     }
 
@@ -9174,7 +9202,7 @@
       count.revolutions = (count.revolutions || 0) + 1;
       note("revolution", "A civil war in " + f.name + ": the " + (was === "rich" ? "rule of the rich" : "chief") +
            (wasLead ? ", " + wasLead.name + "," : "") + " has been overthrown. " + head.name + " leads now, and " +
-           (f.rule === "elected" ? "they will choose their leaders by vote." : "rules as chief."), 4.5, v.x, v.y, f.id);
+           (f.rule === "elected" ? "they will choose their leaders by vote." : "rules as chief."), 4.5, v.x, v.y, f.id, angry.length + " of " + grown.length + " grown-ups angry, against " + guard.length + " loyal soldiers");
       return true;
     }
     /* ── dealing with each other (TODO 13) ─────────────────────────────────
@@ -9272,9 +9300,9 @@
     /* The laws, looked at once a month and changed only on a clear lean. */
     function lawsOf(f, lead, g) {
       const m = k => sayOf(f, lead, k), L = g.laws, at = villages[lead.home], held = KNOW && knows(f.id, "writing") ? 0.35 : 0.2;   // a written law outlasts more (TODO 15e)
-      const say = (what, text) => note("law", f.name + " " + text, 2, at.x, at.y, f.id);
+      const say = (what, text, why) => note("law", f.name + " " + text, 2, at.x, at.y, f.id, why);
       const theft = lean3({ repay: m("honest") + m("warm"), fine: m("greed") + m("bold") }, L.theft, held);
-      if (theft !== L.theft) { if (L.theft) say("theft", theft === "repay" ? "now makes a thief pay back twice what was taken." : "now fines a thief, to the ruler."); L.theft = theft; }
+      if (theft !== L.theft) { if (L.theft) say("theft", theft === "repay" ? "now makes a thief pay back twice what was taken." : "now fines a thief, to the ruler.", "honest and warm " + r1(m("honest") + m("warm")) + " against greedy and bold " + r1(m("greed") + m("bold"))); L.theft = theft; }
       const killing = lean3({ kin: 0.9 + (g.judge ? -0.3 : 0.2), fine: m("greed") * 1.2 + (g.judge ? 0.2 : 0), death: m("temper") + m("bold") - m("warm") }, L.killing, held);
       if (killing !== L.killing) { if (L.killing) say("killing", killing === "kin" ? "now has a killer's kin pay the dead's." : killing === "fine" ? "now fines a killer, to the ruler." : "now puts a killer to death."); L.killing = killing; }
       const want = f.yours && f.yours.unfree ? f.yours.unfree : null;
@@ -9542,18 +9570,29 @@
        time along friendships (Stark), and to children; holders trust and help each other more; a
        ruler who holds it makes it the people's own, with a priest to teach it; and it fades where
        life is safe and full (Gore, Lemos, Shults and Wildman). README, "Faith". */
-    function makeFaith(p, why) {
+    function makeFaith(p, why, quiet) {
       const v = villages[p.home];
       const rite = p.temper + p.bold - p.warm > 1.1 ? "sacrifice" : p.warm >= Math.max(p.patient, p.greed) ? "feast" : p.patient >= p.greed ? "fast" : "offering";
       const rule = p.honest > 0.6 ? "theft" : p.warm > 0.6 ? "refuse" : "";
       const holyWar = p.temper + p.bold + p.stub - p.warm > 1.6;
       const mode = p.curious + p.patient > 1.1 ? "teaching" : "rites";
       const every = p.patient > 0.6 ? 7 : p.hard > 0.6 ? 0 : 10;
-      const fa = { id: faiths.length, name: "", founder: p.id, founderName: p.name, why: why, born: t, rite, rule, holyWar, mode, every, holders: 0, at: v.id, alive: true };
+      const fa = { id: faiths.length, name: "", founder: p.id, founderName: p.name, why: why, born: t, rite, rule, holyWar, mode, every, holders: 0, at: v.id, alive: true,
+                   /* TODO 15.11i to l (2026-11-23), also from the maker's nature, read only where their settings are on:
+                      how far its gods stand behind the ruler (divine kingship, likelier in a faith of rites made by
+                      somebody loyal and incurious), what it says of blaming sorcery, of children and marrying, and
+                      whether its teachers keep apart. A prophet's movement (15.11j) is marked `move`. */
+                   tie: clamp(0.2 + p.loyal * 0.5 + (mode === "rites" ? 0.2 : 0) - p.curious * 0.3, 0, 1),
+                   sorcery: p.warm + p.honest > 1.3 ? "forbids" : p.temper + p.stub - p.warm > 0.9 ? "hunts" : "",
+                   kids: p.warm > 0.6 && p.greed < 0.5 ? "many" : p.patient > 0.65 && p.curious > 0.6 ? "few" : "",
+                   wed: p.stub + p.warm > 1.2 ? "young" : "",
+                   celibate: mode === "teaching" && p.patient + p.stub - p.warm > 0.7,
+                   move: false, from: -1, failed: 0 };
       faiths.push(fa);
+      if (p.faith != null && faiths[p.faith]) faiths[p.faith].holders--;
       p.faith = fa.id; p.zeal = 0.6 + p.bold * 0.3; fa.holders = 1; count.faiths++;
       const said = { famine: "the hunger", sick: "the sickness", dry: "the drought", lost: "the war", taken: "what was done to " + v.name };
-      note("faith", p.name + " of " + v.name + " has begun to tell others what lay behind " + (said[why] || "what happened") + ", and what must be done.", 2, v.x, v.y, p.f);
+      if (!quiet) note("faith", p.name + " of " + v.name + " has begun to tell others what lay behind " + (said[why] || "what happened") + ", and what must be done.", 2, v.x, v.y, p.f);
       return fa;
     }
     const FAITH_NAMES = [(w, n) => "the Way of " + w, (w, n) => n + "'s people", (w, n) => "the " + w + " faith", (w, n) => "those of " + w];
@@ -9561,9 +9600,15 @@
        hold one hold it harder. */
     function hardTimes(v, why, size) {
       if (!FAITH || !v || !v.alive) return;
-      let best = null, bs = 0;
+      let best = null, bs = 0, failed = null;
       for (const p of PLAIN ? people.filter(q => q.home === v.id) : residents(v.id)) {
         if (p.hp === -99 || !adult(p)) continue;
+        /* A movement that promised the hard times would end, and they came again (TODO 15.11j; Festinger:
+           a few of the most stubborn hold harder, most let go). */
+        if (p.faith != null && PROPHETS && faiths[p.faith].move && t - faiths[p.faith].born > 30 * DAY_HOURS) {
+          p.zeal = p.stub > 0.65 ? Math.min(1, p.zeal + 0.05) : Math.max(0, p.zeal - 0.3);
+          (failed || (failed = new Set())).add(faiths[p.faith]); continue;
+        }
         if (p.faith != null) { p.zeal = Math.min(1, p.zeal + 0.1 * (size || 1)); continue; }
         const s = (p.curious + p.bold * 0.5 + p.fear * 0.5) * (0.5 + R());
         if (s > bs) { bs = s; best = p; }
@@ -9574,6 +9619,167 @@
       let zealot = null;
       for (const p of residents(v.id)) if (p.hp > 0 && p.faith != null && faiths[p.faith].rite === "sacrifice" && p.zeal > 0.5 && (!zealot || p.zeal > zealot.zeal)) zealot = p;
       if (zealot && R() < 0.5) sacrifice(v, faiths[zealot.faith]);
+      if (failed) for (const fa of failed) promiseFailed(fa, v);
+      if (FAVOUR && why !== "taken") blameRuler(v, why, size || 1);   // a place taken is the old ruler's war lost, counted there
+      if (PROPHETS) { v.trouble += size || 1; if (v.trouble >= PROPHET_AT) prophet(v); }
+      if (WITCHES && (why === "famine" || why === "sick" || why === "dry")) hunt(v, why, size || 1);
+    }
+    /* ── what faith does (TODO 15.11i to m, 2026-11-23; Ric: "do 15.11 the stars") ──────────────
+       Five things a faith does to what the sim already does: rule, risings, blame, births and trade.
+       Each is a setting, and off is the world as it was. README, "What faith does". */
+
+    /* 15.11i, losing heaven's favour. Where a people's faith ties its gods to the ruler, a hard time in its
+       lands is held against the ruler, by how far it ties them (the mandate of heaven: Jia 2014 found
+       droughts raised peasant revolts in China; in Egypt, Chaney 2013, a bad Nile strengthened the
+       religious authority instead — a faith that does not tie its gods to the ruler does not blame them,
+       its holders only hold it harder, as above). It weighs on loyalty in `reflect`, and the risings the
+       sim already has follow from that; it fades over about a year of good ones (`faithDay`), and a new
+       ruler starts afresh. */
+    function blameRuler(v, why, size) {
+      const f = factions[v.f];
+      if (!f || !f.alive || f.faith == null || !faiths[f.faith]) return;
+      if (f.blameBy !== f.leader) { f.blame = 0; f.blameBy = f.leader; f.favourSaid = -1; }
+      const add = size * faiths[f.faith].tie;
+      if (add <= 0) return;
+      f.blame += add; count.blamed++;
+    }
+    /* What blame takes off somebody's loyalty: all of it for those who hold the faith that ties its gods
+       to the ruler, half for the rest, who still see the hard times. */
+    const BLAME_EACH = 0.1, BLAME_MAX = 0.35, BLAME_FADE = 0.998;   // a famine's blame is half gone in about a year
+    const blameOn = (p, f) => Math.min(BLAME_MAX, f.blame * BLAME_EACH) * (p.faith === f.faith ? 1 : 0.5);
+
+    /* 15.11j, prophets. Where hard times keep coming to one place (`trouble`, a famine counting 1.5 a
+       month it lasts, half gone in about four months), somebody may come forward promising the world will
+       be put right — Wallace's revitalization movements, which rose out of long stress (the Ghost Dance,
+       the Xhosa cattle-killing, the Taiping). Never placed and never on a timer: it needs the trouble, and
+       a person to take it up. The movement spreads fastest among the hungry, frightened and unhappy
+       (`faithTalk`), turns its holders against a ruler who does not hold it (`reflect`), and burns out if
+       the hard times come again (`promiseFailed`). Whether it founds a people of its own is left to the
+       breakaway the sim already has: its prophet is first in line to head one (`secede`). */
+    const PROPHET_AT = 4, PROPHET_ODDS = 0.2, PROPHET_GAP = 2;   // trouble; the chance at each hard time past it; years between two from one place
+    /* How far a movement turns its holders from a ruler who does not hold it. At 0.35 talk with loyal neighbours
+       pulled a village's followers back to within 0.06 of the rest (measured, seed 5); at 0.6, 0.10 (0.78 against 0.88). */
+    const MOVE_AGAINST = 0.6;
+    function prophet(v) {
+      if (v.trouble < PROPHET_AT || t - (v.prophetAt ?? -1e9) < PROPHET_GAP * YEAR || R() >= PROPHET_ODDS) return;   // only out of hard times
+      let best = null, bs = 0;
+      for (const p of PLAIN ? people.filter(q => q.home === v.id) : residents(v.id)) {
+        if (p.hp <= 0 || !adult(p) || p.id === factions[v.f].leader) continue;
+        const s = (p.curious + p.bold + p.fear + (1 - p.mood)) * (0.5 + R());
+        if (s > bs) { bs = s; best = p; }
+      }
+      if (!best) return;
+      v.prophetAt = t; count.prophets++;
+      const old = best.faith != null && faiths[best.faith] ? faiths[best.faith] : null;
+      const fa = makeFaith(best, "prophet", true);
+      fa.move = true; fa.from = old ? old.id : -1; best.zeal = Math.min(1, best.zeal + 0.2);
+      note("faith", best.name + " of " + v.name + " says the hard times will end and the world be put right for those who follow" + (old ? ", a new reading of " + faithName(old) : "") + ".", 2.5, v.x, v.y, v.f,
+        "hard times here worth " + r1(v.trouble) + " lately (a famine 1.5 a month); " + best.name + " curious " + r1(best.curious) + ", bold " + r1(best.bold) + ", afraid " + r1(best.fear));
+    }
+    function promiseFailed(fa, v) {
+      fa.failed++; count.failed++;
+      if (fa.failed >= 2) fa.move = false;   // burnt out: what is left is an ordinary faith, or nothing
+      note("faith", "Hard times have come again to " + v.name + " for all " + fa.founderName + " promised, and many who followed have let go.", 2, v.x, v.y, v.f,
+        "the promise has failed " + fa.failed + (fa.failed === 1 ? " time" : " times") + (fa.move ? "" : "; it is no longer a movement"));
+    }
+    const isProphet = p => p.faith != null && faiths[p.faith] && faiths[p.faith].move && faiths[p.faith].founder === p.id;
+
+    /* 15.11k, blaming a neighbour. After a famine, a sickness or a drought, a frightened village may blame
+       somebody among it: likelier the old, a woman, the poor, the cold, the disliked (read from how the
+       others feel about them), somebody of another faith, a healer. Oster 2004 found Europe's trials rose in
+       the cold decades; Miguel 2005, that witch killings in Tanzania doubled in years of drought or flood,
+       mostly of old women; Leeson and Russ 2018, that trials were most where two churches competed — so
+       two faiths side by side make a hunt likelier. A judge (15c) hears it and may acquit; a faith may
+       forbid it or see sorcery everywhere. Shunned, driven out or killed, by how angry the village is.
+       Only after a hard event, one village at a time. */
+    const HUNT_ODDS = 0.12;
+    function hunt(v, why, size) {
+      const f = factions[v.f], here = [];
+      for (const p of PLAIN ? people.filter(q => q.home === v.id) : residents(v.id)) if (p.hp > 0 && adult(p)) here.push(p);
+      if (here.length < 8) return;
+      let fear = 0, temper = 0, coins = 0;
+      const held = new Map();
+      for (const p of here) { fear += p.fear; temper += p.temper; coins += p.coins; if (p.faith != null && p.zeal > 0.3) held.set(p.faith, (held.get(p.faith) || 0) + 1); }
+      fear /= here.length; temper /= here.length; coins /= here.length;
+      let rivals = 0, major = null, mn = 0;
+      for (const [id, n] of held) { if (n >= here.length * 0.1) rivals++; if (n > mn) { mn = n; major = id; } }
+      const pf = f.faith != null ? faiths[f.faith] : null;
+      const judge = GOV && f.gov && f.gov.judge ? byId.get(f.gov.judge) : null, heard = !!(judge && judge.hp > 0);
+      const odds = HUNT_ODDS * size * (0.4 + fear + Math.max(0, temper - 0.5)) * (rivals >= 2 ? 1.8 : 1) *
+                   (pf && pf.sorcery === "forbids" ? 0.3 : pf && pf.sorcery === "hunts" ? 1.8 : 1) * (heard ? 0.6 : 1);
+      if (R() >= odds) return;
+      count.hunts++;
+      let acc = null, as = -1e9, why2 = null;
+      const n = here.length, step = Math.max(1, Math.floor(n / 16));
+      for (let i = 0; i < n; i++) {
+        const p = here[i];
+        if (p.id === f.leader) continue;
+        let feltSum = 0, felt = 0;
+        for (let k = 1; k <= 16 && k * step < n; k++) { feltSum += feel(here[(i + k * step) % n], p.id); felt++; }
+        const disliked = felt ? -feltSum / felt : 0;
+        const r = { old: p.age > 50 ? 0.5 : 0, woman: SEXES && p.sex === 0 ? 0.3 : 0, poor: p.coins < coins * 0.3 ? 0.3 : 0, cold: Math.max(0, 0.5 - p.warm) * 0.6,
+                    disliked: disliked * 1.5, stranger: p.faith != null && major != null && p.faith !== major ? 0.4 : major != null && p.faith == null ? 0.15 : 0, healer: p.job === "healer" ? 0.4 : 0 };
+        let sc = R() * 0.3; for (const k in r) sc += r[k];
+        if (sc > as) { as = sc; acc = p; why2 = r; }
+      }
+      if (!acc) return;
+      const WORDS = { old: "old", woman: "a woman", poor: "poor", cold: "cold to others", disliked: "disliked", stranger: "of another faith", healer: "a healer" };
+      const reasons = Object.keys(why2).filter(k => why2[k] >= 0.15).map(k => WORDS[k]).join(", ") || "nothing much";
+      const said = { famine: "the hunger", sick: "the sickness", dry: "the drought" }[why];
+      const ground = "after " + said + "; the village afraid " + r1(fear) + ", tempers " + r1(temper) + (rivals >= 2 ? "; two faiths side by side" : "") + "; " + acc.name + ": " + reasons;
+      if (heard && R() < 0.3 + judge.honest * 0.5) {
+        count.acquitted++;
+        note("witch", acc.name + " of " + v.name + " was blamed for " + said + " and brought before " + judge.name + ", who let them go.", 2, v.x, v.y, v.f, ground + "; the judge honest " + r1(judge.honest));
+        return;
+      }
+      const anger = (heard ? judge.temper : temper) + fear + R() * 0.3 + (pf && pf.sorcery === "hunts" ? 0.2 : 0);
+      if (anger >= 1.3) {
+        note("witch", acc.name + " of " + v.name + " was blamed for " + said + (heard ? ", condemned by " + judge.name + "," : "") + " and killed.", 3, v.x, v.y, v.f, ground + "; anger " + r1(anger) + " (killed from 1.3)");
+        die(acc, "witch");
+        return;
+      }
+      let to = null;
+      if (anger >= 0.9) {
+        let bd = 1e9;
+        for (const o of villages) {
+          if (!o.alive || o === v || atWar(o.f, v.f)) continue;
+          const d = Math.hypot(o.x - v.x, o.y - v.y) + (o.f === v.f ? 0 : 30);
+          if (d < bd) { bd = d; to = o; }
+        }
+      }
+      if (to && !(to.f !== acc.f && factions[acc.f].leader === acc.id)) {
+        count.drivenOut++;
+        note("witch", acc.name + " was blamed for " + said + " and driven out of " + v.name + ", to " + to.name + ".", 2.5, v.x, v.y, v.f, ground + "; anger " + r1(anger) + " (driven out from 0.9)");
+        rehome(acc, to, "driven");
+        return;
+      }
+      count.shunned++;
+      note("witch", acc.name + " of " + v.name + " was blamed for " + said + ", and nobody there will speak to them.", 1.5, v.x, v.y, v.f, ground + "; anger " + r1(anger));
+      wakeUp(acc); acc.mood = Math.max(0, acc.mood - 0.3);
+      for (let k = 0; k < Math.min(24, n); k++) { const q = here[(k * step) % n]; if (q !== acc) { wakeUp(q); feelFor(q, acc, -0.3); } }
+    }
+
+    /* 15.11l, children. The devout have a few more (Kaufmann; the Hutterites and Utah's Mormons at the far
+       end, Catholic and Protestant Europe's gap a modest one), more where their faith bids it and fewer
+       where it bids restraint; a faith whose teachers keep apart has them, and its most zealous, marry no
+       one (monks and nuns); and a people's faith may have it marry young (`customs`). */
+    const celibate = p => !!(p && p.faith != null && faiths[p.faith] && faiths[p.faith].celibate &&
+                          (p.zeal > 0.9 || (GOV && factions[p.f].gov && factions[p.f].gov.priest === p.id)));
+    function faithBirths(p, mate) {
+      if (celibate(p) || celibate(mate)) return 0;
+      if (p.faith == null || !faiths[p.faith]) return 1;
+      const fa = faiths[p.faith];
+      return (1 + 0.2 * p.zeal) * (fa.kids === "many" ? 1 + 0.25 * p.zeal : fa.kids === "few" ? 1 - 0.3 * p.zeal : 1);
+    }
+
+    /* 15.11m, trust in trade. Traders of one faith trust each other further (Greif's Maghribi traders; the
+       Armenian, Parsi and Hadrami diasporas; Quaker banking): a load to a place that mostly holds the
+       trader's faith is worth more to them, a caravan goes half as far again to reach one, and a place that
+       holds another is worth a little less. Somebody whose faith is not their people's own is drawn to
+       trading (`chooseJob`), as minorities kept out of land and office were. */
+    function tradeTrust(p, o) {
+      if (p.faith == null || o.faith == null) return 1;
+      return o.faith === p.faith ? 1 + 0.3 * p.zeal : 1 - 0.2 * p.zeal;
     }
     function faithTalk(a, b) {
       if (a.faith == null && b.faith == null) return;
@@ -9582,7 +9788,10 @@
         if (x.faith == null || !adult(y)) continue;
         const fa = faiths[x.faith], trust = feel(y, x.id);
         if (trust <= 0.25) continue;   // along trust only, close friends and kin (Stark)
-        const pull = FAITH_PASS * x.zeal * trust * (fa.mode === "teaching" ? 1.5 : 1) * (0.5 + y.fear + (y.hungry > 0 ? 0.5 : 0)) * (1.2 - y.stub) * (y.faith != null ? 1 - y.zeal : 1);
+        let pull = FAITH_PASS * x.zeal * trust * (fa.mode === "teaching" ? 1.5 : 1) * (0.5 + y.fear + (y.hungry > 0 ? 0.5 : 0)) * (1.2 - y.stub) * (y.faith != null ? 1 - y.zeal : 1);
+        /* A prophet's movement (TODO 15.11j): fast among the hungry, the frightened and the unhappy, and
+           readily taken up by those of the faith it reads anew (their own zeal holds them back half as much). */
+        if (PROPHETS && fa.move) pull *= (y.hungry > 0 || y.fear > 0.4 || y.mood < 0.4 ? 3 : 1.2) * (fa.from >= 0 && y.faith === fa.from && y.zeal < 1 ? (1 - y.zeal * 0.5) / (1 - y.zeal) : 1);
         if (R() < pull) { convert(y, fa, x.zeal * 0.5); return; }
       }
     }
@@ -9607,6 +9816,18 @@
         if (p.zeal <= 0.02) { p.faith = null; p.zeal = 0; count.lapsed++; continue; }
         faiths[p.faith].holders++;
       }
+      /* Where each place's people mostly stand (TODO 15.11m): the faith held by two in five of those who live there. */
+      if (FAITH_TRADE) {
+        const tally = new Map(), most = new Map();
+        for (const p of people) if (p.hp !== -99 && p.faith != null) { const k = p.home * 65536 + p.faith; tally.set(k, (tally.get(k) || 0) + 1); }
+        for (const v of villages) v.faith = null;
+        for (const [k, n] of tally) { const vid = Math.floor(k / 65536), v = villages[vid]; if (v && v.alive && n >= v.pop * 0.4 && n > (most.get(vid) || 0)) { most.set(vid, n); v.faith = k % 65536; } }
+      }
+      if (PROPHETS) {
+        for (const v of villages) if (v.trouble > 0) { v.trouble *= 0.995; if (v.trouble < 0.01) v.trouble = 0; }
+        /* A movement whose hard times have passed for a year settles into an ordinary faith (TODO 15.11j). */
+        for (const fa of faiths) if (fa.alive && fa.move && t - fa.born > YEAR && villages[fa.at].trouble < 0.5) fa.move = false;
+      }
       for (const fa of faiths) if (fa.alive && fa.holders === 0) {
         fa.alive = false; count.faithsGone++;
         const v = villages[fa.at];
@@ -9628,6 +9849,18 @@
           if (f.faith != null && faiths[f.faith].mode === "teaching" && !f.gov.priest) {
             let best = null; for (const q of people) if (q.f === f.id && q.faith === f.faith && adult(q) && q.id !== f.leader && (!best || q.zeal > best.zeal)) best = q;
             if (best) { f.gov.priest = best.id; count.offices++; }
+          }
+        }
+        /* Heaven's favour (TODO 15.11i): blame fades in good years and is gone with the ruler; once a people
+           has turned, it is said. */
+        if (FAVOUR) {
+          if (f.blameBy !== f.leader) { f.blame = 0; f.blameBy = f.leader; f.favourSaid = -1; }
+          f.blame *= BLAME_FADE;
+          if (f.faith != null && lead && f.blame > 1 && f.loyal < 0.4 && f.favourSaid !== f.leader) {
+            f.favourSaid = f.leader; count.favourLost++;
+            const v = villages[lead.home], fa = faiths[f.faith];
+            note("faith", "In " + f.name + " they say the gods have turned from " + lead.name + ".", 3, v.x, v.y, f.id,
+              "hard times held against the ruler worth " + r1(f.blame) + "; loyalty " + r1(f.loyal) + "; " + faithName(fa) + " ties its gods to the ruler " + pc(fa.tie));
           }
         }
         /* Standing: a people loyal to a ruler who holds what they hold. */
@@ -9682,7 +9915,7 @@
       c.arranged = clamp((m("stub") + m("patient") + m("greed")) / 3 * 1.6 - 0.25 - (m("curious") - 0.5) * 0.6, 0, 1);
       c.pay = lean3({ dowry: c.unequal * 2 - 0.5 + (BEASTS ? 0.2 : -0.3), brideprice: m("greed") - 0.1, none: m("warm") - 0.2 }, c.pay, 0.1);
       c.live = m("bold") + m("curious") > 1.05 ? "own" : "his";
-      c.late = c.live === "own" && m("patient") > 0.5;
+      c.late = c.live === "own" && m("patient") > 0.5 && !(FAITH_KIDS && f.faith != null && faiths[f.faith] && faiths[f.faith].wed === "young");   // TODO 15.11l: a faith that marries its people young
       c.cousins = !(FAITH && f.faith != null && faiths[f.faith].mode === "teaching");
       c.inherit = lean3({ kids: m("warm") + 0.25, eldest: m("greed") + m("bold") + c.unequal - 0.6, kin: m("stub") + m("patient") - 0.6 }, c.inherit, 0.1);
       c.reach = 24 + 40 * m("curious");   // squares: 6 to 16 km, as far as most looked (Perry 1969: under 11 miles)
@@ -9696,6 +9929,7 @@
     }
     /* Would the families let these two marry? */
     function wouldWed(a, b) {
+      if (FAITH_KIDS && (celibate(a) || celibate(b))) { count.celibate++; return false; }   // TODO 15.11l: kept apart by their faith
       const c = factions[a.f].match; if (!c) return true;
       if (a.age < wedAge(c, a) || b.age < wedAge(c, b)) return false;
       if (!c.cousins && cousins(a, b)) return false;
@@ -10873,7 +11107,7 @@
     function relDeals(r, b) { r.ally = b.ally = false; r.trade = b.trade = false; r.pays = b.pays = false; }
     /* A war, and the defender's allies called to it: each comes as their leader is bold and as
        they like the defender, or the alliance is over. */
-    function startWar(f, o, text) {
+    function startWar(f, o, text, why) {
       const rel = f.rel[o.id], back = o.rel[f.id], b = border(f, o);
       if (bound(rel)) { count.wedBroken++; text += " The marriage between them did not hold the peace."; }
       warMoves++; rel.war = back.war = true; rel.since = back.since = t; rel.dead = back.dead = 0; relDeals(rel, back);
@@ -10881,7 +11115,7 @@
       rel.began = f.leader; back.began = o.leader;
       if (b.pair) { f.target[o.id] = b.pair[1].id; o.target[f.id] = b.pair[0].id; }
       count.wars++;
-      note("war", text, 4, b.pair ? b.pair[1].x : 0, b.pair ? b.pair[1].y : 0, f.id);
+      note("war", text, 4, b.pair ? b.pair[1].x : 0, b.pair ? b.pair[1].y : 0, f.id, why);
       for (const a of factions) {
         if (!a.alive || a === f || a === o || !a.rel[o.id].ally || a.rel[f.id].war) continue;
         const al = byId.get(a.leader), r2 = a.rel[f.id], b2 = f.rel[a.id], bb = border(a, f), at = bb.pair ? bb.pair[0] : { x: 0, y: 0 };
@@ -11641,7 +11875,7 @@
               count.peaces++;
               lostWar(f, rel); lostWar(o, back);
               const a = byId.get(rel.wed[0]), c = byId.get(rel.wed[1]);
-              note("wed", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead, sealed by a marriage: " + a.name + ", " + whose(a, f) + ", to " + c.name + ", " + whose(c, o) + ".", 4, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
+              note("wed", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead, sealed by a marriage: " + a.name + ", " + whose(a, f) + ", to " + c.name + ", " + whose(c, o) + ".", 4, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id, "tired of it " + r1(weary) + ", nearly at " + r1(mark) + "; a marriage was offered and taken");
               continue;
             }
           }
@@ -11666,7 +11900,7 @@
                 rel.pays = true; rel.rate = dailyRate(share); count.tributes++;
               }
               lostWar(f, rel); lostWar(o, back);
-              note("peace", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead" + (rel.pays ? "; " + f.name + " is to pay " + shareWords(share) + " of its stores a year" : "") + ".", 3.5, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
+              note("peace", f.name + " and " + o.name + " have made peace after " + Math.max(1, Math.round((t - rel.since) / YEAR)) + " years and " + (rel.dead + back.dead) + " dead" + (rel.pays ? "; " + f.name + " is to pay " + shareWords(share) + " of its stores a year" : "") + ".", 3.5, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id, "tired of it " + r1(weary) + ", past " + r1(mark) + ": " + rel.dead + " of ours dead in " + r1((t - rel.since) / YEAR) + " years" + (yields ? "; losing, they asked for terms" : "; the other side tired " + r1(theirs)));
             }
           }
         /* Rivals may take up arms again eighteen months after a peace, and from
@@ -11706,7 +11940,7 @@
             const olead = byId.get(o.leader);
             if (olead && ruling(olead, "warm", o) + R() * 0.6 > 0.6 + Math.max(0, -back.op) * 0.3 && wed(f, o)) {
               const a = byId.get(rel.wed[0]), c = byId.get(rel.wed[1]);
-              note("wed", a.name + ", " + whose(a, f) + ", has married " + c.name + ", " + whose(c, o) + ", to make peace between them.", 3, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id);
+              note("wed", a.name + ", " + whose(a, f) + ", has married " + c.name + ", " + whose(c, o) + ", to make peace between them.", 3, b.pair ? b.pair[0].x : 0, b.pair ? b.pair[0].y : 0, f.id, "wanted war " + r1(want) + ", but the leader is patient " + r1(calm) + " and warm " + r1(ruling(lead, "warm", f)) + "; the other leader took the match");
               continue;
             }
           }
@@ -11714,7 +11948,7 @@
             demand(f, o, why === "out of plain dislike" ? "" : why);
           } else if (want > 0.8 && mine > theirs * 0.7 && R() < 0.5) {
             if (holy && want > 0.8 && want - 0.5 <= 0.8) count.holyWars++;
-            startWar(f, o, f.name + " has gone to war with " + o.name + ", " + (holy && want - 0.5 <= 0.8 ? "for " + faithName(faiths[f.faith]) : why) + ".");
+            startWar(f, o, f.name + " has gone to war with " + o.name + ", " + (holy && want - 0.5 <= 0.8 ? "for " + faithName(faiths[f.faith]) : why) + ".", "wanted it " + r1(want) + " (war at 0.8): old wrongs " + r1(rel.grief) + ", land and hunger " + r1(land) + ", envy " + r1(covet) + ", the leader's own grudge " + r1(mind) + (holy ? ", and their faith calls for it" : "") + "; our strength " + r1(mine / Math.max(1e-9, theirs)) + " times theirs; leader bold " + r1(ruling(lead, "bold", f)) + ", hot " + r1(hot) + ", patient " + r1(calm));
           }
         }
       }
@@ -11961,7 +12195,7 @@
       if (what === "war") {
         if (!S.war) return "Wars are switched off in this world.";
         if (rel.war) return "";
-        startWar(f, o, f.name + " has gone to war with " + o.name + ", on your word.");
+        startWar(f, o, f.name + " has gone to war with " + o.name + ", on your word.", "you declared it");
         return "war";
       }
       /* Short of war (TODO 13): the other side answers as its own leader would. */
@@ -12016,7 +12250,7 @@
           warMoves++; rel.war = back.war = false; rel.peaceAt = back.peaceAt = t; rel.grief *= 0.4; back.grief *= 0.4;
           count.peaces++;
           lostWar(f, rel); lostWar(o, back);
-          note("peace", f.name + " and " + o.name + " have made peace after " + (rel.dead + back.dead) + " dead.", 3.5, at.x, at.y, f.id);
+          note("peace", f.name + " and " + o.name + " have made peace after " + (rel.dead + back.dead) + " dead.", 3.5, at.x, at.y, f.id, "you asked; their side tired " + r1(theirs));
           return "peace";
         }
         note("peace", o.name + " refused the offer of peace from " + f.name + ".", 2, at.x, at.y, o.id);
@@ -12190,9 +12424,13 @@
       TECH: TECH.map(x => x.key), knowDay: () => { if (KNOW) { knowDay(); if (WAR_TECH.length) warKnowDay(); } }, knows: (fid, k) => knows(fid, k), teach: (p, k) => { if (k in WI) WK.set(p.id, warOf(p) | (1 << WI[k])); else p.know = (p.know || 0) | (1 << TI_K[k]); }, WAR_TECH: WAR_TECH.map(x => x.key), warKnowDay: () => { if (KNOW && WAR_TECH.length) warKnowDay(); },   // TODO 15e
       knowOf: f => !KNOW || !f.know ? null : { extra: TECH.filter((x, i) => f.know[i] > 0 && !(BASE_KNOW & (1 << i))).map(x => x.name), lost: TECH.filter((x, i) => f.know[i] === 0 && ((f.knewOnce || 0) & (1 << i))).map(x => x.name), writes: f.know[TI_K.writing] },
       wedWealth: wedWealth, wouldWed: wouldWed, marriageDay: fid => { const f = factions[fid], l = byId.get(f.leader); if (MARRY && l) marriageDay(f, l); return f.match; }, worth: worth,   // TODO 15b
-      faithOf: id => { const fa = faiths[id]; return fa ? { name: faithName(fa), rite: fa.rite, rule: fa.rule, holyWar: fa.holyWar, mode: fa.mode, every: fa.every, holders: fa.holders } : null; },
+      faithOf: id => { const fa = faiths[id]; return fa ? { name: faithName(fa), rite: fa.rite, rule: fa.rule, holyWar: fa.holyWar, mode: fa.mode, every: fa.every, holders: fa.holders,
+        tie: FAVOUR ? fa.tie : 0, move: PROPHETS && fa.move, sorcery: WITCHES ? fa.sorcery : "", kids: FAITH_KIDS ? fa.kids : "", wed: FAITH_KIDS ? fa.wed : "", celibate: FAITH_KIDS && fa.celibate } : null; },   // TODO 15.11
       faiths: faiths, hardTimes: (vid, why, size) => hardTimes(villages[vid], why, size), makeFaith: (p, why) => makeFaith(p, why || "famine"), faithDay: () => faithDay(), convert: (p, id) => convert(p, faiths[id], 0.5), holyDay: id => holyDay(faiths[id]),   // TODO 15g
       steal: (p, q) => steal(p, q), capture: (vid, fid) => capture(villages[vid], factions[fid], null),   // for the tests (TODO 15c)
+      /* For the tests (TODO 15.11i to m): each does what the engine does at that moment, and nothing else. */
+      hunt: (vid, why, size) => hunt(villages[vid], why || "famine", size || 1), prophet: vid => prophet(villages[vid]), blameOn: (p, fid) => blameOn(p, factions[fid]),
+      faithBirths: (p, mate) => faithBirths(p, mate), celibate: p => celibate(p), tradeTrust: (p, vid) => tradeTrust(p, villages[vid]), bestRoute: (p, vid) => bestRoute(p, villages[vid]),
       get tick() { return t; },
       get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
       get activityTicks() { return activityTicks; },

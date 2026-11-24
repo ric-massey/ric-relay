@@ -2135,7 +2135,7 @@ player-ruled faction keep, free or forbid it?
 
 ### [x] 15g. Faith: peoples who come up with their own
 
-**Done 2026-11-22.** Setting Faith (off = the 15c world, fingerprinted). A faith is made up by one person after a famine, sickness, dry year, war lost or their village taken (about one such event in six); its rite, rule, holy war, mode and holy day come from its maker's nature; it passes in talk along trust and to children, is named once ten hold it, binds and helps its holders, keeps holy days (gathering instead of work), becomes a people's own when its ruler holds it (a priest where it is taught), may call for holy war or sacrifice, and fades where life is safe. Measured: 11% of those who trusted a holder took it up in sixty days, 2.8% of the rest. `test/faith.test.mjs`; README, "Faith". Left: splits, festivals with feasting, writing a faith down (15e). Marrying within it is in 15b.
+**Done 2026-11-22.** Setting Faith (off = the 15c world, fingerprinted). A faith is made up by one person after a famine, sickness, dry year, war lost or their village taken (about one such event in six); its rite, rule, holy war, mode and holy day come from its maker's nature; it passes in talk along trust and to children, is named once ten hold it, binds and helps its holders, keeps holy days (gathering instead of work), becomes a people's own when its ruler holds it (a priest where it is taught), may call for holy war or sacrifice, and fades where life is safe. Measured: 11% of those who trusted a holder took it up in sixty days, 2.8% of the rest. `test/faith.test.mjs`; README, "Faith". Left: splits, festivals with feasting, writing a faith down (15e). Marrying within it is in 15b. What was left, and what is not true to life, is item 15.11.
 
 Added 2026-11-20 (Ric: "Faith seems pretty important. How do we make it so they can come up with
 their own faiths?").
@@ -4908,6 +4908,481 @@ people): after a year Gini 0.81 → 0.65, top tenth 68% → 43%, none 44% → 26
 Gini 0.76 at ten years and 0.82 at twenty against 0.88 and 0.96 the old way, top tenth 64% against 97%, tills kept (one seed; still drifting up in the second decade). **Found:** a soldier's `at` is their last market, not where they stand. **Not done:** gambling, servants
 and day wages, a faith's rule against interest.
 
+### [ ] 15.11. Faith, deeper and true to life
+
+**Ric (2026-11-23):** "should i make the religions deeper?", then "i just want it to be realistic you know?",
+then "15.11 needs to be about this about making it deeper and more realistic".
+**Now** (read from `people.js`, 2026-11-23; README, "Faith"; TODO 15g): there is no belief until something
+goes wrong. After a famine, sickness, dry year, lost war or a village taken, one grown-up may make up a faith
+(about one event in six). Its rite, rule, holy war, mode (rites or teaching) and holy day come from its maker's
+nature, and it never changes after that. It passes in talk along trust, and to children. It gets a name once ten
+hold it. A ruler who holds it makes it the people's own: holders get a little more loyal, a taught one gets a
+priest and a glebe (15.7c), cousins are barred (15b), and a ruler of a rites faith may ban new things (15.9e).
+Holders give alms to each other (15.10). Zeal falls by 0.0015 a day for anyone fed, unafraid and well, so
+someone at the usual starting zeal of 0.6 lets go in about a year of ordinary good life (`faithDay`).
+**What is not true to life:**
+- **Belief starts at zero.** Before named faiths almost every people had some: ancestors, spirits of places,
+  the dead. A faith rose out of that or against it. It did not rise out of nothing.
+- **It fades with a good year.** Falling belief in safe, educated societies is a modern finding (the Gore et
+  al. model 15g used was fitted to modern surveys). A fed medieval peasant did not drift away in a year.
+- **The people do not follow their ruler.** Much of history's conversion went from the top down: a ruler or a
+  family of standing took a faith up, and over a generation or two most of their people did too, by example,
+  favour, law and sometimes force. Here the ruler's faith only adds loyalty to those who already hold it.
+- **Faiths never meet.** They do not blend, borrow, split into sects, persecute each other or tolerate each
+  other. Two faiths in one village simply both exist.
+- **A faith never changes.** What its founder made up is fixed for ever, however many hold it and however far
+  it has spread.
+- **It has no economy.** No tithe or offerings, no priests kept by their faith (only one taught faith's priest
+  as an office), no holy buildings, no gifts of land to it beyond the glebe.
+- **Its year is a clock.** A holy day every seven or ten days or none. Nothing follows the harvest, planting,
+  the dead or the seasons, and the holy day is gathering and talk with no feast.
+- **Death means nothing to it.** There are no burials, rites for the dead or ancestors kept.
+
+**Every kind of faith, and none of them real** (Ric, 2026-11-23: "all types of faith not just christianity
+but they should be able to mak eup their own with their own rules..."). The research reads across the whole
+record — Hindu, Buddhist, Jain, Jewish, Christian, Muslim, Sikh, Zoroastrian, Daoist, Confucian, Shinto,
+Norse, Greek and Roman, Egyptian, Mesoamerican, Yoruba and other West African, Aboriginal Australian,
+Polynesian, steppe and Siberian shamanism, ancestor cults, and the made-up faiths of new movements — and no
+single one is the model. Examples in the parts below are where to look, not what to copy. **No real faith is
+ever placed in a world.** Every faith in it is made up by its people, its rules put together from the range
+the record shows, so two worlds have different faiths and a faith may look like nothing on Earth.
+
+Each part below is its own piece of work: research first, Ric's questions, measured before and after, the
+old way kept as a setting (fingerprinted, like 15.6f to 15.10).
+
+#### [ ] 15.11a. Measure what 15g does on its own first
+**Wait for 15.12a** (Ric, 2026-11-23: "Yes, before 15.11"): each person's own dice come first, so that
+these numbers and every 15.11 part measured against them are the same world before and after.
+**Now:** 15g was measured only with twenty holders placed by hand. Nobody has checked a default world, with
+nothing placed, over years.
+**Do:** count, over several seeds and at least ten world-years, how often faiths are born, how many get a name,
+how far they spread, how long they last, and whether a people with one does measurably different things than
+without (15g's own "Done when"). Write the numbers here. Nothing is built in this part. It is the "before" for
+every part after it.
+**Research first:** none; this is measurement.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11b. Belief before faiths: the dead, spirits and places
+**Do:** every people starts with folk belief: kept by households, with ancestors and the spirits of places,
+and no name, founder or priest. A named faith grows out of it, takes some of it in, or stands against it.
+Losing a named faith falls back to folk belief, not to nothing.
+**Research first:** ancestor veneration and animism across the ethnographic record (the Standard
+Cross-Cultural Sample, Murdock's *Ethnographic Atlas*); Peoples, Duda and Marlowe (2016) on hunter-gatherer
+belief and which kinds came first; Whitehouse's imagistic mode for small groups.
+**Ric decides:** whether folk belief is one thing for each people, or held differently house by house.
+
+#### [ ] 15.11b2. What a faith can hold: many more rules, made up
+**Now:** a faith is five choices: a rite (feast, fast, offerings, sacrifice), a rule (no stealing, or never
+turning the hungry away), holy war or not, rites or teaching, and a holy day every seven or ten days or none.
+**Do:** a faith is put together by its maker from a much wider range, each piece drawn from their nature and
+from what went wrong, and each piece doing something in the world (nothing is only a word on a panel):
+- *What is held sacred:* one god, many, none (a way or a law), the ancestors, spirits of land and animals, a
+  living ruler, a founder.
+- *What comes after death:* nothing, joining the ancestors, a reward or punishment, being born again — which
+  changes how holders face danger, war and the care of their dead.
+- *Rules of living:* foods and drink forbidden or required; who may marry whom, and how many; harm to animals
+  or to anyone at all forbidden; purity and washing; giving a share; rules on lending, work days and dress.
+- *Who may lead it:* anyone, a trained few, a family by birth, only men, only women, nobody (each holder alone).
+- *Who may join:* anyone and everyone should be told (it spreads), or only those born into it (it does not).
+- *What holders do:* pilgrimage to a sacred place the land already has (a peak, a spring, a great river);
+  some leave work and family for prayer (monks, hermits); healing and divination; trance.
+- *Toward others:* tolerant, wary, or bound to fight or convert them.
+Rules that clash in one faith are kept out (nobody bound to harm no living thing is also bound to sacrifice).
+**Research first:** the range in the record, across every tradition above (the Seshat and Pulotu databases
+of religion; the Database of Religious History; Murdock's *Ethnographic Atlas* on high gods and afterlife);
+Boyer on which ideas stick; Sosis on costly signals (strict rules and how long communes last); which of these
+change what holders do and how much.
+**Ric decides:** whether some rules are out (for example, rules about sex or about women), and whether a
+watcher can make up a faith by hand and drop it in.
+
+#### [ ] 15.11c. Fading that follows the time
+**Do:** zeal falls with what really wore it down, not with one good year: schooling and reading (15e),
+towns and mixing with other faiths, and a faith that fails its holders (the famine it promised against comes
+anyway). In a world where nobody reads, belief mostly lasts.
+**Research first:** secularisation and its critics (Norris and Inglehart, *Sacred and Secular*; Stark's
+"Secularization, R.I.P."); what the Gore, Lemos, Shults and Wildman model was fitted to and where it holds;
+cognitive dissonance after a failed prophecy (Festinger, *When Prophecy Fails*).
+**Ric decides:** whether a world with no schooling can lose faith at all.
+
+#### [ ] 15.11d. Conversion from the top, and by pressure
+**Do:** when a ruler takes a faith up, those who look up to them (their household, officials, the loyal)
+lean toward it, and its holders are favoured for offices, marriages and land. A ruler may press it by law
+(a tax on those outside it, offices closed to them, forced conversion) where their nature leads there. The
+people's own feelings decide whether they follow, hide what they hold, leave or rise up.
+**Research first:** Constantine and the slow conversion of the empire; Clovis and Vladimir; the jizya and
+conversion to Islam (Bulliet's conversion curve); the Reformation's *cuius regio, eius religio*; crypto-faiths
+(the conversos, the Kakure Kirishitan).
+**Ric decides:** whether forced conversion is in (Ric has said a faith can drive harsh things, 15g; this is a
+ruler's harshness, which is a separate question).
+
+#### [ ] 15.11e. When faiths meet: blending, splitting, tolerance and persecution
+**Do:** a faith held far from its start, or by two leaders, drifts and may split into sects that know they
+were one. Two faiths side by side may borrow each other's rites and days (blending), live alongside, or turn
+against each other, by the nature of those who hold them and how hard. Splits and hatred come only from what
+holders do, never on a timer.
+**Research first:** schism models (Stark and Bainbridge on sects and churches); syncretism (Greco-Roman gods,
+Santería, Japanese Shinto and Buddhism); Allport's contact hypothesis and its limits; how persecution worked
+(the Inquisition, the Decian persecution) and when tolerance held (al-Andalus, the Ottoman millets).
+**Ric decides:** whether a split faith can join back together.
+
+#### [ ] 15.11f. A faith that changes as it grows
+**Do:** what a faith holds can move: rites and rules drift toward the nature of those who hold it now, a
+faith grown large tends to turn from rites to teaching, and writing it down (15e) slows the drift and lets it
+be read back after it has gone.
+**Research first:** Whitehouse's modes over time (the "tedium effect"); Norenzayan's *Big Gods* on large faiths
+and moralising gods, and the Watts et al. results against it; how scripture fixed a faith (canon formation).
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11g. What a faith costs and owns
+**Do:** holders give offerings, and a people's own faith may take a tithe; that keeps priests who do not farm,
+pays for a shrine (the building list already holds a place for one), and lets the faith be given land and hold
+it. A rich faith is something a ruler wants on their side, or wants to take from.
+**Research first:** the tithe in practice (how much was really paid); temple economies of Mesopotamia and Egypt;
+monasteries as landholders and Henry VIII's dissolution; how many priests a people could keep.
+**Ric decides:** whether shrines are built here or wait for the building item, and whether the tithe is
+always taken or only when a ruler makes it law.
+
+#### [ ] 15.11h. A year of the faith: seasons, feasts and the dead
+**Do:** rites follow the year a people lives (planting, harvest, midwinter, the flood) and its dead (burials,
+days for the dead). A feast uses up food and draws people from round about, so news and matches pass; a fast
+saves it. 15g's holy day every seven or ten days stays where a faith has one.
+**Research first:** agricultural festivals across the record; the medieval feast-day count (15g's notes: a
+handful to about 30 a year, varying by manor); what a feast cost; funerary practice and its cost.
+**Ric decides:** nothing expected.
+
+**What faith does to everything else** (Ric, 2026-11-23: "is there anything else that faith does that isnt in
+this?", then "add all of them"). Parts a to h are what a faith is; i to z are what it does to rule, fear,
+families, work, land and war. The five marked ★ come first, because each joins faith to something the
+sim already does. Each part's **Cost** line is the expected cost to the running sim, to be measured on the bench.
+
+#### [x] 15.11i. ★ Losing heaven's favour
+**Do:** a ruler whose people's faith says the gods back them is blamed when disaster keeps coming (famine,
+sickness, floods, lost wars). Loyalty falls with each one, faster where the faith ties the gods to the ruler,
+and the revolts the sim already has (15c) follow. A good run of years earns the favour back. Nothing
+says "lost the mandate" until the people have turned.
+**Research first:** the mandate of heaven, and droughts and peasant revolts in China (Jia 2014, *Economic
+Journal*); Chaney 2013 (*Econometrica*) on Nile floods and religious authority in Egypt; divine kingship
+elsewhere (Egypt, the Inca, Japan).
+**Cost:** almost free: one check per people a day, on numbers already kept.
+**Ric decides:** nothing expected.
+**Done 2026-11-23** (Ric: "do 15.11 the stars"; README, "What faith does"). Setting **Heaven's favour**, off the
+old world exactly. A faith's `tie` (from its maker: loyal, incurious, a faith of rites) is how far its gods stand
+behind the ruler; each hard time in a people's lands adds `tie` times its size to the ruler's blame, which takes
+up to 0.35 off loyalty (half for those not of the faith), fades by half in about a year and is gone with the
+ruler; the news says the gods have turned once loyalty is under 0.4. **Measured:** 0.77 loyal against 0.96 after
+three famines (forced, seed 4). **Research:** not searched; Jia 2014 and Chaney 2013 as remembered.
+
+#### [x] 15.11j. ★ Prophets and the movements they start
+**Do:** in long hard times, somebody may come forward promising the world will be put right: a new faith or a
+new reading of an old one, which spreads fast among the hungry and the beaten and may turn into a rising
+against a ruler, a landlord or another people. It burns out if the promise fails (15.11c). Never placed and
+never on a timer.
+**Research first:** Wallace's "revitalization movements" (1956); Cohn, *The Pursuit of the Millennium*; the
+Taiping, the Ghost Dance, the Xhosa cattle-killing, the Mahdi, the cargo cults.
+**Cost:** cheap: only after a hard event, one village at a time.
+**Ric decides:** whether a prophet's movement can found a new people of its own.
+**Done 2026-11-23** (README, "What faith does"). Setting **Prophets**. A place's `trouble` (each hard time's size,
+half gone in four months) past 4 gives each further hard time a one-in-five chance of a prophet, at most once in
+two years a place: a new faith, or a new reading of the one they held. It passes three times as readily to the
+hungry, frightened and unhappy; its holders turn from a ruler who does not hold it; hard times again are a
+promise failed (the stubborn hold harder, the rest lose 0.3 of their zeal), and two failures, or a quiet year,
+end it as a movement. **Ric's question, answered in his absence with the recommended choice:** yes, but only
+through the breakaway the sim already has — a prophet is first in line to head one. **Measured:** a prophet
+after 15 forced famines; followers 0.78 loyal against 0.88 a month on (0.35 of zeal had left them within 0.06,
+talk with loyal neighbours pulling them back, so 0.6); zeal 1.00 → 0.70 at the failure. **Research:** not
+searched; Wallace 1956 and Festinger as remembered.
+
+#### [x] 15.11k. ★ Blaming a neighbour: witch hunts
+**Do:** after a bad harvest, a sickness or a run of deaths, frightened people may blame somebody among them,
+usually the old, the poor, the odd or the disliked (read from the sim's feelings between people). The accused
+may be shunned, driven out or killed, by the village or by a court where the faith or the law (15.11o) runs one.
+Fewer hunts where a strong ruler or a faith that forbids it holds the law.
+**Research first:** Oster 2004 (*Journal of Economic Perspectives*) on witch trials and cold years in Europe;
+Miguel 2005 (*Review of Economic Studies*) on witch killings and rainfall in Tanzania; Leeson and Russ 2018 on
+trials and competition between churches; witch accusations in India and Papua New Guinea.
+**Cost:** cheap: only after a hard event, one village at a time.
+**Ric decides:** whether a hunt may kill (Ric has said a faith may drive harsh things, 15g).
+**Done 2026-11-23** (README, "What faith does"). Setting **Blaming a neighbour**. After a famine, sickness or
+dry year, odds by fear and temper, more where two faiths each hold a tenth of the village, fewer where a judge
+hears it or the people's faith forbids it, more where it sees sorcery everywhere. The accused is read from the
+village (old, a woman, poor, cold, disliked, of another faith, a healer); a judge may acquit; otherwise by the
+anger shunned, driven out or killed, and the News tab says why. **Ric's question, answered in his absence with
+the recommended choice:** yes, a hunt may kill, only where the anger is high (his 15g word). **Measured:** 63
+hunts in 400 forced famines at fear 0.6 (16 killed, 47 driven out), 21 where forbidden; in four default worlds
+of three years, three hunts (one driven out, two shunned). **Research:** not searched; Oster 2004, Miguel 2005,
+Leeson and Russ 2018 as remembered. **Not done:** a faith's own court (15.11o).
+
+#### [x] 15.11l. ★ Children and how many there are
+**Do:** zeal and a faith's rules change births: more children among the devout, rules about marriage age, more
+than one wife, birth control and celibacy (monks and nuns have none). Over generations that alone moves which
+faith is the larger.
+**Research first:** Kaufmann, *Shall the Religious Inherit the Earth?*; Stark on early Christian fertility;
+religiosity and fertility in historical records (the Hutterites, Mormons in Utah, Catholic and Protestant Europe).
+**Cost:** almost free: a change to the birth chance already worked out.
+**Ric decides:** nothing expected.
+**Done 2026-11-23** (README, "What faith does"). Setting **Faith and children**. The devout conceive by 1 + a
+fifth of their zeal, more where the faith bids many and less where it bids restraint; a celibate faith's priest
+and holders over 0.9 zeal marry no one; a people's faith that marries young ends late marriage. **Measured:**
+births 273 with it on against 274 off over four default worlds of three years, where few hold any faith.
+**Research:** not searched; Kaufmann as remembered. **Not done:** more than one wife (a household holds one
+partner).
+
+#### [x] 15.11m. ★ Trust in trade
+**Do:** traders of one faith trust each other further and over longer distances, so caravans and boats (15l,
+item 7) trade more readily between places that share it, and a faith spread far is a trade network.
+Minorities held to trade by others' rules may live by it.
+**Research first:** Greif on the Maghribi traders; the Jewish, Armenian, Parsi and Hadrami trading diasporas;
+Quaker banking; Islam's spread along trade routes in Africa and the Indian Ocean.
+**Cost:** almost free: one check when traders deal.
+**Ric decides:** nothing expected.
+**Done 2026-11-23** (README, "What faith does"). Setting **Trust in trade**. A village's faith is the one two in
+five there hold; a load to a place of the trader's faith is worth 1 + 0.3 of their zeal as much, to one of
+another 1 − 0.2 of it, and a caravan goes half as far again to its own; a minority weighs trading 1.3 times as
+high. **Measured:** a best load worth 3.82, 4.97 to a place of the trader's faith, 3.06 to one of another.
+**Research:** not searched; Greif as remembered.
+
+#### [ ] 15.11n. Comfort
+**Do:** belief makes fear and grief smaller after deaths and disasters, so holders recover sooner, and
+disasters make people more devout. Today a faith only feeds on fear.
+**Research first:** Bentzen 2019 (*Economic Journal*, "Acts of God") on earthquakes and religiosity; religious
+coping in the psychology literature (Pargament).
+**Cost:** almost free.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11o. Law: oaths, ordeals, courts and sanctuary
+**Do:** promises sworn by a people's gods are kept more often (the sim's dealings and treaties, item 13);
+guilt may be judged by ordeal or by a faith's own court; a holy place may shelter somebody hunted until a deal
+is made.
+**Research first:** Leeson 2012 on trial by ordeal; church courts and sharia courts; medieval sanctuary in
+England; oaths in early law.
+**Cost:** almost free to cheap.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11p. Who is above whom
+**Do:** a faith can hold some people above others (by birth, caste or sex), make the unfree's state right or
+wrong, or say all holders are equal, and what it says moves who may marry, own, lead and be freed (15.5's
+unfree included). Abolition may come from a faith.
+**Research first:** caste in practice; slavery's justification and its rejection (the Quakers and abolition);
+equality in early Christianity and Islam, and how far it went.
+**Cost:** almost free.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11q. Rites of a life
+**Do:** naming a child, coming of age, marrying and burying (15.11h holds the dead's days), each a gathering that
+costs food and passes news and matches.
+**Research first:** van Gennep, *The Rites of Passage*; what weddings and funerals cost a household.
+**Cost:** almost free.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11r. Teaching people to read
+**Do:** a faith that wants its holders to read its writings raises how many can (15e), and its houses of
+prayer may keep schools.
+**Research first:** Becker and Woessmann 2009 (*Quarterly Journal of Economics*, "Was Weber Wrong?") on
+Protestant literacy; Jewish literacy (Botticini and Eckstein, *The Chosen Few*); temple and mosque schools.
+**Cost:** cheap: it hooks into know-how, which already runs.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11s. Keeping knowledge, or holding it back
+**Do:** a faith's houses may copy writings and keep know-how alive through hard times, and a faith may forbid
+a find or a teaching. 15.9e has a ban through a ruler; this lets the faith do it itself, and lets it keep things.
+**Research first:** monasteries and the copying of books; Chaney on religion and the rise and fall of Islamic
+science; the Galileo affair and how typical it was; Buddhist monasteries as libraries.
+**Cost:** cheap.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11t. Days and seasons without fighting
+**Do:** a faith may forbid war on its holy days or in a season; armies of that faith keep it as hard as their
+zeal holds.
+**Research first:** the Peace and Truce of God; the sacred months in pre-Islamic and Islamic Arabia; the Olympic
+truce.
+**Cost:** almost free.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11u. Martyrs and morale
+**Do:** soldiers who believe hold longer in battle (15.6b's units), a death for the faith makes those who knew
+the dead hold it harder, and a faith that promises a reward after death (15.11b2) makes its holders bolder.
+**Research first:** Berman, *Radical, Religious, and Violent*; martyrdom in early Christianity and Shia Islam;
+religion and cohesion in armies.
+**Cost:** almost free.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11v. Fleeing persecution
+**Do:** holders pressed hard (15.11d, 15.11e) may hide what they hold or leave together, settling where they are
+let be and taking their skills with them (15.9's know-how moves with them).
+**Research first:** the Huguenots and Prussia (Hornung 2014, *American Economic Review*); the Puritans; the
+Parsis; the Jews expelled from Spain.
+**Cost:** cheap, but it is walking: measured against the crowd and walking budget.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11w. Great buildings
+**Do:** a faith may raise a great temple or monument over years, paid in labour, stone and food (items 7 and 9),
+and it stands after: a mark of a people's wealth and zeal and a place people come to.
+**Research first:** how the pyramids, the great cathedrals and Angkor were built and fed; Göbekli Tepe; what share
+of a people's work went into them.
+**Cost:** real: years of labour weighed in people's daily choices. Must pass the 5% bench budget.
+**Ric decides:** whether these wait for the building item.
+
+#### [ ] 15.11x. Fairs and pilgrimages
+**Do:** a great festival or a holy place draws people from far, and where they gather a market springs up, news
+and matches pass, and sickness spreads (15.11z).
+**Research first:** the Champagne fairs; the hajj; the Kumbh Mela; Santiago de Compostela; how many went and how far.
+**Cost:** real: many people walking far to one place, which is what the sim spends most of its time on (items 1
+and 2). Must pass the 5% bench budget.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11y. Sacred land
+**Do:** a faith may hold a grove, a spring, a peak or an animal sacred, so it is not cut, drunk from, mined or
+hunted; and where water is shared, a faith's calendar may run it.
+**Research first:** India's sacred groves; Lansing, *Priests and Programmers* (Bali's water temples); taboo and
+the commons in the Pacific.
+**Cost:** real: a mark on each square of land, so more memory on a big map. Must pass the bench budget.
+**Ric decides:** nothing expected.
+
+#### [ ] 15.11z. Health
+**Do:** a faith's rules on food, drink and washing change sickness; its houses may care for the sick; and its
+gatherings (15.11x) may spread disease.
+**Research first:** hospitals in Byzantium, Islam and medieval Europe; the 1865 cholera and the hajj; food rules
+and health (what the evidence really shows, which is less than is often claimed).
+**Cost:** depends on the plague item (18), which is not built yet. Wait for it where it needs it.
+**Ric decides:** nothing expected.
+
+**Order:** a first (the measurement everything is held to), then b, b2 and c (where belief starts, what a faith
+can hold, and how it ends),
+then d and e (rulers and meetings), then the five ★ (i, j, k, l, m; done 2026-11-23, ahead of a to e, at
+Ric's word), then f, g and h, then n to u, and last
+the four that cost the running sim most (v, w, x, y) and z after the plague item.
+**Done when:** a default world starts with belief; its faiths are its own, made up from a range as wide as the
+record's and unlike any real one; faiths are born, spread, split, blend, change and fade at
+rates the record can stand behind; a ruler's faith moves their people over a generation, not a day; faiths
+cost and own something; a faith moves rule, blame, births, trade, learning, land and war as the record shows;
+and every part is measured against 15.11a's numbers, with the old way kept as a setting.
+**Budget:** default, each part. Nothing may look at every person for each person, as now (`faithDay` is one
+pass a day).
+
+### [ ] 15.12. Lives with a history: their own dice, what they have done, and why things happened
+
+**Ric (2026-11-23)** gave these six, in his words (shortened only where marked):
+1. "Separate people's random draws. Tie randomness to the person, decision type, and simulation time. Give
+   world-level processes their own draws too. Feeding Sethaeeis should affect another person through something
+   the simulation models — an encounter, shipment, price change, or political decision. Skipping a robbery
+   option shouldn't redistribute everyone's rolls."
+2. "Connect inventions to relevant experience. Expand your existing technology prerequisites to include
+   practice, materials, tools, and exposure. Iron working should become possible through a history involving
+   metalworking. A farmer could enter that field by learning and gaining experience."
+3. "Make discovery accumulate over time. Let relevant work and experimentation build toward discoveries.
+   Curiosity, available resources, hardship, and chance can affect progress. That gives an invention a history
+   you can inspect, beyond one successful roll selecting a technique."
+4. "Separate hearing about something from knowing how to do it. A conversation could spread awareness of iron
+   working. Practical competence should require instruction, observation, tools, or practice. This would make
+   apprentices, skilled workers, and teaching relationships matter more."
+5. "Give careers continuity through accumulated skills and switching costs. Experience should make someone
+   better at their work. Changing occupations should involve reasons and consequences: training, equipment,
+   lost income, demand, displacement, or opportunity. Skills should persist after a job change. That creates
+   the 'lanes' you mean while allowing believable changes."
+6. "Record why important changes happened. For a job change, discovery, migration, or appointment, retain its
+   relevant inputs and preceding events. You should be able to follow something like: 'unpaid wages → banditry
+   → stolen cargo → shortage,' with each link supported by actual state changes."
+
+**Why here:** it deepens what 15.9 (know-how), 15.10 and the job choice already do, and it is about people
+rather than new things on the land (16 onward). Part a is the foundation for every comparison after it: until
+it is done, any change — 15.11's included — reshuffles everybody's dice, so "before" and "after" are two
+different worlds and a measured difference may be only noise. **Ric (2026-11-23): "Yes, before 15.11."** So
+15.12a is done before any part of 15.11, 15.11a's measurement included; the rest of 15.12 keeps its place
+after 15.11.
+
+Each part below is its own piece of work: research first, Ric's questions, measured before and after, the old
+way kept as a setting where the world changes (fingerprinted, like 15.6f to 15.10).
+
+#### [ ] 15.12a. Each person's own dice
+**Now** (read from `people.js`, 2026-11-23): one stream, `R`, is drawn about 225 places in the code, in the
+order people are visited. A few things already have their own stream (`RT` traits, `RD` foul water, `RW`
+wounds, `RS` sexes, `RK` babies, `RM` minds), each added because sharing `R` made a world different from its
+first hour. So one extra draw anywhere — a robbery weighed, a person fed by the watcher — shifts every draw
+after it, and the rest of the world comes out different for no reason anybody in it could see. 2b met the
+same thing when speaking moved from a roll a step to a drawn wait.
+**Do:** a draw is a hash of (seed, person's id, kind of decision, time), not the next number off a shared
+stream; world-level things (weather, land, a faction's decisions) get their own keys the same way. Then a
+change to one person reaches another only through what the simulation models: meeting, trading, a price, a
+store, a ruler's order. Add a test that feeds or removes one person and checks that people who never met them,
+traded with them or shared a store with them do the same things for a while.
+**Research first:** counter-based random numbers (Salmon et al. 2011, "Parallel random numbers: as easy as
+1, 2, 3" — Philox and Threefry); how agent-based models keep runs reproducible and compare scenarios with
+common random numbers (variance reduction in simulation, Law and Kelton); what a hash per draw costs in JS
+against `rng()`, measured on the bench.
+**Ric decides:** whether every world changes once (all seeds give new worlds, as in 2b), or the old stream is
+kept as a setting.
+**Budget:** no slower than 5% on the bench; a draw is a few multiplies, so keep it that.
+
+#### [ ] 15.12b. Hearing of a thing is not knowing how
+**Now:** `p.know` is one bit a technique. Seeing it done in a talk (`learnFrom`) sets the bit, so somebody who
+heard about iron can work iron. Writing must be taught; nothing else must.
+**Do:** two levels per person: *heard of* (from talk, as rumours already pass, item 12) and *can do*. Getting
+from one to the other takes instruction from somebody who can (an apprentice beside a master), watching it
+done many times, the tools, or practice. Hearing of a thing is still worth something: it points finding (15.12d)
+and makes learning it quicker.
+**Research first:** apprenticeship and guild training (Epstein, "Craft guilds, apprenticeship and
+technological change", 1998; De la Croix, Doepke and Mokyr 2018 on apprenticeship and the spread of
+knowledge); tacit knowledge (Polanyi; Collins on the TEA laser); how long a trade took to learn (indentures of
+seven years); Henrich on copying the skilled.
+**Ric decides:** whether *heard of* is held in the mind's slots (item 11, so it can be forgotten and
+crowded out) or beside them.
+**Budget:** default. `p.know` is 32 bits; a second mask of the same size is cheap.
+
+#### [ ] 15.12c. Skill held by the person, and careers with lanes
+**Now:** a person's job is chosen by `chooseJob` from what each work would bring (`livelihood`), their nature
+and the village's want. Skill at a technique is per people (`f.skill`, 15.9d, answered in Ric's absence); a
+person is no better at farming after twenty years than on their first day, and a soldier sent home is a
+farmer at once at full worth.
+**Do:** each person keeps experience in the kinds of work they have done, a few numbers, growing with practice
+(a learning curve) and fading slowly when unused but never to nothing. Experience makes the work yield more.
+Changing work weighs what is lost (income while learning, the experience left behind, tools to buy) against
+what draws them (demand, being pushed out, an opening, a master to learn from). So people mostly stay in a
+lane, and the changes that happen have reasons. A people's skill (15.9d) becomes what its people hold.
+**Research first:** learning by doing and learning curves (Wright 1936, Arrow 1962, already cited in 15.9d);
+occupational mobility before 1900 (Clark; Long and Ferrie 2013 on Britain and America); how long a farmer took
+to become a smith; what ex-soldiers did.
+**Ric decides:** whether this replaces 15.9d's per-people skill (Ric's words above say per person; 15.9d was
+answered for him), and how many kinds of experience a person keeps (one a job, or finer).
+**Budget:** default. A few floats a person in `newPerson`, updated when work finishes, never each step.
+
+#### [ ] 15.12d. Discoveries that build up
+**Now:** `findTech` is one roll a day for each grown-up (curious, hungry and the village's want change the
+odds); if it hits, a technique whose parts they know is picked, steered by need (15.9b), and they know it at
+once. Nothing builds up, and a find has no history.
+**Do:** a person working at a thing builds progress toward the techniques next to it, by the work they do,
+the materials and tools at hand, their curiosity and hardship, with chance on top. Iron working comes from
+somebody who works metal, near ore, over time; a farmer can get there only by taking up the work first
+(15.12c). Prerequisites widen from "knows these techniques" to practice, materials (15.9c's `matOk`), tools
+and exposure (15.12b's *heard of*). Progress can be inspected: who was close, for how long, why.
+**Research first:** the history of particular finds (bronze from copper smelting with arsenical ores; the
+stirrup; the heavy plough); cumulative culture and innovation as recombination (Mesoudi; Arthur, *The Nature
+of Technology*); multiple independent discovery (Merton; Ogburn and Thomas 1922).
+**Ric decides:** whether progress is held by the person only, or can be passed on half-done (a master leaving
+notes, a workshop).
+**Budget:** default. Progress only for techniques next to what a person works at, a few at a time.
+
+#### [ ] 15.12e. Why it happened, link by link
+**Now:** `note()` takes a seventh argument since 2026-11-23, the numbers a decision was made on, shown on the
+News tab and held by `test/why.test.mjs` not to change the world. It records one decision's inputs, not what
+led to them: a bandit's note says they took to the road, not that their pay stopped before it.
+**Do:** for a job change, a find, a move, an appointment, a mutiny, a shortage, keep the inputs and a pointer
+to the events before it that changed those inputs, so a chain can be followed: unpaid wages → banditry →
+stolen cargo → shortage. Every link must be a real change of state that happened, never written after the fact
+to tell a story. Shown as a chain on the News tab and a person's page.
+**Research first:** provenance and causal tracing in simulations (event logs, "why" queries in agent-based
+modelling); how games that tell emergent stories keep their history (Dwarf Fortress's legends, RimWorld's
+records) and what that costs.
+**Ric decides:** how far back a chain goes, and how long it is kept (memory grows with a world's years).
+**Budget:** default. A note keeps a few ids, not copies; old links are dropped when nothing points at them.
+
+**Order:** a first (it makes every comparison after it honest), then b and c together (they share the
+person's new fields), then d (it needs both), with e whenever, since it only reports. Like `note()`'s `why`,
+e must never change the world.
+**Done when:** one person's change reaches others only through things the simulation models; knowing of a thing
+and being able to do it are two things; people get better at their work and change it for reasons; a find has
+a history; and a chain of causes can be followed, each link a real change of state; with each measured before
+and after and the old way kept where the world changes.
+
 ### [ ] 16. Ruins and scavenging
 
 **Now:** a dead village leaves nothing.
@@ -5464,4 +5939,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-22 | 15 (c, g, b, e, f, h, i, d) | AMD Ryzen 5 3600, 24 GB | 2.12 s a day (2.17 before, 15.5) | *not run* | 7.8 MB, 1.53 KB | **item 15 whole**: `--quick` 400 0.16 → 0.16, 2,000 0.74 → 0.77, 5,000 2.17 → 2.12 s a day. Built, it was 0.25 / 1.39 / 3.55: one field more on every person had tipped V8 into a slow object shape, even with every new part off (worlds identical, 70% slower); five rarely used fields (a traveller's destination, a car, when a soldier reported in, hired, who keeps an old parent) moved to side tables keyed by person, and the speed came back. Rule: count a person's fields before adding one. |
 | 2026-11-23 | 15.6f, 15.6g, 15.7, 15.8, 15.9 | AMD Ryzen 5 3600, 24 GB | 2.39 s a day (2.55 before, the same run of the old engine) | *not run* | 7.8 MB, 1.52 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.17, 2,000 0.97 → 0.85, 5,000 2.55 → 2.39 s a day; no slower, within the machine's drift. |
 | 2026-11-23 | 15.6h, 15.6i, 15.10 | AMD Ryzen 5 3600, 24 GB | 2.31 s a day (2.25 before, the same run of the old engine) | *not run* | 8.2 MB, 1.60 KB | `--quick` old engine then new, one after the other: 400 0.17 → 0.19, 2,000 0.82 → 0.80, 5,000 2.25 → 2.31 s a day; within the 5% budget at 5,000 and within run-to-run noise below. |
+| 2026-11-23 | the log says why | AMD Ryzen 5 3600, 24 GB | 2.37 / 2.51 s a day (2.52 / 2.36 the last engine, alternated) | *not run* | 8.2 MB, 1.60 KB | a reason written only when an event is logged; no cost. |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

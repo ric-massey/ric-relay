@@ -16,7 +16,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const OFF = { soldierPay: "kept", tills: "old", poor: "old", column: "old", pursuit: "old" };
+const OFF = { soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, pursuit: "old" };
 const OLD = 1585413095;   // the world below before 15.10 and 15.6h
 
 function print(w) {

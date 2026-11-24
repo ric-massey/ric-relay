@@ -24,7 +24,7 @@ function print(w) {
   return h;
 }
 {
-  const w = People.create({ seed: 4, people: 200, era: "medieval", neighbours: "enemies", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old" }); w.step(1500);
+  const w = People.create({ seed: 4, people: 200, era: "medieval", neighbours: "enemies", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false }); w.step(1500);
   assert.equal(print(w), OLD, "wherever they run is the old world, exactly");
 }
 {

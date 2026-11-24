@@ -8,7 +8,7 @@ const People = createRequire(import.meta.url)("../people.js");
 const eras = (process.argv[2] || "early,medieval,industrial,modern").split(",");
 const seeds = (process.argv[3] || "1,2,3").split(",").map(Number);
 const which = process.argv[4] || "after";
-const OLD = { warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old" };
+const OLD = { warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false };
 for (const era of eras) {
   const row = [];
   for (const seed of seeds) {

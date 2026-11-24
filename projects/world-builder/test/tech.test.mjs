@@ -17,12 +17,12 @@ const People = createRequire(import.meta.url)("../people.js");
 const OLD = 1981461885;   // the world below before 15.6f to 15.9
 
 {
-  const w = People.create({ seed: 5, people: 300, finds: 1, tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", property: "old", passage: "old", taking: "old" });
+  const w = People.create({ seed: 5, people: 300, finds: 1, tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, property: "old", passage: "old", taking: "old" });
   w.step(2000);
   assert.equal(print(w), OLD, "\"as before\" is the old know-how, exactly");
 }
 {
-  const w = People.create({ seed: 5, people: 300, factions: 2, war: false }), o = People.create({ seed: 5, people: 300, factions: 2, war: false, tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old" });
+  const w = People.create({ seed: 5, people: 300, factions: 2, war: false }), o = People.create({ seed: 5, people: 300, factions: 2, war: false, tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false });
   w.step(48); o.step(48);
   const f = w.factions.findIndex(x => w.villages.some(v => v.alive && v.f === x.id && w.matOk(v.id, "iron")));
   assert.ok(f >= 0, "(a people with ore near)");

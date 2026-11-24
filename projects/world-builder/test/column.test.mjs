@@ -24,7 +24,7 @@ function print(w) {
   return h;
 }
 {
-  const w = People.create({ seed: 4, people: 200, era: "medieval", neighbours: "enemies", column: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old" }); w.step(1500);
+  const w = People.create({ seed: 4, people: 200, era: "medieval", neighbours: "enemies", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, pursuit: "old", soldierPay: "kept", tills: "old", poor: "old" }); w.step(1500);
   assert.equal(print(w), OLD, "each soldier walking straight in is the old world, exactly");
 }
 {

@@ -17,7 +17,7 @@ const AT_WAR = 3998479614;   // print() of the two-people war below before 15.6e
   a.step(24 * 60); b.step(24 * 60);
   assert.equal(print(a), print(b), "a default world is the world it was");
 }
-const LATER = { property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old" };   // the parts built after this one, off for the fingerprint
+const LATER = { property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false };   // the parts built after this one, off for the fingerprint
 const war = (battle) => { const w = People.create({ seed: 4, people: 300, factions: 2, battle, ...LATER }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };   // this part as it was built
 {
   const old = war("old");

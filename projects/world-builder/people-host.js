@@ -424,7 +424,7 @@
           out.wedCands = { f: wp.f, o: wp.o, a: list(wp.f), b: list(wp.o) };
         }
       } else if (tab === "news") {
-        out.events = w.events.slice(-80).reverse().map(e => ({ weight: e.weight, x: e.x, y: e.y, year: e.year, text: e.text }));
+        out.events = w.events.slice(-80).reverse().map(e => ({ weight: e.weight, x: e.x, y: e.y, year: e.year, text: e.text, why: e.why }));   // why: the numbers the decision was made on (2026-11-23)
       } else if (tab === "talk") {
         out.chatter = w.chatter.slice(-40).reverse();
         for (const c of out.chatter) { name(c.a); name(c.b); }

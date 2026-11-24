@@ -739,6 +739,17 @@ nobody had linked was a page nobody could find.
   the hungry get alms and loans. **Every coin still moves only from hand to hand** — a loan, alms, a stoppage or a
   drink adds and removes nothing, so `test/mint.test.mjs`'s sum still holds; keep it so. The spending shares are
   guesses, written as such in the README; measure over decades (`test/gini.mjs`) before changing one.
+  **The log says why** (Ric, 2026-11-23): `note()` takes a seventh argument, the numbers a decision was made on,
+  shown under it on the News tab. Write it from the values the decision actually used, where it is made, and
+  never read it back: it reports, and `test/why.test.mjs` holds the world unchanged by it.
+  **What faith does** (TODO 15.11i to m, 2026-11-23; Ric: "do 15.11 the stars"): heaven's favour, prophets,
+  blaming a neighbour, faith and children, trust in trade — five settings under Minds, each off the old world
+  exactly (`test/faithdoes.test.mjs`; their keys are in every older test's `LATER` list). Rules they leave: **a
+  prophet and a hunt come only out of `hardTimes`** (a place's `trouble`, a real famine, sickness or drought) —
+  never place one or put one on a timer; **what faith holds against a ruler is taken off loyalty after the clamp**
+  (`against` in `reflect`), or a content life hides it; a movement founds a people only through the breakaway
+  that exists (`secede`), never by a rule of its own; and the research behind them was not read this session —
+  the README says so, and the numbers are guesses to be checked, not tuned toward anything.
   **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
   it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
   nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the

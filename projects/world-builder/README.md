@@ -2767,6 +2767,25 @@ old world exactly (`test/column.test.mjs`).
 - **Found on the way:** a camp nobody could reach (on water, say) would never have opened, and the army never
   attacked; and a camp left from an old war would have opened at once on a new one. Both fixed.
 
+### Why things happen (2026-11-23)
+
+Ric: "is there an easy log we can add that helps with some of it and doesnt slow it down?" The News tab's
+decisions now say why, in a line under each: **because:** and the numbers the decision was made on, read in the
+engine where it was made (`note(kind, text, weight, x, y, f, why)`; the keeper passes `why` to the page). Wars
+begun (how much the leader wanted it against the line, and what from: old wrongs, land and hunger, envy, their
+own grudge, a faith; strength against the enemy's; the leader's nature), peace (how tired of it, against how
+tired they had to be, the dead and the years), a marriage instead of a war, a general's plan, an army drawing
+off, soldiers rising unpaid, borrowing, famine, dear food, plenty, sickness, walls, new villages, coups,
+breakaways, civil war, roads, debasement, enclosure, the theft law, and money not taken for food.
+
+- **Free.** A reason is written only when something is logged — a few hundred times a world-year — and the log
+  keeps 400 lines. Bench, the last engine and this one back to back: 2.52 and 2.36 s a day against 2.37 and 2.51
+  at 5,000 people.
+- **It only reports.** Nothing reads `why`; a world with it is the same world (`test/why.test.mjs`).
+- **Not yet:** the reasons behind each person's own choices. Ric looked at that ("dont worry about it now"): the
+  cheap way is each person's latest choice and its biggest reason, and a full history only for whoever is being
+  followed.
+
 ### Where money comes from (2026-11-23)
 
 TODO item 15.8. Ric: "how does the currency work i kinda want only one curency but how is it made?", then
@@ -3243,8 +3262,95 @@ of a village held it within forty days, against Stark's 40% a decade; at the rat
 spreads over years, not weeks. Cost: one sum over the people a day while any faith is held, and a
 few comparisons in each talk.
 
-**Left out:** splits when two leaders hold different versions; faith in marriage (15b); festivals
-with feasting beyond gathering; writing a faith down (15e).
+**Left out:** splits when two leaders hold different versions; faith in marriage (15b, since done);
+festivals with feasting beyond gathering; writing a faith down (15e). All of it, and what is not true to
+life here (no belief before a faith, fading in a year of good life, a ruler's people not following), is
+TODO item 15.11. Its five ★ parts are in: next section.
+
+### What faith does (2026-11-23)
+
+TODO 15.11i to 15.11m, the five marked ★ (Ric: "do 15.11 the stars do all of the stars"). Each joins faith to
+something the sim already did, and each is its own setting under Minds, shown while Faith is on, on by default;
+with all five off the world is the one before them exactly (`test/faithdoes.test.mjs`, fingerprinted). Ric
+was not asked the two "Ric decides" questions this session; each was answered with the recommended choice,
+written below, for him to overturn.
+
+A faith now takes five more things from its maker's nature when it is made (`makeFaith`), read only where
+their setting is on: `tie`, how far its gods stand behind the ruler (higher for a faith of rites made by
+somebody loyal and incurious); `sorcery`, whether it forbids blaming sorcery (the warm and honest) or sees it
+everywhere (the hot, stubborn and cold); `kids`, many (the warm and ungreedy) or restraint (the patient and
+curious); `wed`, marry young (the stubborn and warm); and `celibate`, whether a taught faith's teachers keep
+apart (the patient and stubborn). The Factions tab says each on the faith's line.
+
+- **Heaven's favour** (15.11i). Where a people's faith ties its gods to the ruler, each famine, sickness,
+  dry year or war lost in its lands is held against the ruler, `tie` times the event's size (`blameRuler`;
+  a place taken is the old ruler's war lost, counted there). Blame takes loyalty off everyone, a tenth of the
+  blame up to 0.35, half that for those who do not hold the faith, and it is taken off after the rest of
+  loyalty is clamped, so a full belly does not hide it. It fades by 0.2% a day (half gone in about a year)
+  and a new ruler starts at nothing. The risings the sim already has follow from the loyalty; once a people
+  has turned (blame over 1, loyalty under 0.4), the news says the gods have turned from the ruler. A faith
+  that does not tie its gods to the ruler blames nobody: its holders only hold it harder, as before. The
+  mandate of heaven, and Jia 2014 (*Economic Journal*) on droughts and peasant revolts in China; Chaney 2013
+  (*Econometrica*): in Egypt a bad Nile strengthened the religious authority instead, which is the untied case.
+- **Prophets** (15.11j). Each hard time adds to a place's `trouble` (a famine 1.5 a month it lasts; it falls
+  by half in about four months). Past 4, each further hard time there has a one-in-five chance that
+  somebody — the curious, bold, frightened and unhappy first — comes forward promising the world put right
+  (`prophet`), at most once in two years a place; a new faith, and where they held one, a new reading of it,
+  said so. A movement passes three times as readily to the hungry, the frightened and the unhappy, and those
+  of the faith it reads anew are held back only half as much by their own zeal (`faithTalk`). Its holders
+  turn from a ruler who does not hold it (0.6 of their zeal off loyalty, after the clamp). When hard times
+  come again to a place where it is held, the promise has failed: the stubborn hold it a little harder, the
+  rest lose 0.3 of their zeal (Festinger, *When Prophecy Fails*); the second failure ends it as a movement,
+  and so does a year with its place's trouble under 0.5. Wallace 1956, "Revitalization movements". **Ric
+  decides** "whether a prophet's movement can found a new people of its own": answered yes, but only through
+  the breakaway the sim already has — a prophet among the rebels is first in line to head it (`secede`), and
+  when a people's ruler holds a faith it becomes theirs. Nothing makes a people for a movement.
+- **Blaming a neighbour** (15.11k). After a famine, a sickness or a dry year, a village of eight grown-ups or
+  more may blame somebody (`hunt`): odds 0.12 times the event's size times (0.4 + the village's fear + how far
+  its temper is above the middle), 1.8 times where two faiths are each held hard by a tenth of it (Leeson and
+  Russ 2018: trials were most where churches competed), 0.3 where the people's faith forbids it and 1.8 where
+  it sees sorcery everywhere, 0.6 where a judge (15c) hears it. Who is picked is read from the village: old
+  (over fifty), a woman, poor (under a third of the village's mean coins), cold, disliked (how sixteen others
+  feel about them), of another faith than most there, a healer, with a little chance — Oster 2004 (*JEP*) on
+  Europe's cold decades, Miguel 2005 (*ReStud*) on witch killings of old women in Tanzania's droughts and
+  floods. A judge lets them go 0.3 + half their honesty of the time. Otherwise by the anger (the village's
+  temper, or the judge's, plus its fear, a little chance, more where the faith sees sorcery): from 1.3 killed,
+  from 0.9 driven out to the nearest place not at war, else shunned (24 of the village think worse of them).
+  **Ric decides** "whether a hunt may kill": answered yes (Ric, 15g: "Yes it can drive harsh things"), only
+  where the anger is that high. The News tab says who, why and how ("Blamed").
+- **Children** (15.11l). The devout conceive more readily, by 1 + a fifth of the mother's zeal, and a quarter
+  of it again where their faith bids many, a third of it less where it bids restraint (Kaufmann, *Shall the
+  Religious Inherit the Earth?*; the Hutterites at the far end). A celibate faith's priest and its holders
+  over 0.9 zeal marry no one and have no children; the rest of its holders do. A people whose faith marries
+  young has no late marriage (15b's Hajnal pattern). **Not done:** more than one wife, which needs a
+  household that holds more than one partner.
+- **Trust in trade** (15.11m). A village's `faith` is the one held by two in five of those who live there
+  (counted in `faithDay`). A load to a place of the trader's own faith is worth 1 + 0.3 of their zeal as
+  much to them, to a place of another 1 − 0.2 of it; a caravan goes half as far again to reach one of its own
+  (`tradeTrust`). Somebody whose faith is not their people's own weighs trading 1.3 times as high
+  (`chooseJob`). Greif on the Maghribi traders; the Armenian, Parsi and Hadrami diasporas. Counted:
+  `faithLoads`, caravans to a place of the trader's faith.
+- Counts: `blamed`, `favourLost`, `prophets`, `failed`, `hunts`, `witch` (killed), `drivenOut`, `shunned`,
+  `acquitted`, `celibate`, `faithLoads`.
+
+**Research:** not searched this session. The sources named are the ones TODO 15.11 lists, as remembered
+from the standard literature; what each is cited for above is the finding as generally reported, and the
+numbers in the rules are guesses that the findings point the way of, not values read from them. To be
+checked one by one.
+
+**Measured** (`test/faithdoes.test.mjs`, forced cases): loyalty 0.77 under a ruler blamed for three famines
+against 0.96 where the faith does not tie its gods to the ruler, twenty days on (seed 4); a prophet after 15
+famines in one place, the movement's followers 0.78 loyal against 0.88 for their neighbours a month later
+(at 0.35 of zeal rather than 0.6, talk with loyal neighbours pulled them back to within 0.06), and their zeal
+1.00 → 0.70 when the promise failed; 63 hunts in 400 forced famines at fear 0.6 (16 killed, 47 driven out),
+21 where the people's faith forbids it; the best load from a village worth 3.82, 4.97 where its buyers hold
+the trader's faith, 3.06 where they hold another. **In a default world** (four seeds, 400 people, three years
+each, all five on and all five off): nobody starved in any of them, so hard times were few — no prophet, no
+blame, three hunts in twelve world-years (one driven out, two shunned), births 273 on against 274 off, one to
+three faiths a world where any arose. So in an ordinary world these five do almost nothing yet, because 15g's
+faith seldom starts there; that is 15.11a's question (measure 15g alone over years), not answered here.
+**Cost:** the same runs took 294–306 s with the five on and 287–299 s off, inside run-to-run noise: one more
+tally over the people a day, and the rest only after a hard event, one village at a time.
 
 ### A land of one village, and beyond its edge (2026-11-22)
 
