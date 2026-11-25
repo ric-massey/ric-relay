@@ -2638,6 +2638,15 @@ not: that figure is of a whole people — and then chose "Battle by choice". Set
 *Given when the general chooses* (the default) or *Whenever armies meet (as before)*, which is the old war
 exactly (`test/battle.test.mjs`). A world not at war is unchanged.
 
+**Correction, 2026-11-24 (TODO 16c):** `armyHour` had divided the enemy's mean position a second
+time before `giveBattle`, so the proximity exception was measured against a point toward the map's
+corner. The regression now holds an outnumbered army caught one square from its enemy. Rerunning
+the existing three forced wars of 100 days (300 people, seeds 4/7/11, later additions off as in
+`test/battle.test.mjs`): engagements 15 → 17, refused 2 → 2, caught 0 → 2, routs 4 → 4, soldiers
+killed 9 → 9. The "whenever armies meet" comparison stays at 53 engagements and 16 soldiers killed,
+with its historical fingerprint unchanged. The year-long figures below are historical, before
+this correction, not current balance measurements.
+
 - **Giving battle.** When the enemy's army first comes within 3 km, the general weighs it with the same
   nerve that decides whether to march out to meet them: about as many of ours as theirs for a bold
   general, more for a cautious or patient one, a third better on ground chosen to stand on. Short of
@@ -3454,6 +3463,30 @@ faith: cited as remembered, not read this session.
   theirs, what they are best at, and what they are working toward. The newest 20,000 links are kept.
 
 ### Ruins and scavenging; grinding and baking (2026-11-24)
+
+**Bug fixes, TODO 16c (2026-11-24).** A newly made village starts with `empty: 0`. Its empty days
+wait while refugees can return or living people still call it home, then count seven days before it
+becomes a ruin. Founders receive their new `home` in `rehome`, before walking; the census counts home
+assignments, not physical arrivals. This corrects the bug-search note's explanation without giving a
+failed founding party an immortal destination. Oven and mill tolls are charged once per dwelling,
+keeping the existing couple's payer; several single adults in one house no longer each pay for all
+its mouths. The checks for these and the other three fixes are in `test/ruins.test.mjs` (`--bugs`
+runs just the five regression situations). All five fail against the engine before 16c.
+
+Caravans now resolve a landing in sea or lake to nearby dry ground before `jump`, preserving its
+bucket and walking-memory updates. Battle choice receives the enemy's actual mean position, already
+divided by the number of soldiers once; it no longer divides that mean again. Ritual killings have
+both the existing `sacrifices` event count and an initialized `sacrifice` death count, so `stats()`
+stays finite. Every other literal death cause was checked for an initialized counter too.
+
+Three default years (seeds 1–3) change from 382/389/386 living people to 380/387/395; none starves
+either way. Engagements change 26/0/26 → 25/0/58, refusals 16/0/3 → 14/0/2 and routs 4/0/5 → 4/0/1.
+These are bug corrections, not a retuning toward fewer battles. The seed fingerprints and a clean
+43-world fuzz (3,025 world-days, including the original coastal-caravan case) are recorded under
+TODO 16c. The older balance measurements elsewhere in this file predate these corrections.
+All 98 World Builder suites, including the slow simulations, pass with existing pinned fingerprints
+unchanged. Alternating the old and fixed engine twice on the Ryzen 5 3600 gives 5,000 people
+2.60/2.86 → 2.67/2.62 seconds a day; the 400- and 2,000-person rows also stay within the 5% budget.
 
 TODO item 16, in Ric's answers of 2026-11-20 (written into the item). Four settings: **Buildings left alone** and
 **Grinding and baking**, on by default; **Scavenging**, on, under the first; **Places empty at the start**, "None" by

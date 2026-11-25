@@ -1001,7 +1001,7 @@
                     warFinds: 0, forts: 0, gunsLost: 0, gunsBought: 0, shots: 0, grenades: 0, blasts: 0, blastDead: 0, blastCivilians: 0, blastHouses: 0, leftInGround: 0, leftWentOff: 0, leftCleared: 0, bridgesBlown: 0,   // TODO 15.6
                     commissions: 0, drawnBattles: 0, routedSoldiers: 0, soldiersKilled: 0, battleDeclined: 0, battleCaught: 0, raidKilled: 0, raidTaken: 0, raids_met: 0, raids_lost: 0, raids_took: 0, raids_walled: 0, koRaid: 0, koRaiders: 0, koAtVillage: 0, koOpen: 0, koLine: 0, deadRaid: 0, deadRaiders: 0, deadAtVillage: 0, deadOpen: 0, deadLine: 0, lineDead: 0, lineKnocked: 0, unitsFormed: 0, officersLost: 0, battles: 0, contactHours: 0, nightsApart: 0, reservesSent: 0, flankBlows: 0, unitsWithdrew: 0, unitsBroke: 0,   // TODO 15.6b
                     tanksBuilt: 0, tanksLost: 0, aircraftBuilt: 0, aircraftLost: 0, sorties: 0, airScouted: 0, bombs: 0, storesBombed: 0, airRations: 0, airlifted: 0,   // TODO 15.6c
-                    mended: 0, ruinGrudges: 0, ruinTips: 0, ruinRotted: 0, scavenged: 0, scavTrips: 0, resettled: 0, millToll: 0, ovenFee: 0, armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, blamed: 0, favourLost: 0, prophets: 0, failed: 0, hunts: 0, witch: 0, drivenOut: 0, shunned: 0, acquitted: 0, celibate: 0, faithLoads: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
+                    mended: 0, ruinGrudges: 0, ruinTips: 0, ruinRotted: 0, scavenged: 0, scavTrips: 0, resettled: 0, millToll: 0, ovenFee: 0, armiesSeen: 0, armyMeets: 0, armyAvoided: 0, reliefs: 0, roadBridges: 0, roadsBegun: 0, roadsBuilt: 0, roadSquares: 0, roadPaid: 0, roadLevied: 0, caravanOnward: 0, caravansHome: 0, knockedOut: 0, diedOfWounds: 0, piracy: 0, blockaded: 0, prisoners: 0, ransomed: 0, ransomCoins: 0, exchanged: 0, prisonersKilled: 0, released: 0, mutinies: 0, mutinyTook: 0, borrowed: 0, repaid: 0, defaults: 0, breached: 0, starvedOut: 0, serviceEnded: 0, scutage: 0, routs: 0, pursuitDead: 0, ambushes: 0, plans: 0, armoured: 0, campDays: 0, soldierSick: 0, campOutbreaks: 0, armySpread: 0, caravans: 0, caravanSold: 0, caravanFar: 0, caravanRobbed: 0, deserted: 0, campHours: 0, wired: 0, cars: 0, bandsSettled: 0, campMoves: 0, wandered: 0, wanderersSettled: 0, alms: 0, marched: 0, withdrawn: 0, outOfReach: 0, hired: 0, hiredGone: 0, hiredBandits: 0, taught: 0, servicePaid: 0, worksBuilt: 0, worksBroken: 0, finds: 0, learned: 0, lost: 0, relearned: 0, arranged: 0, brideprice: 0, dowry: 0, wedRefused: 0, greatWed: 0, handedOver: 0, keptFed: 0, faiths: 0, converts: 0, lapsed: 0, faithsGone: 0, sacrifices: 0, sacrifice: 0, blamed: 0, favourLost: 0, prophets: 0, failed: 0, hunts: 0, witch: 0, drivenOut: 0, shunned: 0, acquitted: 0, celibate: 0, faithLoads: 0, holyWars: 0, holyDays: 0, offices: 0, skimmed: 0, uncollected: 0, audited: 0, judged: 0, wergild: 0, councilCoups: 0, subjects: 0, wayOut: 0, bound: 0, freed: 0, ranFree: 0, law: 0, left: 0, strangers: 0, plenty: 0, plentyBought: 0, hearthCut: 0, hearthBought: 0, wakings: 0, lightWood: 0, ditches: 0, silted: 0, ditchCleaned: 0, beastsEaten: 0, cleared: 0, regrown: 0, manured: 0, houseHours: 0, spunHours: 0, young: 0, childbirth: 0, conceived: 0, sameCouples: 0, wounds: 0,lamed: 0, discharged: 0, keptOld: 0, foul: 0,banditry: 0, waylaid: 0, banditGrain: 0, banditCoins: 0, banditRaids: 0, banditsDriven: 0, riots: 0, riotGrain: 0, riotsRough: 0, riotsPut: 0, riotsFed: 0, harvestTax: 0, levyEaten: 0, publicGrain: 0, forcedGrain: 0, rationed: 0, boatGrain: 0, goodsMade: 0, goodsUsed: 0, given: 0, armedGiven: 0, armedBought: 0, warsLost: 0, bands: 0, raidBurned: 0, looted: 0, walls: 0, surrenders: 0, weddings: 0, wedBroken: 0, wedEnded: 0, helped: 0, fledSick: 0, garrisons: 0, peaceNew: 0, reaped: 0, spoiled: 0, burned: 0, sacked: 0, refugees: 0, cameHome: 0, passed: 0, toldWrong: 0, tips: 0, gossip: 0, infected: 0, grain: 0, market: 0, births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0,
                     quarrels: 0, fights: 0, fight: 0, pilfered: 0, raids: 0,   // TODO 10
                     alliances: 0, deals: 0, demands: 0, tributes: 0, refusals: 0, joined: 0, tribute: 0 };   // TODO 13
@@ -2021,7 +2021,7 @@
     function newVillage(x, y, f) {
       const v = { id: villages.length, dc: { dk: 0x40000000 + villages.length, dt: -1, dn: 0, dh: 0 }, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0, given: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0, breach: 0, blockade: 0,
-                  alive: true, founded: t, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
+                  alive: true, founded: t, empty: 0, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
                   /* A public order for grain (TODO 15.5b2): coins the treasury has set aside here, the days of food
                      they are for, and whether for people going short now or to lay in after the harvest. */
                   bid: 0, bidWant: 0, bidFor: "",
@@ -4749,7 +4749,7 @@
       a.engaged = en >= 3;
       if (!a.engaged) { for (const u of a.units) { u.dug = false; u.still = 0; } return; }
       ex /= en; ey /= en;
-      if (!was && CHOICE && !giveBattle(a, f, o, c, en, ex / en, ey / en)) { a.engaged = false; return; }   // TODO 15.6e
+      if (!was && CHOICE && !giveBattle(a, f, o, c, en, ex, ey)) { a.engaged = false; return; }   // already the enemy's mean, not another division (TODO 16c)
       if (!was) { count.battles++; a.since = t; a.fought = 0; }
       count.contactHours++;
       /* A battle is a day (most were): after ten hours of daylight fighting with no side broken, the weaker
@@ -6614,7 +6614,18 @@
       return true;
     }
     /* Days on the road, and there. */
-    function travel(p, to, days) { p.at = to.id; jump(p, to.x + (R() - 0.5), to.y + (R() - 0.5)); p.tx = p.x; p.ty = p.y; p.task = "idle"; p.wait = TK(days * DAY_HOURS * ACTIONS_PER_HOUR); }
+    function travel(p, to, days) {
+      let x = clamp(to.x + (R() - 0.5), 0.5, cols - 0.5), y = clamp(to.y + (R() - 0.5), 0.5, rows - 0.5);
+      /* A coastal market's random landing may be water. Use the same dry-square ring search
+         as `go`, before jumping; `jump` keeps the walking memories and buckets informed. */
+      if (wet(x, y)) {
+        const fx = Math.floor(x), fy = Math.floor(y);
+        shore: for (let r = 1; r < Math.max(cols, rows); r++) for (let yy = Math.max(0, fy - r); yy <= Math.min(rows - 1, fy + r); yy++) for (let xx = Math.max(0, fx - r); xx <= Math.min(cols - 1, fx + r); xx++) {
+          if (Math.max(Math.abs(xx - fx), Math.abs(yy - fy)) === r && !stopAt(yy * cols + xx)) { x = xx + 0.5; y = yy + 0.5; break shore; }
+        }
+      }
+      p.at = to.id; jump(p, x, y); p.tx = p.x; p.ty = p.y; p.task = "idle"; p.wait = TK(days * DAY_HOURS * ACTIONS_PER_HOUR);
+    }
 
     /* A trader buys where a thing is cheap and walks it to where it is dear.
        With no money they carry food from the fullest store to the emptiest. */
@@ -8795,7 +8806,11 @@
            come back a week after the last enemy left its edge. */
         const waiting = v.gone && v.gone.some(id => { const q = byId.get(id); return q && q.hp > 0 && q.fledFrom === v.id && q.f === v.f; });
         if (waiting) { v.foes = foesAt(v); if (v.foes > 0) v.dangerAt = t; else if (t - v.dangerAt > 7 * DAY_HOURS) comeHome(v); }
-        if (++v.empty > 6 && !waiting) {
+        /* Founders are assigned here before they walk; `pop` can still be the previous census.
+           A living home assignment protects the place, never a dead or departed founding party. */
+        const coming = (PLAIN ? people : residents(v.id)).some(q => q.hp > 0 && q.home === v.id);
+        if (waiting || coming) v.empty = 0;
+        else if (++v.empty > 6) {
           v.alive = false;
           note("gone", v.name + " stands empty.", 2, v.x, v.y, v.f);
           if (RUINS) ruinKnown(v);   // TODO 16: the neighbours know
@@ -11235,6 +11250,15 @@
        where a crafter makes three times what a bench does while the power works runs. Knock the power
        works down, or let it run out of wood, and the works is a bench again. README, "Work and
        workplaces". */
+    /* One payer per dwelling, even when several unpartnered adults share it (TODO 16c).
+       Keep the existing couple's payer and resident order; unhoused adults each pay for themselves. */
+    function* breadPayers(v) {
+      const paid = new Set();
+      for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) {
+        const key = homes[q.dwelling] || q;
+        if (!paid.has(key)) { paid.add(key); yield q; }
+      }
+    }
     function workDay() {
       for (const v of villages) {
         if (!v.alive) continue;
@@ -11263,7 +11287,7 @@
         if (WIRED) buyCars(v);   // TODO 15d
         if (v.mill) v.millRun = v.mill && v.works && v.works.mill && v.works.mill.built && (hands.miller > 0);
         /* The oven's share (TODO 16): each household a twenty-fourth of its day's bread into the store. */
-        if (BREAD && v.works && v.works.oven && v.works.oven.built) for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) { const h = homes[q.dwelling], g = Math.min(q.food * 0.2, (h ? h.n : 1) * OVEN_TOLL); q.food -= g; v.food += g; count.ovenFee += g; }
+        if (BREAD && v.works && v.works.oven && v.works.oven.built) for (const q of breadPayers(v)) { const h = homes[q.dwelling], g = Math.min(q.food * 0.2, (h ? h.n : 1) * OVEN_TOLL); q.food -= g; v.food += g; count.ovenFee += g; }
       }
     }
     /* What a service would bring somebody here, beside the land and the bench. */
@@ -11290,7 +11314,7 @@
         }
       } else if (p.job === "miller" && BREAD) {   // TODO 16: paid in grain, a sixteenth of what is ground — half a day's of each household's
         v.milledAt = t;
-        for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) { const h = homes[q.dwelling], g = Math.min(q.food * 0.25, (h ? h.n : 1) * 0.5 * MILL_TOLL); q.food -= g; p.food += g; count.millToll += g; }
+        for (const q of breadPayers(v)) { const h = homes[q.dwelling], g = Math.min(q.food * 0.25, (h ? h.n : 1) * 0.5 * MILL_TOLL); q.food -= g; p.food += g; count.millToll += g; }
       } else if (p.job === "miller") { v.milledAt = t; for (const q of residents(v.id)) if (adult(q) && q.hp > 0 && (!q.partner || q.partner < q.id)) got += fee(q, 0.05); }
       count.servicePaid += got;
     }

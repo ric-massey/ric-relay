@@ -775,6 +775,13 @@ nobody had linked was a page nobody could find.
   (`lootedFrom`, the news kind `scavenged`), never from the taking itself; and **a wall no longer falls in peace**
   while its place is lived in. Four settings, each off the old world exactly; their keys are in every older test's
   `LATER` list. What was left is TODO 16b.
+  **Item 16c's five bug fixes (2026-11-24)**: caravans resolve water landings to dry ground before
+  `jump`; a new village's empty counter starts at zero and waits for living home assignments or
+  returning refugees (founders' `home` changes before they walk, and the census counts that);
+  bread tolls charge once per dwelling; battle choice receives the enemy centre divided only once;
+  and ritual deaths have an initialized `sacrifice` counter. `test/ruins.test.mjs --bugs` exercises
+  all five, alongside that suite's ordinary checks. These fixes can change a seed's world; do not
+  restore the bugs to match an old fingerprint.
   **A raid takes and goes** (TODO 15.6d, 2026-11-23; Ric: "whatever is realsistiic"): a band goes only where
   it outnumbers what holds a place, breaks off when met, and its people going home (`LEAVING`) fight
   nobody; don't send bands on a timer again or let them stand at a village. `v.held` is the food the

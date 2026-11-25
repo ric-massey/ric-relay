@@ -31,7 +31,7 @@ const war = (battle, seed = 4) => { const w = People.create({ seed, people: 300,
   assert.ok(s.battles < s0.battles, "armies fight less often (" + s0.battles + " -> " + s.battles + ")");
   assert.ok(s.soldiersKilled <= s0.soldiersKilled, "and soldiers die no more (" + s0.soldiersKilled + " -> " + s.soldiersKilled + ")");
   for (const x of news) for (const f of x.factions) for (const k in f.camp || {}) { const c = f.camp[k]; if (c && c.restUntil > x.tick) assert.equal(c.ready, false, "a resting army does not march"); }
-  console.log("  three wars of 100 days: engagements " + s0.battles + " -> " + s.battles + ", declined " + s.battleDeclined + ", soldiers killed " + s0.soldiersKilled + " -> " + s.soldiersKilled);
+  console.log("  three wars of 100 days: engagements " + s0.battles + " -> " + s.battles + ", declined " + s.battleDeclined + ", caught " + s.battleCaught + ", routs " + s.routs + ", soldiers killed " + s0.soldiersKilled + " -> " + s.soldiersKilled);
 }
 {
   const w = People.create({ seed: 5, people: 200, factions: 2, era: "medieval" });

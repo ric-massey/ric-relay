@@ -814,6 +814,9 @@ when it is built.
   to be found: what is in a ruin is what was there when it fell, less what rotted and what
   others took first. (2026-11-24, TODO 16: every building wears while nobody is in it, stage by stage, and is
   mended for less than new; a ruin's store rots by kind; scavenging; resettling a ruin.)
+  (2026-11-24, TODO 16c: fixed empty settlements that never became ruins, preserving living founders
+  and returning refugees; fixed duplicate household bread tolls, caravan landings, battle centres
+  and the ritual-death counter. These are corrections to the existing mechanisms.)
 - [x] A world that starts already ruined, as a choice at the start. (2026-11-24, TODO 16: "Places empty at the
   start", none, a third, or all but one place a people.)
 

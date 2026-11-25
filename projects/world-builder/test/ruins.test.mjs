@@ -15,6 +15,7 @@
 // node projects/world-builder/test/ruins.test.mjs
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 const People = createRequire(import.meta.url)("../people.js");
 const OFF = { ruins: "old", scavenge: false, bread: "old" };
 const OLD = 1060750917;   // print() of the world below before item 16
@@ -27,6 +28,7 @@ function print(w) {
   return h;
 }
 
+if (!process.argv.includes("--bugs")) {
 // 1. Off: the world before item 16.
 {
   const w = People.create({ seed: 7, people: 200, factions: 3, neighbours: "enemies", era: "medieval", ...OFF }); w.step(24 * 60);
@@ -145,3 +147,102 @@ function print(w) {
   assert.ok(sq > hand, "without the iron age's rotary quern, grinding is slower (" + sq.toFixed(2) + " hours)");
 }
 console.log("ruins: ok");
+}
+
+// TODO 16c: exercise the actual private operations with controlled situations, without adding
+// test-only doors to the shipped engine. Only the returned object's test hooks are inserted.
+const source = readFileSync(process.env.PEOPLE_BUG_ENGINE || new URL("../people.js", import.meta.url), "utf8");
+const anchor = "settings: S, cols: cols";
+assert.equal(source.split(anchor).length, 2, "one engine return to instrument");
+const instrumented = { exports: {} };
+new Function("module", source.replace(anchor, `regression: { travel, newVillage, villageTurn, rehome, serve, sacrifice, count, die, census,
+  rebucket, armyHour, ARMY, UNIT_OF }, ${anchor}`))(instrumented);
+const Engine = instrumented.exports;
+const failures = [];
+const check = (name, f) => { try { f(); console.log("  16c: " + name); } catch (e) { failures.push(e); console.error("  16c FAILED: " + name + ": " + e.message); } };
+
+check("caravans land on dry ground at coastal and lakeside markets", () => {
+  const w = Engine.create({ seed: 1, people: 20, factions: 1, sea: 0, rivers: 0 }), r = w.regression;
+  const p = w.people[0], v = w.villages[0];
+  w.ground.fill(5); v.x = 10.05; v.y = 10.05;
+  for (const kind of [0, 1]) {
+    for (let y = 9; y <= 10; y++) for (let x = 9; x <= 10; x++) w.ground[y * w.cols + x] = kind;
+    for (let i = 0; i < 20; i++) {
+      r.travel(p, v, 2);
+      assert.ok(w.ground[Math.floor(p.y) * w.cols + Math.floor(p.x)] > 1, "a caravan is never set down in sea or lake");
+      assert.ok(Math.hypot(p.x - v.x, p.y - v.y) < 3, "lands beside the market");
+      assert.equal(p.at, v.id); assert.equal(p.tx, p.x); assert.equal(p.ty, p.y);
+      assert.ok(p.wait > 0, "the travel time still elapses");
+    }
+  }
+});
+
+check("empty settlements expire, but living founders protect their destination", () => {
+  const w = Engine.create({ seed: 1, people: 20, factions: 1 }), r = w.regression;
+  const v = r.newVillage(12, 12, 0);
+  assert.equal(v.empty, 0, "new empty counter starts finite");
+  const p = w.people.find(q => w.adult(q) && q.id !== w.factions[0].leader);
+  r.rehome(p, v, "founded");
+  for (let i = 0; i < 10; i++) r.villageTurn(v); // deliberately stale pop: party still away
+  assert.ok(v.alive, "founders need no arrival deadline"); assert.equal(v.empty, 0);
+  r.die(p, "old");
+  for (let i = 0; i < 6; i++) r.villageTurn(v);
+  assert.ok(v.alive, "six days of grace after the last founder dies");
+  r.villageTurn(v); assert.equal(v.alive, false, "then a ruin");
+  const moved = r.newVillage(14, 14, 0), q = w.people.find(q => q.hp > 0 && w.adult(q) && q.id !== w.factions[0].leader);
+  r.rehome(q, moved, "founded"); r.rehome(q, w.villages[0], "moved");
+  for (let i = 0; i < 7; i++) r.villageTurn(moved);
+  assert.equal(moved.alive, false, "departed founders do not keep it alive either");
+  const refuge = r.newVillage(16, 16, 0);
+  refuge.gone = [q.id]; refuge.dangerAt = w.tick; refuge.empty = 6; q.fledFrom = refuge.id;
+  r.villageTurn(refuge);
+  assert.ok(refuge.alive, "a living refugee still protects their old place");
+  assert.equal(refuge.empty, 0, "waiting days do not consume its grace period");
+  r.die(q, "old");
+  for (let i = 0; i < 7; i++) r.villageTurn(refuge);
+  assert.equal(refuge.alive, false, "a dead refugee cannot keep it alive forever");
+});
+
+check("oven and mill take one toll per dwelling and conserve grain", () => {
+  const w = Engine.create({ seed: 1, people: 40, factions: 1, villages: 1, era: "medieval" }), r = w.regression, v = w.villages[0];
+  const grown = w.people.filter(p => w.adult(p)).slice(0, 3), [a, b, miller] = grown;
+  for (const q of w.people) { q.age = grown.includes(q) ? 30 : 1; q.partner = 0; q.food = 100; }
+  b.dwelling = a.dwelling; w.homes[a.dwelling].n = 3;
+  miller.dwelling = w.homes.find(h => h.id !== a.dwelling && h.v === v.id).id; w.homes[miller.dwelling].n = 1;
+  miller.job = "miller"; v.works = { oven: { built: true } };
+  const total = () => v.food + w.people.reduce((s, p) => s + p.food, 0), before = total();
+  w.workDay();
+  assert.ok(Math.abs(r.count.ovenFee - 4 / 24) < 1e-9, "two households, four mouths, one daily oven share each");
+  assert.equal(b.food, 100, "second single adult is not charged again");
+  r.serve(miller, v);
+  assert.ok(Math.abs(r.count.millToll - 4 * 0.5 / 16) < 1e-9, "one half-day mill share each");
+  assert.equal(b.food, 100);
+  assert.ok(Math.abs(total() - before) < 1e-9, "all grain reaches the store or miller");
+});
+
+check("a nearby superior enemy catches the army at its real centre", () => {
+  const w = Engine.create({ seed: 1, people: 40, factions: 2, battle: "choice", truce: false, warBy: "era", sea: 0, rivers: 0 }), r = w.regression;
+  const f = w.factions[0], o = w.factions[1], mine = w.people.filter(p => p.f === f.id).slice(0, 1), foes = w.people.filter(p => p.f === o.id).slice(0, 4);
+  f.rel[o.id].war = true; o.rel[f.id].war = true;
+  for (const [list, x] of [[mine, 30], [foes, 31]]) for (const p of list) { p.job = "soldier"; p.hp = 1; w.place(p, x, 30); }
+  const unit = list => ({ members: list.map(p => p.id), lead: list[0].id, shape: "mass", role: "line", files: 1, size: list.length, coh: 1, still: 0, sx: list[0].x, sy: 30 });
+  const u = unit(mine), eu = unit(foes), a = { units: [u], engaged: false, face: 0 };
+  r.ARMY.set(f.id, a); r.ARMY.set(o.id, { units: [eu] });
+  for (const p of mine) r.UNIT_OF.set(p.id, u);
+  for (const p of foes) r.UNIT_OF.set(p.id, eu);
+  r.rebucket();
+  r.armyHour(a, f, o, { gen: f.leader, ready: true });
+  assert.equal(r.count.battleCaught, 1, "enemy one tile away cannot be declined");
+  assert.equal(r.count.battleDeclined, 0); assert.equal(a.engaged, true);
+});
+
+check("ritual deaths and every declared death cause have finite counters", () => {
+  const w = Engine.create({ seed: 1, people: 40 }), r = w.regression;
+  const v = w.villages[0], before = w.stats().sacrifices;
+  r.sacrifice(v, { id: -1, name: "Test faith" });
+  assert.equal(w.stats().sacrifices, before + 1); assert.equal(w.stats().sacrifice, 1);
+  const finite = (obj, path = "stats") => { for (const [k, x] of Object.entries(obj)) { if (typeof x === "number") assert.ok(Number.isFinite(x), path + "." + k); else if (x && typeof x === "object") finite(x, path + "." + k); } };
+  finite(w.stats());
+  for (const [, cause] of source.matchAll(/die\([^\n;]*?, "([a-z]+)"/g)) assert.ok(Number.isFinite(w.stats()[cause]), "initialized death cause: " + cause);
+});
+if (failures.length) throw new AggregateError(failures, "TODO 16c regressions");

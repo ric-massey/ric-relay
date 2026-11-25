@@ -5866,6 +5866,107 @@ Each from item 16; none started.
   and grinding at home stays open to all. A lord's mill people must use (suit of mill) is not built. Ric to say.
 - **Danger in ruins** stays with item 18 (Ric).
 
+### [x] 16c. Bugs found by a bug search (2026-11-24)
+
+**Done 2026-11-24** (Ric: "fix those bugs"). All five corrected, with regression cases that fail
+before and pass after; nothing from this bug list left out. `node .github/checks.mjs --only
+world-builder --slow`: all 98 suites green (1,211 s), every existing pinned fingerprint unchanged.
+The five regressions also passed separately after the refugee-return edge case was added.
+
+**Ric (2026-11-24):** "add all those and these 2 as bugs to the todo list plz". 1–3 came from a fuzz of
+about forty People worlds (all eight presets, a spread of eras, 30 days to two years, some with
+`{ audit: true }`), checked every day for crashes, NaN, negative stores, coins appearing or vanishing,
+people off the map or in water, people living in dead villages and leaderless living factions; and
+from reading item 16's code. 4 and 5 Ric brought; both were read in `people.js` the same day and are
+real. The fixes below change some seeds' worlds, so each needs the fingerprints that move
+named and a default year measured before and after.
+
+1. **A caravan can put people in the sea.** `travel()` (about line 6617) jumps a caravaner to the
+   destination's centre ±0.5 squares and never looks at the ground. Seen: seed 4000, "Short lives",
+   ancient, 200 people, day 305 — a caravaner carrying iron at a forest square was standing idle in
+   the sea beside their coastal home village an hour later, 9 km off; a second person stood in the
+   sea by the same village. Fix: land on the nearest dry square to the point chosen (as placing
+   people elsewhere does). A test: a coastal village, a caravan sent home, nobody ends on sea or lake.
+2. **A new village's `empty` counter starts as NaN.** `newVillage` (about line 2022) never sets
+   `v.empty`, so `++v.empty` in `villageTurnIn` (about line 8798) is NaN and `NaN > 6` never holds: a
+   place founded with nobody in it can never be declared empty. Today that accidentally helps —
+   settlers are counted only when they arrive, and a true 0 would declare their village empty after
+   about a week of walking — but a party that never arrives leaves a village "alive" with nobody in
+   it for ever: never a ruin, its store never rots, and its people cannot fall while it stands.
+   **Not** fixed by `empty: 0` alone: the count must wait while a founding party is on its way (as
+   `v.gone` already waits for those who fled), then start.
+3. **The mill and oven tolls can charge one household twice** (minor). The miller's share (about
+   line 11293) and the oven's (about line 11266) are taken from every adult not in a couple, each
+   sized for the whole house (`h.n`), so a house with two such adults pays twice. Rare: 2 of 82
+   houses after three years of "Short lives". Fix: one payer per dwelling (`q.dwelling`), as "a
+   household is one purse and one pot" says.
+4. **The enemy's centre is divided twice before a battle is weighed.** In the army's hour (about
+   line 4751) `ex /= en; ey /= en;` already makes the sum a mean, and the next line passes
+   `ex / en, ey / en` to `giveBattle`, so it is handed a point near the map's corner, not where the
+   enemy stands — and `close` (whether the armies are within `CAUGHT`) is worked out from it. Fix:
+   pass `ex, ey`. Then re-measure 15.6e's numbers (battles given, refused, routs), which were taken
+   with the bug in.
+5. **A ritual killing makes a death counter NaN.** `sacrifice()` (about line 10680) calls
+   `die(victim, "sacrifice")`, and `die` does `count[why]++`; there is `count.sacrifices` but no
+   `count.sacrifice`, so it becomes NaN on the first one (and anything summing deaths by cause from
+   `stats()` with it). Fix: add `sacrifice: 0` to the counts. A test: a sacrifice, then every
+   number in `stats()` finite. Worth a scan for other `die(…, why)` causes missing from the counts.
+
+**Done when:** each has a test that failed before and passes after; the fuzz run clean again; the
+fingerprints that move said, and README updated where it describes them.
+**Budget:** default.
+
+Research and implementation notes (2026-11-24):
+- Read [`NaN` on MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN)
+  and [`Set` on MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set).
+  Missing counters must be initialized at creation; arithmetic on `undefined` creates `NaN`, and
+  comparisons cannot age a NaN counter out. A local set of dwelling objects prevents repeated tolls
+  in linear time, with no new per-person state and no scan of the whole population per household.
+- Read `go`, `jump`, `rehome`, `census`, `villageTurnIn`, `workDay`, `serve`, `armyHour`, `giveBattle`
+  and every literal `die` cause. Correction to bug 2's explanation above: `rehome` changes `home`
+  immediately, and `census` counts those assignments, even before arrival. A living home assignment
+  protects a new place even if `pop` is stale; a dead or departed founder cannot protect it. The
+  refugee-return check remains separate, with its original danger and return rules.
+- No settings or historical rates changed. Caravans keep their two destination draws and travel
+  wait, using `go`'s dry-square search only for a water landing and `jump`'s existing bookkeeping.
+  Ordinary landings stay constant-cost; empty places check their own residents only once a day.
+- Five controlled regression situations appended to the existing, registered `test/ruins.test.mjs`;
+  `--bugs` runs only these. All five fail against the saved original engine and pass after the fixes.
+  They check coast and lake landings, dead and departed founders, household grain conservation,
+  an army caught by the enemy one square away, and finite stats after an actual sacrifice. Every
+  other literal death cause already has an initialized counter. No new suite or runner change.
+
+Default years measured before and after, seeds 1, 2 and 3, otherwise default settings:
+
+| seed | living before → after | births | starved | engagements | refused | routs | world fingerprint |
+|---|---:|---:|---:|---:|---:|---:|---|
+| 1 | 382 → 380 | 18 → 18 | 0 → 0 | 26 → 25 | 16 → 14 | 4 → 4 | 2748731047 → 10337071 |
+| 2 | 389 → 387 | 23 → 22 | 0 → 0 | 0 → 0 | 0 → 0 | 0 → 0 | 2887274718 → 171596427 |
+| 3 | 386 → 395 | 12 → 11 | 0 → 0 | 26 → 58 | 3 → 2 | 5 → 1 | 3802929967 → 1582365083 |
+
+Fingerprint: the existing battle test's FNV-style fold, rounding each value to thousandths, over
+each person's id/x/y/food/coins/loyal/hp, each village's food/till/pop and each faction's treasury.
+These are deliberately different worlds after the fixes, not a change tuned toward fewer battles:
+seed 3 has more engagements. Existing historical test fingerprints are checked by the final pass.
+The fuzz passed 43 worlds, 3,025 world-days: all eight presets over early/ancient/medieval/industrial/
+modern, 80 people and 30 days each (eight with audit on), the reported Short lives / ancient /
+seed 4000 / 200 people over 365 days, and two 40-person worlds over 730 days. Checked daily: finite
+stats, people and empty counters, nonnegative stores, coin conservation, bounds, dry ground unless
+on a boat journey, living homes, living leaders. The original caravan case ends with 211 people,
+nobody standing in sea or lake outside a boat journey.
+
+15.6e re-measured using `test/battle.test.mjs`'s three forced wars (300 people, seeds 4/7/11,
+100 days after declaring war on day one, later parts off): engagements 15 → 17, refused 2 → 2,
+caught 0 → 2, routs 4 → 4, soldiers killed 9 → 9. The old "whenever armies meet" side is unchanged,
+53 engagements and 16 soldiers killed; its `AT_WAR = 1587903057` fingerprint is unchanged too.
+The year-long old numbers under 15.6e above predate this correction and are historical; this
+smaller controlled rerun isolates the fix rather than claiming a new historical death-rate fit.
+
+Speed after the checks finished, old/new alternated twice on this AMD Ryzen 5 3600, 24 GB,
+Node 24.19.0, `bench.mjs --quick`: 400 people 0.20/0.19 → 0.19/0.19 s a day; 2,000
+0.87/0.87 → 0.88/0.90; 5,000 2.60/2.86 → 2.67/2.62. Means -2.6%, +2.3%, -3.1%:
+inside the 5% budget. No per-person fields or persistent per-household state added.
+
 ### [ ] 17. Catastrophes on the land
 
 **Now:** nothing can be dropped on the world.
@@ -6651,4 +6752,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-23 | the log says why | AMD Ryzen 5 3600, 24 GB | 2.37 / 2.51 s a day (2.52 / 2.36 the last engine, alternated) | *not run* | 8.2 MB, 1.60 KB | a reason written only when an event is logged; no cost. |
 | 2026-11-24 | 15.11, 15.12 (item 15 finished) | AMD Ryzen 5 3600, 24 GB | 2.30 / 2.28 s a day (2.43 / 2.39 before 15.11, alternated) | *not run* | 8.2 MB, 1.60 KB | `--quick`: 400 0.18 → 0.19, 2,000 0.80 → 0.77, 5,000 2.41 → 2.29 s a day. 15.12a's dice alone, against the engine before them: 5,000 people over three seeds 2.36 s a day both ways; four fields on a person had made it 70% slower until the dice went in one object (`p.dc`). |
 | 2026-11-24 | 16 | AMD Ryzen 5 3600, 24 GB | 2.41 / 2.30 s a day (2.27 / 2.31 before, alternated) | *not run* | 19.0 MB at the start, 18.8 before | `--quick` old then new, twice: 400 0.19 0.18 → 0.18 0.18, 2,000 0.78 0.78 → 0.82 0.77; within the drift. The bench's 5,000 MB column read 17.3 against 8.2 both times; measured directly the start is the same (the column carries the row before). A ruin, a house's stage and grinding cost nothing measurable. |
+| 2026-11-24 | 16c, five bug fixes | AMD Ryzen 5 3600, 24 GB, Node 24.19.0 | 2.67 / 2.62 s a day (2.60 / 2.86 before), 112–114× | *not run* | 17.3 MB, 3.37–3.38 KB (same as before) | `--quick`, old/new alternated twice after all simulations finished: 400 0.20/0.19 → 0.19/0.19, 2,000 0.87/0.87 → 0.88/0.90; all within 5% on the mean. No new per-person fields; changed worlds are named in 16c. |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |
