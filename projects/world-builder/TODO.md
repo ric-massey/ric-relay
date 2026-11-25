@@ -6385,7 +6385,14 @@ cites before it designs.
   ([Paradox](https://www.paradoxinteractive.com/games/cities-skylines-ii/features/economy-production)) —
   a way of presenting, not proof our engine records every flow.
 
-#### [ ] 21a. What matters: what to show, and what to put one tap away
+#### [x] 21a. What matters: what to show, and what to put one tap away
+
+**Done 2026-11-25.** The hierarchy is `UI-REVAMP.md` section 6: a screen-by-screen table of what is
+in front and what is one tap away, what the keeper can send for it, and the five tasks walked through
+on paper. Ric's answers below. Left for later parts, not lost: making each real screen hold only its
+"in front" list is 21c–21f's work and is judged there; the keeper's own memory for firsts and for
+pinned subjects' rows goes to 21f; who an event concerns, the dead by name and household budgets
+over time are new items to ask about (21f, item 19).
 
 **Now:** the person panel shows every trait as a bar and numbers to two places; rules of thumb
 ("A ration supplies one adult for one day") repeat under every view; the World tab lists 22 lifetime
@@ -6442,6 +6449,69 @@ and the five tasks in the rules can be walked through on paper.
 Research notes: see "Research for all of 21" — Sylvester (what reaches the head; hair complexity),
 Koster (learning causes), apophenia (named people at stake), Cities: Skylines II (access, not
 totals).
+
+**Drafted 2026-11-25** (Claude, Ric: "work on the todo for people sim. Number 21"): the hierarchy is
+section 6 of `UI-REVAMP.md` — the rule, a table screen by screen (in front / one tap away / whether
+the keeper sends it), what needs the keeper's own memory or a new item, and the five tasks walked
+through on paper. Checked against a default world run in the browser to day 133, every tab read as
+text: Steiwuk had starved that year and by day 133 the only trace was four lines down News under
+eight "has built a common oven" lines; the World tab has no famine counter; the People tab opened on
+the alphabet with 33 of 60 rows reading "No equipment in use". Ric answered the same day
+(below).
+
+Research for 21a, 2026-11-25. **The pages could not be read whole from this session** — the
+container's network does not resolve nngroup.com, rimworldwiki.com, nexusmods.com, gdt.stanford.edu
+or forum.paradoxplaza.com, and rockpapershotgun.com is refused — so, like the research above, this is
+from search summaries, and each point below says how sure it is.
+
+- **What players find noise: the volume of small notices, and they hide them.** RimWorld players
+  install mods whose whole job is blocking chosen messages, alerts and letters (Block Unwanted
+  Minutiae; a Nexus mod hiding incidents, alerts, letters and readouts by category,
+  [Nexus](https://www.nexusmods.com/rimworld/mods/286),
+  [BUM](https://catalogue.smods.ru/archives/93900)); one player says they "rarely read letters
+  anymore" ([Steam](https://steamcommunity.com/app/294100/discussions/0/5855270367463613061)). Crusader
+  Kings III removed per-message settings; players asked for them back ("the barrage of stupid
+  notifications was too much", [Steam](https://steamcommunity.com/sharedfiles/filedetails/comments/2256989379);
+  [Paradox forum](https://forum.paradoxplaza.com/forum/threads/the-case-for-message-settings.1564203/))
+  and mods add war-only alerts ([forum](https://forum.paradoxplaza.com/forum/threads/mod-war-alerts-customisable-war-notifications.1435936/)).
+  Player evidence, not a study. **Chosen:** repeats are folded, the visitor decides what may
+  interrupt, and what concerns their pins outranks the rest (21f carries it out).
+- **Detail one level down, explained in place.** Victoria 3's UX diary puts "the right information at
+  the right time" first, keeps each tooltip to what matters in context and pushes the rest into
+  nested tooltips and "concepts" that work "like an integrated dictionary"; a later update "surfaced
+  more relevant information higher in the hierarchy"
+  ([DD 29](https://forum.paradoxplaza.com/forum/developer-diary/victoria-3-dev-diary-29-user-experience.1506484/),
+  [DD 74](https://www.paradoxinteractive.com/games/victoria-3/news/dev-diary-74-ux-improvements)).
+  **Chosen:** rules of thumb go once into help, not under every view.
+- **Progressive disclosure.** Nielsen's definition — defer "advanced or rarely used features to a
+  secondary screen" — and the known risks: a split made wrong hides what people need, and a hidden
+  feature people know exists but cannot find frustrates them; the evidence is mostly practice, not
+  controlled studies ([IxDF](https://ixdf.org/encyclopedia/progressive_disclosure.html),
+  [Decision Lab](https://thedecisionlab.com/reference-guide/design/progressive-disclosure)).
+  **Chosen:** two layers only, every second layer behind a labelled control, and the five tasks as
+  the check that the split is right.
+- **Why named, few people.** RimWorld keeps about twelve named colonists, and Sylvester says players
+  read more story into an event than the mechanics hold
+  ([RPS, via reader](https://hn.jakechampion.name/reader/https://www.rockpapershotgun.com/2016/08/12/how-rimworld-generates-great-stories));
+  a Dwarf Fortress study adds that the effect needs time spent with a character
+  ([philarchive](https://philarchive.org/archive/CARIDF-3)). We have hundreds: **chosen:** the People
+  screen opens on pins and on short "worth a look" groups (hungry, sick, leaders), never the alphabet.
+- **What brings people back is the story of a world, including its failures.** Dwarf Fortress has no
+  win; collapses are the stories players share ("Losing is fun",
+  [Wikipedia](https://en.wikipedia.org/wiki/Dwarf_Fortress)), and its Legends mode records the
+  world's history and the player's deeds in it
+  ([DF wiki](https://dwarffortresswiki.org/index.php/Legend)). **Chosen:** a famine that has ended
+  stays on the Overview's story so far; firsts are kept by the keeper so the record's dropping
+  of small events cannot lose them.
+
+Cost to run: none for the hierarchy. What it asks of the keeper, when 21d–21f build it: sending
+events' `kind`, `id`, `f` and `t` (already on the event); a list of people sorted by need (one pass,
+the same as the A–Z list now); firsts kept as events arrive; rows for pinned subjects only.
+
+**Asked Ric, 2026-11-25** (section 6's last part, each with a recommendation): traits — two in
+words in front, eleven bars behind a tap; numbers — words first, decimals behind a tap; faction
+cards — short; counters — only those that moved since the last look. **Ric's answers, the same day:
+the recommendation in all four** ("Two in words", "Words first", "Short card", "Ones that moved").
 
 #### [ ] 21b. The look: colour, type and furniture, as mock-ups
 

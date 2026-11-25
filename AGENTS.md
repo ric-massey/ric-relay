@@ -540,7 +540,10 @@ nobody had linked was a page nobody could find.
   **The People UI is being rethought** (Ric, 2026-11-24: "it needs a complete revamp"):
   `projects/world-builder/UI-REVAMP.md` is the analysis — what the page shows, what a world
   actually does, every setting measured by `test/settings-impact.mjs` — and a proposal that is
-  **not agreed**; its questions are Ric's. The work itself is item 21 of
+  **not agreed**; its questions are Ric's. **Its section 6 is agreed** (TODO 21a, 2026-11-25): what
+  each screen shows first and what goes one tap away — traits as the two that stand out, in words;
+  words and whole numbers before decimals; short faction cards; only the counters that moved. Every
+  screen 21b to 21g builds follows it. The work itself is item 21 of
   `projects/world-builder/TODO.md` (21a to 21h), with the research under it. Read both before
   changing the People page.
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**

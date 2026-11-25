@@ -389,6 +389,126 @@ is where answers go — keep one list. Question 7 is answered: item 21 exists.)*
    parts — setup, run bar and layers, inspector, panel — so "work on 21a" works like every other
    item?
 
+## 6. What matters: what each screen shows first (TODO 21a)
+
+Written 2026-11-25 for TODO 21a, and **agreed the same day**: Ric chose the recommendation in each
+of the four choices at the end. The mock-ups (21b) and every screen after follow this. It changes
+no code.
+
+It was checked against a running default world in the browser (day 133, 383 people, every tab read
+as text at 1,280 px) and against what `people-host.js` sends today. What that world showed is the
+case for this section: **earlier that year Steiwuk had starved** — 54% of its 50 people hungry,
+coins refused for food twice — and by day 133 it was over. The only trace was four lines down the
+News tab, under eight lines of "has built a common oven"; the World tab's "Going hungry 0%" was true
+for that moment and said nothing of it, and its counters have no famine row. A visitor who looked
+away for that month would never know. The People tab opened on Anadraniar, first by alphabet; 33 of
+the 60 rows on its first page read "No equipment in use".
+
+### The rule
+
+A screen's first layer answers **"what is happening, to whom, and why"**, in words and whole
+numbers. Everything that is true and kept but answers something narrower is **one tap away, never
+deleted** — Sylvester's "hair complexity": it costs only interface burden, casual watchers skip it,
+interested ones love it. Never more than two layers: the second layer is the whole of the rest, not
+a third fold inside it.
+
+What goes **in front**, on every screen it applies to:
+
+1. **What changed** — a number with its change and the stretch it is over ("383, down 4 since day 1"),
+   never a number alone where the history is kept.
+2. **What is wrong now** — a famine, a siege, a war, a sickness: the standing problems, while they last.
+3. **Why** — the engine's own `because` and `after`, in body type, not a small grey line.
+4. **Who** — named people with something at stake: the hungry, the sick, the leaders, the people the
+   visitor pinned.
+5. **Who can get what** — whose food, for how many days, and whether it can be had (coins refused,
+   a store empty while houses hold food).
+6. **Firsts and records** — the first famine, the first war, the oldest alive.
+
+What goes **one tap away**: numbers to two decimals, every bar beyond the few that stand out, rules
+of thumb ("a ration supplies one adult for one day" — once, in help), counters that have not moved,
+laws and customs, the full lists.
+
+**Three kinds of figure, shown as three different things** (21b gives each a look): a **fact** the
+engine holds (age, people in a village, food in the store); an **estimate** worked out from facts
+("the store covers 3 days" — residents' need today, not a promise anybody reaches it); and **what
+someone holds in mind** (heard, believed, misremembered — `inMind`, with `wrong` marking news that
+was false). A "days of food" always names whose food and whose need: carried, the household's, the
+village store's, or all of it.
+
+### Screen by screen
+
+| Screen | In front | One tap away | Keeper sends it today? |
+|---|---|---|---|
+| **The bar** (always) | date and season; people and their change; speed reached; pause; how many standing problems | — | yes (frame) |
+| **The map** | people, villages, the chosen layer **with its legend**; a mark on each place with a standing problem | the key's prose (boxes, rings, lines) — once, in help | marks: from the standing problems below |
+| **Overview** (was World) | the story so far: the biggest events since the visitor last looked; standing problems; 4–6 graphs with axes and time (people, food in store as days, going hungry, deaths a month by cause, wars, loyalty); firsts; **the counters that moved** since the last look | every counter (406), every graph, the live rules (they move to 21g's drawer), the map key | graphs, counters: yes. "Since the last look": the page keeps the last counters it was sent and compares. Firsts: see below |
+| **People** | the visitor's pins; then **worth a look**: going hungry, sick, leaders, soldiers in the field, the oldest — each a short group; search | A–Z with the filters; a row's equipment ("No equipment in use" never in front) | the groups need a `people` pane that can sort by need, not only by name — keeper-only |
+| **News** | headlines (21f ranks them) with their `because` in body type; repeats folded ("8 villages built a common oven"); standing problems at the top | the decision's numbers (`why`), the `after` chain, small events, Talk | `kind`, `id`, `f` and `t` are on every event and the pane drops them — keeper-only (21f) |
+| **A person** | name, age, living, home; **now**: what they are doing and the need that won; **what is at stake**, one line (hungry and why; sick; at war; nothing pressing); family in one line (partner, parents, children, by name); the two traits furthest from the middle, in words ("very stubborn, quick to anger") | all four need bars, all eleven traits, food and coins to decimals, equipment, what is on their mind, friends and enemies, faith and beliefs, their life's record | yes (`look` pane) |
+| **A village** | people and their change; going hungry and sick; **the store in days** and whether coins buy food there; loyalty; a standing problem (siege, famine) with its why | materials, price, till, goods on order, founded | all but "its change": history is kept for the world only |
+| **A faction** | people and their change; leader and how chosen; at war with, allied with, by name; loyalty; its standing problems | laws, land, marriage, research, treasury, armies' plans; "Rule it yourself" (in front once ruled) | yes (`factions` pane) |
+| **Setup** | 21c's starting points and Essentials | every other setting, help behind ⓘ | — |
+
+### What can be shown now, and what needs a new item
+
+The page never reads the engine, so "in front" is only real where the keeper can send it. Read off
+`people-host.js` and `people.js` on 2026-11-25:
+
+- **Kept and sent, or one keeper change away (inside 21):** present needs, stocks, ages, jobs and
+  activities; the 600 daily rows (`sample()`: people, food a head, price, hungry, loyalty and the
+  running counts); every event's `kind`, `id`, faction and time; the 406 counters; each technique's
+  holders (`techView`); what a person holds in mind and where they heard it.
+- **Firsts** can be kept by the keeper without touching the engine: it sees each event as it is
+  written, so it can remember the first of each kind before `note()` drops it. The keeper only
+  reads; this is its own memory. Before the first frame there is nothing to miss.
+- **History per village or per person is not kept.** The 600 rows are the whole world's. "Steiwuk's
+  store over the year" or "what changed for the people you pinned" needs either the keeper to keep
+  its own rows for pinned subjects from the moment they are pinned (keeper-only, and it must say "since
+  you pinned it"), or item 19. Recommended: the keeper's rows, for pins only.
+- **Who an event concerns** (which people) is not recorded — a new item, asked first (21f says so).
+- **A household** is not an object the keeper sends: it is a person, their partner and children,
+  one purse and one pot. A household view (21e) is put together from those; budgets over time are
+  not kept.
+- **The dead** are gone from the world; "who died this month" by name needs item 19.
+
+### The five tasks, walked through on paper
+
+On the same world, at the time of the famine (its own News lines give every figure used), with this
+hierarchy:
+
+1. **Find a struggling household.** The bar says "1 problem". Overview's top line: *Steiwuk is
+   starving — 54% of 50 going hungry; 3 days of food a head in the store.* Tap it: the village, and
+   under it the hungry by name. **Works.**
+2. **Say what is wrong.** A hungry person's first screen: *Going hungry. Carries about half a day's
+   food; the village store is empty; coins will not buy food here now — because the coin is trusted
+   0.3 and food is sold for it from 0.35.* Every figure is in the event and the `look` pane today.
+   **Works.**
+3. **Follow it through a season.** Pin the village; run until spring (21d). Overview's "since you last
+   looked" lists its events. Its store over the season needs the keeper's rows for pins.
+   **Works once the pinned rows exist (keeper-only).**
+4. **Change something they are allowed to.** The village's faction → Rule it yourself → relief for
+   Steiwuk (`vrelief`). **Works today**, two taps further than it should be.
+5. **Find out what came of it.** The change marked on the graphs (21g) and the pinned village's own
+   rows. The world graph alone would not show one village's relief. **Works with the pinned rows; a
+   copy of the world (21h) is what says whether the relief caused it.**
+
+So nothing in the hierarchy needs the engine changed; two things need the keeper to keep its own
+memory (firsts, and rows for pins), and three are new items (who an event concerns, the dead,
+household budgets over time).
+
+### Ric's choices (21a: "what goes behind a tap")
+
+Asked 2026-11-25, each with a recommendation. **Ric chose the recommendation in all four** (same day).
+
+1. **A person's traits** — the two that stand out in front, in words, and all eleven bars one tap
+   away (recommended, **chosen**); or all eleven in front.
+2. **Numbers** — words and whole numbers first ("about two days of food"), decimals one tap away
+   (recommended, **chosen**); or the numbers as now.
+3. **Faction cards** — short (people, leader, wars and allies, loyalty), with laws, marriage, land
+   and research one tap away (recommended, **chosen**); or the full card.
+4. **The counters** — only those that moved since the visitor last looked, the rest one tap away
+   (recommended, **chosen**); or a fixed short list.
+
 ## How the settings were measured
 
 - **Section 2**: `People.create({ seed: 11 })`, `step(24)` a day for 720 days, `stats()` and job
