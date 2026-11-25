@@ -252,6 +252,7 @@ const SUITES = [
      written out again as a worker's text (how the page starts one, and why
      it still works opened as a file); and people has no top. */
   ['world-builder keeper, worker text and no top on people', ['projects/world-builder/test/keeper.test.mjs']],
+  ['world-builder watching a world: layers, run until, pins, taps, setup layers', ['projects/world-builder/test/watching.test.mjs']],   // TODO 21, about a minute
   /* Physics settings/conservation and seven actual days per People preset.
      The shared daily clock superseded the compressed headless century in
      2026-11-12. Generation-scale experiments remain explicit --generations

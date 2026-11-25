@@ -537,15 +537,20 @@ nobody had linked was a page nobody could find.
   **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
-  **The People UI is being rethought** (Ric, 2026-11-24: "it needs a complete revamp"):
-  `projects/world-builder/UI-REVAMP.md` is the analysis — what the page shows, what a world
-  actually does, every setting measured by `test/settings-impact.mjs` — and a proposal that is
-  **not agreed**; its questions are Ric's. **Its section 6 is agreed** (TODO 21a, 2026-11-25): what
-  each screen shows first and what goes one tap away — traits as the two that stand out, in words;
-  words and whole numbers before decimals; short faction cards; only the counters that moved. Every
-  screen 21b to 21g builds follows it. The work itself is item 21 of
-  `projects/world-builder/TODO.md` (21a to 21h), with the research under it. Read both before
-  changing the People page.
+  **The People UI was rebuilt on 2026-11-25** (Ric, 2026-11-24: "it needs a complete revamp"; then
+  "Do all of Number 21"): TODO 21b to 21g, Ric's answers written into item 21, the README's "The
+  People page, rebuilt". `UI-REVAMP.md` is the analysis it came from and section 6 (21a) is what each
+  screen shows first. Rules it leaves: **faction colours are the page's** (`giveColours`, Okabe–Ito
+  with a letter per faction) — never read `f.colour` for drawing and never change `COLOURS` in
+  people.js to suit the page; **the keeper may remember but never write** — pins, their rows, firsts,
+  run-until and the log of the visitor's changes live in `people-host.js`, and
+  `test/watching.test.mjs` holds a world watched that way equal to the world unwatched; **run-until
+  cuts the time handed to the engine, it never skips or forces a step**; **the log of changes
+  (`actions`) is the one record of them**, which item 19 and 21h save — do not start a second;
+  **a setting's layer (Start, Customise, Model) is in `ESSENTIAL`, `MODEL` and `FAITH_PARTS` in
+  `index.html`**, the test holds every "as before" setting to a list, and a new setting goes on one
+  of them; **a link names settings by key**, so moving a control between layers changes no link.
+  21h (saving) waits on item 19. Read the README section and TODO 21 before changing the People page.
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
   (2026-11-12, Ric: "all the ideas we were talking about not ust the last ones"). It covers
   individual lives and civilization growth, production, learning, relationships, communication,
@@ -578,9 +583,9 @@ nobody had linked was a page nobody could find.
   a harvest window back in. Every mechanism it brought (harvest, putting by, asking a neighbour,
   carers, famine migration) was added because a year-long run starved without it — measure a
   year before removing one.
-  **The watcher can rule a faction** (Ric, 2026-11-14): tax, army, relief and war or peace on the
-  Factions tab, a tax and relief per village, and the `live` settings changed mid-run on the World
-  tab. Only settings the engine reads as it goes may be marked live; a world nobody rules must stay
+  **The watcher can rule a faction** (Ric, 2026-11-14): tax, army, relief and war or peace on that
+  people's page in the Inspector (the Factions tab until TODO 21), a tax and relief per village, and
+  the `live` settings changed mid-run in the Rules drawer (the World tab until TODO 21). Only settings the engine reads as it goes may be marked live; a world nobody rules must stay
   byte for byte the same (`test/rule.test.mjs`). Ric's next list — military reach, production
   chains, what people know, relationships, households and politics — is at the end of
   `projects/world-builder/PEOPLE-VISION.md`, in the agreed order.

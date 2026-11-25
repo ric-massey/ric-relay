@@ -39,7 +39,8 @@ what has shipped from future direction, including the shared daily clock and rem
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `people-host.js` | The People engine's keeper (TODO item 3): holds a world, runs its clock and answers the page with only what it draws, so the engine can sit in a worker. No DOM and no timer of its own; the same in a worker, on the page's thread and in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
-| `UI-REVAMP.md` | The People UI taken apart before a rebuild (2026-11-24): what the page shows and lets you click, what a world actually does, every setting measured for how much and how soon it changes a world, and a proposal with Ric's questions. A proposal, not agreed — except section 6, what each screen shows first (TODO 21a, agreed 2026-11-25). |
+| `UI-REVAMP.md` | The People UI taken apart before a rebuild (2026-11-24): what the page shows and lets you click, what a world actually does, every setting measured for how much and how soon it changes a world, and a proposal with Ric's questions. Section 6, what each screen shows first, was agreed (TODO 21a, 2026-11-25), and the page was rebuilt on it the same day (21b to 21g; "The People page, rebuilt" below). |
+| `test/watching.test.mjs` | TODO 21: a world watched every way the rebuilt page watches it is the world unwatched; every layer answers; run a day, until the next season and a year stop to the minute; pausing on a pin; taps on a house, a field and the land; the visitor's changes logged; the setup's three layers. About a minute. |
 | `TODO.md` | The People simulator's work in order, twenty numbered items (and 2b, done, and 3b: what items 2 and 3 measured and left). "Work on N" means item N of this file, done by its "How to do an item" (2026-11-14). |
 | `test/bench.mjs` | Not a check — the People engine's speed, measured the same way every time: `node --expose-gc test/bench.mjs`. Its numbers are one machine's and go in `TODO.md`'s speed log. "visited" is the share of person-steps on which anybody was looked at. |
 | `test/walking.test.mjs` | Quick check that the walking short cuts only make the engine faster: the same engine with them off (`create(options, { plainWalking: true })`) must give the identical world — packed villages, deaths, people moved or killed from outside, a crowd placed at once. |
@@ -5401,6 +5402,69 @@ player equipment choices and the larger production system remain future work.
 
 ## The page
 
+### The People page, rebuilt (TODO 21b to 21g, 2026-11-25)
+
+Ric, 2026-11-24: "it needs a complete revamp this is a high quality simulater and the ui needs to
+show it". The analysis is `UI-REVAMP.md`; what each screen shows first is its section 6 (21a,
+agreed); the order of work and Ric's answers are `TODO.md` item 21. The mock-ups Ric chose from are
+`docs/mockups/world-builder/people-ui.html` (direction A). No engine change: everything new is read
+by the keeper (`people-host.js`), and `test/watching.test.mjs` holds a world watched every way the
+page now watches it equal to the world unwatched.
+
+- **Colour has jobs.** `:root` names them: `--edge` for what must be seen (3.57:1, against the
+  divider's 1.47), `--urgent` for a need now, `--trait` for lasting nature, `--mind` for what
+  someone heard or believes, `--follow` for the person followed; the accent is for controls and
+  links only. Five type sizes, `--t1` to `--t5`, none under 12 px. A fact is plain, an estimate is
+  dotted and marked ≈, what is in someone's mind is in its own colour.
+- **Faction colours are the page's** (Ric: "Okabe–Ito + marks"): eight that stay apart for the
+  common colour blindnesses (closest pair ΔE 14.6 under deuteranopia), each faction's letter on its
+  villages and in every legend, so a ninth and beyond are told apart by more than colour; a colour
+  is not handed to a new faction while a living one holds it unless all eight are. The engine's own
+  `COLOURS` are untouched and simply not used.
+- **Setup is three layers**: Start (the starting points and fourteen Essentials, help behind ⓘ),
+  Customise (six tabs) and Model (switches that turn a newer part of the engine back, said plainly
+  for what they are), with one search over labels, help and choices. The faith parts fold under the
+  one Faith switch. A link names settings by key, so every link made before opens the same world.
+  Which setting is where, and why, is TODO 21c.
+- **One bar**: Setup, Pause, 1× · 16× · Max and every speed behind ▾, the date and season, the people
+  and their change since day 1, what it is waiting for, how many things are going wrong, the layer,
+  Rules and ⋯. Two rows on a phone, every control 44 px, the layer and Rules inside ⋯.
+- **Eleven layers**, each with a legend in a corner (folded on a phone): Factions, Mood, Beliefs,
+  Wealth, Hunger, Sickness, Loyalty, Faith, Who holds the land, Roads and trade, War. A person's
+  colour is a number the keeper works out (`tint`); land, roads and war also change what is drawn
+  under the people, from what the frame already carries.
+- **Run, then pause**: a day, until the next season, a year — the keeper hands the engine only the
+  time that reaches that day's first minute (`setUntil`, `cut`), so the world takes every step it
+  would have and stops exactly there. And, if ticked, pause when something happens to what is pinned.
+- **Four tabs**: Overview (what is going wrong, what happened since you last looked with the
+  engine's "because" in body type, the counts that moved, your pins, six graphs with axes and days
+  and a dashed line per change you made, firsts, the peoples, every count behind a fold), People
+  (pins and people worth a look, A to Z behind a tap), News (problems on top, repeats folded,
+  Everything · Big · Pinned · Talk) and the Inspector.
+- **Everything drawn answers a tap**: a person, a village, a unit (with Units shown), a boat, a
+  house, another building or a ruin, a held field, a road, and the land, which opens its people; a
+  news item from any list. The tap is 16 pixels round the finger at any zoom, and a village answers
+  only as near as its marker reaches, so close in a house or a field can be tapped beside the people
+  in it. A people's page says what it knows and why a thing is not in use, only as `techView`
+  records it.
+- **Pins and the keeper's memory.** People, households, villages and peoples can be pinned. The
+  keeper keeps a row a day for each from when it was pinned, every event about it, and the first
+  event of each kind, so the record dropping its smallest events cannot lose them. A person is
+  matched to an event by the event naming them: the engine records an event's faction and place,
+  not its people. Headlines go one at a time along the map's top edge — big or pinned, ranked apart,
+  because a famine is weighed 2.5 — and ⋯ chooses what may show.
+- **The Rules drawer** has the live rules with what each began at, and the list of every change the
+  visitor made, with its moment and before and after. That list is the one record of changes item 19
+  and 21h will save.
+- **Measured**: the keeper's frame no slower (5,000 people 0.56 ms against 0.59; 20,000 people 3.30
+  against 3.50; medians, three runs); a person's panel under 3 ms at 20,000 people. Standing
+  problems are worked out once an hour of the world's time.
+- **A bug found on the way**: the Beliefs view stopped every frame — the keeper's `tint` read the
+  world through a name it did not have in scope.
+
+The older notes below describe the page before this; where one says otherwise, this section is what
+is true now.
+
 - **Physics numbers are editable beside their sliders** (Ric, 2026-11-12: "you can type one",
   after taking a particle above a billion in mass; "dont say this is a feature its intuitive").
   The page adds no announcement. Slider ranges and steps remain convenient sweeps; typed decimals
@@ -5452,8 +5516,9 @@ player equipment choices and the larger production system remain future work.
   to them when the next frame says where they are.
 - **"How many people" has a box as well as a slider**, and under it one line saying how fast this
   computer runs the world as set ("What this computer can run" above).
-- **People opens on a searchable population list** (2026-11-12, Ric: "Build the next features
-  from the vision"). Name search combines with settlement, faction and occupation filters.
+- **People has a searchable population list** (2026-11-12, Ric: "Build the next features
+  from the vision"; since TODO 21f it is behind "Everybody, A to Z", and the tab opens on pins and
+  people worth a look). Name search combines with settlement, faction and occupation filters.
   Each row shows age, job, settlement, faction and current activity; selecting it locates and
   follows that person. Back to People preserves filters, page and scroll position; a new world
   resets them. Results are alphabetical, sixty per page, with live counts and an empty state.
@@ -5466,9 +5531,9 @@ player equipment choices and the larger production system remain future work.
   "people can be boxes". The square diagonal fits the body clearance; equipment still reads
   actual ownership. The miniature uses boxes too. Roles are
   written beside them at close zoom, rather than encoded as triangles or dots. Tapping a person
-  zooms in and follows them; the Person tab states their current activity. A map key explains this
-  on the running screen; it folds back to its one-line clock when it is in the way, and the `?`
-  opens it again.
+  selects them and the Inspector states their current activity; "Follow" keeps the camera with them
+  (since TODO 21e a tap no longer follows on its own). The map key is a fold on the Overview, and
+  the corner of the map holds the legend of the layer showing.
 - **Harvesting takes five seconds at 1×**, on the field where food is actually collected; a crop
   outline and stalks mark it. Walking to a field, bringing food home, making goods, trading and
   guarding have separate activity labels.
@@ -5513,7 +5578,7 @@ player equipment choices and the larger production system remain future work.
   Other occupations retain the newer engine's work, family and migration choices.
 - **Speech is drawn as words only when zoomed in**; farther out a small mark shows somebody is
   talking. The Talk tab has the last forty exchanges either way.
-- "← Settings" is the way out of a running world; the site's "← Ric's Terminal" control is on the
+- "← Setup" is the way out of a running world; the site's "← Ric's Terminal" control is on the
   other two screens and hidden while a world runs, because it would sit on the map. On the
   settings screen it sits in the bar along the bottom, in a slot kept clear for it — floating
   above the bar it covered whichever panel of settings happened to be there. On a phone there is

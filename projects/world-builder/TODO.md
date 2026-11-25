@@ -6513,7 +6513,34 @@ words in front, eleven bars behind a tap; numbers — words first, decimals behi
 cards — short; counters — only those that moved since the last look. **Ric's answers, the same day:
 the recommendation in all four** ("Two in words", "Words first", "Short card", "Ones that moved").
 
-#### [ ] 21b. The look: colour, type and furniture, as mock-ups
+**Ric's answers, 2026-11-25** (asked all at once, each with a recommendation; he took the
+recommendation every time): 21h — "Leave 21h for item 19"; faction colours — "Okabe–Ito + marks";
+the engine-version switches — "A Model tab"; faith — "One switch, parts folded"; speeds — "Three plus
+a menu"; layers — "All eleven"; run-until and pauses — all of them (run a day, until the next season,
+a year then pause, pause on news of what is pinned); headlines and Talk — "Headline line; Talk in
+News"; the look — "A · Night table"; the Essentials — "Use the 14". Ric had said "Do all of Number
+21" (same day), which is his word to start 21b on with 17 to 20 unticked.
+
+Research for 21b to 21g (2026-11-25): what "Research for all of 21" and 21a's notes already hold
+was used, and not read again; nothing new was fetched. The colour figures are this session's own
+measurements (WCAG contrast; Machado et al. 2009 for colour blindness, CIE Lab ΔE). Okabe–Ito and
+Tol's muted set are the published palettes 21b's notes cite.
+
+#### [x] 21b. The look: colour, type and furniture, as mock-ups
+
+**Done 2026-11-25.** Mock-ups at `docs/mockups/world-builder/people-ui.html` — the setup's Start, the
+running world on a desktop and a phone, the inspector, and the roles written down — in two directions
+(A, dark panels; B, paper panels); Ric chose **A**. On the page: colour roles in `:root` (`--edge`
+for what must be seen, 3.57:1; `--urgent`, `--trait`, `--mind`, `--follow`) and five type sizes
+(`--t1` to `--t5`, nothing under 12); Okabe–Ito faction colours given out by the page (`giveColours`
+in `index.html`; the engine's `COLOURS` untouched), a letter per faction on its villages and in
+every legend and list, and a colour never handed to a new faction while a living one holds it unless
+all eight are held; the selected thing a solid white ring, the followed person a dashed one; the
+letter-spaced capitals gone. Measured: every text colour on the panel 7.2:1 or more, every faction
+text colour 6.4:1 or more; the eight factions' closest pair ΔE 14.6 under deuteranopia, 20.7
+protanopia, 16.1 tritanopia (Machado 2009). Left out: the land keeps its palette (Ric chose "Map
+colours" in item 5, and nothing here asked to change it). The five tasks were walked on the mock-ups
+and again on the real page (see 21f).
 
 **Now:** dark, with the land painter's colours (item 5) and an ochre accent; panels of grey text; no
 colour roles or type scale written down; graphs with no axes.
@@ -6565,7 +6592,49 @@ colour-blindness script — Machado et al. 2009 simulation, CIE Lab ΔE):
   change wherever it can be one; a change to how `newFaction` picks a colour is an engine change, and
   21 asks first.
 
-#### [ ] 21c. Setting up a world in three layers
+#### [x] 21c. Setting up a world in three layers
+
+**Done 2026-11-25.** Start (the eight starting points and the fourteen Essentials, help behind ⓘ),
+Customise (six tabs: Land and climate, People and lives, Money, Society and power, War, Minds and
+faith) and Model (the switches, said for what they are), with one search over every label, help line
+and choice. The faith parts (26) fold under the one Faith switch. Each layer's tab says how many of
+its settings are changed. Measured at 1,280 × 800: every starting point and all fourteen Essentials in
+view and changeable without scrolling, controls 44 px; at 375 px Start is one column. Every key keeps
+its place in a link, so an old link opens the same world. The Physics sandbox keeps its one layer.
+`test/watching.test.mjs` holds the lists: every setting on one layer, fourteen Essentials, the faith
+parts all Minds settings, and none of Ric's real alternatives on Model.
+
+The list, setting by setting (`ESSENTIAL`, `MODEL`, `FAITH_PARTS` in `index.html`). A setting is on
+**Model** when what it chooses is how the engine computes something rather than a way a world can
+really be; one whose subject is real stays on **Customise** even when one of its choices is "as before".
+
+- **Start (14):** How much land, How many people, How many factions, Era, Where they live at first,
+  How much it grows, How cold winter gets, How they trade, Who leads at first, How the factions
+  start, Wars, How quick to fight, Sickness, Seed.
+- **Model (42):** Land that changes; Wounds and old age ("full strength until the day they die");
+  Sleep; Grinding and baking; Buildings left alone; Scavenging; Dirt in towns; The village store;
+  The penniless; Soldiers' pay; Where coins come from; How know-how moves; Experience; How things
+  are found; Hearing of a thing; Armies; Soldiers on campaign; Bows, armour and chariots; Generals;
+  Siegecraft and service; Prisoners, mutiny and war loans; Wounds, small wars and the sea; Parole,
+  deserters and the books; What war follows; Where soldiers stand; Raids; Battle; Taking a place;
+  Coming to a place; Chasing an enemy home; Crossing another people's land; Caravans; Sickness in
+  armies; Working harder at war; Quarrels between villages; Roads built on purpose; Fishing boats and
+  road bridges; Armies meet; Armies spread out; News of plenty — and, for this computer rather than
+  the world, Conversations and Clock.
+- **Customise, though they carry "as before":** Era, Peoples who forage, Materials, Whose firewood,
+  Men and women, People on the road, Work and workplaces, Who marries whom, Babies and mothers,
+  Children working, Work in the house, Animals that work, Irrigation, Land as property, Government —
+  each a way a people or a body can really be. **Bodies** stays with the world (People and lives):
+  it moved people's days by 0.95 of a reseed (UI-REVAMP §3).
+- **Folded under Faith (26):** Heaven's favour, Prophets, Blaming a neighbour, Faith and children,
+  Trust in trade, Belief before faiths, What a faith can hold, How faith fades, Faith from the ruler,
+  When faiths meet, Faiths that change, What a faith owns, Feasts and the dead, Comfort, Oaths courts
+  and sanctuary, Who is above whom, Rites of a life, Faith and reading, Keeping and forbidding, Days
+  without war, Martyrs and morale, Fleeing for faith, Great temples, Pilgrims, Sacred land, Faith and
+  health.
+
+Left out: whether the switches leave the page for tests and links only (Ric chose to keep them on
+Model). The judgement of each setting above is written down to be argued with, not settled.
 
 **Now:** one wall of 157 settings.
 **Do:** **Start** — the presets as cards and about 14 Essentials, help behind ⓘ; **Customise** —
@@ -6597,7 +6666,22 @@ rare mechanism (faith, a breakaway) can be someone's reason to start a world. Ch
 against the questions people come to ask, and draw the first screen at comfortable reading and
 touch sizes before fixing how many fit.
 
-#### [ ] 21d. The run screen: the bar, the map, layers and time
+#### [x] 21d. The run screen: the bar, the map, layers and time
+
+**Done 2026-11-25.** One bar: ← Setup, Pause, 1× · 16× · Max with every speed behind ▾ (the one chosen
+from the menu stands in the bar), the date and season, the people and their change since day 1,
+what the world is waiting for, how many problems there are, the layer, Rules and ⋯. On a phone it is
+two rows, every control 44 px, the layer and the rules inside ⋯. Eleven layers, each with a legend in
+the bottom-left corner that folds to its name (folded from the start on a phone): Factions, Mood,
+Beliefs, Wealth, Hunger, Sickness, Loyalty, Faith, Who holds the land, Roads and trade, War — read
+by the keeper per person in `tint` and, for land, roads and war, from what the frame already sent.
+⋯ has Run a day, Run until the next season, Run a year, and Pause when something happens to what I
+pinned: the keeper cuts the time it hands the engine so the world stops at that day's first minute
+(`setUntil`, `cut` in `people-host.js`; the test holds a day, a season and a year to the minute).
+Found and fixed: **Beliefs stopped every frame** — `tint` read the world through a name it did not
+have (`w`), since whenever that view was added. Measured: frame cost at 5,000 people 0.56 ms against
+0.59 before, at 20,000 3.30 against 3.50 (three runs of 400 frames each, medians). Left out: a pause
+for anything the keeper cannot see (a new item if wanted).
 
 **Now:** two to four rows of buttons; a key over the map; four colour buttons; ten speeds.
 **Do:**
@@ -6629,7 +6713,24 @@ Audit (2026-11-24): a person's colour is worked out in the keeper (`tint(p, view
 loyalty, faith — is one more case there and costs about what Mood does. Land held, roads and war are
 drawn from what the frame already sends (`fields`, `tracks`, `vs`).
 
-#### [ ] 21e. Everything drawn can be looked at: one inspector
+#### [x] 21e. Everything drawn can be looked at: one inspector
+
+**Done 2026-11-25.** A tap finds a person, a village, a unit of an army (with Units shown), a boat, a
+house, another building or a ruin, a held field, a road, and last the land, which opens the people
+who hold it (`at` in `people-host.js`); a news item opens from News, the Overview or a headline. One
+inspector with a way back through the last forty looked at. A person's first screen is 21a's: who,
+what now and the need that won, what is at stake, family in a line, the two traits that stand out in
+words; needs, all nine traits, the household (who shares the house, one purse, one pot, fields), what
+is on their mind (in its own colour, and marked where it changed in the telling), friends, beliefs
+and equipment fold below. A people shows its short card, ruling it yourself, its laws, and **what it
+knows and why a thing is not in use** — forbidden, nothing here to make it with, still being learned,
+within reach — only what `techView` records. Two things found and fixed: the tap reached at least
+0.6 squares (150 m) at any zoom, and the engine gives a village everything within 1.4 squares, so
+close in a person or a village always won over the house or field under the finger; the tap is now
+16 pixels and a village answers only as near as its marker reaches. A person's panel finds their
+household in the same pass that finds their children. Measured: a person's panel 0.5–0.8 ms at
+5,000 people, 1.5–2.7 ms at 20,000. Left out: a caravan opens its carrier (the engine keeps no
+caravan object to show); a family tree drawn as a tree (the family is one line of names).
 
 **Now:** a person or a village marker opens the Person tab; nothing else on the map responds.
 **Do:** one inspector (beside the map on a desktop, a sheet on a phone) with a back arrow, for a
@@ -6661,7 +6762,32 @@ another pass like it.
 Research notes: see "Research for all of 21" — hair complexity, apophenia, short first layers,
 Factoriopedia's two directions.
 
-#### [ ] 21f. Following a world: overview, news, the people you keep
+#### [x] 21f. Following a world: overview, news, the people you keep
+
+**Done 2026-11-25.** Four tabs: **Overview** (what is going wrong now; the story so far, or what has
+happened since you last looked, ranked by weight with repeats folded and the engine's `because` in
+body type; the counts that moved since you last looked, from all of `stats()`; what you pinned; six
+graphs with axes, days and a dashed line for each change you made; firsts and the oldest alive; the
+peoples; every count and the map key behind folds), **People** (pins, then going hungry, sick,
+leading a people, soldiers away from home, the oldest; A to Z with search behind a tap), **News**
+(standing problems on top, repeats folded, filters Everything · Big · Pinned · Talk) and the
+**Inspector**. Pins are people, households, villages and peoples; the keeper keeps a row a day for
+each from when it was pinned, and every event about it, so the record dropping small events cannot
+lose them. A person or a household is matched by the event naming them — the engine records an
+event's faction and place, not its people, and the page says so. Firsts are kept by the keeper as
+events arrive. Headlines: one at a time along the map's top edge, the big (weight 3.5, or a famine,
+war, taking, breakaway, coup, peace, fall or submission) and anything pinned, ranked apart; ⋯ chooses
+big and pinned, pinned only, or none. Standing problems (a famine by the engine's own line, a siege,
+spreading sickness, a war) are counted in the bar and ringed on the map while they last.
+
+The five tasks, on the real page, on a seeded world run on Max: (1) the bar said "4 problems" and the
+Overview opened on them; (2) a hungry person's first screen said they were going hungry, what they
+carry and what the household's pot holds, in words; (3) a pinned village kept its rows and news
+from the day it was pinned, and Run until the next season stopped on its first minute; (4) ruling
+Far Fold and raising its tax took two taps from its page; (5) the change showed as a dashed line on
+every graph and in the Rules drawer's list, with before and after — and the page says that a line
+moving after a change is not proof the change moved it (21h's copy is). Left out: which people an
+event concerns, the dead by name, household budgets over time (new items, asked first, as 21a said).
 
 **Now:** six tabs; People opens A–Z; seven graphs with no axes; 80 news lines; 40 talk lines.
 **Do:** four tabs — **Overview** (graphs with axes and real time, the counters that move, the story
@@ -6696,7 +6822,15 @@ happened to the people they pinned. Where older records are gone, the page says 
 Research notes: see "Research for all of 21" — RimWorld's letters, alerts and readouts; Factorio's
 pins; "lost in the silicon" (the default world had five wars nothing on screen would have shown).
 
-#### [ ] 21g. Changing a running world, honestly
+#### [x] 21g. Changing a running world, honestly
+
+**Done 2026-11-25.** A Rules drawer from the bar, grouped as the setup is, each live rule with its
+value now and what it began at when changed. Every change the visitor makes — a rule, ruling a
+people, a tax, war or peace, a marriage — is written down by the keeper with its moment, what it
+applied to and the value before and after (`act` in `people-host.js`), listed in the drawer and
+drawn as a dashed line on the Overview's graphs. That log is the one record of changes; 21h and item
+19 save it, there is no second one. Left out: "has this rule come into play yet", which needs the
+engine to record that it read a setting (a new item if wanted); Happenings, which waits for item 17.
 
 **Now:** 13 live settings as steppers at the foot of the World tab; Breaking away did nothing in a
 year of a default world, and nothing says so.
@@ -6716,6 +6850,10 @@ Research notes: a trend after a change does not prove the change caused it. That
 a copy of the world is for (21h).
 
 #### [ ] 21h. Saving a run, copying it, and its history — waits on item 19
+
+**Still waiting on item 19** (Ric, 2026-11-25: "Leave 21h for item 19"). What 21b to 21g leave
+ready for it: the keeper's log of every change with its moment and before and after (21g) — the
+recipe's list of changes — and the visitor's pins, which a save carries apart from the world.
 
 **Now:** nothing is saved. A world lives only in the open tab; a link carries settings, not a world.
 **Do:** Ric, 2026-11-24: "we will have a saving feature where you can save all the data for that
@@ -6823,4 +6961,5 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-24 | 15.11, 15.12 (item 15 finished) | AMD Ryzen 5 3600, 24 GB | 2.30 / 2.28 s a day (2.43 / 2.39 before 15.11, alternated) | *not run* | 8.2 MB, 1.60 KB | `--quick`: 400 0.18 → 0.19, 2,000 0.80 → 0.77, 5,000 2.41 → 2.29 s a day. 15.12a's dice alone, against the engine before them: 5,000 people over three seeds 2.36 s a day both ways; four fields on a person had made it 70% slower until the dice went in one object (`p.dc`). |
 | 2026-11-24 | 16 | AMD Ryzen 5 3600, 24 GB | 2.41 / 2.30 s a day (2.27 / 2.31 before, alternated) | *not run* | 19.0 MB at the start, 18.8 before | `--quick` old then new, twice: 400 0.19 0.18 → 0.18 0.18, 2,000 0.78 0.78 → 0.82 0.77; within the drift. The bench's 5,000 MB column read 17.3 against 8.2 both times; measured directly the start is the same (the column carries the row before). A ruin, a house's stage and grinding cost nothing measurable. |
 | 2026-11-24 | 16c, five bug fixes | AMD Ryzen 5 3600, 24 GB, Node 24.19.0 | 2.67 / 2.62 s a day (2.60 / 2.86 before), 112–114× | *not run* | 17.3 MB, 3.37–3.38 KB (same as before) | `--quick`, old/new alternated twice after all simulations finished: 400 0.20/0.19 → 0.19/0.19, 2,000 0.87/0.87 → 0.88/0.90; all within 5% on the mean. No new per-person fields; changed worlds are named in 16c. |
+| 2026-11-25 | 21b–21g, the People UI | cloud container, Node 22 | *engine untouched, not run* | *not run* | — | The keeper's frame, medians of 400, three runs each, old keeper against new: 5,000 people 0.49 / 0.70 / 0.57 → 0.63 / 0.53 / 0.52 ms; 20,000 people 3.40 / 3.41 / 3.69 → 3.15 / 3.32 / 3.42 ms. Standing problems are worked out once an hour of the world's time; every frame at first cost 7–14% more. A person's panel 0.27 → 0.5–0.8 ms at 5,000 people, 1.2–1.7 → 1.5–2.7 ms at 20,000 (the household). |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |

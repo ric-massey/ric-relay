@@ -66,6 +66,14 @@
     if (LAND_BLOCK !== 64) throw new Error("LAND_BLOCK is found by shifting by 6");
     let sorted = null, sortedSig = "";               // everybody by name, for the People list
     let trial = null;                                // the quiet test of a world (see `tryOut`)
+    /* The keeper's own memory (TODO 21d, 21f, 21g). It reads the world and remembers what it has
+       read; nothing here is written back into the world, and a world watched this way is the world
+       unwatched (test/keeper.test.mjs, test/watching.test.mjs). */
+    let until = null;                                // run until: { day, label }, then pause
+    let pins = [], pauseOnPin = false;               // what the visitor keeps: [{ k: "p"|"h"|"v"|"f", id }]
+    let lastEvent = -1, firsts = [], firstKinds = new Set();
+    let pinRows = new Map(), pinNews = new Map(), rowDay = -1;
+    let actions = [], startS = null, probsNow = null, probsHour = -1;
     /* Scratch the frames are filled into; what is sent is a copy cut to size,
        so a buffer handed across to the page is never one this still holds. */
     let cap = 0, X = null, Y = null, T = null, F = null, G = null, L = null;
@@ -84,6 +92,7 @@
       if (m.t === "clock") {
         if ("rate" in m) rate = +m.rate || 1;
         if ("paused" in m) paused = !!m.paused;
+        if ("until" in m) setUntil(m.until);
         simAcc = wallAcc = 0; speed = 0;
         return;
       }
@@ -92,6 +101,7 @@
       if (m.t === "pane") return pane(m);
       if (m.t === "at") return at(m);
       if (m.t === "do") return act(m);
+      if (m.t === "pins") { setPins(m.list || [], !!m.pause); return; }
     }
 
     function start(m) {
@@ -102,6 +112,9 @@
       try { w = People.create(m.values); }
       catch (e) { send({ t: "failed", why: String((e && e.message) || e) }); return; }
       world = w;
+      until = null; pins = []; pauseOnPin = false; lastEvent = w.events.length ? w.events[w.events.length - 1].id : -1;
+      firsts = []; firstKinds = new Set(); pinRows = new Map(); pinNews = new Map(); rowDay = -1; actions = [];
+      startS = Object.assign({}, w.settings); probsNow = null; probsHour = -1;
       rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0; maxSim = maxWall = 0;
       const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice(), shade = hillShade(w), riverTo = w.riverTo.slice();
       /* Big rivers and their fords (TODO 6d); bridges come with the villages. */
@@ -148,13 +161,14 @@
       if (!world || paused || !(real > 0)) return false;
       const t0 = now(), owed = Math.min(0.1, real);
       let done = 0, more = false;
-      if (rate <= 16) { done = owed * rate; world.advance(done, true); }
+      if (rate <= 16) { done = cut(owed * rate); world.advance(done, true); watch(); }
       else {
         const want = rate >= 1000 ? Infinity : owed * rate;
-        while (done < want) {
-          const take = Math.min(SLICE, want - done);
+        while (done < want && !paused) {
+          const take = cut(Math.min(SLICE, want - done));
           world.advance(take, true); done += take;
-          if (now() - t0 >= budget) { more = done < want; break; }
+          watch();
+          if (now() - t0 >= budget) { more = done < want && !paused; break; }
         }
       }
       simAcc += done; wallAcc += real;
@@ -178,10 +192,20 @@
        the world on the same step: every frame but five a second at 1×) is
        answered with "same" and no more. And every frame says what it cost,
        so the page can leave that many times as long before asking again. */
-    function tint(p, view) {
-      if (view === "faction") return p.f;
+    /* A person's colour for a layer (TODO 21d), as a small number the page turns into a colour and
+       explains in the layer's legend. GREY is "not what this layer is about". Until 2026-11-25 this
+       read the world through a name it did not have in scope (`w`), so Beliefs stopped every frame. */
+    const GREY = 65535;
+    function tint(w, p, view) {
+      if (view === "faction" || view === "land") return p.f;
       if (view === "mood") return Math.min(23, Math.max(0, Math.round(p.mood * 23)));
       if (view === "views") { const x = w.viewOf(p); return x > 0.25 ? 2 : x < -0.25 ? 1 : 0; }
+      if (view === "hunger") return p.hungry > 0 ? 2 : p.food < 0.5 ? 1 : 0;        // going hungry · under half a day's food carried · fed
+      if (view === "sick") return p.sick > 0 ? 1 : p.immune ? 2 : 0;               // sick · has had it · has not
+      if (view === "loyal") return Math.min(23, Math.max(0, Math.round(p.loyal * 23)));
+      if (view === "faith") return p.faith == null ? GREY : p.faith % 1000;
+      if (view === "roads") return p.cargo && p.cargo.amount > 0 ? (p.cargo.what === "food" ? 1 : 2) : p.job === "trader" ? 3 : GREY;
+      if (view === "war") return p.job === "soldier" ? p.f : GREY;
       return Math.min(23, Math.round(Math.sqrt(Math.min(1, p.coins / 40)) * 23));
     }
     function gearOf(w, p) {
@@ -193,7 +217,7 @@
     function frame(m) {
       const w = world, P = w.people, n = P.length, cam = m.cam, s = cam.s, began = now();
       const wantLand = !!m.land && (m.land.force || w.sceneTick - m.land.at >= 5);
-      const key = [cam.x, cam.y, s, cam.w, cam.h, m.view, m.picked || 0, m.follow ? 1 : 0, m.pair ? m.pair.join("+") : "", w.sceneTick, m.units ? 1 : 0].join("|");
+      const key = [cam.x, cam.y, s, cam.w, cam.h, m.view, until ? 1 : 0, m.picked || 0, m.follow ? 1 : 0, m.pair ? m.pair.join("+") : "", w.sceneTick, m.units ? 1 : 0].join("|");
       if (key === frameKey && !m.fresh && !wantLand) { send({ t: "frame", same: true, speed: speed, rate: rate, paused: paused, held: held(), heldFor: maxWall, days: world.days }); return; }
       frameKey = key;
       const hw = cam.w / 2 / s, hh = cam.h / 2 / s, edge = 20 / s;
@@ -222,7 +246,7 @@
         }
         const seen = px >= sx0 && px <= sx1 && py >= sy0 && py <= sy1;
         if (close && w.activity(p) === "Harvesting") fl |= FLAG.harvesting;
-        X[k] = px; Y[k] = py; T[k] = tint(p, view); F[k] = fl; G[k] = closer ? gearOf(w, p) : 0;
+        X[k] = px; Y[k] = py; T[k] = tint(w, p, view); F[k] = fl; G[k] = closer ? gearOf(w, p) : 0;
         if (seen) {
           if (p.id === pickedId) pickedLabel = { k: k, p: p };
           else if (s >= 28 && (focused ? focused.sayT > 0 && p.id === focused.talkingTo : labels.length < 12)) labels.push({ k: k, p: p });
@@ -236,12 +260,21 @@
                     labels: labels.slice(0, focused ? 2 : 12).map(r => ({ k: r.k, text: r.p.job + " · " + w.activity(r.p) })),
                     speech: null, picked: null, pair: null, moves: null, marks: null, vs: null, fs: null, land: null,
                     days: w.days, season: w.season().name || "", sceneTick: w.sceneTick, speed: speed, rate: rate, paused: paused, cost: 0,
-                    held: held(), heldFor: maxWall };
+                    held: held(), heldFor: maxWall, until: until ? until.label : "" };
       /* What is being said, nearest the middle first; the page shows four. */
       if (closer) {
         if (focused) out.speech = talking.filter(r => r.p.id === focused.id || (focused.sayT > 0 && r.p.id === focused.talkingTo));
         else { talking.sort((a, b) => Math.hypot(a.p.x - cam.x, a.p.y - cam.y) - Math.hypot(b.p.x - cam.x, b.p.y - cam.y)); out.speech = talking.slice(0, 4); }
         out.speech = out.speech.map(r => { const q = byId.get(r.p.talkingTo); return { k: r.k, text: r.p.name + (q ? " → " + q.name : "") + ": " + r.p.say }; });
+      }
+      /* What a layer's legend needs and the frame does not otherwise carry (TODO 21d). */
+      if (view === "faith" && w.faiths) {
+        const seen = new Set(); for (let i = 0; i < k; i++) if (T[i] !== GREY) seen.add(T[i]);
+        out.faiths = [...seen].slice(0, 12).map(id => { const fa = w.faithOf(id); return { id: id, name: fa ? fa.name : "" }; });
+      }
+      if (view === "war") {
+        out.wars = [];
+        for (const f of fs) if (f.alive) for (const o of fs) if (o.alive && o.id > f.id && f.rel[o.id] && f.rel[o.id].war) out.wars.push([f.id, o.id, f.name, o.name]);
       }
       if (pickedId) { const p = byId.get(pickedId); out.picked = p ? { id: p.id, x: p.x, y: p.y, name: p.name } : { id: pickedId, gone: true }; }
       /* Armies' units, with the page's toggle on and zoomed in (TODO 15.6b). */
@@ -256,6 +289,18 @@
         const e = w.events[i], age = t - e.t;
         if (age > 14 * 24) break;
         if (e.x || e.y) out.marks.push({ kind: e.kind, x: e.x, y: e.y, age: age });
+      }
+      /* What is going wrong now, for the bar's count and the map's marks, and the news written since
+         the page last heard, for its headline line (TODO 21d, 21f). A few dozen values. */
+      /* Worked out once an hour of the world's time: what it reads changes no faster. */
+      const hourNow = Math.floor(w.days * 24);
+      if (hourNow !== probsHour || !probsNow) { probsHour = hourNow; probsNow = problems(); }
+      out.probs = probsNow;
+      if (m.since != null) {
+        const ev = w.events, fresh = [];
+        for (let i = ev.length - 1; i >= 0 && ev[i].id > m.since && fresh.length < 12; i--) { const e = slim(ev[i]); e.pin = pins.some(pin => concerns(ev[i], pin)); fresh.push(e); }
+        out.news = fresh.reverse();
+        out.lastEvent = ev.length ? ev[ev.length - 1].id : -1;
       }
       /* Villages and factions are sent whole, but only when something the map
          shows of them has changed. */
@@ -369,6 +414,143 @@
       return { part: true, base: sentAt, at: at, B: B, cropB: Int32Array.from(cropB), crop: crop, ownB: Int32Array.from(ownB), own: own };
     }
 
+    /* ── run until, and pausing for what the visitor follows (TODO 21d) ─────────
+       "Run until spring" stops at the first minute of spring: the time handed to the engine is cut
+       so the world reaches that day's midnight and no further, and the keeper pauses. Nothing is
+       made to happen and nothing is skipped: the world takes every step it would have taken. */
+    const DAY_S = People.DAY_SECONDS;
+    function setUntil(u) {
+      if (!u || !world) { until = null; return; }
+      const today = Math.floor(world.days + 1e-9);
+      if (u.kind === "day") until = { day: today + 1, label: "the end of the day" };
+      else if (u.kind === "year") until = { day: today + (u.days || 365), label: "a year from now" };
+      else if (u.kind === "season") {
+        const S = world.settings, now0 = People.seasonAt(today, S).name;
+        let d = today + 1; while (d < today + 400 && People.seasonAt(d, S).name === now0) d++;
+        until = { day: d, label: "the first day of " + People.seasonAt(d, S).name };
+      } else until = null;
+      if (until) paused = false;
+    }
+    /* No more of the asked-for time than reaches the stopping point. */
+    function cut(seconds) {
+      if (!until) return seconds;
+      const left = (until.day - world.days) * DAY_S;
+      return left <= 1e-6 ? 0 : Math.min(seconds, left + 1e-7);
+    }
+    function reached(why, text, extra) {
+      paused = true;
+      send(Object.assign({ t: "reached", why: why, text: text, days: world.days }, extra || {}));
+    }
+    /* After each piece of time: the events written since, the rows kept for pins, and whether to stop. */
+    function watch() {
+      const w = world, ev = w.events;
+      if (ev.length && ev[ev.length - 1].id > lastEvent) {
+        let i = ev.length - 1; while (i > 0 && ev[i - 1].id > lastEvent) i--;
+        let stopFor = null;
+        for (; i < ev.length; i++) {
+          const e = ev[i];
+          if (e.id <= lastEvent) continue;
+          /* The first of each kind, kept here so the record dropping small events cannot lose it. */
+          if (!firstKinds.has(e.kind)) { firstKinds.add(e.kind); firsts.push(slim(e)); }
+          for (const pin of pins) if (concerns(e, pin)) {
+            const key = pin.k + pin.id, list = pinNews.get(key) || [];
+            list.push(slim(e)); if (list.length > 200) list.shift(); pinNews.set(key, list);
+            if (pauseOnPin && !stopFor) stopFor = { e: e, pin: pin };
+          }
+        }
+        lastEvent = ev[ev.length - 1].id;
+        if (stopFor) reached("pin", stopFor.e.text, { event: slim(stopFor.e) });
+      }
+      const day = Math.floor(w.days + 1e-9);
+      if (day !== rowDay) { rowDay = day; if (pins.length) keepRows(day); }
+      if (until && w.days >= until.day - 1e-9) { const u = until; until = null; reached("until", "Stopped at " + u.label + "."); }
+    }
+    const slim = e => ({ id: e.id, kind: e.kind, f: e.f, day: Math.floor(e.t / 24), year: e.year, weight: e.weight, text: e.text, why: e.why || "", after: e.after || "", x: e.x, y: e.y });
+    /* Whether an event is about something pinned. The engine records an event's faction and place,
+       not which people it concerns (TODO 21f), so a person or a household is matched by the event
+       naming them — which is what the record says, and all it says. */
+    function members(id) {
+      const w = world, p = w.byId.get(id); if (!p) return [];
+      const out = [p], mate = p.partner && w.byId.get(p.partner);
+      if (mate && mate.home === p.home) out.push(mate);
+      if (p.wards) for (const k of p.wards) if (k.hp > 0 && w.byId.get(k.id) === k) out.push(k);
+      return out;
+    }
+    const names = new Map();
+    function named(text, name) { if (!text || !name) return false; const i = text.indexOf(name); return i >= 0 && !/[A-Za-z]/.test(text[i + name.length] || ""); }
+    function concerns(e, pin) {
+      const w = world;
+      if (pin.k === "f") return e.f === pin.id;
+      if (pin.k === "v") { const v = w.villages[pin.id]; return !!v && ((Math.abs(e.x - v.x) < 0.75 && Math.abs(e.y - v.y) < 0.75) || named(e.text, v.name)); }
+      const nm = names.get(pin.k + pin.id) || [];
+      return nm.some(n => named(e.text, n));
+    }
+    function setPins(list, pause) {
+      pins = list.filter(x => x && "pvfh".includes(x.k) && Number.isFinite(+x.id)).slice(0, 40).map(x => ({ k: x.k, id: +x.id }));
+      pauseOnPin = pause;
+      names.clear();
+      for (const pin of pins) {
+        if (pin.k === "p") { const p = world && world.byId.get(pin.id); if (p) names.set("p" + pin.id, [p.name]); }
+        if (pin.k === "h") names.set("h" + pin.id, members(pin.id).map(q => q.name));
+      }
+      for (const key of [...pinRows.keys()]) if (!pins.some(x => x.k + x.id === key)) { pinRows.delete(key); pinNews.delete(key); }
+      if (world) keepRows(Math.floor(world.days + 1e-9), true);
+    }
+    /* A row a day for each pin, from the day it was pinned (the engine keeps rows for the whole
+       world only; these are the keeper's, and say since when). */
+    function keepRows(day, onlyNew) {
+      const w = world;
+      for (const pin of pins) {
+        const key = pin.k + pin.id;
+        if (onlyNew && pinRows.has(key)) continue;
+        const rows = pinRows.get(key) || [];
+        let r = null;
+        if (pin.k === "p") { const p = w.byId.get(pin.id); r = p ? { day: day, food: p.food, hungry: p.hungry > 0 ? 1 : 0, sick: p.sick > 0 ? 1 : 0, coins: p.coins, mood: p.mood } : { day: day, gone: 1 }; }
+        else if (pin.k === "h") { const m = members(pin.id); let food = 0, coins = 0, hungry = 0; for (const q of m) { food += q.food; coins += q.coins; if (q.hungry > 0) hungry++; } r = m.length ? { day: day, people: m.length, food: food, coins: coins, hungry: hungry } : { day: day, gone: 1 }; }
+        else if (pin.k === "v") { const v = w.villages[pin.id]; r = v ? { day: day, people: v.pop || 0, hungry: v.hungry || 0, sick: v.sick || 0, store: w.storeDays(v), alive: v.alive ? 1 : 0 } : null; }
+        else { const f = w.factions[pin.id]; r = f ? { day: day, people: f.pop || 0, loyal: f.loyal, soldiers: f.soldiers || 0, alive: f.alive ? 1 : 0 } : null; }
+        if (!r) continue;
+        if (rows.length && rows[rows.length - 1].day === day) rows[rows.length - 1] = r; else rows.push(r);
+        if (rows.length > 600) rows.shift();
+        pinRows.set(key, rows);
+      }
+    }
+    /* What a pin is, now, in a line's worth of values. */
+    function pinState(pin) {
+      const w = world, key = pin.k + pin.id, out = { k: pin.k, id: pin.id, rows: pinRows.get(key) || [], news: (pinNews.get(key) || []).slice(-30) };
+      if (pin.k === "p" || pin.k === "h") {
+        const p = w.byId.get(pin.id);
+        if (!p) { out.gone = true; out.name = (names.get(key) || [""])[0]; return out; }
+        out.name = pin.k === "h" ? "The household of " + p.name : p.name;
+        out.hungry = pin.k === "h" ? members(pin.id).filter(q => q.hungry > 0).length : p.hungry > 0 ? 1 : 0;
+        out.sick = p.sick > 0; out.activity = w.activity(p); out.age = p.age; out.home = w.villages[p.home].name;
+      } else if (pin.k === "v") {
+        const v = w.villages[pin.id]; if (!v) return out;
+        Object.assign(out, { name: v.name, pop: v.pop || 0, hungry: v.hungry || 0, sick: v.sick || 0, store: w.storeDays(v), alive: v.alive, siege: v.siege > 0, f: v.f });
+      } else {
+        const f = w.factions[pin.id]; if (!f) return out;
+        Object.assign(out, { name: f.name, pop: f.pop || 0, loyal: f.loyal, alive: f.alive, soldiers: f.soldiers || 0, f: f.id });
+      }
+      return out;
+    }
+    /* What is going wrong now (TODO 21f): only states the engine holds, by its own lines where it has
+       one — a famine is the engine's own (over 40% of more than eight going hungry, `note("famine")`). */
+    function problems() {
+      const w = world, out = [];
+      for (const v of w.villages) {
+        if (!v.alive) continue;
+        if (v.hungry > v.pop * 0.4 && v.pop > 8) out.push({ kind: "famine", v: v.id, name: v.name, f: v.f, x: v.x, y: v.y, hungry: v.hungry, pop: v.pop, store: w.storeDays(v), price: v.priceFood });
+        if (v.siege > 0) out.push({ kind: "siege", v: v.id, name: v.name, f: v.f, x: v.x, y: v.y });
+        if (v.sick >= 3 && v.sick >= v.pop * 0.1) out.push({ kind: "sick", v: v.id, name: v.name, f: v.f, x: v.x, y: v.y, sick: v.sick, pop: v.pop });
+      }
+      const fs = w.factions;
+      for (const f of fs) if (f.alive) for (const o of fs) if (o.alive && o.id > f.id && f.rel[o.id] && f.rel[o.id].war) {
+        const at = w.villages.find(v => v.alive && v.f === f.id) || { x: 0, y: 0 };
+        out.push({ kind: "war", a: f.id, b: o.id, an: f.name, bn: o.name, x: at.x, y: at.y });
+      }
+      return out;
+    }
+
     /* ── the side panel ────────────────────────────────────────────────────
        What the tab being shown needs, as plain values. The page keeps the
        wording; this keeps the reading. */
@@ -380,24 +562,62 @@
       if (sig !== sortedSig) { sorted = P.slice().sort((a, b) => collate(a.name, b.name) || a.id - b.id); sortedSig = sig; }
       return sorted;
     }
+    /* A faction, short (21a: people, leader, wars and allies, loyalty), with what it knows and why a
+       thing it knows of is not in use — only what `techView` records: held, forbidden, nothing here
+       to make it with, still learning, or within reach. Never a reason or a date the engine did not keep. */
+    function factionLook(f, name) {
+      const w = world, lead = w.byId.get(f.leader);
+      const rel = []; for (const o of w.factions) if (o !== f && o.alive && f.rel[o.id]) { const r = f.rel[o.id]; if (r.war || r.ally || r.trade || r.pays || r.wed) rel.push({ id: o.id, name: o.name, war: !!r.war, ally: !!r.ally, trade: !!r.trade, pays: !!r.pays, wed: !!r.wed }); }
+      const own = w.villages.filter(v => v.alive && v.f === f.id);
+      return { id: f.id, name: f.name, alive: f.alive, pop: f.pop || 0, soldiers: f.soldiers || 0, loyal: f.loyal, rule: f.rule, lead: lead ? { id: lead.id, name: (name(lead.id), lead.name), age: lead.age } : null,
+               villages: own.map(v => ({ id: v.id, name: v.name, pop: v.pop || 0 })), rel: rel, tax: f.tax, treasury: f.treasury, yours: !!f.yours,
+               faith: f.faith != null && w.faiths ? w.faithOf(f.faith) : null, gov: w.govOf ? w.govOf(f) : null, tech: w.techView ? w.techView(f.id) : null, land: f.land };
+    }
+    /* Anything else drawn on the map (TODO 21e): a house, another building or a ruin, a field, a
+       road, a boat, a unit of an army, a news item. What it is, whose, what is in it. */
+    function thingLook(pick, name) {
+      const w = world;
+      const whose = vid => { const v = w.villages[vid]; return v ? { v: v.id, village: v.name, f: v.f, faction: w.factions[v.f].name } : null; };
+      if (pick.house != null) {
+        const h = w.homes[pick.house]; if (!h) return { kind: "gone" };
+        const inside = []; for (const p of w.people) if (p.dwelling === pick.house) { inside.push(p.id); name(p.id); }
+        const owner = h.owner && w.byId.get(h.owner);
+        if (owner) name(owner.id);
+        let fields = 0; if (w.held) for (const hid of w.held.values()) if (hid === pick.house) fields++;
+        return Object.assign({ kind: "house", id: pick.house, built: !!h.built, burned: h.burned > -1e9 && !h.built, stage: h.stage || 0, stone: !!h.stone, len: h.len, wid: h.wid,
+                               progress: h.built ? 1 : Math.min(1, (h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8)), owner: owner ? owner.id : 0, inside: inside, fields: fields }, whose(h.v));
+      }
+      if (pick.building != null) {
+        const b = w.buildings()[pick.building]; if (!b) return { kind: "gone" };
+        return Object.assign({ kind: "building", what: b.kind, stage: b.stage, stone: !!b.stone, len: b.len, wid: b.wid }, whose(b.v));
+      }
+      if (pick.field != null) {
+        const i = pick.field, hid = w.held ? w.held.get(i) : undefined, h = hid != null ? w.homes[hid] : null, owner = h && h.owner && w.byId.get(h.owner);
+        if (owner) name(owner.id);
+        const f = w.fert[i];
+        return Object.assign({ kind: "field", tile: i, house: hid != null ? hid : -1, owner: owner ? owner.id : 0, fert: f, crop: f > 0 ? Math.min(1, w.stock[i] / (f * w.tileCapacity)) : 0, ground: w.ground[i] }, w.owner[i] >= 0 ? whose(w.owner[i]) : {});
+      }
+      if (pick.road != null) { const i = pick.road; return Object.assign({ kind: "road", tile: i, road: w.track ? w.track[i] : 0 }, w.owner[i] >= 0 ? whose(w.owner[i]) : {}); }
+      if (pick.boat != null) { const v = w.villages[pick.boat]; return Object.assign({ kind: "boat", alive: !!(v && v.boat) }, whose(pick.boat)); }
+      if (pick.unit) {
+        const us = w.units ? w.units() : []; let best = null, bd = 3;
+        for (const u of us) { const d = Math.hypot(u.x - pick.unit.x, u.y - pick.unit.y); if (d < bd) { bd = d; best = u; } }
+        if (!best) return { kind: "unit", gone: true };
+        const f = w.factions[best.f];
+        return { kind: "unit", f: best.f, faction: f.name, role: best.role, shape: best.shape, x: best.x, y: best.y,
+                 army: Object.entries(f.camp || {}).filter(([k, c]) => c.goal >= 0 && f.rel[k] && f.rel[k].war).map(([k, c]) => ({ at: w.villages[c.v] ? w.villages[c.v].name : "", goal: w.villages[c.goal].name, ready: c.ready, cut: c.cut })) };
+      }
+      if (pick.event != null) {
+        const e = w.eventById(pick.event);
+        return e ? Object.assign(slim(e), { kind: "event", ekind: e.kind }) : { kind: "event", gone: true, id: pick.event };
+      }
+      return { kind: "gone" };
+    }
     const gearNames = (w, p) => w.equipment(p).filter(g => g.equipped).map(g => g.name).join(" · ");
-    function pane(m) {
-      const w = world, S = w.settings, tab = m.tab, byId = w.byId;
-      const out = { t: "pane", tab: tab, seq: m.seq, key: m.key, idle: !!m.idle, money: S.money, war: S.war, harvestTax: S.harvestTax || 0, total: w.people.length };
-      const named = {};
-      const name = id => { const p = id && byId.get(id); if (p) named[id] = p.name; return !!p; };
-      if (m.exchange) { name(m.exchange.a); name(m.exchange.b); }
-      if (tab === "people") {
-        const q = m.q || {}, query = String(q.search || "").trim().toLocaleLowerCase(), settlement = q.settlement, faction = q.faction, job = q.job;
-        out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive }));
-        out.factions = w.factions.map(f => ({ id: f.id, name: f.name, alive: f.alive }));
-        const SIZE = q.size || 60, list = byName().filter(p => byId.get(p.id) === p && p.name.toLocaleLowerCase().includes(query) &&
-          (settlement === "" || settlement == null || p.home === +settlement) && (faction === "" || faction == null || p.f === +faction) && (!job || p.job === job));
-        out.count = list.length; out.pages = Math.max(1, Math.ceil(list.length / SIZE));
-        out.page = Math.min(Math.max(0, q.page | 0), out.pages - 1);
-        out.rows = list.slice(out.page * SIZE, out.page * SIZE + SIZE).map(p => ({ id: p.id, name: p.name, age: p.age, job: p.job, home: w.villages[p.home].name,
-          faction: w.factions[p.f].name, activity: w.activity(p), gear: gearNames(w, p) }));
-      } else if (tab === "factions") {
+    /* Every faction as the panel shows it: the inspector's faction view (TODO 21e) and the
+       Overview's peoples read the same thing. */
+    function factionsData(m, out, name) {
+      const w = world, byId = w.byId;
         out.factions = w.factions.map(f => {
           const lead = byId.get(f.leader), rel = {};
           for (const o of w.factions) if (o !== f && f.rel[o.id]) { const r = f.rel[o.id], b = o.rel[f.id] || {}; rel[o.id] = { war: !!r.war, op: r.op, ally: !!r.ally, trade: !!r.trade, pays: !!r.pays, gets: !!b.pays, wed: !!r.wed }; }
@@ -428,8 +648,53 @@
           };
           out.wedCands = { f: wp.f, o: wp.o, a: list(wp.f), b: list(wp.o) };
         }
+    }
+    function pane(m) {
+      const w = world, S = w.settings, tab = m.tab, byId = w.byId;
+      const out = { t: "pane", tab: tab, seq: m.seq, key: m.key, idle: !!m.idle, money: S.money, war: S.war, harvestTax: S.harvestTax || 0, total: w.people.length };
+      const named = {};
+      const name = id => { const p = id && byId.get(id); if (p) named[id] = p.name; return !!p; };
+      if (m.exchange) { name(m.exchange.a); name(m.exchange.b); }
+      if (tab === "people" && !(m.q && m.q.all)) {
+        /* "Worth a look" (TODO 21f): the visitor's pins first, then short groups of people with
+           something at stake, read in one pass over everybody. Never instead of the visitor's own picks. */
+        out.mode = "worth";
+        const hungry = [], sick = [], soldiers = [], old = [];
+        let nh = 0, ns = 0, nsol = 0;
+        for (const p of w.people) {
+          if (p.hungry > 0) { nh++; if (hungry.length < 40) hungry.push(p); }
+          if (p.sick > 0) { ns++; if (sick.length < 40) sick.push(p); }
+          if (p.job === "soldier") { const h = w.villages[p.home]; if (h && Math.hypot(p.x - h.x, p.y - h.y) > 6) { nsol++; if (soldiers.length < 40) soldiers.push(p); } }
+          if (old.length < 3 || p.age > old[old.length - 1].age) { old.push(p); old.sort((a, b) => b.age - a.age); if (old.length > 3) old.pop(); }
+        }
+        hungry.sort((a, b) => a.food - b.food);
+        const row = p => ({ id: p.id, name: p.name, age: p.age, job: p.job, home: w.villages[p.home].name, f: p.f, activity: w.activity(p), hungry: p.hungry > 0, sick: p.sick > 0 });
+        const leaders = w.factions.filter(f => f.alive).map(f => byId.get(f.leader)).filter(Boolean);
+        out.groups = [
+          { key: "hungry", title: "Going hungry", count: nh, rows: hungry.slice(0, 6).map(row) },
+          { key: "sick", title: "Sick", count: ns, rows: sick.slice(0, 6).map(row) },
+          { key: "leaders", title: "Leading a people", count: leaders.length, rows: leaders.slice(0, 8).map(row) },
+          { key: "soldiers", title: "Soldiers away from home", count: nsol, rows: soldiers.slice(0, 6).map(row) },
+          { key: "old", title: "The oldest alive", count: old.length, rows: old.map(row) },
+        ];
+        out.pins = pins.map(pinState);
+      } else if (tab === "people") {
+        const q = m.q || {}, query = String(q.search || "").trim().toLocaleLowerCase(), settlement = q.settlement, faction = q.faction, job = q.job;
+        out.villages = w.villages.map(v => ({ id: v.id, name: v.name, alive: v.alive }));
+        out.factions = w.factions.map(f => ({ id: f.id, name: f.name, alive: f.alive }));
+        const SIZE = q.size || 60, list = byName().filter(p => byId.get(p.id) === p && p.name.toLocaleLowerCase().includes(query) &&
+          (settlement === "" || settlement == null || p.home === +settlement) && (faction === "" || faction == null || p.f === +faction) && (!job || p.job === job));
+        out.count = list.length; out.pages = Math.max(1, Math.ceil(list.length / SIZE));
+        out.page = Math.min(Math.max(0, q.page | 0), out.pages - 1);
+        out.rows = list.slice(out.page * SIZE, out.page * SIZE + SIZE).map(p => ({ id: p.id, name: p.name, age: p.age, job: p.job, home: w.villages[p.home].name,
+          faction: w.factions[p.f].name, activity: w.activity(p), gear: gearNames(w, p) }));
+      } else if (tab === "factions") {
+        factionsData(m, out, name);
       } else if (tab === "news") {
-        out.events = w.events.slice(-80).reverse().map(e => ({ weight: e.weight, x: e.x, y: e.y, year: e.year, text: e.text, why: e.why, after: e.after || "" }));   // after: the chain that led to it (TODO 15.12e)   // why: the numbers the decision was made on (2026-11-23)
+        /* `kind`, `id`, `f` and the day were always on the event; the pane used to drop them (TODO 21f). */
+        out.events = w.events.slice(-120).reverse().map(slim);
+        out.problems = problems();
+        if (m.q && m.q.talk) { out.chatter = w.chatter.slice(-40).reverse(); for (const c of out.chatter) { name(c.a); name(c.b); } }   // after: the chain that led to it (TODO 15.12e)   // why: the numbers the decision was made on (2026-11-23)
       } else if (tab === "talk") {
         out.chatter = w.chatter.slice(-40).reverse();
         for (const c of out.chatter) { name(c.a); name(c.b); }
@@ -437,15 +702,27 @@
         const pick = m.picked || {};
         if (pick.village != null && w.villages[pick.village]) {
           const v = w.villages[pick.village], f = w.factions[v.f];
-          out.village = { id: v.id, name: v.name, f: v.f, alive: v.alive, pop: v.pop, hungry: v.hungry, sick: v.sick, food: v.food, goods: v.goods, wanted: v.wanted, wood: v.wood, stone: v.stone, iron: v.iron, wool: v.wool, hide: v.hide, mats: w.settings.materials !== "goods",
+          out.pinned = pins.some(x => x.k === "v" && x.id === v.id);
+          out.village = { id: v.id, name: v.name, f: v.f, alive: v.alive, place: v.place || "village", wall: v.wall || 0, boat: !!v.boat, bridge: !!v.bridge, well: !!v.well, pop: v.pop, hungry: v.hungry, sick: v.sick, food: v.food, goods: v.goods, wanted: v.wanted, wood: v.wood, stone: v.stone, iron: v.iron, wool: v.wool, hide: v.hide, mats: w.settings.materials !== "goods",
                           priceFood: v.priceFood, till: v.till, loyal: v.loyal, founded: v.founded, siege: v.siege, storeDays: w.storeDays(v),
-                          faction: { name: f.name, colour: f.colour } };
+                          faction: { id: f.id, name: f.name, colour: f.colour } };
+        } else if (pick.faction != null && w.factions[pick.faction]) {
+          out.faction = factionLook(w.factions[pick.faction], name);
+          factionsData(m, out, name);
+          out.pinned = pins.some(x => x.k === "f" && x.id === pick.faction);
+        } else if (pick.house != null || pick.building != null || pick.field != null || pick.road != null || pick.boat != null || pick.unit || pick.event != null) {
+          out.thing = thingLook(pick, name);
         } else {
           const p = pick.person ? byId.get(pick.person) : null;
           if (p) {
             const f = w.factions[p.f], home = w.villages[p.home];
-            const children = [];
-            for (const q of w.people) if (q.mum === p.id || q.dad === p.id) { children.push(q.id); named[q.id] = q.name; }
+            const children = [], house = [];
+            /* One pass for children and for who shares the house (TODO 21e): a household view
+               must not add a second walk through everybody. */
+            for (const q of w.people) {
+              if (q.mum === p.id || q.dad === p.id) { children.push(q.id); named[q.id] = q.name; }
+              if (p.dwelling >= 0 && q.dwelling === p.dwelling && q !== p) { house.push(q); named[q.id] = q.name; }
+            }
             const friends = w.tiesOf(p).filter(x => name(x[0]));
             name(p.partner); name(p.mum); name(p.dad);
             const other = p.sayT > 0 && byId.get(p.talkingTo);
@@ -459,33 +736,102 @@
               friends: friends, mind: w.inMind(p), mcap: p.mcap, children: children, listener: other && other.sayT > 0 && other.talkingTo === p.id ? other.id : 0,
               activity: w.activity(p), adult: w.adult(p), leans: w.leans(p), dailyNeed: w.dailyNeed(p), urgency: w.urgency(p),
               equipment: w.equipment(p), tradeCapacity: w.tradeCapacity(p), leads: f.leader === p.id,
-              home: { id: home.id, name: home.name }, faction: { name: f.name, colour: f.colour }, bornUnder: w.factions[p.from].name,
+              home: { id: home.id, name: home.name }, faction: { id: f.id, name: f.name, colour: f.colour }, bornUnder: w.factions[p.from].name,
+              /* The household (TODO 21e): who shares the house, one purse and one pot — what the
+                 engine holds now. Budgets over time are not kept (a new item, asked first). */
+              household: (() => {
+                const mem = members(p.id), all = new Map(); for (const q of mem.concat(house)) all.set(q.id, q);
+                let coins = 0, food = 0, hungry = 0; for (const q of all.values()) { coins += q.coins; food += q.food; if (q.hungry > 0) hungry++; named[q.id] = q.name; }
+                const h = p.dwelling >= 0 ? w.homes[p.dwelling] : null;
+                let fields = 0; if (p.dwelling >= 0 && w.held) for (const hid of w.held.values()) if (hid === p.dwelling) fields++;
+                return { ids: [...all.keys()], coins: coins, food: food, hungry: hungry, fields: fields, house: h ? { id: p.dwelling, built: !!h.built, stage: h.stage || 0 } : null };
+              })(),
+              pinNews: (pinNews.get("p" + p.id) || []).slice(-30),
+              pinned: pins.some(x => x.k === "p" && x.id === p.id), pinnedHouse: pins.some(x => x.k === "h" && x.id === p.id),
             };
             if (other) named[other.id] = other.name;
           }
         }
-      } else if (tab === "world") {
+      } else if (tab === "world" || tab === "rules") {
+        /* Overview (TODO 21f) and the Rules drawer (TODO 21g). Counts are sent flat, every one the
+           engine keeps (`stats()`, 400 and more), so the page can say which moved since it last looked. */
         let need = 0, stores = 0;
         for (const p of w.people) need += w.dailyNeed(p);
         for (const v of w.villages) stores += v.food;
-        out.stats = w.stats(); out.need = need; out.stores = stores;
-        out.history = w.history.slice(); out.settings = Object.assign({}, S);
+        const st = w.stats(), flat = {};
+        for (const k in st) if (typeof st[k] === "number" && Number.isFinite(st[k])) flat[k] = st[k];
+        out.stats = flat; out.need = need; out.stores = stores;
+        out.settings = Object.assign({}, S); out.start = startS; out.actions = actions.slice(-200);
+        if (tab === "world") {
+          out.history = w.history.slice(); out.problems = problems(); out.firsts = firsts.slice();
+          out.events = w.events.slice(-120).reverse().map(slim);
+          let oldest = null; for (const p of w.people) if (!oldest || p.age > oldest.age) oldest = p;
+          out.oldest = oldest ? { id: oldest.id, name: oldest.name, age: oldest.age } : null;
+          out.pins = pins.map(pinState);
+          out.factions = w.factions.map(f => ({ id: f.id, name: f.name, alive: f.alive, pop: f.pop || 0 }));
+        }
       }
       out.named = named;
       send(out);
     }
 
     /* Who or what is under a tap. */
+    /* Who or what is under a tap (TODO 21e): a person, a village, a unit of an army, a boat, a house,
+       another building, a held field, a road, and last the land, which opens the people who hold it.
+       Read-only, and only what the page draws. */
     function at(m) {
-      const hit = world.at(m.x, m.y, m.r);
-      send({ t: "at", seq: m.seq, person: hit && hit.person ? { id: hit.person.id, name: hit.person.name } : null,
-             village: hit && hit.village ? { id: hit.village.id } : null });
+      const w = world, x = m.x, y = m.y, hit = w.at(x, y, m.r), reply = { t: "at", seq: m.seq, person: null, village: null, thing: null };
+      /* The engine gives a village everything within 1.4 squares; close in, where its houses and
+         fields are drawn, that would make them untappable, so a village answers only as near as
+         its marker reaches at this zoom. */
+      if (hit && hit.person) reply.person = { id: hit.person.id, name: hit.person.name };
+      else if (hit && hit.village && Math.hypot(hit.village.x - x, hit.village.y - y) <= Math.max(0.15, m.r)) reply.village = { id: hit.village.id };
+      else {
+        const inRect = (cx, cy, len, wid, ang, pad) => { const dx = x - cx, dy = y - cy, c = Math.cos(-ang), s2 = Math.sin(-ang), u = dx * c - dy * s2, v = dx * s2 + dy * c; return Math.abs(u) <= len / 2 + pad && Math.abs(v) <= wid / 2 + pad; };
+        const pad = Math.min(0.3, m.r * 0.3);
+        if (m.units && w.units) { for (const u of w.units()) if (Math.hypot(u.x - x, u.y - y) < Math.max(0.3, m.r)) { reply.thing = { unit: { x: u.x, y: u.y } }; break; } }
+        if (!reply.thing) for (const v of w.villages) if (v.alive && v.boat && Math.hypot(v.boat.x - x, v.boat.y - y) < Math.max(0.15, m.r * 0.6)) { reply.thing = { boat: v.id }; break; }
+        if (!reply.thing) for (let i = 0; i < w.homes.length; i++) { const h = w.homes[i]; if (inRect(h.x, h.y, h.len, h.wid, h.ang, pad)) { reply.thing = { house: i }; break; } }
+        if (!reply.thing) { const bl = w.buildings(); for (let i = 0; i < bl.length; i++) { const b = bl[i]; if (inRect(b.x, b.y, b.len, b.wid, b.ang, pad)) { reply.thing = { building: i }; break; } } }
+        const tx = Math.floor(x), ty = Math.floor(y);
+        if (!reply.thing && tx >= 0 && ty >= 0 && tx < w.cols && ty < w.rows) {
+          const i = ty * w.cols + tx;
+          if (w.held && w.held.has(i)) reply.thing = { field: i };
+          else if (w.track && w.track[i] === 2) reply.thing = { road: i };
+          else if (w.owner[i] >= 0 && w.villages[w.owner[i]]) reply.thing = { faction: w.villages[w.owner[i]].f };
+        }
+      }
+      send(reply);
     }
 
     /* The watcher's own decisions, passed to the doors the engine has for
        them. Each reads what stands now and moves it one notch, here, so the
        page's picture being a moment old can never set a stale value. */
+    /* Every change the visitor makes is written down with its moment, what it applied to and the
+       value before and after (TODO 21g): the graphs mark it, and it is the one record of changes a
+       save will carry (item 19, 21h) — there is not a second one. */
+    function stateFor(what, a) {
+      const w = world, f = w.factions[a[0]], v = w.villages[a[0]];
+      if (what === "set") return w.settings[a[0]];
+      if (["vtax", "vrelief", "vreset"].includes(what) && v) return what === "vrelief" ? v.relief : w.taxOf(v);
+      if (!f) return null;
+      if (what === "rule") return !!f.yours;
+      if (f.yours && ({ ftax: "tax", fharvest: "harvest", army: "army", relief: "relief", land: "land", unfree: "unfree" })[what]) return f.yours[{ ftax: "tax", fharvest: "harvest", army: "army", relief: "relief", land: "land", unfree: "unfree" }[what]];
+      if (["war", "peace", "ally", "trade", "tribute", "stop", "wed"].includes(what) && w.factions[a[1]]) { const r = f.rel[a[1]] || {}; return r.war ? "war" : r.ally ? "allied" : "peace"; }
+      return null;
+    }
     function act(m) {
+      const w = world, a = m.a || [], what = m.what;
+      const before = stateFor(what, a);
+      try { return actNow(m); }
+      finally {
+        const f = w.factions[a[0]], v = w.villages[a[0]];
+        actions.push({ day: w.days, what: what, key: what === "set" ? a[0] : "", on: what === "set" ? "world" : ["vtax", "vrelief", "vreset"].includes(what) ? (v ? v.name : "") : f ? f.name : "",
+                       other: ["war", "peace", "ally", "trade", "tribute", "stop", "wed"].includes(what) && w.factions[a[1]] ? w.factions[a[1]].name : "", from: before, to: stateFor(what, a) });
+        if (actions.length > 2000) actions.shift();
+      }
+    }
+    function actNow(m) {
       const w = world, a = m.a || [], what = m.what;
       let msg = "";
       frameKey = "";                                 // whatever is done, the next frame is a new one

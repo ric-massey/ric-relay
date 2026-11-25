@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People sandbox — mock-ups (TODO 21b)</title>
+<meta name="robots" content="noindex">
+<style>
+  /* TODO 21b, 2026-11-25. Still pages, not the real page: every figure is an
+     example state, labelled so. Two directions share one set of colour roles;
+     only the panels change. The map is the same in both — the land keeps the
+     colours Ric chose in item 5 ("Map colours"). */
+  :root {
+    /* Colour roles. Each name is a job, not a colour. */
+    --bg: #0c1113;        /* round the map */
+    --panel: #12191c;     /* panels */
+    --raise: #182226;     /* a control, a card */
+    --line: #2a383f;      /* a divider: faint on purpose, 1.47:1 */
+    --edge: #5e737c;      /* an edge that must be seen: inputs, axes, cards — 3.57:1 */
+    --ink: #e3e9e6;       /* words, 14.4:1 */
+    --dim: #98a8a5;       /* quieter words, 7.2:1 */
+    --acc: #e0a340;       /* controls and links only — never a faction */
+    --acc-ink: #1a1304;
+    --urgent: #ef8a7c;    /* a need now: hungry, sick, a siege — 7.3:1 */
+    --trait: #9cc3e6;     /* lasting nature: stubborn, warm — 9.6:1 */
+    --mind: #c9b6e8;      /* what somebody holds in mind, heard or believed — 9.6:1 */
+    --good: #8fd39a;
+    --select: #ffffff;    /* the thing selected: a solid white ring */
+    --follow: #6fe3d6;    /* the person followed: a dashed ring */
+    /* Five sizes and no others. */
+    --t1: 12px; --t2: 13.5px; --t3: 15px; --t4: 18px; --t5: 24px;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    /* Okabe–Ito, in the order factions take them (orange last but one, since
+       it is near the accent); a text version where the fill is too dark. */
+    --f0: #56B4E9; --f1: #D55E00; --f2: #009E73; --f3: #CC79A7; --f4: #F0E442; --f5: #0072B2; --f6: #E69F00; --f7: #BBBBBB;
+    --f1t: #F07A3A; --f2t: #2EC497; --f5t: #5AA7E0;
+  }
+  /* Direction B: the same roles on paper — a survey sheet beside the map. */
+  [data-look="b"] {
+    --panel: #f4efe4; --raise: #ebe4d4; --line: #d6ccb6; --edge: #8a7f68;
+    --ink: #1d1a14; --dim: #5b5446; --acc: #8a4f00; --acc-ink: #fff8ea;
+    --urgent: #a8241c; --trait: #24557f; --mind: #5e3f8c; --good: #2f6b34; --follow: #00706a;
+    --f0t: #1f6f9c; --f1t: #a34500; --f2t: #006b4f; --f3t: #97467a; --f4t: #6b6200; --f5t: #0072B2; --f6t: #8a5a00; --f7t: #5e5e5e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #070a0b; color: #e3e9e6; font: var(--t3)/1.5 var(--sans); }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .sheet-head { max-width: 1240px; margin: 0 auto; padding: 24px 16px 8px; }
+  .sheet-head h1 { font-size: var(--t5); }
+  .sheet-head p { color: #98a8a5; max-width: 72ch; margin: .4rem 0; }
+  .looks { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .looks button { min-height: 44px; padding: 0 14px; background: #182226; border: 1px solid #5e737c; border-radius: 3px; color: #e3e9e6; }
+  .looks button[aria-pressed="true"] { border-color: #e0a340; color: #e0a340; }
+  .eg { display: inline-block; font: var(--t1) var(--mono); color: #1a1304; background: #e0a340; padding: 1px 6px; border-radius: 2px; vertical-align: middle; }
+  section.screen { max-width: 1240px; margin: 0 auto 40px; padding: 0 16px; }
+  section.screen > h2 { font-size: var(--t4); color: #e3e9e6; margin: 18px 0 8px; }
+  section.screen > p.note { color: #98a8a5; font-size: var(--t2); margin: 0 0 10px; max-width: 80ch; }
+  .frame { border: 1px solid #5e737c; overflow: hidden; background: var(--panel); color: var(--ink); }
+  .phone { width: 375px; max-width: 100%; height: 760px; }
+  .desk { height: 720px; }
+
+  /* shared furniture */
+  .btn { background: var(--raise); border: 1px solid var(--edge); border-radius: 3px; min-height: 44px; min-width: 44px; padding: 0 12px; color: var(--ink); }
+  .btn.go { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 700; }
+  .btn[aria-pressed="true"] { border-color: var(--acc); color: var(--acc); }
+  .dim { color: var(--dim); }
+  .small { font-size: var(--t2); color: var(--dim); }
+  .est { border-bottom: 1px dotted currentColor; }           /* an estimate: worked out, not held */
+  .est::before { content: "≈ "; color: var(--dim); }
+  .mind { color: var(--mind); font-style: italic; border-left: 2px solid var(--mind); padding-left: 8px; }
+  .urgent { color: var(--urgent); font-weight: 600; }
+  .trait { color: var(--trait); }
+  .sw { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: baseline; }
+  .mark { display: inline-grid; place-items: center; width: 18px; height: 18px; font: 700 11px var(--sans); color: #0c1113; border: 1px solid #0c1113; margin-right: 6px; vertical-align: -3px; }
+
+  /* setup */
+  .setup { padding: 14px 18px 0; height: 100%; display: flex; flex-direction: column; }
+  .layers { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin: 10px 0 12px; }
+  .layers button { background: none; border: 0; border-bottom: 2px solid transparent; min-height: 44px; padding: 0 14px; color: var(--dim); font-size: var(--t3); }
+  .layers button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--acc); }
+  .layers .find { margin-left: auto; align-self: center; min-height: 40px; width: 220px; background: var(--raise); border: 1px solid var(--edge); border-radius: 3px; padding: 0 10px; color: var(--dim); display: flex; align-items: center; }
+  .startgrid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; flex: 1; min-height: 0; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+  .card { text-align: left; background: var(--raise); border: 1px solid var(--edge); border-radius: 3px; padding: 8px 10px; min-height: 64px; }
+  .card b { display: block; font-family: var(--serif); font-size: var(--t3); }
+  .card span { font-size: var(--t2); color: var(--dim); line-height: 1.35; }
+  .card[aria-pressed="true"] { border-color: var(--acc); }
+  .card[aria-pressed="true"] b { color: var(--acc); }
+  .card .what { display: block; margin-top: 4px; color: var(--ink); font-size: var(--t2); }
+  .ess { display: grid; grid-template-columns: 1fr; align-content: start; }
+  .ess .r { display: grid; grid-template-columns: minmax(0, 1fr) auto 44px; align-items: center; gap: 8px; min-height: 46px; border-top: 1px solid var(--line); }
+  .ess .r:first-child { border-top: 0; }
+  .ess .lab { font-weight: 600; font-size: var(--t2); }
+  .ess .v { color: var(--acc); font-size: var(--t2); text-align: right; }
+  .ess .live { font-size: var(--t1); color: var(--dim); font-weight: 400; margin-left: 6px; }
+  .info { background: none; border: 1px solid var(--line); border-radius: 50%; width: 30px; height: 30px; min-width: 0; padding: 0; color: var(--dim); font: italic 600 var(--t2) var(--serif); justify-self: center; }
+  .canrun { font-size: var(--t2); border-left: 2px solid var(--acc); padding: 2px 0 2px 8px; margin: 2px 0 6px; }
+  .launch { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding: 10px 0; margin-top: 10px; }
+  .launch .changed { margin-right: auto; font-size: var(--t2); color: var(--dim); }
+
+  /* run */
+  .run { display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
+  .bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: nowrap; }
+  .bar .date { font: var(--t2) var(--sans); margin: 0 6px; white-space: nowrap; }
+  .bar .date b { font-weight: 600; }
+  .seg { display: inline-flex; }
+  .seg .btn { border-radius: 0; margin-left: -1px; padding: 0 10px; }
+  .seg .btn:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
+  .seg .btn:last-child { border-radius: 0 3px 3px 0; }
+  .prob { color: var(--urgent); font-size: var(--t2); white-space: nowrap; border: 1px solid var(--urgent); border-radius: 3px; padding: 0 10px; min-height: 44px; display: inline-flex; align-items: center; background: none; }
+  .spacer { flex: 1; }
+  .stage { position: relative; background: #070a0b; overflow: hidden; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .headline { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); max-width: calc(100% - 24px); background: rgba(7,10,11,.9); color: #e3e9e6; border: 1px solid #5e737c; border-radius: 3px; padding: 6px 12px; font-size: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .headline b { color: #ef8a7c; }
+  .legend { position: absolute; left: 10px; bottom: 10px; background: rgba(7,10,11,.9); color: #e3e9e6; border: 1px solid #5e737c; border-radius: 3px; padding: 8px 10px; font-size: var(--t1); max-width: 230px; }
+  .legend strong { display: block; font-size: var(--t2); margin-bottom: 4px; }
+  .legend .ramp { height: 8px; background: linear-gradient(90deg, #8fd39a, #e0c070, #ef8a7c); margin: 4px 0 2px; }
+  .legend .ends { display: flex; justify-content: space-between; color: #98a8a5; }
+  .side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .tabs button { flex: 1; background: none; border: 0; border-bottom: 2px solid transparent; min-height: 44px; color: var(--dim); font-size: var(--t2); }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--acc); }
+  .pane { padding: 12px 14px; overflow: auto; flex: 1; font-size: var(--t2); }
+  .pane h3 { font-size: var(--t4); margin: 2px 0 6px; }
+  .pane h4 { font: 600 var(--t2) var(--sans); color: var(--dim); margin: 14px 0 4px; }
+  .problem { border-left: 3px solid var(--urgent); padding: 4px 0 4px 10px; margin: 6px 0; }
+  .problem b { color: var(--urgent); }
+  .story li { margin: 4px 0; }
+  .story .why { display: block; color: var(--ink); font-size: var(--t2); }
+  .story .when { color: var(--dim); font: var(--t1) var(--mono); margin-right: 6px; }
+  .moved { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+  .moved dd { margin: 0; font-family: var(--mono); text-align: right; }
+  .moved dd.up { color: var(--good); } .moved dd.down { color: var(--urgent); }
+  .chart { margin: 6px 0 10px; }
+  .chart .gl { display: flex; justify-content: space-between; font-size: var(--t1); color: var(--dim); }
+  .chart .gl b { color: var(--ink); }
+  .chart svg { display: block; width: 100%; height: 64px; }
+
+  /* inspector */
+  .insp .back { background: none; border: 0; color: var(--acc); min-height: 44px; padding: 0; }
+  .insp .who { font-size: var(--t2); }
+  .insp .now { margin: 8px 0; padding: 8px 10px; background: var(--raise); border-left: 3px solid var(--urgent); }
+  .insp details { border-top: 1px solid var(--line); padding: 4px 0; }
+  .insp summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+  .pin { float: right; }
+
+  /* phone */
+  .phone .run { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) 44%; }
+  .phone .bar { flex-wrap: wrap; gap: 4px; padding: 4px 6px; }
+  .phone .side { border-left: 0; border-top: 1px solid var(--line); }
+  .phone .legend { max-width: 150px; padding: 6px 8px; }
+  .phone .headline { font-size: var(--t1); }
+  @media (max-width: 760px) { .startgrid { grid-template-columns: 1fr; } .desk { height: auto; } .run { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="sheet-head">
+  <h1>People sandbox — the look, as still pages</h1>
+  <p>TODO 21b. Nothing here runs: every number is an <span class="eg">example</span> state, chosen to show what each screen does with a hungry village, a war and a pinned person. Pick a direction; the colour roles, type sizes and faction colours are the same in both.</p>
+  <div class="looks" role="group" aria-label="Direction">
+    <button type="button" data-look="a" aria-pressed="true">A · Night table (dark panels)</button>
+    <button type="button" data-look="b" aria-pressed="false">B · Survey sheet (paper panels)</button>
+  </div>
+</div>
+
+<section class="screen">
+  <h2>1 · Setting up: Start</h2>
+  <p class="note">The first of three layers. Starting points as cards that say what the world will be like; the fourteen Essentials beside them, help behind ⓘ. Customise holds the rest in tabs; Model holds the switches that turn a newer part of the engine back to how it was. Search looks through all three.</p>
+  <div class="frame desk look">
+    <div class="setup">
+      <h1 style="font-size:var(--t5)">People sandbox</h1>
+      <div class="layers" role="tablist">
+        <button role="tab" aria-selected="true">Start</button><button role="tab" aria-selected="false">Customise</button><button role="tab" aria-selected="false">Model</button>
+        <span class="find">Search every setting…</span>
+      </div>
+      <div class="startgrid">
+        <div class="cards">
+          <button class="card" aria-pressed="true"><b>An ordinary country</b><span>Four peoples, farms and markets.</span><span class="what">You'll see: trade, a vote every few years, the odd war.</span></button>
+          <button class="card"><b>Too many people</b><span>Crowded land, thin harvests.</span><span class="what">You'll see: hunger, moves, quarrels.</span></button>
+          <button class="card"><b>No money</b><span>A shared store, no coins.</span><span class="what">You'll see: nobody rich, store fights.</span></button>
+          <button class="card"><b>Chiefs and soldiers</b><span>Chiefs for life, quick to fight.</span><span class="what">You'll see: raids and sieges.</span></button>
+          <button class="card"><b>Short lives</b><span>Hard years, few grow old.</span></button>
+          <button class="card"><b>One people</b><span>Everybody one faction.</span></button>
+          <button class="card"><b>Two old enemies</b><span>Two peoples who remember.</span></button>
+          <button class="card"><b>A quiet world</b><span>Slow, mild and kind.</span></button>
+        </div>
+        <div class="ess">
+          <div class="r"><span class="lab">How much land</span><span class="v">8 km across</span><button class="info" aria-label="About How much land">i</button></div>
+          <div class="r"><span class="lab">How many people</span><span class="v">400</span><button class="info" aria-label="About How many people">i</button></div>
+          <div class="canrun">On this computer: about <b>140×</b> at first with these 400 people.</div>
+          <div class="r"><span class="lab">How many factions</span><span class="v">4</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">Era</span><span class="v">Early farmers</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">Where they live at first</span><span class="v">Villages</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">How much it grows<span class="live">can change while it runs</span></span><span class="v">as usual</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">How cold winter gets<span class="live">can change while it runs</span></span><span class="v">a real winter</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">How they trade</span><span class="v">Coins and markets</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">Who leads, at first</span><span class="v">Whoever they vote for</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">How the factions start</span><span class="v">Strangers</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">Wars · How quick to fight</span><span class="v">on · as usual</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">Sickness</span><span class="v">Now and then</span><button class="info">i</button></div>
+          <div class="r"><span class="lab">Seed</span><span class="v">11</span><button class="info">i</button></div>
+        </div>
+      </div>
+      <div class="launch"><span class="changed">Everything as usual · 157 settings, 14 here</span><button class="btn">Surprise me</button><button class="btn">Reset</button><button class="btn go">Run this world</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen">
+  <h2>2 · The running world, desktop</h2>
+  <p class="note">One bar. The map has nothing over its middle: a headline at the top edge for a moment, the legend for the layer showing in a corner. The panel opens on Overview: what is wrong, what changed since you last looked, graphs with time and units.</p>
+  <div class="frame desk look">
+    <div class="run">
+      <div class="bar">
+        <button class="btn">← Setup</button>
+        <button class="btn" aria-label="Pause">❚❚</button>
+        <span class="seg"><button class="btn">1×</button><button class="btn" aria-pressed="true">16×</button><button class="btn">Max</button><button class="btn" aria-label="More speeds">▾</button></span>
+        <span class="date"><b>Spring, day 133</b> · year 1 · 16× · <b>383</b> people, <span class="dim">down 4</span></span>
+        <button class="prob">2 problems</button>
+        <span class="spacer"></span>
+        <button class="btn">Layer: Hunger ▾</button>
+        <button class="btn">Rules</button>
+        <button class="btn" aria-label="More">⋯</button>
+      </div>
+      <div class="stage">
+        <svg viewBox="0 0 900 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="900" height="640" fill="#3a6d93"/>
+          <path d="M40 80 Q260 20 520 90 T880 120 L880 600 Q600 640 300 600 T40 560 Z" fill="#7a9d68"/>
+          <path d="M120 160 Q300 120 440 200 T700 260 Q620 420 420 430 T140 380 Z" fill="#94b266"/>
+          <path d="M560 380 Q700 330 820 420 L800 560 Q690 600 580 540 Z" fill="#c9b884"/>
+          <path d="M300 60 Q340 260 300 420 T360 620" stroke="#5a8ab8" stroke-width="5" fill="none"/>
+          <g stroke="rgba(255,255,255,.55)" stroke-width="2" fill="none" stroke-dasharray="3 3"><path d="M470 80 L480 600"/></g>
+          <g><rect x="232" y="232" width="14" height="14" fill="#56B4E9" stroke="#0c1113"/><text x="239" y="243" font-size="10" text-anchor="middle" font-weight="700" fill="#0c1113">A</text>
+             <rect x="640" y="210" width="14" height="14" fill="#D55E00" stroke="#0c1113"/><text x="647" y="221" font-size="10" text-anchor="middle" font-weight="700" fill="#0c1113">B</text>
+             <rect x="380" y="470" width="14" height="14" fill="#009E73" stroke="#0c1113"/><text x="387" y="481" font-size="10" text-anchor="middle" font-weight="700" fill="#0c1113">C</text></g>
+          <g font-size="12" font-weight="600" fill="#e3e9e6" text-anchor="middle"><rect x="208" y="250" width="62" height="16" fill="rgba(7,10,11,.82)"/><text x="239" y="262">Steiwuk</text>
+             <rect x="614" y="228" width="66" height="16" fill="rgba(7,10,11,.82)"/><text x="647" y="240">Far Fold</text>
+             <rect x="352" y="488" width="70" height="16" fill="rgba(7,10,11,.82)"/><text x="387" y="500">Low Mere</text></g>
+          <circle cx="239" cy="239" r="22" fill="none" stroke="#ef8a7c" stroke-width="2"/><rect x="214" y="200" width="50" height="16" fill="rgba(7,10,11,.78)"/><text x="239" y="212" font-size="12" font-weight="600" fill="#ef8a7c" text-anchor="middle">Famine</text>
+          <g>
+            <rect x="200" y="280" width="6" height="6" fill="#ef8a7c" stroke="#070a0b"/><rect x="214" y="290" width="6" height="6" fill="#ef8a7c" stroke="#070a0b"/><rect x="226" y="276" width="6" height="6" fill="#e0c070" stroke="#070a0b"/>
+            <rect x="250" y="292" width="6" height="6" fill="#ef8a7c" stroke="#070a0b"/><rect x="262" y="284" width="6" height="6" fill="#8fd39a" stroke="#070a0b"/>
+            <rect x="620" y="250" width="6" height="6" fill="#8fd39a" stroke="#070a0b"/><rect x="640" y="262" width="6" height="6" fill="#8fd39a" stroke="#070a0b"/><rect x="660" y="248" width="6" height="6" fill="#e0c070" stroke="#070a0b"/>
+            <rect x="370" y="440" width="6" height="6" fill="#8fd39a" stroke="#070a0b"/><rect x="396" y="452" width="6" height="6" fill="#8fd39a" stroke="#070a0b"/>
+          </g>
+          <circle cx="217" cy="293" r="9" fill="none" stroke="#ffffff" stroke-width="2"/>
+          <circle cx="265" cy="287" r="9" fill="none" stroke="#6fe3d6" stroke-width="2" stroke-dasharray="4 3"/>
+        </svg>
+        <div class="headline"><b>Famine</b> · Steiwuk is starving — 54% of 50 going hungry <span style="color:#98a8a5">· tap to go there</span></div>
+        <div class="legend"><strong>Hunger</strong>Each box a person, by how hungry they are now.<div class="ramp"></div><div class="ends"><span>fed</span><span>going hungry</span></div><div style="margin-top:6px">White ring: selected · dashed: followed</div></div>
+      </div>
+      <aside class="side">
+        <div class="tabs" role="tablist"><button aria-selected="true">Overview</button><button aria-selected="false">People</button><button aria-selected="false">News</button><button aria-selected="false">Inspector</button></div>
+        <div class="pane">
+          <h4 style="margin-top:0">Going wrong now</h4>
+          <div class="problem"><b>Famine in Steiwuk</b> — 54% of 50 going hungry; <span class="est">3 days of food a head</span> in the store. Coins will not buy food there now.</div>
+          <div class="problem"><b>War</b>: Far Fold against Low Mere, since day 98.</div>
+          <h4>Since you last looked <span class="dim">(day 90 → 133)</span></h4>
+          <ul class="story" style="padding-left:18px;margin:4px 0">
+            <li><span class="when">day 121</span>Steiwuk is starving.<span class="why">because 54% of 50 going hungry; 0.8 days of food a head in the store</span></li>
+            <li><span class="when">day 98</span>Far Fold declares war on Low Mere.<span class="why">because the border fields were taken twice</span></li>
+            <li><span class="when">day 95–130</span>8 villages built a common oven.</li>
+          </ul>
+          <h4>Counters that moved</h4>
+          <dl class="moved"><dt>Born</dt><dd class="up">+6</dd><dt>Starved</dt><dd class="down">+3</dd><dt>Killed in battle</dt><dd class="down">+1</dd><dt>Wars started</dt><dd>+1</dd></dl>
+          <h4>How it is going <span class="dim">— days 1 to 133</span></h4>
+          <div class="chart"><div class="gl"><span>People</span><b>383</b></div>
+            <svg viewBox="0 0 300 64" preserveAspectRatio="none"><line x1="28" y1="56" x2="300" y2="56" stroke="var(--edge)"/><line x1="28" y1="4" x2="28" y2="56" stroke="var(--edge)"/><polyline points="28,12 80,14 140,16 200,20 260,24 300,24" fill="none" stroke="var(--acc)" stroke-width="2"/><text x="24" y="10" font-size="9" fill="var(--dim)" text-anchor="end">390</text><text x="24" y="58" font-size="9" fill="var(--dim)" text-anchor="end">370</text><line x1="210" y1="4" x2="210" y2="56" stroke="var(--trait)" stroke-dasharray="2 2"/></svg>
+            <div class="gl"><span>day 1</span><span style="color:var(--trait)">↑ you set winter colder, day 110</span><span>133</span></div></div>
+          <div class="chart"><div class="gl"><span>Going hungry</span><b>9%</b></div>
+            <svg viewBox="0 0 300 64" preserveAspectRatio="none"><line x1="28" y1="56" x2="300" y2="56" stroke="var(--edge)"/><line x1="28" y1="4" x2="28" y2="56" stroke="var(--edge)"/><polyline points="28,54 120,52 200,30 240,12 300,40" fill="none" stroke="var(--acc)" stroke-width="2"/><text x="24" y="10" font-size="9" fill="var(--dim)" text-anchor="end">30%</text><text x="24" y="58" font-size="9" fill="var(--dim)" text-anchor="end">0</text></svg>
+            <div class="gl"><span>day 1</span><span>133</span></div></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="screen">
+  <h2>3 · The inspector, and a phone</h2>
+  <p class="note">A tap on anything drawn opens it here, with a way back. A person's first screen: who, what now and why, what is at stake, family in a line, the two traits that stand out. The rest folds below. On a phone the bar takes two rows so pause, speed and the date stay easy to reach.</p>
+  <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+    <div class="frame look" style="width:360px;height:720px">
+      <div class="side" style="height:100%;border-left:0">
+        <div class="tabs"><button aria-selected="false">Overview</button><button aria-selected="false">People</button><button aria-selected="false">News</button><button aria-selected="true">Inspector</button></div>
+        <div class="pane insp">
+          <button class="back">← Steiwuk</button>
+          <button class="btn pin" aria-pressed="true">Pinned</button>
+          <h3>Anadra Velk</h3>
+          <p class="who">34 years old, a farmer in <a style="color:var(--acc)">Steiwuk</a> · <span class="mark" style="background:#56B4E9">A</span>Ashen folk</p>
+          <div class="now"><span class="urgent">Going hungry.</span> Walking to the fields — needs to eat. Carries <span class="est">about half a day's food</span>; the village store is empty; coins will not buy food here now.
+            <div class="small" style="margin-top:4px">because the coin is trusted 0.3 and food is sold for it from 0.35</div></div>
+          <p>Married to <a style="color:var(--acc)">Tomas Velk</a> · children <a style="color:var(--acc)">Ilse</a>, <a style="color:var(--acc)">Ren</a></p>
+          <p><span class="trait">Very stubborn, quick to anger.</span></p>
+          <p class="mind">Heard Far Fold burned the mill. <span class="small" style="font-style:normal">(it was the wind)</span></p>
+          <details><summary>Needs, food and coins</summary><p class="small">Hungry 0.81 · tired 0.22 · alone 0.10 · afraid 0.35. Carries 0.48 rations of 1.00 a day. Coins 3.2.</p></details>
+          <details><summary>Nature — all eleven</summary></details>
+          <details><summary>The household</summary><p class="small">4 people, one purse (5.1 coins) and one pot (1.3 rations). Fields: 3.</p></details>
+          <details><summary>On their mind (7)</summary></details>
+          <details><summary>Friends and enemies</summary></details>
+        </div>
+      </div>
+    </div>
+    <div class="frame phone look">
+      <div class="run">
+        <div class="bar">
+          <button class="btn" aria-label="Back to setup">←</button>
+          <button class="btn" aria-label="Pause">❚❚</button>
+          <span class="seg"><button class="btn">1×</button><button class="btn" aria-pressed="true">16×</button><button class="btn">Max</button></span>
+          <button class="btn" aria-label="More">⋯</button>
+          <span class="date" style="flex-basis:100%;margin:0 2px"><b>Spring, day 133</b> · 383 people · <span style="color:var(--urgent)">2 problems</span></span>
+        </div>
+        <div class="stage">
+          <svg viewBox="0 0 375 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect width="375" height="300" fill="#3a6d93"/><path d="M10 40 Q120 10 220 50 T370 60 L370 290 L10 290 Z" fill="#7a9d68"/>
+            <rect x="100" y="120" width="12" height="12" fill="#56B4E9" stroke="#0c1113"/><text x="106" y="130" font-size="9" text-anchor="middle" font-weight="700" fill="#0c1113">A</text>
+            <circle cx="106" cy="126" r="18" fill="none" stroke="#ef8a7c" stroke-width="2"/>
+            <rect x="96" y="150" width="5" height="5" fill="#ef8a7c"/><rect x="110" y="156" width="5" height="5" fill="#ef8a7c"/><rect x="250" y="120" width="10" height="10" fill="#D55E00" stroke="#0c1113"/>
+          </svg>
+          <div class="headline"><b>Famine</b> · Steiwuk is starving</div>
+          <div class="legend"><strong>Hunger</strong><div class="ramp"></div><div class="ends"><span>fed</span><span>hungry</span></div></div>
+        </div>
+        <aside class="side">
+          <div class="tabs"><button aria-selected="true">Overview</button><button>People</button><button>News</button><button>Look</button></div>
+          <div class="pane">
+            <div class="problem"><b>Famine in Steiwuk</b> — 54% of 50 hungry.</div>
+            <div class="problem"><b>War</b>: Far Fold against Low Mere.</div>
+            <h4>Your pins</h4>
+            <p>Anadra Velk — <span class="urgent">going hungry</span>, since day 119.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="screen">
+  <h2>The roles, written down</h2>
+  <div class="frame look" style="padding:14px 18px">
+    <p><b>Text</b> — <span>ink</span>, <span class="dim">quieter</span>, <span style="color:var(--acc)">a control or link</span>. <b>A need now</b> — <span class="urgent">going hungry</span>. <b>Lasting nature</b> — <span class="trait">stubborn, warm</span>. <b>In mind</b> — <span class="mind">heard, believed</span>. <b>An estimate</b> — <span class="est">3 days of food</span>; a fact is plain: 50 people.</p>
+    <p><b>On the map</b> — selected: a solid white ring; followed: a dashed ring in <span style="color:var(--follow)">this colour</span>; a standing problem: a ring and a word where it is.</p>
+    <p><b>Factions</b> — <span class="mark" style="background:var(--f0)">A</span><span class="mark" style="background:var(--f1)">B</span><span class="mark" style="background:var(--f2)">C</span><span class="mark" style="background:var(--f3)">D</span><span class="mark" style="background:var(--f4)">E</span><span class="mark" style="background:var(--f5)">F</span><span class="mark" style="background:var(--f6)">G</span><span class="mark" style="background:var(--f7)">H</span> Okabe–Ito, with a letter on each village and in every list, so a ninth people and beyond are told apart by more than colour. A colour is never given to a new people while an old one holding it is alive, unless all eight are.</p>
+    <p><b>Sizes</b> — <span style="font-size:var(--t1)">12 small</span> · <span style="font-size:var(--t2)">13.5 note</span> · <span style="font-size:var(--t3)">15 body</span> · <span style="font-size:var(--t4);font-family:var(--serif)">18 heading</span> · <span style="font-size:var(--t5);font-family:var(--serif)">24 title</span>. Nothing under 12.</p>
+  </div>
+</section>
+<script>
+  for (const b of document.querySelectorAll(".looks button")) b.addEventListener("click", () => {
+    for (const o of document.querySelectorAll(".looks button")) o.setAttribute("aria-pressed", String(o === b));
+    for (const f of document.querySelectorAll(".look")) f.dataset.look = b.dataset.look;
+  });
+</script>
+</body>
+</html>

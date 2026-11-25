@@ -15,9 +15,20 @@
      faintest text there is, and it is 6.9:1 on --panel. Nothing is set under
      12px. No rounded pills, glows or lifted cards. */
   :root {
-    --bg: #0c1113; --panel: #12191c; --raise: #182226; --line: #2a383f;
+    /* Colour roles (TODO 21b, 2026-11-25; Ric chose "A · Night table"). Each name is a job.
+       --line is a divider and faint on purpose (1.47:1); --edge is an edge that must be seen —
+       a control, an input, an axis — and clears the 3:1 non-text parts need (3.57:1). The
+       accent is for controls and links only, never a faction. Mock-ups and the measurements:
+       docs/mockups/world-builder/people-ui.html, TODO 21b. */
+    --bg: #0c1113; --panel: #12191c; --raise: #182226; --line: #2a383f; --edge: #5e737c;
     --ink: #e3e9e6; --dim: #98a8a5; --acc: #e0a340; --acc-ink: #1a1304;
     --warn: #ef8a7c; --good: #8fd39a;
+    --urgent: #ef8a7c;   /* a need now: hungry, sick, a siege (7.3:1) */
+    --trait: #9cc3e6;    /* lasting nature: stubborn, warm (9.6:1) */
+    --mind: #c9b6e8;     /* what somebody holds in mind, heard or believed (9.6:1) */
+    --follow: #6fe3d6;   /* the person followed, a dashed ring; the selected thing is a solid white one */
+    /* Five sizes and no others; nothing under 12. */
+    --t1: 12px; --t2: 13.5px; --t3: 15px; --t4: 18px; --t5: 24px;
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -32,8 +43,8 @@
   [hidden] { display: none !important; }
   h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; }
 
-  .btn { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .55rem .9rem; min-height: 44px; }
-  .btn:hover { border-color: var(--dim); }
+  .btn { background: var(--raise); border: 1px solid var(--edge); border-radius: 3px; padding: .55rem .9rem; min-height: 44px; }
+  .btn:hover { border-color: var(--ink); }
   /* Ruling a faction, and the rules of a running world: one row per decision. */
   .rule { border: 1px solid var(--line); background: var(--raise); padding: .5rem .6rem; margin: -.2rem 0 .8rem; }
   .rule h4 { margin: .6rem 0 .2rem; font-size: 13px; color: var(--dim); font-weight: 600; }
@@ -48,7 +59,7 @@
   /* Choosing a marriage (TODO 15.5h). */
   .wed { border-top: 1px solid var(--line); padding: .4rem 0 .2rem; margin: .2rem 0 .4rem; }
   .wed label { display: block; font-size: 12px; color: var(--dim); }
-  .wed input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; margin: 3px 0 7px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 8px; }
+  .wed input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; margin: 3px 0 7px; background: var(--panel); color: var(--ink); border: 1px solid var(--edge); border-radius: 3px; padding: 8px; }
   .graph { margin: .1rem 0 .5rem; }
   .graph .gl { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
   .graph .gl b { color: var(--ink); font-weight: 600; }
@@ -81,12 +92,12 @@
   #setup .top h1 { font-size: clamp(1.7rem, 5vw, 2.4rem); }
   #setup .top p { color: var(--dim); margin: .45rem 0 0; max-width: 68ch; }
   .linkish { background: none; border: 0; padding: .6rem 0; color: var(--acc); min-height: 44px; }
-  .shelf { display: block; font: 600 .78rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 0 0 .55rem; }
+  .shelf { display: block; font: 600 var(--t3)/1.2 var(--serif); color: var(--dim); margin: 0 0 .55rem; }   /* no letter-spaced capitals (21b) */
 
   /* The starting points wrap instead of scrolling sideways: five of them, all
      in sight, and no scrollbar across the page. */
   .presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 8px; margin: 0 0 1.7rem; }
-  .preset { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: .6rem .75rem .7rem; }
+  .preset { text-align: left; background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; padding: .6rem .75rem .7rem; }
   .preset:hover { border-color: var(--dim); }
   .preset b { display: block; font-family: var(--serif); font-size: 1.02rem; }
   .preset span { display: block; color: var(--dim); font-size: .82rem; line-height: 1.35; margin-top: .15rem; }
@@ -104,7 +115,52 @@
      room — thirty-six settings in one column was six screens of scrolling. */
   /* Columns, not a grid: a grid lines the panels up in rows, so a short group
      beside a tall one leaves a hole the height of the difference. */
-  #form { columns: 360px 2; column-gap: 12px; }
+  #form .cols { columns: 360px 2; column-gap: 12px; }
+  /* The three layers (TODO 21c). */
+  .layers { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; border-bottom: 1px solid var(--line); margin: 0 0 1rem; }
+  .layers button { background: none; border: 0; border-bottom: 2px solid transparent; min-height: 44px; padding: 0 14px; color: var(--dim); font-size: var(--t3); }
+  .layers button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--acc); }
+  .layers button .n { color: var(--acc); font-size: var(--t1); margin-left: 4px; }
+  .layers input { margin-left: auto; min-height: 44px; width: min(280px, 100%); background: var(--raise); border: 1px solid var(--edge); border-radius: 3px; padding: 0 10px; font-size: 16px; }
+  @media (max-width: 620px) { .layers input { margin: 6px 0 8px; width: 100%; } }
+  .ctabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .ctabs button { min-height: 44px; padding: 0 12px; background: var(--panel); border: 1px solid var(--edge); border-radius: 3px; font-size: var(--t2); }
+  .ctabs button[aria-selected="true"] { border-color: var(--acc); color: var(--acc); }
+  .model-note { color: var(--dim); max-width: 72ch; margin: 0 0 12px; font-size: var(--t2); }
+  /* The essentials: label and control side by side, so fourteen fit on a laptop with the starting
+     points above them — at full size, with 44 px targets, not shrunk to fit (21c). */
+  .ess { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 0 12px; background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; padding: 2px 0; }
+  .ess .row { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.3fr) 34px; align-items: center; gap: 0 10px; padding: .35rem .8rem; border-top: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+  .ess .row .rhead, .ess .row .valbox { display: contents; }
+  .ess .row .lab { grid-column: 1; grid-row: 1; }
+  .ess .row .val, .ess .row input[type=number], .ess .row .tog { grid-column: 1; grid-row: 2; justify-self: start; text-align: left; }
+  .ess .row input[type=number] + .val { grid-column: 2; }
+  .ess .row > input[type=range], .ess .row > select { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+  .ess .row .info { grid-column: 3; grid-row: 1 / span 2; }
+  .ess .row > .help { grid-column: 1 / -1; }
+  #setup > #form .canrun-out { margin: .5rem 0 0; color: var(--ink); border-left: 2px solid var(--acc); padding-left: .55rem; font-size: var(--t2); }
+  #setup > #form .canrun-out.waiting { color: var(--dim); border-left-color: var(--line); }
+  #setup > #form .canrun-out.slow { border-left-color: var(--warn); }
+  #setup > #form .canrun-out:empty, body.finding #setup > #form .canrun-out { display: none; }
+  body.people #setup { max-width: 1240px; padding-bottom: 5.5rem; }
+  body.people #setup .top { margin-bottom: .2rem; }
+  @media (min-width: 900px) {
+    body.people #setup .top { float: left; margin: 0 1.2rem 0 0; line-height: 44px; }
+    body.people #setup .top h1 { line-height: 44px; }
+    body.people .layers { margin-bottom: .7rem; }
+  }
+  body.people #setup .top h1 { font-size: var(--t5); }
+  body.people #setup .shelf { margin-bottom: .35rem; }
+  body.people #setup .top p { display: none; }
+  @media (min-width: 900px) { body.people .presets { grid-template-columns: repeat(4, 1fr); margin-bottom: 1rem; } body.people .preset span { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } }
+  .row .live-tag { font-weight: 400; color: var(--dim); font-size: var(--t1); margin-left: 6px; }
+  .row .where { display: block; font-weight: 400; color: var(--dim); font-size: var(--t1); }
+  .info { flex: 0 0 auto; width: 32px; height: 32px; min-height: 0; padding: 0; background: none; border: 1px solid var(--edge); border-radius: 50%; color: var(--dim); font: italic 600 var(--t2) var(--serif); }
+  .info[aria-expanded="true"] { color: var(--acc); border-color: var(--acc); }
+  body.people:not(.finding) .row:not(.helpopen) .help:not(.canrun) { display: none; }
+  details.parts { margin: .3rem .9rem .6rem; border: 1px solid var(--line); border-radius: 3px; }
+  details.parts > summary { min-height: 44px; display: flex; align-items: center; padding: 0 .7rem; cursor: pointer; color: var(--acc); }
+  body.finding details.parts > summary { display: none; }
   details.group { display: inline-block; width: 100%; margin: 0 0 12px; break-inside: avoid; -webkit-column-break-inside: avoid;
                   background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
   details.group > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
@@ -130,7 +186,7 @@
   /* What this computer makes of the world as set: the one line under "How many people". */
   /* Each faction's own nature (TODO 15a): a tab a faction above the ten sliders. */
   .ntabs { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
-  .ntabs button { min-width: 44px; min-height: 36px; padding: .3rem .65rem; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; color: var(--ink); font: inherit; font-size: .86rem; cursor: pointer; }
+  .ntabs button { min-width: 44px; min-height: 36px; padding: .3rem .65rem; background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; color: var(--ink); font: inherit; font-size: .86rem; cursor: pointer; }
   .ntabs button[aria-selected="true"] { border-color: var(--acc); color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--panel)); }
   .ntabs button.set::after { content: " •"; color: var(--acc); }
   .nnote { display: flex; align-items: baseline; gap: .6rem; color: var(--dim); font-size: .8rem; margin: .35rem 0 0; }
@@ -142,7 +198,7 @@
   .row.off { opacity: .42; }
   .row.off .help { display: none; }
   input[type=range] { display: block; width: 100%; height: 26px; accent-color: var(--acc); background: none; margin: .15rem 0 0; }
-  input[type=number] { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .3rem .45rem; min-height: 34px;
+  input[type=number] { background: var(--raise); border: 1px solid var(--edge); border-radius: 3px; padding: .3rem .45rem; min-height: 34px;
                        width: 5.4em; min-width: 0; font-size: 16px; text-align: right; }
   input[type=number]:focus { outline: 2px solid var(--acc); outline-offset: 2px; }
   .body-values { display: grid; gap: .5rem; margin: .8rem 0; }
@@ -150,7 +206,7 @@
   /* The side panel edits a body: those boxes fill their column, unlike the
      narrow ones beside a slider on the settings screen. */
   .body-values input[type=number] { width: 100%; min-height: 40px; }
-  select { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; width: 100%; }
+  select { background: var(--raise); border: 1px solid var(--edge); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; width: 100%; }
   .row select { margin-top: .3rem; }
   .tog { display: flex; align-items: center; gap: .5rem; min-height: 34px; cursor: pointer; }
   .tog input { width: 20px; height: 20px; accent-color: var(--acc); }
@@ -185,7 +241,7 @@
   #bar { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 5px 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
   #bar .btn { min-height: 38px; padding: .3rem .65rem; flex: 0 0 auto; white-space: nowrap; }
   #bar .title { font-family: var(--serif); font-size: 1.05rem; margin: 0 .35rem 0 .3rem; flex: 0 0 auto; }
-  #bar .cap { color: var(--dim); font: 12px var(--sans); letter-spacing: .07em; text-transform: uppercase; margin: 0 .05rem 0 .45rem; flex: 0 0 auto; }
+  #bar .cap { color: var(--dim); font: var(--t1) var(--sans); margin: 0 .05rem 0 .45rem; flex: 0 0 auto; }
   #bar .seg { display: inline-flex; flex: 0 0 auto; }
   #bar .seg .btn { border-radius: 0; margin-left: -1px; min-width: 38px; padding: .3rem .45rem; }
   #bar .seg .btn:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
@@ -225,6 +281,17 @@
     #bar { gap: 4px; padding: 5px 6px; }
     #bar .btn { min-height: 34px; padding: .22rem .45rem; font-size: .88rem; }
     #bar .seg .btn { min-width: 32px; padding: .22rem .3rem; }
+    /* People on a phone (TODO 21d): two rows, every control 44 px. Pause, speed and ⋯ on the first;
+       the date and what is going wrong on the second; the layer and the rules inside ⋯. */
+    body.people #bar .btn, body.people #bar .seg .btn { min-height: 44px; min-width: 44px; }
+    body.people #bar .cap, body.people #layer-btn, body.people #rules-btn, body.people #bar .spacer { display: none; }
+    body.people #to-setup .long { display: none; }
+    body.people #bar .date { order: 10; flex: 1 0 100%; min-width: 0; margin: 0 2px; white-space: normal; }
+    body.people #bar .date .long { display: none; }
+    body.people #bar .prob { order: 11; }
+    body.people #more-btn { margin-left: auto; }
+    body.people #hint { bottom: 10px; }
+    body.people #legend { bottom: 44px; }
     #tools .btn { min-height: 32px; padding: .2rem .4rem; font-size: .82rem; }
     #palette .sw-btn { width: 32px; height: 32px; }
   }
@@ -233,12 +300,47 @@
   .thing { display: flex; align-items: center; gap: 3px; padding: .25rem 0; font-size: .88rem; }
   .thing b { display: inline-block; width: 11px; height: 11px; }
   .thing span { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: .82rem; }
-  #people-key { position: absolute; left: 10px; top: 10px; max-width: min(340px, calc(100% - 20px)); padding: 8px 10px; background: rgba(7,10,11,.92); color: #e3e9e6; font-size: 12px; border: 1px solid #53645b; border-radius: 4px; }
-  #people-key strong { display: block; margin-bottom: 3px; padding-right: 1.6rem; }
-  #people-key .shut { position: absolute; right: 2px; top: 2px; width: 30px; height: 30px; background: none; border: 0; color: var(--dim); font-size: 16px; line-height: 1; border-radius: 3px; }
-  #people-key .shut:hover { color: var(--ink); background: var(--raise); }
-  #people-key.packed .body { display: none; }
-  #people-key.packed { padding: 4px 34px 4px 8px; }
+  /* The legend of the layer showing (TODO 21d): bottom-left, folds to its name, never over the middle. */
+  #legend { position: absolute; left: 10px; bottom: 34px; max-width: min(260px, calc(100% - 20px)); padding: 8px 34px 8px 10px; background: rgba(7,10,11,.92); color: #e3e9e6; font-size: var(--t1); border: 1px solid var(--edge); border-radius: 3px; }
+  #legend strong { display: block; font-size: var(--t2); margin-bottom: 3px; }
+  #legend .shut { position: absolute; right: 2px; top: 2px; width: 32px; height: 32px; background: none; border: 0; color: var(--dim); font-size: 16px; line-height: 1; border-radius: 3px; }
+  #legend .shut:hover { color: var(--ink); background: var(--raise); }
+  #legend .more { display: block; color: var(--dim); }
+  #legend.packed #legend-body > :not(strong) { display: none !important; }
+  #legend.packed strong { margin: 0; }
+  #legend .ramp { height: 8px; margin: 5px 0 2px; }
+  #legend .ends { display: flex; justify-content: space-between; color: var(--dim); }
+  #legend .key { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  #legend .key b { flex: 0 0 auto; width: 10px; height: 10px; border: 1px solid #070a0b; }
+  /* One headline at a time along the map's top edge (TODO 21f); a tap goes there and pauses. */
+  #headline { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); max-width: calc(100% - 24px); min-height: 40px; background: rgba(7,10,11,.92); color: #e3e9e6; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 12px; font-size: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  #headline b { color: var(--urgent); }
+  #headline.mine { border-color: var(--follow); }
+  #headline .dim { color: var(--dim); }
+  /* The People bar. */
+  #bar .date { font-size: var(--t2); white-space: nowrap; margin: 0 4px; font-variant-numeric: tabular-nums; }
+  #bar .date b { font-weight: 600; }
+  #bar .prob { color: var(--urgent); border-color: var(--urgent); background: none; }
+  /* One row on a laptop (21d): the date gives way first, then the words round it. */
+  @media (min-width: 621px) {
+    body.people #bar { flex-wrap: nowrap; }
+    body.people #bar .date { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    body.people #bar .title, body.people #bar .cap { display: none; }
+  }
+  @media (min-width: 621px) and (max-width: 1180px) { body.people #bar .date .long { display: none; } }
+  /* The speed reached and "running behind" sit in the corner the clock had, clear of the headline. */
+  body.people #slow { top: auto; bottom: 10px; }
+  #bar .spacer { flex: 1 1 0; }
+  .menu-wrap { position: relative; display: inline-flex; }
+  .menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 220px; max-height: min(70vh, 520px); overflow-y: auto; background: var(--panel); border: 1px solid var(--edge); border-radius: 3px; padding: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+  .menu.right { left: auto; right: 0; }
+  .menu button, .menu label { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 10px; background: none; border: 0; border-radius: 2px; text-align: left; color: var(--ink); font-size: var(--t2); cursor: pointer; }
+  .menu button:hover, .menu label:hover { background: var(--raise); }
+  .menu button[aria-checked="true"] { color: var(--acc); }
+  .menu button[aria-checked="true"]::before { content: "●"; font-size: 9px; }
+  .menu .hd { display: block; padding: 8px 10px 2px; color: var(--dim); font-size: var(--t1); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+  .menu .note { display: block; padding: 0 10px 6px; color: var(--dim); font-size: var(--t1); }
   #slow { position: absolute; right: 10px; top: 10px; color: var(--warn); font-size: 12px; background: rgba(7,10,11,.8); padding: 3px 7px; border-radius: 3px; }
   #side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
   #tabs { display: flex; border-bottom: 1px solid var(--line); }
@@ -247,7 +349,7 @@
   #panes { flex: 1; overflow-y: auto; min-height: 0; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch; }
   #population-controls { padding: 10px 12px; border-bottom: 1px solid var(--line); }
   #population-controls label { display: block; font-size: 12px; color: var(--dim); }
-  #population-controls input, #population-controls select { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; margin: 3px 0 7px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 8px; }
+  #population-controls input, #population-controls select { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; margin: 3px 0 7px; background: var(--panel); color: var(--ink); border: 1px solid var(--edge); border-radius: 3px; padding: 8px; }
   .population-search { display: flex; align-items: center; gap: 8px; }
   .population-search input { flex: 1; }
   #people-filter-details summary { cursor: pointer; min-height: 44px; padding: 10px 0; color: var(--ink); }
@@ -288,9 +390,39 @@
   .bars span { color: var(--dim); }
   .bars i { display: block; height: 8px; background: var(--raise); border: 1px solid var(--line); }
   .bars i b { display: block; height: 100%; background: var(--acc); }
+  /* The People panel (TODO 21d to 21g): fact, estimate and what someone holds in mind look different (21a). */
+  .est { border-bottom: 1px dotted currentColor; }
+  .est::before { content: "≈ "; color: var(--dim); }
+  ul.mind li, .mindline { color: var(--mind); }
+  .trait { color: var(--trait); }
+  .urgent { color: var(--urgent); font-weight: 600; }
+  .because { display: block; color: var(--ink); font-size: var(--t2); margin-top: .15rem; font-weight: 400; }
+  .small.block { display: block; }
+  .fmark { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 2px; font: 700 11px var(--sans); color: #0c1113; border: 1px solid #0c1113; margin-right: 6px; vertical-align: -3px; }
+  .linkish.inline { min-height: 0; padding: 0; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  #panes .head { display: flex; flex-direction: row-reverse; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  #panes .head h3 { margin-top: .5rem; }
+  .btn.pin { flex: 0 0 auto; }
+  #panes .back { background: none; border: 0; color: var(--acc); min-height: 44px; padding: 0; }
+  #panes .now { margin: .5rem 0; padding: .5rem .65rem; background: var(--raise); border-left: 3px solid var(--edge); }
+  #panes .now.bad { border-left-color: var(--urgent); }
+  .problem { display: block; width: 100%; text-align: left; background: none; border: 0; border-left: 3px solid var(--urgent); padding: .35rem 0 .35rem .65rem; margin: .35rem 0; min-height: 44px; }
+  .problem b { color: var(--urgent); }
+  .filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 .6rem; }
+  .filters .btn { min-height: 44px; padding: 0 .7rem; font-size: var(--t2); }
+  details.fold { border-top: 1px solid var(--line); }
+  details.fold > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+  details.fold[open] > summary { color: var(--acc); }
+  .kv.big dd { font-size: var(--t3); }
+  .graph .gx { display: flex; justify-content: space-between; gap: 8px; font-size: var(--t1); color: var(--dim); }
+  .graph canvas { height: 55px; border: 0; background: none; }
+  ul.log { list-style: none; padding: 0; margin: .3rem 0; }
+  ul.log li { margin: .3rem 0; }
+  #panes h3 { margin-top: .9rem; }
+  #panes > h3:first-child, #panes > .filters + h3 { margin-top: .2rem; }
   #chart { display: block; width: 100%; height: 84px; margin: .2rem 0 .6rem; border: 1px solid var(--line); background: var(--bg); }
   @media (max-width: 860px) {
-    #run { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 38dvh); }
+    #run { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) minmax(0, 38dvh); }
     #side { border-left: 0; border-top: 1px solid var(--line); }
   }
 </style>
@@ -332,10 +464,33 @@
     <h1 id="setup-title"></h1>
     <p id="setup-note"></p>
   </div>
-  <h2 class="shelf" id="presets-head">Starting points</h2>
-  <div class="presets" id="presets" role="group" aria-labelledby="presets-head"></div>
-  <h2 class="shelf">Every setting</h2>
-  <form id="form" autocomplete="off"></form>
+  <!-- Three layers (TODO 21c): Start, Customise, Model, and one search over all of them. The
+       Physics sandbox keeps one layer, as it was. -->
+  <div class="layers" id="layers" role="tablist" aria-label="Settings" hidden>
+    <button type="button" role="tab" data-layer="start" aria-selected="true">Start</button>
+    <button type="button" role="tab" data-layer="custom" aria-selected="false">Customise</button>
+    <button type="button" role="tab" data-layer="model" aria-selected="false">Model</button>
+    <input type="search" id="find" placeholder="Search every setting" aria-label="Search every setting, its words and its choices" autocomplete="off">
+  </div>
+  <form id="form" autocomplete="off">
+    <section id="layer-start">
+      <h2 class="shelf" id="presets-head">Starting points</h2>
+      <div class="presets" id="presets" role="group" aria-labelledby="presets-head"></div>
+      <h2 class="shelf" id="ess-head" hidden>The essentials</h2>
+      <div class="ess" id="ess" hidden></div>
+    </section>
+    <h2 class="shelf" id="flat-head" hidden>Every setting</h2>
+    <div class="cols" id="flat-cols" hidden></div>
+    <section id="layer-custom" hidden>
+      <div class="ctabs" id="ctabs" role="tablist" aria-label="Customise"></div>
+      <div class="cols" id="custom-cols"></div>
+    </section>
+    <section id="layer-model" hidden>
+      <p class="model-note">Each switch here turns one part of the simulation off, or back to how the engine worked before that part was built. They are here to compare: run the same seed one way and then the other. A world needs none of them changed. The last two are about this computer, not the world.</p>
+      <div class="cols" id="model-cols"></div>
+    </section>
+    <p id="find-none" class="small" hidden>No setting has those words. Try fewer, or another way of saying it.</p>
+  </form>
   <div class="launch">
     <span class="changed" id="changed"></span>
     <button class="btn quiet" id="dice" type="button">Surprise me</button>
@@ -347,21 +502,31 @@
 <!-- ═══ 3 · the world ══════════════════════════════════════════════════════ -->
 <div id="run" hidden>
   <div id="bar">
-    <button class="btn" id="to-setup">← Settings</button>
+    <button class="btn" id="to-setup" aria-label="Back to setup">←<span class="long"> Setup</span></button>
     <span class="title" id="run-title"></span>
     <button class="btn" id="pause" aria-pressed="false">Pause</button>
-    <span class="cap" aria-hidden="true">Speed</span>
+    <span class="cap" id="speed-cap" aria-hidden="true">Speed</span>
     <span class="seg" id="speeds" role="group" aria-label="Speed"></span>
-    <span class="cap" aria-hidden="true">Colour</span>
+    <span class="cap" id="views-cap" aria-hidden="true">Colour</span>
     <span class="seg" id="views" role="group" aria-label="Colour by"></span>
+    <!-- The People bar (TODO 21d): the date and season, people and their change, what is going wrong,
+         then the layer, the rules and everything else behind ⋯. -->
+    <span class="date" id="date" hidden></span>
+    <button class="btn prob" id="probs" type="button" hidden></button>
+    <span class="spacer"></span>
+    <span class="menu-wrap"><button class="btn" id="layer-btn" type="button" aria-expanded="false" aria-controls="layer-menu" hidden>Layer ▾</button><span class="menu" id="layer-menu" role="menu" hidden></span></span>
+    <button class="btn" id="rules-btn" type="button" aria-pressed="false" hidden>Rules</button>
     <button class="btn" id="units" aria-pressed="false" title="Draw each army's units, their facing and their officers, when zoomed in" hidden>Units</button>
     <button class="btn" id="fit">Whole world</button>
     <button class="btn" id="again">Start again</button>
     <button class="btn" id="share">Copy link</button>
+    <span class="menu-wrap"><button class="btn" id="more-btn" type="button" aria-expanded="false" aria-controls="more-menu" aria-label="More: run until, headlines, the whole world, the key, start again, copy link" hidden>⋯</button><span class="menu right" id="more-menu" role="menu" hidden></span></span>
   </div>
   <div id="stage">
     <canvas id="view"></canvas>
-    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong><button type="button" class="shut" id="key-shut" aria-expanded="true" aria-controls="people-key-body" aria-label="Hide the key">×</button><span class="body" id="people-key-body">At 1×, one day = 5 minutes.<br>Colour follows the selected view (faction by default). Each box is a person; smaller boxes are children; a white ring marks a leader. A gold line joins people talking. Zoom in to see carried tools, packs, weapons and shields.<br>Tap a person to zoom in and follow their work.</span></div>
+    <!-- What the layer showing means (TODO 21d): a corner, never the middle; it folds to its name. -->
+    <div id="legend" hidden><button type="button" class="shut" id="legend-shut" aria-expanded="true" aria-label="Fold the legend">×</button><div id="legend-body"></div></div>
+    <button type="button" id="headline" hidden></button>
     <div id="rail" hidden>
       <div id="tools" role="group" aria-label="What a tap does"></div>
       <div id="palette" hidden></div>
@@ -404,6 +569,7 @@
   function show(name) {
     for (const k in screens) screens[k].hidden = k !== name;
     document.body.classList.toggle("running", name === "run");
+    document.body.classList.toggle("people", mode === "people");
     document.body.classList.toggle("setting", name === "setup");
     if (name !== "run") stopRun();
     /* The try-out of a world belongs to the settings screen and stops when it is left. */
@@ -491,10 +657,32 @@
     }
   }
 
+  /* ── which layer each People setting is on (TODO 21c, 2026-11-25) ──────────────────────
+     Ric chose the measured fourteen for Start (UI-REVAMP.md §3), a Model layer for the switches
+     that turn a newer part of the engine back to how it was, and one Faith switch with its parts
+     folded under it. The list, setting by setting, with why, is in TODO 21c. A setting is on
+     Model when what it chooses is how the engine computes something (a soldier walking alone, a
+     building that never falls) rather than a way a world or a society can really be; one whose
+     subject is real stays on Customise even when it carries an "as before" choice (Men and women,
+     Who marries whom, Babies and mothers, Land as property, Government). Nothing is removed: every
+     key keeps its place in a link, so a link made before this opens the same world. */
+  const ESSENTIAL = ["map", "people", "factions", "era", "places", "rich", "winter", "money", "rule", "neighbours", "war", "aggression", "plague", "seed"];
+  const MODEL = new Set(["landchange", "health", "sleep", "bread", "ruins", "scavenge", "dirt", "tills", "poor", "soldierPay", "mint", "tech", "experience", "discovery", "heardOf",
+    "armies", "campaign", "oldArms", "generals", "siegecraft", "ransom", "smallWar", "warBooks", "warBy", "formations", "raids", "battle", "taking", "column", "pursuit", "passage",
+    "caravans", "armySick", "homeFront", "feuds", "builtRoads", "waterWork", "meeting", "dispersion", "plenty", "records", "rate"]);
+  const FAITH_PARTS = new Set(["favour", "prophets", "witches", "faithKids", "faithTrade", "folk", "faithRules", "fading", "fromTop", "faithsMeet", "faithDrift", "faithWealth", "faithYear",
+    "comfort", "faithLaw", "faithRank", "lifeRites", "faithSchools", "faithKeeps", "truce", "martyrs", "flight", "greatWorks", "pilgrims", "sacredLand", "faithHealth"]);
+  const CTABS = [["land", "Land and climate", ["The land", "The year"]], ["lives", "People and lives", ["How it starts", "The people", "Lives", "Detail", "Time"]], ["money", "Money", ["Money"]],
+    ["power", "Society and power", ["Power", "Their nature"]], ["war", "War", ["War"]], ["minds", "Minds and faith", ["Minds"]]];
+  let layer = "start", ctab = "land";
+  const layerOf = k => mode !== "people" ? "flat" : ESSENTIAL.includes(k) ? "start" : MODEL.has(k) ? "model" : "custom";
+
   function buildSetup() {
-    const E = ENGINES[mode];
+    const E = ENGINES[mode], people = mode === "people";
     $("setup-title").textContent = E.title;
     $("setup-note").textContent = E.note;
+    $("layers").hidden = !people; $("ess").hidden = !people; $("ess-head").hidden = !people;
+    $("flat-cols").hidden = $("flat-head").hidden = people;
     const pr = $("presets"); pr.textContent = "";
     for (const p of E.api.PRESETS) {
       const b = document.createElement("button");
@@ -503,34 +691,51 @@
       b.addEventListener("click", () => { values = E.api.clean(p.set); preset = p.id; fill(); });
       pr.appendChild(b);
     }
-    const form = $("form"); form.textContent = "";
+    const form = $("form");
+    $("flat-cols").textContent = "";
+    $("ess").textContent = ""; $("custom-cols").textContent = ""; for (const c of form.querySelectorAll(".canrun-out")) c.remove(); $("model-cols").textContent = "";
     for (const k in controls) delete controls[k];
+    const essRows = new Map();
     E.api.SCHEMA.forEach((g, gi) => {
-      const d = document.createElement("details"); d.className = "group"; d.open = gi < 2 || window.innerWidth > 860;
-      const s = document.createElement("summary");
-      s.innerHTML = "<h2>" + esc(g.title) + "</h2><span class='sum'></span>";
-      d.appendChild(s);
+      const panels = {};
+      const panel = where => {
+        if (panels[where]) return panels[where];
+        const d = document.createElement("details"); d.className = "group"; d.open = !people ? gi < 2 || window.innerWidth > 860 : true;
+        d.dataset.group = g.title;
+        if (people && where === "custom") d.dataset.ctab = (CTABS.find(t => t[2].includes(g.title)) || CTABS[0])[0];
+        const s = document.createElement("summary");
+        s.innerHTML = "<h2>" + esc(g.title) + "</h2><span class='sum'></span>";
+        d.appendChild(s);
+        $(where === "flat" ? "flat-cols" : where === "model" ? "model-cols" : "custom-cols").appendChild(d);
+        return panels[where] = d;
+      };
+      let faithParts = null;
       for (const it of g.items) {
+        const where = layerOf(it.key);
         const row = document.createElement("div"); row.className = "row";
+        row.dataset.key = it.key; row.dataset.layer = where;
         const id = "set-" + it.key;
         let ctl, numeric = null;
+        const sum = () => where === "start" ? null : panel(where).querySelector(".sum");
         if (it.type === "own") {
           row.innerHTML = "<div class='rhead'><span class='lab'>Whose nature</span></div><div class='ntabs' id='ntabs' role='tablist' aria-label='Whose nature'></div><p class='nnote' id='nnote'></p>";
           /* No control of its own: the tabs and the ten sliders below are it. Listed so the
              group's summary and the count of changed settings include it. */
-          controls[it.key] = { it: it, row: row, ctl: {}, numeric: null, val: null, group: s.querySelector(".sum") };
-          d.appendChild(row);
+          controls[it.key] = { it: it, row: row, ctl: {}, numeric: null, val: null, group: sum() };
+          panel(where).appendChild(row);
           continue;
         }
+        const live = people && it.live && where !== "start" ? "<span class='live-tag'>can change while it runs</span>" : "";
+        const info = people && it.help ? "<button type='button' class='info' aria-expanded='false' aria-controls='" + id + "-help' aria-label='About " + esc(it.label) + "'>i</button>" : "";
         if (it.type === "range") {
           /* Every physics number can be typed. Of the People settings, the
              one with no top can (TODO item 3): the slider sweeps to its
              convenient end and the box goes on past it. */
           const typed = mode === "physics" || it.inputMax != null;
           const lo = it.inputMin == null ? it.min : it.inputMin;
-          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + "</label><span class='valbox'>" +
+          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + live + "</label><span class='valbox'>" +
             (typed ? "<input type='number' required id='" + id + "' min='" + lo + "'" + (isFinite(it.inputMax) ? " max='" + it.inputMax + "'" : "") + " step='" + (it.integer ? "1" : "any") + "'><span class='val' id='" + id + "-words'></span>" : "<span class='val'></span>") +
-            "</span></div><input type='range' id='" + id + (typed ? "-slider" : "") + "' aria-label='" + esc(it.label) + "' min='0' max='1000' step='1'>";
+            info + "</span></div><input type='range' id='" + id + (typed ? "-slider" : "") + "' aria-label='" + esc(it.label) + "' min='0' max='1000' step='1'>";
           ctl = row.querySelector("input[type=range]");
           numeric = row.querySelector("input[type=number]");
           ctl.addEventListener("input", () => { const v = posToValue(it, +ctl.value); if (natureTab && NATURE.includes(it.key)) setOwn(it.key, v); else values[it.key] = v; if (numeric) numeric.value = v; preset = null; refresh(); });
@@ -542,25 +747,88 @@
             });
           }
         } else if (it.type === "select") {
-          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + "</label></div><select id='" + id + "'>" +
+          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + live + "</label><span class='valbox'>" + info + "</span></div><select id='" + id + "'>" +
             it.options.map(o => "<option value='" + esc(o[0]) + "'>" + esc(o[1]) + "</option>").join("") + "</select>";
           ctl = row.querySelector("select");
           ctl.addEventListener("change", () => { values[it.key] = ctl.value; preset = null; refresh(); });
         } else {
-          row.innerHTML = "<div class='rhead'><span class='lab'>" + esc(it.label) + "</span><span class='valbox'><label class='tog'><input type='checkbox' id='" + id + "'><span class='val'></span></label></span></div>";
+          row.innerHTML = "<div class='rhead'><span class='lab'>" + esc(it.label) + live + "</span><span class='valbox'><label class='tog'><input type='checkbox' id='" + id + "'><span class='val'></span></label>" + info + "</span></div>";
           ctl = row.querySelector("input");
           ctl.addEventListener("change", () => { values[it.key] = ctl.checked; preset = null; refresh(); });
         }
-        if (it.help) { const h = document.createElement("p"); h.className = "help"; h.textContent = it.help; row.appendChild(h); }
+        if (it.help) { const h = document.createElement("p"); h.className = "help"; h.id = id + "-help"; h.textContent = it.help; row.appendChild(h); }
+        const ib = row.querySelector(".info");
+        if (ib) ib.addEventListener("click", () => { const open = row.classList.toggle("helpopen"); ib.setAttribute("aria-expanded", String(open)); });
         /* Under "How many people": what this computer makes of the world as set (`tryOut`). */
-        if (mode === "people" && it.key === "people") { const c = document.createElement("p"); c.className = "help canrun"; c.id = "canrun"; c.setAttribute("role", "status"); row.appendChild(c); }
-        controls[it.key] = { it: it, row: row, ctl: ctl, numeric: numeric, val: row.querySelector(".val"), group: s.querySelector(".sum") };
-        d.appendChild(row);
+        /* On Start it stands under the essentials, the width of them (21c). */
+        if (people && it.key === "people") { const c = document.createElement("p"); c.className = "canrun canrun-out"; c.id = "canrun"; c.setAttribute("role", "status"); $("ess").after(c); }
+        /* Where it lives, said in search results. */
+        const tag = document.createElement("span"); tag.className = "where"; tag.hidden = true;
+        tag.textContent = where === "start" ? "Start" : where === "model" ? "Model · " + g.title : "Customise · " + ((CTABS.find(t => t[2].includes(g.title)) || CTABS[0])[1]);
+        row.querySelector(".lab").appendChild(tag);
+        controls[it.key] = { it: it, row: row, ctl: ctl, numeric: numeric, val: row.querySelector(".val"), group: sum() };
+        if (where === "start") { essRows.set(it.key, row); continue; }
+        /* The parts of faith, folded under the one Faith switch (Ric, 2026-11-25). */
+        if (people && FAITH_PARTS.has(it.key)) {
+          if (!faithParts) {
+            faithParts = document.createElement("details"); faithParts.className = "parts"; faithParts.dataset.fold = "faith-parts";
+            faithParts.innerHTML = "<summary>Choose the parts of faith (" + [...FAITH_PARTS].length + ")</summary>";
+            const fr = controls.faith && controls.faith.row;
+            if (fr && fr.parentNode === panel(where)) fr.after(faithParts); else panel(where).appendChild(faithParts);
+          }
+          faithParts.appendChild(row);
+          continue;
+        }
+        panel(where).appendChild(row);
       }
-      form.appendChild(d);
     });
+    for (const k of ESSENTIAL) if (essRows.has(k)) $("ess").appendChild(essRows.get(k));
+    if (people) buildCtabs();
+    showLayer(people ? layer : "flat");
     fill();
   }
+  function buildCtabs() {
+    const bar = $("ctabs"); bar.textContent = "";
+    for (const t of CTABS) {
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "tab"); b.dataset.ctab = t[0]; b.textContent = t[1];
+      b.setAttribute("aria-selected", String(t[0] === ctab));
+      b.addEventListener("click", () => { ctab = t[0]; showLayer("custom"); });
+      bar.appendChild(b);
+    }
+  }
+  /* Which layer is showing; while a search is typed, every layer's matches instead. */
+  function showLayer(l) {
+    const q = ($("find").value || "").trim().toLowerCase(), finding = mode === "people" && !!q;
+    if (l !== "flat") layer = l;
+    document.body.classList.toggle("finding", finding);
+    for (const b of $("layers").querySelectorAll("button[data-layer]")) b.setAttribute("aria-selected", String(!finding && b.dataset.layer === layer));
+    for (const b of $("ctabs").children) b.setAttribute("aria-selected", String(b.dataset.ctab === ctab));
+    $("layer-start").hidden = !(l === "flat" || finding || layer === "start");
+    $("presets").hidden = $("presets-head").hidden = finding;
+    $("layer-custom").hidden = mode !== "people" || !(finding || layer === "custom");
+    $("layer-model").hidden = mode !== "people" || !(finding || layer === "model");
+    $("ctabs").hidden = finding;
+    let found = 0;
+    for (const k in controls) {
+      const c = controls[k], hay = (c.it.label + " " + (c.it.help || "") + " " + (c.it.options ? c.it.options.map(o => o[1]).join(" ") : "")).toLowerCase();
+      const hit = !finding || q.split(/\s+/).every(w => hay.includes(w));
+      c.row.hidden = !hit; if (finding && hit) found++;
+      const tag = c.row.querySelector(".where"); if (tag) tag.hidden = !finding;
+    }
+    for (const d of $("form").querySelectorAll("details.group")) {
+      const inTab = !d.dataset.ctab || finding || d.dataset.ctab === ctab;
+      d.hidden = !inTab || (finding && !d.querySelector(".row:not([hidden])"));
+      if (finding) d.open = true;
+    }
+    const parts = $("form").querySelector("details.parts"); if (parts && finding) parts.open = true;
+    $("ess").hidden = mode !== "people" || (finding && !$("ess").querySelector(".row:not([hidden])"));
+    $("ess-head").hidden = $("ess").hidden || finding;
+    if (finding) for (const id of ["layer-custom", "layer-model"]) $(id).hidden = !$(id).querySelector("details.group:not([hidden])");
+    $("layer-model").querySelector(".model-note").hidden = finding;
+    $("find-none").hidden = !finding || found > 0;
+  }
+  for (const b of $("layers").querySelectorAll("button[data-layer]")) b.addEventListener("click", () => { $("find").value = ""; showLayer(b.dataset.layer); });
+  $("find").addEventListener("input", () => showLayer(layer));
   function fill() {
     for (const k in controls) {
       const c = controls[k], v = shown(k);
@@ -590,7 +858,14 @@
       if (c.numeric) c.numeric.disabled = !on;
       if (v !== E.DEFAULTS[k]) { changed++; if (on) { if (!sums.has(c.group)) sums.set(c.group, []); sums.get(c.group).push(c.it.label.toLowerCase() + ": " + words(c.it, v)); } }
     }
-    for (const k in controls) controls[k].group.textContent = "";
+    for (const k in controls) if (controls[k].group) controls[k].group.textContent = "";
+    sums.delete(null);
+    /* How many are changed on each layer, beside its name (21c). */
+    if (mode === "people") {
+      const by = { start: 0, custom: 0, model: 0 };
+      for (const k in controls) if (values[k] !== E.DEFAULTS[k] && by[controls[k].row.dataset.layer] != null) by[controls[k].row.dataset.layer]++;
+      for (const b of $("layers").querySelectorAll("button[data-layer]")) b.innerHTML = { start: "Start", custom: "Customise", model: "Model" }[b.dataset.layer] + (by[b.dataset.layer] ? "<span class='n'>" + by[b.dataset.layer] + " changed</span>" : "");
+    }
     for (const [el, list] of sums) el.textContent = list.slice(0, 2).join(" · ") + (list.length > 2 ? " · +" + (list.length - 2) : "");
     $("changed").textContent = changed ? changed + (changed === 1 ? " setting" : " settings") + " changed from the usual" : "Everything as usual";
     for (const b of $("presets").children) b.setAttribute("aria-pressed", String(b.dataset.id === preset));
@@ -720,7 +995,10 @@
   for (const d of document.querySelectorAll(".door")) d.addEventListener("click", () => openSetup(d.dataset.mode));
   function launchSetup() {
     // Invalid/unfinished entries stay visible until corrected, never launch an old value.
-    for (const c of Object.values(controls)) if (c.numeric && !c.numeric.disabled && !c.numeric.checkValidity()) c.row.closest("details").open = true;
+    for (const c of Object.values(controls)) if (c.numeric && !c.numeric.disabled && !c.numeric.checkValidity()) {
+      if (mode === "people") { $("find").value = ""; if (c.row.dataset.layer !== layer) showLayer(c.row.dataset.layer); }
+      const d = c.row.closest("details"); if (d) { d.open = true; if (d.dataset.ctab && d.dataset.ctab !== ctab) { ctab = d.dataset.ctab; showLayer("custom"); } }
+    }
     if ($("form").reportValidity()) startRun();
   }
   $("form").addEventListener("submit", e => { e.preventDefault(); launchSetup(); });
@@ -902,21 +1180,30 @@
       if (m.bl) blArr = m.bl;   // TODO 16
       if (m.tracks) { trackMap = new Map(); for (let k = 0; k < m.tracks.length; k += 2) trackMap.set(m.tracks[k], m.tracks[k + 1]); }
       if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
-      if (m.fs) { fs = m.fs; washCheck(); }
+      if (m.fs) { fs = m.fs; giveColours(fs); washCheck(); }
       if (m.grounds) takeGrounds(m.grounds);   // TODO 15.5d: before the crops, which are worked out from how well it farms
       if (m.land) takeLand(m.land);
       if (picked && picked.person && m.picked && m.picked.id === picked.person && !m.picked.gone) picked.name = m.picked.name;
+      if (m.news) { if (newsSince >= 0) takeNews(m.news); newsSince = m.lastEvent; }
+      drawLegend();
     } else if (m.t === "pane") {
       paneAsked = false;
       const fresh = m.key === paneKey();
-      if (fresh && !(m.idle && (paneHeld || $("panes").querySelector("input:focus")))) { paneData = m; if (tab === "people") populationPage = m.page; renderPane(); }
+      if (fresh && !(m.idle && (paneHeld || $("panes").querySelector("input:focus")))) { paneData = m; recolour(m); if (tab === "people") populationPage = m.page; renderPane(); }
       if (paneWant || !fresh) { paneWant = false; pane(); }
     } else if (m.t === "at") {
-      picked = m.person ? { person: m.person.id, name: m.person.name } : m.village ? { village: m.village.id } : null;
-      follow = !!m.person;
-      if (follow) cam.s = Math.max(cam.s, 48);
-      if (picked) setTab("look"); else pane();
+      /* Anything drawn answers a tap (TODO 21e). Following is for people, and only by choice now:
+         a tap selects, and "Follow" on their page keeps the camera with them. */
+      picked = m.person ? { person: m.person.id, name: m.person.name } : m.village ? { village: m.village.id } : m.thing || null;
+      follow = false;
+      if (picked) { seen.push(picked); setTab("look"); } else pane();
       $("hint").hidden = true;
+    } else if (m.t === "reached") {
+      /* The keeper stopped where it was asked to, or for news of something pinned. */
+      paused = true; $("pause").textContent = "Resume"; $("pause").setAttribute("aria-pressed", "true");
+      if (m.event) { headQueue.unshift(Object.assign({}, m.event, { pin: true })); headUntil = 0; }
+      else { headQueue.unshift({ id: -1, kind: "", text: m.text, weight: 0, x: cam.x, y: cam.y, pin: false }); headUntil = 0; }
+      pane();
     } else if (m.t === "did") {
       if (m.msg) ruleMsg = m.msg;
       pane();
@@ -933,12 +1220,16 @@
     for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; reached = 0;
     tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
+    slotOf = new Map();
     snap = null; vs = []; fs = []; landNow = null; landStale = false; bigAt = 0; landDirty = null; washKey = ""; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
+    newsSince = -1; headQueue = []; headNow = null; headUntil = 0; startPeople = 0; lastProbs = ""; seen = []; pins = []; legendKey = ""; lastLook = null; keyOpen = false; newsFilter = "all"; peopleAll = false;
     paneData = null; paneAsked = false; paneWant = false; ruleMsg = "";
     setHash(toHash(true));
     $("run-title").textContent = ENGINES[mode].title;
     $("pause").textContent = "Pause"; $("pause").setAttribute("aria-pressed", "false");
-    $("people-key").hidden = mode !== "people";
+    $("legend").hidden = mode !== "people"; $("headline").hidden = true;
+    /* On a phone the legend starts folded to its name, so the middle of the map is clear (21d). */
+    if (narrow() !== $("legend").classList.contains("packed")) $("legend-shut").click(); $("clock").hidden = mode === "people";   // the bar says the date (21d)
     $("slow").hidden = true; $("panes").textContent = ""; $("clock").textContent = "";
     buildBar(); buildTools(); buildTabs();
     show("run");
@@ -958,28 +1249,159 @@
     if (keeper) { keeper.stop(); keeper = null; making = 0; if (mode === "people") world = null; }
   }
 
-  function buildBar() {
-    $("units").hidden = mode !== "people";
-    $("units").setAttribute("aria-pressed", String(showUnits));
+  /* The layers of the People map (TODO 21d; Ric chose all eleven, 2026-11-25). Each answers a
+     "where" question and says in its legend what its colours mean. The colour comes from a number
+     the keeper sends per person (`tint` in people-host.js); land, roads and war also change what
+     is drawn under the people. */
+  const LAYERS = [
+    ["faction", "Factions", "Whose people are where"],
+    ["mood", "Mood", "Where people are content"],
+    ["views", "Beliefs", "Keep or share what is grown"],
+    ["wealth", "Wealth", "Where the coins are"],
+    ["hunger", "Hunger", "Who is going hungry now"],
+    ["sick", "Sickness", "Who is sick, who has had it"],
+    ["loyal", "Loyalty", "How loyal each is to their leader"],
+    ["faith", "Faith", "Which faith each holds"],
+    ["land", "Who holds the land", "Each people's land, strongly washed"],
+    ["roads", "Roads and trade", "Roads, paths and who carries goods"],
+    ["war", "War", "Soldiers, and who is at war"],
+  ];
+  const PEOPLE_SPEEDS = [0.5, 1, 2, 4, 8, 16, 50, 100, 250, 1000];
+  const speedName = r => r >= 1000 ? "Max" : r + "×";
+  let headlinesMode = "big", pauseOnPin = false;   // what may interrupt (21f): "big", "pins" or "none"
+  function closeMenus(except) {
+    for (const b of document.querySelectorAll("#bar [aria-expanded]")) {
+      const m = $(b.getAttribute("aria-controls"));
+      if (m && m !== except) { m.hidden = true; b.setAttribute("aria-expanded", "false"); }
+    }
+  }
+  function menuButton(btn, fill) {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const m = $(btn.getAttribute("aria-controls")), open = m.hidden;
+      closeMenus(m);
+      if (open) { fill(m); m.hidden = false; btn.setAttribute("aria-expanded", "true"); const first = m.querySelector("button, input"); if (first) first.focus(); }
+      else { m.hidden = true; btn.setAttribute("aria-expanded", "false"); }
+    });
+  }
+  document.addEventListener("click", e => { if (!e.target.closest(".menu")) closeMenus(null); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && document.querySelector(".menu:not([hidden])")) { closeMenus(null); e.preventDefault(); } });
+  function item(label, run, checked, note) {
+    const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", checked == null ? "menuitem" : "menuitemradio");
+    if (checked != null) b.setAttribute("aria-checked", String(!!checked));
+    b.textContent = label;
+    b.addEventListener("click", e => { e.stopPropagation(); closeMenus(null); run(); });
+    if (note) { const n = document.createElement("span"); n.className = "note"; n.textContent = note; const w = document.createElement("span"); w.append(b, n); return w; }
+    return b;
+  }
+  const narrow = () => window.matchMedia && window.matchMedia("(max-width: 620px)").matches;
+  const head = text => { const h = document.createElement("span"); h.className = "hd"; h.textContent = text; return h; };
+  function setRate(r) { rate = r; reached = 0; tellClock(); buildSpeeds(); }
+  function buildSpeeds() {
     const sp = $("speeds"); sp.textContent = "";
-    const list = mode === "physics" ? [0.25, 0.5, 1, 2, 4] : [0.5, 1, 2, 4, 8, 16, 50, 100, 250, 1000];
-    if (list.indexOf(rate) < 0) list.push(rate);
-    list.sort((a, b) => a - b);
-    for (const r of list) {
-      const b = document.createElement("button"); b.className = "btn"; b.textContent = r >= 1000 && mode === "people" ? "Max" : r + "×";
+    if (mode === "physics") {
+      const list = [0.25, 0.5, 1, 2, 4]; if (list.indexOf(rate) < 0) list.push(rate); list.sort((a, b) => a - b);
+      for (const r of list) {
+        const b = document.createElement("button"); b.className = "btn"; b.textContent = r + "×";
+        b.setAttribute("aria-pressed", String(r === rate));
+        b.addEventListener("click", () => setRate(r));
+        sp.appendChild(b);
+      }
+      return;
+    }
+    /* Three in the bar and every step behind ▾ (Ric chose "Three plus a menu", 2026-11-25). The one
+       chosen from the menu stands in the bar beside them. */
+    const shown = [1, 16, 1000]; if (shown.indexOf(rate) < 0) shown.push(rate); shown.sort((a, b) => a - b);
+    for (const r of shown) {
+      const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = speedName(r);
       b.setAttribute("aria-pressed", String(r === rate));
-      b.addEventListener("click", () => { rate = r; reached = 0; tellClock(); for (const o of sp.children) o.setAttribute("aria-pressed", String(o === b)); });
+      b.addEventListener("click", () => setRate(r));
       sp.appendChild(b);
     }
+    const wrap = document.createElement("span"); wrap.className = "menu-wrap";
+    const more = document.createElement("button"); more.className = "btn"; more.type = "button"; more.id = "speed-btn"; more.textContent = "▾";
+    more.setAttribute("aria-label", "Every speed"); more.setAttribute("aria-expanded", "false"); more.setAttribute("aria-controls", "speed-menu");
+    const menu = document.createElement("span"); menu.className = "menu"; menu.id = "speed-menu"; menu.setAttribute("role", "menu"); menu.hidden = true;
+    wrap.append(more, menu); sp.appendChild(wrap);
+    menuButton(more, m => { m.textContent = ""; m.appendChild(head("At 1× a day takes five minutes")); for (const r of PEOPLE_SPEEDS) m.appendChild(item(speedName(r) + (r === 16 ? " — the fastest that keeps to the clock" : r === 1000 ? " — as fast as this computer goes" : ""), () => setRate(r), r === rate)); });
+  }
+  function setLayer(k) {
+    viewMode = k;
+    $("layer-btn").textContent = "Layer: " + LAYERS.find(l => l[0] === k)[1] + " ▾";
+    legendKey = ""; drawLegend();
+  }
+  function runUntil(kind) {
+    paused = false; $("pause").textContent = "Pause"; $("pause").setAttribute("aria-pressed", "false");
+    if (keeper && world) keeper.send({ t: "clock", rate: rate, paused: document.hidden, until: kind ? { kind: kind } : null });
+  }
+  function buildBar() {
+    const people = mode === "people";
+    $("units").hidden = true;
+    for (const id of ["date", "layer-btn", "rules-btn", "more-btn"]) $(id).hidden = !people;
+    for (const id of ["views", "views-cap", "fit", "again", "share"]) $(id).hidden = people;
+    $("probs").hidden = true;
+    $("units").setAttribute("aria-pressed", String(showUnits));
+    buildSpeeds();
     const vw = $("views"); vw.textContent = "";
-    const kinds = mode === "physics" ? [["kind", "Kind"], ["heat", "Heat"], ["speed", "Speed"]]
-                                     : [["faction", "Factions"], ["mood", "Mood"], ["views", "Beliefs"], ["wealth", "Wealth"]];
+    if (people) { setLayer("faction"); return; }
+    const kinds = [["kind", "Kind"], ["heat", "Heat"], ["speed", "Speed"]];
     viewMode = kinds[0][0];
     for (const k of kinds) {
       const b = document.createElement("button"); b.className = "btn"; b.textContent = k[1];
       b.setAttribute("aria-pressed", String(k[0] === viewMode));
       b.addEventListener("click", () => { viewMode = k[0]; for (const o of vw.children) o.setAttribute("aria-pressed", String(o === b)); });
       vw.appendChild(b);
+    }
+  }
+  menuButton($("layer-btn"), m => {
+    m.textContent = "";
+    for (const l of LAYERS) m.appendChild(item(l[1], () => setLayer(l[0]), l[0] === viewMode, l[2]));
+  });
+  menuButton($("more-btn"), m => {
+    m.textContent = "";
+    m.appendChild(head("Run, then pause"));
+    m.appendChild(item("Run a day", () => runUntil("day")));
+    m.appendChild(item("Run until the next season", () => runUntil("season")));
+    m.appendChild(item("Run a year", () => runUntil("year")));
+    if (snap && snap.until) m.appendChild(item("Stop waiting for " + snap.until, () => runUntil(null)));
+    const lab = document.createElement("label"), box = document.createElement("input");
+    box.type = "checkbox"; box.checked = pauseOnPin;
+    box.addEventListener("change", () => { pauseOnPin = box.checked; sendPins(); });
+    lab.append(box, document.createTextNode("Pause when something happens to what I pinned"));
+    m.appendChild(lab);
+    if (narrow()) {
+      m.appendChild(document.createElement("hr"));
+      m.appendChild(item(tab === "rules" ? "Close the rules" : "Rules of this world", () => $("rules-btn").click()));
+      m.appendChild(head("Layer"));
+      for (const l of LAYERS) m.appendChild(item(l[1], () => setLayer(l[0]), l[0] === viewMode));
+    }
+    m.appendChild(document.createElement("hr"));
+    m.appendChild(head("Headlines over the map"));
+    for (const [k, t] of [["big", "Big events, and anything pinned"], ["pins", "Only what I pinned"], ["none", "None — News keeps them all"]]) m.appendChild(item(t, () => { headlinesMode = k; if (k === "none") $("headline").hidden = true; }, headlinesMode === k));
+    m.appendChild(document.createElement("hr"));
+    m.appendChild(item("Whole world", fit));
+    m.appendChild(item((showUnits ? "Hide" : "Show") + " armies' units", () => { showUnits = !showUnits; }));
+    m.appendChild(item("The map key", () => { setTab("world"); keyOpen = true; pane(); }));
+    m.appendChild(item("Copy link to these settings", () => $("share").click()));
+    m.appendChild(item("Start again", startRun));
+  });
+  $("probs").addEventListener("click", () => setTab("world"));
+  $("rules-btn").addEventListener("click", () => setTab(tab === "rules" ? "world" : "rules"));
+  /* The date and season, people and their change since day 1, how fast, what it is waiting for. */
+  let startPeople = 0, lastProbs = "";
+  function barDate(f) {
+    if (!startPeople) startPeople = f.n;
+    const d = f.days, diff = f.n - startPeople, season = f.season ? f.season[0].toUpperCase() + f.season.slice(1) : "";
+    const html = "<b>" + esc(season) + ", day " + (Math.floor(d % 365) + 1) + "</b><span class='long'> · " + String(Math.floor(d % 1 * 24)).padStart(2, "0") + ":" + String(Math.floor(d % 1 * 1440) % 60).padStart(2, "0") +
+      "</span> · year " + (Math.floor(d / 365) + 1) + " · <b>" + f.n.toLocaleString("en-US") + "</b> people" + (diff ? ", " + (diff > 0 ? "up " : "down ") + Math.abs(diff).toLocaleString("en-US") + " since day 1" : "") +
+      (f.until ? " · <span style='color:var(--acc)'>running until " + esc(f.until) + "</span>" : "");
+    if ($("date").innerHTML !== html) $("date").innerHTML = html;
+    const pr = f.probs || [], key = pr.map(x => x.kind + (x.v != null ? x.v : x.a + "-" + x.b)).join(",");
+    if (key !== lastProbs) {
+      lastProbs = key;
+      $("probs").hidden = !pr.length;
+      $("probs").textContent = pr.length + (pr.length === 1 ? " problem" : " problems");
+      $("probs").setAttribute("aria-label", pr.length + " things going wrong now: " + pr.map(probText).join("; ") + ". Open the Overview.");
     }
   }
   function buildTools() {
@@ -1042,9 +1464,13 @@
     else if (tool === "cool") world.warm(held[0], held[1], brushReach(), -12 * seconds);
   }
 
+  /* Four tabs for People (TODO 21f; Ric: "Talk in News"): Overview, People, News and the Inspector.
+     Talk is News's filter, and the Rules drawer opens from the bar; both are tabs underneath, so
+     what selects them is the tab they belong to. */
+  const TAB_OF = { talk: "news", rules: "" };
   function buildTabs() {
     const names = mode === "physics" ? [["world", "World"], ["look", "Hexagon"]]
-                                     : [["people", "People"], ["factions", "Factions"], ["news", "News"], ["talk", "Talk"], ["look", "Person"], ["world", "World"]];
+                                     : [["world", "Overview"], ["people", "People"], ["news", "News"], ["look", "Inspector"]];
     const el = $("tabs"); el.textContent = "";
     for (const n of names) {
       const b = document.createElement("button"); b.textContent = n[1]; b.dataset.tab = n[0]; b.setAttribute("role", "tab");
@@ -1054,9 +1480,13 @@
     setTab(names[0][0]);
   }
   function setTab(name) {
+    /* Leaving the Overview is "the last look": what moved is counted from here next time. */
+    if (tab === "world" && name !== "world" && mode === "people" && paneData && paneData.tab === "world") lastLook = { day: snap ? snap.days : 0, stats: paneData.stats, eventId: paneData.events.length ? paneData.events[0].id : -1 };
     tab = name;
-    for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === name));
-    $("population-controls").hidden = mode !== "people" || name !== "people";
+    const shownTab = name in TAB_OF ? TAB_OF[name] : name;
+    for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === shownTab));
+    $("rules-btn").setAttribute("aria-pressed", String(name === "rules"));
+    $("population-controls").hidden = mode !== "people" || name !== "people" || !peopleAll;
     $("panes").scrollTop = name === "people" ? populationScroll : name === "talk" ? (selectedExchange ? 0 : talkScroll) : 0; paneAt = 0;
     pane();
   }
@@ -1064,11 +1494,11 @@
   $("to-setup").addEventListener("click", () => { show("setup"); refresh(); });
   $("again").addEventListener("click", startRun);
   /* The key is a note, not furniture: it folds back to the clock line. */
-  $("key-shut").addEventListener("click", () => {
-    const k = $("people-key"), packed = k.classList.toggle("packed");
-    $("key-shut").setAttribute("aria-expanded", String(!packed));
-    $("key-shut").setAttribute("aria-label", packed ? "Show the key" : "Hide the key");
-    $("key-shut").textContent = packed ? "?" : "×";
+  $("legend-shut").addEventListener("click", () => {
+    const k = $("legend"), packed = k.classList.toggle("packed");
+    $("legend-shut").setAttribute("aria-expanded", String(!packed));
+    $("legend-shut").setAttribute("aria-label", packed ? "Open the legend" : "Fold the legend");
+    $("legend-shut").textContent = packed ? "?" : "×";
   });
   $("fit").addEventListener("click", fit);
   $("units").addEventListener("click", () => { showUnits = !showUnits; $("units").setAttribute("aria-pressed", String(showUnits)); });
@@ -1165,7 +1595,7 @@
       picked = i >= 0 ? { body: i } : null;
     } else {
       /* Who is under the finger is the keeper's to say; `hear` takes the answer. */
-      if (keeper && world) keeper.send({ t: "at", seq: ++seq, x: w[0], y: w[1], r: Math.max(0.6, 14 / cam.s) });
+      if (keeper && world) keeper.send({ t: "at", seq: ++seq, x: w[0], y: w[1], r: Math.max(0.002, 16 / cam.s), units: showUnits });   // 16 pixels round the finger at any zoom (21e): closer in, a house or a field can be tapped beside the people in it
       return;
     }
     if (picked) setTab("look"); else pane();
@@ -1223,10 +1653,11 @@
                     /* The fields: every few steps and at most five times a second; a big land,
                        which is a big thing to send, every two seconds. */
                     land: !landNow ? { at: -1, force: true } : big ? (now - bigAt > 2000 ? { at: landNow.at, force: true } : null) : now - bigAt > 200 ? { at: landNow.at, force: false } : null,
-                    fresh: !vs.length });
+                    fresh: !vs.length, since: newsSince });
     }
     if (!snap) return;
     drawPeople(r.width, r.height);
+    headlineTick(now);
     if (snap.rate > 16) {
       /* Twice a second, to two figures: a number rewritten every frame
          shimmers, and the third figure is noise anyway. */
@@ -1345,7 +1776,32 @@
   /* The land is painted from what the keeper last sent: how full each
      square's crop stands (0–255) and which village holds it. The soil and
      the ore came once, when the world was made. */
-  const factionColour = f => (fs[f] ? fs[f].colour : "#b9c4c1");
+  /* Faction colours (TODO 21b; Ric chose Okabe–Ito with marks, 2026-11-25). The engine still gives
+     each faction a colour of its own (`COLOURS` in people.js, untouched: 21 changes no engine); the
+     page gives out these instead. Eight colours that stay apart for the common colour blindnesses,
+     orange last but one because it is near the accent; a letter for each faction on its villages
+     and in every list, so a ninth and beyond are told apart by more than colour. A colour is not
+     given to a new faction while a living one holds it, unless all eight are held. */
+  const PALETTE = ["#56B4E9", "#D55E00", "#009E73", "#CC79A7", "#F0E442", "#0072B2", "#E69F00", "#BBBBBB"];
+  const PALETTE_TEXT = ["#56B4E9", "#F07A3A", "#2EC497", "#D98FB7", "#F0E442", "#5AA7E0", "#E69F00", "#BBBBBB"];   // each clears 4.5:1 on the panel
+  let slotOf = new Map();
+  function giveColours(list) {
+    for (const f of list.slice().sort((a, b) => a.id - b.id)) {
+      if (slotOf.has(f.id)) continue;
+      const held = new Set(); for (const o of list) if (o.alive && slotOf.has(o.id)) held.add(slotOf.get(o.id));
+      let k = 0; while (k < 8 && held.has(k)) k++;
+      slotOf.set(f.id, k < 8 ? k : f.id % 8);
+    }
+    for (const f of list) f.colour = PALETTE[slotOf.get(f.id)];
+  }
+  const factionColour = f => (slotOf.has(f) ? PALETTE[slotOf.get(f)] : "#b9c4c1");
+  const factionText = f => (slotOf.has(f) ? PALETTE_TEXT[slotOf.get(f)] : "#b9c4c1");
+  const factionMark = f => f < 26 ? String.fromCharCode(65 + f) : String.fromCharCode(65 + f % 26) + Math.floor(f / 26);
+  /* What the keeper sends carries the engine's colours; the page's are put in their place. */
+  function recolour(m) {
+    if (m.factions) { giveColours(m.factions); }
+    for (const o of [m.village && m.village.faction, m.person && m.person.faction, m.look && m.look.faction]) if (o && o.id != null) o.colour = factionColour(o.id);
+  }
   /* One pixel a square, written straight into the picture: the soil's own
      colour worked out once, and harvest, ore and holdings laid over it on
      each repaint — plain arithmetic, no colour written out as words.
@@ -1935,7 +2391,78 @@
   /* A person's colour, from the number the keeper sent for the view it was
      asked for: a faction, or a place on one of the ramps. */
   const BELIEF = ["#b9c4c1", "#ffd166", "#7bd88f"];
-  const tintColour = (view, t) => view === "faction" ? factionColour(t) : view === "mood" ? MOOD[t] : view === "views" ? BELIEF[t] : FAST[t];
+  /* The layers' colours (TODO 21d). Hunger and sickness use the urgent red for the need now; loyalty
+     runs from vermillion to sky blue, which stay apart for the common colour blindnesses; faiths
+     take Tol's muted set so a faith is never read as a faction. GREY is "not what this layer shows". */
+  const HUNGER = ["#8fd39a", "#e0c070", "#ef8a7c"], SICK = ["#8a9794", "#ef8a7c", "#56B4E9"], ROADS = [null, "#e0c070", "#c9a0dc", "#56B4E9"];
+  const LOYAL = RAMP([[213, 94, 0], [200, 190, 170], [86, 180, 233]]);
+  const FAITH = ["#88CCEE", "#CC6677", "#DDCC77", "#117733", "#AA4499", "#44AA99", "#999933", "#882255"];
+  const GREY = 65535, GREY_COL = "#4a5559";
+  const tintColour = (view, t) => t === GREY ? GREY_COL : view === "faction" || view === "land" || view === "war" ? factionColour(t) : view === "mood" ? MOOD[t] : view === "views" ? BELIEF[t]
+    : view === "hunger" ? HUNGER[t] : view === "sick" ? SICK[t] : view === "loyal" ? LOYAL[t] : view === "faith" ? FAITH[t % 8] : view === "roads" ? ROADS[t] || GREY_COL : FAST[t];
+  /* The legend: what the layer showing means, and only that. */
+  let legendKey = "";
+  const swatch = (c, t) => "<span class='key'><b style='background:" + c + "'></b>" + esc(t) + "</span>";
+  const ramp = (cols, lo, hi) => "<div class='ramp' style='background:linear-gradient(90deg," + cols.join(",") + ")'></div><div class='ends'><span>" + lo + "</span><span>" + hi + "</span></div>";
+  function drawLegend() {
+    if (mode !== "people") return;
+    const f = snap, L = LAYERS.find(l => l[0] === viewMode);
+    let body = "";
+    if (viewMode === "faction" || viewMode === "land") body = fs.filter(x => x.alive).map(x => "<span class='key'><b style='background:" + factionColour(x.id) + "'></b>" + factionMark(x.id) + " · " + esc(x.name) + "</span>").join("") +
+      (viewMode === "land" ? "<span class='more'>The land is washed in the colour of the people whose village holds it; a white edge is a border.</span>" : "");
+    else if (viewMode === "mood") body = ramp([MOOD[0], MOOD[12], MOOD[23]], "unhappy", "content");
+    else if (viewMode === "views") body = swatch(BELIEF[1], "each should keep what they grow") + swatch(BELIEF[2], "what is grown should be shared") + swatch(BELIEF[0], "sees both sides");
+    else if (viewMode === "wealth") body = ramp([FAST[0], FAST[12], FAST[23]], "no coins", "40 or more");
+    else if (viewMode === "hunger") body = swatch(HUNGER[2], "going hungry now") + swatch(HUNGER[1], "carries under half a day's food") + swatch(HUNGER[0], "fed");
+    else if (viewMode === "sick") body = swatch(SICK[1], "sick now") + swatch(SICK[2], "has had it, and got over it") + swatch(SICK[0], "has not had it");
+    else if (viewMode === "loyal") body = ramp([LOYAL[0], LOYAL[12], LOYAL[23]], "would leave", "loyal");
+    else if (viewMode === "faith") body = (f && f.faiths && f.faiths.length ? f.faiths.map(x => swatch(FAITH[x.id % 8], x.name || "a faith")).join("") : "<span class='more'>Nobody in view holds a faith.</span>") + swatch(GREY_COL, "no faith");
+    else if (viewMode === "roads") body = swatch("#f2e6c4", "a road") + swatch("#b8a986", "a path worn by walking") + swatch(ROADS[1], "carrying food") + swatch(ROADS[2], "carrying goods") + swatch(ROADS[3], "a trader, empty-handed") + swatch(GREY_COL, "everybody else");
+    else if (viewMode === "war") body = (f && f.wars && f.wars.length ? f.wars.map(w => "<span class='key'><b style='background:" + factionColour(w[0]) + "'></b>" + esc(w[2]) + " against " + esc(w[3]) + "</span>").join("") : "<span>No war going on.</span>") +
+      "<span class='more'>Soldiers in their people's colour; everybody else grey. A red ring is a siege.</span>";
+    const key = viewMode + "|" + body;
+    if (key === legendKey) return;
+    legendKey = key;
+    $("legend-body").innerHTML = "<strong>" + esc(L[1]) + "</strong><span class='more'>" + esc(L[2]) + ".</span>" + body + "<span class='more' style='margin-top:4px'>White ring: selected · dashed: followed</span>";
+  }
+  /* A standing problem in a line (TODO 21f). */
+  function probText(x) {
+    return x.kind === "famine" ? "famine in " + x.name + " — " + Math.round(x.hungry / Math.max(1, x.pop) * 100) + "% of " + x.pop + " going hungry"
+      : x.kind === "siege" ? x.name + " under siege, nobody defending it"
+      : x.kind === "sick" ? "sickness in " + x.name + " — " + x.sick + " of " + x.pop + " sick"
+      : "war: " + x.an + " against " + x.bn;
+  }
+  /* Headlines (TODO 21f; Ric: "Headline line"). How big an event is (the engine's weight) and how much
+     it matters to what the visitor follows are ranked apart: a famine is weighed 2.5, so a fixed
+     line at 3.5 would never show one. One at a time, six seconds each; News keeps them all. */
+  const BIG_KINDS = new Set(["famine", "war", "taken", "secede", "coup", "peace", "gone", "subject"]);
+  let newsSince = -1, headQueue = [], headUntil = 0, headNow = null;
+  function takeNews(list) {
+    for (const e of list) {
+      const big = e.weight >= 3.5 || BIG_KINDS.has(e.kind);
+      if (headlinesMode === "none" || (headlinesMode === "pins" && !e.pin) || (!big && !e.pin)) continue;
+      headQueue.push(e);
+    }
+    /* Never a backlog: at speed, keep the pinned and the biggest few. */
+    if (headQueue.length > 4) headQueue = headQueue.sort((a, b) => (b.pin - a.pin) || (b.weight - a.weight)).slice(0, 4).sort((a, b) => a.id - b.id);
+  }
+  function headlineTick(now) {
+    const h = $("headline");
+    if (headNow && now < headUntil) return;
+    headNow = headQueue.shift() || null;
+    if (!headNow) { h.hidden = true; return; }
+    headUntil = now + 6000;
+    h.classList.toggle("mine", !!headNow.pin);
+    h.innerHTML = (BIG_KINDS.has(headNow.kind) ? "<b>" + esc(headNow.kind[0].toUpperCase() + headNow.kind.slice(1)) + "</b> · " : headNow.pin ? "<b style='color:var(--follow)'>Pinned</b> · " : "") + esc(headNow.text) + " <span class='dim'>· tap to go there</span>";
+    h.hidden = false;
+  }
+  $("headline").addEventListener("click", () => {
+    if (!headNow) return;
+    cam.x = headNow.x; cam.y = headNow.y; cam.s = Math.max(cam.s, 14); cam.held = true; follow = false;
+    if (!paused) $("pause").click();
+    if (headNow.id >= 0) { picked = { event: headNow.id }; seen.push(picked); setTab("look"); }
+    headUntil = 0; $("headline").hidden = true;
+  });
   const FLAG = window.WBPeopleHost.FLAG, GEAR = window.WBPeopleHost.GEAR;
   /* What somebody carries, from the keeper's reading of what they own and are
      using (`gear`, one bit a thing): never drawn because of a job alone. */
@@ -1988,7 +2515,20 @@
     ctx.imageSmoothingEnabled = false;
     if ((housesFor !== vs || homesFor !== homesArr) && world) updateHouses();
     if (land) drawLand(W, H, s, ox, oy);
+    /* Who holds the land (TODO 21d): the same wash, laid on twice more. */
+    if (land && viewMode === "land" && washPic && s < 128) { ctx.globalAlpha = 0.9; ctx.drawImage(washPic, ox, oy, w.cols * s, w.rows * s); ctx.drawImage(washPic, ox, oy, w.cols * s, w.rows * s); ctx.globalAlpha = 1; }
     if (land) drawFieldsAndHouses(W, H, s, ox, oy);
+    /* Roads and trade (TODO 21d): every path and road at every zoom, from what the frame already sends. */
+    if (viewMode === "roads" && trackMap) {
+      if (roadsFor !== trackMap) {
+        roadsFor = trackMap; roadPaths = [new Path2D(), new Path2D()];
+        for (const [i, k] of trackMap) { const x = i % w.cols, y = Math.floor(i / w.cols); roadPaths[k === 2 ? 1 : 0].rect(x + 0.2, y + 0.2, 0.6, 0.6); }
+      }
+      ctx.save(); ctx.translate(ox, oy); ctx.scale(s, s);
+      ctx.fillStyle = "rgba(184,169,134,.85)"; ctx.fill(roadPaths[0]);
+      ctx.fillStyle = "#f2e6c4"; ctx.fill(roadPaths[1]);
+      ctx.restore();
+    }
     /* Wells (TODO 6a): a ring of stone with water in it, from close enough to see houses. */
     if (s >= 6) for (const v of vs) {
       if (!v.alive || !v.well) continue;
@@ -2068,9 +2608,11 @@
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const v of vs) {
       if (!v.alive || s >= 128) continue;     // close in, the houses are the village
-      const x = ox + v.x * s, y = oy + v.y * s, k = (s >= 6 ? 4 : Math.max(4, s * 0.55)) * (v.place === "city" ? 1.8 : v.place === "town" ? 1.4 : 1);
+      const x = ox + v.x * s, y = oy + v.y * s, k = (s >= 6 ? 6 : Math.max(6, s * 0.55)) * (v.place === "city" ? 1.8 : v.place === "town" ? 1.4 : 1);
       ctx.fillStyle = "#0c1113"; ctx.fillRect(x - k - 1, y - k - 1, k * 2 + 2, k * 2 + 2);
       ctx.fillStyle = factionColour(v.f); ctx.fillRect(x - k, y - k, k * 2, k * 2);
+      /* Its people's letter (TODO 21b): a ninth faction and beyond are told apart by more than colour. */
+      if (k >= 5.5) { ctx.fillStyle = "#0c1113"; ctx.font = "700 " + Math.round(k * 1.5) + "px system-ui, sans-serif"; ctx.textBaseline = "middle"; ctx.fillText(factionMark(v.f), x, y + 0.5); ctx.textBaseline = "top"; }
       if (v.siege) { ctx.strokeStyle = "#ef8a7c"; ctx.lineWidth = 2; ctx.strokeRect(x - k - 4, y - k - 4, k * 2 + 8, k * 2 + 8); }
     }
     /* What has been happening, drawn where it happened (2026-11-14): households
@@ -2080,7 +2622,7 @@
     ctx.lineCap = "round";
     for (const m of f.moves) {
       const a = 1 - m.age, x0 = ox + m.from[0] * s, y0 = oy + m.from[1] * s, x1 = ox + m.to[0] * s, y1 = oy + m.to[1] * s;
-      ctx.globalAlpha = 0.25 + 0.5 * a; ctx.strokeStyle = fs[m.f] ? fs[m.f].colour : "#e3e9e6"; ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.25 + 0.5 * a; ctx.strokeStyle = fs[m.f] ? factionColour(m.f) : "#e3e9e6"; ctx.lineWidth = 2;
       ctx.setLineDash(m.why === "hungry" ? [6, 4] : []);
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
       const ang = Math.atan2(y1 - y0, x1 - x0);
@@ -2150,7 +2692,7 @@
     const named = [];
     for (const v of vs) {
       if (!v.alive) continue;
-      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? 4 : Math.max(4, s * 0.55);
+      const x = ox + v.x * s, y = oy + v.y * s, k = s >= 6 ? 6 : Math.max(6, s * 0.55);
       if (x < -200 || y < -60 || x > W + 200 || y > H + 60) continue;
       ctx.font = "600 12px system-ui, sans-serif";
       const label = v.name + (v.place === "city" ? " · city" : v.place === "town" ? " · town" : "");   // TODO 8
@@ -2174,6 +2716,17 @@
       ctx.fillStyle = m[1]; ctx.fillText(m[0], x, y - r - 3);
     }
     ctx.globalAlpha = 1;
+    /* Standing problems (TODO 21f): a ring and a word where each is, for as long as it lasts. */
+    for (const x of f.probs || []) {
+      if (x.kind === "war") continue;
+      const m = { famine: ["Famine", "#ef8a7c"], siege: ["Siege", "#ef8a7c"], sick: ["Sickness", "#e0a340"] }[x.kind];
+      const px = ox + x.x * s, py = oy + x.y * s, r = Math.max(14, s * 1.8);
+      if (px < -60 || py < -60 || px > W + 60 || py > H + 60) continue;
+      ctx.strokeStyle = m[1]; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+      const tw = ctx.measureText(m[0]).width;
+      ctx.fillStyle = "rgba(7,10,11,.82)"; ctx.fillRect(px - tw / 2 - 3, py + r + 2, tw + 6, 16);
+      ctx.fillStyle = m[1]; ctx.textBaseline = "top"; ctx.fillText(m[0], px, py + r + 3); ctx.textBaseline = "bottom";
+    }
     /* Units (TODO 15.6b), with the toggle on and zoomed in: each unit's outline in its people's colour,
        a tick for the way it faces, and a small diamond on its officer. A reserve is dashed. */
     if (showUnits && f.units && s >= 6) {
@@ -2231,10 +2784,34 @@
       if (!at) continue;
       ctx.strokeStyle = "#ffe39b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + at[0] * s, oy + at[1] * s, rad + 5, 0, Math.PI * 2); ctx.stroke();
     }
-    if (mine && !mine.gone) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + mine.x * s, oy + mine.y * s, rad + 6, 0, 6.2832); ctx.stroke(); }
+    /* The selected thing: a solid white ring; the person followed: a dashed one in its own colour (21b). */
+    if (mine && !mine.gone) {
+      ctx.strokeStyle = follow ? "#6fe3d6" : "#fff"; ctx.lineWidth = 2; ctx.setLineDash(follow ? [5, 3] : []);
+      ctx.beginPath(); ctx.arc(ox + mine.x * s, oy + mine.y * s, rad + 6, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+    } else if (picked && !picked.person) {
+      const at = pickedAt();
+      if (at) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + at[0] * s, oy + at[1] * s, Math.max(10, at[2] * s), 0, 6.2832); ctx.stroke(); }
+    }
     const days = f.days;
     const clockText = "Day " + (Math.floor(days % 365) + 1) + " · " + String(Math.floor(days % 1 * 24)).padStart(2, "0") + ":" + String(Math.floor(days % 1 * 1440) % 60).padStart(2, "0") + " · " + (f.season ? f.season[0].toUpperCase() + f.season.slice(1) + " · " : "") + "Year " + (Math.floor(days / 365) + 1) + " · " + f.n.toLocaleString("en-US") + " people";
-    if ($("clock").textContent !== clockText) { $("clock").textContent = clockText; $("people-time").textContent = clockText; }
+    if ($("clock").textContent !== clockText) $("clock").textContent = clockText;
+    barDate(f);
+  }
+
+  let roadsFor = null, roadPaths = null;
+  /* Where the selected thing is, for its ring: [x, y, radius in squares]. */
+  function pickedAt() {
+    const p = picked; if (!p || !world) return null;
+    const tile = i => [i % world.cols + 0.5, Math.floor(i / world.cols) + 0.5, 0.6];
+    if (p.village != null) { const v = vs[p.village]; return v ? [v.x, v.y, 1.2] : null; }
+    if (p.field != null) return tile(p.field);
+    if (p.road != null) return tile(p.road);
+    if (p.unit) return [p.unit.x, p.unit.y, 0.4];
+    if (p.boat != null) { const v = vs[p.boat]; return v && v.boat ? [v.boat[0], v.boat[1], 0.1] : null; }
+    if (p.house != null && homesArr && p.house * 7 < homesArr.length) return [homesArr[p.house * 7], homesArr[p.house * 7 + 1], 0.05];
+    const d = paneData && paneData.thing;
+    if (p.event != null && d && d.id === p.event && (d.x || d.y)) return [d.x, d.y, 1];
+    return null;
   }
 
   /* ═══ the side panel ═══════════════════════════════════════════════════ */
@@ -2242,7 +2819,7 @@
   /* What the People panel is showing, as one string: an answer from the
      keeper for anything else is out of date and is not drawn. */
   function paneKey() {
-    return [tab, picked ? (picked.person ? "p" + picked.person : "v" + picked.village) : "", selectedExchange ? selectedExchange.id : "",
+    return [tab, picked ? JSON.stringify(picked, (k, v) => k === "name" ? undefined : v) : "", selectedExchange ? selectedExchange.id : "", newsFilter, peopleAll ? "all" : "",
             wedPick ? "w" + wedPick.f + "-" + wedPick.o : "",
             tab === "people" ? [$("people-search").value, $("people-settlement").value, $("people-faction").value, $("people-job").value, populationPage].join("\u0001") : ""].join("\u0002");
   }
@@ -2259,9 +2836,9 @@
     if (paneAsked) { if (!idle) paneWant = true; return; }
     paneAsked = true;
     keeper.send({ t: "pane", seq: ++seq, key: paneKey(), idle: idle === true, tab: tab, picked: picked,
-                  q: { search: $("people-search").value, settlement: $("people-settlement").value, faction: $("people-faction").value, job: $("people-job").value, page: populationPage, size: POPULATION_PAGE },
+                  q: { all: peopleAll, talk: tab === "talk", search: $("people-search").value, settlement: $("people-settlement").value, faction: $("people-faction").value, job: $("people-job").value, page: populationPage, size: POPULATION_PAGE },
                   exchange: selectedExchange ? { a: selectedExchange.a, b: selectedExchange.b } : null,
-                  wedPick: wedPick && tab === "factions" ? { f: wedPick.f, o: wedPick.o } : null });
+                  wedPick: wedPick && tab === "look" && picked && picked.faction != null ? { f: wedPick.f, o: wedPick.o } : null });
   }
   function renderPane() {
     if (mode === "people" && tab === "talk" && selectedExchange && $("panes").dataset.exchange === String(selectedExchange.id)) return;
@@ -2272,8 +2849,7 @@
     el.innerHTML = mode === "physics" ? physicsPane() : peoplePane(paneData);
     if (active) [...el.querySelectorAll("button[data-go]")].find(b => b.dataset.go === active)?.focus({ preventScroll: true });
     el.scrollTop = keep;
-    if (mode === "people" && tab === "factions") drawChart();
-    if (mode === "people" && tab === "world") drawGraphs();
+    if (mode === "people" && tab === "world") { drawChart(); drawGraphs(); }
   }
   /* The panel redraws itself several times a second. Not while a finger is on
      it, or the button being pressed is replaced before the click lands. */
@@ -2300,6 +2876,21 @@
     if (a[0] === "read-talk") { $("panes").dataset.exchange = ""; setTab("talk"); }
     if (a[0] === "exchange-place" && selectedExchange) { cam.x = selectedExchange.x; cam.y = selectedExchange.y; cam.s = Math.max(cam.s, 28); follow = false; }
     if (a[0] === "people") setTab("people");
+    /* TODO 21d to 21g. */
+    if (a[0] === "tab") setTab(a[1]);
+    if (a[0] === "newsf") { newsFilter = a[1]; selectedExchange = null; setTab(a[1] === "talk" ? "talk" : "news"); }
+    if (a[0] === "people-all" || a[0] === "people-worth") { peopleAll = a[0] === "people-all"; populationPage = 0; setTab("people"); }
+    if (a[0] === "back" && seen.length > 1) { seen.pop(); picked = seen[seen.length - 1]; follow = false; setTab("look"); }
+    if (["faction", "house", "event"].includes(a[0])) {
+      picked = { [a[0]]: +a[1] }; follow = false; seen.push(picked);
+      if (a[0] === "event") { const e = paneData && paneData.events && paneData.events.find(x => x.id === +a[1]); if (e && (e.x || e.y)) { cam.x = e.x; cam.y = e.y; cam.s = Math.max(cam.s, 14); cam.held = true; } }
+      setTab("look");
+    }
+    if (a[0] === "pin") {
+      const k = a[1], id = +a[2], i = pins.findIndex(x => x.k === k && x.id === id);
+      if (i >= 0) pins.splice(i, 1); else pins.push({ k: k, id: id, name: decodeURIComponent(a[3] || "") });
+      sendPins(); pane();
+    }
     if (a[0] === "people-page") { populationPage += +a[1]; populationScroll = 0; $("panes").scrollTop = 0; pane(); }
     if (a[0] === "person") {
       /* Where they are comes with the next frame: `jump` takes the view
@@ -2307,10 +2898,10 @@
       if (tab === "people") populationScroll = $("panes").scrollTop;
       const strong = b.querySelector("strong");
       picked = { person: +a[1], name: (strong || b).textContent.trim() };
-      follow = true; jump = true;
+      follow = false; jump = true; seen.push(picked);
       setTab("look");
     }
-    if (a[0] === "village") { const v = vs[+a[1]]; if (!v) return; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
+    if (a[0] === "village") { const v = vs[+a[1]]; if (!v) return; picked = { village: v.id }; seen.push(picked); cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); cam.held = true; follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
     if (a[0] === "wedpick") {
       wedPick = a[1] != null && !(wedPick && wedPick.f === +a[1] && wedPick.o === +a[2]) ? { f: +a[1], o: +a[2], a: "", b: "" } : null;
@@ -2634,177 +3225,370 @@
         "<button class='btn' data-go='wedpick:" + f.id + ":" + o.id + "' aria-expanded='" + !!(wedPick && wedPick.f === f.id && wedPick.o === o.id) + "'>Arrange a marriage</button></div>" + wedForm(f, o, d)).join("") : "") +
       "<div class='row'><button class='btn' data-go='rule:" + f.id + "'>Hand " + esc(f.name) + " back to its leaders</button></div></div>";
   }
-  /* The rules a running world can still change: only what the engine reads
-     as it goes (`live` in the schema). */
-  function livePane(d) {
-    const S = d.settings;
-    const items = window.WBPeople.SCHEMA.flatMap(g => g.items).filter(it => it.live && (!it.when || it.when(S)));
-    return "<h3>Change the rules</h3><p class='small'>These take effect at once. The rest were fixed when the world began.</p>" +
-      items.map(it => it.type === "range" ? stepRow(esc(it.label) + "<span class='meter' aria-hidden='true'><i style='width:" + Math.round(valueToPos(it, S[it.key]) / 10) + "%'></i></span>",
-                                                    esc(words(it, S[it.key])), "live:" + it.key)
-        : "<div class='row'><span class='lbl'>" + esc(it.label) + "</span><button class='btn' data-go='live:" + it.key + ":1'>" + esc(words(it, S[it.key])) + "</button></div>").join("");
+  /* ═══ the People panel, rebuilt (TODO 21d to 21g, 2026-11-25) ═══════════════════════════
+     What each screen shows first is UI-REVAMP.md section 6, which Ric agreed (21a): what changed,
+     what is wrong now, why, who, who can get what, firsts — in words and whole numbers; everything
+     else one tap away behind a labelled fold, never deleted. Every figure is what the keeper sent;
+     where the record is gone or was never kept, the panel says so. */
+  let seen = [], pins = [], lastLook = null, keyOpen = false, newsFilter = "all", peopleAll = false;
+  const openFolds = new Set();   // which folds are open, by name: the panel is drawn again often
+  document.addEventListener("toggle", e => { const k = e.target && e.target.dataset && e.target.dataset.fold; if (k) { if (e.target.open) openFolds.add(k); else openFolds.delete(k); } }, true);
+  const fold = (key, title, body, open) => "<details class='fold' data-fold='" + esc(key) + "'" + (open || openFolds.has(key) ? " open" : "") + "><summary>" + title + "</summary>" + body + "</details>";
+  const pct = v => Math.round(v * 100) + "%";
+  const days = v => v < 0.75 ? (v < 0.25 ? "under a quarter of a day" : "about half a day") : v < 1.5 ? "about a day" : v < 10 ? "about " + Math.round(v) + " days" : Math.round(v) + " days";
+  const yearsOld = a => Math.floor(a) + (Math.floor(a) === 1 ? " year" : " years");
+  const dayYear = d => "day " + (Math.floor(d % 365) + 1) + (d >= 365 ? ", year " + (Math.floor(d / 365) + 1) : "");
+  const mark = f => "<span class='fmark' style='background:" + factionColour(f) + "'>" + esc(factionMark(f)) + "</span>";
+  const facName = (id, name) => mark(id) + "<button class='linkish inline' data-go='faction:" + id + "'>" + esc(name) + "</button>";
+  const pinned = (k, id) => pins.some(x => x.k === k && x.id === id);
+  const pinBtn = (k, id, name, label) => "<button class='btn pin' data-go='pin:" + k + ":" + id + ":" + encodeURIComponent(name) + "' aria-pressed='" + pinned(k, id) + "'>" + (pinned(k, id) ? "Pinned" : label || "Pin") + "</button>";
+  function sendPins() { if (keeper && world) keeper.send({ t: "pins", list: pins.map(x => ({ k: x.k, id: x.id })), pause: pauseOnPin }); }
+  /* Counters in words where they have them; the rest by their own name, unspaced. Never a meaning
+     the engine's name does not carry. */
+  const COUNTER = { births: "Born", old: "Died of old age", starved: "Starved", battle: "Killed in battle", sick: "Died of sickness", talks: "Conversations", switched: "Changed faction",
+    thefts: "Thefts", wars: "Wars started", peaces: "Peaces made", captures: "Villages taken", founded: "Villages founded", secessions: "Breakaways", elections: "Votes held", fallen: "Factions fallen",
+    moved: "Households moved", weddings: "Weddings", infected: "Fell sick", grain: "Grain carried between villages", faiths: "Faiths founded", converts: "Converts", riots: "Food riots",
+    bands: "Raiding bands", walls: "Walls built", refugees: "Refugees", finds: "Things found", learned: "Know-how learned", lost: "Know-how lost", prisoners: "Prisoners taken",
+    deserted: "Deserted", mutinies: "Mutinies", caravans: "Caravans sent", childbirth: "Mothers died in childbirth", young: "Died as infants", worksBuilt: "Workplaces built", roadsBuilt: "Roads built" };
+  const NOT_COUNTS = new Set(["tick", "year", "people", "factions", "villages", "atWar", "meanAge", "money", "topShare", "boats", "towns", "cities", "urban", "paths", "roads"]);
+  const counterName = k => COUNTER[k] || k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).toLowerCase().replace(/^./, c => c.toUpperCase());
+  /* Repeats folded (21a: "8 villages built a common oven"): events alike once the names of places
+     and peoples are taken out are one line, with how many and where. */
+  function foldEvents(list) {
+    const names = vs.map(v => v.name).concat(fs.map(f => f.name)).filter(Boolean).sort((a, b) => b.length - a.length);
+    const groups = new Map();
+    for (const e of list) {
+      let t = e.text; for (const n of names) if (t.includes(n)) t = t.split(n).join("·");
+      const key = e.kind + "|" + t;
+      const g = groups.get(key);
+      if (g) { g.n++; g.first = e; } else groups.set(key, { e: e, n: 1, first: e });
+    }
+    return [...groups.values()];
   }
-  /* What the graphs show, read from the engine's one row a day. */
+  function eventLine(g, why) {
+    const e = g.e, when = g.n > 1 ? "day " + (g.first.day + 1) + "–" + (e.day + 1) : "day " + (e.day + 1);
+    return "<button class='item" + (e.weight >= 3.5 || BIG_KINDS.has(e.kind) ? " big" : "") + "' data-go='event:" + e.id + "'><span class='yr'>" + when + "</span>" +
+      (g.n > 1 ? g.n + " times: " : "") + esc(e.text) + (why !== false && e.why ? "<span class='because'>because " + esc(e.why) + "</span>" : "") + (why !== false && e.after ? "<span class='why'>after: " + esc(e.after) + "</span>" : "") + "</button>";
+  }
+  const probLine = x => "<button class='problem' data-go='" + (x.v != null ? "village:" + x.v : "faction:" + x.a) + "'><b>" + esc(probText(x).replace(/^./, c => c.toUpperCase())) + "</b>" +
+    (x.kind === "famine" ? "<span class='because'>" + (x.store > 0 ? "The store covers <span class='est'>" + days(x.store) + "</span> for those who live there." : "The village store is empty.") + "</span>" : "") + "</button>";
+
+  /* ── graphs with axes and real time (21f) ── */
   const GRAPHS = [
-    ["people", "People", r => r.people, v => Math.round(v)],
-    ["food", "Food on hand, days a head", r => r.food, v => v.toFixed(1)],
-    ["price", "Price of food", r => r.price, v => v.toFixed(2)],
+    ["people", "People", r => r.people, v => Math.round(v).toLocaleString("en-US")],
+    ["food", "Food on hand, days a head (an estimate: carried and stored, over everybody)", r => r.food, v => v.toFixed(1)],
     ["hungry", "Going hungry", r => r.hungry, v => Math.round(v * 100) + "%"],
-    ["dead", "Deaths a day (hunger, sickness, war)", (r, p) => p ? (r.starved - p.starved) + (r.sick - p.sick) + (r.battle - p.battle) : 0, v => Math.round(v)],
+    ["dead", "Deaths in the last 30 days", (r, h, i) => { const p = h[Math.max(0, i - 30)]; return i ? (r.starved - p.starved) + (r.sick - p.sick) + (r.battle - p.battle) + (r.old - p.old) : 0; }, v => Math.round(v)],
+    ["wars", "Wars going on", r => r.wars || 0, v => Math.round(v)],
     ["loyal", "Loyalty", r => r.loyal, v => Math.round(v * 100) + "%"],
-    ["grain", "Grain carried between villages, a day", (r, p) => p ? (r.grain || 0) - (p.grain || 0) : 0, v => Math.round(v)],
   ];
-  function graphsPane(d) {
+  function graphsHtml(d) {
     const h = d.history;
-    if (h.length < 2) return "<h3>How it is going</h3><p class='small'>The graphs start after the first day.</p>";
-    const last = h[h.length - 1], prev = h[h.length - 2];
-    /* The engine keeps the last 600 days (`sample` in people.js), so "since the world began" is
-       only true while the first row kept is the world's first day (audit of TODO 21, 2026-11-24). */
-    const from = h[0].day | 0;
-    return "<h3>How it is going</h3><p class='small'>" + (from === 0 ? "One point a day, since the world began."
-      : "One point a day, for the last " + h.length + " days. Days before day " + (from + 1) + " are not kept.") + "</p>" +
-      GRAPHS.map(g => "<div class='graph'><div class='gl'><span>" + g[1] + "</span><b>" + g[3](g[2](last, prev)) + "</b></div>" +
-        "<canvas data-graph='" + g[0] + "' width='632' height='96' aria-label='" + esc(g[1]) + ", now " + esc(String(g[3](g[2](last, prev)))) + "'></canvas></div>").join("");
+    if (h.length < 2) return "<p class='small'>The graphs start after the first day.</p>";
+    const from = h[0].day | 0, to = h[h.length - 1].day | 0, last = h.length - 1;
+    const lastRow = h[last], p30 = h[Math.max(0, last - 30)];
+    const cause = "hunger " + (lastRow.starved - p30.starved) + " · sickness " + (lastRow.sick - p30.sick) + " · battle " + (lastRow.battle - p30.battle) + " · old age " + (lastRow.old - p30.old);
+    return "<p class='small'>" + (from === 0 ? "One point a day, since the world began." : "One point a day, for the last " + h.length + " days. Days before day " + (from + 1) + " are not kept.") +
+      (d.actions.length ? " A dashed line is a change you made (Rules)." : "") + "</p>" +
+      GRAPHS.map(g => { const now = g[2](lastRow, h, last);
+        return "<div class='graph'><div class='gl'><span>" + g[1] + "</span><b>" + g[3](now) + "</b></div>" +
+          "<canvas data-graph='" + g[0] + "' width='632' height='110' aria-label='" + esc(g[1]) + ", day " + (from + 1) + " to " + (to + 1) + ", now " + esc(String(g[3](now))) + "'></canvas>" +
+          "<div class='gx'><span>day " + (from + 1) + "</span><span>day " + (to + 1) + "</span></div>" + (g[0] === "dead" ? "<p class='small'>Of which, these 30 days: " + cause + ".</p>" : "") + "</div>"; }).join("");
   }
   function drawGraphs() {
     if (!paneData || !paneData.history) return;
-    const h = paneData.history, cs = getComputedStyle(document.documentElement);
-    const ink = cs.getPropertyValue("--acc").trim() || "#e0a340", grid = cs.getPropertyValue("--line").trim() || "#2a383f";
+    const h = paneData.history, cs = getComputedStyle(document.documentElement), acts = paneData.actions || [];
+    const ink = cs.getPropertyValue("--acc").trim() || "#e0a340", axis = cs.getPropertyValue("--edge").trim() || "#5e737c", dim = cs.getPropertyValue("--dim").trim(), trait = cs.getPropertyValue("--trait").trim();
     for (const c of document.querySelectorAll("canvas[data-graph]")) {
       const g = GRAPHS.find(x => x[0] === c.dataset.graph); if (!g || h.length < 2) continue;
-      const vals = h.map((r, i) => g[2](r, h[i - 1]));
+      const vals = h.map((r, i) => g[2](r, h, i));
       let lo = Math.min(0, ...vals), hi = Math.max(...vals); if (hi - lo < 1e-9) hi = lo + 1;
-      const x = c.getContext("2d"), W = c.width, H = c.height;
+      const x = c.getContext("2d"), W = c.width, H = c.height, L = 64, T = 8, B = H - 6;
       x.clearRect(0, 0, W, H);
-      x.strokeStyle = grid; x.lineWidth = 1; x.beginPath(); x.moveTo(0, H - 1); x.lineTo(W, H - 1); x.stroke();
-      x.strokeStyle = ink; x.lineWidth = 2; x.beginPath();
-      vals.forEach((v, i) => { const px = i / (vals.length - 1) * W, py = H - 3 - (v - lo) / (hi - lo) * (H - 8); if (i) x.lineTo(px, py); else x.moveTo(px, py); });
+      x.font = "22px system-ui, sans-serif"; x.fillStyle = dim; x.textAlign = "right"; x.textBaseline = "middle";
+      x.fillText(g[3](hi), L - 8, T + 6); x.fillText(g[3](lo), L - 8, B - 6);
+      x.strokeStyle = axis; x.lineWidth = 2; x.beginPath(); x.moveTo(L, T); x.lineTo(L, B); x.lineTo(W, B); x.stroke();
+      const d0 = h[0].day, d1 = h[h.length - 1].day, px = day => L + (day - d0) / Math.max(1, d1 - d0) * (W - L);
+      x.strokeStyle = trait; x.setLineDash([6, 5]); x.lineWidth = 2;
+      for (const a of acts) if (a.day >= d0 && a.day <= d1) { x.beginPath(); x.moveTo(px(a.day), T); x.lineTo(px(a.day), B); x.stroke(); }
+      x.setLineDash([]);
+      x.strokeStyle = ink; x.lineWidth = 3; x.beginPath();
+      vals.forEach((v, i) => { const X = px(h[i].day), Y = B - 2 - (v - lo) / (hi - lo) * (B - T - 4); if (i) x.lineTo(X, Y); else x.moveTo(X, Y); });
       x.stroke();
     }
-  }
-
-  function peoplePane(d) {
-    /* d is what the keeper sent for this tab (people-host.js, pane): plain
-       values, read from the world at that moment. Its "named" holds the
-       names of the living people the tab mentions, so "is alive" is "is in
-       it". */
-    if (!d) return "";
-    const Y = world.YEAR, named = d.named || {}, coins = d.money === "coins";
-    if (tab === "people") return populationPane(d);
-    const fname = f => "<span class='sw' style='background:" + f.colour + "'></span>" + esc(f.name);
-    if (tab === "factions") {
-      const alive = d.factions.filter(f => f.alive).sort((a, b) => b.pop - a.pop);
-      const gone = d.factions.filter(f => !f.alive);
-      return "<canvas id='chart' width='632' height='168' aria-label='Population of each faction over time'></canvas>" +
-        alive.map(f => {
-          const lead = f.lead, own = d.villages.filter(v => v.alive && v.f === f.id);
-          const big = own.slice().sort((a, b) => b.pop - a.pop)[0];
-          const foes = d.factions.filter(o => o.alive && o !== f && f.rel[o.id] && f.rel[o.id].war).map(o => esc(o.name));
-          return "<button class='fac' data-go='" + (big ? "at:" + big.x + ":" + big.y : "") + "'><span class='nm'>" + fname(f) + "</span>" +
-            "<span class='ln'>" + f.pop + " people · " + own.length + (own.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms" + (f.soldiers ? ", " + f.soldiers + " fewer in the fields" : "") + "</span>" +
-            "<span class='ln'>" + ({ elected: "Chosen by vote", chief: "A chief", rich: "The richest" }[f.rule] || "") + ": " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
-            (coins ? " · tax " + Math.round(f.tax * 100) + "%" + (d.harvestTax > 0 ? ", " + Math.round(f.harvest * 100) + "% of the harvest" : "") : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
-            (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + (f.era && f.era !== "early" ? "<span class='ln'>Era at the start: " + esc(ERA_NAMES[f.era] || f.era) + (f.arms ? " · fights with " + esc(f.arms) : "") + "</span>" : "") + govLines(f.gov) + matchLine(f.match) + knowLine(f.know) + techBox(f.tech, f.id) + (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + (f.faith.every ? ", a holy day every " + f.faith.every + " days" : "") + (f.faith.holyWar ? ", war on those who do not hold it" : "") + faithMore(f.faith) + "</span>" : "") +
-            (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + dealings(f, d) + "</button>" + rulePane(f, d);
-        }).join("") +
-        (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");
-    }
-    if (tab === "news") {
-      const list = d.events;
-      if (!list.length) return "<p class='small'>Nothing has happened yet that anybody would remember.</p>";
-      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + (e.year + 1) + "</span>" + esc(e.text) + (e.why ? "<span class='why'>because: " + esc(e.why) + "</span>" : "") + (e.after ? "<span class='why'>after: " + esc(e.after) + "</span>" : "") + "</button>").join("");
-    }
-    if (tab === "talk") {
-      if (selectedExchange) return exchangePane(selectedExchange);
-      const list = d.chatter;
-      if (!list.length) return "<p class='small'>Nobody has said anything yet.</p>";
-      const participant = (id, name) => id in named ? "<button class='btn family-link' data-go='person:" + id + "'>" + esc(name) + "</button>" : "<span>" + esc(name) + " (died)</span>";
-      return "<p class='small'>Every exchange reports what happened between these people. Choose either name to follow them.</p>" + list.map(c =>
-        "<article class='item talk'><p class='small'>" + esc(TALK_TOPICS[c.kind] || "Conversation") + " · " + exchangeTime(c) + "</p><button class='btn' data-go='exchange:" + c.id + "'>Read exchange</button> " + participant(c.a, c.an) + " → " + participant(c.b, c.bn) + "<p><strong>" + esc(c.an) + ":</strong> <q>" + esc(c.la) + "</q></p>" +
-        (c.lb ? "<p><strong>" + esc(c.bn) + ":</strong> <q>" + esc(c.lb) + "</q></p>" : "") + "</article>").join("");
-    }
-    if (tab === "look") {
-      if (picked && picked.village != null) {
-        const v = d.village;
-        if (!v) return "";
-        return "<h3>" + esc(v.name) + "</h3><p>" + fname(v.faction) + (v.alive ? "" : " — abandoned") + "</p><dl class='kv'>" +
-          "<dt>People</dt><dd>" + v.pop + "</dd><dt>Going hungry</dt><dd>" + v.hungry + "</dd><dt>Sick</dt><dd>" + v.sick + "</dd>" +
-          "<dt>Food in the store</dt><dd>" + num(v.food, 1) + " rations</dd><dt>Store covers</dt><dd>" + num(v.storeDays, 1) + " days</dd><dt>Goods</dt><dd>" + num(v.goods, 0) + "</dd>" + (v.wanted >= 0.5 ? "<dt>On order</dt><dd>" + num(v.wanted, 0) + "</dd>" : "") + (v.mats ? "<dt>Wood</dt><dd>" + num(v.wood, 0) + " loads</dd><dt>Stone</dt><dd>" + num(v.stone, 0) + " loads</dd><dt>Ore</dt><dd>" + num(v.iron, 0) + " loads</dd>" : "") +
-          (coins ? "<dt>Price per ration</dt><dd>" + num(v.priceFood, 2) + "</dd><dt>Coins in the till</dt><dd>" + num(v.till, 0) + "</dd>" : "") +
-          "<dt>Loyalty</dt><dd>" + Math.round(v.loyal * 100) + "%</dd><dt>Founded</dt><dd>year " + (Math.floor(v.founded / Y) + 1) + "</dd></dl><p class='small'>A ration supplies one adult for one day. Store coverage uses residents’ current needs; carried food and future harvests are separate.</p>" +
-          (v.siege > 0 ? "<p class='fac'><span class='war'>Enemy soldiers are at the walls and nobody is defending it.</span></p>" : "");
-      }
-      const p = picked && picked.person ? d.person : null;
-      if (!p) return "<p class='small'>" + (picked && picked.person ? esc(picked.name) + " has died. They are no longer in the living population." : "Choose someone from People, or tap a person on the map.") + "</p><button class='btn' data-go='people'>Back to People</button>";
-      const home = p.home, mate = p.partner && p.partner in named ? p.partner : 0;
-      const friends = p.friends.slice().sort((a, b) => b[1] - a[1]);
-      const likes = friends.filter(x => x[1] > 0.2).slice(0, 4), hates = friends.filter(x => x[1] < -0.2).slice(-3).reverse();
-      const link = id => "<button class='linkish' style='min-height:0;padding:0' data-go='person:" + id + "'>" + esc(named[id]) + "</button>";
-      const parents = [p.mum, p.dad].filter(id => id && id in named);
-      const children = p.children, listener = p.listener && p.listener in named ? p.listener : 0;
-      const familyLink = id => "<button class='btn family-link' data-go='person:" + id + "'>" + esc(named[id]) + "</button>";
-      const job = p.job === "child" ? "a child" : p.leads ? "leader of " + esc(p.faction.name) + ", and a " + p.job : "a " + p.job;
-      const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(Math.max(0, Math.min(1, v)) * 100) + "%'></b></i>";
-      /* Why they are doing it, not only what. Since 2026-11-13 a person weighs
-         every option they have against what they need, so the need that won is
-         the reason — and it is read off the same figures the engine decided
-         with, never a label written beside the choice. */
-      const need = p.urgency;
-      const pressing = [["food", "Needs to eat"], ["rest", "Worn out"], ["safety", "Afraid"],
-                        ["company", "Has had nobody to talk to"], ["provide", "Wants more put by"]]
-                       .reduce((a, b) => (need[b[0]] > need[a[0]] ? b : a));
-      return "<button class='btn' data-go='people'>Back to People</button>" + (selectedExchange ? " <button class='btn' data-go='read-talk'>Back to selected exchange</button>" : "") + "<h3>" + esc(p.name) + "</h3>" +
-        "<p>" + Math.floor(p.age) + " years old, " + job + " in <button class='linkish' style='min-height:0;padding:0' data-go='village:" + home.id + "'>" + esc(home.name) + "</button>.</p>" +
-        "<p><strong>Now: " + esc(p.activity) + "</strong>" +
-          (p.adult ? "<br><span class='small'>" + (need[pressing[0]] < 0.15 ? "Nothing pressing." : esc(pressing[1]) + ".") + "</span>" : "") + "</p>" +
-        (p.adult ? "<div class='bars'>" + bar("Hungry", need.food / 1.4) + bar("Tired", p.rest) +
-          bar("Alone", p.alone / 30) + bar("Afraid", p.fear) + "</div>" : "") +
-        "<p>" + fname(p.faction) + (p.from !== p.f ? " <span class='small'>— born under " + esc(p.bornUnder) + "</span>" : "") + "</p>" +
-        "<p class='small'>" + (p.leans === "share" ? "Believes what is grown should be shared out." : p.leans === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
-        (p.faith ? " Holds to " + esc(p.faith.name) + "." : "") + (p.unfree ? " <span style='color:var(--warn)'>Held unfree.</span>" : "") +
-        lifeLine(p.life) +
-        (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
-        "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + bar("Stubborn", p.stub ?? 0.5) + bar("Greedy", p.greed) + bar("Patient", p.patient ?? 0.5) + bar("Hot-tempered", p.temper ?? 0.5) + bar("Hardworking", p.hard ?? 0.5) + bar("Curious", p.curious ?? 0.5) + bar("Honest", p.honest ?? 0.5) + "</div>" +
-        "<p class='small'>One ration supplies an adult for one day. Children’s needs rise as they grow.</p>" +
-        "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 2) + " rations</dd><dt>Daily need</dt><dd>" + num(p.dailyNeed, 2) + " rations</dd><dt>Carried food covers</dt><dd>" + num(p.food / p.dailyNeed, 1) + " days</dd>" + (coins ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
-        "<dt>Loose goods</dt><dd>" + num(p.goods, 2) + "</dd><dt>Children</dt><dd>" + p.kids + "</dd></dl>" + equipmentPane(p) +
-        (listener ? "<p>Talking to " + familyLink(listener) + "</p>" : "") +
-        /* What they hold (TODO 11): every thing in their mind, in plain words, strongest first. */
-        (p.mind ? "<h3>On their mind</h3><p class='small'>" + p.mind.length + " things of the " + (p.mcap + 1) + " they can hold.</p><ul class='mind'>" +
-          p.mind.slice().sort((a, b) => Math.abs(b.strength) - Math.abs(a.strength)).map(m => "<li>" + esc(m.text) + (m.kind !== "belief" && m.days > 0 ? " <span class='small'>— " + (m.days >= 365 ? Math.floor(m.days / 365) + (m.days >= 730 ? " years" : " year") : m.days + (m.days === 1 ? " day" : " days")) + " ago</span>" : "") + (m.kind === "news" ? newsTrail(m) : "") + "</li>").join("") + "</ul>" : "") +
-        "<h3>Family</h3>" +
-        (mate ? "<p>Partner: " + familyLink(mate) + "</p>" : "<p class='small'>No living partner.</p>") +
-        "<p>Parents: " + (parents.length ? parents.map(familyLink).join(" ") : "<span class='small'>No living parents recorded.</span>") + "</p>" +
-        "<p>Living children: " + (children.length ? children.map(familyLink).join(" ") : "<span class='small'>None.</span>") + "</p>" +
-        (likes.length ? "<p>Friends: " + likes.map(x => link(x[0])).join(", ") + ".</p>" : "") +
-        (hates.length ? "<p>Cannot stand: " + hates.map(x => link(x[0])).join(", ") + ".</p>" : "") +
-        (p.say ? "<p class='small'>Last said: “" + esc(p.say) + "”</p>" : "") +
-        "<button class='btn' data-go='follow' aria-pressed='" + follow + "'>" + (follow ? "Following" : "Follow") + "</button>";
-    }
-    const st = d.stats;
-    const rows = [["People alive", st.people], ["Daily food need (adult-day rations)", num(d.need, 1)], ["Food in village stores (rations)", num(d.stores, 1)], ["Average age", num(st.meanAge, 0)], ["Villages", st.villages], ["Factions", st.factions], ["Wars going on", st.atWar],
-      ["Born", st.births], ["Died of old age", st.old], ["Starved", st.starved], ["Killed in battle", st.battle], ["Died of sickness", st.sick],
-      ["Conversations", st.talks], ["Changed faction", st.switched], ["Thefts", st.thefts],
-      ["Wars started", st.wars], ["Peaces made", st.peaces], ["Villages taken", st.captures], ["Villages founded", st.founded], ["Breakaways", st.secessions], ["Votes held", st.elections], ["Factions fallen", st.fallen]];
-    if (coins) rows.push(["Coins in the world", num(st.money, 0)], ["Held by the richest tenth", Math.round(st.topShare * 100) + "%"]);
-    return graphsPane(d) + livePane(d) + "<h3>Since this world began</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
-      "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Larger filled squares are villages; outlined crop patches show harvesting. At 1× a day takes five minutes. A square of the map is 250 metres.</p>";
   }
   /* Each faction's head count, stacked, over the days the engine still keeps (the last 600). */
   function drawChart() {
     const c = $("chart"); if (!c || !paneData || !paneData.history) return;
-    const g = c.getContext("2d"), W = c.width, H = c.height, hist = paneData.history, facs = paneData.factions;
+    const g = c.getContext("2d"), W = c.width, H = c.height, hist = paneData.history, facs = paneData.factions || [];
     g.clearRect(0, 0, W, H);
     if (hist.length < 2) return;
     let top = 1;
     for (const r of hist) { let t = 0; for (const k in r.pop) t += r.pop[k]; if (t > top) top = t; }
-    const base = hist.map(() => 0);
+    const L = 64, B = H - 4, cs = getComputedStyle(document.documentElement);
+    g.font = "22px system-ui, sans-serif"; g.fillStyle = cs.getPropertyValue("--dim").trim(); g.textAlign = "right"; g.textBaseline = "middle";
+    g.fillText(String(top), L - 8, 12); g.fillText("0", L - 8, B - 8);
+    const base = hist.map(() => 0), X = i => L + i / (hist.length - 1) * (W - L);
     for (const f of facs) {
       g.beginPath();
-      for (let i = 0; i < hist.length; i++) g.lineTo(i / (hist.length - 1) * W, H - (base[i] + (hist[i].pop[f.id] || 0)) / top * (H - 4));
-      for (let i = hist.length - 1; i >= 0; i--) { g.lineTo(i / (hist.length - 1) * W, H - base[i] / top * (H - 4)); base[i] += hist[i].pop[f.id] || 0; }
-      g.closePath(); g.fillStyle = f.colour; g.fill();
+      for (let i = 0; i < hist.length; i++) g.lineTo(X(i), B - (base[i] + (hist[i].pop[f.id] || 0)) / top * (B - 4));
+      for (let i = hist.length - 1; i >= 0; i--) { g.lineTo(X(i), B - base[i] / top * (B - 4)); base[i] += hist[i].pop[f.id] || 0; }
+      g.closePath(); g.fillStyle = factionColour(f.id); g.fill();
     }
+    g.strokeStyle = cs.getPropertyValue("--edge").trim(); g.lineWidth = 2; g.beginPath(); g.moveTo(L, 2); g.lineTo(L, B); g.lineTo(W, B); g.stroke();
+  }
+
+  /* ── Overview (21f) ── */
+  function pinLine(x) {
+    if (x.gone) return "<p>" + esc(x.name || "Somebody pinned") + " — <span class='small'>has died, or is gone.</span></p>";
+    const go = x.k === "v" ? "village:" + x.id : x.k === "f" ? "faction:" + x.id : "person:" + x.id;
+    const state = x.k === "p" ? (x.hungry ? "<span class='urgent'>going hungry</span>" : x.sick ? "<span class='urgent'>sick</span>" : esc(x.activity.toLowerCase()))
+      : x.k === "h" ? (x.hungry ? "<span class='urgent'>" + x.hungry + " going hungry</span>" : "nobody going hungry")
+      : x.k === "v" ? (x.alive ? x.pop + " people" + (x.hungry ? ", <span class='urgent'>" + x.hungry + " going hungry</span>" : "") + (x.siege ? ", <span class='urgent'>under siege</span>" : "") : "abandoned")
+      : (x.alive ? x.pop + " people, loyalty " + pct(x.loyal) : "gone");
+    const first = x.rows.length ? x.rows[0] : null, last = x.rows.length ? x.rows[x.rows.length - 1] : null;
+    let change = "";
+    if (first && last && first !== last) {
+      if (x.k === "v" || x.k === "f") { const dp = last.people - first.people; if (dp) change = " · " + (dp > 0 ? "up " : "down ") + Math.abs(dp) + " since you pinned it, day " + (first.day + 1); }
+      else if (x.k === "p") { const hungryDays = x.rows.filter(r => r.hungry).length; if (hungryDays) change = " · hungry on " + hungryDays + " of " + x.rows.length + " days since you pinned them"; }
+    }
+    return "<button class='item' data-go='" + go + "'><strong>" + esc(x.name) + "</strong> — " + state + "<span class='small'>" + change + (x.news.length ? " · " + x.news.length + " pieces of news" : "") + "</span></button>";
+  }
+  function overviewPane(d) {
+    const st = d.stats, probs = d.problems, ev = d.events;
+    const since = lastLook ? lastLook.eventId : -1;
+    const fresh = ev.filter(e => e.id > since);
+    const ranked = foldEvents(fresh).sort((a, b) => (b.e.weight - a.e.weight) || (b.e.id - a.e.id));
+    let out = "";
+    out += "<h3>Going wrong now</h3>" + (probs.length ? probs.map(probLine).join("") : "<p class='small'>Nothing: no famine, siege, war or spreading sickness.</p>");
+    out += "<h3>" + (lastLook ? "Since you last looked <span class='small'>(" + dayYear(lastLook.day) + " to now)</span>" : "The story so far") + "</h3>" +
+      (ranked.length ? ranked.slice(0, 8).map(g => eventLine(g)).join("") + (ranked.length > 8 ? "<button class='linkish' data-go='tab:news'>" + (ranked.length - 8) + " more in News</button>" : "")
+        : "<p class='small'>Nothing written down yet.</p>") +
+      (ev.length >= 120 ? "" : "");
+    if (lastLook) {
+      const moved = [];
+      for (const k in st) if (!NOT_COUNTS.has(k) && lastLook.stats && typeof lastLook.stats[k] === "number" && st[k] !== lastLook.stats[k]) moved.push([k, st[k] - lastLook.stats[k]]);
+      moved.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+      const show = moved.filter(m => COUNTER[m[0]]).concat(moved.filter(m => !COUNTER[m[0]])).slice(0, 10);
+      out += "<h3>Counts that moved</h3>" + (show.length ? "<dl class='kv'>" + show.map(m => "<dt>" + esc(counterName(m[0])) + "</dt><dd>" + (m[1] > 0 ? "+" : "") + num(m[1], Number.isInteger(m[1]) ? 0 : 1) + "</dd>").join("") + "</dl>" +
+        (moved.length > show.length ? "<p class='small'>" + (moved.length - show.length) + " more moved; every count is under “Every count”.</p>" : "") : "<p class='small'>None.</p>");
+    }
+    if (d.pins.length) out += "<h3>What you pinned</h3>" + d.pins.map(pinLine).join("");
+    out += "<h3>How it is going</h3>" + graphsHtml(d);
+    out += "<h3>Firsts and records</h3>" + (d.firsts.length ? d.firsts.slice(0, 12).map(e => "<button class='item' data-go='event:" + e.id + "'><span class='yr'>day " + (e.day + 1) + "</span>The first: " + esc(e.text) + "</button>").join("") : "<p class='small'>Nothing yet.</p>") +
+      (d.oldest ? "<p>Oldest alive: <button class='linkish inline' data-go='person:" + d.oldest.id + "'>" + esc(d.oldest.name) + "</button>, " + yearsOld(d.oldest.age) + ".</p>" : "") +
+      "<p class='small'>Firsts are kept from the moment this page started watching; the world's own record keeps 400 events and lets the smallest go first.</p>";
+    const alive = d.factions.filter(f => f.alive).sort((a, b) => b.pop - a.pop);
+    out += "<h3>Peoples</h3><canvas id='chart' width='632' height='150' aria-label='People of each faction over time'></canvas>" +
+      alive.map(f => "<button class='item' data-go='faction:" + f.id + "'>" + mark(f.id) + "<strong>" + esc(f.name) + "</strong> · " + f.pop + " people</button>").join("") +
+      (d.factions.some(f => !f.alive) ? "<p class='small'>Gone: " + d.factions.filter(f => !f.alive).map(f => esc(f.name)).join(", ") + ".</p>" : "");
+    const rows = Object.keys(st).filter(k => !NOT_COUNTS.has(k)).sort((a, b) => (st[b] !== 0) - (st[a] !== 0) || counterName(a).localeCompare(counterName(b)));
+    out += fold("counts", "Every count (" + rows.length + ")", "<dl class='kv'><dt>People alive</dt><dd>" + st.people + "</dd><dt>Average age</dt><dd>" + num(st.meanAge, 0) + "</dd><dt>Daily food need (adult-day rations)</dt><dd>" + num(d.need, 1) + "</dd><dt>Food in village stores (rations)</dt><dd>" + num(d.stores, 1) + "</dd>" +
+      (d.money === "coins" ? "<dt>Coins in the world</dt><dd>" + num(st.money, 0) + "</dd><dt>Held by the richest tenth</dt><dd>" + pct(st.topShare) + "</dd>" : "") +
+      rows.map(k => "<dt>" + esc(counterName(k)) + "</dt><dd>" + num(st[k], Number.isInteger(st[k]) ? 0 : 1) + "</dd>").join("") + "</dl>");
+    out += fold("key", "The map key, and rules of thumb", "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. A gold line joins two people talking. Zoom in to see carried tools, packs, weapons and shields, and the job and work of whoever is near. Filled squares are villages, with their people's letter; a dashed ring and a word mark a famine, a siege or a sickness for as long as it lasts. A solid white ring is what you selected; a dashed one, the person you follow.</p>" +
+      "<p class='small'>At 1× a day takes five minutes. A square of the map is 250 metres. A ration feeds one adult for one day; children need less, more as they grow. “Days of food” in a store is that store over what the people who live there need now: an estimate, not a promise anybody can reach it.</p>", keyOpen);
+    return out;
+  }
+
+  /* ── the Rules drawer (21g) ── */
+  const settingWords = (it, v) => v == null ? "" : words(it, v);
+  function actionLine(a) {
+    const it = a.key && window.WBPeople.SCHEMA.flatMap(g => g.items).find(i => i.key === a.key);
+    const what = a.what === "set" && it ? esc(it.label) + ": " + esc(settingWords(it, a.from)) + " → " + esc(settingWords(it, a.to))
+      : a.what === "rule" ? (a.to ? "Took over the decisions of " : "Handed back ") + esc(a.on)
+      : ["war", "peace", "ally", "trade", "tribute", "stop", "wed"].includes(a.what) ? esc(a.on) + ": " + esc({ war: "declared war on", peace: "offered peace to", ally: "alliance with", trade: "trade deal with", tribute: "demanded tribute from", stop: "stopped paying", wed: "a marriage with" }[a.what]) + " " + esc(a.other) + (a.from !== a.to ? " (" + esc(String(a.from)) + " → " + esc(String(a.to)) + ")" : ", refused")
+      : esc(a.on) + ": " + esc({ ftax: "tax", fharvest: "harvest tax", army: "under arms", relief: "relief", land: "who holds the land", unfree: "unfree people", vtax: "tax", vrelief: "relief", vreset: "same as all" }[a.what] || a.what) +
+        (a.from !== a.to && a.from != null ? " " + esc(typeof a.from === "number" ? pct(a.from) : String(a.from)) + " → " + esc(typeof a.to === "number" ? pct(a.to) : String(a.to)) : "");
+    return "<li><span class='yr'>" + dayYear(a.day) + "</span> " + what + "</li>";
+  }
+  function rulesPane(d) {
+    const S = d.settings, S0 = d.start || S;
+    let out = "<h3>Rules of this world</h3><p class='small'>These take effect at once. Each says what it is now and, if you changed it, what it began at. Every change you make is written down below and marked on the Overview's graphs. Ruling a people is on that people's page.</p>";
+    for (const g of window.WBPeople.SCHEMA) {
+      const items = g.items.filter(it => it.live && (!it.when || it.when(S)));
+      if (!items.length) continue;
+      out += "<h4>" + esc(g.title) + "</h4>" + items.map(it => {
+        const was = S0[it.key] !== S[it.key] ? "<span class='small block'>began at " + esc(words(it, S0[it.key])) + "</span>" : "";
+        return it.type === "range" ? stepRow(esc(it.label) + was, esc(words(it, S[it.key])), "live:" + it.key)
+          : "<div class='row'><span class='lbl'>" + esc(it.label) + was + "</span><button class='btn' data-go='live:" + it.key + ":1'>" + esc(words(it, S[it.key])) + "</button></div>";
+      }).join("");
+    }
+    out += "<h3>Your changes</h3>" + (d.actions.length ? "<ul class='log'>" + d.actions.slice().reverse().map(actionLine).join("") + "</ul>" : "<p class='small'>None yet.</p>") +
+      "<p class='small'>A line moving after a change does not prove the change moved it. Whether a rule has come into play yet is not something the engine records, so the page does not claim it.</p>";
+    return out;
+  }
+
+  /* ── News (21f) ── */
+  function newsPane(d) {
+    const filters = [["all", "Everything"], ["big", "Big"], ["pinned", "Pinned"], ["talk", "Talk"]];
+    const bar = "<div class='filters' role='group' aria-label='Show'>" + filters.map(f => "<button class='btn' data-go='newsf:" + f[0] + "' aria-pressed='" + (newsFilter === f[0]) + "'>" + f[1] + "</button>").join("") + "</div>";
+    let list = d.events;
+    if (newsFilter === "big") list = list.filter(e => e.weight >= 3.5 || BIG_KINDS.has(e.kind));
+    if (newsFilter === "pinned") {
+      const mine = new Set(); for (const x of (d.pinNews || [])) mine.add(x);
+      list = list.filter(e => pins.some(p => (p.k === "f" && e.f === p.id) || (p.k === "v" && vs[p.id] && Math.abs(e.x - vs[p.id].x) < 0.75 && Math.abs(e.y - vs[p.id].y) < 0.75) || ((p.k === "p" || p.k === "h") && p.name && e.text.includes(p.name))));
+    }
+    return bar + (d.problems.length ? "<h3>Going wrong now</h3>" + d.problems.map(probLine).join("") : "") +
+      (newsFilter === "pinned" && !pins.length ? "<p class='small'>Nothing pinned. Pin a person, a household, a village or a people from its page.</p>" : "") +
+      (list.length ? foldEvents(list).map(g => eventLine(g)).join("") : "<p class='small'>Nothing that anybody would remember" + (newsFilter === "all" ? " yet." : " here.") + "</p>") +
+      (newsFilter === "pinned" && pins.some(p => p.k === "p" || p.k === "h") ? "<p class='small'>For a person or a household this is the news that names them: the engine records which people and place an event is about only as its words.</p>" : "") +
+      "<p class='small'>The record keeps 400 events and lets the smallest go first, so older small news may be gone.</p>";
+  }
+
+  /* ── People (21f): pins, then people worth a look; everybody A to Z behind a tap ── */
+  function worthPane(d) {
+    const row = p => "<button class='item person-row' data-go='person:" + p.id + "'><strong>" + esc(p.name) + "</strong><span class='small'>" + yearsOld(p.age) + " · " + esc(p.job) + " · " + esc(p.home) + "</span><span>" + esc(p.activity) + "</span></button>";
+    return "<button class='btn' data-go='people-all'>Everybody, A to Z, with search</button>" +
+      (d.pins.length ? "<h3>What you pinned</h3>" + d.pins.map(pinLine).join("") : "<p class='small'>Pin people, households, villages and peoples from their pages to keep them here.</p>") +
+      d.groups.filter(g => g.count).map(g => "<h3>" + esc(g.title) + " <span class='small'>" + g.count + "</span></h3>" + g.rows.map(row).join("") + (g.count > g.rows.length ? "<p class='small'>and " + (g.count - g.rows.length) + " more.</p>" : "")).join("") +
+      (d.groups.every(g => !g.count || g.key === "old" || g.key === "leaders") ? "<p class='small'>Nobody is going hungry, sick or away at war.</p>" : "");
+  }
+
+  /* ── the Inspector (21e) ── */
+  const TRAITS = [["bold", "bold", "timid"], ["warm", "warm", "cold"], ["stub", "stubborn", "easily swayed"], ["greed", "greedy", "generous"], ["patient", "patient", "impatient"],
+    ["temper", "quick to anger", "even-tempered"], ["hard", "hardworking", "idle"], ["curious", "curious", "incurious"], ["honest", "honest", "not to be trusted"]];
+  function twoTraits(p) {
+    const t = TRAITS.map(x => ({ v: p[x[0]] ?? 0.5, hi: x[1], lo: x[2] })).sort((a, b) => Math.abs(b.v - 0.5) - Math.abs(a.v - 0.5)).slice(0, 2).filter(x => Math.abs(x.v - 0.5) > 0.12);
+    if (!t.length) return "Nothing about them stands out.";
+    const say = x => (Math.abs(x.v - 0.5) > 0.3 ? "very " : "") + (x.v > 0.5 ? x.hi : x.lo);
+    return (say(t[0]) + (t[1] ? ", " + say(t[1]) : "")).replace(/^./, c => c.toUpperCase()) + ".";
+  }
+  /* The way back through what was looked at: the last forty. */
+  const remember = () => { if (seen.length > 40) seen.splice(0, seen.length - 40); };
+  function lookTop(d) {
+    remember();
+    return (seen.length > 1 ? "<button class='back' data-go='back'>← " + esc(seenName(seen[seen.length - 2])) + "</button>" : "");
+  }
+  function seenName(p) {
+    return p.person ? (p.name || "the person before") : p.village != null ? (vs[p.village] ? vs[p.village].name : "the village") : p.faction != null ? (fs[p.faction] ? fs[p.faction].name : "the people") : p.event != null ? "the news" : "back";
+  }
+  function personLook(d) {
+    const p = d.person, named = d.named || {};
+    if (!p) return "<p class='small'>" + (picked && picked.person ? esc(picked.name || "They") + " has died. They are no longer in the living population." : "Tap anything on the map: a person, a village, a house, a field, a road, a boat, the land of a people.") + "</p>";
+    const coins = d.money === "coins", link = id => "<button class='linkish inline' data-go='person:" + id + "'>" + esc(named[id]) + "</button>";
+    const job = p.job === "child" ? "a child" : p.leads ? "leader of " + esc(p.faction.name) + ", and a " + p.job : "a " + p.job;
+    const need = p.urgency, pressing = [["food", "needs to eat"], ["rest", "worn out"], ["safety", "afraid"], ["company", "has had nobody to talk to"], ["provide", "wants more put by"]].reduce((a, b) => (need[b[0]] > need[a[0]] ? b : a));
+    const carried = p.food / Math.max(0.01, p.dailyNeed);
+    const stake = p.hungry > 0 ? "<span class='urgent'>Going hungry.</span> Carries <span class='est'>" + days(carried) + "</span> of food; the household's pot holds <span class='est'>" + days(p.household.food / Math.max(0.01, p.dailyNeed * p.household.ids.length)) + "</span> a head."
+      : p.sick > 0 ? "<span class='urgent'>Sick.</span>" : p.unfree ? "<span class='urgent'>Held unfree.</span>" : p.adult && need[pressing[0]] >= 0.15 ? "" : "Nothing pressing.";
+    const parents = [p.mum, p.dad].filter(id => id && id in named), mate = p.partner && p.partner in named ? p.partner : 0;
+    const fam = [mate ? "married to " + link(mate) : "", parents.length ? "child of " + parents.map(link).join(" and ") : "", p.children.length ? (p.children.length === 1 ? "a child, " : "children ") + p.children.map(link).join(", ") : ""].filter(Boolean).join(" · ");
+    const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(Math.max(0, Math.min(1, v)) * 100) + "%'></b></i>";
+    const friends = p.friends.slice().sort((a, b) => b[1] - a[1]), likes = friends.filter(x => x[1] > 0.2).slice(0, 4), hates = friends.filter(x => x[1] < -0.2).slice(-3).reverse();
+    const hh = p.household;
+    return lookTop(d) + "<div class='head'>" + pinBtn("p", p.id, p.name) + "<h3>" + esc(p.name) + "</h3></div>" +
+      "<p>" + yearsOld(p.age) + " old, " + job + " in <button class='linkish inline' data-go='village:" + p.home.id + "'>" + esc(p.home.name) + "</button> · " + facName(p.faction.id, p.faction.name) + "</p>" +
+      "<div class='now" + (p.hungry > 0 || p.sick > 0 ? " bad" : "") + "'><strong>Now: " + esc(p.activity) + "</strong>" + (p.adult && need[pressing[0]] >= 0.15 ? " — " + esc(pressing[1]) : "") + (stake ? "<br>" + stake : "") + "</div>" +
+      (fam ? "<p>" + fam.replace(/^./, c => c.toUpperCase()) + "</p>" : "<p class='small'>No living family recorded.</p>") +
+      "<p class='trait'>" + esc(twoTraits(p)) + "</p>" +
+      (p.listener ? "<p>Talking to " + link(p.listener) + "</p>" : "") +
+      "<div class='row'><button class='btn' data-go='follow' aria-pressed='" + follow + "'>" + (follow ? "Following" : "Follow") + "</button>" + pinBtn("h", p.id, p.name, "Pin their household") + "</div>" +
+      fold("needs", "Needs, food and coins", (p.adult ? "<div class='bars'>" + bar("Hungry", need.food / 1.4) + bar("Tired", p.rest) + bar("Alone", p.alone / 30) + bar("Afraid", p.fear) + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + "</div>" : "<div class='bars'>" + bar("Mood", p.mood) + "</div>") +
+        "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 2) + " rations</dd><dt>Daily need</dt><dd>" + num(p.dailyNeed, 2) + " rations</dd>" + (coins ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") + "<dt>Loose goods</dt><dd>" + num(p.goods, 2) + "</dd><dt>Children born</dt><dd>" + p.kids + "</dd></dl>") +
+      fold("nature", "Nature — all of it", "<div class='bars'>" + bar("Bold", p.bold) + bar("Warm", p.warm) + bar("Stubborn", p.stub ?? 0.5) + bar("Greedy", p.greed) + bar("Patient", p.patient ?? 0.5) + bar("Hot-tempered", p.temper ?? 0.5) + bar("Hardworking", p.hard ?? 0.5) + bar("Curious", p.curious ?? 0.5) + bar("Honest", p.honest ?? 0.5) + "</div><p class='small'>Lasting: they change little over a life.</p>") +
+      fold("household", "The household (" + hh.ids.length + ")", "<p>" + hh.ids.map(id => id === p.id ? esc(p.name) : link(id)).join(", ") + "</p><dl class='kv'>" + (coins ? "<dt>One purse</dt><dd>" + num(hh.coins, 1) + " coins</dd>" : "") + "<dt>One pot</dt><dd>" + num(hh.food, 1) + " rations</dd><dt>Going hungry</dt><dd>" + hh.hungry + "</dd><dt>Fields held</dt><dd>" + hh.fields + "</dd></dl>" +
+        (hh.house ? "<button class='linkish' data-go='house:" + hh.house.id + "'>Their house →</button>" : "<p class='small'>No house of their own.</p>") + "<p class='small'>What the household holds now; how it has spent over time is not kept.</p>") +
+      fold("mind", "On their mind (" + (p.mind ? p.mind.length : 0) + ")", (p.mind && p.mind.length ? "<p class='small'>" + p.mind.length + " things of the " + (p.mcap + 1) + " they can hold. What someone has heard or believes is not the same as what happened.</p><ul class='mind'>" +
+        p.mind.slice().sort((a, b) => Math.abs(b.strength) - Math.abs(a.strength)).map(m => "<li>" + esc(m.text) + (m.wrong ? " <span class='small'>(not what happened: it changed in the telling)</span>" : "") + (m.kind !== "belief" && m.days > 0 ? " <span class='small'>— " + (m.days >= 365 ? Math.floor(m.days / 365) + (m.days >= 730 ? " years" : " year") : m.days + (m.days === 1 ? " day" : " days")) + " ago</span>" : "") + (m.kind === "news" ? newsTrail(m) : "") + "</li>").join("") + "</ul>" : "<p class='small'>Nothing.</p>")) +
+      fold("friends", "Friends and enemies", (likes.length ? "<p>Friends: " + likes.map(x => link(x[0])).join(", ") + ".</p>" : "") + (hates.length ? "<p>Cannot stand: " + hates.map(x => link(x[0])).join(", ") + ".</p>" : "") + (!likes.length && !hates.length ? "<p class='small'>Nobody close either way.</p>" : "") + (p.say ? "<p class='small'>Last said: “" + esc(p.say) + "”</p>" : "")) +
+      fold("beliefs", "Beliefs, faith and their life", "<p class='mindline'>" + (p.leans === "share" ? "Believes what is grown should be shared out." : p.leans === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") + (p.faith ? " Holds to " + esc(p.faith.name) + "." : "") + "</p>" +
+        (p.from !== p.f ? "<p class='small'>Born under " + esc(p.bornUnder) + ".</p>" : "") + "<p>" + lifeLine(p.life) + "</p>") +
+      fold("gear", "Equipment", equipmentPane(p).replace("<h3>Equipment</h3>", "")) +
+      (pinned("p", p.id) && p.pinNews ? fold("record", "News that names them since you pinned them", p.pinNews.map(e => "<p><span class='yr'>day " + (e.day + 1) + "</span> " + esc(e.text) + "</p>").join("") || "<p class='small'>None yet.</p>") : "");
+  }
+  function villageLook(d) {
+    const v = d.village; if (!v) return "";
+    const coins = d.money === "coins";
+    const bad = v.siege > 0 ? "<span class='urgent'>Enemy soldiers are at the walls and nobody is defending it.</span>" : v.hungry > v.pop * 0.4 && v.pop > 8 ? "<span class='urgent'>Starving: " + pct(v.hungry / Math.max(1, v.pop)) + " going hungry.</span>" : "";
+    return lookTop(d) + "<div class='head'>" + pinBtn("v", v.id, v.name) + "<h3>" + esc(v.name) + "</h3></div><p>" + (v.place !== "village" ? "A " + esc(v.place) + " of " : "A village of ") + facName(v.faction.id, v.faction.name) + (v.alive ? "" : " — abandoned") + "</p>" +
+      (bad ? "<div class='now bad'>" + bad + "</div>" : "") +
+      "<dl class='kv big'><dt>People</dt><dd>" + v.pop + "</dd><dt>Going hungry</dt><dd>" + v.hungry + "</dd><dt>Sick</dt><dd>" + v.sick + "</dd><dt>The store covers</dt><dd><span class='est'>" + days(v.storeDays) + "</span></dd>" +
+        (coins ? "<dt>Food for coins</dt><dd>" + (v.food > 0.5 ? num(v.priceFood, 2) + " a ration" : "none to sell") + "</dd>" : "") + "<dt>Loyalty</dt><dd>" + pct(v.loyal) + "</dd></dl>" +
+      "<p class='small'>The store's days are its food over what the people who live there need now — an estimate; carried food and harvests to come are apart.</p>" +
+      fold("vmore", "Stores, goods and when it began", "<dl class='kv'><dt>Food in the store</dt><dd>" + num(v.food, 1) + " rations</dd><dt>Goods</dt><dd>" + num(v.goods, 0) + "</dd>" + (v.wanted >= 0.5 ? "<dt>On order</dt><dd>" + num(v.wanted, 0) + "</dd>" : "") +
+        (v.mats ? "<dt>Wood</dt><dd>" + num(v.wood, 0) + " loads</dd><dt>Stone</dt><dd>" + num(v.stone, 0) + " loads</dd><dt>Ore</dt><dd>" + num(v.iron, 0) + " loads</dd>" : "") +
+        (coins ? "<dt>Coins in the till</dt><dd>" + num(v.till, 0) + "</dd>" : "") + "<dt>Founded</dt><dd>year " + (Math.floor(v.founded / world.YEAR) + 1) + "</dd>" +
+        (v.wall ? "<dt>Walls</dt><dd>" + pct(v.wall) + " of the way up</dd>" : "") + (v.well ? "<dt>A well</dt><dd>yes</dd>" : "") + (v.bridge ? "<dt>A bridge</dt><dd>yes</dd>" : "") + (v.boat ? "<dt>A boat</dt><dd>yes</dd>" : "") + "</dl>" +
+        "<p class='small'>How this village's numbers have changed is kept only from when you pin it.</p>");
+  }
+  function factionLookPane(d) {
+    const F = d.faction, f = d.factions && d.factions.find(x => x.id === F.id);
+    if (!F) return "";
+    const wars = F.rel.filter(r => r.war), friends = F.rel.filter(r => !r.war && (r.ally || r.trade || r.wed));
+    const T = F.tech;
+    const why = T ? (() => {
+      const known = T.known, notUsed = known.filter(x => x.banned || x.cant), learning = known.filter(x => !x.banned && !x.cant && x.skill < 0.85);
+      return "<p class='small'>Knowing a thing, being able to use it and using it are three different things. This is what the engine records of each.</p>" +
+        (notUsed.length ? "<h4>Known, and not in use</h4>" + notUsed.map(x => "<p>" + esc(x.name) + " — " + (x.banned ? "forbidden" : "") + (x.banned && x.cant ? ", and " : "") + (x.cant ? "nothing here to make it with" : "") + " <span class='small'>(" + pct(x.share) + " know it)</span></p>").join("") : "<p class='small'>Nothing they know is forbidden or without what it needs.</p>") +
+        (learning.length ? "<h4>Still being learned</h4><p>" + learning.map(x => esc(x.name)).join(", ") + "</p>" : "") +
+        (T.next.length ? "<h4>Within reach, not yet found</h4><p>" + T.next.slice(0, 6).map(x => esc(x.name)).join(", ") + "</p><p class='small'>Found by chance and need; the engine keeps no date for it.</p>" : "") +
+        (T.lost.length ? "<h4>Lost</h4><p>" + T.lost.map(x => esc(x.name) + (x.written ? " (written down)" : "")).join(", ") + "</p>" : "");
+    })() : "<p class='small'>Know-how is not followed in this world.</p>";
+    return lookTop(d) + "<div class='head'>" + pinBtn("f", F.id, F.name) + "<h3>" + mark(F.id) + esc(F.name) + "</h3></div>" +
+      (F.alive ? "" : "<p class='urgent'>This people is gone.</p>") +
+      "<dl class='kv big'><dt>People</dt><dd>" + F.pop + "</dd><dt>Under arms</dt><dd>" + F.soldiers + "</dd><dt>Loyalty</dt><dd>" + pct(F.loyal) + "</dd></dl>" +
+      "<p>Led by " + (F.lead ? "<button class='linkish inline' data-go='person:" + F.lead.id + "'>" + esc(F.lead.name) + "</button>, " + yearsOld(F.lead.age) : "nobody") + " · " + ({ elected: "chosen by vote", chief: "a chief for life", rich: "the richest" }[F.rule] || "") + "</p>" +
+      (wars.length ? "<p class='urgent'>At war with " + wars.map(r => esc(r.name)).join(", ") + ".</p>" : "<p>At peace.</p>") +
+      (friends.length ? "<p>" + friends.map(r => [r.ally ? "allied with" : "", r.trade ? "trades free of tax with" : "", r.wed ? "bound by marriage to" : ""].filter(Boolean).join(", ") + " " + esc(r.name)).join(" · ").replace(/^./, c => c.toUpperCase()) + "</p>" : "") +
+      "<p class='small'>Villages: " + F.villages.map(v => "<button class='linkish inline' data-go='village:" + v.id + "'>" + esc(v.name) + "</button> (" + v.pop + ")").join(", ") + "</p>" +
+      fold("rule", f && f.yours ? "You are ruling " + esc(F.name) : "Rule " + esc(F.name) + " yourself", f ? rulePane(f, d) : "", !!(f && f.yours)) +
+      fold("laws", "Laws, land, marriage and faith", f ? "<div class='fac'>" + (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + matchLine(f.match) +
+        (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + faithMore(f.faith) + "</span>" : "") + dealings(f, d) +
+        (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + "</div>" : "") +
+      fold("tech", "What they know, and why it is not in use", why);
+  }
+  const HOUSE_STAGE = ["", "left empty", "falling in", "roofless", "walls only", "a mound"];
+  function thingLook(d) {
+    const t = d.thing, named = d.named || {}; if (!t) return "";
+    const whose = t.village ? "<p>" + mark(t.f) + "<button class='linkish inline' data-go='village:" + t.v + "'>" + esc(t.village) + "</button>, " + esc(t.faction) + "</p>" : "";
+    const person = id => id && named[id] ? "<button class='linkish inline' data-go='person:" + id + "'>" + esc(named[id]) + "</button>" : "";
+    let body = "";
+    if (t.kind === "house") body = "<h3>A house" + (t.stage ? ", " + HOUSE_STAGE[Math.min(5, t.stage)] : t.built ? "" : t.burned ? ", burned" : ", being built") + "</h3>" + whose +
+      "<dl class='kv'><dt>Size</dt><dd>" + Math.round(t.len * 250) + " × " + Math.round(t.wid * 250) + " m</dd><dt>Built of</dt><dd>" + (t.stone ? "stone" : "timber") + "</dd>" + (!t.built ? "<dt>Built so far</dt><dd>" + pct(t.progress) + "</dd>" : "") + "<dt>Fields held</dt><dd>" + t.fields + "</dd></dl>" +
+      (t.owner && named[t.owner] ? "<p>Built for " + person(t.owner) + ".</p>" : "") + (t.inside.length ? "<p>Lives here: " + t.inside.map(person).join(", ") + ".</p>" : "<p class='small'>Nobody lives here now.</p>");
+    else if (t.kind === "building") body = "<h3>" + esc(({ store: "A store", market: "A market", hall: "A hall", smithy: "A smithy", dock: "A dock", fort: "A fort", oven: "A common oven", mill: "A mill", power: "A power house", works: "A workshop", line: "A line", tower: "A tower", shrine: "A shrine", temple: "A temple" })[t.what] || "A building") + (t.stage ? ", " + HOUSE_STAGE[Math.min(5, t.stage)] : "") + "</h3>" + whose +
+      "<dl class='kv'><dt>Size</dt><dd>" + Math.round(t.len * 250) + " × " + Math.round(t.wid * 250) + " m</dd><dt>Built of</dt><dd>" + (t.stone ? "stone" : "timber") + "</dd></dl>";
+    else if (t.kind === "field") body = "<h3>A field</h3>" + whose + "<dl class='kv'><dt>Crop standing</dt><dd>" + pct(t.crop) + " of what it can hold</dd><dt>How well it grows</dt><dd>" + pct(t.fert) + "</dd></dl>" +
+      (t.owner && named[t.owner] ? "<p>Held by the household of " + person(t.owner) + (t.house >= 0 ? " · <button class='linkish inline' data-go='house:" + t.house + "'>their house</button>" : "") + ".</p>" : "<p class='small'>Held by a house nobody owns now.</p>");
+    else if (t.kind === "road") body = "<h3>" + (t.road === 2 ? "A road" : t.road === 1 ? "A path worn by walking" : "Open ground") + "</h3>" + whose + "<p class='small'>Worn in by the people who walk it; a road is a path walked enough, or built.</p>";
+    else if (t.kind === "boat") body = "<h3>" + (t.alive ? "A boat" : "A landing, no boat now") + "</h3>" + whose + "<p class='small'>The village's boat: it carries grain by water, ten carts a load.</p>";
+    else if (t.kind === "unit") body = t.gone ? "<h3>A unit of an army</h3><p class='small'>It has broken up or moved on.</p>" : "<h3>A unit of " + mark(t.f) + esc(t.faction) + "</h3><p>" + esc(t.role === "reserve" ? "In reserve" : "In the line") + ", in " + esc(t.shape || "a body") + ".</p>" +
+      (t.army.length ? t.army.map(c => "<p class='urgent'>" + (c.ready ? "Marching on " + esc(c.goal) : "Gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + ".</p>").join("") : "") + "<button class='linkish' data-go='faction:" + t.f + "'>Its people →</button>";
+    else if (t.kind === "event") body = t.gone ? "<h3>A piece of news</h3><p class='small'>The record has let it go: it keeps 400 events, the smallest going first.</p>" :
+      "<h3>" + esc(t.text) + "</h3><p class='small'>" + dayYear(t.day) + (t.f >= 0 && fs[t.f] ? " · " + mark(t.f) + esc(fs[t.f].name) : "") + "</p>" +
+      (t.why ? "<p class='because'>because " + esc(t.why) + "</p>" : "<p class='small'>The engine wrote down no reason with it.</p>") + (t.after ? "<p>After: " + esc(t.after) + "</p>" : "") +
+      ((t.x || t.y) ? "<button class='btn' data-go='at:" + t.x + ":" + t.y + "'>Where it happened</button>" : "");
+    else body = "<p class='small'>That is gone now.</p>";
+    return lookTop(d) + body;
+  }
+  function inspectorPane(d) {
+    if (picked && picked.village != null) return villageLook(d);
+    if (picked && picked.faction != null) return d.faction ? factionLookPane(d) : "";
+    if (d.thing) return thingLook(d);
+    return personLook(d);
+  }
+
+  function peoplePane(d) {
+    /* d is what the keeper sent for this tab (people-host.js, pane): plain values, read from the
+       world at that moment. Its "named" holds the names of the living people the tab mentions. */
+    if (!d) return "";
+    if (tab === "people") return d.mode === "worth" ? worthPane(d) : "<button class='btn' data-go='people-worth'>← People worth a look</button>" + populationPane(d);
+    if (tab === "news") return newsPane(d);
+    if (tab === "rules") return rulesPane(d);
+    if (tab === "talk") {
+      const filters = [["all", "Everything"], ["big", "Big"], ["pinned", "Pinned"], ["talk", "Talk"]];
+      const bar = "<div class='filters' role='group' aria-label='Show'>" + filters.map(f => "<button class='btn' data-go='newsf:" + f[0] + "' aria-pressed='" + (f[0] === "talk") + "'>" + f[1] + "</button>").join("") + "</div>";
+      if (selectedExchange) return exchangePane(selectedExchange);
+      const list = d.chatter, named = d.named || {};
+      if (!list.length) return bar + "<p class='small'>Nobody has said anything yet.</p>";
+      const participant = (id, name) => id in named ? "<button class='btn family-link' data-go='person:" + id + "'>" + esc(name) + "</button>" : "<span>" + esc(name) + " (died)</span>";
+      return bar + "<p class='small'>Every exchange reports what happened between these people. Choose either name to look at them.</p>" + list.map(c =>
+        "<article class='item talk'><p class='small'>" + esc(TALK_TOPICS[c.kind] || "Conversation") + " · " + exchangeTime(c) + "</p><button class='btn' data-go='exchange:" + c.id + "'>Read exchange</button> " + participant(c.a, c.an) + " → " + participant(c.b, c.bn) + "<p><strong>" + esc(c.an) + ":</strong> <q>" + esc(c.la) + "</q></p>" +
+        (c.lb ? "<p><strong>" + esc(c.bn) + ":</strong> <q>" + esc(c.lb) + "</q></p>" : "") + "</article>").join("");
+    }
+    if (tab === "look") return inspectorPane(d);
+    return overviewPane(d);
   }
 
   /* ═══ the two small worlds on the first screen ═════════════════════════
@@ -2833,11 +3617,11 @@
           const s = Math.max(W / w.cols, H / w.rows), ox = (W - w.cols * s) / 2, oy = (H - w.rows * s) / 2;
           for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
             const i = y * w.cols + x; let c = mix(w.ground ? groundColour(w.ground[i], w.fert[i]) : mix([92, 80, 58], [52, 104, 62], w.fert[i]), [10, 14, 16], 0.45);
-            if (w.owner[i] >= 0) c = mix(c, rgb(w.factions[w.villages[w.owner[i]].f].colour), 0.3);
+            if (w.owner[i] >= 0) c = mix(c, rgb(PALETTE[w.villages[w.owner[i]].f % 8]), 0.3);
             g.fillStyle = "rgb(" + c.join(",") + ")"; g.fillRect(ox + x * s, oy + y * s, s + 0.5, s + 0.5);
           }
-          for (const v of w.villages) if (v.alive) { g.fillStyle = w.factions[v.f].colour; g.fillRect(ox + v.x * s - 4, oy + v.y * s - 4, 8, 8); }
-          for (const p of w.people) { const r = p.job === "child" ? 1.3 : 1.9; g.fillStyle = w.factions[p.f].colour; g.fillRect(ox + p.x * s - r, oy + p.y * s - r, r * 2, r * 2); }
+          for (const v of w.villages) if (v.alive) { g.fillStyle = PALETTE[v.f % 8]; g.fillRect(ox + v.x * s - 4, oy + v.y * s - 4, 8, 8); }
+          for (const p of w.people) { const r = p.job === "child" ? 1.3 : 1.9; g.fillStyle = PALETTE[p.f % 8]; g.fillRect(ox + p.x * s - r, oy + p.y * s - r, r * 2, r * 2); }
         }
       }
     };

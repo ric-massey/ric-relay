@@ -5,8 +5,10 @@ actually does not what it says it does … what would be the settings that most 
 want to change or the most used. and then advanced settings would have all of them … this is a
 high quality simulater and the ui needs to show it."
 
-This file is the analysis, and a proposal built on it. **Nothing here is built yet, and the
-proposal is not agreed** — the questions at the end are Ric's to answer before any of it is.
+This file is the analysis, and a proposal built on it. **Built on 2026-11-25** (TODO 21b to 21g,
+Ric's answers in `TODO.md` item 21; what shipped is the README's "The People page, rebuilt"). This
+file still describes the page *before* the rebuild in sections 1 to 3 — read them as the record of
+why, not as what the page is now. Saving (21h) waits on item 19.
 Everything below was read off the code on 2026-11-24 (commit `7dd70a2c`) or measured on that
 date; the measurement and how to re-run it are in "How the settings were measured".
 

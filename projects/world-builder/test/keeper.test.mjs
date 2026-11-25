@@ -155,15 +155,15 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   k.host.receive({ t: "clock", rate: 16 });
   for (let n = 0; n < 700; n++) k.host.run(0.1, 50);
   // People: by name, sixty to a page, filtered.
-  const all = k.ask({ t: "pane", tab: "people", seq: 1, q: { search: "", settlement: "", faction: "", job: "", page: 0 } });
+  const all = k.ask({ t: "pane", tab: "people", seq: 1, q: { all: true, search: "", settlement: "", faction: "", job: "", page: 0 } });   // A to Z is behind a tap since TODO 21f
   assert.equal(all.count, w.people.length); assert.equal(all.rows.length, 60); assert.equal(all.pages, Math.ceil(w.people.length / 60));
   const names = w.people.map(p => p.name).sort((a, b) => a.localeCompare(b));
   assert.deepEqual(all.rows.map(r => r.name), names.slice(0, 60), "in the order the page always listed them");
-  const some = k.ask({ t: "pane", tab: "people", seq: 2, q: { search: "", settlement: "", faction: "0", job: "farmer", page: 99 } });
+  const some = k.ask({ t: "pane", tab: "people", seq: 2, q: { all: true, search: "", settlement: "", faction: "0", job: "farmer", page: 99 } });
   assert.equal(some.count, w.people.filter(p => p.f === 0 && p.job === "farmer").length);
   assert.equal(some.page, some.pages - 1, "a page past the end is the last page");
   const who = w.people[5];
-  assert.equal(k.ask({ t: "pane", tab: "people", seq: 3, q: { search: who.name.toUpperCase() } }).rows.some(r => r.id === who.id), true, "search ignores case");
+  assert.equal(k.ask({ t: "pane", tab: "people", seq: 3, q: { all: true, search: who.name.toUpperCase() } }).rows.some(r => r.id === who.id), true, "search ignores case");
   // A person.
   const parent = w.people.find(p => w.people.some(q => q.mum === p.id || q.dad === p.id)) || who;
   const look = k.ask({ t: "pane", tab: "look", seq: 4, picked: { person: parent.id } });
@@ -181,8 +181,10 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   assert.equal(fa.factions.length, w.factions.length); assert.equal(fa.factions[0].pop, w.factions[0].pop);
   assert.equal(fa.villages[1].taxNow, w.taxOf(v)); assert.equal(fa.history.length, w.history.length);
   const wo = k.ask({ t: "pane", tab: "world", seq: 8 });
-  assert.deepEqual(wo.stats, w.stats()); assert.equal(wo.settings.people, 240);
-  assert.equal(k.ask({ t: "pane", tab: "news", seq: 9 }).events.length, Math.min(80, w.events.length));
+  /* Every count the engine keeps, flat: the numbers, not the two tallies by village (TODO 21f). */
+  const flat = {}; for (const [key, val] of Object.entries(w.stats())) if (typeof val === "number" && Number.isFinite(val)) flat[key] = val;
+  assert.deepEqual(wo.stats, flat); assert.equal(wo.settings.people, 240);
+  assert.equal(k.ask({ t: "pane", tab: "news", seq: 9 }).events.length, Math.min(120, w.events.length));
   const talk = k.ask({ t: "pane", tab: "talk", seq: 10 });
   assert.equal(talk.chatter.length, Math.min(40, w.chatter.length));
   if (talk.chatter.length) assert.equal(talk.chatter[0].id, w.chatter[w.chatter.length - 1].id, "newest first");
