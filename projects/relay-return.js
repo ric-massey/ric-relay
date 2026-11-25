@@ -29,7 +29,8 @@
     scale: ["googol", "THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER"],
     /* Interstate 40. No W, A, S or D in the word, because those drive the car. */
     offramp: ["exit", "EXIT NOT FOUND // THE ROAD JUST KEEPS GOING"],
-    /* World Builder. Space pauses a running world, so the word has none. */
+    /* The Physics and People Sandboxes (World Builder until 2026-11-25) and the
+       Lab. Space pauses a running world, so the word has none. */
     worlds: ["genesis", "DAY ONE // NO REFUNDS ON WORLDS YOU MADE YOURSELF"],
   };
 

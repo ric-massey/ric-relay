@@ -60,10 +60,13 @@ const SUITES = [
      three hand-kept lists, held to each other here; and the phone and
      front-door fixes of 2026-11-10 stay in. */
   ['the terminal shell', ['.github/test/terminal-shell.mjs']],
-  ['world-builder breakup keeps its books', ['projects/world-builder/test/breakup.test.mjs']],
-  ['world-builder shape and sequence', ['projects/world-builder/test/shape.test.mjs']],
-  ['world-builder chemistry', ['projects/world-builder/test/chemistry.test.mjs']],
-  ['world-builder lab', ['projects/world-builder/test/lab.test.mjs']],
+  /* The Physics Sandbox was World Builder's physics half until 2026-11-25. Its
+     settings, presets and conservation checks are seconds, so they run here. */
+  ['physics-sandbox settings, presets and conservation', ['projects/physics-sandbox/test/physics.test.mjs']],
+  ['physics-sandbox breakup keeps its books', ['projects/physics-sandbox/test/breakup.test.mjs']],
+  ['physics-sandbox shape and sequence', ['projects/physics-sandbox/test/shape.test.mjs']],
+  ['physics-sandbox chemistry', ['projects/physics-sandbox/test/chemistry.test.mjs']],
+  ['physics-sandbox lab', ['projects/physics-sandbox/test/lab.test.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   /* The finder's filters against the Worker's /tmdb/discover whitelist. */
   ['the entertainment finder', ['projects/entertainment/test/finder.mjs']],
@@ -253,8 +256,8 @@ const SUITES = [
      it still works opened as a file); and people has no top. */
   ['world-builder keeper, worker text and no top on people', ['projects/world-builder/test/keeper.test.mjs']],
   ['world-builder watching a world: layers, run until, pins, taps, setup layers', ['projects/world-builder/test/watching.test.mjs']],   // TODO 21, about a minute
-  /* Physics settings/conservation and seven actual days per People preset.
-     The shared daily clock superseded the compressed headless century in
+  /* Seven actual days per People preset (the physics half is
+     physics-sandbox's own suite above, since 2026-11-25). The shared daily clock superseded the compressed headless century in
      2026-11-12. Generation-scale experiments remain explicit --generations
      work, not routine CI; time/food parity and lifecycle boundaries run above. */
   ['world-builder', ['projects/world-builder/test/world-builder.test.mjs'], 'slow']

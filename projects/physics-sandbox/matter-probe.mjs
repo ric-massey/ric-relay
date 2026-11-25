@@ -17,7 +17,7 @@
       Collisions are perfectly bouncy here, so motion and heat agree; a
       collision that loses energy keeps motion a little cooler than heat.
 
-   Run:  node projects/world-builder/matter-probe.mjs
+   Run:  node projects/physics-sandbox/matter-probe.mjs
 */
 import { createRequire } from "node:module";
 const Physics = createRequire(import.meta.url)("./physics.js");

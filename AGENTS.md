@@ -425,7 +425,7 @@ nobody had linked was a page nobody could find.
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
   from the room that fits them — from exactly one room.** Current: `spacetime`,
-  `how-speed-affects-time`, `how-big-everything-is` and `world-builder` → Exploration;
+  `how-speed-affects-time`, `how-big-everything-is`, `physics-sandbox` and `world-builder` → Exploration;
   `autism-reflection.html`, `state-of-mind-line` and `psyche/studies.html` → Psyche; `siege-conductor` →
   Workbench; the nine browser games (listed below), `farlight`, `offramp`, `kondrite`, and `starfield` → Gaming; `climbing`
   → Climbing (including the unlisted `climbing/board.html`); `training` is
@@ -443,22 +443,32 @@ nobody had linked was a page nobody could find.
   projects were advertised from two rooms each — and the Workbench copy for Interstate
   40 described a version of OFFRAMP that had not existed for months. Those cards came
   out on 2026-09-24; the Workbench is Siege Conductor and an empty slot, and Exploration
-  is four modules and a berth (World Builder took the fourth on 2026-11-12).
-- **World Builder (`projects/world-builder/`) is two sandboxes behind one page** (Ric,
-  2026-11-12: "One page. It opens. It gives two options. Physics sandbox. People
-  sandbox. … You then can choose options for the worlds. … Like tons of settings. Then
-  you hit run it opens the world."). It is **its own code** — Ric: "this is not going to
-  open Kondrite. Those were just the already written code that you could look at to get
-  an idea of what I wanted" — so it shares nothing with KONDRITE or `projects/universe/`,
-  and it must not: the Universe project forbids a constant anybody can turn, and this
-  page is nothing but. Three rules, all in its `README.md`: **every setting does
-  something** (the page builds its controls from each engine's `SCHEMA`, and the test
-  walks the list and fails on a control that changes nothing); **nothing is scripted**
-  (no function starts a war, a famine or a breakaway on a timer — KONDRITE's rule,
-  "nothing forced or faked", carried over); and **what people say reports what just
-  happened between them, never causes it**. No AI model talks for them and none should
-  be wired in: the lines are templates over real exchanges, which is why hundreds can
-  talk at once for free. **The physics world can be built by hand and can react**
+  is five modules and a berth (World Builder took the fourth on 2026-11-12; when it
+  split on 2026-11-25 the Physics Sandbox became the fourth and the People Sandbox the fifth).
+- **World Builder was two sandboxes behind one page, and since 2026-11-25 it is two
+  projects** (Ric: "I need you to separate physics sim and people sim into two separate
+  projects"). It began as one page with two doors (Ric, 2026-11-12: "One page. It opens. It
+  gives two options. Physics sandbox. People sandbox. … You then can choose options for the
+  worlds. … Like tons of settings. Then you hit run it opens the world."). The engines never
+  shared code, so the split moved files and cut the page in two: **the Physics Sandbox is
+  `projects/physics-sandbox/`** (`physics.js`, the Lab, the three probes and their tests),
+  and **the People Sandbox kept `projects/world-builder/`** because its TODO, vision, hundred
+  tests and most of this file already pointed there. Ric chose that layout, the names
+  "Physics Sandbox" / "People Sandbox" and two Exploration cards. Each page opens on its own
+  settings, with no chooser. The old addresses still work and must keep working:
+  `world-builder/index.html#physics…` is sent on to the Physics Sandbox before anything else
+  runs, and `world-builder/lab.html` is a redirect page. In the terminal, `people` (and the
+  old `worlds`) opens People, and `physics-sandbox` (or `chemistry`, `lab`) opens Physics,
+  because `physics` already belongs to the universe project. The two pages began as one
+  page's code and are free to drift apart now; don't share a file between them to "save
+  duplication" — that is the coupling Ric asked to remove.
+- **The Physics Sandbox (`projects/physics-sandbox/`)** is **its own code** — it shares
+  nothing with KONDRITE or `projects/universe/`, and it must not: the Universe project
+  forbids a constant anybody can turn, and this page is nothing but. Two rules, in its
+  `README.md`: **every setting does something** (the page builds its controls from
+  `SCHEMA`, and `test/physics.test.mjs` walks the list and fails on a control that changes
+  nothing) and **nothing is scripted** (no rule makes or rewards a copier).
+  **The physics world can be built by hand and can react**
   (Ric, 2026-11-13: "how do we make it so emergence is something thats possible? and i
   need a way to place them … and modify hexigons"): a tool row places, throws, erases,
   heats, cools and pins hexagons, and the `shift` setting makes a bond change what a
@@ -480,7 +490,7 @@ nobody had linked was a page nobody could find.
   KIND it already holds, so a chain carries a sequence). The census now reads a chain or
   a ring along itself (`1-2-3`, `1○2○3`), so counts of "different things" are not
   comparable with any taken before that date. **Nothing has replicated**:
-  `projects/world-builder/replication-probe.mjs` is the measurement — the seeded-versus-
+  `projects/physics-sandbox/replication-probe.mjs` is the measurement — the seeded-versus-
   unseeded control from Virgo et al. (2011), run by hand — and at its defaults it reports
   no difference. Keep it that way: don't script a copier, don't reward copying, and don't
   tune the constants until one appears. The straightening spring's sideways lean on the
@@ -534,8 +544,36 @@ nobody had linked was a page nobody could find.
   a setup becomes a world; keep the page and tests going through it. Experiments run on
   the grid where they can be watched, not in a hidden worker (Ric asked for that). Without
   `kindsDef` the engine must stay byte-identical (lab.test.mjs holds it).
+  **Physics numbers are typed as well as slid** (Ric, 2026-11-12: "you can type one",
+  after pushing a particle above a billion). Sliders keep their convenient sweeps; actual
+  numeric limits live on `SCHEMA.inputMin` / `inputMax` and `clean()` uses those for typed
+  values and shared links. Do not clamp custom experiments back to the slider limits or
+  round decimal entries to slider steps. Place/Throw take a typed mass multiplier; the
+  inspector accepts mass, temperature and both velocity components. Keep these ordinary
+  controls without promotional copy (Ric: "dont say this is a feature its intuitive").
+  **Bodies can fracture and shed material** (2026-11-12, Ric: "yeah add it in please make sure
+  it matches with the look of everytrhing else"). `breaking`, `toughness`, `fragmentMass` and
+  `meltTemp` live in the existing Collisions/Heat groups. Size alone never causes breakup;
+  impacts and excess heat must pay for both fracture work and fragment motion. Fragments
+  use the same hexagon renderer and share spare capacity with hand placements. The nearest
+  README records the accounting and limits; `projects/physics-sandbox/test/breakup.test.mjs`
+  checks mass, momentum, energy, bonds and capacity in the quick lane. Do not replace this
+  with disappearing bodies or free explosions. The World's existing energy bar includes
+  **spent breaking**, the cumulative irreversible work of fracture.
+  **It is not on the front door or in `latest.js` yet** — it has an Exploration card and
+  the terminal's `physics-sandbox`; the front door waits on Ric having looked at it.
+- **The People Sandbox (`projects/world-builder/`)** is **its own code** — Ric: "this is
+  not going to open Kondrite. Those were just the already written code that you could look
+  at to get an idea of what I wanted" — so it shares nothing with KONDRITE. Three rules, all
+  in its `README.md`: **every setting does something** (the page builds its controls from
+  the engine's `SCHEMA`, and the test walks the list and fails on a control that changes
+  nothing); **nothing is scripted** (no function starts a war, a famine or a breakaway on a
+  timer — KONDRITE's rule, "nothing forced or faked", carried over); and **what people say
+  reports what just happened between them, never causes it**. No AI model talks for them
+  and none should be wired in: the lines are templates over real exchanges, which is why
+  hundreds can talk at once for free.
   **It is not on the front door or in `latest.js` yet** — it has
-  an Exploration card and the terminal's `worlds`, and the front door waits on Ric
+  an Exploration card and the terminal's `people` (or `worlds`), and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
   **The People UI was rebuilt on 2026-11-25** (Ric, 2026-11-24: "it needs a complete revamp"; then
   "Do all of Number 21"): TODO 21b to 21g, Ric's answers written into item 21, the README's "The
@@ -833,23 +871,7 @@ nobody had linked was a page nobody could find.
   within their faction, and hostile/abandoned markets are excluded. The README records limits;
   `projects/world-builder/test/travel.test.mjs` runs in the quick checks. Destination names are
   grouped into stable categories by `test/day.mjs` so names do not distort day measurements.
-  **Physics numbers are typed as well as slid** (Ric, 2026-11-12: "you can type one",
-  after pushing a particle above a billion). Sliders keep their convenient sweeps; actual
-  numeric limits live on `SCHEMA.inputMin` / `inputMax` and `clean()` uses those for typed
-  values and shared links. Do not clamp custom experiments back to the slider limits or
-  round decimal entries to slider steps. Place/Throw take a typed mass multiplier; the
-  inspector accepts mass, temperature and both velocity components. Keep these ordinary
-  controls without promotional copy (Ric: "dont say this is a feature its intuitive").
-  **Bodies can fracture and shed material** (2026-11-12, Ric: "yeah add it in please make sure
-  it matches with the look of everytrhing else"). `breaking`, `toughness`, `fragmentMass` and
-  `meltTemp` live in the existing Collisions/Heat groups. Size alone never causes breakup;
-  impacts and excess heat must pay for both fracture work and fragment motion. Fragments
-  use the same hexagon renderer and share spare capacity with hand placements. The nearest
-  README records the accounting and limits; `projects/world-builder/test/breakup.test.mjs`
-  checks mass, momentum, energy, bonds and capacity in the quick lane. Do not replace this
-  with disappearing bodies or free explosions. The World's existing energy bar includes
-  **spent breaking**, the cumulative irreversible work of fracture.
-
+  
 - **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the
   crew app for Dad's race, mostly built by Ric's sister, and the only way in is the
   undocumented `hermiscus` terminal command — like the boards, don't promote it. **The
@@ -1820,7 +1842,7 @@ There is no build. There is a test runner — `node .github/checks.mjs` runs eve
 suite in the repo, side by side, one per core (about nine minutes here since 2026-11-23, against
 about 45 one at a time — World Builder's simulations are most of it; `--jobs 1` runs them in
 turn, and an unknown flag prints the usage instead of running anything) and `--slow` adds the two games' simulations, the
-universe Lab's pre-flight and World Builder's two engines —
+universe Lab's pre-flight and the People Sandbox's presets —
 and CI runs it on every push. So verification is: run that, serve the folder, and open
 the pages you touched.
 
@@ -1849,10 +1871,10 @@ node projects/kondrite/test/campaign.js   # headless play-through of all three m
 node worker/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 node projects/universe/lab-check.mjs      # the universe Lab: seam, books, seeds (~30s)
-node projects/world-builder/test/world-builder.test.mjs   # physics settings + seven actual days per People preset
+node projects/world-builder/test/world-builder.test.mjs   # seven actual days per People preset
 node projects/world-builder/test/time-food.test.mjs       # daily rations and identical frame/hour/batch timelines
-node projects/world-builder/test/breakup.test.mjs         # fracture/shedding: mass, momentum, energy and capacity (quick)
-node projects/world-builder/test/world-builder.test.mjs --physics  # physics settings, presets and conservation only
+node projects/physics-sandbox/test/physics.test.mjs       # physics settings, presets and conservation (seconds)
+node projects/physics-sandbox/test/breakup.test.mjs       # fracture/shedding: mass, momentum, energy and capacity (quick)
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done
 ```

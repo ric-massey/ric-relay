@@ -46,7 +46,7 @@ window.TERMINAL_PAGES = [
   "title": "/exploration",
   "keys": "event horizon",
   "body": "Ric Massey",
-  "text": "Exploration · How Speed Affects Time · How Big Everything Is · The Geometry of Spacetime · World Builder · Experiments",
+  "text": "Exploration · How Speed Affects Time · How Big Everything Is · The Geometry of Spacetime · Physics Sandbox · People Sandbox · Experiments",
   "room": "exploration"
  },
  {
@@ -210,6 +210,22 @@ window.TERMINAL_PAGES = [
   "room": "gaming"
  },
  {
+  "href": "projects/physics-sandbox/index.html",
+  "title": "Physics Sandbox",
+  "keys": "set the physics, run a world of hexagons",
+  "body": "A world of hexagons: choose how strong gravity is, whether anything bonds, how heat moves and what happens when two things hit, then run it and reach in.",
+  "text": "Starting points · Every setting",
+  "room": null
+ },
+ {
+  "href": "projects/physics-sandbox/lab.html",
+  "title": "The Lab",
+  "keys": "Physics Sandbox",
+  "body": "Place hexagons on a grid, type in what each kind is and the rules they follow, and run it against a control to see whether anything copies itself.",
+  "text": "The Lab · This setup · Tools · A soup to work with · Start again · Kinds · Who bonds with whom · Run an experiment · Saved in this browser · Share and keep",
+  "room": null
+ },
+ {
   "href": "projects/psyche/studies.html",
   "title": "Studies",
   "keys": "Psyche",
@@ -371,18 +387,10 @@ window.TERMINAL_PAGES = [
  },
  {
   "href": "projects/world-builder/index.html",
-  "title": "World Builder",
-  "keys": "set the rules, run a world",
-  "body": "Choose a physics sandbox or a people sandbox, set how the world works — gravity, chemistry, money, how long lives are — and run it.",
-  "text": "World Builder · Physics sandbox · People sandbox · Starting points · The essentials · Every setting",
-  "room": null
- },
- {
-  "href": "projects/world-builder/lab.html",
-  "title": "The Lab",
-  "keys": "World Builder",
-  "body": "Place hexagons on a grid, type in what each kind is and the rules they follow, and run it against a control to see whether anything copies itself.",
-  "text": "The Lab · This setup · Tools · A soup to work with · Start again · Kinds · Who bonds with whom · Run an experiment · Saved in this browser · Share and keep",
+  "title": "People Sandbox",
+  "keys": "set how people live, run a world",
+  "body": "Hundreds of people who farm, trade, talk, pair up and grow old. Set how long they live, how money works and who leads, then run the world and watch what they make of it.",
+  "text": "Starting points · The essentials · Every setting",
   "room": null
  },
  {

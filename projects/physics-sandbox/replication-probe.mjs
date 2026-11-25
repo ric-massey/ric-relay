@@ -17,9 +17,9 @@
    Nothing in here rewards copying, selects for it, or helps it along. The
    expected result is no difference. Run:
 
-     node projects/world-builder/replication-probe.mjs
-     node projects/world-builder/replication-probe.mjs --seq 1-5-1-5 --seconds 600
-     node projects/world-builder/replication-probe.mjs --set bondStrength=9 --set align=6
+     node projects/physics-sandbox/replication-probe.mjs
+     node projects/physics-sandbox/replication-probe.mjs --seq 1-5-1-5 --seconds 600
+     node projects/physics-sandbox/replication-probe.mjs --set bondStrength=9 --set align=6
 
    Options: --seq (the sequence to seed, kinds joined by -), --copies,
    --seconds, --runs (how many different world seeds), --set key=value for

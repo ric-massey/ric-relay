@@ -40,6 +40,7 @@ const EXCLUDE = [
   [/^projects\/cs\/p\//, 'one page per CS player — noindex by design'],
   // A redirect has nothing of its own to index, and 404.html is an error page.
   [/^(404|frontdoor|systems|updates)\.html$/, 'redirects and the 404'],
+  [/^projects\/world-builder\/lab\.html$/, 'a redirect: the Lab moved to the Physics Sandbox on 2026-11-25'],
   [/^projects\/crossfire\//, 'a redirect to KONDRITE'],
   [/^projects\/climbing\/add(-route)?\.html$/, "Ric's logging forms"],
   [/^projects\/kondrite\/sounds\//, "Ric's listening booth"],

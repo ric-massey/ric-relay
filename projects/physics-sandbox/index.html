@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Physics Sandbox — set the physics, run a world of hexagons</title>
+<meta name="description" content="A world of hexagons: choose how strong gravity is, whether anything bonds, how heat moves and what happens when two things hit, then run it and reach in.">
+<meta name="theme-color" content="#0c1113">
+<script src="../../assets/visit.js" defer></script>
+<style>
+  /* PHYSICS SANDBOX
+     Its own look, on purpose (the site's rule 3): a dark table with a world on
+     it, one ochre accent, a serif for the things that have names. Every colour
+     that carries words clears 4.5:1 on the surface it sits on — --dim is the
+     faintest text there is, and it is 6.9:1 on --panel. Nothing is set under
+     12px. No rounded pills, glows or lifted cards. */
+  :root {
+    --bg: #0c1113; --panel: #12191c; --raise: #182226; --line: #2a383f;
+    --ink: #e3e9e6; --dim: #98a8a5; --acc: #e0a340; --acc-ink: #1a1304;
+    --warn: #ef8a7c; --good: #8fd39a;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-text-size-adjust: 100%; }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--acc); }
+  :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; }
+
+  .btn { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .55rem .9rem; min-height: 44px; }
+  .btn:hover { border-color: var(--dim); }
+  /* Ruling a faction, and the rules of a running world: one row per decision. */
+  .rule { border: 1px solid var(--line); background: var(--raise); padding: .5rem .6rem; margin: -.2rem 0 .8rem; }
+  .rule h4 { margin: .6rem 0 .2rem; font-size: 13px; color: var(--dim); font-weight: 600; }
+  .row { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin: .2rem 0; }
+  .row .lbl { flex: 1 1 10rem; min-width: 0; }
+  .meter { display: block; height: 3px; background: var(--line); margin-top: .3rem; max-width: 12rem; }
+  .meter i { display: block; height: 100%; background: var(--acc); }
+  .row .step { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
+  .row .val { min-width: 3.2rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .row .btn { min-width: 44px; padding: .4rem .6rem; }
+  .rule-msg { color: var(--acc); }
+  /* Choosing a marriage (TODO 15.5h). */
+  .wed { border-top: 1px solid var(--line); padding: .4rem 0 .2rem; margin: .2rem 0 .4rem; }
+  .wed label { display: block; font-size: 12px; color: var(--dim); }
+  .wed input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; margin: 3px 0 7px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 8px; }
+  .graph { margin: .1rem 0 .5rem; }
+  .graph .gl { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
+  .graph .gl b { color: var(--ink); font-weight: 600; }
+  .graph canvas { display: block; width: 100%; height: 48px; border: 1px solid var(--line); background: var(--bg); }
+  .btn.go { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 700; }
+  .btn.go:hover { filter: brightness(1.08); }
+  .btn.quiet { background: none; }
+  .btn[aria-pressed="true"] { border-color: var(--acc); color: var(--acc); }
+
+  /* ── the first screen: two doors ── */
+  .lab-door { margin: 1.4rem 0 0; color: var(--dim); }
+  .lab-door a { font-family: var(--serif); font-weight: 600; font-size: 1.1rem; margin-right: .4rem; }
+
+  /* ── the second screen: the settings ── */
+  #setup { max-width: 1060px; margin: 0 auto; padding: .6rem 16px 7.5rem; }
+  #setup .top { margin: .2rem 0 1.4rem; }
+  #setup .top h1 { font-size: clamp(1.7rem, 5vw, 2.4rem); }
+  #setup .top p { color: var(--dim); margin: .45rem 0 0; max-width: 68ch; }
+  .linkish { background: none; border: 0; padding: .6rem 0; color: var(--acc); min-height: 44px; }
+  .shelf { display: block; font: 600 .78rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 0 0 .55rem; }
+
+  /* The starting points wrap instead of scrolling sideways: five of them, all
+     in sight, and no scrollbar across the page. */
+  .presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 8px; margin: 0 0 1.7rem; }
+  .preset { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: .6rem .75rem .7rem; }
+  .preset:hover { border-color: var(--dim); }
+  .preset b { display: block; font-family: var(--serif); font-size: 1.02rem; }
+  .preset span { display: block; color: var(--dim); font-size: .82rem; line-height: 1.35; margin-top: .15rem; }
+  .preset[aria-pressed="true"] { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--panel)); }
+  .preset[aria-pressed="true"] b { color: var(--acc); }
+  /* Two to a row on a phone, and a note no more than two lines deep: eleven
+     starting points stacked full width was most of a screen before the first
+     setting. */
+  @media (max-width: 620px) {
+    .presets { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .preset span { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  }
+
+  /* Each group is a panel, and the panels sit side by side wherever there is
+     room — thirty-six settings in one column was six screens of scrolling. */
+  /* Columns, not a grid: a grid lines the panels up in rows, so a short group
+     beside a tall one leaves a hole the height of the difference. */
+  #form { columns: 360px 2; column-gap: 12px; }
+  details.group { display: inline-block; width: 100%; margin: 0 0 12px; break-inside: avoid; -webkit-column-break-inside: avoid;
+                  background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+  details.group > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+                            align-items: center; gap: .2rem .8rem; padding: .6rem .9rem; min-height: 44px; }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary h2 { font-size: 1.18rem; }
+  details.group > summary:hover h2 { color: var(--acc); }
+  details.group > summary .sum { color: var(--dim); font-size: .82rem; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  details.group[open] > summary .sum { visibility: hidden; }
+  /* A corner turned down, so a shut group plainly opens. */
+  details.group > summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--dim); border-bottom: 2px solid var(--dim);
+                                   transform: translateY(-2px) rotate(45deg); }
+  details.group[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  details.group > summary:hover::after { border-color: var(--acc); }
+  @media (prefers-reduced-motion: no-preference) { details.group > summary::after { transition: transform .15s ease; } }
+
+  .row { padding: .5rem .9rem .62rem; border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+  .rhead { display: flex; align-items: baseline; gap: .7rem; }
+  .rhead .lab { font-weight: 600; font-size: .94rem; flex: 1 1 auto; min-width: 0; }
+  .rhead .valbox { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; flex: 0 1 auto; text-align: right; }
+  .row .val { color: var(--acc); font-size: .84rem; }
+  .row .help { color: var(--dim); font-size: .8rem; line-height: 1.4; margin: .2rem 0 0; }
+  .row.off { opacity: .42; }
+  .row.off .help { display: none; }
+  input[type=range] { display: block; width: 100%; height: 26px; accent-color: var(--acc); background: none; margin: .15rem 0 0; }
+  input[type=number] { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .3rem .45rem; min-height: 34px;
+                       width: 5.4em; min-width: 0; font-size: 16px; text-align: right; }
+  input[type=number]:focus { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .body-values { display: grid; gap: .5rem; margin: .8rem 0; }
+  .body-values label { display: grid; grid-template-columns: 1fr minmax(0, 1.4fr); align-items: center; gap: .5rem; }
+  /* The side panel edits a body: those boxes fill their column, unlike the
+     narrow ones beside a slider on the settings screen. */
+  .body-values input[type=number] { width: 100%; min-height: 40px; }
+  select { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; width: 100%; }
+  .row select { margin-top: .3rem; }
+  .tog { display: flex; align-items: center; gap: .5rem; min-height: 34px; cursor: pointer; }
+  .tog input { width: 20px; height: 20px; accent-color: var(--acc); }
+
+  .launch { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px);
+            border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 8px;
+            justify-content: flex-end; align-items: center; z-index: 5; }
+  .launch .changed { color: var(--dim); font-size: .85rem; margin-right: auto; padding-left: 0; }
+  .launch .btn { white-space: nowrap; }
+  /* The way back to the terminal drops into the bar here, in a slot kept clear
+     for it — floating above the bar it sat on top of a panel of settings. */
+  body.setting .relay-return { bottom: calc(14px + env(safe-area-inset-bottom)); }
+  body.setting .launch { padding-left: 190px; }
+  /* On a phone there is no room beside the buttons, so the bar grows a second
+     storey and the control sits in it — anywhere else it covers a panel. */
+  @media (max-width: 720px) {
+    .launch .changed { display: none; }
+    .launch .btn { padding-inline: .7rem; }
+    body.setting .relay-return { bottom: calc(12px + env(safe-area-inset-bottom)); }
+    body.setting .launch { padding-left: 16px; padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+    #setup { padding-bottom: 10.5rem; }
+  }
+
+  /* ── the third screen: the world ── */
+  body.running { overflow: hidden; }
+  body.running .relay-return { display: none; }       /* "← Settings" is the way out here; the return control is on the other two screens */
+  #run { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; grid-template-rows: auto minmax(0, 1fr); }
+  /* The bar wraps rather than scrolling sideways: a control hidden off the end
+     of a strip nobody thinks to drag may as well not be there. The hands (the
+     tools) live on the stage instead, next to what they act on, and the clock
+     sits in the corner of the world. */
+  #bar { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 5px 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  #bar .btn { min-height: 38px; padding: .3rem .65rem; flex: 0 0 auto; white-space: nowrap; }
+  #bar .title { font-family: var(--serif); font-size: 1.05rem; margin: 0 .35rem 0 .3rem; flex: 0 0 auto; }
+  #bar .cap { color: var(--dim); font: 12px var(--sans); letter-spacing: .07em; text-transform: uppercase; margin: 0 .05rem 0 .45rem; flex: 0 0 auto; }
+  #bar .seg { display: inline-flex; flex: 0 0 auto; }
+  #bar .seg .btn { border-radius: 0; margin-left: -1px; min-width: 38px; padding: .3rem .45rem; }
+  #bar .seg .btn:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
+  #bar .seg .btn:last-child { border-radius: 0 3px 3px 0; }
+  #bar .seg .btn[aria-pressed="true"] { position: relative; z-index: 1; }
+  /* The title is the first thing to go: the world under it says what it is. */
+  @media (max-width: 1150px) { #bar .title { display: none; } }
+  @media (max-width: 1100px) { #bar .cap { display: none; } }
+  #stage { position: relative; min-width: 0; min-height: 0; background: #070a0b; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #view.drag { cursor: grabbing; }
+  #hint { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); color: var(--dim); font-size: 12px; background: rgba(7,10,11,.72); padding: 3px 7px; border-radius: 3px; pointer-events: none; }
+  /* On a narrow map the hint stands above the clock rather than across it. */
+  @media (max-width: 760px) { #hint { bottom: 36px; } }
+  #clock { position: absolute; right: 10px; bottom: 10px; color: var(--dim); font: 12px var(--mono); background: rgba(7,10,11,.72); padding: 3px 7px; border-radius: 3px; pointer-events: none; }
+  /* The hands: which tool a tap uses, and what Place and Throw put down. */
+  #rail { position: absolute; left: 10px; top: 10px; z-index: 3; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: calc(100% - 20px); }
+  #tools { display: flex; flex-direction: column; gap: 2px; background: rgba(12,17,19,.92); border: 1px solid var(--line); border-radius: 4px; padding: 4px; }
+  #tools .btn { min-height: 34px; width: 100%; padding: .25rem .65rem; text-align: left; background: none; border: 1px solid transparent; border-radius: 2px; font-size: .9rem; }
+  #tools .btn:hover { background: var(--raise); border-color: var(--line); }
+  #tools .btn[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 600; }
+  #palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 100%;
+             background: rgba(12,17,19,.92); border: 1px solid var(--line); border-radius: 4px; padding: 6px; }
+  #palette .sw-btn { width: 38px; height: 38px; border: 2px solid transparent; border-radius: 3px; color: #101517; font: 700 14px var(--mono); }
+  #palette .sw-btn[aria-pressed="true"] { border-color: #fff; }
+  #palette label { display: flex; align-items: center; gap: .4rem; min-width: 0; font-size: .9rem; }
+  #palette input { width: 120px; max-width: 100%; }
+  #palette .lab { color: var(--dim); font-size: 12px; }
+  @media (max-width: 860px) {
+    #rail { left: 6px; right: 6px; top: 6px; max-width: none; }
+    #tools { flex-direction: row; flex-wrap: wrap; }
+    #tools .btn { width: auto; text-align: center; }
+  }
+  /* On a phone every row the bar or the rail takes comes straight off the
+     world, so both go down a size and the tools fit on one line. */
+  @media (max-width: 620px) {
+    #bar { gap: 4px; padding: 5px 6px; }
+    #bar .btn { min-height: 34px; padding: .22rem .45rem; font-size: .88rem; }
+    #bar .seg .btn { min-width: 32px; padding: .22rem .3rem; }
+    #tools .btn { min-height: 32px; padding: .2rem .4rem; font-size: .82rem; }
+    #palette .sw-btn { width: 32px; height: 32px; }
+  }
+  .edits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .7rem; }
+  .edits .btn { min-height: 40px; padding: .35rem .65rem; font-size: .9rem; }
+  .thing { display: flex; align-items: center; gap: 3px; padding: .25rem 0; font-size: .88rem; }
+  .thing b { display: inline-block; width: 11px; height: 11px; }
+  .thing span { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: .82rem; }
+  #slow { position: absolute; right: 10px; top: 10px; color: var(--warn); font-size: 12px; background: rgba(7,10,11,.8); padding: 3px 7px; border-radius: 3px; }
+  #side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  #tabs { display: flex; border-bottom: 1px solid var(--line); }
+  #tabs button { flex: 1; background: none; border: 0; border-bottom: 2px solid transparent; padding: .6rem .2rem; min-height: 44px; color: var(--dim); }
+  #tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--acc); }
+  #panes { flex: 1; overflow-y: auto; min-height: 0; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch; }
+  .family-link { min-height: 44px; padding: 5px 8px; }
+  #panes h3 { font-size: 1.05rem; margin: .2rem 0 .4rem; }
+  #panes p { margin: .3rem 0; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: .15rem .8rem; font-size: .92rem; }
+  .kv dt { color: var(--dim); } .kv dd { margin: 0; font-family: var(--mono); font-size: .86rem; text-align: right; }
+  .meter { height: 14px; display: flex; border: 1px solid var(--line); margin: .3rem 0 .2rem; }
+  .meter i { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: .1rem .8rem; font-size: 12px; color: var(--dim); }
+  .legend b { display: inline-block; width: 9px; height: 9px; margin-right: 4px; }
+  .small { color: var(--dim); font-size: .85rem; }
+  .fac { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: .55rem 0; }
+  .fac:first-of-type { border-top: 0; }
+  .fac .nm { font-family: var(--serif); font-size: 1.02rem; }
+  .fac .sw, .sw { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: baseline; }
+  .fac .ln { display: block; color: var(--dim); font-size: .85rem; }
+  .fac .war { color: var(--warn); }
+  .item { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: .5rem 0; font-size: .92rem; }
+  .item:first-child { border-top: 0; }
+  .item .yr { color: var(--dim); font: 12px var(--mono); margin-right: .5rem; }
+  .item .why { display: block; color: var(--dim); font-size: .85rem; margin-top: .2rem; }   /* the numbers a decision was made on */
+  .item.big { color: var(--ink); font-weight: 600; }
+  .talk .who { font-weight: 600; }
+  .talk q { quotes: "“" "”"; }
+  .bars { display: grid; grid-template-columns: auto 1fr; gap: .25rem .6rem; align-items: center; font-size: .88rem; margin: .4rem 0; }
+  .bars span { color: var(--dim); }
+  .bars i { display: block; height: 8px; background: var(--raise); border: 1px solid var(--line); }
+  .bars i b { display: block; height: 100%; background: var(--acc); }
+  #chart { display: block; width: 100%; height: 84px; margin: .2rem 0 .6rem; border: 1px solid var(--line); background: var(--bg); }
+  @media (max-width: 860px) {
+    #run { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 38dvh); }
+    #side { border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ 1 · set it up ══════════════════════════════════════════════════════ -->
+<main id="setup" hidden>
+  <div class="top">
+    <h1 id="setup-title"></h1>
+    <p id="setup-note"></p>
+  </div>
+  <p class="lab-door"><a href="lab.html">The Lab →</a> Build one thing exactly on a hexagon grid, type in what each kind is, and run it against a control to see whether it copies itself.</p>
+  <h2 class="shelf" id="presets-head">Starting points</h2>
+  <div class="presets" id="presets" role="group" aria-labelledby="presets-head"></div>
+  <h2 class="shelf">Every setting</h2>
+  <form id="form" autocomplete="off"></form>
+  <div class="launch">
+    <span class="changed" id="changed"></span>
+    <button class="btn quiet" id="dice" type="button">Surprise me</button>
+    <button class="btn quiet" id="reset" type="button">Reset</button>
+    <button class="btn go" id="go" type="button">Run this world</button>
+  </div>
+  <noscript><p>The Physics Sandbox runs its worlds in your browser, so it needs JavaScript switched on.</p></noscript>
+</main>
+
+<!-- ═══ 2 · the world ══════════════════════════════════════════════════════ -->
+<div id="run" hidden>
+  <div id="bar">
+    <button class="btn" id="to-setup">← Settings</button>
+    <span class="title" id="run-title"></span>
+    <button class="btn" id="pause" aria-pressed="false">Pause</button>
+    <span class="cap" aria-hidden="true">Speed</span>
+    <span class="seg" id="speeds" role="group" aria-label="Speed"></span>
+    <span class="cap" aria-hidden="true">Colour</span>
+    <span class="seg" id="views" role="group" aria-label="Colour by"></span>
+    <button class="btn" id="fit">Whole world</button>
+    <button class="btn" id="again">Start again</button>
+    <button class="btn" id="share">Copy link</button>
+  </div>
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <div id="rail" hidden>
+      <div id="tools" role="group" aria-label="What a tap does"></div>
+      <div id="palette" hidden></div>
+    </div>
+    <span id="hint">Drag to move · scroll or pinch to zoom · tap anything to look at it</span>
+    <span class="clock" id="clock"></span>
+    <span id="slow" hidden>Running behind — fewer things or a slower clock will catch it up</span>
+  </div>
+  <aside id="side">
+    <div id="tabs" role="tablist"></div>
+    <div id="panes"></div>
+  </aside>
+</div>
+
+<script src="physics.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  /* The Physics Sandbox was half of World Builder until 2026-11-25, when Ric
+     split the two sandboxes into projects of their own. The People half is
+     projects/world-builder/. `mode` stays, always "physics", so a shared link
+     keeps the #physics address it always had. */
+  const ENGINES = {
+    physics: { api: window.WBPhysics, title: "Physics Sandbox", note: "Every setting is a term in the physics. Start from one of these, or set each thing yourself." },
+  };
+  const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  let mode = "physics", values = {}, preset = null;
+  const screens = { setup: $("setup"), run: $("run") };
+  function show(name) {
+    for (const k in screens) screens[k].hidden = k !== name;
+    document.body.classList.toggle("running", name === "run");
+    document.body.classList.toggle("setting", name === "setup");
+    if (name !== "run") stopRun();
+    window.scrollTo(0, 0);
+  }
+
+  /* ── the address ─────────────────────────────────────────────────────────
+     #physics?gravity=2&kinds=3 — the sandbox and only what differs from its
+     defaults, so a link to a world is short and still opens after a setting is
+     added. "&run" on the end goes straight to the world. */
+  function toHash(andRun) {
+    const E = ENGINES[mode].api, parts = [];
+    for (const k in values) if (values[k] !== E.DEFAULTS[k]) parts.push(k + "=" + encodeURIComponent(values[k]));
+    return "#" + mode + (parts.length || andRun ? "?" + parts.concat(andRun ? ["run"] : []).join("&") : "");
+  }
+  function fromHash() {
+    const m = /^#(physics)(?:\?(.*))?$/.exec(location.hash);
+    if (!m) return null;
+    const out = { mode: m[1], set: {}, run: false };
+    for (const part of (m[2] || "").split("&")) {
+      if (part === "run") { out.run = true; continue; }
+      const i = part.indexOf("=");
+      if (i > 0) out.set[part.slice(0, i)] = decodeURIComponent(part.slice(i + 1));
+    }
+    return out;
+  }
+  function setHash(h) { try { history.replaceState(null, "", h || location.pathname + location.search); } catch (e) { /* file:// in some browsers */ } }
+
+  /* ── the settings form, built from the engine's own list ───────────────── */
+  const controls = {};
+  /* A slider whose range is wide runs on a curve, so the low end — where the
+     interesting part usually is — gets most of the travel. */
+  function posToValue(it, pos) {
+    const u = Math.pow(pos / 1000, it.curve || 1);
+    let v = it.min + (it.max - it.min) * u;
+    v = Math.round((v - it.min) / it.step) * it.step + it.min;
+    return Math.min(it.max, Math.max(it.min, parseFloat(v.toFixed(4))));
+  }
+  function valueToPos(it, v) { return Math.round(Math.pow(Math.min(1, Math.max(0, (v - it.min) / (it.max - it.min))), 1 / (it.curve || 1)) * 1000); }
+  function words(it, v) {
+    if (it.type === "range") return it.say ? it.say(v) : String(v);
+    if (it.type === "toggle") return v ? "on" : "off";
+    return (it.options.find(o => o[0] === v) || ["", ""])[1];
+  }
+
+  function buildSetup() {
+    const E = ENGINES[mode];
+    $("setup-title").textContent = E.title;
+    $("setup-note").textContent = E.note;
+    const pr = $("presets"); pr.textContent = "";
+    for (const p of E.api.PRESETS) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "preset"; b.dataset.id = p.id;
+      b.innerHTML = "<b>" + esc(p.name) + "</b><span>" + esc(p.note) + "</span>";
+      b.addEventListener("click", () => { values = E.api.clean(p.set); preset = p.id; fill(); });
+      pr.appendChild(b);
+    }
+    const form = $("form"); form.textContent = "";
+    for (const k in controls) delete controls[k];
+    E.api.SCHEMA.forEach((g, gi) => {
+      const d = document.createElement("details"); d.className = "group"; d.open = gi < 2 || window.innerWidth > 860;
+      const s = document.createElement("summary");
+      s.innerHTML = "<h2>" + esc(g.title) + "</h2><span class='sum'></span>";
+      d.appendChild(s);
+      for (const it of g.items) {
+        const row = document.createElement("div"); row.className = "row";
+        const id = "set-" + it.key;
+        let ctl, numeric = null;
+        if (it.type === "range") {
+          /* Every physics number can be typed (Ric, 2026-11-12: "you can
+             type one"): the slider sweeps a convenient range, the box takes
+             anything SCHEMA's inputMin/inputMax allow. */
+          const typed = true;
+          const lo = it.inputMin == null ? it.min : it.inputMin;
+          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + "</label><span class='valbox'>" +
+            (typed ? "<input type='number' required id='" + id + "' min='" + lo + "'" + (isFinite(it.inputMax) ? " max='" + it.inputMax + "'" : "") + " step='" + (it.integer ? "1" : "any") + "'><span class='val' id='" + id + "-words'></span>" : "<span class='val'></span>") +
+            "</span></div><input type='range' id='" + id + (typed ? "-slider" : "") + "' aria-label='" + esc(it.label) + "' min='0' max='1000' step='1'>";
+          ctl = row.querySelector("input[type=range]");
+          numeric = row.querySelector("input[type=number]");
+          ctl.addEventListener("input", () => { const v = posToValue(it, +ctl.value); values[it.key] = v; if (numeric) numeric.value = v; preset = null; refresh(); });
+          if (numeric) {
+            numeric.setAttribute("aria-describedby", id + "-words");
+            numeric.addEventListener("input", () => {
+              if (!numeric.checkValidity()) return;
+              values[it.key] = +numeric.value; ctl.value = valueToPos(it, values[it.key]); preset = null; refresh();
+            });
+          }
+        } else if (it.type === "select") {
+          row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + "</label></div><select id='" + id + "'>" +
+            it.options.map(o => "<option value='" + esc(o[0]) + "'>" + esc(o[1]) + "</option>").join("") + "</select>";
+          ctl = row.querySelector("select");
+          ctl.addEventListener("change", () => { values[it.key] = ctl.value; preset = null; refresh(); });
+        } else {
+          row.innerHTML = "<div class='rhead'><span class='lab'>" + esc(it.label) + "</span><span class='valbox'><label class='tog'><input type='checkbox' id='" + id + "'><span class='val'></span></label></span></div>";
+          ctl = row.querySelector("input");
+          ctl.addEventListener("change", () => { values[it.key] = ctl.checked; preset = null; refresh(); });
+        }
+        if (it.help) { const h = document.createElement("p"); h.className = "help"; h.textContent = it.help; row.appendChild(h); }
+        controls[it.key] = { it: it, row: row, ctl: ctl, numeric: numeric, val: row.querySelector(".val"), group: s.querySelector(".sum") };
+        d.appendChild(row);
+      }
+      form.appendChild(d);
+    });
+    fill();
+  }
+  function fill() {
+    for (const k in controls) {
+      const c = controls[k], v = values[k];
+      if (c.it.type === "range") c.ctl.value = valueToPos(c.it, v);
+      else if (c.it.type === "select") c.ctl.value = v;
+      else c.ctl.checked = v;
+      if (c.numeric) c.numeric.value = v;
+    }
+    refresh();
+  }
+  /* Everything that depends on the values: the words beside each slider, which
+     rows are greyed because another setting has switched them off, the line
+     that sums a closed group up, and the address. */
+  function refresh() {
+    const E = ENGINES[mode].api;
+    let changed = 0;
+    const sums = new Map();
+    for (const k in controls) {
+      const c = controls[k], v = values[k], sv = v;
+      if (c.val) { const w = words(c.it, sv); c.val.textContent = (c.numeric && w === String(v)) ? "" : w; }
+      if (c.it.type === "range") c.ctl.setAttribute("aria-valuetext", words(c.it, sv));
+      const on = !c.it.when || c.it.when(values);
+      c.row.classList.toggle("off", !on);
+      c.ctl.disabled = !on;
+      if (c.numeric) c.numeric.disabled = !on;
+      if (v !== E.DEFAULTS[k]) { changed++; if (on) { if (!sums.has(c.group)) sums.set(c.group, []); sums.get(c.group).push(c.it.label.toLowerCase() + ": " + words(c.it, v)); } }
+    }
+    for (const k in controls) controls[k].group.textContent = "";
+    for (const [el, list] of sums) el.textContent = list.slice(0, 2).join(" · ") + (list.length > 2 ? " · +" + (list.length - 2) : "");
+    $("changed").textContent = changed ? changed + (changed === 1 ? " setting" : " settings") + " changed from the usual" : "Everything as usual";
+    for (const b of $("presets").children) b.setAttribute("aria-pressed", String(b.dataset.id === preset));
+    setHash(toHash(false));
+  }
+
+  function openSetup(m, set) {
+    mode = m; values = ENGINES[m].api.clean(set || {}); preset = set ? null : ENGINES[m].api.PRESETS[0].id;
+    if (!set) values = ENGINES[m].api.clean(ENGINES[m].api.PRESETS[0].set);
+    buildSetup(); show("setup");
+  }
+  $("reset").addEventListener("click", () => { values = ENGINES[mode].api.clean({}); preset = null; fill(); });
+  $("dice").addEventListener("click", () => {
+    /* Every setting drawn from its own range. Most of these are bad worlds,
+       which is the fun of it. */
+    const E = ENGINES[mode].api, next = {};
+    for (const g of E.SCHEMA) for (const it of g.items) {
+      if (it.key === "rate") continue;
+      if (it.type === "range") next[it.key] = posToValue(it, Math.random() * 1000);
+      else if (it.type === "toggle") next[it.key] = Math.random() < 0.7;
+      else next[it.key] = it.options[Math.floor(Math.random() * it.options.length)][0];
+    }
+    next.count = Math.min(next.count, 1800);
+    values = E.clean(next); preset = null; fill();
+  });
+  function launchSetup() {
+    // Invalid/unfinished entries stay visible until corrected, never launch an old value.
+    for (const c of Object.values(controls)) if (c.numeric && !c.numeric.disabled && !c.numeric.checkValidity()) c.row.closest("details").open = true;
+    if ($("form").reportValidity()) startRun();
+  }
+  $("form").addEventListener("submit", e => { e.preventDefault(); launchSetup(); });
+  $("go").addEventListener("click", launchSetup);
+
+  /* ═══ the world ════════════════════════════════════════════════════════ */
+  const canvas = $("view"), ctx = canvas.getContext("2d");
+  let world = null, raf = 0, paused = false, rate = 1, last = 0, lag = 0, reached = 0, readAt = 0;
+  let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, tab = "", paneAt = 0;
+
+
+  /* A visitor's hands in the physics world: which tool a tap uses, what Place
+     and Throw put down, where the pointer is held, and every kind of bonded
+     thing this world has ever made (for "ever seen" in the World tab). */
+  let tool = "look", brushKind = 1, brushMass = 1, held = null, aim = null, lastPut = null, everSeen = new Set();
+  const TOOLS = [
+    ["look", "Look", "Drag to move \u00b7 scroll or pinch to zoom \u00b7 tap anything to look at it"],
+    ["place", "Place", "Tap or drag to put hexagons down \u00b7 two fingers to zoom"],
+    ["throw", "Throw", "Drag and let go: the hexagon leaves the way you dragged, faster the further"],
+    ["erase", "Erase", "Drag over hexagons to take them out"],
+    ["heat", "Heat", "Hold on hexagons to heat them"],
+    ["cool", "Cool", "Hold on hexagons to cool them"],
+    ["pin", "Pin", "Tap a hexagon to hold it still, or to let it go again"],
+  ];
+
+  function sizeCanvas() {
+    const r = canvas.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    return d;
+  }
+  /* Returns false when the stage has not been laid out yet. A world opened
+     straight from a link ("&run") used to fit itself to a canvas the browser
+     had not sized, which left the scale at zero and the world invisible until
+     you found "Whole world" — and every link "Copy link" makes is that kind. */
+  function fit() {
+    const r = canvas.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
+    const W = world.width, H = world.height;
+    cam.s = Math.min(r.width / W, r.height / H) * 0.94; cam.x = W / 2; cam.y = H / 2; cam.held = false;
+    return true;
+  }
+
+  function startRun() {
+    stopRun();
+    const E = ENGINES[mode].api;
+    world = E.create(values);
+    rate = values.rate; paused = false; picked = null; lag = 0; reached = 0;
+    tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
+    setHash(toHash(true));
+    $("run-title").textContent = ENGINES[mode].title;
+    $("pause").textContent = "Pause"; $("pause").setAttribute("aria-pressed", "false");
+    $("slow").hidden = true; $("panes").textContent = ""; $("clock").textContent = "";
+    buildBar(); buildTools(); buildTabs();
+    show("run");
+    sizeCanvas();
+    if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+  function stopRun() {
+    if (raf) cancelAnimationFrame(raf); raf = 0;
+  }
+
+  function buildBar() {
+    const sp = $("speeds"); sp.textContent = "";
+    const list = [0.25, 0.5, 1, 2, 4];
+    if (list.indexOf(rate) < 0) list.push(rate);
+    list.sort((a, b) => a - b);
+    for (const r of list) {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = r + "×";
+      b.setAttribute("aria-pressed", String(r === rate));
+      b.addEventListener("click", () => { rate = r; reached = 0; for (const o of sp.children) o.setAttribute("aria-pressed", String(o === b)); });
+      sp.appendChild(b);
+    }
+    const vw = $("views"); vw.textContent = "";
+    const kinds = [["kind", "Kind"], ["heat", "Heat"], ["speed", "Speed"]];
+    viewMode = kinds[0][0];
+    for (const k of kinds) {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = k[1];
+      b.setAttribute("aria-pressed", String(k[0] === viewMode));
+      b.addEventListener("click", () => { viewMode = k[0]; for (const o of vw.children) o.setAttribute("aria-pressed", String(o === b)); });
+      vw.appendChild(b);
+    }
+  }
+  function buildTools() {
+    const el = $("tools"), pal = $("palette");
+    el.textContent = ""; pal.textContent = ""; pal.hidden = true;
+    $("rail").hidden = false;
+    $("hint").textContent = TOOLS[0][2]; $("hint").hidden = false;
+    for (const t of TOOLS) {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = t[1];
+      b.setAttribute("aria-pressed", String(t[0] === tool));
+      b.addEventListener("click", () => {
+        tool = t[0]; held = null; aim = null;
+        for (const o of el.children) o.setAttribute("aria-pressed", String(o === b));
+        pal.hidden = !(tool === "place" || tool === "throw");
+        $("hint").textContent = t[2]; $("hint").hidden = false;
+        canvas.style.cursor = tool === "look" ? "" : "crosshair";
+      });
+      el.appendChild(b);
+    }
+    /* What Place and Throw put down: a kind, and how heavy. */
+    const lab = document.createElement("span"); lab.className = "lab"; lab.textContent = "Kind"; pal.appendChild(lab);
+    for (let k = 1; k <= world.settings.kinds; k++) {
+      const b = document.createElement("button"); b.className = "sw-btn"; b.textContent = k; b.style.background = KIND[(k - 1) % 8];
+      b.setAttribute("aria-label", "Kind " + k); b.setAttribute("aria-pressed", String(k === brushKind));
+      b.addEventListener("click", () => { brushKind = k; for (const o of pal.querySelectorAll(".sw-btn")) o.setAttribute("aria-pressed", String(o === b)); });
+      pal.appendChild(b);
+    }
+    const weight = document.createElement("label"); weight.textContent = "Mass × ";
+    const sel = document.createElement("input"); sel.type = "number"; sel.min = "0.000001"; sel.max = "1000000000000"; sel.step = "any"; sel.value = brushMass; sel.required = true; sel.setAttribute("aria-label", "Mass multiplier");
+    sel.addEventListener("input", () => { if (sel.checkValidity()) brushMass = +sel.value; });
+    weight.appendChild(sel);
+    pal.appendChild(weight);
+    canvas.style.cursor = "";
+  }
+  /* What the chosen tool does at a point of the world. `first` is the moment
+     the finger went down; after that it is called as the finger moves. */
+  const brushReach = () => Math.max(0.8, 20 / cam.s);
+  function useTool(wx, wy, first) {
+    const w = world;
+    if ((tool === "place" || tool === "throw") && !$("palette").querySelector("input").reportValidity()) return;
+    if (tool === "place") {
+      const mass = brushKind * brushMass, rad = w.settings.sized ? 0.5 * Math.sqrt(mass) : 0.5;
+      if (lastPut && Math.hypot(wx - lastPut[0], wy - lastPut[1]) < rad * 2.1) return;
+      if (w.near(wx, wy, rad * 0.9).length) return;
+      if (w.place(wx, wy, brushKind, 0, 0, mass) < 0) { $("hint").textContent = "This world is full \u2014 erase something first"; return; }
+      lastPut = [wx, wy];
+    } else if (tool === "throw") {
+      if (first) aim = { x0: wx, y0: wy, x1: wx, y1: wy }; else if (aim) { aim.x1 = wx; aim.y1 = wy; }
+    } else if (tool === "pin" && first) {
+      const i = w.at(wx, wy);
+      if (i >= 0) w.edit(i, { pinned: !w.pinned[i] });
+    }
+  }
+  /* Erasing, heating and cooling go on for as long as the finger is held. */
+  function holdTool(seconds) {
+    if (!held) return;
+    if (tool === "erase") for (const i of world.near(held[0], held[1], brushReach())) world.remove(i);
+    else if (tool === "heat") world.warm(held[0], held[1], brushReach(), 12 * seconds);
+    else if (tool === "cool") world.warm(held[0], held[1], brushReach(), -12 * seconds);
+  }
+
+  function buildTabs() {
+    const names = [["world", "World"], ["look", "Hexagon"]];
+    const el = $("tabs"); el.textContent = "";
+    for (const n of names) {
+      const b = document.createElement("button"); b.textContent = n[1]; b.dataset.tab = n[0]; b.setAttribute("role", "tab");
+      b.addEventListener("click", () => setTab(n[0]));
+      el.appendChild(b);
+    }
+    setTab(names[0][0]);
+  }
+  function setTab(name) {
+    tab = name;
+    for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+    $("panes").scrollTop = 0; paneAt = 0;
+    pane();
+  }
+
+  $("to-setup").addEventListener("click", () => { show("setup"); refresh(); });
+  $("again").addEventListener("click", startRun);
+  $("fit").addEventListener("click", fit);
+  if (window.ResizeObserver) {
+    let first = true;
+    new ResizeObserver(() => {
+      if (first) { first = false; return; }          // the observer fires once on its own
+      if (world && !screens.run.hidden && !cam.held) fit();
+    }).observe($("stage"));
+  }
+  $("pause").addEventListener("click", () => {
+    paused = !paused;
+    $("pause").textContent = paused ? "Resume" : "Pause"; $("pause").setAttribute("aria-pressed", String(paused));
+  });
+  $("share").addEventListener("click", () => {
+    const url = location.href.split("#")[0] + toHash(true);
+    const done = () => { $("share").textContent = "Copied"; setTimeout(() => { $("share").textContent = "Copy link"; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt("Link to this world", url));
+    else window.prompt("Link to this world", url);
+  });
+  window.addEventListener("keydown", e => {
+    if (screens.run.hidden || e.target.closest("input, select, textarea")) return;
+    if (e.code === "Space") { e.preventDefault(); $("pause").click(); }
+  });
+
+  /* ── moving the view ───────────────────────────────────────────────────── */
+  const ptrs = new Map();
+  let moved = 0, pinch = 0;
+  const toWorld = (px, py) => {
+    const r = canvas.getBoundingClientRect();
+    return [cam.x + (px - r.left - r.width / 2) / cam.s, cam.y + (py - r.top - r.height / 2) / cam.s];
+  };
+  function zoomAt(px, py, k) {
+    const before = toWorld(px, py);
+    cam.s = Math.min(160, Math.max(0.4, cam.s * k));
+    const after = toWorld(px, py);
+    cam.x += before[0] - after[0]; cam.y += before[1] - after[1]; cam.held = true;
+  }
+  canvas.addEventListener("pointerdown", e => {
+    canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 1) moved = 0;
+    if (ptrs.size === 2) { const p = [...ptrs.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); held = null; aim = null; }
+    if (ptrs.size === 1 && tool !== "look") {
+      const w = toWorld(e.clientX, e.clientY);
+      held = w; lastPut = null; useTool(w[0], w[1], true);
+      return;
+    }
+    canvas.classList.add("drag");
+  });
+  canvas.addEventListener("pointermove", e => {
+    const was = ptrs.get(e.pointerId); if (!was) return;
+    if (ptrs.size === 1 && held) {
+      const w = toWorld(e.clientX, e.clientY);
+      held = w; useTool(w[0], w[1], false);
+    } else if (ptrs.size === 1) {
+      const dx = e.clientX - was[0], dy = e.clientY - was[1];
+      moved += Math.abs(dx) + Math.abs(dy);
+      if (moved > 6) { cam.x -= dx / cam.s; cam.y -= dy / cam.s; cam.held = true; }
+    }
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2) {
+      const p = [...ptrs.values()], d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+      if (pinch > 0) zoomAt((p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2, d / pinch);
+      pinch = d; moved = 99;
+    }
+  });
+  const lift = e => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.delete(e.pointerId);
+    if (!ptrs.size) canvas.classList.remove("drag");
+    if (held || aim) {
+      /* Letting go of a throw: it leaves the way it was dragged, and a longer
+         drag is a harder throw. */
+      if (aim && e.type === "pointerup") {
+        const mass = brushKind * brushMass;
+        world.place(aim.x0, aim.y0, brushKind, (aim.x1 - aim.x0) * 1.6, (aim.y1 - aim.y0) * 1.6, mass);
+      }
+      held = null; aim = null;
+      return;
+    }
+    if (e.type === "pointerup" && moved <= 6 && !ptrs.size) tap(e.clientX, e.clientY);
+  };
+  canvas.addEventListener("pointerup", lift); canvas.addEventListener("pointercancel", lift);
+  canvas.addEventListener("wheel", e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+
+  function tap(px, py) {
+    const w = toWorld(px, py);
+    const i = world.at(w[0], w[1]);
+    picked = i >= 0 ? { body: i } : null;
+    if (picked) setTab("look"); else pane();
+  }
+
+  /* ── the loop ──────────────────────────────────────────────────────────── */
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    // RAF timestamps mark the frame start and can precede a startup/visibility
+    // performance.now() sample within that frame. Never send negative time.
+    const real = Math.max(0, Math.min(0.1, (now - last) / 1000)); last = now;
+    holdTool(real);
+    if (!paused) {
+      const t0 = performance.now();
+      world.step(Math.min(1 / 30, real) * rate);
+      lag = lag * 0.95 + (performance.now() - t0 > 30 ? 1 : 0) * 0.05;
+      $("slow").hidden = lag < 0.5;
+      $("slow").textContent = "Running behind — fewer things or a slower clock will catch it up";
+    }
+    const d = sizeCanvas();
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    const r = canvas.getBoundingClientRect();
+    drawPhysics(r.width, r.height);
+    if (!paneHeld && !$("panes").querySelector("input:focus") && now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(); }
+  }
+
+  /* ═══ drawing the physics ══════════════════════════════════════════════ */
+  const KIND = ["#6fb7ff", "#ffd166", "#ef6f6c", "#7bd88f", "#c59bff", "#ff9f5a", "#5ad1c8", "#f4a6d7"];
+  const HEX = []; for (let k = 0; k < 6; k++) HEX.push([Math.cos(Math.PI / 6 + k * Math.PI / 3), Math.sin(Math.PI / 6 + k * Math.PI / 3)]);
+  const RAMP = (stops) => { const out = []; for (let i = 0; i < 24; i++) { const u = i / 23 * (stops.length - 1), a = Math.floor(u), b = Math.min(stops.length - 1, a + 1), f = u - a;
+    out.push("rgb(" + [0, 1, 2].map(c => Math.round(stops[a][c] + (stops[b][c] - stops[a][c]) * f)).join(",") + ")"); } return out; };
+  const HOT = RAMP([[40, 44, 70], [120, 40, 90], [220, 70, 50], [255, 190, 70], [255, 250, 225]]);
+  const FAST = RAMP([[36, 52, 70], [50, 120, 170], [110, 210, 220], [240, 250, 255]]);
+  let hotTop = 1, fastTop = 1;
+  function hexPath(p, x, y, rad, turn) {
+    if (rad < 1.7) { p.rect(x - rad, y - rad, rad * 2, rad * 2); return; }
+    /* With bonds that hold an angle a hexagon faces a way, and turning the
+       drawn shape is the whole of showing it: six slots, 60 degrees apart,
+       so the shape says which way they point. */
+    if (turn) {
+      const c = Math.cos(turn), n = Math.sin(turn);
+      for (let k = 0; k < 6; k++) {
+        const vx = HEX[k][0] * rad, vy = HEX[k][1] * rad;
+        const px = x + vx * c - vy * n, py = y + vx * n + vy * c;
+        if (k === 0) p.moveTo(px, py); else p.lineTo(px, py);
+      }
+      p.closePath(); return;
+    }
+    p.moveTo(x + HEX[0][0] * rad, y + HEX[0][1] * rad);
+    for (let k = 1; k < 6; k++) p.lineTo(x + HEX[k][0] * rad, y + HEX[k][1] * rad);
+    p.closePath();
+  }
+  function drawPhysics(W, H) {
+    const w = world, S = w.settings, n = w.n;
+    /* An open world has no frame to hold still, so the view rides with the
+       middle of everything until somebody takes hold of it. */
+    if (S.edge === "open" && !cam.held) {
+      let mx = 0, my = 0, mt = 0;
+      for (let i = 0; i < n; i++) if (w.alive[i]) { mx += w.m[i] * w.x[i]; my += w.m[i] * w.y[i]; mt += w.m[i]; }
+      if (mt > 0) { cam.x += (mx / mt - cam.x) * 0.05; cam.y += (my / mt - cam.y) * 0.05; }
+    }
+    ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
+    const s = cam.s, ox = W / 2 - cam.x * s, oy = H / 2 - cam.y * s;
+    if (S.edge !== "open") {
+      ctx.strokeStyle = "#2a383f"; ctx.lineWidth = 1; ctx.setLineDash(S.edge === "wrap" ? [5, 5] : []);
+      ctx.strokeRect(ox, oy, w.width * s, w.height * s); ctx.setLineDash([]);
+    }
+    if (S.heater === "centre") { ctx.strokeStyle = "rgba(239,138,124,.5)"; ctx.beginPath(); ctx.arc(ox + w.width / 2 * s, oy + w.height / 2 * s, w.width * 0.1 * s, 0, 6.2832); ctx.stroke(); }
+    if (S.heater === "floor") { ctx.fillStyle = "rgba(239,138,124,.22)"; ctx.fillRect(ox, oy + (w.height - 2.5) * s, w.width * s, 2.5 * s); }
+
+    if (w.bonds.size && s > 2.5) {
+      ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = Math.max(1, s * 0.14); ctx.beginPath();
+      for (const b of w.bonds.values()) {
+        const dx = w.x[b.b] - w.x[b.a], dy = w.y[b.b] - w.y[b.a];
+        if (Math.abs(dx) > w.width / 2 || Math.abs(dy) > w.height / 2) continue;
+        ctx.moveTo(ox + w.x[b.a] * s, oy + w.y[b.a] * s); ctx.lineTo(ox + w.x[b.b] * s, oy + w.y[b.b] * s);
+      }
+      ctx.stroke();
+    }
+    const paths = new Map();
+    const turned = S.angles > 0 && S.bonding !== "none";
+    let topT = 0.05, topV = 0.5;
+    for (let i = 0; i < n; i++) {
+      if (!w.alive[i]) continue;
+      const T = w.heat[i] / w.m[i], v = Math.hypot(w.vx[i], w.vy[i]);
+      if (T > topT) topT = T; if (v > topV) topV = v;
+      const x = ox + w.x[i] * s, y = oy + w.y[i] * s, rad = w.r[i] * s * 1.12;
+      if (x < -rad || y < -rad || x > W + rad || y > H + rad) continue;
+      const col = viewMode === "kind" ? KIND[(w.kind[i] - 1) % S.kinds % 8]
+                : viewMode === "heat" ? HOT[Math.min(23, Math.floor(Math.sqrt(T / hotTop) * 23))]
+                : FAST[Math.min(23, Math.floor(v / fastTop * 23))];
+      let p = paths.get(col); if (!p) { p = new Path2D(); paths.set(col, p); }
+      hexPath(p, x, y, rad, turned ? w.face[i] : 0);
+    }
+    /* The scales ease toward the hottest and fastest thing there is, so the
+       colours do not flicker when one body spikes. */
+    hotTop += (topT - hotTop) * 0.05; fastTop += (topV - fastTop) * 0.05;
+    for (const [col, p] of paths) { ctx.fillStyle = col; ctx.fill(p); }
+    if (s > 9) { ctx.strokeStyle = "rgba(7,10,11,.55)"; ctx.lineWidth = 1; for (const p of paths.values()) ctx.stroke(p); }
+    /* Pinned hexagons carry a dark stud, so it is plain which ones will not move. */
+    ctx.fillStyle = "#070a0b";
+    for (let i = 0; i < n; i++) if (w.alive[i] && w.pinned[i]) { const pr = Math.max(1.5, w.r[i] * s * 0.34); ctx.fillRect(ox + w.x[i] * s - pr, oy + w.y[i] * s - pr, pr * 2, pr * 2); }
+    if (aim) {
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(ox + aim.x0 * s, oy + aim.y0 * s); ctx.lineTo(ox + aim.x1 * s, oy + aim.y1 * s); ctx.stroke();
+      const p = new Path2D(); hexPath(p, ox + aim.x0 * s, oy + aim.y0 * s, (S.sized ? 0.5 * Math.sqrt(brushKind * brushMass) : 0.5) * s * 1.12);
+      ctx.fillStyle = KIND[(brushKind - 1) % 8]; ctx.fill(p);
+    }
+    if (held && (tool === "erase" || tool === "heat" || tool === "cool")) {
+      ctx.strokeStyle = tool === "heat" ? "#ef8a7c" : tool === "cool" ? "#6fb7ff" : "#fff"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(ox + held[0] * s, oy + held[1] * s, brushReach() * s, 0, 6.2832); ctx.stroke();
+    }
+    if (picked && picked.body != null && w.alive[picked.body]) {
+      const i = picked.body; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12 + 5, 0, 6.2832); ctx.stroke();
+    }
+    const st = world.stats();
+    $("clock").textContent = st.time.toFixed(1) + " s · " + st.count.toLocaleString("en-US") + " hexagons";
+  }
+
+  /* ═══ the side panel ═══════════════════════════════════════════════════ */
+  const num = (v, d) => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(d == null ? 1 : d));
+  function pane() {
+    if (!world || screens.run.hidden) return;
+    renderPane();
+  }
+  function renderPane() {
+    const el = $("panes"), keep = el.scrollTop;
+    // A live result must not steal keyboard focus when its activity changes.
+    const active = el.contains(document.activeElement) ? document.activeElement.dataset.go : null;
+    el.innerHTML = physicsPane();
+    if (active) [...el.querySelectorAll("button[data-go]")].find(b => b.dataset.go === active)?.focus({ preventScroll: true });
+    el.scrollTop = keep;
+  }
+  /* The panel redraws itself several times a second. Not while a finger is on
+     it, or the button being pressed is replaced before the click lands. */
+  let paneHeld = false;
+  $("panes").addEventListener("input", e => {
+    const input = e.target.closest("input[data-edit]");
+    if (!input || !input.checkValidity() || !picked || picked.body == null) return;
+    /* The page talks in degrees; the engine keeps radians. */
+    const key = input.dataset.edit;
+    world.edit(picked.body, { [key]: key === "facing" ? +input.value * Math.PI / 180 : +input.value });
+  });
+  $("panes").addEventListener("pointerdown", () => { paneHeld = true; });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $("panes").addEventListener(ev, () => { setTimeout(() => { paneHeld = false; }, 60); });
+  $("panes").addEventListener("click", e => {
+    const b = e.target.closest("[data-go]"); if (!b) return;
+    const a = b.dataset.go.split(":");
+    if (a[0] === "at") { cam.x = +a[1]; cam.y = +a[2]; cam.s = Math.max(cam.s, 14); cam.held = true; }
+    if (a[0] === "body") { picked = { body: +a[1] }; pane(); }
+    if (a[0] === "ed" && picked && picked.body != null) {
+      const i = picked.body, d = world.describe(i);
+      if (!d) return;
+      if (a[1] === "kind") world.edit(i, { kind: Math.min(world.settings.kinds, Math.max(1, d.kind + +a[2])) });
+      if (a[1] === "mass") world.edit(i, { mass: Math.max(0.25, d.mass * +a[2]) });
+      if (a[1] === "temp") world.edit(i, { temperature: +a[2] > 0 ? d.temperature * 1.5 + 1 : d.temperature / 1.5 - 0.5 });
+      if (a[1] === "stop") world.edit(i, { vx: 0, vy: 0 });
+      if (a[1] === "pin") world.edit(i, { pinned: !d.pinned });
+      if (a[1] === "loose") world.edit(i, { loosen: true });
+      if (a[1] === "del") { world.remove(i); picked = null; }
+      pane();
+    }
+  });
+
+  function physicsPane() {
+    const st = world.stats(), S = world.settings;
+    if (tab === "look") {
+      const d = picked ? world.describe(picked.body) : null;
+      if (!d) return "<p class='small'>" + (picked ? "That hexagon is gone — fused into another, removed, or off the edge." : "Tap a hexagon to see what it is, and to change it: its kind, weight, heat, or whether it can move.") + "</p>";
+      return "<h3><span class='sw' style='background:" + KIND[(d.kind - 1) % S.kinds % 8] + "'></span>" + (d.mass > S.kinds ? "A fused body" : "Kind " + d.kind) + "</h3>" +
+        "<dl class='kv'><dt>Mass</dt><dd>" + num(d.mass, 0) + "</dd><dt>Temperature</dt><dd>" + num(d.temperature, 2) + "</dd>" +
+        "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + d.canHold + "</dd>" +
+        (d.pull != null ? "<dt>Pull</dt><dd>" + num(d.pull, 2) + "</dd>" : "") +
+        (d.charge != null ? "<dt>Charge</dt><dd>" + (d.charge > 0.005 ? "+" : "") + num(d.charge, 2) + "</dd>" : "") +
+        (d.ion ? "<dt>Ion</dt><dd>" + (d.ion > 0 ? "+1" : "−1") + ", held by charge alone</dd>" : "") +
+        (d.stored ? "<dt>Charged up</dt><dd>" + num(d.stored, 1) + " energy, spent on its next bond</dd>" : "") +
+        (d.bonds.some(b => b.order > 1) ? "<dt>Bond orders</dt><dd>" + d.bonds.map(b => ["", "single", "double", "triple"][b.order]).join(", ") + "</dd>" : "") +
+        ((S.shift > 0 || S.look > 0) && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
+        (d.turning ? "<dt>Facing</dt><dd>" + num(((d.facing * 180 / Math.PI) % 360 + 360) % 360, 0) + "\u00b0, turning " + num(d.spin, 2) + " a second</dd>" : "") +
+        (d.pinned ? "<dt>Pinned</dt><dd>held still</dd>" : "") + "</dl>" +
+        "<div class='body-values'>" + [["mass", "Mass", d.mass, 0.000001], ["temperature", "Temperature", d.temperature, 0], ["vx", "Velocity X", world.vx[d.id], -1e12], ["vy", "Velocity Y", world.vy[d.id], -1e12]]
+          .concat(d.turning ? [["facing", "Facing (\u00b0)", Math.round(((d.facing * 180 / Math.PI) % 360 + 360) % 360), -1e12]] : []).map(a =>
+          "<label>" + a[1] + "<input type='number' required step='any' min='" + a[3] + "' max='1000000000000' data-edit='" + a[0] + "' value='" + a[2] + "'></label>").join("") + "</div>" +
+        "<div class='edits'>" +
+        "<button class='btn' data-go='ed:kind:-1'>Kind \u2212</button><button class='btn' data-go='ed:kind:1'>Kind +</button>" +
+        "<button class='btn' data-go='ed:mass:0.5'>Lighter</button><button class='btn' data-go='ed:mass:2'>Heavier</button>" +
+        "<button class='btn' data-go='ed:temp:-1'>Colder</button><button class='btn' data-go='ed:temp:1'>Hotter</button>" +
+        "<button class='btn' data-go='ed:stop'>Stop it</button>" +
+        "<button class='btn' data-go='ed:pin' aria-pressed='" + d.pinned + "'>" + (d.pinned ? "Unpin" : "Pin") + "</button>" +
+        (d.bonds.length ? "<button class='btn' data-go='ed:loose'>Break its bonds</button>" : "") +
+        "<button class='btn' data-go='ed:del'>Remove</button></div>" +
+        (d.bonds.length ? "<h3 style='margin-top:.8rem'>Bonded to</h3>" + d.bonds.map(b => "<button class='item' data-go='body:" + b.other + "'><span class='sw' style='background:" +
+          KIND[(world.kind[b.other] - 1) % S.kinds % 8] + "'></span>kind " + world.kind[b.other] + " · strength " + num(b.strength, 1) + "</button>").join("") : "");
+    }
+    const tot = Math.max(1e-9, st.motion + st.heat + st.radiated + st.dragged + st.breakWork);
+    const seg = (v, c) => "<i style='width:" + (v / tot * 100).toFixed(2) + "%;background:" + c + "'></i>";
+    return "<h3>What is in it</h3><dl class='kv'>" +
+      "<dt>Hexagons</dt><dd>" + st.count.toLocaleString("en-US") + (st.count !== st.started && !st.placed && !st.removed && !st.fragments ? " of " + st.started.toLocaleString("en-US") : "") + "</dd>" +
+      (st.fused ? "<dt>Fused together</dt><dd>" + st.fused.toLocaleString("en-US") + "</dd>" : "") +
+      (st.fractured ? "<dt>Impact fractures</dt><dd>" + st.fractured.toLocaleString("en-US") + "</dd>" : "") +
+      (st.shed ? "<dt>Pieces shed by heat</dt><dd>" + st.shed.toLocaleString("en-US") + "</dd>" : "") +
+      (st.left ? "<dt>Left the world</dt><dd>" + st.left.toLocaleString("en-US") + "</dd>" : "") +
+      "<dt>Heaviest</dt><dd>" + num(st.heaviest, 0) + "</dd>" +
+      "<dt>Temperature</dt><dd>" + num(st.temperature, 2) + "</dd>" +
+      (S.bonding !== "none" ? "<dt>Bonds standing</dt><dd>" + st.bonds.toLocaleString("en-US") + "</dd><dt>Clusters</dt><dd>" + st.clusters.toLocaleString("en-US") +
+        "</dd><dt>Biggest cluster</dt><dd>" + st.biggest + " hexagons</dd><dt>Bonds made / broken</dt><dd>" + st.bondsMade.toLocaleString("en-US") + " / " + st.bondsBroken.toLocaleString("en-US") + "</dd>" : "") +
+      "</dl><h3 style='margin-top:.9rem'>Where the energy is</h3><div class='meter'>" +
+      seg(st.motion, "#6fb7ff") + seg(st.heat, "#ef6f6c") + seg(st.radiated, "#55616a") + seg(st.dragged, "#3b454b") + seg(st.breakWork, "var(--acc)") + "</div>" +
+      "<div class='legend'><span><b style='background:#6fb7ff'></b>motion " + num(st.motion, 0) + "</span><span><b style='background:#ef6f6c'></b>heat " + num(st.heat, 0) +
+      "</span><span><b style='background:#55616a'></b>leaked away " + num(st.radiated, 0) + "</span>" + (st.dragged > 0 ? "<span><b style='background:#3b454b'></b>lost to drag " + num(st.dragged, 0) + "</span>" : "") + (st.breakWork > 0 ? "<span><b style='background:var(--acc)'></b>spent breaking " + num(st.breakWork, 0) + "</span>" : "") + "</div>" +
+      (st.fragmentLimit ? "<p class='small'>No room for more fragments. Bodies keep their mass and heat until a place is free.</p>" : "") +
+      (S.bonding !== "none" ? "<p class='small'>Held in bonds: " + num(st.bondEnergy, 0) + " — given off as heat when they formed.</p>" : "") +
+      censusPane(S) +
+      (st.placed || st.removed ? "<p class='small'>By hand: " + st.placed.toLocaleString("en-US") + " put in, " + st.removed.toLocaleString("en-US") + " taken out.</p>" : "") +
+      (S.gravity > 0 || S.fall > 0 ? "<p class='small'>Gravity's own energy is not in the bar: things falling together turn it into motion, which is why the total can grow.</p>" : "") +
+      "<p class='small'>Colours: " + (viewMode === "kind" ? "one per kind; a fused body takes the colour its mass works out to." : viewMode === "heat" ? "dark is cold, white is the hottest thing in the world right now." : "dark is still, white is the fastest thing in the world right now.") + "</p>";
+  }
+
+  /* What the world has made. A thing is named by the kinds in it; the count
+     of different things, now and ever, is the plainest sign of whether a
+     world is making anything new or only more of the same. The note at the
+     foot is deliberate: self-replication has never been tested in here, so
+     the pane says it is neither claimed nor ruled out rather than saying
+     nothing copies itself, which nobody has measured either. */
+  function censusPane(S) {
+    if (S.bonding === "none") return "";
+    const c = world.census();
+    for (const t of c.types) everSeen.add(t.sig);
+    if (everSeen.size > 20000) everSeen = new Set(c.types.map(t => t.sig));
+    const st = world.stats();
+    let out = "<h3 style='margin-top:.9rem'>What it has made</h3><dl class='kv'>" +
+      "<dt>Different things now</dt><dd>" + c.distinct.toLocaleString("en-US") + "</dd>" +
+      "<dt>Different things ever</dt><dd>" + everSeen.size.toLocaleString("en-US") + "</dd>" +
+      "<dt>Loose hexagons</dt><dd>" + c.free.toLocaleString("en-US") + "</dd>" +
+      (S.shift > 0 ? "<dt>Reactions</dt><dd>" + st.reacted.toLocaleString("en-US") + "</dd>" : "") + "</dl>";
+    for (const t of c.types.slice(0, 10)) {
+      const shape = t.shape === "chain" ? "in a row" : t.shape === "ring" ? "in a ring" : "";
+      out += "<div class='thing'>" + (t.kinds ? t.kinds.map(k => "<b style='background:" + KIND[(k - 1) % 8] + "' title='kind " + k + "'></b>").join("") : esc(t.sig)) +
+             "<span>" + (t.kinds ? t.size + (shape ? " " + shape : "") + " \u00b7 " : "") + "\u00d7" + t.count + "</span></div>";
+    }
+    if (!c.types.length) out += "<p class='small'>Nothing is bonded to anything yet.</p>";
+    out += "<p class='small'>" + (S.angles > 0 && S.look > 0
+      ? "Things are read along themselves now, so a row of the same kinds in a different order is a different thing. Nothing seeds a copier and no rule rewards copying: a thing that makes more of itself is possible here and has never been seen. One would show as a row whose count climbs."
+      : "Self-replication is untested here: nothing seeds a copier and no rule rewards copying, so something that makes more of itself is neither claimed nor ruled out. It needs shape and a sequence \u2014 \u201cBonds hold an angle\u201d and \u201ca bond reads the next one along\u201d, both off in this world.") + "</p>";
+    return out;
+  }
+
+  document.addEventListener("visibilitychange", () => { last = performance.now(); });
+
+  /* ── arriving ──────────────────────────────────────────────────────────── */
+  function arrive() {
+    /* No chooser any more: the page opens on its own settings. */
+    const h = fromHash();
+    openSetup("physics", h ? h.set : null);
+    if (h && h.run) startRun();
+  }
+  window.addEventListener("hashchange", () => { const h = fromHash(); if (h && screens.run.hidden && screens.setup.hidden) arrive(); });
+  arrive();
+})();
+</script>
+<script src="../relay-return.js" data-home="../../index.html" data-egg="worlds" defer></script>
+</body>
+</html>

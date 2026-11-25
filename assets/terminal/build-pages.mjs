@@ -25,6 +25,7 @@ const EXCLUDE = [
   [/^projects\/cs\/p\//, "one page per CS player — the players aren't the site"],
   [/^(404|frontdoor|systems|updates|terminal)\.html$/, 'redirects, the 404 and the terminal itself'],
   [/^projects\/crossfire\//, 'a redirect to KONDRITE'],
+  [/^projects\/world-builder\/lab\.html$/, 'a redirect: the Lab moved to the Physics Sandbox on 2026-11-25'],
   [/^projects\/climbing\/add(-route)?\.html$/, "Ric's logging forms"],
   [/^projects\/kondrite\/sounds\//, "Ric's listening booth"],
 ];

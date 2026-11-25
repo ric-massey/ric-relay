@@ -134,7 +134,7 @@ Carry forward the project's existing rules in the README:
   model. Richness comes from context, memory and consequences.
 - Keep the static, dependency-free project architecture and browser performance constraints.
 - Keep this sandbox independent of KONDRITE and the Universe engine. This vision concerns
-  the People sandbox; the Physics sandbox retains its own scope.
+  the People sandbox; the Physics sandbox is its own project, `projects/physics-sandbox/`, since 2026-11-25.
 
 Player decisions fit these rules: a controlled person makes an explicit choice using the
 same underlying actions and constraints as autonomous people.

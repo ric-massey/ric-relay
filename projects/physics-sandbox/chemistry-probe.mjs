@@ -38,9 +38,9 @@
    1.8 where the bond energy was 4, because a pair alone paid for its own
    bonds. Run:
 
-     node projects/world-builder/chemistry-probe.mjs
-     node projects/world-builder/chemistry-probe.mjs --bond 6
-     node projects/world-builder/chemistry-probe.mjs --old     (the world without settling)
+     node projects/physics-sandbox/chemistry-probe.mjs
+     node projects/physics-sandbox/chemistry-probe.mjs --bond 6
+     node projects/physics-sandbox/chemistry-probe.mjs --old     (the world without settling)
 */
 import { createRequire } from "node:module";
 const Physics = createRequire(import.meta.url)("./physics.js");

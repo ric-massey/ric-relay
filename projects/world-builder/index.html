@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>World Builder — set the rules, run a world</title>
-<meta name="description" content="Choose a physics sandbox or a people sandbox, set how the world works — gravity, chemistry, money, how long lives are — and run it.">
+<title>People Sandbox — set how people live, run a world</title>
+<meta name="description" content="Hundreds of people who farm, trade, talk, pair up and grow old. Set how long they live, how money works and who leads, then run the world and watch what they make of it.">
 <meta name="theme-color" content="#0c1113">
 <script src="../../assets/visit.js" defer></script>
 <style>
-  /* WORLD BUILDER
+  /* PEOPLE SANDBOX (projects/world-builder/; the folder kept World Builder's name)
      Its own look, on purpose (the site's rule 3): a dark table with a world on
      it, one ochre accent, a serif for the things that have names. Every colour
      that carries words clears 4.5:1 on the surface it sits on — --dim is the
@@ -70,20 +70,6 @@
   .btn[aria-pressed="true"] { border-color: var(--acc); color: var(--acc); }
 
   /* ── the first screen: two doors ── */
-  #pick { min-height: 100%; display: flex; flex-direction: column; padding: clamp(1.2rem, 4vw, 3rem) 16px 5rem; max-width: 1080px; margin: 0 auto; }
-  #pick header { margin-bottom: clamp(1rem, 3vw, 2rem); }
-  #pick h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; }
-  .lab-door { margin: 1.4rem 0 0; color: var(--dim); }
-  .lab-door a { font-family: var(--serif); font-weight: 600; font-size: 1.1rem; margin-right: .4rem; }
-  #pick header p { color: var(--dim); max-width: 46ch; margin: .6rem 0 0; font-size: 1.05rem; }
-  .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; }
-  .door { display: flex; flex-direction: column; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 0; overflow: hidden; }
-  .door:hover, .door:focus-visible { border-color: var(--acc); }
-  .door canvas { display: block; width: 100%; aspect-ratio: 16 / 10; background: #070a0b; }
-  .door .words { padding: 1rem 1.1rem 1.2rem; }
-  .door h2 { font-size: 1.6rem; }
-  .door p { margin: .35rem 0 0; color: var(--dim); }
-  .door .enter { display: inline-block; margin-top: .8rem; color: var(--acc); font-weight: 600; }
   @media (max-width: 720px) { .doors { grid-template-columns: 1fr; } }
 
   /* ── the second screen: the settings ── */
@@ -429,37 +415,8 @@
 </head>
 <body>
 
-<!-- ═══ 1 · choose a sandbox ═══════════════════════════════════════════════ -->
-<main id="pick">
-  <header>
-    <h1>World Builder</h1>
-    <p>Pick a kind of world, decide how it works, and run it. Nothing in it is scripted: what happens is whatever your rules do.</p>
-  </header>
-  <div class="doors">
-    <button class="door" data-mode="physics">
-      <canvas id="mini-physics" width="480" height="300" aria-hidden="true"></canvas>
-      <span class="words">
-        <h2>Physics sandbox</h2>
-        <p>A world of hexagons. Choose how strong gravity is, whether anything bonds, how heat moves, what happens when two things hit. Atoms or planets — the hexagons are whichever your settings make them.</p>
-        <span class="enter">Set the physics →</span>
-      </span>
-    </button>
-    <button class="door" data-mode="people">
-      <canvas id="mini-people" width="480" height="300" aria-hidden="true"></canvas>
-      <span class="words">
-        <h2>People sandbox</h2>
-        <p>Hundreds of people who farm, trade, talk, pair up and grow old. Choose how long they live, how money works, who leads. Factions, wars and breakaways are whatever they make of it.</p>
-        <span class="enter">Set the people →</span>
-      </span>
-    </button>
-  </div>
-  <p class="lab-door"><a href="lab.html">The Lab →</a> Build one thing exactly on a hexagon grid, type in what each kind is, and run it against a control to see whether it copies itself.</p>
-  <noscript><p>World Builder runs its worlds in your browser, so it needs JavaScript switched on.</p></noscript>
-</main>
-
-<!-- ═══ 2 · set it up ══════════════════════════════════════════════════════ -->
+<!-- ═══ 1 · set it up ══════════════════════════════════════════════════════ -->
 <main id="setup" hidden>
-  <button class="linkish" id="back-pick">← Both sandboxes</button>
   <div class="top">
     <h1 id="setup-title"></h1>
     <p id="setup-note"></p>
@@ -491,6 +448,7 @@
     </section>
     <p id="find-none" class="small" hidden>No setting has those words. Try fewer, or another way of saying it.</p>
   </form>
+  <noscript><p>The People Sandbox runs its worlds in your browser, so it needs JavaScript switched on.</p></noscript>
   <div class="launch">
     <span class="changed" id="changed"></span>
     <button class="btn quiet" id="dice" type="button">Surprise me</button>
@@ -499,7 +457,7 @@
   </div>
 </main>
 
-<!-- ═══ 3 · the world ══════════════════════════════════════════════════════ -->
+<!-- ═══ 2 · the world ══════════════════════════════════════════════════════ -->
 <div id="run" hidden>
   <div id="bar">
     <button class="btn" id="to-setup" aria-label="Back to setup">←<span class="long"> Setup</span></button>
@@ -527,10 +485,6 @@
     <!-- What the layer showing means (TODO 21d): a corner, never the middle; it folds to its name. -->
     <div id="legend" hidden><button type="button" class="shut" id="legend-shut" aria-expanded="true" aria-label="Fold the legend">×</button><div id="legend-body"></div></div>
     <button type="button" id="headline" hidden></button>
-    <div id="rail" hidden>
-      <div id="tools" role="group" aria-label="What a tap does"></div>
-      <div id="palette" hidden></div>
-    </div>
     <span id="hint">Drag to move · scroll or pinch to zoom · tap anything to look at it</span>
     <span class="clock" id="clock"></span>
     <span id="slow" hidden>Running behind — fewer things or a slower clock will catch it up</span>
@@ -550,22 +504,26 @@
   </aside>
 </div>
 
-<script src="physics.js"></script>
 <script src="people.js"></script>
 <script src="people-host.js"></script>
 <script>
 (function () {
   "use strict";
   const $ = id => document.getElementById(id);
+  /* World Builder held two sandboxes until 2026-11-25, when Ric split them
+     into projects of their own. This folder kept World Builder's name and is
+     the People Sandbox; the physics is projects/physics-sandbox/. A link to
+     the old #physics address is sent on there before anything else runs.
+     `mode` stays, always "people", so a shared link keeps its #people. */
+  if (/^#physics\b/.test(location.hash)) { location.replace("../physics-sandbox/index.html" + location.hash); return; }
   const ENGINES = {
-    physics: { api: window.WBPhysics, title: "Physics sandbox", note: "Every setting is a term in the physics. Start from one of these, or set each thing yourself." },
-    people:  { api: window.WBPeople,  title: "People sandbox",  note: "Every setting changes what people need or do. Start from one of these, or set each thing yourself." },
+    people:  { api: window.WBPeople,  title: "People Sandbox",  note: "Every setting changes what people need or do. Start from one of these, or set each thing yourself." },
   };
   const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  let mode = null, values = {}, preset = null;
-  const screens = { pick: $("pick"), setup: $("setup"), run: $("run") };
+  let mode = "people", values = {}, preset = null;
+  const screens = { setup: $("setup"), run: $("run") };
   function show(name) {
     for (const k in screens) screens[k].hidden = k !== name;
     document.body.classList.toggle("running", name === "run");
@@ -574,7 +532,6 @@
     if (name !== "run") stopRun();
     /* The try-out of a world belongs to the settings screen and stops when it is left. */
     if (name === "setup") tryOut(); else stopTrial();
-    if (name === "pick") startMinis(); else stopMinis();
     window.scrollTo(0, 0);
   }
 
@@ -588,7 +545,7 @@
     return "#" + mode + (parts.length || andRun ? "?" + parts.concat(andRun ? ["run"] : []).join("&") : "");
   }
   function fromHash() {
-    const m = /^#(physics|people)(?:\?(.*))?$/.exec(location.hash);
+    const m = /^#(people)(?:\?(.*))?$/.exec(location.hash);
     if (!m) return null;
     const out = { mode: m[1], set: {}, run: false };
     for (const part of (m[2] || "").split("&")) {
@@ -728,10 +685,9 @@
         const live = people && it.live && where !== "start" ? "<span class='live-tag'>can change while it runs</span>" : "";
         const info = people && it.help ? "<button type='button' class='info' aria-expanded='false' aria-controls='" + id + "-help' aria-label='About " + esc(it.label) + "'>i</button>" : "";
         if (it.type === "range") {
-          /* Every physics number can be typed. Of the People settings, the
-             one with no top can (TODO item 3): the slider sweeps to its
-             convenient end and the box goes on past it. */
-          const typed = mode === "physics" || it.inputMax != null;
+          /* The setting with no top can be typed (TODO item 3): the slider
+             sweeps to its convenient end and the box goes on past it. */
+          const typed = it.inputMax != null;
           const lo = it.inputMin == null ? it.min : it.inputMin;
           row.innerHTML = "<div class='rhead'><label class='lab' for='" + id + "'>" + esc(it.label) + live + "</label><span class='valbox'>" +
             (typed ? "<input type='number' required id='" + id + "' min='" + lo + "'" + (isFinite(it.inputMax) ? " max='" + it.inputMax + "'" : "") + " step='" + (it.integer ? "1" : "any") + "'><span class='val' id='" + id + "-words'></span>" : "<span class='val'></span>") +
@@ -988,11 +944,8 @@
       else if (it.type === "toggle") next[it.key] = Math.random() < 0.7;
       else next[it.key] = it.options[Math.floor(Math.random() * it.options.length)][0];
     }
-    if (mode === "physics") next.count = Math.min(next.count, 1800);
     values = E.clean(next); preset = null; fill();
   });
-  $("back-pick").addEventListener("click", () => { setHash(""); show("pick"); });
-  for (const d of document.querySelectorAll(".door")) d.addEventListener("click", () => openSetup(d.dataset.mode));
   function launchSetup() {
     // Invalid/unfinished entries stay visible until corrected, never launch an old value.
     for (const c of Object.values(controls)) if (c.numeric && !c.numeric.disabled && !c.numeric.checkValidity()) {
@@ -1075,19 +1028,6 @@
   let asked = false, askedAt = 0, askGap = 0, making = 0, jump = false, seq = 0;
   let paneData = null, paneAsked = false, paneWant = false;
   const POPULATION_PAGE = 60;
-  /* A visitor's hands in the physics world: which tool a tap uses, what Place
-     and Throw put down, where the pointer is held, and every kind of bonded
-     thing this world has ever made (for "ever seen" in the World tab). */
-  let tool = "look", brushKind = 1, brushMass = 1, held = null, aim = null, lastPut = null, everSeen = new Set();
-  const TOOLS = [
-    ["look", "Look", "Drag to move \u00b7 scroll or pinch to zoom \u00b7 tap anything to look at it"],
-    ["place", "Place", "Tap or drag to put hexagons down \u00b7 two fingers to zoom"],
-    ["throw", "Throw", "Drag and let go: the hexagon leaves the way you dragged, faster the further"],
-    ["erase", "Erase", "Drag over hexagons to take them out"],
-    ["heat", "Heat", "Hold on hexagons to heat them"],
-    ["cool", "Cool", "Hold on hexagons to cool them"],
-    ["pin", "Pin", "Tap a hexagon to hold it still, or to let it go again"],
-  ];
 
   function sizeCanvas() {
     const r = canvas.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
@@ -1102,7 +1042,7 @@
   function fit() {
     const r = canvas.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) return false;
-    const W = mode === "physics" ? world.width : world.cols, H = mode === "physics" ? world.height : world.rows;
+    const W = world.cols, H = world.rows;
     cam.s = Math.min(r.width / W, r.height / H) * 0.94; cam.x = W / 2; cam.y = H / 2; cam.held = false; follow = false;
     return true;
   }
@@ -1212,14 +1152,11 @@
 
   function startRun() {
     stopRun();
-    const E = ENGINES[mode].api;
-    /* The physics world is made here and now. The People world is made by
-       its keeper, and is not here until the keeper says so (`hear`). */
-    world = mode === "physics" ? E.create(values) : null;
+    /* The world is made by its keeper, and is not here until the keeper says so (`hear`). */
+    world = null;
     populationPage = 0; populationScroll = 0; selectedExchange = null; talkScroll = 0;
     for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; reached = 0;
-    tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
     slotOf = new Map();
     snap = null; vs = []; fs = []; landNow = null; landStale = false; bigAt = 0; landDirty = null; washKey = ""; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
     newsSince = -1; headQueue = []; headNow = null; headUntil = 0; startPeople = 0; lastProbs = ""; seen = []; pins = []; legendKey = ""; lastLook = null; keyOpen = false; newsFilter = "all"; peopleAll = false;
@@ -1231,22 +1168,20 @@
     /* On a phone the legend starts folded to its name, so the middle of the map is clear (21d). */
     if (narrow() !== $("legend").classList.contains("packed")) $("legend-shut").click(); $("clock").hidden = mode === "people";   // the bar says the date (21d)
     $("slow").hidden = true; $("panes").textContent = ""; $("clock").textContent = "";
-    buildBar(); buildTools(); buildTabs();
+    buildBar(); buildTabs();
     show("run");
     sizeCanvas();
-    if (mode === "people") {
-      making = performance.now();
-      runKey = JSON.stringify(trialSettings()); runTook = 0; heldSaved = 0;
-      keeper = connect(hear);
-      keeper.send({ t: "start", values: values });
-    } else if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
+    making = performance.now();
+    runKey = JSON.stringify(trialSettings()); runTook = 0; heldSaved = 0;
+    keeper = connect(hear);
+    keeper.send({ t: "start", values: values });
     last = performance.now();
     raf = requestAnimationFrame(frame);
   }
   function stopRun() {
     if (raf) cancelAnimationFrame(raf); raf = 0;
     /* Leaving a People world ends it, and its thread with it. */
-    if (keeper) { keeper.stop(); keeper = null; making = 0; if (mode === "people") world = null; }
+    if (keeper) { keeper.stop(); keeper = null; making = 0; world = null; }
   }
 
   /* The layers of the People map (TODO 21d; Ric chose all eleven, 2026-11-25). Each answers a
@@ -1299,16 +1234,6 @@
   function setRate(r) { rate = r; reached = 0; tellClock(); buildSpeeds(); }
   function buildSpeeds() {
     const sp = $("speeds"); sp.textContent = "";
-    if (mode === "physics") {
-      const list = [0.25, 0.5, 1, 2, 4]; if (list.indexOf(rate) < 0) list.push(rate); list.sort((a, b) => a - b);
-      for (const r of list) {
-        const b = document.createElement("button"); b.className = "btn"; b.textContent = r + "×";
-        b.setAttribute("aria-pressed", String(r === rate));
-        b.addEventListener("click", () => setRate(r));
-        sp.appendChild(b);
-      }
-      return;
-    }
     /* Three in the bar and every step behind ▾ (Ric chose "Three plus a menu", 2026-11-25). The one
        chosen from the menu stands in the bar beside them. */
     const shown = [1, 16, 1000]; if (shown.indexOf(rate) < 0) shown.push(rate); shown.sort((a, b) => a - b);
@@ -1335,23 +1260,14 @@
     if (keeper && world) keeper.send({ t: "clock", rate: rate, paused: document.hidden, until: kind ? { kind: kind } : null });
   }
   function buildBar() {
-    const people = mode === "people";
     $("units").hidden = true;
-    for (const id of ["date", "layer-btn", "rules-btn", "more-btn"]) $(id).hidden = !people;
-    for (const id of ["views", "views-cap", "fit", "again", "share"]) $(id).hidden = people;
+    for (const id of ["date", "layer-btn", "rules-btn", "more-btn"]) $(id).hidden = false;
+    for (const id of ["views", "views-cap", "fit", "again", "share"]) $(id).hidden = true;
     $("probs").hidden = true;
     $("units").setAttribute("aria-pressed", String(showUnits));
     buildSpeeds();
-    const vw = $("views"); vw.textContent = "";
-    if (people) { setLayer("faction"); return; }
-    const kinds = [["kind", "Kind"], ["heat", "Heat"], ["speed", "Speed"]];
-    viewMode = kinds[0][0];
-    for (const k of kinds) {
-      const b = document.createElement("button"); b.className = "btn"; b.textContent = k[1];
-      b.setAttribute("aria-pressed", String(k[0] === viewMode));
-      b.addEventListener("click", () => { viewMode = k[0]; for (const o of vw.children) o.setAttribute("aria-pressed", String(o === b)); });
-      vw.appendChild(b);
-    }
+    $("views").textContent = "";
+    setLayer("faction");
   }
   menuButton($("layer-btn"), m => {
     m.textContent = "";
@@ -1404,73 +1320,13 @@
       $("probs").setAttribute("aria-label", pr.length + " things going wrong now: " + pr.map(probText).join("; ") + ". Open the Overview.");
     }
   }
-  function buildTools() {
-    const el = $("tools"), pal = $("palette");
-    el.textContent = ""; pal.textContent = ""; pal.hidden = true;
-    $("rail").hidden = mode !== "physics";
-    $("hint").textContent = TOOLS[0][2]; $("hint").hidden = false;
-    if (mode !== "physics") return;
-    for (const t of TOOLS) {
-      const b = document.createElement("button"); b.className = "btn"; b.textContent = t[1];
-      b.setAttribute("aria-pressed", String(t[0] === tool));
-      b.addEventListener("click", () => {
-        tool = t[0]; held = null; aim = null;
-        for (const o of el.children) o.setAttribute("aria-pressed", String(o === b));
-        pal.hidden = !(tool === "place" || tool === "throw");
-        $("hint").textContent = t[2]; $("hint").hidden = false;
-        canvas.style.cursor = tool === "look" ? "" : "crosshair";
-      });
-      el.appendChild(b);
-    }
-    /* What Place and Throw put down: a kind, and how heavy. */
-    const lab = document.createElement("span"); lab.className = "lab"; lab.textContent = "Kind"; pal.appendChild(lab);
-    for (let k = 1; k <= world.settings.kinds; k++) {
-      const b = document.createElement("button"); b.className = "sw-btn"; b.textContent = k; b.style.background = KIND[(k - 1) % 8];
-      b.setAttribute("aria-label", "Kind " + k); b.setAttribute("aria-pressed", String(k === brushKind));
-      b.addEventListener("click", () => { brushKind = k; for (const o of pal.querySelectorAll(".sw-btn")) o.setAttribute("aria-pressed", String(o === b)); });
-      pal.appendChild(b);
-    }
-    const weight = document.createElement("label"); weight.textContent = "Mass × ";
-    const sel = document.createElement("input"); sel.type = "number"; sel.min = "0.000001"; sel.max = "1000000000000"; sel.step = "any"; sel.value = brushMass; sel.required = true; sel.setAttribute("aria-label", "Mass multiplier");
-    sel.addEventListener("input", () => { if (sel.checkValidity()) brushMass = +sel.value; });
-    weight.appendChild(sel);
-    pal.appendChild(weight);
-    canvas.style.cursor = "";
-  }
-  /* What the chosen tool does at a point of the world. `first` is the moment
-     the finger went down; after that it is called as the finger moves. */
-  const brushReach = () => Math.max(0.8, 20 / cam.s);
-  function useTool(wx, wy, first) {
-    const w = world;
-    if ((tool === "place" || tool === "throw") && !$("palette").querySelector("input").reportValidity()) return;
-    if (tool === "place") {
-      const mass = brushKind * brushMass, rad = w.settings.sized ? 0.5 * Math.sqrt(mass) : 0.5;
-      if (lastPut && Math.hypot(wx - lastPut[0], wy - lastPut[1]) < rad * 2.1) return;
-      if (w.near(wx, wy, rad * 0.9).length) return;
-      if (w.place(wx, wy, brushKind, 0, 0, mass) < 0) { $("hint").textContent = "This world is full \u2014 erase something first"; return; }
-      lastPut = [wx, wy];
-    } else if (tool === "throw") {
-      if (first) aim = { x0: wx, y0: wy, x1: wx, y1: wy }; else if (aim) { aim.x1 = wx; aim.y1 = wy; }
-    } else if (tool === "pin" && first) {
-      const i = w.at(wx, wy);
-      if (i >= 0) w.edit(i, { pinned: !w.pinned[i] });
-    }
-  }
-  /* Erasing, heating and cooling go on for as long as the finger is held. */
-  function holdTool(seconds) {
-    if (!held || mode !== "physics") return;
-    if (tool === "erase") for (const i of world.near(held[0], held[1], brushReach())) world.remove(i);
-    else if (tool === "heat") world.warm(held[0], held[1], brushReach(), 12 * seconds);
-    else if (tool === "cool") world.warm(held[0], held[1], brushReach(), -12 * seconds);
-  }
 
   /* Four tabs for People (TODO 21f; Ric: "Talk in News"): Overview, People, News and the Inspector.
      Talk is News's filter, and the Rules drawer opens from the bar; both are tabs underneath, so
      what selects them is the tab they belong to. */
   const TAB_OF = { talk: "news", rules: "" };
   function buildTabs() {
-    const names = mode === "physics" ? [["world", "World"], ["look", "Hexagon"]]
-                                     : [["world", "Overview"], ["people", "People"], ["news", "News"], ["look", "Inspector"]];
+    const names = [["world", "Overview"], ["people", "People"], ["news", "News"], ["look", "Inspector"]];
     const el = $("tabs"); el.textContent = "";
     for (const n of names) {
       const b = document.createElement("button"); b.textContent = n[1]; b.dataset.tab = n[0]; b.setAttribute("role", "tab");
@@ -1537,27 +1393,19 @@
   };
   function zoomAt(px, py, k) {
     const before = toWorld(px, py);
-    cam.s = Math.min(mode === "people" ? MAX_ZOOM : 160, Math.max(0.4, cam.s * k));
+    cam.s = Math.min(MAX_ZOOM, Math.max(0.4, cam.s * k));
     const after = toWorld(px, py);
     cam.x += before[0] - after[0]; cam.y += before[1] - after[1]; cam.held = true;
   }
   canvas.addEventListener("pointerdown", e => {
     canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (ptrs.size === 1) moved = 0;
-    if (ptrs.size === 2) { const p = [...ptrs.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); held = null; aim = null; }
-    if (ptrs.size === 1 && mode === "physics" && tool !== "look") {
-      const w = toWorld(e.clientX, e.clientY);
-      held = w; lastPut = null; useTool(w[0], w[1], true);
-      return;
-    }
+    if (ptrs.size === 2) { const p = [...ptrs.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); }
     canvas.classList.add("drag");
   });
   canvas.addEventListener("pointermove", e => {
     const was = ptrs.get(e.pointerId); if (!was) return;
-    if (ptrs.size === 1 && held) {
-      const w = toWorld(e.clientX, e.clientY);
-      held = w; useTool(w[0], w[1], false);
-    } else if (ptrs.size === 1) {
+    if (ptrs.size === 1) {
       const dx = e.clientX - was[0], dy = e.clientY - was[1];
       moved += Math.abs(dx) + Math.abs(dy);
       if (moved > 6) { cam.x -= dx / cam.s; cam.y -= dy / cam.s; cam.held = true; follow = false; }
@@ -1573,16 +1421,6 @@
     if (!ptrs.has(e.pointerId)) return;
     ptrs.delete(e.pointerId);
     if (!ptrs.size) canvas.classList.remove("drag");
-    if (held || aim) {
-      /* Letting go of a throw: it leaves the way it was dragged, and a longer
-         drag is a harder throw. */
-      if (aim && e.type === "pointerup") {
-        const mass = brushKind * brushMass;
-        world.place(aim.x0, aim.y0, brushKind, (aim.x1 - aim.x0) * 1.6, (aim.y1 - aim.y0) * 1.6, mass);
-      }
-      held = null; aim = null;
-      return;
-    }
     if (e.type === "pointerup" && moved <= 6 && !ptrs.size) tap(e.clientX, e.clientY);
   };
   canvas.addEventListener("pointerup", lift); canvas.addEventListener("pointercancel", lift);
@@ -1590,15 +1428,8 @@
 
   function tap(px, py) {
     const w = toWorld(px, py);
-    if (mode === "physics") {
-      const i = world.at(w[0], w[1]);
-      picked = i >= 0 ? { body: i } : null;
-    } else {
-      /* Who is under the finger is the keeper's to say; `hear` takes the answer. */
-      if (keeper && world) keeper.send({ t: "at", seq: ++seq, x: w[0], y: w[1], r: Math.max(0.002, 16 / cam.s), units: showUnits });   // 16 pixels round the finger at any zoom (21e): closer in, a house or a field can be tapped beside the people in it
-      return;
-    }
-    if (picked) setTab("look"); else pane();
+    /* Who is under the finger is the keeper's to say; `hear` takes the answer. */
+    if (keeper && world) keeper.send({ t: "at", seq: ++seq, x: w[0], y: w[1], r: Math.max(0.002, 16 / cam.s), units: showUnits });   // 16 pixels round the finger at any zoom (21e): closer in, a house or a field can be tapped beside the people in it
   }
 
   /* ── the loop ──────────────────────────────────────────────────────────── */
@@ -1607,20 +1438,7 @@
     // RAF timestamps mark the frame start and can precede a startup/visibility
     // performance.now() sample within that frame. Never send negative time.
     const real = Math.max(0, Math.min(0.1, (now - last) / 1000)); last = now;
-    if (mode === "people") { peopleFrame(now, real); return; }
-    holdTool(real);
-    if (!paused) {
-      const t0 = performance.now();
-      world.step(Math.min(1 / 30, real) * rate);
-      lag = lag * 0.95 + (performance.now() - t0 > 30 ? 1 : 0) * 0.05;
-      $("slow").hidden = lag < 0.5;
-      $("slow").textContent = "Running behind — fewer things or a slower clock will catch it up";
-    }
-    const d = sizeCanvas();
-    ctx.setTransform(d, 0, 0, d, 0, 0);
-    const r = canvas.getBoundingClientRect();
-    drawPhysics(r.width, r.height);
-    if (!paneHeld && !$("panes").querySelector("input:focus") && now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(); }
+    peopleFrame(now, real);
   }
   /* A frame of the People world. The page draws what it was last told, with
      the view as it is this instant, so moving and zooming stay smooth however
@@ -1675,100 +1493,11 @@
     if (!paneHeld && !$("panes").querySelector("input:focus") && now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(true); }
   }
 
-  /* ═══ drawing the physics ══════════════════════════════════════════════ */
-  const KIND = ["#6fb7ff", "#ffd166", "#ef6f6c", "#7bd88f", "#c59bff", "#ff9f5a", "#5ad1c8", "#f4a6d7"];
-  const HEX = []; for (let k = 0; k < 6; k++) HEX.push([Math.cos(Math.PI / 6 + k * Math.PI / 3), Math.sin(Math.PI / 6 + k * Math.PI / 3)]);
+  /* ═══ colour ramps ═════════════════════════════════════════════════════ */
   const RAMP = (stops) => { const out = []; for (let i = 0; i < 24; i++) { const u = i / 23 * (stops.length - 1), a = Math.floor(u), b = Math.min(stops.length - 1, a + 1), f = u - a;
     out.push("rgb(" + [0, 1, 2].map(c => Math.round(stops[a][c] + (stops[b][c] - stops[a][c]) * f)).join(",") + ")"); } return out; };
-  const HOT = RAMP([[40, 44, 70], [120, 40, 90], [220, 70, 50], [255, 190, 70], [255, 250, 225]]);
   const FAST = RAMP([[36, 52, 70], [50, 120, 170], [110, 210, 220], [240, 250, 255]]);
   const MOOD = RAMP([[214, 84, 74], [226, 170, 90], [200, 205, 190], [120, 205, 140]]);
-  let hotTop = 1, fastTop = 1;
-  function hexPath(p, x, y, rad, turn) {
-    if (rad < 1.7) { p.rect(x - rad, y - rad, rad * 2, rad * 2); return; }
-    /* With bonds that hold an angle a hexagon faces a way, and turning the
-       drawn shape is the whole of showing it: six slots, 60 degrees apart,
-       so the shape says which way they point. */
-    if (turn) {
-      const c = Math.cos(turn), n = Math.sin(turn);
-      for (let k = 0; k < 6; k++) {
-        const vx = HEX[k][0] * rad, vy = HEX[k][1] * rad;
-        const px = x + vx * c - vy * n, py = y + vx * n + vy * c;
-        if (k === 0) p.moveTo(px, py); else p.lineTo(px, py);
-      }
-      p.closePath(); return;
-    }
-    p.moveTo(x + HEX[0][0] * rad, y + HEX[0][1] * rad);
-    for (let k = 1; k < 6; k++) p.lineTo(x + HEX[k][0] * rad, y + HEX[k][1] * rad);
-    p.closePath();
-  }
-  function drawPhysics(W, H) {
-    const w = world, S = w.settings, n = w.n;
-    /* An open world has no frame to hold still, so the view rides with the
-       middle of everything until somebody takes hold of it. */
-    if (S.edge === "open" && !cam.held) {
-      let mx = 0, my = 0, mt = 0;
-      for (let i = 0; i < n; i++) if (w.alive[i]) { mx += w.m[i] * w.x[i]; my += w.m[i] * w.y[i]; mt += w.m[i]; }
-      if (mt > 0) { cam.x += (mx / mt - cam.x) * 0.05; cam.y += (my / mt - cam.y) * 0.05; }
-    }
-    ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
-    const s = cam.s, ox = W / 2 - cam.x * s, oy = H / 2 - cam.y * s;
-    if (S.edge !== "open") {
-      ctx.strokeStyle = "#2a383f"; ctx.lineWidth = 1; ctx.setLineDash(S.edge === "wrap" ? [5, 5] : []);
-      ctx.strokeRect(ox, oy, w.width * s, w.height * s); ctx.setLineDash([]);
-    }
-    if (S.heater === "centre") { ctx.strokeStyle = "rgba(239,138,124,.5)"; ctx.beginPath(); ctx.arc(ox + w.width / 2 * s, oy + w.height / 2 * s, w.width * 0.1 * s, 0, 6.2832); ctx.stroke(); }
-    if (S.heater === "floor") { ctx.fillStyle = "rgba(239,138,124,.22)"; ctx.fillRect(ox, oy + (w.height - 2.5) * s, w.width * s, 2.5 * s); }
-
-    if (w.bonds.size && s > 2.5) {
-      ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = Math.max(1, s * 0.14); ctx.beginPath();
-      for (const b of w.bonds.values()) {
-        const dx = w.x[b.b] - w.x[b.a], dy = w.y[b.b] - w.y[b.a];
-        if (Math.abs(dx) > w.width / 2 || Math.abs(dy) > w.height / 2) continue;
-        ctx.moveTo(ox + w.x[b.a] * s, oy + w.y[b.a] * s); ctx.lineTo(ox + w.x[b.b] * s, oy + w.y[b.b] * s);
-      }
-      ctx.stroke();
-    }
-    const paths = new Map();
-    const turned = S.angles > 0 && S.bonding !== "none";
-    let topT = 0.05, topV = 0.5;
-    for (let i = 0; i < n; i++) {
-      if (!w.alive[i]) continue;
-      const T = w.heat[i] / w.m[i], v = Math.hypot(w.vx[i], w.vy[i]);
-      if (T > topT) topT = T; if (v > topV) topV = v;
-      const x = ox + w.x[i] * s, y = oy + w.y[i] * s, rad = w.r[i] * s * 1.12;
-      if (x < -rad || y < -rad || x > W + rad || y > H + rad) continue;
-      const col = viewMode === "kind" ? KIND[(w.kind[i] - 1) % S.kinds % 8]
-                : viewMode === "heat" ? HOT[Math.min(23, Math.floor(Math.sqrt(T / hotTop) * 23))]
-                : FAST[Math.min(23, Math.floor(v / fastTop * 23))];
-      let p = paths.get(col); if (!p) { p = new Path2D(); paths.set(col, p); }
-      hexPath(p, x, y, rad, turned ? w.face[i] : 0);
-    }
-    /* The scales ease toward the hottest and fastest thing there is, so the
-       colours do not flicker when one body spikes. */
-    hotTop += (topT - hotTop) * 0.05; fastTop += (topV - fastTop) * 0.05;
-    for (const [col, p] of paths) { ctx.fillStyle = col; ctx.fill(p); }
-    if (s > 9) { ctx.strokeStyle = "rgba(7,10,11,.55)"; ctx.lineWidth = 1; for (const p of paths.values()) ctx.stroke(p); }
-    /* Pinned hexagons carry a dark stud, so it is plain which ones will not move. */
-    ctx.fillStyle = "#070a0b";
-    for (let i = 0; i < n; i++) if (w.alive[i] && w.pinned[i]) { const pr = Math.max(1.5, w.r[i] * s * 0.34); ctx.fillRect(ox + w.x[i] * s - pr, oy + w.y[i] * s - pr, pr * 2, pr * 2); }
-    if (aim) {
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath();
-      ctx.moveTo(ox + aim.x0 * s, oy + aim.y0 * s); ctx.lineTo(ox + aim.x1 * s, oy + aim.y1 * s); ctx.stroke();
-      const p = new Path2D(); hexPath(p, ox + aim.x0 * s, oy + aim.y0 * s, (S.sized ? 0.5 * Math.sqrt(brushKind * brushMass) : 0.5) * s * 1.12);
-      ctx.fillStyle = KIND[(brushKind - 1) % 8]; ctx.fill(p);
-    }
-    if (held && (tool === "erase" || tool === "heat" || tool === "cool")) {
-      ctx.strokeStyle = tool === "heat" ? "#ef8a7c" : tool === "cool" ? "#6fb7ff" : "#fff"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(ox + held[0] * s, oy + held[1] * s, brushReach() * s, 0, 6.2832); ctx.stroke();
-    }
-    if (picked && picked.body != null && w.alive[picked.body]) {
-      const i = picked.body; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12 + 5, 0, 6.2832); ctx.stroke();
-    }
-    const st = world.stats();
-    $("clock").textContent = st.time.toFixed(1) + " s · " + st.count.toLocaleString("en-US") + " hexagons";
-  }
 
   /* ═══ drawing the people ═══════════════════════════════════════════════ */
   const mix = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
@@ -2828,7 +2557,6 @@
     // Hold a selected transcript still: automatic redraws must not replace text
     // while it is being read or selected. Navigation explicitly invalidates it.
     if (mode === "people" && tab === "talk" && selectedExchange && $("panes").dataset.exchange === String(selectedExchange.id)) return;
-    if (mode === "physics") { renderPane(); return; }
     /* The People panel is filled from what the keeper says: ask, and draw
        when the answer comes (`hear`). One question at a time; anything asked
        meanwhile is asked again after. `idle` marks the routine refresh, whose
@@ -2846,7 +2574,7 @@
     el.dataset.exchange = mode === "people" && tab === "talk" && selectedExchange ? selectedExchange.id : "";
     // A live result must not steal keyboard focus when its activity changes.
     const active = el.contains(document.activeElement) ? document.activeElement.dataset.go : null;
-    el.innerHTML = mode === "physics" ? physicsPane() : peoplePane(paneData);
+    el.innerHTML = peoplePane(paneData);
     if (active) [...el.querySelectorAll("button[data-go]")].find(b => b.dataset.go === active)?.focus({ preventScroll: true });
     el.scrollTop = keep;
     if (mode === "people" && tab === "world") { drawChart(); drawGraphs(); }
@@ -2855,13 +2583,6 @@
      it, or the button being pressed is replaced before the click lands. */
   let paneHeld = false;
   $("panes").addEventListener("input", e => { if (wedPick && e.target.dataset && e.target.dataset.wed) wedPick[e.target.dataset.wed] = e.target.value; });
-  $("panes").addEventListener("input", e => {
-    const input = e.target.closest("input[data-edit]");
-    if (!input || !input.checkValidity() || !picked || picked.body == null || mode !== "physics") return;
-    /* The page talks in degrees; the engine keeps radians. */
-    const key = input.dataset.edit;
-    world.edit(picked.body, { [key]: key === "facing" ? +input.value * Math.PI / 180 : +input.value });
-  });
   $("panes").addEventListener("pointerdown", () => { paneHeld = true; });
   for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $("panes").addEventListener(ev, () => { setTimeout(() => { paneHeld = false; }, 60); });
   $("panes").addEventListener("click", e => {
@@ -2927,103 +2648,7 @@
         keeper.send({ t: "do", seq: ++seq, what: "set", a: [it.key, next] });
       } else keeper.send({ t: "do", seq: ++seq, what: a[0], a: [+a[1], +a[2]] });
     }
-    if (a[0] === "body") { picked = { body: +a[1] }; pane(); }
-    if (a[0] === "ed" && picked && picked.body != null) {
-      const i = picked.body, d = world.describe(i);
-      if (!d) return;
-      if (a[1] === "kind") world.edit(i, { kind: Math.min(world.settings.kinds, Math.max(1, d.kind + +a[2])) });
-      if (a[1] === "mass") world.edit(i, { mass: Math.max(0.25, d.mass * +a[2]) });
-      if (a[1] === "temp") world.edit(i, { temperature: +a[2] > 0 ? d.temperature * 1.5 + 1 : d.temperature / 1.5 - 0.5 });
-      if (a[1] === "stop") world.edit(i, { vx: 0, vy: 0 });
-      if (a[1] === "pin") world.edit(i, { pinned: !d.pinned });
-      if (a[1] === "loose") world.edit(i, { loosen: true });
-      if (a[1] === "del") { world.remove(i); picked = null; }
-      pane();
-    }
   });
-
-  function physicsPane() {
-    const st = world.stats(), S = world.settings;
-    if (tab === "look") {
-      const d = picked ? world.describe(picked.body) : null;
-      if (!d) return "<p class='small'>" + (picked ? "That hexagon is gone — fused into another, removed, or off the edge." : "Tap a hexagon to see what it is, and to change it: its kind, weight, heat, or whether it can move.") + "</p>";
-      return "<h3><span class='sw' style='background:" + KIND[(d.kind - 1) % S.kinds % 8] + "'></span>" + (d.mass > S.kinds ? "A fused body" : "Kind " + d.kind) + "</h3>" +
-        "<dl class='kv'><dt>Mass</dt><dd>" + num(d.mass, 0) + "</dd><dt>Temperature</dt><dd>" + num(d.temperature, 2) + "</dd>" +
-        "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + d.canHold + "</dd>" +
-        (d.pull != null ? "<dt>Pull</dt><dd>" + num(d.pull, 2) + "</dd>" : "") +
-        (d.charge != null ? "<dt>Charge</dt><dd>" + (d.charge > 0.005 ? "+" : "") + num(d.charge, 2) + "</dd>" : "") +
-        (d.ion ? "<dt>Ion</dt><dd>" + (d.ion > 0 ? "+1" : "−1") + ", held by charge alone</dd>" : "") +
-        (d.stored ? "<dt>Charged up</dt><dd>" + num(d.stored, 1) + " energy, spent on its next bond</dd>" : "") +
-        (d.bonds.some(b => b.order > 1) ? "<dt>Bond orders</dt><dd>" + d.bonds.map(b => ["", "single", "double", "triple"][b.order]).join(", ") + "</dd>" : "") +
-        ((S.shift > 0 || S.look > 0) && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
-        (d.turning ? "<dt>Facing</dt><dd>" + num(((d.facing * 180 / Math.PI) % 360 + 360) % 360, 0) + "\u00b0, turning " + num(d.spin, 2) + " a second</dd>" : "") +
-        (d.pinned ? "<dt>Pinned</dt><dd>held still</dd>" : "") + "</dl>" +
-        "<div class='body-values'>" + [["mass", "Mass", d.mass, 0.000001], ["temperature", "Temperature", d.temperature, 0], ["vx", "Velocity X", world.vx[d.id], -1e12], ["vy", "Velocity Y", world.vy[d.id], -1e12]]
-          .concat(d.turning ? [["facing", "Facing (\u00b0)", Math.round(((d.facing * 180 / Math.PI) % 360 + 360) % 360), -1e12]] : []).map(a =>
-          "<label>" + a[1] + "<input type='number' required step='any' min='" + a[3] + "' max='1000000000000' data-edit='" + a[0] + "' value='" + a[2] + "'></label>").join("") + "</div>" +
-        "<div class='edits'>" +
-        "<button class='btn' data-go='ed:kind:-1'>Kind \u2212</button><button class='btn' data-go='ed:kind:1'>Kind +</button>" +
-        "<button class='btn' data-go='ed:mass:0.5'>Lighter</button><button class='btn' data-go='ed:mass:2'>Heavier</button>" +
-        "<button class='btn' data-go='ed:temp:-1'>Colder</button><button class='btn' data-go='ed:temp:1'>Hotter</button>" +
-        "<button class='btn' data-go='ed:stop'>Stop it</button>" +
-        "<button class='btn' data-go='ed:pin' aria-pressed='" + d.pinned + "'>" + (d.pinned ? "Unpin" : "Pin") + "</button>" +
-        (d.bonds.length ? "<button class='btn' data-go='ed:loose'>Break its bonds</button>" : "") +
-        "<button class='btn' data-go='ed:del'>Remove</button></div>" +
-        (d.bonds.length ? "<h3 style='margin-top:.8rem'>Bonded to</h3>" + d.bonds.map(b => "<button class='item' data-go='body:" + b.other + "'><span class='sw' style='background:" +
-          KIND[(world.kind[b.other] - 1) % S.kinds % 8] + "'></span>kind " + world.kind[b.other] + " · strength " + num(b.strength, 1) + "</button>").join("") : "");
-    }
-    const tot = Math.max(1e-9, st.motion + st.heat + st.radiated + st.dragged + st.breakWork);
-    const seg = (v, c) => "<i style='width:" + (v / tot * 100).toFixed(2) + "%;background:" + c + "'></i>";
-    return "<h3>What is in it</h3><dl class='kv'>" +
-      "<dt>Hexagons</dt><dd>" + st.count.toLocaleString("en-US") + (st.count !== st.started && !st.placed && !st.removed && !st.fragments ? " of " + st.started.toLocaleString("en-US") : "") + "</dd>" +
-      (st.fused ? "<dt>Fused together</dt><dd>" + st.fused.toLocaleString("en-US") + "</dd>" : "") +
-      (st.fractured ? "<dt>Impact fractures</dt><dd>" + st.fractured.toLocaleString("en-US") + "</dd>" : "") +
-      (st.shed ? "<dt>Pieces shed by heat</dt><dd>" + st.shed.toLocaleString("en-US") + "</dd>" : "") +
-      (st.left ? "<dt>Left the world</dt><dd>" + st.left.toLocaleString("en-US") + "</dd>" : "") +
-      "<dt>Heaviest</dt><dd>" + num(st.heaviest, 0) + "</dd>" +
-      "<dt>Temperature</dt><dd>" + num(st.temperature, 2) + "</dd>" +
-      (S.bonding !== "none" ? "<dt>Bonds standing</dt><dd>" + st.bonds.toLocaleString("en-US") + "</dd><dt>Clusters</dt><dd>" + st.clusters.toLocaleString("en-US") +
-        "</dd><dt>Biggest cluster</dt><dd>" + st.biggest + " hexagons</dd><dt>Bonds made / broken</dt><dd>" + st.bondsMade.toLocaleString("en-US") + " / " + st.bondsBroken.toLocaleString("en-US") + "</dd>" : "") +
-      "</dl><h3 style='margin-top:.9rem'>Where the energy is</h3><div class='meter'>" +
-      seg(st.motion, "#6fb7ff") + seg(st.heat, "#ef6f6c") + seg(st.radiated, "#55616a") + seg(st.dragged, "#3b454b") + seg(st.breakWork, "var(--acc)") + "</div>" +
-      "<div class='legend'><span><b style='background:#6fb7ff'></b>motion " + num(st.motion, 0) + "</span><span><b style='background:#ef6f6c'></b>heat " + num(st.heat, 0) +
-      "</span><span><b style='background:#55616a'></b>leaked away " + num(st.radiated, 0) + "</span>" + (st.dragged > 0 ? "<span><b style='background:#3b454b'></b>lost to drag " + num(st.dragged, 0) + "</span>" : "") + (st.breakWork > 0 ? "<span><b style='background:var(--acc)'></b>spent breaking " + num(st.breakWork, 0) + "</span>" : "") + "</div>" +
-      (st.fragmentLimit ? "<p class='small'>No room for more fragments. Bodies keep their mass and heat until a place is free.</p>" : "") +
-      (S.bonding !== "none" ? "<p class='small'>Held in bonds: " + num(st.bondEnergy, 0) + " — given off as heat when they formed.</p>" : "") +
-      censusPane(S) +
-      (st.placed || st.removed ? "<p class='small'>By hand: " + st.placed.toLocaleString("en-US") + " put in, " + st.removed.toLocaleString("en-US") + " taken out.</p>" : "") +
-      (S.gravity > 0 || S.fall > 0 ? "<p class='small'>Gravity's own energy is not in the bar: things falling together turn it into motion, which is why the total can grow.</p>" : "") +
-      "<p class='small'>Colours: " + (viewMode === "kind" ? "one per kind; a fused body takes the colour its mass works out to." : viewMode === "heat" ? "dark is cold, white is the hottest thing in the world right now." : "dark is still, white is the fastest thing in the world right now.") + "</p>";
-  }
-
-  /* What the world has made. A thing is named by the kinds in it; the count
-     of different things, now and ever, is the plainest sign of whether a
-     world is making anything new or only more of the same. The note at the
-     foot is deliberate: self-replication has never been tested in here, so
-     the pane says it is neither claimed nor ruled out rather than saying
-     nothing copies itself, which nobody has measured either. */
-  function censusPane(S) {
-    if (S.bonding === "none") return "";
-    const c = world.census();
-    for (const t of c.types) everSeen.add(t.sig);
-    if (everSeen.size > 20000) everSeen = new Set(c.types.map(t => t.sig));
-    const st = world.stats();
-    let out = "<h3 style='margin-top:.9rem'>What it has made</h3><dl class='kv'>" +
-      "<dt>Different things now</dt><dd>" + c.distinct.toLocaleString("en-US") + "</dd>" +
-      "<dt>Different things ever</dt><dd>" + everSeen.size.toLocaleString("en-US") + "</dd>" +
-      "<dt>Loose hexagons</dt><dd>" + c.free.toLocaleString("en-US") + "</dd>" +
-      (S.shift > 0 ? "<dt>Reactions</dt><dd>" + st.reacted.toLocaleString("en-US") + "</dd>" : "") + "</dl>";
-    for (const t of c.types.slice(0, 10)) {
-      const shape = t.shape === "chain" ? "in a row" : t.shape === "ring" ? "in a ring" : "";
-      out += "<div class='thing'>" + (t.kinds ? t.kinds.map(k => "<b style='background:" + KIND[(k - 1) % 8] + "' title='kind " + k + "'></b>").join("") : esc(t.sig)) +
-             "<span>" + (t.kinds ? t.size + (shape ? " " + shape : "") + " \u00b7 " : "") + "\u00d7" + t.count + "</span></div>";
-    }
-    if (!c.types.length) out += "<p class='small'>Nothing is bonded to anything yet.</p>";
-    out += "<p class='small'>" + (S.angles > 0 && S.look > 0
-      ? "Things are read along themselves now, so a row of the same kinds in a different order is a different thing. Nothing seeds a copier and no rule rewards copying: a thing that makes more of itself is possible here and has never been seen. One would show as a row whose count climbs."
-      : "Self-replication is untested here: nothing seeds a copier and no rule rewards copying, so something that makes more of itself is neither claimed nor ruled out. It needs shape and a sequence \u2014 \u201cBonds hold an angle\u201d and \u201ca bond reads the next one along\u201d, both off in this world.") + "</p>";
-    return out;
-  }
 
   function syncPopulationFilters(d) {
     for (const [id, items, all] of [["people-settlement", d.villages, "All settlements"], ["people-faction", d.factions, "All factions"]]) {
@@ -3591,47 +3216,7 @@
     return overviewPane(d);
   }
 
-  /* ═══ the two small worlds on the first screen ═════════════════════════
-     Each door shows its own engine running, not a picture of it. */
-  let minis = null, miniRaf = 0;
-  function startMinis() {
-    if (miniRaf) return;
-    if (!minis) minis = {
-      physics: window.WBPhysics.create({ count: 260, size: 70, kinds: 4, sized: false, layout: "cloud", gravity: 1.2, reach: "near", bonding: "sum",
-                                         bondStrength: 6, startTemp: 3, startSpeed: 1.5, radiate: 0.03, bounce: 0.6, seed: 3 }),
-      people: window.WBPeople.create({ map: "small", people: 150, factions: 3, villages: 2, seed: 5 }),
-    };
-    const draw = () => {
-      for (const m of ["physics", "people"]) {
-        const cv = $("mini-" + m), g = cv.getContext("2d"), w = minis[m], W = cv.width, H = cv.height;
-        g.fillStyle = "#070a0b"; g.fillRect(0, 0, W, H);
-        if (m === "physics") {
-          w.step(1 / 40);
-          const s = H / w.height * 1.25, ox = W / 2 - w.width / 2 * s, oy = H / 2 - w.height / 2 * s;
-          g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 1.5; g.beginPath();
-          for (const b of w.bonds.values()) if (Math.abs(w.x[b.b] - w.x[b.a]) < 9 && Math.abs(w.y[b.b] - w.y[b.a]) < 9) { g.moveTo(ox + w.x[b.a] * s, oy + w.y[b.a] * s); g.lineTo(ox + w.x[b.b] * s, oy + w.y[b.b] * s); }
-          g.stroke();
-          for (let i = 0; i < w.n; i++) { if (!w.alive[i]) continue; const p = new Path2D(); hexPath(p, ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12); g.fillStyle = KIND[(w.kind[i] - 1) % 4]; g.fill(p); }
-        } else {
-          w.advance(1 / 60, true);
-          const s = Math.max(W / w.cols, H / w.rows), ox = (W - w.cols * s) / 2, oy = (H - w.rows * s) / 2;
-          for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
-            const i = y * w.cols + x; let c = mix(w.ground ? groundColour(w.ground[i], w.fert[i]) : mix([92, 80, 58], [52, 104, 62], w.fert[i]), [10, 14, 16], 0.45);
-            if (w.owner[i] >= 0) c = mix(c, rgb(PALETTE[w.villages[w.owner[i]].f % 8]), 0.3);
-            g.fillStyle = "rgb(" + c.join(",") + ")"; g.fillRect(ox + x * s, oy + y * s, s + 0.5, s + 0.5);
-          }
-          for (const v of w.villages) if (v.alive) { g.fillStyle = PALETTE[v.f % 8]; g.fillRect(ox + v.x * s - 4, oy + v.y * s - 4, 8, 8); }
-          for (const p of w.people) { const r = p.job === "child" ? 1.3 : 1.9; g.fillStyle = PALETTE[p.f % 8]; g.fillRect(ox + p.x * s - r, oy + p.y * s - r, r * 2, r * 2); }
-        }
-      }
-    };
-    if (still) { for (let i = 0; i < 120; i++) { minis.physics.step(1 / 40); minis.people.advance(0.2, true); } draw(); return; }
-    const loop = () => { miniRaf = requestAnimationFrame(loop); draw(); };
-    miniRaf = requestAnimationFrame(loop);
-  }
-  function stopMinis() { if (miniRaf) cancelAnimationFrame(miniRaf); miniRaf = 0; }
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stopMinis(); else if (!screens.pick.hidden) startMinis();
     last = performance.now();
     /* A world on its own thread would run on behind a hidden tab; it never did, and is told to wait. */
     tellClock();
@@ -3639,12 +3224,15 @@
 
   /* ── arriving ──────────────────────────────────────────────────────────── */
   function arrive() {
+    /* No chooser any more: the page opens on its own settings. */
     const h = fromHash();
-    if (!h) { show("pick"); return; }
-    openSetup(h.mode, h.set);
-    if (h.run) startRun();
+    openSetup("people", h ? h.set : null);
+    if (h && h.run) startRun();
   }
-  window.addEventListener("hashchange", () => { const h = fromHash(); if (h && screens.run.hidden && (h.mode !== mode || screens.setup.hidden)) arrive(); else if (!h && location.hash === "") show("pick"); });
+  window.addEventListener("hashchange", () => {
+    if (/^#physics\b/.test(location.hash)) { location.replace("../physics-sandbox/index.html" + location.hash); return; }
+    const h = fromHash(); if (h && screens.run.hidden && screens.setup.hidden) arrive();
+  });
   arrive();
 })();
 </script>

@@ -6,8 +6,9 @@ importnat for the program. and after bugs need to be looked for in the new code.
 done it needs to be checked off. … anytime i want to work on it i can say work on 1. it does it
 then i can hand it to another llm to say work on2 and it does."
 
-This file is the order of work for the People sandbox (`people.js`, the People half of
-`index.html`). The Physics sandbox and the Lab are not on it.
+This file is the order of work for the People sandbox (`people.js` and `index.html`). The Physics
+sandbox and the Lab are not on it; since 2026-11-25 they are their own project,
+`projects/physics-sandbox/`.
 
 **When Ric says "work on N", do item N below, the whole way through "How to do an item".**
 One item per session. Do not start an item whose earlier items are unticked unless Ric says to.
@@ -6315,11 +6316,12 @@ cites before it designs.
 - **Speed:** a frame costs no more than it does now on a 5,000-person world (`people-host.js`
   reports what a frame cost), and no more than now on the largest world the bench runs (20,000):
   People has no top, so a budget set only at 5,000 says nothing about the worlds that strain.
-- **The Physics sandbox shares this page** (audit, 2026-11-24). `index.html` is both sandboxes:
-  the bar (`buildBar` — Physics' own speeds 0.25× to 4× and its Kind / Heat / Speed views), the
-  tabs, the key and the colour tokens in `:root` serve Physics too, and the opening page with the two
-  doors is outside 21. Each part that changes shared furniture either leaves Physics and the Lab
-  working as they are, checked in a browser, or brings them into scope after asking Ric.
+- **~~The Physics sandbox shares this page~~ — no longer** (audit, 2026-11-24; settled 2026-11-25).
+  The audit found `index.html` was both sandboxes, so the bar, tabs, key, `:root` colours and the
+  two-door opening page were shared furniture. On 2026-11-25 Ric split them ("separate physics sim
+  and people sim into two separate projects"): the Physics sandbox and the Lab are
+  `projects/physics-sandbox/` with a copy of the page of their own, and this page opens straight
+  on the People settings. 21 may change anything on this page without checking Physics.
 
 **Order:** 21a decides what matters, 21b how it looks, then the screens: 21c → 21d → 21e → 21f →
 21g. **21h waits on item 19**, which owns the one save format.
@@ -6600,7 +6602,7 @@ faith) and Model (the switches, said for what they are), with one search over ev
 and choice. The faith parts (26) fold under the one Faith switch. Each layer's tab says how many of
 its settings are changed. Measured at 1,280 × 800: every starting point and all fourteen Essentials in
 view and changeable without scrolling, controls 44 px; at 375 px Start is one column. Every key keeps
-its place in a link, so an old link opens the same world. The Physics sandbox keeps its one layer.
+its place in a link, so an old link opens the same world. (The Physics sandbox, now its own project in `projects/physics-sandbox/`, keeps its one layer.)
 `test/watching.test.mjs` holds the lists: every setting on one layer, fourteen Essentials, the faith
 parts all Minds settings, and none of Ric's real alternatives on Model.
 
