@@ -6939,8 +6939,15 @@ designed. Planes. Horses. All simple when zoomed all the way in … But easy to 
 top-down; light and shade, never an outline (sun in the north-west, as the hills are shaded; a
 shadow to the south-east under anything that stands up); footprints from a few parts picked by the
 seed and the building's number, so no two houses alike; a tight palette; one detail says a
-building's job; the world's state is a light over everything, not new colours; people are circles.
+building's job; the world's state is a light over everything, not new colours; people are circles;
+real size with a floor (a person half a metre across, as the engine has them, never under about
+five pixels on screen — chosen in Ric's absence over "larger than life", 2026-11-26; ask him); three
+drawings per thing, by zoom, the middle the plainest; roofs dull (weathered clay, straw, slate),
+well away from every people's colour, so fire is the only bright warm thing.
 The first draft had black outlines and Ric showed it looked like toy blocks; don't bring them back.
+The second had terracotta roofs beside the orange people, sausage-shaped animals, carts with
+nothing pulling them, a night and a winter that were filters, and only a close-in drawing; those
+were fixed the same day ("Fix those").
 **Ric decides first:** that the page is right, symbol by symbol. Nothing below starts before that.
 
 What the map does not show, found by reading `people.js` against what `people-host.js` sends
