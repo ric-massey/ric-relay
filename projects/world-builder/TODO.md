@@ -6862,11 +6862,8 @@ Start, to be measured first.
 **The symbol set, drafted (2026-11-26, not built):** Ric: "the buildings the people let's change to
 circles. Cars will need to be designed. Planes. Horses. All simple when zoomed all the way in … But
 easy to tell what they are", and "Straight top down" over a slight tilt. The draft is
-`docs/mockups/world-builder/symbols.html`: six rules (top-down with roofs lit from the north-west as
-the hills are; one ink and one outline weight; only people carry their people's colour; one detail
-says a building's job; few marks on the land; people are circles), every thing the engine has drawn
-to them, the five stages of a ruin and a village corner to judge them together. Next, once Ric has
-looked: the map draws from it, starting with people as circles.
+`docs/mockups/world-builder/symbols.html`. Its first draft had one ink outline on everything; Ric
+showed it looked like toy blocks, and the second is light and shade only. The work is item 22.
 
 #### [ ] 21h. Saving a run, copying it, and its history — waits on item 19
 
@@ -6932,6 +6929,50 @@ Research notes (2026-11-24):
   lived (needs item 19).
 - **A copy is a controlled comparison, not proof.** Two runs from one moment differ only by what was
   changed and the dice that change moved; one pair says what happened in that world, not in general.
+
+### [ ] 22. The map, drawn: the symbol set, and everything it does not show
+
+Made 2026-11-26. Ric: "the buildings the people let's change to circles. Cars will need to be
+designed. Planes. Horses. All simple when zoomed all the way in … But easy to tell what they are",
+"Straight top down", then, of the list below, "all of that needs done".
+**The look is settled on paper first:** `docs/mockups/world-builder/symbols.html`. Its rules: straight
+top-down; light and shade, never an outline (sun in the north-west, as the hills are shaded; a
+shadow to the south-east under anything that stands up); footprints from a few parts picked by the
+seed and the building's number, so no two houses alike; a tight palette; one detail says a
+building's job; the world's state is a light over everything, not new colours; people are circles.
+The first draft had black outlines and Ric showed it looked like toy blocks; don't bring them back.
+**Ric decides first:** that the page is right, symbol by symbol. Nothing below starts before that.
+
+What the map does not show, found by reading `people.js` against what `people-host.js` sends
+(`frame`) and what `index.html` draws, 2026-11-26. Three kinds, because each is a different size of
+job:
+
+- **22a. People as circles, and the buildings redrawn** — houses (by wealth, timber, thatch, stone;
+  footprints from parts), the fourteen buildings, the five ruin stages, wells, bridges, walls,
+  fields, trees, roads. Drawing only: everything is already sent (`homes`, `bl`, `vs`, `tracks`,
+  `fields`). Replaces the boxes (AGENTS.md, "People use boxes", says this is coming).
+- **22b. In the engine with a place, never drawn** — drawing, and a little more sent in `frame`:
+  armies' camps (`f.camp`), siege works, armies on the march (units are drawn only behind ⋯'s
+  "Show armies' units", and the bar's Units button is never shown); blasts and what is left in the
+  ground (`LEFT`, which never leaves the worker); caravans and their pack animals; bandits (drawn as
+  anybody); ore (sent at the start, never painted, so a mine has nowhere to stand); boats away from
+  their landing (grain by water, war at sea, piracy, blockade); irrigation ditches, dug, silted and
+  cleaned (`ditches`, `silted`).
+- **22c. The world's state** — the page, from numbers the engine keeps: night and dawn from the
+  sun's real height at the world's latitude (the engine already works it out, and people sleep by
+  it); winter and snow by season; a dry year by place and rain; floods; fire, from a hearth's smoke
+  to a burning house. Must stay calm: one light over everything, lit windows at night, fire the only
+  bright warm colour.
+- **22d. Counted, with no place in the world** — engine work, each to be asked of Ric as an item of
+  its own: oxen and horses ("counted, not walking about"); tanks and aircraft (built, lost, sorties
+  and bombs are counters); cars, rail and wires (counted, or a building); herds and game (stock on
+  squares, not animals); fairs and sacred land (no mark). Each needs a position and movement before
+  it can be drawn, and must keep the engine's numbers the same when off.
+
+**Budget:** drawing must not slow a frame: a shadow is the same shape drawn once more, offset, no
+blur on the map; footprints and roof tones are worked out once per building and kept in the blocks.
+**Done when:** each of 22a to 22c is on the map at the zoom where it can be read, `symbols.html` and
+the map agree, and the speed bench says no frame got slower than the speed log allows.
 
 ## Speed log
 

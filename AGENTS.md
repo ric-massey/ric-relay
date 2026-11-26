@@ -867,7 +867,7 @@ nobody had linked was a page nobody could find.
   circles** (2026-11-26, Ric: "the people let's change to circles"), with the whole close-in
   symbol set — buildings, animals, carts, cars, planes, the land — redrawn straight from above
   (Ric: "Straight top down"). The draft and its rules are `docs/mockups/world-builder/symbols.html`;
-  until the map draws from it, the page still draws boxes. Ric also found people
+  until the map draws from it (TODO 22), the page still draws boxes. Ric also found people
   "get stuck at vilages": stalled walkers now use bounded half-tile A* routes around bodies.
   Local tasks retain nearby arrival within 2.5 tiles after repeated failed routes; eating and
   outfitting also require proximity to home. Never finish distant travel at somebody’s feet;
