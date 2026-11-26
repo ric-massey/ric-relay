@@ -10,8 +10,12 @@ that comes from the top a bit more foamy and a thicker bar it has to seem like i
 it in the right amount of time"): the stream is a thick foamy bar whose width × speed is
 the flow, so the fill time follows from it (about 5.5 s on a 1440×900 screen, 3.5 on a
 phone); five seconds after it is full it drains through the floor (Torricelli, about 4.5 s),
-and the canvas goes. What is **not** built yet: the phone tilt and drinking in B, all of A
-(Mochi), and the edge cases below except reduced motion and the front door.
+and the canvas goes. Then (Ric: "make it a bit more see through and then make it rotate based on angle of the
+phone … for a phone make it so it leaves after 40 min"): it is more transparent, the pool's
+surface follows the phone's angle with a slosh, and on a phone it stays forty minutes
+before draining. The stream itself still falls straight down the screen whatever the angle.
+What is **not** built yet: drinking it on a computer, all of A (Mochi), and the edge cases
+below except reduced motion, the front door and iPhone tilt permission.
 
 ## The idea, in Ric's words
 

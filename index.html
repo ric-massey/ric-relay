@@ -1764,7 +1764,7 @@
         else if (m.term === "coffee") {
           // the terminal's `coffee`: the cup is this page (assets/coffee.js)
           if (window.RELAY_COFFEE) window.RELAY_COFFEE.pour();
-          else { const js = document.createElement("script"); js.src = "assets/coffee.js?v=1"; js.onload = () => window.RELAY_COFFEE?.pour(); document.head.appendChild(js); }
+          else { const js = document.createElement("script"); js.src = "assets/coffee.js?v=2"; js.onload = () => window.RELAY_COFFEE?.pour(); document.head.appendChild(js); }
         }
       });
       for (const ev of ["focus", "pointerenter", "touchstart"]) input.addEventListener(ev, wake, { passive: true });
@@ -1775,6 +1775,9 @@
         if (!typed) { location.href = "terminal.html"; return; }
         input.value = ""; past.push(typed); back = past.length;
         if (/^(front[\s_-]*door|home|cd home|open home)$/i.test(typed)) { panel.hidden = true; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); return; }
+        // `coffee` tilts with the phone, and an iPhone asks for that only from a
+        // tap like this one; the terminal frame's answer comes too late to ask
+        if (/^coffee$/i.test(typed)) window.DeviceOrientationEvent?.requestPermission?.().catch(() => {});
         const k = key(typed), post = POSTS.find((p) => key(p.name) === k || key(p.id) === k);
         if (post) { location.href = post.href; return; }
         wake();

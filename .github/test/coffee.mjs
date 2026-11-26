@@ -56,9 +56,32 @@ for (const [W, H] of [[1440, 900], [390, 844], [2560, 1400]]) {
   assert.ok(!s.done && !s.draining && Math.abs(s.level() - 0.75) < 1e-9, 'still() is a full cup waiting to drain');
 }
 
+// tipped, the surface stays level in the world: it slopes across the screen at
+// the phone's angle, keeps every drop, and sloshes past the angle before settling
+{
+  const W = 390, H = 844, s = createSim(W, H, { hold: 60 });
+  s.still(); const v = s.total();
+  s.setTilt(0.4);
+  let over = 0;
+  for (let k = 0; k < 60 * 6; k++) { s.step(1 / 60); over = Math.max(over, s.tilt()); }
+  const slope = (s.h[s.N - 40] - s.h[40]) / ((s.N - 80) * s.dx);
+  assert.ok(Math.abs(slope - Math.tan(0.4)) < 0.03, `tipped 0.4 rad, the surface slopes tan(0.4) (got ${slope.toFixed(3)})`);
+  assert.ok(Math.abs(s.total() - v) / v < 1e-6, 'tipping makes and loses no coffee');
+  assert.ok(over > 0.42, 'it swings past the angle before it settles (a slosh)');
+  for (let k = 0; k < 60 * 8; k++) s.step(1 / 60);
+  assert.ok(s.idle(), 'once still it is idle, so the page can stop drawing');
+  assert.ok(!s.draining, 'and it is not draining before its hold is up');
+  s.skip(60); s.step(1 / 60);
+  assert.ok(s.draining, 'the hold is wall-clock time: skipped time still brings the drain');
+}
+// a phone keeps it forty minutes; the hold is the one number that differs
+assert.match(read('assets/coffee.js'), /PHONE_HOLD = 40 \* 60/, 'a phone keeps the cup forty minutes');
+
 const term = read('terminal.html'), door = read('index.html');
 assert.match(term, /coffee: \(\) => \{[\s\S]*?send\(\{ term: "coffee" \}\)[\s\S]*?brewCoffee\(\)/, 'the terminal pours, or hands it up when embedded');
 assert.match(term, /assets\/coffee\.js/, 'the terminal loads coffee.js on demand');
+assert.match(term, /brewCoffee = \(\) => \{[\s\S]*?requestPermission/, 'the terminal asks an iPhone for its tilt inside the keypress');
+assert.match(door, /coffee\$\/i\.test\(typed\)\) window\.DeviceOrientationEvent\?\.requestPermission/, 'so does the front door, inside its submit');
 assert.match(door, /m\.term === "coffee"[\s\S]*?assets\/coffee\.js/, 'the front door pours the coffee its terminal hands up');
 
 console.log('coffee: ok');

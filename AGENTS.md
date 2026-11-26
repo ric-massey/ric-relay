@@ -1822,6 +1822,13 @@ migration marked "safe to re-run", and re-running it would have put the original
   right amount of time do real math"). Make the stream thicker and it fills faster. The plan,
   including the Mochi version still to build, is `docs/coffee-egg-plan.md`;
   `.github/test/coffee.mjs` holds the level, the volume, the fill time and the drain.
+  **On a phone it tilts with the phone and stays forty minutes** (Ric, same day: "make it
+  rotate based on angle of the phone … for a phone make it so it leaves after 40 min"):
+  `deviceorientation` sets the surface's angle, and an iPhone only reports it after
+  `requestPermission()` from a keypress or tap, so `brewCoffee()` in the terminal and the
+  front door's submit handler ask inside the gesture — don't move that call into
+  `coffee.js`, which loads too late to ask. A still cup stops drawing (`idle()`) until the
+  phone moves or the drain is due; forty minutes of a redrawn canvas is a battery.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

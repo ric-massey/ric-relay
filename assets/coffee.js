@@ -27,6 +27,7 @@
 
   const FILL = 0.75;     // how full the screen ends up
   const DRAIN_AFTER = 5; // seconds the full cup stands before it drains (Ric, 2026-11-26)
+  const PHONE_HOLD = 40 * 60; // on a phone: forty minutes (Ric, 2026-11-26)
   const DRAIN_S = 4.5;   // seconds a full cup takes to drain
   const OFF = 0.07;      // stream sits this fraction of the width right of centre
 
@@ -59,11 +60,18 @@
     const w0 = Q / v0;                                 // width at the top of the screen
     const FMIN = 1.6;                                  // the crema film it thins to
     const SPREAD = clamp(0.55 * W, 300, 900);          // how fast the first puddle runs out, px/s
+    const HOLD = opt.hold ?? DRAIN_AFTER;              // seconds full before it drains
+    // Tilt: the angle of the phone's gravity across the screen (0 = straight
+    // down the screen). The pool's surface follows it with some weight - a
+    // damped spring that overshoots, which is the slosh you see when you tip
+    // it - and so stays level in the world while the screen turns under it.
+    let tilt = 0, tiltV = 0, tiltTo = 0;
+    const TILT_MAX = 1.3;                              // ~75 degrees; past that the screen is more floor than wall
 
     const s = {
       W, H, N, dx, x0, i0, w0, h, r, f, drops, bubbles, drips,
       t: 0, volume: 0, head: -1, tail: -1, stopAt: -1, hit: false, flowing: false,
-      fullAt: -1, draining: false, done: false,
+      fullAt: -1, draining: false, done: false, hold: HOLD,
       left: x0, right: x0,                             // the puddle's edges until it is wall to wall
     };
 
@@ -122,6 +130,24 @@
       if (s.volume <= 0) { base.fill(0); return; }
       if (wallToWall()) {
         const mean = s.volume / W;
+        const slope = Math.tan(tilt);
+        if (Math.abs(slope) > 1e-4) {
+          // a level surface in a turned screen: depth = L + slope * (x - W/2),
+          // clipped to the floor and the top, with L found so the volume is
+          // exactly what was poured (bisection; the clipped sum rises with L)
+          let lo = -Math.abs(slope) * W, hi = H + Math.abs(slope) * W;
+          for (let it = 0; it < 40; it++) {
+            const L = 0.5 * (lo + hi); let v = 0;
+            for (let i = 0; i < N; i++) v += clamp(L + slope * (X(i) - W / 2), 0, H);
+            if (v * dx < s.volume) lo = L; else hi = L;
+          }
+          const L = 0.5 * (lo + hi);
+          let v = 0;
+          for (let i = 0; i < N; i++) { base[i] = clamp(L + slope * (X(i) - W / 2), 0, H); v += base[i]; }
+          const fix = v > 0 ? s.volume / (v * dx) : 0;  // the last hair of the bisection
+          for (let i = 0; i < N; i++) base[i] *= fix;
+          return;
+        }
         if (drainDip > 0) {
           // the drain pulls the surface down over it; what it takes there it
           // leaves a little higher everywhere else, so the volume is the same
@@ -199,7 +225,7 @@
       for (let i = 0; i < N; i++) r[i] -= mean;
 
       layOut();
-      for (let i = 0; i < N; i++) h[i] = Math.max(0, base[i] + eta[i] * clamp(base[i] / 20, 0, 1));
+      for (let i = 0; i < N; i++) h[i] = clamp(base[i] + eta[i] * clamp(base[i] / 20, 0, 1), 0, H);
 
       // crema is carried out from the stream, spreads a little and thins to a film
       for (let i = 0; i < N; i++) {
@@ -291,12 +317,20 @@
       // leaves a hole goes as sqrt(2·g·depth), so the level falls fast at
       // first and slows near the end — dh/dt = −k·√h, empty after
       // T = 2·√h₀ / k. The surface dips over the drain while it runs.
-      if (s.fullAt >= 0 && !s.draining && t - s.fullAt >= DRAIN_AFTER) s.draining = true;
+      if (s.fullAt >= 0 && !s.draining && t - s.fullAt >= HOLD) s.draining = true;
       if (s.draining) {
         const k = (2 * Math.sqrt(FILL * H)) / DRAIN_S;
         const mean = s.volume / W, fall = Math.max(k * Math.sqrt(mean), 30);
         drainDip = 0.09 * fall;
         s.volume = Math.max(0, s.volume - fall * frameDt * W);
+      }
+
+      // the surface swings toward the phone's angle, overshoots and settles;
+      // a fast swing throws a wave across the pool as well
+      {
+        const w = 5, acc = -w * w * (tilt - tiltTo) - 2 * 0.28 * w * tiltV;
+        tiltV += acc * frameDt; tilt += tiltV * frameDt;
+        if (wallToWall()) for (let i = 0; i < N; i++) ev[i] -= acc * frameDt * (X(i) - W / 2) * 0.08;
       }
 
       // as many substeps as the fastest wave needs
@@ -320,6 +354,20 @@
       layOut(); for (let i = 0; i < N; i++) h[i] = base[i];
     };
 
+    s.setTilt = (a) => { tiltTo = clamp(a, -TILT_MAX, TILT_MAX); };
+    s.tilt = () => tilt;
+    s.skip = (sec) => { s.t += sec; };                // time passed with nothing to draw (asleep, tab hidden)
+    // Nothing is moving: a full cup, still, waiting. The page stops drawing
+    // until the phone moves or the drain is due - on a phone that is forty
+    // minutes, and a canvas redrawn sixty times a second for forty minutes is
+    // a battery.
+    s.idle = () => {
+      if (s.fullAt < 0 || s.draining || s.flowing || drops.length || drips.length || bubbles.length) return false;
+      if (Math.abs(tilt - tiltTo) > 0.002 || Math.abs(tiltV) > 0.004) return false;
+      let e = 0, foam = 0;
+      for (let i = 0; i < N; i++) { e += ev[i] * ev[i] + rv[i] * rv[i] + 0.5 * eta[i] * eta[i]; foam = Math.max(foam, f[i] - FMIN); }
+      return e / N < 0.6 && foam < 0.5;
+    };
     s.level = () => { let v = 0; for (let i = 0; i < N; i++) v += h[i]; return v / N / H; };
     s.total = () => { let v = 0; for (let i = 0; i < N; i++) v += h[i] * dx; return v; };
     return s;
@@ -359,10 +407,11 @@
       ctx.beginPath(); surfacePath(); ctx.lineTo(W, H + 2); ctx.lineTo(0, H + 2); ctx.closePath();
       const span = Math.max(140, H - minTop);
       const body = ctx.createLinearGradient(0, minTop, 0, minTop + span);
-      body.addColorStop(0, "rgba(128,74,32,0.92)");
-      body.addColorStop(0.06, "rgba(88,47,20,0.95)");
-      body.addColorStop(0.3, "rgba(50,26,11,0.965)");
-      body.addColorStop(1, "rgba(20,10,5,0.975)");
+      // see-through enough to read the page under the top of it (Ric: "a bit more see through")
+      body.addColorStop(0, "rgba(128,74,32,0.78)");
+      body.addColorStop(0.06, "rgba(88,47,20,0.8)");
+      body.addColorStop(0.3, "rgba(50,26,11,0.84)");
+      body.addColorStop(1, "rgba(20,10,5,0.88)");
       ctx.fillStyle = body; ctx.fill();
 
       // where the stream goes in, the coffee is churned and lighter
@@ -503,8 +552,12 @@
     doc.body.appendChild(canvas);
     const ctx = canvas.getContext("2d");
     const still = root.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    // On a phone the cup stays forty minutes (Ric, 2026-11-26) - it is a thing
+    // to tip about - and five seconds anywhere else.
+    const phone = !!root.matchMedia?.("(pointer: coarse)").matches && Math.min(root.screen?.width || 1e4, root.screen?.height || 1e4) < 600;
+    const hold = phone ? PHONE_HOLD : DRAIN_AFTER;
 
-    let W = 0, H = 0, sim = null, raf = 0, last = 0;
+    let W = 0, H = 0, sim = null, raf = 0, wall = 0, wake = 0, angle = 0;
     const fit = () => {
       const w = canvas.clientWidth || root.innerWidth, hgt = canvas.clientHeight || root.innerHeight;
       const dpr = Math.min(2, root.devicePixelRatio || 1);
@@ -513,33 +566,55 @@
       if (!sim || Math.abs(w - W) > 1) {
         // a new width is a new cup, already poured, at the level it had reached
         const level = sim ? sim.level() : null;
-        W = w; H = hgt; sim = createSim(W, H);
+        W = w; H = hgt; sim = createSim(W, H, { hold });
+        sim.setTilt(angle);
         // (before the stream has landed there is nothing to keep: it just starts again)
         if (level !== null && level > 0.01) sim.still(level);
       }
       paint();
     };
     const paint = () => draw(ctx, sim, canvas.clientHeight ? canvas.clientHeight / H : 1);
-    const onResize = () => { fit(); if (!raf && !still) raf = root.requestAnimationFrame(frame); };
-    const onVisible = () => { last = 0; };
+    const resume = () => { root.clearTimeout(wake); if (!raf && cup && !still) raf = root.requestAnimationFrame(frame); };
+    const onResize = () => { fit(); resume(); };
+    // The phone's angle. deviceorientation gives beta (front-back) and gamma
+    // (left-right); gravity across the screen is then (sin g * cos b, sin b) in
+    // screen x-right / y-down, turned by the screen's own rotation. Lying flat
+    // there is almost no gravity across the screen, and the last angle stands.
+    const onTilt = (e) => {
+      if (e.beta == null || e.gamma == null) return;
+      const b = (e.beta * Math.PI) / 180, gm = (e.gamma * Math.PI) / 180;
+      const gx = Math.sin(gm) * Math.cos(b), gy = Math.sin(b);
+      const a = ((root.screen?.orientation?.angle ?? root.orientation ?? 0) * Math.PI) / 180;
+      const sx = gx * Math.cos(a) + gy * Math.sin(a), sy = -gx * Math.sin(a) + gy * Math.cos(a);
+      if (Math.hypot(sx, sy) < 0.35) return;
+      const to = Math.atan2(sx, sy);
+      if (Math.abs(to - angle) < 0.003) return;
+      angle = to; sim.setTilt(angle); resume();
+    };
     const empty = () => {
-      root.cancelAnimationFrame(raf); raf = 0;
+      root.cancelAnimationFrame(raf); raf = 0; root.clearTimeout(wake);
       root.removeEventListener("resize", onResize);
-      doc.removeEventListener("visibilitychange", onVisible);
+      root.removeEventListener("deviceorientation", onTilt);
       canvas.remove(); cup = null;
     };
     const frame = (now) => {
-      const dt = last ? (now - last) / 1000 : 1 / 60; last = now;
+      let dt = wall ? (now - wall) / 1000 : 1 / 60; wall = now;
+      // back from a pause (asleep below, or the tab hidden): that time passed
+      // on the drain's clock, but nothing moved in it
+      if (dt > 0.25) { sim.skip(dt); dt = 1 / 60; }
       sim.step(dt); paint();
-      if (sim.done) empty(); else raf = root.requestAnimationFrame(frame);
+      raf = 0;
+      if (sim.done) empty();
+      else if (sim.idle()) wake = root.setTimeout(resume, Math.max(0, (sim.fullAt + sim.hold - sim.t) * 1000) + 30);
+      else raf = root.requestAnimationFrame(frame);
     };
     root.addEventListener("resize", onResize);
-    doc.addEventListener("visibilitychange", onVisible);
+    root.addEventListener("deviceorientation", onTilt);
 
     cup = { canvas };
     fit();
     // reduced motion: the full cup, no pour and no drain to watch — just gone after five seconds
-    if (still) { sim.still(); paint(); root.setTimeout(empty, DRAIN_AFTER * 1000); return true; }
+    if (still) { sim.still(); paint(); root.setTimeout(empty, hold * 1000); return true; }
     raf = root.requestAnimationFrame(frame);
     return true;
   }
