@@ -74,6 +74,24 @@ for (const [W, H] of [[1440, 900], [390, 844], [2560, 1400]]) {
   s.skip(60); s.step(1 / 60);
   assert.ok(s.draining, 'the hold is wall-clock time: skipped time still brings the drain');
 }
+// tipped until it reaches a top corner, somebody drinks it from there: some
+// tip drinks some and stops once the level is below the rim; tipped hard over,
+// it is drunk to the end in swallows, not dumped at once
+{
+  const run = (a, secs) => {
+    const s = createSim(390, 844, { hold: 2400 }); s.still(); const v = s.volume; s.setTilt(a);
+    let t = 0, sipped = false; while (!s.done && t < secs) { s.step(1 / 60); t += 1 / 60; sipped ||= s.sipping; }
+    return { s, v, t, sipped };
+  };
+  const level = run(0.3, 10);
+  assert.ok(!level.sipped && level.s.volume === level.v, 'a gentle tip spills nothing');
+  const some = run(1.1, 30), left = some.s.volume / some.v;
+  assert.ok(some.sipped && left > 0.4 && left < 0.95, `tipped to the corner, some is drunk (${(100 * left).toFixed(0)}% left)`);
+  const before = some.s.volume; for (let k = 0; k < 600; k++) some.s.step(1 / 60);
+  assert.ok(some.s.volume > before * 0.97, 'and it stops once the level is below the rim');
+  const all = run(1.45, 30);
+  assert.ok(all.s.done && all.t > 5 && all.t < 20, `held hard over, the cup is drunk to the end in ${all.t.toFixed(1)} s`);
+}
 // a phone keeps it forty minutes; the hold is the one number that differs
 assert.match(read('assets/coffee.js'), /PHONE_HOLD = 40 \* 60/, 'a phone keeps the cup forty minutes');
 

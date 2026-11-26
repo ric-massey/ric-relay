@@ -65,8 +65,8 @@
     // down the screen). The pool's surface follows it with some weight - a
     // damped spring that overshoots, which is the slosh you see when you tip
     // it - and so stays level in the world while the screen turns under it.
-    let tilt = 0, tiltV = 0, tiltTo = 0;
-    const TILT_MAX = 1.3;                              // ~75 degrees; past that the screen is more floor than wall
+    let tilt = 0, tiltV = 0, tiltTo = 0, rimL = 0, sipSide = 0, sipAt = -1;
+    const TILT_MAX = 1.45;                             // ~83 degrees: as good as on its side
 
     const s = {
       W, H, N, dx, x0, i0, w0, h, r, f, drops, bubbles, drips,
@@ -142,6 +142,7 @@
             if (v * dx < s.volume) lo = L; else hi = L;
           }
           const L = 0.5 * (lo + hi);
+          rimL = L;                                     // where the level would stand, rim or no rim (drinking reads it)
           let v = 0;
           for (let i = 0; i < N; i++) { base[i] = clamp(L + slope * (X(i) - W / 2), 0, H); v += base[i]; }
           const fix = v > 0 ? s.volume / (v * dx) : 0;  // the last hair of the bisection
@@ -338,7 +339,35 @@
       for (let k = 0; k < n; k++) stepFluid(dt);
       stepParticles(frameDt);
 
-      if (s.draining && s.volume <= 0 && !drops.length) {
+      // Tipped so far that the coffee reaches a top corner, it goes over the
+      // rim there, as if somebody were drinking it. What leaves is what a
+      // rim lets over (the weir equation): Q = (2/3)·Cd·√(2g)·head^(3/2),
+      // head being how far above the rim the level would stand, Cd ≈ 0.6 —
+      // so tip a little past the corner and it sips, tip more and it pours.
+      // It comes in swallows rather than a steady flow. As the level falls
+      // the rim lets less over, so you tip further, as you would a mug; and
+      // held hard over (past ~65°) toward the side it was drinking from, it
+      // keeps on until the cup is empty — the last of a cup lies too low to
+      // reach a corner however a screen is held.
+      s.sipping = false;
+      if (wallToWall() && !s.draining && Math.abs(tilt) > 0.05) {
+        const side = tilt > 0 ? 1 : -1;
+        const head = rimL + Math.tan(tilt) * side * (W / 2) - H;
+        const swallow = 2.2 * Math.max(0, Math.sin(2 * Math.PI * 1.1 * t)) ** 2;
+        // ...but nobody swallows faster than a swallow: tipped right over, the
+        // rim would let the whole cup go at once, and a drinker takes it in
+        // about nine seconds of gulps instead
+        let rate = head > 0 ? Math.min((2 / 3) * 0.6 * Math.sqrt(2 * g) * head ** 1.5, 0.2 * target) : 0;
+        if (rate > 0) { sipSide = side; sipAt = t; }
+        if (side === sipSide && t - sipAt < 3 && Math.abs(tilt) > 1.13) rate = Math.max(rate, 0.09 * target);
+        if (rate > 0) {
+          const take = Math.min(s.volume, rate * swallow * frameDt);
+          s.volume -= take; s.sipping = true;
+          if (take > 0) { sipAt = t; for (const [i, w] of bump(side > 0 ? W : 0, 50)) rv[i] -= 400 * w * swallow * frameDt * 60; }
+        }
+      }
+
+      if (s.fullAt >= 0 && s.volume <= 0 && !s.flowing && !drops.length) {
         h.fill(0); f.fill(0); bubbles.length = 0; s.done = true;
       }
     };
@@ -362,7 +391,7 @@
     // minutes, and a canvas redrawn sixty times a second for forty minutes is
     // a battery.
     s.idle = () => {
-      if (s.fullAt < 0 || s.draining || s.flowing || drops.length || drips.length || bubbles.length) return false;
+      if (s.fullAt < 0 || s.draining || s.flowing || s.sipping || drops.length || drips.length || bubbles.length) return false;
       if (Math.abs(tilt - tiltTo) > 0.002 || Math.abs(tiltV) > 0.004) return false;
       let e = 0, foam = 0;
       for (let i = 0; i < N; i++) { e += ev[i] * ev[i] + rv[i] * rv[i] + 0.5 * eta[i] * eta[i]; foam = Math.max(foam, f[i] - FMIN); }

@@ -14,7 +14,11 @@ and the canvas goes. Then (Ric: "make it a bit more see through and then make it
 phone … for a phone make it so it leaves after 40 min"): it is more transparent, the pool's
 surface follows the phone's angle with a slosh, and on a phone it stays forty minutes
 before draining. The stream itself still falls straight down the screen whatever the angle.
-What is **not** built yet: drinking it on a computer, all of A (Mochi), and the edge cases
+And (Ric: "if the top left or right it drains from there as if someone is drinking it"):
+tipped until the coffee reaches a top corner, it goes over the rim there in gulps, by the
+weir equation, capped at a swallow; held hard over, it is drunk to the end in about ten
+seconds. That is the phone's way of drinking it.
+What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 
 ## The idea, in Ric's words

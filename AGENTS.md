@@ -1833,6 +1833,10 @@ migration marked "safe to re-run", and re-running it would have put the original
   front door's submit handler ask inside the gesture — don't move that call into
   `coffee.js`, which loads too late to ask. A still cup stops drawing (`idle()`) until the
   phone moves or the drain is due; forty minutes of a redrawn canvas is a battery.
+  **Tipped into a top corner, it is drunk from there** (Ric: "if the top left or right it
+  drains from there as if someone is drinking it"): what goes over the rim is the weir
+  equation, capped at a swallow and pulsed into gulps, and held past ~65° it is drunk to
+  the end. Only the rate cap and the gulp rhythm are chosen; the rest is the formula.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible
