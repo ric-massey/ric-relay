@@ -33,7 +33,10 @@ bit of creamer about a second after full"): a second after it is full a splash o
 (2% of the coffee) is poured in by hand, left of centre. It is a few percent denser than
 the coffee, so it sinks, and the sinking rolls up into mushroom-headed plumes and curls on
 its own — a small 2D fluid solver for the inside of the coffee (Stam's stable fluids on a
-staggered grid, buoyancy, friction, a free surface). What slows it is friction (Ric: "what
+staggered grid, buoyancy, friction, a free surface). Rebuilt the same day as plain two-liquid
+physics (Ric: "think of it as just a liquid and another liquid mixing … high quality and clean
+looking"): a pressure solve that converges, the second liquid on a finer grid, the stream's
+real momentum, and none of the first version's patches. What slows it is friction (Ric: "what
 slows it is the friction of the creamer on the coffee"): viscosity, and turbulence at Taylor's
 measured rate. It goes from pale curls in black coffee to settled layers, heaviest at the
 bottom (Ric: "it should settle realistically. Like settle on the bottom"), then the solver

@@ -428,43 +428,46 @@
     }
 
 
-    // ─── Creamer ─────────────────────────────────────────────────────────
-    // A little creamer (Ric, 2026-11-26: "little bit of creamer about a
-    // second after full"), poured by hand from a small jug left of centre a
-    // second after the cup is full: 2% of the coffee, a splash, as in a
-    // mug. Liquid creamer is sugared and thickened and comes out of the
-    // fridge, so it is a few percent denser than hot coffee (chosen: 4%), and
-    // what makes the curls is that difference: it plunges in, sinks, and the
-    // sinking rolls up into billows and mushroom-headed plumes on its own
-    // (Rayleigh-Taylor and Kelvin-Helmholtz; nothing here draws a curl).
+    // ─── A second liquid ─────────────────────────────────────────────────
+    // A second of the cup full, a splash of creamer is poured in (Ric,
+    // 2026-11-26: "little bit of creamer about a second after full"). To the
+    // physics it is just a second liquid, a few percent denser than the first
+    // (Ric: "think of it as just a liquid and another liquid mixing. One is a
+    // bit more dense"). Everything it does - plunging, curling over, mixing a
+    // little, settling heaviest at the bottom - comes out of the equations of
+    // motion for the two together; nothing is drawn or scripted.
     //
-    // The surface model above knows only how high the coffee is; the inside
-    // needs a fluid of its own. This is Stam's "Stable Fluids" (1999) on a
-    // coarse grid over the screen: the velocity is carried along by itself
-    // (semi-Lagrangian), pushed by buoyancy (Boussinesq: the creamer's extra
-    // weight, g*(drho/rho)*c, along the screen's gravity, so it follows the
-    // phone's tilt), slowed by friction - the creamer's and the coffee's
-    // viscosity, and the measured rate turbulence spends a flow's energy at
-    // (see step 4) - and made incompressible by a
-    // pressure solve with the free surface at zero pressure and the screen's
-    // edges as walls. The creamer is a dye the flow carries (MacCormack, so
-    // ribbons stay thin), its total held to what was poured. Once it has
-    // settled the solver stops and the cup can sleep.
-    const CREAM = opt.cream ?? 0.02;                   // creamer, as a share of the coffee
-    const DRHO = 0.04;                                 // how much denser than the coffee (chosen)
+    // The equations (incompressible Navier-Stokes, Boussinesq): the liquid's
+    // velocity is carried by itself, pushed by the second liquid's extra
+    // weight g*(drho/rho)*c along gravity (the phone's, so it follows a tilt),
+    // slowed by friction, and kept from compressing by its pressure. The
+    // second liquid's share c is carried by that velocity. Solved the standard
+    // way (Stam 1999; Bridson, "Fluid Simulation for Computer Graphics"):
+    //  - a staggered (MAC) grid for the velocity, about 12,000 cells;
+    //  - the pressure solved to convergence each step by conjugate gradients
+    //    with a modified incomplete Cholesky preconditioner, the free surface
+    //    at zero pressure and the screen's edges as walls - so a liquid at rest
+    //    is exactly at rest;
+    //  - c on a grid twice as fine, carried by MacCormack's scheme, so the
+    //    ribbons stay crisp;
+    //  - friction: both liquids' viscosity, and turbulence (below).
+    // Where the second liquid comes in, it brings the stream's own volume and
+    // momentum. Chosen, not measured: how much denser (4%), how thick it is
+    // (1e-5 m^2/s, thick liquid creamer), how much (2%), and the jug.
+    const LIQ2 = { share: opt.cream ?? 0.02, drho: 0.04, nu: 1e-5 };
+    const NU_1 = 0.4e-6;                               // hot coffee, m^2/s
     const CREAM_AFTER = 1;                             // seconds after full (Ric)
-    const cs = Math.max(4, Math.sqrt((W * H) / 10000)); // grid cell, px (about ten thousand cells, so a phone keeps up)
-    const nx = Math.ceil(W / cs), ny = Math.ceil(H / cs), NC = nx * ny;
-    // a staggered (MAC) grid: u on the cells' left and right faces, v on their
-    // tops and bottoms, so the pressure step sees every pattern of motion
-    const cu = new Float32Array((nx + 1) * ny), cv = new Float32Array(nx * (ny + 1));
-    const cu0 = new Float32Array((nx + 1) * ny), cv0 = new Float32Array(nx * (ny + 1));
-    const ucc = new Float32Array(NC), vcc = new Float32Array(NC), rowMean = new Float32Array(ny), nuC = new Float32Array(NC);
-    const cp = new Float32Array(NC), cdiv = new Float32Array(NC), cw = new Float32Array(NC);
-    const cc = new Float32Array(NC), cc0 = new Float32Array(NC), cc1 = new Float32Array(NC);
-    const wet = new Uint8Array(NC);
+    const cs = Math.max(4, Math.sqrt((W * H) / 12000));  // velocity cell, px
+    const nx = Math.ceil(W / cs), ny = Math.ceil(H / cs), NC = nx * ny, NU1 = nx + 1;
+    const F = 2, ds = cs / F, mx = nx * F, my = ny * F, ND = mx * my;   // the second liquid's own, finer grid
+    const cu = new Float32Array(NU1 * ny), cv = new Float32Array(nx * (ny + 1));
+    const cu0 = new Float32Array(NU1 * ny), cv0 = new Float32Array(nx * (ny + 1));
+    const wet = new Uint8Array(NC), cbar = new Float32Array(NC), nuC = new Float32Array(NC);
+    const cp = new Float64Array(NC), rhs = new Float64Array(NC), pr = new Float64Array(NC), pz = new Float64Array(NC);
+    const ps = new Float64Array(NC), pq = new Float64Array(NC), pre = new Float64Array(NC);
+    const cc = new Float32Array(ND), cc0 = new Float32Array(ND), cc1 = new Float32Array(ND), wetD = new Uint8Array(ND);
     // The jug: 0.3 m/s out of a lip 30 mm above the top of the screen, a
-    // stream 3 mm wide where it comes into view (chosen). Continuity again.
+    // stream 3 mm wide where it comes into view. Continuity, as the coffee's.
     const xc = W * 0.36;
     const cv00 = Math.sqrt((0.3 * PXM) ** 2 + 2 * g * (30 / MM));
     const cQ = (3 / MM) * cv00;
@@ -472,233 +475,273 @@
     const cFall = (tt) => cv00 * tt + 0.5 * g * tt * tt;
     const cFallTime = (y) => (-cv00 + Math.sqrt(cv00 * cv00 + 2 * g * Math.max(0, y))) / g;
     const cream = {
-      on: CREAM > 0, start: -1, stop: -1, head: -1, tail: -1, hit: false, poured: 0, mass: 0,
-      want: CREAM * target, x: xc, sway: 0, settled: false, quiet: 0, age: 0, owed: 0,
+      on: LIQ2.share > 0, start: -1, stop: -1, head: -1, tail: -1, hit: false, poured: 0, pouredNow: 0, mass: 0,
+      want: LIQ2.share * target, x: xc, sway: 0, settled: false, quiet: 0, age: 0, owed: 0, vmax: 0, iters: 0,
       widthAt: (y) => cQ / cSpeed(y), speedAt: cSpeed, fallY: cFall, fallTime: cFallTime,
-      nx, ny, cs, c: cc,
+      nx: mx, ny: my, cs: ds, c: cc,                   // what is drawn: the fine grid
     };
     s.cream = cream;
 
-    const sampleG = (F, w, hgt, x, y) => {
+    const sampleG = (A, w, hgt, x, y) => {
       // bilinear over a w x hgt grid, x and y in its own units (points at integers)
       x = clamp(x, 0, w - 1); y = clamp(y, 0, hgt - 1);
       const i = Math.min(w - 2, Math.floor(x)), j = Math.min(hgt - 2, Math.floor(y)), a = x - i, b = y - j, k = j * w + i;
-      return (F[k] * (1 - a) + F[k + 1] * a) * (1 - b) + (F[k + w] * (1 - a) + F[k + w + 1] * a) * b;
+      return (A[k] * (1 - a) + A[k + 1] * a) * (1 - b) + (A[k + w] * (1 - a) + A[k + w + 1] * a) * b;
     };
+    const uAt = (A, x, y) => sampleG(A, NU1, ny, x / cs, y / cs - 0.5);
+    const vAt = (A, x, y) => sampleG(A, nx, ny + 1, x / cs - 0.5, y / cs);
 
-    function creamMask() {
+    function liquidMasks() {
       const poly = s.poly();
+      const inside = (x, y) => (poly ? x * poly.gx + y * poly.gy >= poly.c : y > s.surfaceX(x));
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) wet[j * nx + i] = inside((i + 0.5) * cs, (j + 0.5) * cs) ? 1 : 0;
+      for (let j = 0; j < my; j++) for (let i = 0; i < mx; i++) wetD[j * mx + i] = inside((i + 0.5) * ds, (j + 0.5) * ds) ? 1 : 0;
+    }
+    const W_ = (i, j) => (i >= 0 && j >= 0 && i < nx && j < ny ? wet[j * nx + i] : 0);
+    const inGrid = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny;
+    // a face carries flow when it is inside the screen with liquid on at least one side
+    const liveU = (i, j) => i > 0 && i < nx && (W_(i - 1, j) || W_(i, j));
+    const liveV = (i, j) => j > 0 && j < ny && (W_(i, j - 1) || W_(i, j));
+
+    // The pressure: A p = -(divergence), A the 5-point Laplacian over the
+    // liquid's cells (walls left out, air at zero), solved by MIC(0)-PCG.
+    function buildPrecon() {
+      const TAU = 0.97, SIG = 0.25;
       for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-        const x = (i + 0.5) * cs, y = (j + 0.5) * cs;
-        wet[j * nx + i] = poly ? (x * poly.gx + y * poly.gy >= poly.c ? 1 : 0) : (y > s.surfaceX(x) + 0.5 * cs ? 1 : 0);
+        const k = j * nx + i;
+        if (!wet[k]) { pre[k] = 0; continue; }
+        let d = 0;
+        if (i > 0) d++; if (i < nx - 1) d++; if (j > 0) d++; if (j < ny - 1) d++;
+        const l = i > 0 && wet[k - 1] ? k - 1 : -1, u = j > 0 && wet[k - nx] ? k - nx : -1;
+        let e = d;
+        if (l >= 0) { const pl = pre[l]; e -= pl * pl; const lu = (j < ny - 1 && wet[l + nx]) ? 1 : 0; e -= TAU * lu * pl * pl; }
+        if (u >= 0) { const pu = pre[u]; e -= pu * pu; const ur = (i < nx - 1 && wet[u + 1]) ? 1 : 0; e -= TAU * ur * pu * pu; }
+        if (e < SIG * d) e = d;
+        pre[k] = 1 / Math.sqrt(e);
       }
     }
-
-    function stepCream(dt) {
-      creamMask();
-      const a = norm(tilt), gx = Math.sin(a), gy = Math.cos(a), gb = g * DRHO;
-      const NU1 = nx + 1;
-      const W_ = (i, j) => (i >= 0 && j >= 0 && i < nx && j < ny ? wet[j * nx + i] : 0);
-      // which faces carry flow: inside the screen, with coffee on at least one side
-      const liveU = (i, j) => i > 0 && i < nx && (W_(i - 1, j) || W_(i, j));
-      const liveV = (i, j) => j > 0 && j < ny && (W_(i, j - 1) || W_(i, j));
-      // 1. the creamer stream going in: its creamer, and its momentum
-      if (cream.pouredNow > 0) {
-        const ys = s.surfaceX(xc), vi = cSpeed(ys), wid = cQ / vi;
-        // A thin jet going into a deep pool spreads and slows within a few
-        // centimetres - it drags the coffee around it along (3D entrainment, which
-        // a 2D grid does not have) - so what it hands the coffee is creamer moving
-        // down at a chosen 12 cm/s over a few cells, and from there its weight
-        // takes it. Handing over the jet's own 4 m/s sent it to the floor and up
-        // the walls in a fraction of a second.
-        void vi; void wid;
-        const SPREAD = Math.max(1.5 * cs, 6 / MM), V_IN = 0.12 * PXM;
-        // the hand pouring it moves a little (a few millimetres, chosen)
-        cream.sway = (3 / MM) * Math.sin(s.t * 3.1 + 1) + (1.5 / MM) * Math.sin(s.t * 7.3);
-        const xp = cream.x + cream.sway;
-        const ia = clamp(Math.floor((xp - SPREAD) / cs), 0, nx - 1), ib = clamp(Math.floor((xp + SPREAD) / cs), 0, nx - 1);
-        const cells = [];
-        for (let i = ia; i <= ib; i++) {
-          let j = Math.floor(ys / cs); while (j < ny - 1 && !wet[j * nx + i]) j++;
-          const w = Math.exp(-(((i + 0.5) * cs - xp) ** 2) / (SPREAD * SPREAD));
-          for (const jj of [j, j + 1]) if (jj < ny) cells.push([jj, i, w]);
-        }
-        let sw = 0; for (const c of cells) sw += c[2];
-        for (const [jj, i, w] of cells) {
-          const k = jj * nx + i;
-          cc[k] = Math.min(1, cc[k] + (cream.pouredNow * w) / (sw * cs * cs));
-          if (jj + 1 < ny) cv[k + nx] += (V_IN - cv[k + nx]) * Math.min(1, w);
-          // a hand-poured stream wanders and goes in a little unevenly, which is
-          // what breaks the plume's symmetry (chosen: a few cm/s of jitter)
-          cu[jj * (nx + 1) + i + 1] += (rand() - 0.5) * 0.06 * PXM * w;
+    function applyA(x, out) {
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        if (!wet[k]) { out[k] = 0; continue; }
+        let d = 0, sum = 0;
+        if (i > 0) { d++; if (wet[k - 1]) sum += x[k - 1]; }
+        if (i < nx - 1) { d++; if (wet[k + 1]) sum += x[k + 1]; }
+        if (j > 0) { d++; if (wet[k - nx]) sum += x[k - nx]; }
+        if (j < ny - 1) { d++; if (wet[k + nx]) sum += x[k + nx]; }
+        out[k] = d * x[k] - sum;
+      }
+    }
+    function applyM(r, z) {
+      // solve L L^T z = r, L from the modified incomplete Cholesky factor
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        if (!wet[k]) { z[k] = 0; continue; }
+        let t = r[k];
+        if (i > 0 && wet[k - 1]) t += pre[k - 1] * z[k - 1];
+        if (j > 0 && wet[k - nx]) t += pre[k - nx] * z[k - nx];
+        z[k] = t * pre[k];
+      }
+      for (let j = ny - 1; j >= 0; j--) for (let i = nx - 1; i >= 0; i--) {
+        const k = j * nx + i;
+        if (!wet[k]) continue;
+        let t = z[k];
+        if (i < nx - 1 && wet[k + 1]) t += pre[k] * z[k + 1];
+        if (j < ny - 1 && wet[k + nx]) t += pre[k] * z[k + nx];
+        z[k] = t * pre[k];
+      }
+    }
+    const dot = (a, b) => { let t = 0; for (let k = 0; k < NC; k++) t += a[k] * b[k]; return t; };
+    const maxAbs = (a) => { let t = 0; for (let k = 0; k < NC; k++) t = Math.max(t, Math.abs(a[k])); return t; };
+    function solvePressure() {
+      // the divergence each cell would have: what flows out of it per unit time, px/s
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        if (!wet[k]) { rhs[k] = 0; cp[k] = 0; continue; }
+        rhs[k] = -(cu[j * NU1 + i + 1] - cu[j * NU1 + i] + cv[(j + 1) * nx + i] - cv[k]);
+      }
+      // start from the last step's pressure: it is nearly right already
+      applyA(cp, pq);
+      for (let k = 0; k < NC; k++) pr[k] = rhs[k] - pq[k];
+      const tol = 1e-3 / MM;                           // a micrometre a second of leftover squeeze
+      let it = 0;
+      if (maxAbs(pr) > tol) {
+        buildPrecon();
+        applyM(pr, pz); ps.set(pz);
+        let sig = dot(pz, pr);
+        for (it = 1; it <= 200; it++) {
+          applyA(ps, pq);
+          const a = sig / dot(ps, pq);
+          for (let k = 0; k < NC; k++) { cp[k] += a * ps[k]; pr[k] -= a * pq[k]; }
+          if (maxAbs(pr) <= tol) break;
+          applyM(pr, pz);
+          const sn = dot(pz, pr), b = sn / sig;
+          for (let k = 0; k < NC; k++) ps[k] = pz[k] + b * ps[k];
+          sig = sn;
         }
       }
-      // 2. carry the velocity along itself (semi-Lagrangian, on the staggered faces)
+      cream.iters = it;
+      // take the pressure's gradient off the faces
+      const P = (i, j) => (W_(i, j) ? cp[j * nx + i] : 0);
+      for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) if (liveU(i, j)) cu[j * NU1 + i] -= P(i, j) - P(i - 1, j);
+      for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) if (liveV(i, j)) cv[j * nx + i] -= P(i, j) - P(i, j - 1);
+    }
+
+    function stepLiquid(dt) {
+      const a = norm(tilt), gx = Math.sin(a), gy = Math.cos(a), gb = g * LIQ2.drho;
+
+      // 1. carry the velocity along itself (semi-Lagrangian, midpoint backtrace)
       cu0.set(cu); cv0.set(cv);
-      const uAt = (x, y) => sampleG(cu0, NU1, ny, x / cs, y / cs - 0.5);
-      const vAt = (x, y) => sampleG(cv0, nx, ny + 1, x / cs - 0.5, y / cs);
       for (let j = 0; j < ny; j++) for (let i = 0; i <= nx; i++) {
         const k = j * NU1 + i;
         if (!liveU(i, j)) { cu[k] = 0; continue; }
-        const x = i * cs, y = (j + 0.5) * cs, ux = cu0[k], vy = vAt(x, y);
-        cu[k] = uAt(x - ux * dt, y - vy * dt);
+        const x = i * cs, y = (j + 0.5) * cs, u = cu0[k], v = vAt(cv0, x, y);
+        const xm = x - 0.5 * dt * u, ym = y - 0.5 * dt * v;
+        cu[k] = uAt(cu0, x - dt * uAt(cu0, xm, ym), y - dt * vAt(cv0, xm, ym));
       }
       for (let j = 0; j <= ny; j++) for (let i = 0; i < nx; i++) {
         const k = j * nx + i;
         if (!liveV(i, j)) { cv[k] = 0; continue; }
-        const x = (i + 0.5) * cs, y = j * cs, ux = uAt(x, y), vy = cv0[k];
-        cv[k] = vAt(x - ux * dt, y - vy * dt);
+        const x = (i + 0.5) * cs, y = j * cs, u = uAt(cu0, x, y), v = cv0[k];
+        const xm = x - 0.5 * dt * u, ym = y - 0.5 * dt * v;
+        cv[k] = vAt(cv0, x - dt * uAt(cu0, xm, ym), y - dt * vAt(cv0, xm, ym));
       }
-      // 3. buoyancy. A layer of creamer lying flat is only weight: the pressure
-      // holds it up and nothing moves. Only the part that differs along a row
-      // can drive a flow, so each row's mean is taken out before pushing - the
-      // same physics, but the pressure solve (never fully converged) no longer
-      // has to balance a whole column's weight, and a settled cup settles.
-      let maxc = 0;
-      for (let j = 0; j < ny; j++) {
-        let m = 0, n = 0;
-        for (let i = 0; i < nx; i++) { const k = j * nx + i; if (wet[k]) { m += cc[k]; n++; } maxc = Math.max(maxc, cc[k]); }
-        rowMean[j] = n ? m / n : 0;
+
+      // 2. the second liquid's share in each velocity cell, and what it weighs
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        let t = 0;
+        for (let b = 0; b < F; b++) for (let q = 0; q < F; q++) t += cc[(j * F + b) * mx + i * F + q];
+        const k = j * nx + i, c = t / (F * F);
+        cbar[k] = c;
+        // viscosity of the mixture: Arrhenius' rule, by the log of each
+        nuC[k] = Math.exp((1 - c) * Math.log(NU_1) + c * Math.log(LIQ2.nu)) * PXM * PXM;
       }
-      const cAt = (i, j) => (W_(i, j) ? cc[j * nx + i] : 0);
-      for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) {
-        if (!liveU(i, j)) continue;
-        cu[j * NU1 + i] += gb * gx * 0.5 * (cAt(i - 1, j) + cAt(i, j)) * dt;
-      }
-      for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) {
-        if (!liveV(i, j)) continue;
-        cv[j * nx + i] += gb * gy * 0.5 * (cAt(i, j - 1) - rowMean[j - 1] + cAt(i, j) - rowMean[j]) * dt;
-      }
-      // 4. Friction. Two kinds, both from measured physics, no chosen rates:
-      //  - Viscosity, the creamer rubbing on the coffee: nu = mu/rho, hot coffee
-      //    ~0.4e-6 m^2/s, cold liquid creamer ~1e-5 (thick: sugar and gums),
-      //    mixed by the log of each (Arrhenius' rule for mixtures). Real, and
-      //    it smooths the thinnest ribbons - but it is far too weak to stop a
-      //    plume: on its own it takes minutes.
-      //  - Turbulence, which is what really brakes a sinking plume in a mug:
-      //    it breaks into smaller and smaller eddies until viscosity can take
-      //    them, and the rate that happens at is measured - energy goes at
-      //    eps = C*u^3/L, C ~ 0.5 (Taylor 1935; Sreenivasan 1984), L the size
-      //    of the biggest swirl, here half the coffee's depth. That cascade is
-      //    3D: a 2D flow does the opposite and piles its energy into big
-      //    swirls that never stop, which is why the slice has to be told. So
-      //    each face loses speed as du/dt = -C*u*|u|/L: fast plumes are braked
-      //    hard, the slow slide of a settling layer hardly at all.
-      const depth = Math.max(cs, H - s.surfaceX(W / 2)), Lt = 0.5 * depth, CE = 0.5;
-      for (let k = 0; k < NC; k++) {
-        const c = cc[k];
-        nuC[k] = Math.exp((1 - c) * Math.log(0.4e-6) + c * Math.log(1e-5)) * PXM * PXM;
-      }
+      const cAt = (i, j) => (W_(i, j) ? cbar[j * nx + i] : 0);
+      for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) if (liveU(i, j)) cu[j * NU1 + i] += gb * gx * 0.5 * (cAt(i - 1, j) + cAt(i, j)) * dt;
+      for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) if (liveV(i, j)) cv[j * nx + i] += gb * gy * 0.5 * (cAt(i, j - 1) + cAt(i, j)) * dt;
+
+      // 3. Friction. The two liquids' viscosity, and turbulence. Viscosity on
+      // its own takes minutes to stop a plume; what really stops one is it
+      // breaking into smaller and smaller eddies until viscosity can take
+      // them, at a measured rate: energy goes as eps = C*u^3/L, C ~ 0.5
+      // (Taylor 1935; Sreenivasan 1984), L the biggest swirl the liquid holds,
+      // half its depth. That cascade is three-dimensional - a flat flow piles
+      // its energy into big swirls instead - so the slice is given it: each
+      // face slows as du/dt = -C*u*|u|/L. Fast plumes are braked hard, the
+      // slow slide of a settling layer hardly at all.
+      const depth = Math.max(cs, H - s.surfaceX(W / 2)), Lt = 0.5 * depth, CE = 0.5, vis = dt / (cs * cs);
       cu0.set(cu); cv0.set(cv);
-      const vis = dt / (cs * cs);
       for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) {
         if (!liveU(i, j)) continue;
         const k = j * NU1 + i, nu = 0.5 * (nuC[j * nx + i - 1] + nuC[j * nx + i]);
-        const l = cu0[k - 1], r = cu0[k + 1], up = j > 0 ? cu0[k - NU1] : 0, dn = j < ny - 1 ? cu0[k + NU1] : 0;
-        let u = cu0[k] + Math.min(0.2, nu * vis) * (l + r + up + dn - 4 * cu0[k]);
+        const up = j > 0 ? cu0[k - NU1] : 0, dn = j < ny - 1 ? cu0[k + NU1] : 0;
+        const u = cu0[k] + Math.min(0.2, nu * vis) * (cu0[k - 1] + cu0[k + 1] + up + dn - 4 * cu0[k]);
         cu[k] = u / (1 + (CE * Math.abs(u) * dt) / Lt);
       }
       for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) {
         if (!liveV(i, j)) continue;
         const k = j * nx + i, nu = 0.5 * (nuC[k - nx] + nuC[k]);
-        const l = i > 0 ? cv0[k - 1] : 0, r = i < nx - 1 ? cv0[k + 1] : 0, up = cv0[k - nx], dn = cv0[k + nx];
-        let v = cv0[k] + Math.min(0.2, nu * vis) * (l + r + up + dn - 4 * cv0[k]);
+        const l = i > 0 ? cv0[k - 1] : 0, r = i < nx - 1 ? cv0[k + 1] : 0;
+        const v = cv0[k] + Math.min(0.2, nu * vis) * (l + r + cv0[k - nx] + cv0[k + nx] - 4 * cv0[k]);
         cv[k] = v / (1 + (CE * Math.abs(v) * dt) / Lt);
       }
-      // 5. incompressible: the pressure that takes the divergence out. The
-      // screen's edges are walls; the air above the surface is at zero pressure.
-      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-        const k = j * nx + i;
-        cdiv[k] = wet[k] ? (cu[j * NU1 + i + 1] - cu[j * NU1 + i] + cv[(j + 1) * nx + i] - cv[k]) / cs : 0;
-        if (!wet[k]) cp[k] = 0;
-      }
-      const OMEGA = 1.7;                              // over-relaxed Gauss-Seidel
-      for (let it = 0; it < 30; it++) {
-        for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-          const k = j * nx + i;
-          if (!wet[k]) continue;
-          let sum = 0, n = 0;
-          if (i > 0) { sum += cp[k - 1]; n++; }
-          if (i < nx - 1) { sum += cp[k + 1]; n++; }
-          if (j > 0) { sum += cp[k - nx]; n++; }
-          if (j < ny - 1) { sum += cp[k + nx]; n++; }
-          cp[k] += OMEGA * ((sum - cdiv[k] * cs * cs) / n - cp[k]);
-        }
-      }
-      const pAt = (i, j) => (W_(i, j) ? cp[j * nx + i] : 0);
+
+      // 4. incompressible
+      solvePressure();
       let vmax = 0;
-      for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) {
-        if (!liveU(i, j)) continue;
-        const k = j * NU1 + i;
-        cu[k] -= (pAt(i, j) - pAt(i - 1, j)) / cs; vmax = Math.max(vmax, Math.abs(cu[k]));
-      }
-      for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) {
-        if (!liveV(i, j)) continue;
-        const k = j * nx + i;
-        cv[k] -= (pAt(i, j) - pAt(i, j - 1)) / cs; vmax = Math.max(vmax, Math.abs(cv[k]));
-      }
-      // 6. carry the creamer (MacCormack: forward, back, correct the error, clamped)
-      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-        const k = j * nx + i;
-        ucc[k] = 0.5 * (cu[j * NU1 + i] + cu[j * NU1 + i + 1]) * dt / cs;
-        vcc[k] = 0.5 * (cv[j * nx + i] + cv[(j + 1) * nx + i]) * dt / cs;
-      }
+      for (let k = 0; k < cu.length; k++) vmax = Math.max(vmax, Math.abs(cu[k]));
+      for (let k = 0; k < cv.length; k++) vmax = Math.max(vmax, Math.abs(cv[k]));
+
+      // 5. carry the second liquid (MacCormack: forward, back, correct the error, clamped)
       cc0.set(cc);
-      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-        const k = j * nx + i;
-        cc1[k] = wet[k] ? sampleG(cc0, nx, ny, i - ucc[k], j - vcc[k]) : cc0[k];
+      for (let j = 0; j < my; j++) for (let i = 0; i < mx; i++) {
+        const k = j * mx + i;
+        if (!wetD[k]) { cc1[k] = cc0[k]; continue; }
+        const x = (i + 0.5) * ds, y = (j + 0.5) * ds;
+        const u = uAt(cu, x, y), v = vAt(cv, x, y);
+        cc1[k] = sampleG(cc0, mx, my, i - (u * dt) / ds, j - (v * dt) / ds);
       }
-      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-        const k = j * nx + i;
-        if (!wet[k]) { cc[k] = cc1[k]; continue; }
-        const back = sampleG(cc1, nx, ny, i + ucc[k], j + vcc[k]);
-        const x = clamp(i - ucc[k], 0, nx - 1), y = clamp(j - vcc[k], 0, ny - 1);
-        const i0 = Math.min(nx - 2, Math.floor(x)), j0 = Math.min(ny - 2, Math.floor(y)), q0 = j0 * nx + i0;
-        const lo = Math.min(cc0[q0], cc0[q0 + 1], cc0[q0 + nx], cc0[q0 + nx + 1]);
-        const hi = Math.max(cc0[q0], cc0[q0 + 1], cc0[q0 + nx], cc0[q0 + nx + 1]);
-        cc[k] = clamp(cc1[k] + 0.5 * (cc0[k] - back), lo, hi);
+      for (let j = 0; j < my; j++) for (let i = 0; i < mx; i++) {
+        const k = j * mx + i;
+        if (!wetD[k]) { cc[k] = cc1[k]; continue; }
+        const x = (i + 0.5) * ds, y = (j + 0.5) * ds;
+        const du = (uAt(cu, x, y) * dt) / ds, dv = (vAt(cv, x, y) * dt) / ds;
+        const err = cc0[k] - sampleG(cc1, mx, my, i + du, j + dv);
+        const bx = clamp(i - du, 0, mx - 1), by = clamp(j - dv, 0, my - 1);
+        const i0 = Math.min(mx - 2, Math.floor(bx)), j0 = Math.min(my - 2, Math.floor(by)), q0 = j0 * mx + i0;
+        const lo = Math.min(cc0[q0], cc0[q0 + 1], cc0[q0 + mx], cc0[q0 + mx + 1]);
+        const hi = Math.max(cc0[q0], cc0[q0 + 1], cc0[q0 + mx], cc0[q0 + mx + 1]);
+        cc[k] = clamp(cc1[k] + 0.5 * err, lo, hi);
       }
-      // creamer left above a falling surface settles into the coffee below it
-      for (let i = 0; i < nx; i++) for (let j = 0; j < ny - 1; j++) {
-        const k = j * nx + i;
-        if (!wet[k] && cc[k] > 0) { cc[k + nx] = Math.min(1, cc[k + nx] + cc[k]); cc[k] = 0; }
+      // what a falling surface leaves above it goes down into the liquid below
+      for (let i = 0; i < mx; i++) for (let j = 0; j < my - 1; j++) {
+        const k = j * mx + i;
+        if (!wetD[k] && cc[k] > 0) { cc[k + mx] = Math.min(1, cc[k + mx] + cc[k]); cc[k] = 0; }
       }
-      for (let k = (ny - 1) * nx; k < NC; k++) if (!wet[k]) cc[k] = 0;
-      // 7. hold the creamer's total to what is in the cup (the advection is not
-      // exactly conservative; this puts back what rounding lost)
+      for (let k = (my - 1) * mx; k < ND; k++) if (!wetD[k]) cc[k] = 0;
+      // MacCormack is not exactly conservative; what rounding lost is put back
       let sum = 0;
-      for (let k = 0; k < NC; k++) sum += cc[k];
-      sum *= cs * cs;
-      if (sum > 1e-6 && cream.mass > 0) { const f = cream.mass / sum; for (let k = 0; k < NC; k++) cc[k] = Math.min(1, cc[k] * f); }
-      // settled: nothing moving faster than a millimetre a second, for a second
+      for (let k = 0; k < ND; k++) sum += cc[k];
+      sum *= ds * ds;
+      if (sum > 1e-6 && cream.mass > 0) { const f = cream.mass / sum; for (let k = 0; k < ND; k++) cc[k] = Math.min(1, cc[k] * f); }
+
+      // at rest: nothing faster than a millimetre a second for a second
       cream.quiet = vmax < 1 / MM && !cream.pouredNow ? cream.quiet + dt : 0;
-      // A minute and a half on (it is usually still by then), whatever still
-      // drifts changes nothing to look at, and a phone holds the cup forty
-      // minutes: it is let rest (chosen).
+      // (and after a minute and a half, what still drifts changes nothing to
+      // look at, and a phone holds the cup forty minutes: it is let rest)
       if (cream.quiet > 1 || cream.age > 90) { cream.settled = true; cu.fill(0); cv.fill(0); }
-      cream.vmax = vmax; cream.maxc = maxc;
+      cream.vmax = vmax;
     }
 
-    // the creamer's stream, and stepping the inside of the coffee
+    // Where the stream comes in: its volume and its momentum. It is a sheet
+    // (this is 2D), width w at speed v; spread over the cells it lands in,
+    // width w_in, it keeps its momentum flux rho*v^2*w, so it goes in at
+    // v*sqrt(w/w_in).
+    function pourIn(dt) {
+      if (!(cream.pouredNow > 0)) return;
+      const xp = cream.x + cream.sway, ys = s.surfaceX(xp), v = cSpeed(ys), w = cQ / v;
+      const half = Math.max(0.5 * w, 0.5 * cs), win = 2 * half, vin = v * Math.sqrt(w / win);
+      // its volume, into the second liquid's grid just under the surface
+      const cells = [];
+      for (let i = Math.max(0, Math.floor((xp - half) / ds)); i <= Math.min(mx - 1, Math.floor((xp + half) / ds)); i++) {
+        let j = Math.floor(ys / ds); while (j < my - 1 && !wetD[j * mx + i]) j++;
+        cells.push(j * mx + i);
+      }
+      for (const k of cells) cc[k] = Math.min(1, cc[k] + cream.pouredNow / (cells.length * ds * ds));
+      // its momentum, onto the faces under it
+      for (let i = Math.max(0, Math.floor((xp - half) / cs)); i <= Math.min(nx - 1, Math.floor((xp + half) / cs)); i++) {
+        let j = Math.floor(ys / cs); while (j < ny - 1 && !wet[j * nx + i]) j++;
+        const overlap = clamp((Math.min(xp + half, (i + 1) * cs) - Math.max(xp - half, i * cs)) / cs, 0, 1);
+        for (const jj of [j + 1, j + 2]) if (jj < ny) {
+          const k = jj * nx + i;
+          cv[k] += (Math.max(cv[k], vin) - cv[k]) * overlap;
+        }
+      }
+      void dt;
+    }
+
+    // the stream, and stepping the two liquids
     function creamStep(frameDt, outShare) {
       if (!cream.on) return;
       const t = s.t;
       cream.pouredNow = 0;
       if (cream.start < 0 && s.fullAt >= 0 && t - s.fullAt >= CREAM_AFTER && !s.draining) cream.start = t;
       if (cream.start < 0) return;
+      // the hand pouring it moves a little, a few millimetres (chosen)
+      cream.sway = (3 / MM) * Math.sin(t * 3.1 + 1) + (1.5 / MM) * Math.sin(t * 7.3);
       cream.head = cFall(t - cream.start);
       const ys = s.surfaceX(xc);
       if (!cream.hit && cream.head >= ys) {
         cream.hit = true;
         for (let k = 0; k < 6; k++) {
           const side = rand() < 0.5 ? -1 : 1, sc = cSpeed(ys);
-          drops.push({ x: xc + side * rand() * 2, y: ys - 1, vx: side * (0.02 + rand() * 0.06) * sc, vy: -(0.04 + rand() * 0.08) * sc, size: 0.8 + rand() * 1.2, cream: true });
+          drops.push({ x: xc + cream.sway + side * rand() * 2, y: ys - 1, vx: side * (0.02 + rand() * 0.06) * sc, vy: -(0.04 + rand() * 0.08) * sc, size: 0.8 + rand() * 1.2, cream: true });
         }
       }
       if (cream.stop < 0 && cream.poured + cQ * cFallTime(ys) >= cream.want) cream.stop = t;
       cream.tail = cream.stop >= 0 ? cFall(t - cream.stop) : -1;
       if (cream.hit) {
-        // what reaches the surface this frame: the stream that is no longer in the air
+        // what has reached the surface by now: the stream no longer in the air
         const ft = cFallTime(ys), end = cream.stop >= 0 ? Math.min(t, cream.stop + ft) : t;
         const reached = clamp(cQ * (end - cream.start - ft), 0, cream.want);
         const now = Math.max(0, reached - cream.poured);
@@ -708,22 +751,25 @@
       if (outShare > 0) cream.mass *= 1 - outShare;
       cream.age = cream.hit ? t - cream.start : 0;
       if (cream.hit && !cream.settled) {
-        // once the pour is in and the plume has landed (ten seconds), the slow
-        // swirling that is left is stepped half as often, in steps twice as long
+        liquidMasks();
+        pourIn(frameDt);
+        // Steps short enough that nothing crosses more than two cells in one.
+        // Once the pour is in and the plume has landed (ten seconds) the slow
+        // settling that is left is stepped at 30 Hz.
         cream.owed += frameDt;
         if (cream.age < 10 || cream.pouredNow > 0 || cream.owed >= 1 / 30 - 1e-9) {
-          const n = Math.max(1, Math.ceil(cream.owed / (1 / 30)));
-          for (let k = 0; k < n; k++) stepCream(cream.owed / n);
+          const n = clamp(Math.ceil((cream.vmax * cream.owed) / (2 * cs)), 1, 6);
+          for (let k = 0; k < n; k++) stepLiquid(cream.owed / n);
           cream.owed = 0;
         }
       }
     }
     // a cup already creamed and stirred (reduced motion, or a new width after the creamer)
     function creamMixed() {
-      creamMask();
-      let n = 0; for (let k = 0; k < NC; k++) n += wet[k];
-      const c = n ? cream.want / (n * cs * cs) : 0;
-      for (let k = 0; k < NC; k++) cc[k] = wet[k] ? c : 0;
+      liquidMasks();
+      let n = 0; for (let k = 0; k < ND; k++) n += wetD[k];
+      const c = n ? cream.want / (n * ds * ds) : 0;
+      for (let k = 0; k < ND; k++) cc[k] = wetD[k] ? c : 0;
       Object.assign(cream, { start: s.t, stop: s.t, hit: true, poured: cream.want, mass: cream.want, settled: true, head: -1, tail: -1 });
     }
     s.creamed = () => cream.on && cream.hit;
