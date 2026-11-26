@@ -20,6 +20,10 @@ version stepped ("it needs to be smooth like your dumping it out … use actual 
 exact at any angle: the coffee is the screen below a level line, and each point of the top
 edge it covers lets it out at Torricelli's speed — a sip past a corner, a pour on its side,
 a dump upside down (about a second). Bubbles and crema ride the coffee's own flow.
+Then (Ric: "do it real gravity … use the real wave formula … 2d should make it easier"):
+real gravity at the screen's physical size, and the waves are the 2D tank's standing waves
+at the dispersion relation's frequencies; a tip is carried to level by those waves. It
+fills in about 3 s on a laptop, 1.5 s on a phone.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 

@@ -56,19 +56,29 @@ for (const [W, H] of [[1440, 900], [390, 844], [2560, 1400]]) {
   assert.ok(!s.done && !s.draining && Math.abs(s.level() - 0.75) < 1e-9, 'still() is a full cup waiting to drain');
 }
 
-// tipped, the surface stays level in the world: it slopes across the screen at
-// the phone's angle, keeps every drop, and sloshes past the angle before settling
+// Tipped, the surface heads for level in the world and sloshes there at the
+// tank's own frequency - the dispersion relation, w^2 = g*k*tanh(k*h) for the
+// whole-screen mode k = pi/W, with real gravity at the screen's size - then
+// settles on a slope of tan(angle) without making or losing any coffee.
 {
-  const W = 390, H = 844, s = createSim(W, H, { hold: 60 });
-  s.still(); const v = s.total();
+  const W = 390, H = 844, s = createSim(W, H, { hold: 60, mm: 0.174 });
+  s.still(); const v = s.volume;
   s.setTilt(0.4);
-  let over = 0;
-  for (let k = 0; k < 60 * 6; k++) { s.step(1 / 60); over = Math.max(over, s.tilt()); }
-  const slope = (s.h[s.N - 40] - s.h[40]) / ((s.N - 80) * s.dx);
-  assert.ok(Math.abs(slope - Math.tan(0.4)) < 0.03, `tipped 0.4 rad, the surface slopes tan(0.4) (got ${slope.toFixed(3)})`);
-  assert.ok(Math.abs(s.total() - v) / v < 1e-6, 'tipping makes and loses no coffee');
-  assert.ok(over > 0.42, 'it swings past the angle before it settles (a slosh)');
-  for (let k = 0; k < 60 * 8; k++) s.step(1 / 60);
+  const slope = () => (s.h[s.N - 40] - s.h[40]) / ((s.N - 80) * s.dx);
+  let over = 0, ups = [], prev = 0;
+  for (let k = 0; k < 60 * 3; k++) {
+    s.step(1 / 60); const d = slope() - Math.tan(0.4); over = Math.max(over, slope());
+    if (prev < 0 && d >= 0) ups.push(k / 60); prev = d;
+  }
+  assert.ok(over > Math.tan(0.4) * 1.3, `it swings well past level before it settles (${over.toFixed(2)} against ${Math.tan(0.4).toFixed(2)})`);
+  const g = 9.81 * 1000 / 0.174, k = Math.PI / W, depth = 0.75 * H;
+  const period = (2 * Math.PI) / Math.sqrt(g * k * Math.tanh(k * depth));
+  const seen = (ups[ups.length - 1] - ups[0]) / (ups.length - 1);
+  assert.ok(Math.abs(seen - period) / period < 0.1, `it sloshes at the tank's own period (${seen.toFixed(3)} s, formula ${period.toFixed(3)} s)`);
+  for (let k = 0; k < 60 * 15; k++) s.step(1 / 60);
+  assert.ok(Math.abs(slope() - Math.tan(0.4)) < 0.02, `and settles on a slope of tan(0.4) (got ${slope().toFixed(3)})`);
+  assert.ok(Math.abs(s.volume - v) / v < 1e-9, 'tipping makes and loses no coffee');
+  for (let k = 0; k < 60 * 10 && !s.idle(); k++) s.step(1 / 60);
   assert.ok(s.idle(), 'once still it is idle, so the page can stop drawing');
   assert.ok(!s.draining, 'and it is not draining before its hold is up');
   s.skip(60); s.step(1 / 60);
@@ -102,7 +112,8 @@ for (const [W, H] of [[1440, 900], [390, 844], [2560, 1400]]) {
   assert.ok(side.s.done && side.t < 3, `past sideways it pours out (${side.t.toFixed(1)} s)`);
   const flip = run(Math.PI, 10);
   assert.ok(flip.s.done && flip.t < 2, `upside down it dumps (${flip.t.toFixed(1)} s)`);
-  assert.ok(flip.jump < 0.06, `even dumping, no frame takes more than a sliver (${(100 * flip.jump).toFixed(1)}%)`);
+  // real gravity: a phone's worth of coffee falls out in about a fifth of a second - ten-odd frames, not one
+  assert.ok(flip.jump < 0.15, `even dumping, it goes over several frames, not at once (${(100 * flip.jump).toFixed(1)}% in the biggest)`);
 }
 
 // bubbles ride the coffee: tipped, they go with it toward the low side

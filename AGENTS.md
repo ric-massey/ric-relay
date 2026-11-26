@@ -1843,6 +1843,16 @@ migration marked "safe to re-run", and re-running it would have put the original
   low to reach a corner until the phone is past sideways, and that is the physics. The
   bubbles and crema ride the coffee's own velocity, read off its depth by continuity
   (`readFlow`); don't give them a drift of their own again.
+  **Gravity is real and so are the waves** (Ric, same day: "do it real gravity. Otherwise
+  it looks funny. Use the real wave formula"). g is 9.81 m/s² at the screen's real size
+  (a CSS pixel is 0.2646 mm; a phone's is estimated from a 68 mm short side). The waves are
+  the standing waves of a 2D tank, each at ω² = (g·k + σ/ρ·k³)·tanh(k·h); a tip only moves
+  where level is, and the waves carry the surface there — there is no spring, and
+  `coffee.mjs` holds the slosh period to that formula. **What is still chosen** is listed in
+  the file's own comments: the slosh damping ratio (0.02, from the measured range), the
+  nozzle (0.6 m/s, 60 mm up), the stream's width, the churn under the stream, splash speeds,
+  bubbles and crema, and the drain's hole. Real gravity made it quick: about 3 s to fill a
+  laptop screen and 1.5 s a phone. A thinner stream would pour longer — don't slow gravity.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

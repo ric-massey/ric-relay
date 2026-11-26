@@ -7,15 +7,22 @@
    Loaded only when somebody types `coffee` (terminal.html and the front door
    add this file on demand), so no page pays for it otherwise. No library.
 
+   Physics: gravity is real (9.81 m/s^2 at the screen's real size), the waves
+   are a 2D tank's standing waves at the gravity-capillary dispersion
+   relation's frequencies, the stream obeys continuity, the drain and the
+   mouth obey Torricelli, the puddle spreads at a dam-break's speed, and the
+   flow the bubbles ride comes from continuity. Chosen, not derived: the
+   slosh damping ratio, the nozzle, the stream's width, the churn under it,
+   splash speeds, bubbles and crema, and the drain's hole.
+
    How the liquid works:
    - Where the coffee is: a puddle that runs out from the stream to the walls,
      then a pool, level because pressure shares what is poured in at once. The
      volume is exactly what the stream carried (see Q), and it drains by
      Torricelli. (It was 1D shallow water first; at this pour rate that piled
      the coffee into a tower under the stream before it could spread.)
-   - On that, sloshing: the wave equation, thrown up where the puddle hits each
-     wall and stirred where the stream goes in, reflecting and settling.
-   - Over it, a fast ripple layer that the stream and the drops ring.
+   - On that, the waves (see stepWaves): thrown up where the puddle hits each
+     wall, rung by drops, stirred under the stream, and set going by a tip.
    - Particles only where the eye is: splash drops, Keurig drips, bubbles.
    - Crema is a thickness per column, made at the impact and carried by the
      flow, thinning to a film.
@@ -38,12 +45,20 @@
     const N = Math.max(48, Math.min(420, Math.round(W / 3.5)));
     const dx = W / N;
     const X = (i) => (i + 0.5) * dx;
-    const g = 9 * H;                                   // gravity for the falling coffee: a drop from the top takes ~0.25 s
-    const cWave = clamp(0.32 * W, 220, 560);           // how fast a slosh crosses the pool, px/s
+    // Real gravity, at the screen's real size. A CSS pixel is 1/96 inch,
+    // 0.2646 mm, by definition, and about that on a computer; a phone's are
+    // smaller, and the page passes its estimate (opt.mm). Everything below is
+    // in pixels and seconds.
+    const MM = opt.mm || 0.2646;                       // mm per px
+    const PXM = 1000 / MM;                             // px per metre
+    const g = 9.81 * PXM;                              // px/s^2
+    const SIGMA = 0.065 * PXM ** 3 / 1000;             // surface tension / density: coffee ~0.065 N/m (water 0.072), 1000 kg/m^3
+    const NU = 0.5e-6 * PXM * PXM;                     // kinematic viscosity of hot coffee (water at 60 C: 0.47e-6 m^2/s)
+    const ZETA = 0.02;                                 // slosh damping ratio: 0.01-0.05 is what small tanks measure (mostly the
+                                                       // contact line, which no formula here models), so this one is chosen
     const h = new Float64Array(N);                     // depth drawn: the pool plus its waves
     const base = new Float64Array(N);                  // where the coffee is, before waves
-    const eta = new Float64Array(N), ev = new Float64Array(N); // sloshing
-    const r = new Float64Array(N), rv = new Float64Array(N);   // small ripples
+    const eta = new Float64Array(N);                   // the waves
     const f = new Float64Array(N), fs = new Float64Array(N);   // crema
     const drops = [], bubbles = [], drips = [];
     const x0 = W * (0.5 + OFF), i0 = Math.min(N - 1, Math.floor(x0 / dx));
@@ -54,18 +69,18 @@
     // and speeds up. The fill time is not chosen — it is what a bar this thick,
     // falling this fast, pours: Q = w·v, T = (0.75·W·H) / Q. A 1440×900 screen
     // fills in about 5.5 s, a phone in about 3.5, a 2560×1400 one in about 8.
-    const v0 = 0.8 * Math.sqrt(2 * g * H);             // leaving the nozzle above the screen
+    // The nozzle (chosen): 0.6 m/s out of a spout 60 mm above the top of the screen.
+    const v0 = Math.sqrt((0.6 * PXM) ** 2 + 2 * g * (60 / MM)); // speed at the top of the screen
     const wFloor = clamp(W * 0.026, 16, 44);           // width where it meets the empty floor
     const Q = wFloor * Math.sqrt(v0 * v0 + 2 * g * H); // px²/s
     const w0 = Q / v0;                                 // width at the top of the screen
     const FMIN = 1.6;                                  // the crema film it thins to
-    const SPREAD = clamp(0.55 * W, 300, 900);          // how fast the first puddle runs out, px/s
     const HOLD = opt.hold ?? DRAIN_AFTER;              // seconds full before it drains
     // Tilt: the angle of the phone's gravity across the screen (0 = straight
-    // down the screen). The pool's surface follows it with some weight - a
-    // damped spring that overshoots, which is the slosh you see when you tip
-    // it - and so stays level in the world while the screen turns under it.
-    let tilt = 0, tiltV = 0, tiltTo = 0;
+    // down the screen). Tipping moves where level is at once; the surface
+    // cannot jump, so it is left where it was and the waves carry it to the
+    // new level - overshooting and sloshing at the tank's own frequencies.
+    let tilt = 0, tiltTo = 0;
     // Up to ~83 degrees the pool is drawn as columns standing on the floor, with
     // its waves; past that (on its side, upside down) the floor is no longer
     // under it, and it is drawn as the part of the screen below a level line.
@@ -73,16 +88,35 @@
     const norm = (a) => Math.atan2(Math.sin(a), Math.cos(a));
     const colTilt = () => clamp(norm(tilt), -TILT_MAX, TILT_MAX);
     const U = new Float64Array(N), hPrev = new Float64Array(N), q = new Float64Array(N + 1);
+
+    // Waves. The screen is a 2D rectangular tank with walls at x = 0 and W, and
+    // its waves are standing waves cos(n*pi*x/W), each at its own frequency
+    // from the dispersion relation for gravity-capillary waves,
+    //   w^2 = (g*k + (sigma/rho)*k^3) * tanh(k*h),  k = n*pi/W,
+    // damped by viscosity (2*nu*k^2, which kills short ripples fast) and the
+    // contact line (ZETA*w). Each mode is a damped oscillator stepped exactly,
+    // so a fast ripple is as stable as the slow slosh of the whole screen.
+    // Forcing is linear theory too: a pressure P on the surface drives mode n
+    // as a'' = -k*tanh(k*h) * P_n / rho.
+    const M = Math.min(N - 1, 160);
+    const COS = new Float64Array((M + 1) * N);
+    for (let n = 0; n <= M; n++) for (let i = 0; i < N; i++) COS[n * N + i] = Math.cos((n * Math.PI * X(i)) / W);
+    const am = new Float64Array(M + 1), av = new Float64Array(M + 1);
+    const push = new Float64Array(N);                  // pressure impulses this frame (integral of P dt / rho), px^2/s
+    const shift = new Float64Array(N);                 // displacements this frame (a tip), px
+    const kOf = (n) => (n * Math.PI) / W;
+    const omega = (n, depth) => { const k = kOf(n); return Math.sqrt((g * k + SIGMA * k ** 3) * Math.tanh(k * Math.max(depth, 1))); };
+
     let fresh = true;                                  // no last step to take a velocity from
 
     const s = {
-      W, H, N, dx, x0, i0, w0, h, r, f, drops, bubbles, drips,
+      W, H, N, dx, x0, i0, w0, h, f, drops, bubbles, drips, g,
       t: 0, volume: 0, head: -1, tail: -1, stopAt: -1, hit: false, flowing: false,
       fullAt: -1, draining: false, done: false, hold: HOLD,
       left: x0, right: x0,                             // the puddle's edges until it is wall to wall
     };
 
-    const surfaceAt = (i) => H - h[i] - r[i] * clamp(h[i] / 25, 0, 1);
+    const surfaceAt = (i) => H - h[i];
     const colOf = (x) => clamp(Math.floor(x / dx), 0, N - 1);
     const fallY = (tt) => v0 * tt + 0.5 * g * tt * tt;
     const speedAt = (y) => Math.sqrt(v0 * v0 + 2 * g * Math.max(0, y));
@@ -111,7 +145,7 @@
         const side = rand() < 0.5 ? -1 : 1;
         drops.push({
           x: x0 + side * rand() * widthAt(y) * 0.5, y: y - 1,
-          vx: side * (30 + rand() * 200) * scale, vy: -(140 + rand() * 420) * scale,
+          vx: side * (0.02 + rand() * 0.1) * scale, vy: -(0.06 + rand() * 0.16) * scale,
           size: 1 + rand() * 2.2,
         });
       }
@@ -122,8 +156,11 @@
       bubbles.push({ x, vx: (rand() - 0.5) * 120, r: big ? 2 + rand() * 3.2 : 0.8 + rand() * 1.8, age: 0, life: 1.2 + rand() * 6 });
     }
 
-    // a wave thrown up at a wall, or pushed down under the stream
-    function kick(x, wide, speed) { for (const [i, w] of bump(x, wide)) ev[i] += speed * w * (wide / dx) * 1.77; }
+    // coffee running into a wall climbs it by u^2 / 2g, then falls back as a wave
+    function runUp(x, u) {
+      const rise = (u * u) / (2 * g), wide = Math.max(4 * dx, 0.06 * W);
+      for (const [i, w] of bump(x, wide)) shift[i] += rise * w * (wide / dx) * 1.77;
+    }
 
     const wallToWall = () => s.left <= 0 && s.right >= W;
 
@@ -188,48 +225,22 @@
     function stepFluid(dt) {
       if (s.flowing) s.volume += Q * dt;
 
-      // the first puddle runs out to the walls, and slaps up them when it gets there
+      // The first puddle runs out to the walls at the speed of a dam-break
+      // front, 2*sqrt(g*depth) (Ritter), and climbs each wall when it gets there.
       if (s.hit && !wallToWall()) {
         const wasL = s.left, wasR = s.right;
-        s.left = Math.max(-1, s.left - SPREAD * dt); s.right = Math.min(W + 1, s.right + SPREAD * dt);
-        const run = 0.5 * cWave;
-        if (wasL > 0 && s.left <= 0) kick(0, 60, run);
-        if (wasR < W && s.right >= W) kick(W, 60, run);
+        const span = Math.max(1, Math.min(s.right, W) - Math.max(s.left, 0));
+        const front = 2 * Math.sqrt(g * Math.max(s.volume / span, 0.5));
+        s.left = Math.max(-1, s.left - front * dt); s.right = Math.min(W + 1, s.right + front * dt);
+        if (wasL > 0 && s.left <= 0) runUp(0, front);
+        if (wasR < W && s.right >= W) runUp(W, front);
       }
 
-      // sloshing: the wave equation over the pool, walls reflect, slowly settles
-      const c2 = (cWave * cWave) / (dx * dx);
-      for (let i = 0; i < N; i++) {
-        const l = eta[i > 0 ? i - 1 : 0], rr = eta[i < N - 1 ? i + 1 : N - 1];
-        ev[i] += dt * c2 * (l + rr - 2 * eta[i]);
-        ev[i] *= Math.exp(-0.45 * dt);
-      }
-      let mean = 0;
-      for (let i = 0; i < N; i++) { eta[i] = clamp(eta[i] + dt * ev[i], -70, 70); mean += eta[i]; }
-      mean /= N;
-      for (let i = 0; i < N; i++) eta[i] -= mean;      // waves move coffee about; they never make or lose any
-
-      // the stream: rings the ripples, stirs the pool, makes crema
+      // the stream makes crema where it goes in
       if (s.flowing) {
         const ker = bump(x0, Math.max(dx, widthAt(surfaceAt(i0)) * 0.7));
-        for (const [i, w] of ker) {
-          rv[i] -= 900 * w * (0.6 + 0.8 * rand()) * dt * 60;
-          f[i] = Math.min(20, f[i] + 34 * w * dt * ker.length);
-        }
-        if (wallToWall()) for (const [i, w] of ker) ev[i] += (rand() - 0.51) * 2600 * w * dt * 60;
+        for (const [i, w] of ker) f[i] = Math.min(20, f[i] + 34 * w * dt * ker.length);
       }
-
-      // ripples
-      const kR = 190 * 190, kS = 18;
-      for (let i = 0; i < N; i++) {
-        const l = r[i > 0 ? i - 1 : 0], rr = r[i < N - 1 ? i + 1 : N - 1];
-        rv[i] += dt * ((kR * (l + rr - 2 * r[i])) / (dx * dx) - kS * r[i]);
-        rv[i] *= Math.exp(-2.2 * dt);
-      }
-      mean = 0;
-      for (let i = 0; i < N; i++) { r[i] = clamp(r[i] + dt * rv[i], -9, 9); mean += r[i]; }
-      mean /= N;
-      for (let i = 0; i < N; i++) r[i] -= mean;
 
       layOut();
       for (let i = 0; i < N; i++) h[i] = clamp(base[i] + eta[i] * clamp(base[i] / 20, 0, 1), 0, H);
@@ -263,6 +274,33 @@
     // at q divided by tanh(k*h)/k rather than by h - the same as h when the
     // coffee is shallow, about W/pi when it is deep.
     let lastOut = 0, lastSide = 1;
+
+    function stepWaves(dt) {
+      const depth = Math.max(1, s.volume / W);
+      for (let n = 1; n <= M; n++) {
+        const k = kOf(n), row = n * N;
+        // project this frame's pushes and shifts onto the mode (cosine series)
+        let P = 0, D = 0;
+        for (let i = 0; i < N; i++) { P += push[i] * COS[row + i]; D += shift[i] * COS[row + i]; }
+        am[n] += (2 / N) * D;
+        av[n] -= k * Math.tanh(k * depth) * (2 / N) * P;
+        // a damped oscillator, stepped exactly
+        const w = omega(n, depth), gam = ZETA * w + 2 * NU * k * k;
+        const e = Math.exp(-gam * dt), a = am[n], v = av[n];
+        if (gam < w) {
+          const wd = Math.sqrt(w * w - gam * gam), c = Math.cos(wd * dt), sn = Math.sin(wd * dt);
+          am[n] = e * (a * c + ((v + gam * a) / wd) * sn);
+          av[n] = e * (v * c - ((w * w * a + gam * v) / wd) * sn);
+        } else { am[n] = a * e; av[n] = v * e; }
+      }
+      push.fill(0); shift.fill(0);
+      const cap = 0.3 * H;
+      for (let i = 0; i < N; i++) {
+        let v = 0;
+        for (let n = 1; n <= M; n++) v += am[n] * COS[n * N + i];
+        eta[i] = clamp(v, -cap, cap);
+      }
+    }
     function readFlow(frameDt, pourIn, drained) {
       if (fresh) { hPrev.set(h); fresh = false; U.fill(0); return; }
       const ker = pourIn > 0 ? bump(x0, Math.max(dx, widthAt(H) * 0.7)) : [];
@@ -287,7 +325,9 @@
         if (d.x < 1) { d.x = 1; d.vx = -d.vx * 0.4; } else if (d.x > W - 1) { d.x = W - 1; d.vx = -d.vx * 0.4; }
         const i = colOf(d.x);
         if (d.vy > 0 && d.y >= surfaceAt(i)) {
-          rv[i] -= d.size * (d.drip ? 120 : 45);
+          // its momentum (2D: area * speed) handed to the surface where it lands
+          const ker = bump(d.x, Math.max(dx, d.size * 2));
+          for (const [j, w] of ker) push[j] += (Math.PI * d.size * d.size * d.vy * w) / dx;
           if (rand() < 0.35) bubble(d.x, false);
           drops.splice(k, 1);
         }
@@ -354,7 +394,7 @@
       if (!s.hit && s.head >= ys0) {
         s.hit = true; s.flowing = true;
         const w = widthAt(H); s.left = x0 - w; s.right = x0 + w;
-        splash(40, 1.1);
+        splash(40, speedAt(H) * 1.1);
         for (let k = 0; k < 30; k++) bubble(x0 + (rand() - 0.5) * w * 2.5, rand() < 0.4);
       }
       if (s.stopAt < 0 && s.hit) {
@@ -376,7 +416,16 @@
 
       if (s.flowing) {
         const n = rand() < frameDt * 30 ? 1 + Math.floor(rand() * 2) : 0;
-        if (n) splash(n, clamp(speedAt(ys0) / 3000, 0.35, 1));
+        if (n) splash(n, speedAt(ys0));
+        // The stream's push. Its full stagnation pressure, rho*v^2, on a 2D
+        // sheet would dig a crater v^2/g deep - most of a real jet's momentum
+        // goes down into the pool with the air it drags, not into the surface.
+        // So the surface gets only the churn: a pressure that flickers about
+        // zero, a chosen tenth of the jet's.
+        if (wallToWall()) {
+          const vi = speedAt(ys0), ker = bump(x0, Math.max(dx, widthAt(ys0)));
+          for (const [i, w] of ker) push[i] += (rand() - 0.5) * 0.1 * Q * vi * w * frameDt / dx;
+        }
         // a foamy stream: it carries air down and the air comes up as bubbles
         for (let k = 0; k < 2; k++) if (rand() < frameDt * 50) bubble(x0 + (rand() - 0.5) * widthAt(ys0) * 2.4, rand() < 0.35);
       }
@@ -395,18 +444,21 @@
         s.volume -= drainedNow;
       }
 
-      // the surface swings toward the phone's angle, overshoots and settles;
-      // a fast swing throws a wave across the pool as well
-      {
-        const w = 5, acc = -w * w * (tilt - tiltTo) - 2 * 0.28 * w * tiltV;
-        tiltV += acc * frameDt; tilt += tiltV * frameDt;
-        if (wallToWall()) for (let i = 0; i < N; i++) ev[i] -= acc * frameDt * (X(i) - W / 2) * 0.08;
+      // A tip moves where level is, at once. The surface cannot jump, so it
+      // stays where it was - as a displacement from the new level - and the
+      // waves take it there, at the tank's own frequencies.
+      if (tiltTo !== tilt) {
+        if (wallToWall() && Math.abs(norm(tiltTo)) <= TILT_MAX && Math.abs(norm(tilt)) <= TILT_MAX) {
+          const old = base.slice(); tilt = tiltTo; layOut();
+          for (let i = 0; i < N; i++) shift[i] -= base[i] - old[i];
+        } else tilt = tiltTo;
       }
 
-      // as many substeps as the fastest wave needs
-      const n = Math.max(1, Math.ceil(frameDt / ((0.4 * dx) / Math.max(cWave, 190)))), dt = frameDt / n;
+      const n = Math.max(1, Math.ceil(frameDt / 0.005)), dt = frameDt / n;
       const before = s.volume;
       for (let k = 0; k < n; k++) stepFluid(dt);
+      stepWaves(frameDt);
+      for (let i = 0; i < N; i++) h[i] = clamp(base[i] + eta[i] * clamp(base[i] / 20, 0, 1), 0, H);
       readFlow(frameDt, s.volume - before, drainedNow);
       stepParticles(frameDt);
 
@@ -434,11 +486,7 @@
         // a film thinner than a pixel over the screen is gone
         if (s.outflow > 1 && s.volume < W * 0.6) s.volume = 0;
         lastOut = s.outflow * frameDt; lastSide = Math.sin(norm(tilt)) >= 0 ? 1 : -1;
-        if (s.outflow > 1) {
-          s.sipping = true;
-          const at = lastSide > 0 ? W : 0;
-          for (const [i, w] of bump(at, 50)) rv[i] -= Math.min(30, s.outflow / target * 60) * w * frameDt * 60;
-        }
+        if (s.outflow > 1) s.sipping = true;
       }
 
       if (s.fullAt >= 0 && s.volume <= 0 && !s.flowing && !drops.length) {
@@ -450,7 +498,7 @@
     // (the drain still comes five seconds later)
     s.still = function (fraction = FILL) {
       s.volume = fraction * H * W; s.left = -1; s.right = W + 1;
-      eta.fill(0); ev.fill(0); r.fill(0); rv.fill(0); f.fill(FMIN);
+      eta.fill(0); am.fill(0); av.fill(0); push.fill(0); shift.fill(0); f.fill(FMIN);
       drops.length = drips.length = 0; bubbles.length = 0;
       s.hit = true; s.flowing = false; s.stopAt = s.t; s.head = s.tail = -1;
       s.fullAt = s.t; s.draining = false; s.done = false; drainDip = 0;
@@ -462,6 +510,7 @@
     s.setTilt = (a) => { tiltTo = a + 2 * Math.PI * Math.round((tilt - a) / (2 * Math.PI)); };
     s.poly = () => (Math.abs(norm(tilt)) > TILT_MAX && wallToWall() ? levelLine(s.volume, norm(tilt)) : null);
     s.tilt = () => tilt;
+    s.omega = (n) => omega(n, s.volume / W);           // the tank's own frequencies, rad/s
     s.skip = (sec) => { s.t += sec; };                // time passed with nothing to draw (asleep, tab hidden)
     // Nothing is moving: a full cup, still, waiting. The page stops drawing
     // until the phone moves or the drain is due - on a phone that is forty
@@ -469,10 +518,9 @@
     // a battery.
     s.idle = () => {
       if (s.fullAt < 0 || s.draining || s.flowing || s.sipping || s.poly() || drops.length || drips.length || bubbles.length) return false;
-      if (Math.abs(tilt - tiltTo) > 0.002 || Math.abs(tiltV) > 0.004) return false;
       let e = 0, foam = 0;
-      for (let i = 0; i < N; i++) { e += ev[i] * ev[i] + rv[i] * rv[i] + 0.5 * eta[i] * eta[i]; foam = Math.max(foam, f[i] - FMIN); }
-      return e / N < 0.6 && foam < 0.5;
+      for (let i = 0; i < N; i++) { e = Math.max(e, Math.abs(eta[i])); foam = Math.max(foam, f[i] - FMIN); }
+      return e < 0.5 && foam < 0.5;
     };
     s.level = () => { let v = 0; for (let i = 0; i < N; i++) v += h[i]; return v / N / H; };
     s.total = () => { let v = 0; for (let i = 0; i < N; i++) v += h[i] * dx; return v; };
@@ -685,6 +733,10 @@
     // to tip about - and five seconds anywhere else.
     const phone = !!root.matchMedia?.("(pointer: coarse)").matches && Math.min(root.screen?.width || 1e4, root.screen?.height || 1e4) < 600;
     const hold = phone ? PHONE_HOLD : DRAIN_AFTER;
+    // How big a pixel really is, for real gravity. A browser will not say; a
+    // computer is close to the CSS pixel's 0.2646 mm, and a phone's screen is
+    // about 68 mm across its short side (an estimate - they run 64 to 72).
+    const mm = phone ? 68 / Math.min(root.screen.width, root.screen.height) : 0.2646;
 
     let W = 0, H = 0, sim = null, raf = 0, wall = 0, wake = 0, angle = 0;
     const fit = () => {
@@ -695,7 +747,7 @@
       if (!sim || Math.abs(w - W) > 1) {
         // a new width is a new cup, already poured, at the level it had reached
         const level = sim ? sim.level() : null;
-        W = w; H = hgt; sim = createSim(W, H, { hold });
+        W = w; H = hgt; sim = createSim(W, H, { hold, mm });
         sim.setTilt(angle);
         // (before the stream has landed there is nothing to keep: it just starts again)
         if (level !== null && level > 0.01) sim.still(level);
