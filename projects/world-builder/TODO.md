@@ -6859,6 +6859,15 @@ panel becomes on a tap, not a tab; the Overview drops its empty headings; pause 
 computer can run sits beside Run. README, "The world under glass". Left: a preview of the land on
 Start, to be measured first.
 
+**The symbol set, drafted (2026-11-26, not built):** Ric: "the buildings the people let's change to
+circles. Cars will need to be designed. Planes. Horses. All simple when zoomed all the way in … But
+easy to tell what they are", and "Straight top down" over a slight tilt. The draft is
+`docs/mockups/world-builder/symbols.html`: six rules (top-down with roofs lit from the north-west as
+the hills are; one ink and one outline weight; only people carry their people's colour; one detail
+says a building's job; few marks on the land; people are circles), every thing the engine has drawn
+to them, the five stages of a ruin and a village corner to judge them together. Next, once Ric has
+looked: the map draws from it, starting with people as circles.
+
 #### [ ] 21h. Saving a run, copying it, and its history — waits on item 19
 
 **Still waiting on item 19** (Ric, 2026-11-25: "Leave 21h for item 19"). What 21b to 21g leave
