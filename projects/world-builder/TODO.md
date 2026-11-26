@@ -6976,6 +6976,22 @@ job:
   squares, not animals); fairs and sacred land (no mark). Each needs a position and movement before
   it can be drawn, and must keep the engine's numbers the same when off.
 
+- **22e. Arms, armour and fighting** — the map draws one weapon for everybody (`drawEquipment`: a
+  pole with a point), a shield and a pack. The engine knows the arms (`ARMS`: hand, bronze, iron,
+  steel, musket, rifle, machine gun), the bow (bow, composite, crossbow), the armour (`ARMOUR`:
+  padding, scale, mail, plate; a helmet), chariots, horsemen, cannon and high explosives. Drawn in
+  `symbols.html`, "Arms and armour" and "Fighting": a weapon at the circle's side, armour as a ring;
+  arrows in flight, black-powder smoke over a volley, a cannon firing, a shell bursting, a bomb
+  falling, machine-gun fire. In the middle zoom a unit is a block with a mark for what it is, as
+  military maps mark infantry, horse and guns.
+- **22f. People's lives, seen** (proposed 2026-11-26, for Ric to choose from; not drawn yet): who is
+  hungry, sick or wounded, at a glance close in; what somebody carries (water, wood, grain, goods);
+  the dead and where they lie (a household buries its dead, 15.11q, but there are no graves);
+  gatherings — a feast, a wedding, a funeral, worship, a market day, a food riot; work as it is done —
+  ploughing with oxen, harvest, felling trees and the stumps left, a house going up; people moving —
+  refugees, prisoners led, pilgrims, a family moving house (the moves trail exists); foul water
+  (15.5r) and a village's store, full or empty.
+
 **Budget:** drawing must not slow a frame: a shadow is the same shape drawn once more, offset, no
 blur on the map; footprints and roof tones are worked out once per building and kept in the blocks.
 **Done when:** each of 22a to 22c is on the map at the zoom where it can be read, `symbols.html` and
