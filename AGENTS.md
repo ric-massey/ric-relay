@@ -1866,22 +1866,30 @@ migration marked "safe to re-run", and re-running it would have put the original
   about a second after full"): 2% of the coffee, poured by hand left of centre, 4% denser than
   the coffee, so it sinks and its sinking makes the curls. **Nothing draws a curl**: the inside
   of the coffee is a small fluid solver (`stepCream` — Stam's stable fluids on a staggered MAC
-  grid of about ten thousand cells, Boussinesq buoyancy along the phone's gravity, vorticity
-  confinement, zero pressure at the surface) carrying the creamer as a dye, its total held to
+  grid of about ten thousand cells, Boussinesq buoyancy along the phone's gravity, friction,
+  zero pressure at the surface) carrying the creamer as a dye, its total held to
   what was poured. Three things that look optional and are not: the grid is **staggered** (a
   collocated one let the creamer's weight feed a checkerboard the pressure could not see, and
   it never settled); each row's mean creamer is **taken out of the buoyancy** (a flat layer is
   pure weight, and an unconverged pressure solve otherwise kept it stirring); and the jet hands
   the coffee **12 cm/s, not its own 4 m/s** (a thin jet slows within centimetres by dragging
   coffee along in 3D, which a 2D grid cannot; 4 m/s sent it to the floor and up the walls at
-  once); and the flow is **damped** (2/s while the plume falls, 0.6/s after) to stand in for
-  the coffee a real plume drags along in 3D — without it the plume ran up both walls and
-  churned the cup tan, where a real one **settles on the bottom** (Ric: "it should settle
-  realistically. Like settle on the bottom"). The test holds that: at rest, over 75% of it in
-  the bottom quarter, in a level layer. Chosen, not measured: the density difference, the
-  amount, the jug, the entry speed, the damping,
+  once). **What slows it is friction, from measured physics, not a chosen rate** (Ric: "what
+  slows it is the friction of the creamer on the coffee"): the two liquids' viscosities, mixed
+  by Arrhenius' rule, and — because viscosity alone takes minutes to stop a plume — turbulent
+  dissipation at Taylor's measured rate, eps = 0.5·u³/L with L half the coffee's depth. That
+  second one is the 3D cascade a 2D flow lacks (2D piles energy into big swirls that never
+  stop); it brakes a fast plume hard and a settling layer hardly at all. There is no curl
+  booster (vorticity confinement): it fed the swirling for ever. Settled, the creamer is
+  **heaviest at the bottom and less in each layer above** (Ric: "it should settle
+  realistically. Like settle on the bottom") — on a phone 7/19/27/47% by quarter from the top;
+  what mixed in on the way down is only a little heavier, so it rests partway up. An earlier
+  hand-set damping gave 84% in the bottom quarter by stopping the mixing; don't go back to it.
+  The test holds the stack, most of it in the bottom half, and level layers. Chosen, not
+  measured: the density difference, the amount, the jug, the entry speed, creamer's
+  viscosity (1e-5 m²/s, thick liquid creamer),
   the hand's wobble (what breaks the plume's symmetry), the colour ramp and the stopping
-  rules (still for a second, or a minute old). After ten seconds it steps at 30 Hz, and it
+  rules (still for a second, or ninety seconds old). After ten seconds it steps at 30 Hz, and it
   costs about 6 ms a step on a laptop. `.github/test/coffee.mjs` holds the timing, the amount,
   that none is lost, that it sinks and that it comes to rest; the tipping tests pass
   `cream: 0`.

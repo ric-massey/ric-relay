@@ -443,9 +443,9 @@
     // coarse grid over the screen: the velocity is carried along by itself
     // (semi-Lagrangian), pushed by buoyancy (Boussinesq: the creamer's extra
     // weight, g*(drho/rho)*c, along the screen's gravity, so it follows the
-    // phone's tilt), kept from spreading its swirls out by vorticity
-    // confinement (Fedkiw, Stam & Jensen 2001 - the coarse grid smears small
-    // eddies faster than real viscosity would), and made incompressible by a
+    // phone's tilt), slowed by friction - the creamer's and the coffee's
+    // viscosity, and the measured rate turbulence spends a flow's energy at
+    // (see step 4) - and made incompressible by a
     // pressure solve with the free surface at zero pressure and the screen's
     // edges as walls. The creamer is a dye the flow carries (MacCormack, so
     // ribbons stay thin), its total held to what was poured. Once it has
@@ -453,14 +453,13 @@
     const CREAM = opt.cream ?? 0.02;                   // creamer, as a share of the coffee
     const DRHO = 0.04;                                 // how much denser than the coffee (chosen)
     const CREAM_AFTER = 1;                             // seconds after full (Ric)
-    const FADE_AT = 6;                                 // seconds after it goes in that the plume is spent (chosen)
     const cs = Math.max(4, Math.sqrt((W * H) / 10000)); // grid cell, px (about ten thousand cells, so a phone keeps up)
     const nx = Math.ceil(W / cs), ny = Math.ceil(H / cs), NC = nx * ny;
     // a staggered (MAC) grid: u on the cells' left and right faces, v on their
     // tops and bottoms, so the pressure step sees every pattern of motion
     const cu = new Float32Array((nx + 1) * ny), cv = new Float32Array(nx * (ny + 1));
     const cu0 = new Float32Array((nx + 1) * ny), cv0 = new Float32Array(nx * (ny + 1));
-    const ucc = new Float32Array(NC), vcc = new Float32Array(NC), rowMean = new Float32Array(ny);
+    const ucc = new Float32Array(NC), vcc = new Float32Array(NC), rowMean = new Float32Array(ny), nuC = new Float32Array(NC);
     const cp = new Float32Array(NC), cdiv = new Float32Array(NC), cw = new Float32Array(NC);
     const cc = new Float32Array(NC), cc0 = new Float32Array(NC), cc1 = new Float32Array(NC);
     const wet = new Uint8Array(NC);
@@ -570,28 +569,41 @@
         if (!liveV(i, j)) continue;
         cv[j * nx + i] += gb * gy * 0.5 * (cAt(i, j - 1) - rowMean[j - 1] + cAt(i, j) - rowMean[j]) * dt;
       }
-      // 4. vorticity confinement: the coarse grid smears small eddies out
-      // faster than real viscosity would, so the spin it loses is pushed back
-      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-        const k = j * nx + i;
-        cw[k] = 0;
-        if (!wet[k] || i === 0 || j === 0 || i === nx - 1 || j === ny - 1) continue;
-        // curl at the cell centre from the faces around it
-        const vr = 0.5 * (cv[j * nx + i + 1] + cv[(j + 1) * nx + i + 1]), vl = 0.5 * (cv[j * nx + i - 1] + cv[(j + 1) * nx + i - 1]);
-        const ud = 0.5 * (cu[(j + 1) * NU1 + i] + cu[(j + 1) * NU1 + i + 1]), uu = 0.5 * (cu[(j - 1) * NU1 + i] + cu[(j - 1) * NU1 + i + 1]);
-        cw[k] = (vr - vl - ud + uu) / (2 * cs);
+      // 4. Friction. Two kinds, both from measured physics, no chosen rates:
+      //  - Viscosity, the creamer rubbing on the coffee: nu = mu/rho, hot coffee
+      //    ~0.4e-6 m^2/s, cold liquid creamer ~1e-5 (thick: sugar and gums),
+      //    mixed by the log of each (Arrhenius' rule for mixtures). Real, and
+      //    it smooths the thinnest ribbons - but it is far too weak to stop a
+      //    plume: on its own it takes minutes.
+      //  - Turbulence, which is what really brakes a sinking plume in a mug:
+      //    it breaks into smaller and smaller eddies until viscosity can take
+      //    them, and the rate that happens at is measured - energy goes at
+      //    eps = C*u^3/L, C ~ 0.5 (Taylor 1935; Sreenivasan 1984), L the size
+      //    of the biggest swirl, here half the coffee's depth. That cascade is
+      //    3D: a 2D flow does the opposite and piles its energy into big
+      //    swirls that never stop, which is why the slice has to be told. So
+      //    each face loses speed as du/dt = -C*u*|u|/L: fast plumes are braked
+      //    hard, the slow slide of a settling layer hardly at all.
+      const depth = Math.max(cs, H - s.surfaceX(W / 2)), Lt = 0.5 * depth, CE = 0.5;
+      for (let k = 0; k < NC; k++) {
+        const c = cc[k];
+        nuC[k] = Math.exp((1 - c) * Math.log(0.4e-6) + c * Math.log(1e-5)) * PXM * PXM;
       }
-      // (only while the plume is young: kept up, it feeds the swirling for ever
-      // and nothing settles)
-      const EPS = 0.3 * clamp(1 - (cream.age - FADE_AT) / 4, 0, 1);
-      for (let j = 2; j < ny - 2; j++) for (let i = 2; i < nx - 2; i++) {
-        const k = j * nx + i;
-        if (!wet[k] || !cw[k]) continue;
-        const ngx = Math.abs(cw[k + 1]) - Math.abs(cw[k - 1]), ngy = Math.abs(cw[k + nx]) - Math.abs(cw[k - nx]);
-        const len = Math.hypot(ngx, ngy) + 1e-9;
-        const fx = EPS * cs * (ngy / len) * cw[k] * dt, fy = -EPS * cs * (ngx / len) * cw[k] * dt;
-        cu[j * NU1 + i] += 0.5 * fx; cu[j * NU1 + i + 1] += 0.5 * fx;
-        cv[j * nx + i] += 0.5 * fy; cv[(j + 1) * nx + i] += 0.5 * fy;
+      cu0.set(cu); cv0.set(cv);
+      const vis = dt / (cs * cs);
+      for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) {
+        if (!liveU(i, j)) continue;
+        const k = j * NU1 + i, nu = 0.5 * (nuC[j * nx + i - 1] + nuC[j * nx + i]);
+        const l = cu0[k - 1], r = cu0[k + 1], up = j > 0 ? cu0[k - NU1] : 0, dn = j < ny - 1 ? cu0[k + NU1] : 0;
+        let u = cu0[k] + Math.min(0.2, nu * vis) * (l + r + up + dn - 4 * cu0[k]);
+        cu[k] = u / (1 + (CE * Math.abs(u) * dt) / Lt);
+      }
+      for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) {
+        if (!liveV(i, j)) continue;
+        const k = j * nx + i, nu = 0.5 * (nuC[k - nx] + nuC[k]);
+        const l = i > 0 ? cv0[k - 1] : 0, r = i < nx - 1 ? cv0[k + 1] : 0, up = cv0[k - nx], dn = cv0[k + nx];
+        let v = cv0[k] + Math.min(0.2, nu * vis) * (l + r + up + dn - 4 * cv0[k]);
+        cv[k] = v / (1 + (CE * Math.abs(v) * dt) / Lt);
       }
       // 5. incompressible: the pressure that takes the divergence out. The
       // screen's edges are walls; the air above the surface is at zero pressure.
@@ -625,19 +637,6 @@
         const k = j * nx + i;
         cv[k] -= (pAt(i, j) - pAt(i, j - 1)) / cs; vmax = Math.max(vmax, Math.abs(cv[k]));
       }
-      // The 3D losses a 2D slice does not have. In a real mug a falling plume
-      // drags the coffee in front of and behind it along, and that brakes it
-      // within centimetres; a 2D slice has no front and back, so without this
-      // the plume hit the floor, ran up both walls and churned the whole cup
-      // tan. So the flow is damped (chosen): hard while the plume falls (it
-      // still curls - the curls are its weight, not its speed), then lightly,
-      // so the layer it leaves on the floor can slide level. Measured: on a
-      // phone 84% of the creamer ends in the bottom quarter, as thick at one
-      // wall as the other; on a laptop all of it.
-      const DRAG = cream.age < FADE_AT ? 2 : 0.6;
-      const keep = Math.exp(-DRAG * dt);
-      for (let k = 0; k < cu.length; k++) cu[k] *= keep;
-      for (let k = 0; k < cv.length; k++) cv[k] *= keep;
       // 6. carry the creamer (MacCormack: forward, back, correct the error, clamped)
       for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
         const k = j * nx + i;
@@ -673,9 +672,10 @@
       if (sum > 1e-6 && cream.mass > 0) { const f = cream.mass / sum; for (let k = 0; k < NC; k++) cc[k] = Math.min(1, cc[k] * f); }
       // settled: nothing moving faster than a millimetre a second, for a second
       cream.quiet = vmax < 1 / MM && !cream.pouredNow ? cream.quiet + dt : 0;
-      // A minute on, what still moves is a slow drift that changes nothing to
-      // look at, and a phone holds the cup forty minutes: it is let rest (chosen).
-      if (cream.quiet > 1 || cream.age > 60) { cream.settled = true; cu.fill(0); cv.fill(0); }
+      // A minute and a half on (it is usually still by then), whatever still
+      // drifts changes nothing to look at, and a phone holds the cup forty
+      // minutes: it is let rest (chosen).
+      if (cream.quiet > 1 || cream.age > 90) { cream.settled = true; cu.fill(0); cv.fill(0); }
       cream.vmax = vmax; cream.maxc = maxc;
     }
 
