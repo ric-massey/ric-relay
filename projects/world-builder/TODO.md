@@ -6999,8 +6999,13 @@ job:
     carry; who a refugee, prisoner or pilgrim is and where they are going; whether a well's water is
     foul (15.5r); how full a village's store is; who lies in a grave; what a gathering is for and who
     came.
-  This holds 21e ("Everything drawn can be looked at: one inspector") to everything 22 adds: a new
-  thing on the map is not done until a tap on it opens it in the panel.
+  This holds 21e ("Everything drawn can be looked at: one inspector") to everything 22 adds. Ric
+  (2026-11-26): "Almost everything on the map should be clickable." So anything that stays on the
+  map more than a moment answers a tap, and a new thing is not done until it does. Not tapped:
+  passing effects (smoke, rain, snow, night and dawn light; shots, flashes, arrows in flight, a
+  burst — the crater it leaves is tapped), the marks that only texture the ground, and **the land
+  itself** (Ric: "land doesn't need to be clickable"), so a tap on open ground still puts the panel
+  away.
 
 **Budget:** drawing must not slow a frame: a shadow is the same shape drawn once more, offset, no
 blur on the map; footprints and roof tones are worked out once per building and kept in the blocks.
