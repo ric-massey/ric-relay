@@ -22,8 +22,12 @@ edge it covers lets it out at Torricelli's speed — a sip past a corner, a pour
 a dump upside down (about a second). Bubbles and crema ride the coffee's own flow.
 Then (Ric: "do it real gravity … use the real wave formula … 2d should make it easier"):
 real gravity at the screen's physical size, and the waves are the 2D tank's standing waves
-at the dispersion relation's frequencies; a tip is carried to level by those waves. It
-fills in about 3 s on a laptop, 1.5 s on a phone.
+at the dispersion relation's frequencies; a tip is carried to level by those waves.
+Then (Ric: "that splash isn't realistic for the width of the screen. Neither is the waves.
+The thickness … my gf also said it looks more like soda"): a Keurig's 5 mm stream (a laptop
+fills in about 11 s, a phone in 1.5), the puddle meets the walls as a reflected bore a few
+times its depth, a smaller churn, and the coffee look — Beer–Lambert colour, gloss, steam,
+a few bubbles at the rim, no crema band.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 

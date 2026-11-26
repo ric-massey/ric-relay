@@ -11,9 +11,12 @@
    are a 2D tank's standing waves at the gravity-capillary dispersion
    relation's frequencies, the stream obeys continuity, the drain and the
    mouth obey Torricelli, the puddle spreads at a dam-break's speed, and the
-   flow the bubbles ride comes from continuity. Chosen, not derived: the
-   slosh damping ratio, the nozzle, the stream's width, the churn under it,
-   splash speeds, bubbles and crema, and the drain's hole.
+   flow the bubbles ride comes from continuity, a puddle meets a wall as a
+   reflected bore (Rankine-Hugoniot), bubbles gather by the Cheerios effect,
+   the colour is Beer-Lambert and the cooling is Newton's. Chosen, not
+   derived: the slosh damping ratio, the nozzle (a Keurig's 5 mm stream), the
+   churn under it, splash speeds, how many bubbles and how much foam and
+   steam, the drain's hole, and the absorption constants (MU).
 
    How the liquid works:
    - Where the coffee is: a puddle that runs out from the stream to the walls,
@@ -60,20 +63,21 @@
     const base = new Float64Array(N);                  // where the coffee is, before waves
     const eta = new Float64Array(N);                   // the waves
     const f = new Float64Array(N), fs = new Float64Array(N);   // crema
-    const drops = [], bubbles = [], drips = [];
+    const drops = [], bubbles = [], drips = [], steam = [];
     const x0 = W * (0.5 + OFF), i0 = Math.min(N - 1, Math.floor(x0 / dx));
     const xd = W * 0.5;                                // the drain, mid-floor
     const target = FILL * H * W;                       // volume, px²
     // The stream is a sheet (this is 2D), so what it carries is width × speed,
     // and that is the same at every height (continuity): it thins as it falls
-    // and speeds up. The fill time is not chosen — it is what a bar this thick,
-    // falling this fast, pours: Q = w·v, T = (0.75·W·H) / Q. A 1440×900 screen
-    // fills in about 5.5 s, a phone in about 3.5, a 2560×1400 one in about 8.
-    // The nozzle (chosen): 0.6 m/s out of a spout 60 mm above the top of the screen.
+    // and speeds up. The fill time is not chosen — it is what a stream this
+    // wide, falling this fast, pours: Q = w·v, T = (0.75·W·H) / Q.
+    // The nozzle (chosen, a Keurig's): 0.6 m/s out of a spout 60 mm above the
+    // top of the screen, a stream 5 mm wide where it comes into view. Real
+    // sizes on a real-sized screen: a laptop fills in about 11 s; a phone,
+    // being a far smaller cup, in under 2.
     const v0 = Math.sqrt((0.6 * PXM) ** 2 + 2 * g * (60 / MM)); // speed at the top of the screen
-    const wFloor = clamp(W * 0.026, 16, 44);           // width where it meets the empty floor
-    const Q = wFloor * Math.sqrt(v0 * v0 + 2 * g * H); // px²/s
-    const w0 = Q / v0;                                 // width at the top of the screen
+    const w0 = 5 / MM;                                 // width at the top of the screen
+    const Q = w0 * v0;                                 // px²/s
     const FMIN = 1.6;                                  // the crema film it thins to
     const HOLD = opt.hold ?? DRAIN_AFTER;              // seconds full before it drains
     // Tilt: the angle of the phone's gravity across the screen (0 = straight
@@ -110,7 +114,7 @@
     let fresh = true;                                  // no last step to take a velocity from
 
     const s = {
-      W, H, N, dx, x0, i0, w0, h, f, drops, bubbles, drips, g,
+      W, H, N, dx, x0, i0, w0, h, f, drops, bubbles, drips, steam, g, MM,
       t: 0, volume: 0, head: -1, tail: -1, stopAt: -1, hit: false, flowing: false,
       fullAt: -1, draining: false, done: false, hold: HOLD,
       left: x0, right: x0,                             // the puddle's edges until it is wall to wall
@@ -153,12 +157,23 @@
 
     function bubble(x, big) {
       if (bubbles.length > 420) return;
-      bubbles.push({ x, vx: (rand() - 0.5) * 120, r: big ? 2 + rand() * 3.2 : 0.8 + rand() * 1.8, age: 0, life: 1.2 + rand() * 6 });
+      bubbles.push({ x, vx: (rand() - 0.5) * 120, r: big ? 2 + rand() * 2.4 : 0.9 + rand() * 1.4, age: 0, life: 4 + rand() * 8 });
     }
 
-    // coffee running into a wall climbs it by u^2 / 2g, then falls back as a wave
-    function runUp(x, u) {
-      const rise = (u * u) / (2 * g), wide = Math.max(4 * dx, 0.06 * W);
+    // A shallow sheet of coffee, depth d, running into a wall at speed u is
+    // stopped there, and the stopping travels back as a bore whose depth d2
+    // is fixed by mass and momentum (Rankine-Hugoniot for a reflected bore):
+    //   u = (d2 - d) * sqrt(g * (d2 + d) / (2 * d * d2)).
+    // The wall's coffee stands d2 - d higher, and that rise is the wave sent
+    // back - a few times the sheet's depth, not a splash up the wall.
+    function runUp(x, u, d) {
+      d = Math.max(d, 0.5);
+      let lo = d, hi = d + (4 * u * u) / g + 4 * d;
+      for (let it = 0; it < 50; it++) {
+        const d2 = 0.5 * (lo + hi);
+        if ((d2 - d) * Math.sqrt((g * (d2 + d)) / (2 * d * d2)) < u) lo = d2; else hi = d2;
+      }
+      const rise = 0.5 * (lo + hi) - d, wide = Math.max(3 * dx, 4 * d);
       for (const [i, w] of bump(x, wide)) shift[i] += rise * w * (wide / dx) * 1.77;
     }
 
@@ -230,16 +245,18 @@
       if (s.hit && !wallToWall()) {
         const wasL = s.left, wasR = s.right;
         const span = Math.max(1, Math.min(s.right, W) - Math.max(s.left, 0));
-        const front = 2 * Math.sqrt(g * Math.max(s.volume / span, 0.5));
+        const depth = Math.max(s.volume / span, 0.5), front = 2 * Math.sqrt(g * depth);
         s.left = Math.max(-1, s.left - front * dt); s.right = Math.min(W + 1, s.right + front * dt);
-        if (wasL > 0 && s.left <= 0) runUp(0, front);
-        if (wasR < W && s.right >= W) runUp(W, front);
+        // what reaches the wall is the sheet behind the front, moving at about
+        // sqrt(g*d) (Ritter's solution, at the walls' distance)
+        if (wasL > 0 && s.left <= 0) runUp(0, Math.sqrt(g * depth), depth);
+        if (wasR < W && s.right >= W) runUp(W, Math.sqrt(g * depth), depth);
       }
 
       // the stream makes crema where it goes in
       if (s.flowing) {
         const ker = bump(x0, Math.max(dx, widthAt(surfaceAt(i0)) * 0.7));
-        for (const [i, w] of ker) f[i] = Math.min(20, f[i] + 34 * w * dt * ker.length);
+        for (const [i, w] of ker) f[i] = Math.min(FMIN + 6, f[i] + 14 * w * dt * ker.length);
       }
 
       layOut();
@@ -313,6 +330,26 @@
       hPrev.set(h);
     }
 
+    // Steam. Brewed at about 85 C, coffee cools toward the room (Newton:
+    // T = 20 + 65*e^(-t/tau), tau ~ 15 minutes for a cup) and gives off less
+    // and less visible steam, none much below 45 C. Wisps lift slowly off the
+    // surface (2-4 cm/s) and are gone within a few centimetres, widening as
+    // they go - steam is only visible while it is still condensed droplets.
+    s.temp = () => 20 + 65 * Math.exp(-s.t / 900);
+    s.steaming = () => s.volume > 0 && s.hit && clamp((s.temp() - 45) / 30, 0, 1) > 0.02;
+    function stepSteam(dt) {
+      const strength = s.volume > 0 && s.fullAt >= 0 ? clamp((s.temp() - 45) / 30, 0, 1) : 0;
+      if (strength > 0 && steam.length < 40 && rand() < dt * 9 * strength * (W / 800)) {
+        const x = rand() * W;
+        steam.push({ x, y: s.surfaceX(x) - 3, vy: -(0.02 + rand() * 0.02) * PXM, ph: rand() * 6.28, age: 0, life: 1.2 + rand() * 1.2, a: strength });
+      }
+      for (let k = steam.length - 1; k >= 0; k--) {
+        const w = steam[k];
+        w.age += dt; w.y += w.vy * dt; w.x += Math.sin(w.ph + w.age * 2.3) * 10 * dt;
+        if (w.age > w.life) steam.splice(k, 1);
+      }
+    }
+
     const flowAt = (x) => {
       const c = clamp(x / dx - 0.5, 0, N - 1), a = Math.floor(c), b = Math.min(N - 1, a + 1), k = c - a;
       return U[a] * (1 - k) + U[b] * k;
@@ -328,7 +365,7 @@
           // its momentum (2D: area * speed) handed to the surface where it lands
           const ker = bump(d.x, Math.max(dx, d.size * 2));
           for (const [j, w] of ker) push[j] += (Math.PI * d.size * d.size * d.vy * w) / dx;
-          if (rand() < 0.35) bubble(d.x, false);
+          if (rand() < 0.2) bubble(d.x, false);
           drops.splice(k, 1);
         }
       }
@@ -337,7 +374,14 @@
         const i = colOf(b.x);
         // a bubble floats on the coffee and goes where it goes: its own small
         // push from where it was made fades in a moment, then it rides the flow
-        b.vx += (flowAt(b.x) - b.vx) * Math.min(1, dt * 6);
+        // Bubbles on coffee drift to the cup's edge and to each other: the
+        // surface curves up at the wall (and around each bubble), and a floating
+        // bubble climbs the curve - the "Cheerios effect". Its pull falls off
+        // over the capillary length, sqrt(sigma/(rho*g)), about 2.6 mm.
+        const lc = Math.sqrt(SIGMA / g);
+        let pull = 22 * (Math.exp(-(W - b.x) / (3 * lc)) - Math.exp(-b.x / (3 * lc)));
+        for (const o of bubbles) if (o !== b) { const d = o.x - b.x; if (Math.abs(d) < 6 * lc) pull += 6 * Math.sign(d) * Math.exp(-Math.abs(d) / (2 * lc)); }
+        b.vx += (flowAt(b.x) + pull - b.vx) * Math.min(1, dt * 6);
         b.x += b.vx * dt;
         const out = (b.x < 0 && q[0 + 1] < -1) || (b.x > W && q[N - 1] > 1);   // carried out over the rim with the drink
         if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.3; }
@@ -395,7 +439,7 @@
         s.hit = true; s.flowing = true;
         const w = widthAt(H); s.left = x0 - w; s.right = x0 + w;
         splash(40, speedAt(H) * 1.1);
-        for (let k = 0; k < 30; k++) bubble(x0 + (rand() - 0.5) * w * 2.5, rand() < 0.4);
+        for (let k = 0; k < 14; k++) bubble(x0 + (rand() - 0.5) * w * 2.5, rand() < 0.3);
       }
       if (s.stopAt < 0 && s.hit) {
         // stop the nozzle once what is in the air will finish the cup
@@ -421,13 +465,13 @@
         // sheet would dig a crater v^2/g deep - most of a real jet's momentum
         // goes down into the pool with the air it drags, not into the surface.
         // So the surface gets only the churn: a pressure that flickers about
-        // zero, a chosen tenth of the jet's.
+        // zero, a chosen 3% of the jet's.
         if (wallToWall()) {
           const vi = speedAt(ys0), ker = bump(x0, Math.max(dx, widthAt(ys0)));
-          for (const [i, w] of ker) push[i] += (rand() - 0.5) * 0.1 * Q * vi * w * frameDt / dx;
+          for (const [i, w] of ker) push[i] += (rand() - 0.5) * 0.03 * Q * vi * w * frameDt / dx;
         }
         // a foamy stream: it carries air down and the air comes up as bubbles
-        for (let k = 0; k < 2; k++) if (rand() < frameDt * 50) bubble(x0 + (rand() - 0.5) * widthAt(ys0) * 2.4, rand() < 0.35);
+        if (rand() < frameDt * 18) bubble(x0 + (rand() - 0.5) * widthAt(ys0) * 2.4, rand() < 0.3);
       }
 
       // Five seconds full, then it drains out of the floor. Torricelli: what
@@ -461,6 +505,7 @@
       for (let i = 0; i < N; i++) h[i] = clamp(base[i] + eta[i] * clamp(base[i] / 20, 0, 1), 0, H);
       readFlow(frameDt, s.volume - before, drainedNow);
       stepParticles(frameDt);
+      stepSteam(frameDt);
 
       // Tipped so the coffee reaches the top edge - the cup's open mouth - it
       // runs out there, as if somebody were drinking it, or, upside down,
@@ -490,7 +535,7 @@
       }
 
       if (s.fullAt >= 0 && s.volume <= 0 && !s.flowing && !drops.length) {
-        h.fill(0); f.fill(0); bubbles.length = 0; s.done = true;
+        h.fill(0); f.fill(0); bubbles.length = 0; steam.length = 0; s.done = true;
       }
     };
 
@@ -518,6 +563,7 @@
     // a battery.
     s.idle = () => {
       if (s.fullAt < 0 || s.draining || s.flowing || s.sipping || s.poly() || drops.length || drips.length || bubbles.length) return false;
+      // (steam does not count: it is drawn slowly while everything else is still)
       let e = 0, foam = 0;
       for (let i = 0; i < N; i++) { e = Math.max(e, Math.abs(eta[i])); foam = Math.max(foam, f[i] - FMIN); }
       return e < 0.5 && foam < 0.5;
@@ -528,6 +574,28 @@
   }
 
   /* ─── drawing ──────────────────────────────────────────────────────── */
+
+  // What makes it coffee and not cola. Brewed coffee lets red through and
+  // eats blue (Beer-Lambert: each colour falls as e^(-mu*path)), so a thin
+  // layer is amber-brown and a centimetre is all but black - where cola stays
+  // a clear red-brown all the way through. No fizz: drip coffee carries a
+  // little foam where it is poured and a few bubbles that drift to the rim.
+  // It steams. And its surface is a glossy, slightly oily mirror.
+  // MU (per mm) is chosen to land on brewed coffee's browns, not measured.
+  const MU = [0.35, 0.5, 0.65];
+  const LIGHT = [255, 236, 214];
+  const through = (mm, a = 1) => `rgba(${MU.map((m, c) => Math.round(LIGHT[c] * Math.exp(-m * mm))).join(",")},${a})`;
+
+  function bodyFill(ctx, x0, y0, x1, y1, span) {
+    // light comes in at the surface and is used up going down: the colour at
+    // depth z is what is left after the path from the surface
+    const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, through(2.2, 0.9));
+    grad.addColorStop(Math.min(1, 8 / span), through(3.2, 0.92));
+    grad.addColorStop(Math.min(1, 45 / span), through(5.5, 0.94));
+    grad.addColorStop(1, through(10, 0.95));
+    return grad;
+  }
 
   function draw(ctx, s, sy) {
     const { W, H, N, dx } = s;
@@ -565,152 +633,152 @@
       let d0 = Infinity, d1 = -Infinity;
       for (const [x, y] of poly.shape) { const d = x * poly.gx + y * poly.gy; d0 = Math.min(d0, d); d1 = Math.max(d1, d); }
       const span = Math.max(140, d1 - d0);
-      const body = ctx.createLinearGradient(poly.gx * d0, poly.gy * d0, poly.gx * (d0 + span), poly.gy * (d0 + span));
-      body.addColorStop(0, "rgba(128,74,32,0.78)");
-      body.addColorStop(0.06, "rgba(88,47,20,0.8)");
-      body.addColorStop(0.3, "rgba(50,26,11,0.84)");
-      body.addColorStop(1, "rgba(20,10,5,0.88)");
-      ctx.fillStyle = body; ctx.fill();
-      // the surface: the edge of the shape that lies on the level line
-      ctx.beginPath();
+      ctx.fillStyle = bodyFill(ctx, poly.gx * d0, poly.gy * d0, poly.gx * (d0 + span), poly.gy * (d0 + span), span);
+      ctx.fill();
       const on = poly.shape.filter(([x, y]) => Math.abs(x * poly.gx + y * poly.gy - poly.c) < 0.5);
       if (on.length >= 2) {
-        ctx.moveTo(on[0][0], on[0][1]); ctx.lineTo(on[1][0], on[1][1]);
-        ctx.strokeStyle = "rgba(186,128,70,0.86)"; ctx.lineWidth = 4; ctx.stroke();
-        ctx.strokeStyle = "rgba(255,238,214,0.6)"; ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(on[0][0], on[0][1]); ctx.lineTo(on[1][0], on[1][1]);
+        ctx.strokeStyle = "rgba(255,246,232,0.55)"; ctx.lineWidth = 1.2; ctx.stroke();
       }
     } else if (minTop < H - 0.3) {
-      // the body: amber where it is thin, near-black where it is deep
       ctx.beginPath(); surfacePath(); ctx.lineTo(W, H + 2); ctx.lineTo(0, H + 2); ctx.closePath();
       const span = Math.max(140, H - minTop);
-      const body = ctx.createLinearGradient(0, minTop, 0, minTop + span);
-      // see-through enough to read the page under the top of it (Ric: "a bit more see through")
-      body.addColorStop(0, "rgba(128,74,32,0.78)");
-      body.addColorStop(0.06, "rgba(88,47,20,0.8)");
-      body.addColorStop(0.3, "rgba(50,26,11,0.84)");
-      body.addColorStop(1, "rgba(20,10,5,0.88)");
-      ctx.fillStyle = body; ctx.fill();
+      ctx.fillStyle = bodyFill(ctx, 0, minTop, 0, minTop + span, span); ctx.fill();
 
-      // where the stream goes in, the coffee is churned and lighter
-      if (s.flowing || (s.stopAt >= 0 && s.t - s.stopAt < 3)) {
-        const fade = s.flowing ? 1 : Math.max(0, 1 - (s.t - s.stopAt) / 3);
-        const y = s.surfaceX(s.x0) + 10, rad = Math.min(H - y + 40, 40 + s.widthAt(y) * 6);
+      // under the stream, the air it drags down clouds the coffee lighter
+      if (s.flowing || (s.stopAt >= 0 && s.t - s.stopAt < 2)) {
+        const fade = s.flowing ? 1 : Math.max(0, 1 - (s.t - s.stopAt) / 2);
+        const y = s.surfaceX(s.x0) + 6, rad = Math.min(H - y + 20, 14 + s.widthAt(y) * 4);
         if (rad > 4) {
           ctx.save(); ctx.clip();
           const churn = ctx.createRadialGradient(s.x0, y, 0, s.x0, y, rad);
-          churn.addColorStop(0, `rgba(160,98,46,${0.42 * fade})`);
-          churn.addColorStop(1, "rgba(160,98,46,0)");
+          churn.addColorStop(0, `rgba(150,112,80,${0.3 * fade})`);
+          churn.addColorStop(1, "rgba(150,112,80,0)");
           ctx.fillStyle = churn; ctx.fillRect(s.x0 - rad, y - rad, rad * 2, rad * 2);
           ctx.restore();
         }
       }
 
-      // crema: a lighter band under the surface, as thick as the foam is there
+      // the glossy surface: a soft reflection just under the line...
+      ctx.save();
+      ctx.beginPath(); surfacePath(); ctx.lineTo(W, H + 2); ctx.lineTo(0, H + 2); ctx.closePath(); ctx.clip();
       ctx.beginPath(); surfacePath();
-      for (let i = N; i >= 0; i--) {
-        const fi = 0.5 * (s.f[Math.max(0, i - 1)] + s.f[Math.min(N - 1, i)]);
-        ctx.lineTo(i * dx, top[i] + fi);
-      }
-      ctx.closePath();
-      ctx.fillStyle = "rgba(186,128,70,0.86)"; ctx.fill();
-      ctx.beginPath();
-      for (let i = 0; i <= N; i++) {
-        const fi = 0.5 * (s.f[Math.max(0, i - 1)] + s.f[Math.min(N - 1, i)]);
-        i ? ctx.lineTo(i * dx, top[i] + fi) : ctx.moveTo(0, top[0] + fi);
-      }
-      ctx.strokeStyle = "rgba(110,62,26,0.55)"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = "rgba(255,240,224,0.07)"; ctx.lineWidth = 10; ctx.stroke();
+      ctx.strokeStyle = "rgba(255,240,224,0.08)"; ctx.lineWidth = 4; ctx.stroke();
+      ctx.restore();
 
-      // bubbles in the crema
+      // ...a little foam where it was poured (pale, greyish, never a crema band)
+      const foam = (i) => Math.max(0, 0.5 * (s.f[Math.max(0, i - 1)] + s.f[Math.min(N - 1, i)]) - 1.6);
+      let any = false;
+      for (let i = 0; i <= N; i++) if (foam(i) > 0.3) { any = true; break; }
+      if (any) {
+        ctx.beginPath(); surfacePath();
+        for (let i = N; i >= 0; i--) ctx.lineTo(i * dx, top[i] + foam(i));
+        ctx.closePath();
+        ctx.fillStyle = "rgba(168,134,104,0.7)"; ctx.fill();
+      }
+
+      // ...the few bubbles, clear with bright rims, drifting to the edges
       for (const b of s.bubbles) {
-        const y = s.surfaceX(b.x) + b.r * 0.4;
-        const a = Math.min(1, b.age * 6, (b.life - b.age) * 3);
+        const y = s.surfaceX(b.x) + b.r * 0.2;
+        const a = Math.min(1, b.age * 6, (b.life - b.age) * 2);
         ctx.globalAlpha = Math.max(0, a);
         ctx.beginPath(); ctx.arc(b.x, y, b.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(204,150,92,0.6)"; ctx.fill();
-        ctx.strokeStyle = "rgba(236,200,158,0.7)"; ctx.lineWidth = 0.7; ctx.stroke();
-        ctx.beginPath(); ctx.arc(b.x - b.r * 0.35, y - b.r * 0.35, Math.max(0.4, b.r * 0.28), 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,248,235,0.8)"; ctx.fill();
+        ctx.fillStyle = "rgba(120,92,70,0.35)"; ctx.fill();
+        ctx.strokeStyle = "rgba(240,226,206,0.65)"; ctx.lineWidth = 0.7; ctx.stroke();
+        ctx.beginPath(); ctx.arc(b.x - b.r * 0.35, y - b.r * 0.35, Math.max(0.4, b.r * 0.25), 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,252,245,0.85)"; ctx.fill();
       }
       ctx.globalAlpha = 1;
 
-      // the shine along the surface: brighter on a face tipped toward the light
+      // ...and the sharp highlight along the line, brighter on faces tipped to the light
       ctx.lineCap = "round";
-      ctx.beginPath(); surfacePath();
-      ctx.strokeStyle = "rgba(255,226,190,0.13)"; ctx.lineWidth = 4; ctx.stroke();
       const STEP = 6;
       for (let i = 0; i < N; i += STEP) {
         const j = Math.min(N, i + STEP), slope = (top[j] - top[i]) / ((j - i) * dx);
-        const a = clamp(0.42 + slope * 2.2, 0.12, 0.85);
+        const a = clamp(0.4 + slope * 2.4, 0.1, 0.8);
         ctx.beginPath(); ctx.moveTo(i * dx, top[i]);
         for (let k = i + 1; k <= j; k++) ctx.lineTo(k * dx, top[k]);
-        ctx.strokeStyle = `rgba(255,238,214,${a})`; ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.strokeStyle = `rgba(255,248,236,${a})`; ctx.lineWidth = 1.1; ctx.stroke();
       }
     }
 
-    // the stream
+    // steam, above the surface
+    // (tall soft wisps, leaning as they sway; never under the coffee)
+    for (const w of s.steam) {
+      if (w.y > s.surfaceX(w.x) - 2) continue;
+      const k = w.age / w.life, r = 6 + 16 * k, a = 0.06 * w.a * Math.sin(Math.PI * k);
+      if (a <= 0.002) continue;
+      ctx.save();
+      ctx.translate(w.x, w.y); ctx.rotate(0.25 * Math.sin(w.ph + w.age * 2.3)); ctx.scale(1, 2.4);
+      const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      gr.addColorStop(0, `rgba(245,240,235,${a})`); gr.addColorStop(1, "rgba(245,240,235,0)");
+      ctx.fillStyle = gr; ctx.fillRect(-r, -r, 2 * r, 2 * r);
+      ctx.restore();
+    }
+
+    // The stream: a glossy round jet. Across it the light goes through a chord
+    // of coffee D*sqrt(1-u^2) thick, so by Beer-Lambert its edges are amber and
+    // its middle dark - and a bright reflection runs down one side.
     if (s.head > 0) {
       const yTop = Math.max(-4, s.tail), yEnd = Math.min(s.head, s.surfaceX(s.x0) + 2);
       if (yEnd > yTop) {
-        const t = s.t, L = [], R = [], C = [];
+        const t = s.t, C = [];
         const steps = Math.max(2, Math.ceil((yEnd - yTop) / 6));
         for (let k = 0; k <= steps; k++) {
           const y = yTop + ((yEnd - yTop) * k) / steps;
-          // the edges of a foamy pour are ragged and they travel down with it
-          const hw = (s.widthAt(Math.max(0, y)) / 2) * (1 + 0.09 * Math.sin(0.09 * y - 22 * t) + 0.06 * Math.sin(0.031 * y + 9 * t) + 0.04 * Math.sin(0.23 * y - 41 * t));
-          const cx = s.x0 + 1.2 * Math.sin(1.7 * t + y * 0.006) + 0.6 * Math.sin(4.1 * t + y * 0.02);
-          L.push([cx - hw, y]); R.push([cx + hw, y]); C.push([cx, hw, y]);
+          // a smooth, laminar stream: its edges barely ripple
+          const hw = (s.widthAt(Math.max(0, y)) / 2) * (1 + 0.03 * Math.sin(0.09 * y - 22 * t) + 0.02 * Math.sin(0.031 * y + 9 * t));
+          const cx = s.x0 + 0.6 * Math.sin(1.7 * t + y * 0.006);
+          C.push([cx, hw, y]);
         }
-        const shape = (k) => {
+        const U = [-1, -0.92, -0.75, -0.45, 0, 0.45, 0.75, 0.92, 1];
+        for (let k = 0; k < C.length - 1; k++) {
+          const [cx, hw, y] = C[k], [cx2, hw2, y2] = C[k + 1];
+          const D = 2 * hw * s.MM;
+          const grad = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+          for (const u of U) grad.addColorStop((u + 1) / 2, through(D * Math.sqrt(Math.max(0.04, 1 - u * u)), 0.95));
           ctx.beginPath();
-          ctx.moveTo(C[0][0] - C[0][1] * k, C[0][2]);
-          for (const c of C) ctx.lineTo(c[0] - c[1] * k, c[2]);
-          const e = C[C.length - 1];
-          if (s.head < s.surfaceX(s.x0)) ctx.arc(e[0], e[2], e[1] * k, Math.PI, 0, true); // the falling front is round
-          for (let i = C.length - 1; i >= 0; i--) ctx.lineTo(C[i][0] + C[i][1] * k, C[i][2]);
-          ctx.closePath();
-        };
-        // a fresh pour is aerated: tan and foamy outside, coffee showing through in the middle
-        shape(1); ctx.fillStyle = "rgba(178,114,58,0.88)"; ctx.fill();
-        shape(0.5); ctx.fillStyle = "rgba(84,44,18,0.78)"; ctx.fill();
-        for (const side of [-1, 1]) {
-          ctx.beginPath();
-          C.forEach((c, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, c[0] + side * c[1] * 0.9, c[2]));
-          ctx.strokeStyle = "rgba(226,180,126,0.55)"; ctx.lineWidth = 1.4; ctx.stroke();
+          ctx.moveTo(cx - hw, y); ctx.lineTo(cx + hw, y); ctx.lineTo(cx2 + hw2, y2 + 0.6); ctx.lineTo(cx2 - hw2, y2 + 0.6);
+          ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
         }
-        ctx.beginPath();
-        C.forEach((c, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, c[0] - c[1] * 0.45, c[2]));
-        ctx.strokeStyle = "rgba(255,232,204,0.5)"; ctx.lineWidth = 1; ctx.stroke();
-        // foam riding down in it: each fleck left the nozzle at its own moment and
-        // falls like the coffee does, so it streaks more the lower it gets
-        const FLECKS = 120, fall = s.fallTime(H);
+        const last = C[C.length - 1];
+        if (s.head < s.surfaceX(s.x0)) { // the falling front is round
+          ctx.beginPath(); ctx.arc(last[0], last[2], last[1], 0, Math.PI);
+          ctx.fillStyle = through(2 * last[1] * s.MM * 0.7, 0.95); ctx.fill();
+        }
+        for (const [u, a, wdt] of [[-0.45, 0.55, 1.1], [0.62, 0.16, 0.8]]) {
+          ctx.beginPath();
+          C.forEach((c, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, c[0] + u * c[1], c[2]));
+          ctx.strokeStyle = `rgba(255,248,238,${a})`; ctx.lineWidth = wdt; ctx.stroke();
+        }
+        // a little air in it, the way a Keurig spits as it pours
+        const FLECKS = 24, fall = s.fallTime(H);
         for (let j = 0; j < FLECKS; j++) {
           const hash = Math.sin(j * 12.9898) * 43758.5453, a = hash - Math.floor(hash);
           const age = (t + j * 0.61803 * fall) % fall, y = s.fallY(age);
           if (y < yTop || y > yEnd - 2) continue;
-          const half = s.widthAt(y) / 2, x = s.x0 + (a * 2 - 1) * half * 0.8 + 1.2 * Math.sin(1.7 * t + y * 0.006);
-          const rad = 0.7 + ((a * 7.31) % 1) * 1.6, len = rad + s.speedAt(y) * 0.004;
+          const half = s.widthAt(y) / 2, x = s.x0 + (a * 2 - 1) * half * 0.6;
+          const rad = 0.5 + ((a * 7.31) % 1) * 0.9, len = rad + s.speedAt(y) * 0.002;
           ctx.beginPath(); ctx.ellipse(x, y, rad, len, 0, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(238,204,160,0.6)"; ctx.fill();
+          ctx.fillStyle = "rgba(225,205,182,0.3)"; ctx.fill();
         }
         if (s.flowing && s.head >= s.surfaceX(s.x0)) {
-          // the foam collar where it goes in, heaped and churning
           const y = s.surfaceX(s.x0), w = s.widthAt(y);
-          ctx.beginPath(); ctx.ellipse(s.x0, y + 1, w * 1.7, 5 + Math.sin(t * 17) * 1.2, 0, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(214,162,106,0.8)"; ctx.fill();
-          ctx.beginPath(); ctx.ellipse(s.x0 - w * 0.3, y - 0.5, w * 0.8, 2.4, 0, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(244,214,174,0.55)"; ctx.fill();
+          ctx.beginPath(); ctx.ellipse(s.x0, y + 1, w * 1.4, 2.6 + Math.sin(t * 17) * 0.6, 0, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(176,140,110,0.6)"; ctx.fill();
         }
       }
     }
 
-    // drops
+    // drops: tiny, so by Beer-Lambert nearly clear amber-brown
     ctx.lineCap = "round";
     for (const d of s.drops) {
-      const k = d.drip ? 0.02 : 0.012;
+      const k = d.drip ? 0.012 : 0.006;
       ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.vx * k, d.y - d.vy * k);
-      ctx.strokeStyle = "rgba(102,56,23,0.92)"; ctx.lineWidth = d.size * 2; ctx.stroke();
+      ctx.strokeStyle = through(d.size * 2 * s.MM * 2, 0.9); ctx.lineWidth = d.size * 2; ctx.stroke();
       ctx.beginPath(); ctx.arc(d.x - d.size * 0.3, d.y - d.size * 0.3, d.size * 0.35, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,232,205,0.55)"; ctx.fill();
+      ctx.fillStyle = "rgba(255,248,238,0.6)"; ctx.fill();
     }
     ctx.restore();
   }
@@ -783,10 +851,15 @@
       // back from a pause (asleep below, or the tab hidden): that time passed
       // on the drain's clock, but nothing moved in it
       if (dt > 0.25) { sim.skip(dt); dt = 1 / 60; }
+      else if (dt > 1 / 30) { sim.skip(dt - 1 / 30); dt = 1 / 30; }   // a slow frame (steam only): the clock still runs true
       sim.step(dt); paint();
       raf = 0;
       if (sim.done) empty();
-      else if (sim.idle()) wake = root.setTimeout(resume, Math.max(0, (sim.fullAt + sim.hold - sim.t) * 1000) + 30);
+      // Still: only the steam moves, and it gets twelve frames a second rather
+      // than sixty (a phone holds the cup forty minutes); once it has cooled
+      // past steaming, nothing is drawn at all until the phone moves or the
+      // drain is due.
+      else if (sim.idle()) wake = root.setTimeout(resume, sim.steaming() ? 80 : Math.max(0, (sim.fullAt + sim.hold - sim.t) * 1000) + 30);
       else raf = root.requestAnimationFrame(frame);
     };
     root.addEventListener("resize", onResize);

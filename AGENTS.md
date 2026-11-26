@@ -1850,9 +1850,18 @@ migration marked "safe to re-run", and re-running it would have put the original
   where level is, and the waves carry the surface there — there is no spring, and
   `coffee.mjs` holds the slosh period to that formula. **What is still chosen** is listed in
   the file's own comments: the slosh damping ratio (0.02, from the measured range), the
-  nozzle (0.6 m/s, 60 mm up), the stream's width, the churn under the stream, splash speeds,
-  bubbles and crema, and the drain's hole. Real gravity made it quick: about 3 s to fill a
-  laptop screen and 1.5 s a phone. A thinner stream would pour longer — don't slow gravity.
+  nozzle (0.6 m/s, 60 mm up, a 5 mm stream — a Keurig's), the churn under the stream,
+  splash speeds, bubbles, foam and steam, the drain's hole and the colour's absorption
+  constants. A laptop fills in about 11 s; a phone, a far smaller cup, in about 1.5.
+  Don't slow gravity to change that. The first puddle meets each wall as a reflected bore
+  (Rankine–Hugoniot), a few times its own depth — not a splash up the wall.
+  **It has to look like coffee, not soda** (Ric's girlfriend, 2026-11-26: "it looks more like
+  soda"). What does that: colour by Beer–Lambert (thin is amber-brown, a centimetre is nearly
+  black — cola stays clear red-brown), a glossy surface with no crema band, only a little pale
+  foam where it is poured, a few clear bubbles that drift to the rim and to each other (the
+  Cheerios effect), no fizz in the stream, and steam while it is hot (it cools by Newton's law
+  and stops steaming after about fifteen minutes). Don't bring back the amber crema, the tan
+  foamy stream or a cloud of bubbles.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible
