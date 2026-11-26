@@ -1862,6 +1862,24 @@ migration marked "safe to re-run", and re-running it would have put the original
   Cheerios effect), no fizz in the stream, and steam while it is hot (it cools by Newton's law
   and stops steaming after about fifteen minutes). Don't bring back the amber crema, the tan
   foamy stream or a cloud of bubbles.
+  **A second after it is full, a splash of creamer** (Ric, same day: "little bit of creamer
+  about a second after full"): 2% of the coffee, poured by hand left of centre, 4% denser than
+  the coffee, so it sinks and its sinking makes the curls. **Nothing draws a curl**: the inside
+  of the coffee is a small fluid solver (`stepCream` — Stam's stable fluids on a staggered MAC
+  grid of about ten thousand cells, Boussinesq buoyancy along the phone's gravity, vorticity
+  confinement, zero pressure at the surface) carrying the creamer as a dye, its total held to
+  what was poured. Three things that look optional and are not: the grid is **staggered** (a
+  collocated one let the creamer's weight feed a checkerboard the pressure could not see, and
+  it never settled); each row's mean creamer is **taken out of the buoyancy** (a flat layer is
+  pure weight, and an unconverged pressure solve otherwise kept it stirring); and the jet hands
+  the coffee **12 cm/s, not its own 4 m/s** (a thin jet slows within centimetres by dragging
+  coffee along in 3D, which a 2D grid cannot; 4 m/s sent it to the floor and up the walls at
+  once). Chosen, not measured: the density difference, the amount, the jug, the entry speed,
+  the hand's wobble (what breaks the plume's symmetry), the colour ramp and the stopping
+  rules (still for a second, or a minute old). After ten seconds it steps at 30 Hz, and it
+  costs about 6 ms a step on a laptop. `.github/test/coffee.mjs` holds the timing, the amount,
+  that none is lost, that it sinks and that it comes to rest; the tipping tests pass
+  `cream: 0`.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

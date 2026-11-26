@@ -13,7 +13,9 @@
    mouth obey Torricelli, the puddle spreads at a dam-break's speed, and the
    flow the bubbles ride comes from continuity, a puddle meets a wall as a
    reflected bore (Rankine-Hugoniot), bubbles gather by the Cheerios effect,
-   the colour is Beer-Lambert and the cooling is Newton's. Chosen, not
+   the colour is Beer-Lambert and the cooling is Newton's. The creamer that
+   goes in a second after full swirls by Stam's stable fluids with buoyancy
+   (see "Creamer"); its curls are the fluid's, none are drawn. Chosen, not
    derived: the slosh damping ratio, the nozzle (a Keurig's 5 mm stream), the
    churn under it, splash speeds, how many bubbles and how much foam and
    steam, the drain's hole, and the absorption constants (MU).
@@ -425,6 +427,292 @@
       return 0.6 * sum * (W / M);
     }
 
+
+    // ─── Creamer ─────────────────────────────────────────────────────────
+    // A little creamer (Ric, 2026-11-26: "little bit of creamer about a
+    // second after full"), poured by hand from a small jug left of centre a
+    // second after the cup is full: 2% of the coffee, a splash, as in a
+    // mug. Liquid creamer is sugared and thickened and comes out of the
+    // fridge, so it is a few percent denser than hot coffee (chosen: 4%), and
+    // what makes the curls is that difference: it plunges in, sinks, and the
+    // sinking rolls up into billows and mushroom-headed plumes on its own
+    // (Rayleigh-Taylor and Kelvin-Helmholtz; nothing here draws a curl).
+    //
+    // The surface model above knows only how high the coffee is; the inside
+    // needs a fluid of its own. This is Stam's "Stable Fluids" (1999) on a
+    // coarse grid over the screen: the velocity is carried along by itself
+    // (semi-Lagrangian), pushed by buoyancy (Boussinesq: the creamer's extra
+    // weight, g*(drho/rho)*c, along the screen's gravity, so it follows the
+    // phone's tilt), kept from spreading its swirls out by vorticity
+    // confinement (Fedkiw, Stam & Jensen 2001 - the coarse grid smears small
+    // eddies faster than real viscosity would), and made incompressible by a
+    // pressure solve with the free surface at zero pressure and the screen's
+    // edges as walls. The creamer is a dye the flow carries (MacCormack, so
+    // ribbons stay thin), its total held to what was poured. Once it has
+    // settled the solver stops and the cup can sleep.
+    const CREAM = opt.cream ?? 0.02;                   // creamer, as a share of the coffee
+    const DRHO = 0.04;                                 // how much denser than the coffee (chosen)
+    const CREAM_AFTER = 1;                             // seconds after full (Ric)
+    const cs = Math.max(4, Math.sqrt((W * H) / 10000)); // grid cell, px (about ten thousand cells, so a phone keeps up)
+    const nx = Math.ceil(W / cs), ny = Math.ceil(H / cs), NC = nx * ny;
+    // a staggered (MAC) grid: u on the cells' left and right faces, v on their
+    // tops and bottoms, so the pressure step sees every pattern of motion
+    const cu = new Float32Array((nx + 1) * ny), cv = new Float32Array(nx * (ny + 1));
+    const cu0 = new Float32Array((nx + 1) * ny), cv0 = new Float32Array(nx * (ny + 1));
+    const ucc = new Float32Array(NC), vcc = new Float32Array(NC), rowMean = new Float32Array(ny);
+    const cp = new Float32Array(NC), cdiv = new Float32Array(NC), cw = new Float32Array(NC);
+    const cc = new Float32Array(NC), cc0 = new Float32Array(NC), cc1 = new Float32Array(NC);
+    const wet = new Uint8Array(NC);
+    // The jug: 0.3 m/s out of a lip 30 mm above the top of the screen, a
+    // stream 3 mm wide where it comes into view (chosen). Continuity again.
+    const xc = W * 0.36;
+    const cv00 = Math.sqrt((0.3 * PXM) ** 2 + 2 * g * (30 / MM));
+    const cQ = (3 / MM) * cv00;
+    const cSpeed = (y) => Math.sqrt(cv00 * cv00 + 2 * g * Math.max(0, y));
+    const cFall = (tt) => cv00 * tt + 0.5 * g * tt * tt;
+    const cFallTime = (y) => (-cv00 + Math.sqrt(cv00 * cv00 + 2 * g * Math.max(0, y))) / g;
+    const cream = {
+      on: CREAM > 0, start: -1, stop: -1, head: -1, tail: -1, hit: false, poured: 0, mass: 0,
+      want: CREAM * target, x: xc, sway: 0, settled: false, quiet: 0, age: 0, owed: 0,
+      widthAt: (y) => cQ / cSpeed(y), speedAt: cSpeed, fallY: cFall, fallTime: cFallTime,
+      nx, ny, cs, c: cc,
+    };
+    s.cream = cream;
+
+    const sampleG = (F, w, hgt, x, y) => {
+      // bilinear over a w x hgt grid, x and y in its own units (points at integers)
+      x = clamp(x, 0, w - 1); y = clamp(y, 0, hgt - 1);
+      const i = Math.min(w - 2, Math.floor(x)), j = Math.min(hgt - 2, Math.floor(y)), a = x - i, b = y - j, k = j * w + i;
+      return (F[k] * (1 - a) + F[k + 1] * a) * (1 - b) + (F[k + w] * (1 - a) + F[k + w + 1] * a) * b;
+    };
+
+    function creamMask() {
+      const poly = s.poly();
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const x = (i + 0.5) * cs, y = (j + 0.5) * cs;
+        wet[j * nx + i] = poly ? (x * poly.gx + y * poly.gy >= poly.c ? 1 : 0) : (y > s.surfaceX(x) + 0.5 * cs ? 1 : 0);
+      }
+    }
+
+    function stepCream(dt) {
+      creamMask();
+      const a = norm(tilt), gx = Math.sin(a), gy = Math.cos(a), gb = g * DRHO;
+      const NU1 = nx + 1;
+      const W_ = (i, j) => (i >= 0 && j >= 0 && i < nx && j < ny ? wet[j * nx + i] : 0);
+      // which faces carry flow: inside the screen, with coffee on at least one side
+      const liveU = (i, j) => i > 0 && i < nx && (W_(i - 1, j) || W_(i, j));
+      const liveV = (i, j) => j > 0 && j < ny && (W_(i, j - 1) || W_(i, j));
+      // 1. the creamer stream going in: its creamer, and its momentum
+      if (cream.pouredNow > 0) {
+        const ys = s.surfaceX(xc), vi = cSpeed(ys), wid = cQ / vi;
+        // A thin jet going into a deep pool spreads and slows within a few
+        // centimetres - it drags the coffee around it along (3D entrainment, which
+        // a 2D grid does not have) - so what it hands the coffee is creamer moving
+        // down at a chosen 12 cm/s over a few cells, and from there its weight
+        // takes it. Handing over the jet's own 4 m/s sent it to the floor and up
+        // the walls in a fraction of a second.
+        void vi; void wid;
+        const SPREAD = Math.max(1.5 * cs, 6 / MM), V_IN = 0.12 * PXM;
+        // the hand pouring it moves a little (a few millimetres, chosen)
+        cream.sway = (3 / MM) * Math.sin(s.t * 3.1 + 1) + (1.5 / MM) * Math.sin(s.t * 7.3);
+        const xp = cream.x + cream.sway;
+        const ia = clamp(Math.floor((xp - SPREAD) / cs), 0, nx - 1), ib = clamp(Math.floor((xp + SPREAD) / cs), 0, nx - 1);
+        const cells = [];
+        for (let i = ia; i <= ib; i++) {
+          let j = Math.floor(ys / cs); while (j < ny - 1 && !wet[j * nx + i]) j++;
+          const w = Math.exp(-(((i + 0.5) * cs - xp) ** 2) / (SPREAD * SPREAD));
+          for (const jj of [j, j + 1]) if (jj < ny) cells.push([jj, i, w]);
+        }
+        let sw = 0; for (const c of cells) sw += c[2];
+        for (const [jj, i, w] of cells) {
+          const k = jj * nx + i;
+          cc[k] = Math.min(1, cc[k] + (cream.pouredNow * w) / (sw * cs * cs));
+          if (jj + 1 < ny) cv[k + nx] += (V_IN - cv[k + nx]) * Math.min(1, w);
+          // a hand-poured stream wanders and goes in a little unevenly, which is
+          // what breaks the plume's symmetry (chosen: a few cm/s of jitter)
+          cu[jj * (nx + 1) + i + 1] += (rand() - 0.5) * 0.06 * PXM * w;
+        }
+      }
+      // 2. carry the velocity along itself (semi-Lagrangian, on the staggered faces)
+      cu0.set(cu); cv0.set(cv);
+      const uAt = (x, y) => sampleG(cu0, NU1, ny, x / cs, y / cs - 0.5);
+      const vAt = (x, y) => sampleG(cv0, nx, ny + 1, x / cs - 0.5, y / cs);
+      for (let j = 0; j < ny; j++) for (let i = 0; i <= nx; i++) {
+        const k = j * NU1 + i;
+        if (!liveU(i, j)) { cu[k] = 0; continue; }
+        const x = i * cs, y = (j + 0.5) * cs, ux = cu0[k], vy = vAt(x, y);
+        cu[k] = uAt(x - ux * dt, y - vy * dt);
+      }
+      for (let j = 0; j <= ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        if (!liveV(i, j)) { cv[k] = 0; continue; }
+        const x = (i + 0.5) * cs, y = j * cs, ux = uAt(x, y), vy = cv0[k];
+        cv[k] = vAt(x - ux * dt, y - vy * dt);
+      }
+      // 3. buoyancy. A layer of creamer lying flat is only weight: the pressure
+      // holds it up and nothing moves. Only the part that differs along a row
+      // can drive a flow, so each row's mean is taken out before pushing - the
+      // same physics, but the pressure solve (never fully converged) no longer
+      // has to balance a whole column's weight, and a settled cup settles.
+      let maxc = 0;
+      for (let j = 0; j < ny; j++) {
+        let m = 0, n = 0;
+        for (let i = 0; i < nx; i++) { const k = j * nx + i; if (wet[k]) { m += cc[k]; n++; } maxc = Math.max(maxc, cc[k]); }
+        rowMean[j] = n ? m / n : 0;
+      }
+      const cAt = (i, j) => (W_(i, j) ? cc[j * nx + i] : 0);
+      for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) {
+        if (!liveU(i, j)) continue;
+        cu[j * NU1 + i] += gb * gx * 0.5 * (cAt(i - 1, j) + cAt(i, j)) * dt;
+      }
+      for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) {
+        if (!liveV(i, j)) continue;
+        cv[j * nx + i] += gb * gy * 0.5 * (cAt(i, j - 1) - rowMean[j - 1] + cAt(i, j) - rowMean[j]) * dt;
+      }
+      // 4. vorticity confinement: the coarse grid smears small eddies out
+      // faster than real viscosity would, so the spin it loses is pushed back
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        cw[k] = 0;
+        if (!wet[k] || i === 0 || j === 0 || i === nx - 1 || j === ny - 1) continue;
+        // curl at the cell centre from the faces around it
+        const vr = 0.5 * (cv[j * nx + i + 1] + cv[(j + 1) * nx + i + 1]), vl = 0.5 * (cv[j * nx + i - 1] + cv[(j + 1) * nx + i - 1]);
+        const ud = 0.5 * (cu[(j + 1) * NU1 + i] + cu[(j + 1) * NU1 + i + 1]), uu = 0.5 * (cu[(j - 1) * NU1 + i] + cu[(j - 1) * NU1 + i + 1]);
+        cw[k] = (vr - vl - ud + uu) / (2 * cs);
+      }
+      const EPS = 0.3;
+      for (let j = 2; j < ny - 2; j++) for (let i = 2; i < nx - 2; i++) {
+        const k = j * nx + i;
+        if (!wet[k] || !cw[k]) continue;
+        const ngx = Math.abs(cw[k + 1]) - Math.abs(cw[k - 1]), ngy = Math.abs(cw[k + nx]) - Math.abs(cw[k - nx]);
+        const len = Math.hypot(ngx, ngy) + 1e-9;
+        const fx = EPS * cs * (ngy / len) * cw[k] * dt, fy = -EPS * cs * (ngx / len) * cw[k] * dt;
+        cu[j * NU1 + i] += 0.5 * fx; cu[j * NU1 + i + 1] += 0.5 * fx;
+        cv[j * nx + i] += 0.5 * fy; cv[(j + 1) * nx + i] += 0.5 * fy;
+      }
+      // 5. incompressible: the pressure that takes the divergence out. The
+      // screen's edges are walls; the air above the surface is at zero pressure.
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        cdiv[k] = wet[k] ? (cu[j * NU1 + i + 1] - cu[j * NU1 + i] + cv[(j + 1) * nx + i] - cv[k]) / cs : 0;
+        if (!wet[k]) cp[k] = 0;
+      }
+      const OMEGA = 1.7;                              // over-relaxed Gauss-Seidel
+      for (let it = 0; it < 30; it++) {
+        for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+          const k = j * nx + i;
+          if (!wet[k]) continue;
+          let sum = 0, n = 0;
+          if (i > 0) { sum += cp[k - 1]; n++; }
+          if (i < nx - 1) { sum += cp[k + 1]; n++; }
+          if (j > 0) { sum += cp[k - nx]; n++; }
+          if (j < ny - 1) { sum += cp[k + nx]; n++; }
+          cp[k] += OMEGA * ((sum - cdiv[k] * cs * cs) / n - cp[k]);
+        }
+      }
+      const pAt = (i, j) => (W_(i, j) ? cp[j * nx + i] : 0);
+      let vmax = 0;
+      for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) {
+        if (!liveU(i, j)) continue;
+        const k = j * NU1 + i;
+        cu[k] -= (pAt(i, j) - pAt(i - 1, j)) / cs; vmax = Math.max(vmax, Math.abs(cu[k]));
+      }
+      for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) {
+        if (!liveV(i, j)) continue;
+        const k = j * nx + i;
+        cv[k] -= (pAt(i, j) - pAt(i, j - 1)) / cs; vmax = Math.max(vmax, Math.abs(cv[k]));
+      }
+      // 6. carry the creamer (MacCormack: forward, back, correct the error, clamped)
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        ucc[k] = 0.5 * (cu[j * NU1 + i] + cu[j * NU1 + i + 1]) * dt / cs;
+        vcc[k] = 0.5 * (cv[j * nx + i] + cv[(j + 1) * nx + i]) * dt / cs;
+      }
+      cc0.set(cc);
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        cc1[k] = wet[k] ? sampleG(cc0, nx, ny, i - ucc[k], j - vcc[k]) : cc0[k];
+      }
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i;
+        if (!wet[k]) { cc[k] = cc1[k]; continue; }
+        const back = sampleG(cc1, nx, ny, i + ucc[k], j + vcc[k]);
+        const x = clamp(i - ucc[k], 0, nx - 1), y = clamp(j - vcc[k], 0, ny - 1);
+        const i0 = Math.min(nx - 2, Math.floor(x)), j0 = Math.min(ny - 2, Math.floor(y)), q0 = j0 * nx + i0;
+        const lo = Math.min(cc0[q0], cc0[q0 + 1], cc0[q0 + nx], cc0[q0 + nx + 1]);
+        const hi = Math.max(cc0[q0], cc0[q0 + 1], cc0[q0 + nx], cc0[q0 + nx + 1]);
+        cc[k] = clamp(cc1[k] + 0.5 * (cc0[k] - back), lo, hi);
+      }
+      // creamer left above a falling surface settles into the coffee below it
+      for (let i = 0; i < nx; i++) for (let j = 0; j < ny - 1; j++) {
+        const k = j * nx + i;
+        if (!wet[k] && cc[k] > 0) { cc[k + nx] = Math.min(1, cc[k + nx] + cc[k]); cc[k] = 0; }
+      }
+      for (let k = (ny - 1) * nx; k < NC; k++) if (!wet[k]) cc[k] = 0;
+      // 7. hold the creamer's total to what is in the cup (the advection is not
+      // exactly conservative; this puts back what rounding lost)
+      let sum = 0;
+      for (let k = 0; k < NC; k++) sum += cc[k];
+      sum *= cs * cs;
+      if (sum > 1e-6 && cream.mass > 0) { const f = cream.mass / sum; for (let k = 0; k < NC; k++) cc[k] = Math.min(1, cc[k] * f); }
+      // settled: nothing moving faster than a millimetre a second, for a second
+      cream.quiet = vmax < 1 / MM && !cream.pouredNow ? cream.quiet + dt : 0;
+      // A minute on, what still moves is a slow drift that changes nothing to
+      // look at, and a phone holds the cup forty minutes: it is let rest (chosen).
+      if (cream.quiet > 1 || cream.age > 60) { cream.settled = true; cu.fill(0); cv.fill(0); }
+      cream.vmax = vmax; cream.maxc = maxc;
+    }
+
+    // the creamer's stream, and stepping the inside of the coffee
+    function creamStep(frameDt, outShare) {
+      if (!cream.on) return;
+      const t = s.t;
+      cream.pouredNow = 0;
+      if (cream.start < 0 && s.fullAt >= 0 && t - s.fullAt >= CREAM_AFTER && !s.draining) cream.start = t;
+      if (cream.start < 0) return;
+      cream.head = cFall(t - cream.start);
+      const ys = s.surfaceX(xc);
+      if (!cream.hit && cream.head >= ys) {
+        cream.hit = true;
+        for (let k = 0; k < 6; k++) {
+          const side = rand() < 0.5 ? -1 : 1, sc = cSpeed(ys);
+          drops.push({ x: xc + side * rand() * 2, y: ys - 1, vx: side * (0.02 + rand() * 0.06) * sc, vy: -(0.04 + rand() * 0.08) * sc, size: 0.8 + rand() * 1.2, cream: true });
+        }
+      }
+      if (cream.stop < 0 && cream.poured + cQ * cFallTime(ys) >= cream.want) cream.stop = t;
+      cream.tail = cream.stop >= 0 ? cFall(t - cream.stop) : -1;
+      if (cream.hit) {
+        // what reaches the surface this frame: the stream that is no longer in the air
+        const ft = cFallTime(ys), end = cream.stop >= 0 ? Math.min(t, cream.stop + ft) : t;
+        const reached = clamp(cQ * (end - cream.start - ft), 0, cream.want);
+        const now = Math.max(0, reached - cream.poured);
+        cream.poured += now; cream.pouredNow = now; cream.mass += now;
+        s.volume += now;
+      }
+      if (outShare > 0) cream.mass *= 1 - outShare;
+      cream.age = cream.hit ? t - cream.start : 0;
+      if (cream.hit && !cream.settled) {
+        // once the pour is in and the plume has landed (ten seconds), the slow
+        // swirling that is left is stepped half as often, in steps twice as long
+        cream.owed += frameDt;
+        if (cream.age < 10 || cream.pouredNow > 0 || cream.owed >= 1 / 30 - 1e-9) {
+          const n = Math.max(1, Math.ceil(cream.owed / (1 / 30)));
+          for (let k = 0; k < n; k++) stepCream(cream.owed / n);
+          cream.owed = 0;
+        }
+      }
+    }
+    // a cup already creamed and stirred (reduced motion, or a new width after the creamer)
+    function creamMixed() {
+      creamMask();
+      let n = 0; for (let k = 0; k < NC; k++) n += wet[k];
+      const c = n ? cream.want / (n * cs * cs) : 0;
+      for (let k = 0; k < NC; k++) cc[k] = wet[k] ? c : 0;
+      Object.assign(cream, { start: s.t, stop: s.t, hit: true, poured: cream.want, mass: cream.want, settled: true, head: -1, tail: -1 });
+    }
+    s.creamed = () => cream.on && cream.hit;
+    s.creamActive = () => cream.on && ((cream.start >= 0 && !cream.settled) || (s.fullAt >= 0 && cream.start < 0 && !s.draining));
+
     s.step = function (frameDt) {
       if (s.done) return;
       frameDt = Math.min(frameDt, 1 / 30);
@@ -534,14 +822,19 @@
         if (s.outflow > 1) s.sipping = true;
       }
 
+      // the creamer goes in a second after full, and what left the cup this
+      // frame (the drain, the mouth) took its share of the creamer with it
+      const gone = drainedNow + lastOut;
+      creamStep(frameDt, gone > 0 ? gone / (gone + s.volume) : 0);
+
       if (s.fullAt >= 0 && s.volume <= 0 && !s.flowing && !drops.length) {
-        h.fill(0); f.fill(0); bubbles.length = 0; steam.length = 0; s.done = true;
+        cc.fill(0); h.fill(0); f.fill(0); bubbles.length = 0; steam.length = 0; s.done = true;
       }
     };
 
     // the finished cup, for reduced motion and for a window that changed width
     // (the drain still comes five seconds later)
-    s.still = function (fraction = FILL) {
+    s.still = function (fraction = FILL, creamed = false) {
       s.volume = fraction * H * W; s.left = -1; s.right = W + 1;
       eta.fill(0); am.fill(0); av.fill(0); push.fill(0); shift.fill(0); f.fill(FMIN);
       drops.length = drips.length = 0; bubbles.length = 0;
@@ -549,6 +842,7 @@
       s.fullAt = s.t; s.draining = false; s.done = false; drainDip = 0;
       layOut(); for (let i = 0; i < N; i++) h[i] = base[i];
       fresh = true;
+      if (creamed && cream.on) creamMixed();
     };
 
     // any angle, upside down included; it swings the short way round
@@ -562,7 +856,7 @@
     // minutes, and a canvas redrawn sixty times a second for forty minutes is
     // a battery.
     s.idle = () => {
-      if (s.fullAt < 0 || s.draining || s.flowing || s.sipping || s.poly() || drops.length || drips.length || bubbles.length) return false;
+      if (s.fullAt < 0 || s.draining || s.flowing || s.sipping || s.poly() || drops.length || drips.length || bubbles.length || s.creamActive()) return false;
       // (steam does not count: it is drawn slowly while everything else is still)
       let e = 0, foam = 0;
       for (let i = 0; i < N; i++) { e = Math.max(e, Math.abs(eta[i])); foam = Math.max(foam, f[i] - FMIN); }
@@ -595,6 +889,68 @@
     grad.addColorStop(Math.min(1, 45 / span), through(5.5, 0.94));
     grad.addColorStop(1, through(10, 0.95));
     return grad;
+  }
+
+  // Creamer in coffee. Creamer is milky - its fat droplets scatter light back
+  // where coffee only swallows it - so a wisp of it shows as a pale curl in
+  // the black, and the more there is the lighter and more opaque the coffee
+  // goes, through caramel to latte to cream. The ramp is chosen to look like
+  // coffee with creamer, not measured; indexed by sqrt(c) so thin wisps get
+  // most of its steps.
+  const CREAM_RAMP = [
+    [0, 92, 56, 32, 0], [0.004, 92, 58, 34, 0.25], [0.015, 112, 74, 46, 0.6], [0.04, 138, 96, 62, 0.85],
+    [0.1, 166, 126, 90, 0.94], [0.3, 198, 166, 130, 0.98], [1, 232, 218, 198, 1],
+  ];
+  const CREAM_LUT = new Uint8ClampedArray(256 * 4);
+  for (let n = 0; n < 256; n++) {
+    const c = (n / 255) ** 2;
+    let k = 0; while (k < CREAM_RAMP.length - 2 && c > CREAM_RAMP[k + 1][0]) k++;
+    const A = CREAM_RAMP[k], B = CREAM_RAMP[k + 1], u = clamp((c - A[0]) / (B[0] - A[0]), 0, 1);
+    for (let ch = 0; ch < 4; ch++) CREAM_LUT[n * 4 + ch] = (A[ch + 1] + (B[ch + 1] - A[ch + 1]) * u) * (ch === 3 ? 255 : 1);
+  }
+  function drawCream(ctx, s) {
+    const cr = s.cream;
+    if (!cr || !cr.hit || !root.document) return;
+    if (!cr.canvas) {
+      cr.canvas = root.document.createElement("canvas"); cr.canvas.width = cr.nx; cr.canvas.height = cr.ny;
+      cr.cx = cr.canvas.getContext("2d"); cr.img = cr.cx.createImageData(cr.nx, cr.ny);
+    }
+    const d = cr.img.data, c = cr.c;
+    for (let k = 0; k < c.length; k++) {
+      const n = Math.round(Math.sqrt(c[k]) * 255) * 4, o = k * 4;
+      d[o] = CREAM_LUT[n]; d[o + 1] = CREAM_LUT[n + 1]; d[o + 2] = CREAM_LUT[n + 2]; d[o + 3] = CREAM_LUT[n + 3];
+    }
+    cr.cx.putImageData(cr.img, 0, 0);
+    ctx.save(); ctx.clip();
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    // softened by most of a cell, so the grid it was worked out on never shows as steps
+    if ("filter" in ctx) ctx.filter = `blur(${(0.7 * cr.cs).toFixed(1)}px)`;
+    ctx.drawImage(cr.canvas, 0, 0, cr.nx, cr.ny, 0, 0, cr.nx * cr.cs, cr.ny * cr.cs);
+    ctx.restore();
+  }
+  function drawCreamStream(ctx, s) {
+    const cr = s.cream;
+    if (!cr || cr.start < 0 || cr.head <= 0) return;
+    const yTop = Math.max(-4, cr.tail), yEnd = Math.min(cr.head, s.surfaceX(cr.x) + 2);
+    if (yEnd <= yTop) return;
+    const steps = Math.max(2, Math.ceil((yEnd - yTop) / 6)), C = [];
+    for (let k = 0; k <= steps; k++) {
+      const y = yTop + ((yEnd - yTop) * k) / steps;
+      C.push([cr.x + cr.sway + 0.8 * Math.sin(2.3 * s.t + y * 0.008), cr.widthAt(Math.max(0, y)) / 2, y]);
+    }
+    // opaque and milky: bright down the middle, a little shaded at the edges
+    for (let k = 0; k < C.length - 1; k++) {
+      const [cx, hw, y] = C[k], [cx2, hw2, y2] = C[k + 1];
+      const grad = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+      grad.addColorStop(0, "rgba(214,198,176,0.96)"); grad.addColorStop(0.45, "rgba(250,246,238,0.98)"); grad.addColorStop(1, "rgba(226,212,192,0.96)");
+      ctx.beginPath();
+      ctx.moveTo(cx - hw, y); ctx.lineTo(cx + hw, y); ctx.lineTo(cx2 + hw2, y2 + 0.6); ctx.lineTo(cx2 - hw2, y2 + 0.6);
+      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    }
+    const last = C[C.length - 1];
+    if (cr.head < s.surfaceX(cr.x)) { ctx.beginPath(); ctx.arc(last[0], last[2], last[1], 0, Math.PI); ctx.fillStyle = "rgba(244,238,226,0.98)"; ctx.fill(); }
+    ctx.beginPath(); C.forEach((p, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, p[0] - 0.4 * p[1], p[2]));
+    ctx.strokeStyle = "rgba(255,255,252,0.7)"; ctx.lineWidth = 0.8; ctx.stroke();
   }
 
   function draw(ctx, s, sy) {
@@ -635,6 +991,7 @@
       const span = Math.max(140, d1 - d0);
       ctx.fillStyle = bodyFill(ctx, poly.gx * d0, poly.gy * d0, poly.gx * (d0 + span), poly.gy * (d0 + span), span);
       ctx.fill();
+      drawCream(ctx, s);
       const on = poly.shape.filter(([x, y]) => Math.abs(x * poly.gx + y * poly.gy - poly.c) < 0.5);
       if (on.length >= 2) {
         ctx.beginPath(); ctx.moveTo(on[0][0], on[0][1]); ctx.lineTo(on[1][0], on[1][1]);
@@ -644,6 +1001,7 @@
       ctx.beginPath(); surfacePath(); ctx.lineTo(W, H + 2); ctx.lineTo(0, H + 2); ctx.closePath();
       const span = Math.max(140, H - minTop);
       ctx.fillStyle = bodyFill(ctx, 0, minTop, 0, minTop + span, span); ctx.fill();
+      drawCream(ctx, s);
 
       // under the stream, the air it drags down clouds the coffee lighter
       if (s.flowing || (s.stopAt >= 0 && s.t - s.stopAt < 2)) {
@@ -771,12 +1129,14 @@
       }
     }
 
-    // drops: tiny, so by Beer-Lambert nearly clear amber-brown
+    drawCreamStream(ctx, s);
+
+    // drops: tiny, so by Beer-Lambert nearly clear amber-brown (creamer's are milky)
     ctx.lineCap = "round";
     for (const d of s.drops) {
       const k = d.drip ? 0.012 : 0.006;
       ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.vx * k, d.y - d.vy * k);
-      ctx.strokeStyle = through(d.size * 2 * s.MM * 2, 0.9); ctx.lineWidth = d.size * 2; ctx.stroke();
+      ctx.strokeStyle = d.cream ? "rgba(240,232,218,0.95)" : through(d.size * 2 * s.MM * 2, 0.9); ctx.lineWidth = d.size * 2; ctx.stroke();
       ctx.beginPath(); ctx.arc(d.x - d.size * 0.3, d.y - d.size * 0.3, d.size * 0.35, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(255,248,238,0.6)"; ctx.fill();
     }
@@ -814,11 +1174,11 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!sim || Math.abs(w - W) > 1) {
         // a new width is a new cup, already poured, at the level it had reached
-        const level = sim ? sim.level() : null;
+        const level = sim ? sim.level() : null, creamed = sim ? sim.creamed() : false;
         W = w; H = hgt; sim = createSim(W, H, { hold, mm });
         sim.setTilt(angle);
         // (before the stream has landed there is nothing to keep: it just starts again)
-        if (level !== null && level > 0.01) sim.still(level);
+        if (level !== null && level > 0.01) sim.still(level, creamed);
       }
       paint();
     };
@@ -868,7 +1228,7 @@
     cup = { canvas };
     fit();
     // reduced motion: the full cup, no pour and no drain to watch — just gone after five seconds
-    if (still) { sim.still(); paint(); root.setTimeout(empty, hold * 1000); return true; }
+    if (still) { sim.still(FILL, true); paint(); root.setTimeout(empty, hold * 1000); return true; }
     raf = root.requestAnimationFrame(frame);
     return true;
   }

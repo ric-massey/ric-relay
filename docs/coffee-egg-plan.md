@@ -28,6 +28,13 @@ The thickness … my gf also said it looks more like soda"): a Keurig's 5 mm str
 fills in about 11 s, a phone in 1.5), the puddle meets the walls as a reflected bore a few
 times its depth, a smaller churn, and the coffee look — Beer–Lambert colour, gloss, steam,
 a few bubbles at the rim, no crema band.
+Then creamer (Ric: "what about if we were to add creamer and get the swirls", then "little
+bit of creamer about a second after full"): a second after it is full a splash of creamer
+(2% of the coffee) is poured in by hand, left of centre. It is a few percent denser than
+the coffee, so it sinks, and the sinking rolls up into mushroom-headed plumes and curls on
+its own — a small 2D fluid solver for the inside of the coffee (Stam's stable fluids on a
+staggered grid, buoyancy, vorticity confinement, a free surface). It goes from pale curls
+in black coffee to a slow, settled cloud, then the solver stops so a phone can sleep.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 
@@ -44,8 +51,8 @@ tab (`window.RELAY_CATS?.active()`, the `sessionStorage` flag `effects.js` alrea
 keeps; the front door already sends `cats` with every command it hands its hidden
 terminal).
 
-**No creamer.** It was in the first version of the idea and Ric dropped it. Don't add
-it back without asking.
+**Creamer:** dropped from the first version of the idea, then asked for again the same
+day (above). Milk "making it a cup" was the worry; it is a splash, poured in, not a mug.
 
 ## A. Mochi is awake: he knocks the mug over
 
