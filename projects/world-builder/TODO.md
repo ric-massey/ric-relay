@@ -6984,13 +6984,23 @@ job:
   arrows in flight, black-powder smoke over a volley, a cannon firing, a shell bursting, a bomb
   falling, machine-gun fire. In the middle zoom a unit is a block with a mark for what it is, as
   military maps mark infantry, horse and guns.
-- **22f. People's lives, seen** (proposed 2026-11-26, for Ric to choose from; not drawn yet): who is
-  hungry, sick or wounded, at a glance close in; what somebody carries (water, wood, grain, goods);
-  the dead and where they lie (a household buries its dead, 15.11q, but there are no graves);
-  gatherings — a feast, a wedding, a funeral, worship, a market day, a food riot; work as it is done —
-  ploughing with oxen, harvest, felling trees and the stumps left, a house going up; people moving —
-  refugees, prisoners led, pilgrims, a family moving house (the moves trail exists); foul water
-  (15.5r) and a village's store, full or empty.
+- **22f. People's lives: drawn a little, told on a tap.** Ric (2026-11-26): "Color for people should
+  be on faction. We should not change that. But a lot of the other stuff needs to be a thing you can
+  click to see." So a person is always their people's colour, whatever their state — hunger,
+  sickness, a wound or a load never recolours them (the layers in the bar are different: there the
+  visitor asks for another colour, and they stay as 21d made them). The map draws only what has a
+  shape of its own; the rest is the panel's, on a tap:
+  - **Drawn, and answers a tap:** graves and burial grounds (a household buries its dead, 15.11q,
+    and nothing marks it); a gathering as a crowd round a place — feast, wedding, funeral, worship,
+    market day, a food riot; work with a shape — oxen at the plough, cut fields, stumps where trees
+    were felled, a house going up; the camps, siege works, caravans, craters, mines in the ground,
+    ditches, mines and quarries of 22b; the animals and vehicles of 22d once they have places.
+  - **Told on a tap, not drawn:** whether somebody is hungry, sick or wounded and how badly; what they
+    carry; who a refugee, prisoner or pilgrim is and where they are going; whether a well's water is
+    foul (15.5r); how full a village's store is; who lies in a grave; what a gathering is for and who
+    came.
+  This holds 21e ("Everything drawn can be looked at: one inspector") to everything 22 adds: a new
+  thing on the map is not done until a tap on it opens it in the panel.
 
 **Budget:** drawing must not slow a frame: a shadow is the same shape drawn once more, offset, no
 blur on the map; footprints and roof tones are worked out once per building and kept in the blocks.
