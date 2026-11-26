@@ -60,6 +60,9 @@ const SUITES = [
      three hand-kept lists, held to each other here; and the phone and
      front-door fixes of 2026-11-10 stay in. */
   ['the terminal shell', ['.github/test/terminal-shell.mjs']],
+  /* The `coffee` egg: fills to three quarters in the time its stream pours,
+     drains five seconds later; the terminal and the front door both pour it. */
+  ['the coffee egg', ['.github/test/coffee.mjs']],
   /* The Physics Sandbox was World Builder's physics half until 2026-11-25. Its
      settings, presets and conservation checks are seconds, so they run here. */
   ['physics-sandbox settings, presets and conservation', ['projects/physics-sandbox/test/physics.test.mjs']],

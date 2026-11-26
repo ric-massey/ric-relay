@@ -70,7 +70,7 @@ captures-data.js            the photo dates captures.html draws (made off-repo f
 projects/photos/            upload-photos.py — the photographs' way into R2, and its README
 systems.html, updates.html  redirects from old URLs — keep them, links out there still use them
 robots.txt, sitemap.xml     what crawlers may read, and the map — sitemap.xml is generated (assets/build-sitemap.mjs)
-assets/                     sitewide files at the top: owner.js, site-gate.js, training-plan.json
+assets/                     sitewide files at the top: owner.js, site-gate.js, training-plan.json, coffee.js (the `coffee` egg)
   cat/                      Mochi's sprite frames
   climbing/ training/ entertainment/   one room's own scripts, styles and generated JSON
   games/ posters/ backdrops/           art
@@ -1812,6 +1812,16 @@ migration marked "safe to re-run", and re-running it would have put the original
 
 - Match the existing voice: playful, terminal/hacker flavor, easter eggs welcome
   (e.g. hidden terminal commands in `terminal.html`: `orrin`, `sudo`, `coffee`, `exit`).
+- **`coffee` fills the screen with coffee** (Ric, 2026-11-26). `assets/coffee.js` is
+  fetched the first time it is typed rather than living in `effects.js`, because it is a
+  one-off on the page it was typed on, not a mode that follows you between rooms, and
+  nobody else should download the liquid. Embedded, the terminal posts `{ term: "coffee" }`
+  and the front door pours it. It drains five seconds after it is full (Ric, same day: "make
+  it drain after 5 sec"), and **the fill time is never set by hand**: it is the volume over
+  what the stream carries, width × speed (Ric: "it has to seem like it would fill it in the
+  right amount of time do real math"). Make the stream thicker and it fills faster. The plan,
+  including the Mochi version still to build, is `docs/coffee-egg-plan.md`;
+  `.github/test/coffee.mjs` holds the level, the volume, the fill time and the drain.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

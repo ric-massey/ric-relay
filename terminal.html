@@ -435,6 +435,13 @@ type Sydney's cat's name for a surprise!</div>
     const goTo = (href) => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL(href, location.href).href }) : (location.href = href);
     const reloadPage = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL("terminal.html", location.href).href }) : location.reload();
     const goBack = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "back" }) : history.back();
+    // `coffee` pours one (assets/coffee.js, fetched the first time it is typed)
+    const brewCoffee = () => {
+      if (window.RELAY_COFFEE) return window.RELAY_COFFEE.pour();
+      const js = document.createElement("script");
+      js.src = "assets/coffee.js?v=1"; js.onload = () => window.RELAY_COFFEE?.pour();
+      document.head.appendChild(js);
+    };
   </script>
   <script src="effects.js"></script>
   <script src="projects/climbing/latest-climb.js?v=2"></script>
@@ -1133,7 +1140,13 @@ type Sydney's cat's name for a surprise!</div>
         setTimeout(() => goTo("visitors/"), 450);
         return "tapping the wire ...\nVISITORS: who came, from where, and what they read. owner only.";
       },
-      coffee: () => "brewing... ☕ dispensed. carry on.",
+      coffee: () => {
+        // The screen is the cup (assets/coffee.js, docs/coffee-egg-plan.md).
+        // On the front door the cup is the front door, so it is poured there.
+        if (window.TERMINAL_EMBED) window.TERMINAL_EMBED.send({ term: "coffee" });
+        else brewCoffee();
+        return "brewing... ☕ dispensed. carry on.";
+      },
       exit: () => "there is no exit. there is only the terminal.",
       lsd: () => {
         window.RELAY_EFFECTS?.set("lsd");
