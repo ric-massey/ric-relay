@@ -4931,6 +4931,93 @@ page now watches it equal to the world unwatched.
   problems are worked out once an hour of the world's time.
 - **A bug found on the way**: the Beliefs view stopped every frame — the keeper's `tint` read the
   world through a name it did not have in scope.
+- **A pass over the finished page** (2026-11-25, Ric: "Can you look at the ui of the people sim",
+  then "Yep" to the cheap fixes):
+  - The whole-world view lifts the land clear of the legend when there is room above it.
+    `fit()` measures the legend, and it runs again when the legend is drawn or folded, as long
+    as the visitor has not moved the map.
+  - Below 1,180 px the bar drops "since day 1" along with the time of day, so it reads
+    "down 22" instead of cutting off.
+  - A paused world no longer says "Running at …×".
+  - The choices that turn a part of the engine back said "(as before)", which means something
+    only to the engine's history. They say "(simpler)" now. The two that are not simpler
+    versions of anything (Early farmers; no foragers) say nothing. The Model tab's note says the
+    same thing in a visitor's words.
+  - The Inspector's "wants more put by" now reads "wants more saved up for the household".
+  - Customise used to leave half the screen empty, for two reasons. A group panel was
+    `inline-block`, and Chrome would not move one into the second column, so a tab of two groups
+    stacked them both on the left. They are block now. A tab that holds one group now splits that
+    group's settings into two columns, through `::details-content`; a browser without it shows
+    one full-width column.
+  - Left for Ric:
+    - the map filling the stage, which would crop the land;
+    - event tags and labels piling up on the map;
+    - the order of "The story so far" and News, which is neither newest-first nor by day;
+    - the Overview opening on four "nothing yet" sections.
+- **A quieter page** (2026-11-25, Ric: "Fewer borders and boxes. Use spacing to organise things
+  so the whole screen feels less busy", with better proportions, a clearer hierarchy, a sharper
+  map and more composed side panels). The CSS is one block at the end of the `<style>`, which
+  only overrides what is above it, so the whole change is in one place. Its rule: a line or a
+  box is for a control, a thing that must be seen, or something going wrong. Groups are made by
+  space and a heading, not a frame.
+  - **Setup.** Starting points have no frames, and the chosen one is lit with an accent edge.
+    Groups are a heading over a hairline. Customise's six tabs are words, like the three layers.
+    The ⓘ is a quiet letter until hovered. Every select and box is 44 px.
+  - **The essentials.** At most two columns, with a label column at least 9.5 rem, so no choice
+    is cut off. On a phone the label goes above its control.
+  - **The bar.** Its buttons are unframed; the pressed speed is lit. Only the problems button
+    keeps a frame.
+  - **Side panels.** More padding, larger headings, and no rules between items. Folds open with
+    + and −. The "because" under an event is quieter than the event.
+  - **A person.** The panel opens on the name, one dim line of who they are, what they are doing
+    in a larger serif (red when hungry or sick), what presses on them, then four figures: mood,
+    food carried, coins (goods without money) and household.
+  - **The map.**
+    - The ground is taken a third of the way to grey (`LOOKS.map.grey`) and dimmed a little
+      more, so the peoples' colours and the people are the strongest colours on it.
+    - Each people's land has a line of its own colour where it meets land nobody holds
+      (`bordersOf`'s `outer`), one to three pixels at any zoom.
+    - At the whole-world zoom a person is a box at least 1.9 px across with a dark edge, rather
+      than a one-pixel speck the colour of the ground.
+- **The world under glass** (2026-11-26). Ric turned down five rounds of new looks ("you go as far
+  as you can in that direction … look at what it is now and think … why are those things placed
+  there are they needed do they take up too much space") and asked for the page as it was,
+  edited element by element. The CSS is again one block at the end of the `<style>`. What
+  changed, and why:
+  - **The map is the whole run screen on a laptop** (over 860 px). About a quarter of the screen
+    at 1440 × 900 was black around a map boxed beside the panel. The bar and the panel now float
+    over the map as smoked glass, each with one corner cut. The glass is drawn by a `::before`, so
+    the menus that drop out of the bar are not clipped by the cut. The land is not cropped:
+    `fit()` fits it to what the glass leaves clear (`clearArea`), and a person being followed is
+    kept in the middle of that (`viewShift`). Past the world's edge is night sea (`OUTSIDE`,
+    `--outside`), not black. On a phone the screen stays stacked, as it was.
+  - **No legend for Factions.** Every village carries its people's letter and colour, and the
+    Overview lists the peoples, so the box said it a third time, over the land. On a phone it
+    covered half the map. The other layers keep their key. "White ring: selected · dashed:
+    followed" is said once, in the map key, not under every layer.
+  - **The hint is said once per browser** (`wb-people-hinted`), for eight seconds or until the
+    first tap.
+  - **The Inspector is not a tab.** Tapping is what people do most, so the panel becomes the thing
+    tapped, with "← Overview" (or the tab they came from) at its top. "Close", or a tap on empty
+    ground, puts it away. The tabs are Overview, People and News.
+  - **The Overview says nothing only once.** A heading appears when there is something under it.
+    With no problems and no news it says "All quiet so far", and the empty graph box is gone. The
+    oldest person alive moved under Peoples.
+  - **How long the record is kept is not printed under the lists.** "The record keeps 400 events
+    …" appeared on the Overview and News. That is this README's to say (and item 19's to decide).
+  - **Pause and speed are drawn.** Pause is the one square (▮▮). 1×, 16× and Max are one, two and
+    three triangles, with the speed in words beside them. Paused, the key reads "▶ Resume", because
+    a lone triangle there looked like a fourth speed. The season and day lead the date, in the
+    serif.
+  - **Setup.** An essential is one line: its name, its control, the value right beside the control,
+    then ⓘ. The value used to sit under the name, a slider's width from the slider it reports.
+    Fourteen still fit on a laptop. On a phone the control goes under the line. The chosen
+    starting point has its corner turned down. The seed is typed or rolled ("Roll a new one"),
+    not slid, because a seed names a world and is not an amount. "How many people" keeps its
+    slider *and* its box, on purpose (no top, TODO item 3). What this computer can run moved
+    from under the essentials, below the fold, into the bar beside "Run this world".
+  - **Left:** a preview of the land on Start (it comes from the seed, but is seen only after Run).
+    It is worth measuring what making one costs first.
 
 The older notes below describe the page before this; where one says otherwise, this section is what
 is true now.

@@ -6851,6 +6851,14 @@ read the setting; no visible event is not that evidence, so it waits on a new it
 Research notes: a trend after a change does not prove the change caused it. That comparison is what
 a copy of the world is for (21h).
 
+**After 21, an edit pass (2026-11-26, done):** Ric judged the page by what each element is for, how
+often it is used and the room it takes, and chose edits over a new look. The map fills the run screen
+under a glass bar and panel; Factions has no legend; the hint shows once; the Inspector is what the
+panel becomes on a tap, not a tab; the Overview drops its empty headings; pause and speed are drawn
+(▮▮, ▶ ▶▶ ▶▶▶); setup rows read name, control, value, ⓘ; the seed is typed or rolled; what this
+computer can run sits beside Run. README, "The world under glass". Left: a preview of the land on
+Start, to be measured first.
+
 #### [ ] 21h. Saving a run, copying it, and its history — waits on item 19
 
 **Still waiting on item 19** (Ric, 2026-11-25: "Leave 21h for item 19"). What 21b to 21g leave

@@ -589,6 +589,10 @@ nobody had linked was a page nobody could find.
   `index.html`**, the test holds every "as before" setting to a list, and a new setting goes on one
   of them; **a link names settings by key**, so moving a control between layers changes no link.
   21h (saving) waits on item 19. Read the README section and TODO 21 before changing the People page.
+  **An edit pass on 2026-11-26** (README, "The world under glass"; Ric chose editing what is there
+  over a new look): on a laptop the map is the whole run screen and the bar and panel float over it,
+  with the land fitted to what they leave clear; Factions has no legend; the Inspector is not a tab
+  but what the panel becomes on a tap. Don't put the legend or an Inspector tab back.
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
   (2026-11-12, Ric: "all the ideas we were talking about not ust the last ones"). It covers
   individual lives and civilization growth, production, learning, relationships, communication,

@@ -148,7 +148,7 @@
         options: [["closed", "Nothing — nobody comes or goes"], ["open", "More of the world — strangers come, and some leave"]],
         help: "Open, the land is a piece of a bigger world: now and then a stranger walks in from beyond the edge looking for a place, more when the land is short of people, and the hungry who live near the edge may leave it for good, taking what they have. Most useful on a small land." },
       { key: "landchange", label: "Land that changes", type: "select", def: "real",   // TODO 15.5d, 2026-11-21
-        options: [["real", "Soil tires and rests; forest is cleared and grows back"], ["fixed", "The land never changes (as before)"]],
+        options: [["real", "Soil tires and rests; forest is cleared and grows back"], ["fixed", "The land never changes (simpler)"]],
         help: "A field farmed year after year gives less, down to about half, and comes back when it is left to rest or is manured by the herds. Whether a people rests its land is its own custom: the patient do. Where people are short of land they clear forest for new fields, which start rich; a cleared field left alone is scrub in about 25 years and forest again in about 50." },
       { key: "seed", label: "Seed", type: "range", min: 1, max: 9999, step: 1, def: 11,
         say: v => "#" + v, help: "The same seed and settings start the same world." },
@@ -175,7 +175,7 @@
     ]},
     { title: "How it starts", items: [
       { key: "era", label: "Era", type: "select", def: "early",   // TODO 15d, 2026-11-22; Ric: "Sure all 9 work"
-        options: [["foragers", "Foragers: bands, no farming"], ["early", "Early farmers (as before)"], ["bronze", "Bronze Age: writing"], ["ancient", "Ancient: iron, horses, mills"],
+        options: [["foragers", "Foragers: bands, no farming"], ["early", "Early farmers"], ["bronze", "Bronze Age: writing"], ["ancient", "Ancient: iron, horses, mills"],
                   ["medieval", "Medieval: the horse collar"], ["earlymodern", "Early modern: printing, gunpowder"], ["industrial", "Industrial: steam, rail, telegraph"],
                   ["modern", "Modern: engines, medicine, radio"], ["information", "Information: phones and towers"]],
         help: "Where every people starts: what it knows, its weapons, its wars, its medicine and its houses. Only a starting point: what a people knows after that is what its people hold, find, learn and lose." },
@@ -186,7 +186,7 @@
       { key: "onward", label: "Eras move on by themselves", type: "toggle", def: false,   // TODO 15d; Ric: "A setting, on or off"
         help: "On, anything can be found by somebody who knows its parts — gunpowder, the railway, the telephone — at How often new things are found. Off, a people has what its era gave it and what it learns from others." },
       { key: "foragers", label: "Peoples who forage", type: "range", min: 0, max: 6, step: 1, def: 0,   // TODO 15i, 2026-11-22
-        say: v => v === 0 ? "none: every people farms (as before)" : v === 1 ? "the first people" : "the first " + v + " peoples",
+        say: v => v === 0 ? "none: every people farms" : v === 1 ? "the first people" : "the first " + v + " peoples",
         help: "A people that does not know farming lives by hunting, herding and fishing from a camp, shares what it brings in, has a headman who cannot tax, and moves camp when the food round it runs down. Needs People on the road and in camps." },
       { key: "stored", label: "Food put by", type: "range", min: 0, max: 1, step: 0.05, def: 0,
         say: v => { const d = putByDays(v); return d < 1 ? "nothing — they live day to day" : d < 21 ? "about " + Math.round(d) + " days" : d < 60 ? "about " + Math.round(d / 7) + " weeks" : d < 330 ? "about " + Math.round(d / 30) + " months" : "a full year's worth"; },
@@ -238,13 +238,13 @@
         options: [["on", "On — villages by water fish"], ["off", "Off"]],
         help: "A village within two kilometres of a river, lake or the sea can fish it. The water gives what real waters give, a few dozen kilograms a hectare a year, and fished hard it takes time to come back. A fisher is a living like a farmer." },
       { key: "materials", label: "Materials", type: "select", def: "real",   // TODO 9a, 2026-11-17
-        options: [["real", "Wood, stone, ore, herds and game"], ["goods", "One kind of goods (as before)"]],
-        help: "Wood is cut in the forest, stone quarried in the hills and ore mined where the ground has it, a day's work a load, and sold to the village store. Herds graze grassland, dry land and hills for milk, meat and wool; hunters take game in the forest for meat and hides, and game runs out when hunted hard. Houses are built of wood or stone, crafters work wood, ore and wool into what they make, tools and weapons need ore, carts wood, packs wool, shields wood or hide, and traders carry each where it is dear. Off, there is one kind of goods, as before." },
+        options: [["real", "Wood, stone, ore, herds and game"], ["goods", "One kind of goods (simpler)"]],
+        help: "Wood is cut in the forest, stone quarried in the hills and ore mined where the ground has it, a day's work a load, and sold to the village store. Herds graze grassland, dry land and hills for milk, meat and wool; hunters take game in the forest for meat and hides, and game runs out when hunted hard. Houses are built of wood or stone, crafters work wood, ore and wool into what they make, tools and weapons need ore, carts wood, packs wool, shields wood or hide, and traders carry each where it is dear. Off, there is one kind of goods." },
       { key: "firewood", label: "Firewood", type: "select", def: "real",   // TODO 9c, 2026-11-17
         options: [["real", "Needed in the cold"], ["off", "Off"]],
         help: "In the cold a village burns wood from its store, about three-quarters of a load a person over a winter (a household in a cold land burned some tonnes a year), more in a hard one; the store wants it before the winter, so wood is dearer in autumn. A village with none left is cold: the very young and the old die of it first. Needs Materials on wood, stone and ore. Off, no wood is burned." },
       { key: "hearth", label: "Whose firewood", type: "select", def: "household",   // TODO 15.5f, 2026-11-22
-        options: [["household", "Each household's own, fetched or bought"], ["village", "The village store's, for everybody (as before)"]],
+        options: [["household", "Each household's own, fetched or bought"], ["village", "The village store's, for everybody (simpler)"]],
         help: "Each household keeps its own wood and burns it in the cold: it buys from the village store while it has coins, and otherwise goes out and cuts its own in the village's woods, as the right of firebote let a holding take wood for its fire. A household with none is cold, whatever its neighbours have. Needs Firewood." },
       { key: "crossing", label: "Crossing water", type: "select", def: "real",   // TODO 6d, 2026-11-16
         options: [["real", "Big rivers need a ford, bridge or boat"], ["wade", "Every river can be waded; no boats"]],
@@ -256,40 +256,40 @@
         options: [["real", "From its causes: waste and foul water"], ["fixed", "A fixed toll in towns and cities"]],
         help: "Where many live, their waste fouls the water they drink: a well among the houses, a river below a town. Foul water kills, the young and the old most, and a sickness starts oftener and passes more easily where it is bad. The fixed toll is the old way: one more death in a hundred a year in a town, two in a city." },
       { key: "health", label: "Wounds and old age", type: "select", def: "real",   // TODO 15.5e, 2026-11-21
-        options: [["real", "Bad wounds can last, and the old slow down"], ["simple", "Full strength until the day they die (as before)"]],
+        options: [["real", "Bad wounds can last, and the old slow down"], ["simple", "Full strength until the day they die (simpler)"]],
         help: "A bad blow in a fight or a battle heals over months, and now and then leaves somebody lame for good: slower, weaker at heavy work, no soldier. From about three-quarters of a lifetime people slow down, until the very old can no longer farm, and their family feeds them." },
       { key: "sexes", label: "Men and women", type: "select", def: "real",   // TODO 15.5l, 2026-11-21
-        options: [["real", "Men and women, and each people's customs"], ["none", "Nobody is either (as before)"]],
+        options: [["real", "Men and women, and each people's customs"], ["none", "Nobody is either (simpler)"]],
         help: "Each person is a man or a woman. A child needs a mother: she carries it nine months, works lighter at the end and lies in after the birth for as long as her household can spare her. Women are weaker at the heaviest work, as bodies are, and each people's customs, from its nature, say how far women are kept from the fields and the army. Couples of two men or two women form as far as their people accepts them, and have no children of their own." },
       { key: "roaming", label: "People on the road and in camps", type: "select", def: "real",   // TODO 15i, 2026-11-22
-        options: [["real", "Bands move camp; the hungry poor may take to the road"], ["settled", "Everybody keeps to their village (as before)"]],
+        options: [["real", "Bands move camp; the hungry poor may take to the road"], ["settled", "Everybody keeps to their village (simpler)"]],
         help: "Somebody grown with no coins, hungry, in a village gone hungry, and with no small children may take to the road, going from village to village for bread and settling where there is food and work. And the peoples set to forage live in camps that move." },
       { key: "works", label: "Work and workplaces", type: "select", def: "real",   // TODO 15f, 2026-11-22
-        options: [["real", "Livings a place needs and can pay for, and workplaces"], ["none", "Farming, crafts and trade only (as before)"]],
+        options: [["real", "Livings a place needs and can pay for, and workplaces"], ["none", "Farming, crafts and trade only (simpler)"]],
         help: "Households spend on bread first and on other things with what is left. Where they have coins to spare a village keeps a healer when people are sick, a teacher when its people write and there are children, a miller when it has a mill. People put up workplaces once they know how: a water mill by a river, a power works that burns wood, and works beside it where a crafter makes three times as much while the power runs. Knock the power works down and the works stops." },
       { key: "marriage", label: "Who marries whom", type: "select", def: "custom",   // TODO 15b, 2026-11-22
-        options: [["custom", "Each people's customs, from its nature"], ["liking", "Whoever likes each other (as before)"]],
+        options: [["custom", "Each people's customs, from its nature"], ["liking", "Whoever likes each other (simpler)"]],
         help: "Each people works out from the nature of those with the say how much families arrange marriages, what passes between them (a dowry, a bride-price, nothing), where a couple lives, how old they marry, whether cousins may, and who inherits. Families say no to a match far beneath them, of another faith or another people, and arrange matches of like standing within a day's walk or so. The old who can no longer work hand what they have to a child who keeps them." },
       { key: "infancy", label: "Babies and mothers", type: "select", def: "real",   // TODO 15.5k, 2026-11-21
-        options: [["real", "As in the past: many babies die, some mothers too"], ["before", "Nearly every child grows up (as before)"]],
+        options: [["real", "As in the past: many babies die, some mothers too"], ["before", "Nearly every child grows up (simpler)"]],
         help: "About a quarter of babies died in their first year and nearly half of children before fifteen, of fevers, the flux, hunger, cold and accidents, more in foul towns and without a mother. About one mother in a hundred died giving birth. A mother nursing a baby seldom conceives, so children come two or three years apart, and couples have as many as they did then. Needs Men and women." },
       { key: "childwork", label: "Children working", type: "select", def: "real",   // TODO 15.5m, 2026-11-21
-        options: [["real", "From about seven, light work, more as they grow"], ["none", "Nothing until grown but fetching water (as before)"]],
+        options: [["real", "From about seven, light work, more as they grow"], ["none", "Nothing until grown but fetching water (simpler)"]],
         help: "From about seven children help: minding the herd near home, and in the fields beside a parent, weeding, scaring birds and gleaning, above all at the harvest. What they do grows with them, to a grown-up's full share at Grown up at." },
       { key: "housework", label: "Work in the house", type: "select", def: "real",   // TODO 15.5n, 2026-11-21
-        options: [["real", "Cooking, minding the little ones and spinning take hours"], ["none", "No house work but fetching water (as before)"]],
+        options: [["real", "Cooking, minding the little ones and spinning take hours"], ["none", "No house work but fetching water (simpler)"]],
         help: "Every household owes hours a day of cooking and of minding its children under five, and spinning to keep everybody clothed; whoever their people's custom expects does most of it. A household short of hands feels it: meals go to waste and small children come to harm. Clothes worn thin let the cold in." },
       { key: "beasts", label: "Animals that work", type: "select", def: "real",   // TODO 15.5o, 2026-11-22
-        options: [["real", "Oxen pull the plough, horses the carts"], ["none", "None (as before)"]],
+        options: [["real", "Oxen pull the plough, horses the carts"], ["none", "None (simpler)"]],
         help: "Each village keeps oxen and horses, counted, not walking about: bred where there is grazing, worn out in about ten years, eaten in a famine, driven off when a village is sacked. A village with a full plough team reaps as before; without one, a fifth less a day. Horses pull a village's carts faster. Where the plough is used, a people's customs keep women from the fields a little more." },
       { key: "irrigation", label: "Irrigation", type: "select", def: "real",   // TODO 15.5p, 2026-11-22
-        options: [["real", "Villages by a river dig ditches after a dry year"], ["none", "None (as before)"]],
+        options: [["real", "Villages by a river dig ditches after a dry year"], ["none", "None (simpler)"]],
         help: "A village within two kilometres of a river that has had a dry year digs a ditch from it, about a hundred days' work, and the fields along the ditch are spared in a dry year as river flats are. It silts up unless the village spends some forty days a year cleaning it. Needs Rain by place and year." },
       { key: "sleep", label: "Sleep", type: "select", def: "real",   // TODO 15.5s, 2026-11-22
-        options: [["real", "As long nights make it: two sleeps far north in winter"], ["simple", "From dark to dawn in one piece (as before)"]],
+        options: [["real", "As long nights make it: two sleeps far north in winter"], ["simple", "From dark to dawn in one piece (simpler)"]],
         help: "Grown-ups go to bed a few hours after dark (longer by firelight, which burns the village's wood) and sleep what they need, about six and a half hours and an hour more in winter. Where the night is much longer than that — far from the equator in winter — they wake in the middle and are up an hour, talking and minding the fire, before a second sleep. Near the equator sleep stays in one piece." },
       { key: "ruins", label: "Buildings left alone", type: "select", def: "real",   // TODO 16, 2026-11-24
-        options: [["real", "Fall in time; what was left stays and rots"], ["old", "Stand as built, and an empty place keeps all (as before)"]],
+        options: [["real", "Fall in time; what was left stays and rots"], ["old", "Stand as built, and an empty place keeps all (simpler)"]],
         help: "A building nobody lives or works in wears: its roof first, then its walls, then it is a mound in the grass — timber in decades, stone walls in centuries. Moving into one means mending it first, for less than building new. What an emptied place held stays in it and rots: grain in months, wool and hides in a few years, tools and iron slowly, stone never. A wall stands while its place is lived in." },
       { key: "scavenge", when: s => s.ruins !== "old", label: "Scavenging", type: "toggle", def: true,
         help: "People who know of a ruin with something left in it may go and carry it off, weighed against any other work. A ruin empties as it is searched. Anybody may take; the people it belonged to hold it against whoever they see or hear of taking." },
@@ -297,7 +297,7 @@
         options: [["none", "None"], ["some", "About a third of them"], ["most", "All but one place a people"]],
         help: "The world is made as usual, then some places are left standing empty, nobody knows since when or why. What was in them is still there, less what has rotted." },
       { key: "bread", label: "Grinding and baking", type: "select", def: "real",   // TODO 16, 2026-11-24
-        options: [["real", "By hand at home, or at the mill and the oven for a share"], ["old", "Part of cooking (as before)"]],
+        options: [["real", "By hand at home, or at the mill and the oven for a share"], ["old", "Part of cooking (simpler)"]],
         help: "Grain is ground before it is bread: by hand at home, about an hour a day for a household with a rotary quern and four times that with a saddle quern before it, or at a mill for a sixteenth of the grain. A big village builds an oven, where bread is baked for a share of it. Needs Work in the house." },
     ]},
     { title: "Money", items: [
@@ -321,16 +321,16 @@
         say: v => (v === 0 ? "none, ever" : pct(v) + " of what is reaped"),
         help: "A share of every harvest goes into the village store and is paid for to the faction, as tithes and land taxes were. After that each leader's nature moves it — or you, if you rule a faction. None leaves every harvest untaxed." },
       { key: "mint", when: s => s.money === "coins", label: "Where coins come from", type: "select", def: "real",   // TODO 15.8, 2026-11-23
-        options: [["real", "Mined, struck, lost and debased"], ["fixed", "A fixed stock from the first day (as before)"]],
+        options: [["real", "Mined, struck, lost and debased"], ["fixed", "A fixed stock from the first day (simpler)"]],
         help: "One money, reckoned the same everywhere. Silver comes out of the ground with the ore, a little at a time: a people that knows how to strike coins buys it into its mint and keeps a twentieth; before that it passes as weighed silver. Coins wear away and are lost, about one in fifty a year, and people running from an army bury theirs, and those who never come back leave them in the ground. A greedy ruler with an empty treasury may strike more coins than there is silver for, and then their coin is trusted less. Where nobody trusts what coins will buy — a famine, a siege, a debased coin — food is not sold for coins at all, only shared and given, until trust comes back." },
       { key: "soldierPay", when: s => s.money === "coins", label: "Soldiers' pay", type: "select", def: "spent",   // TODO 15.10, 2026-11-23
-        options: [["spent", "Stopped, sent home and spent"], ["kept", "Kept whole (as before)"]],
+        options: [["spent", "Stopped, sent home and spent"], ["kept", "Kept whole (simpler)"]],
         help: "What the army feeds and arms a soldier with is stopped from their pay, as Rome's and Britain's armies did, leaving them at least a tenth of it. A soldier with a parent at home sends half of what they hold beyond a week's pay there, and some goes on drink wherever they are." },
       { key: "tills", when: s => s.money === "coins", label: "The village store", type: "select", def: "both",   // TODO 15.10
-        options: [["both", "Sells to whoever has coins to spare"], ["old", "Mostly buys (as before)"]],
+        options: [["both", "Sells to whoever has coins to spare"], ["old", "Mostly buys (simpler)"]],
         help: "Somebody holding more than a season's bread in coins spends some of it at the store on goods for the house — pots, cloth, tools — or orders them from the crafters, so coins come back to the till that paid them out." },
       { key: "poor", when: s => s.money === "coins", label: "The penniless", type: "select", def: "help",   // TODO 15.10
-        options: [["help", "Alms and loans as well as kin"], ["old", "Kin, neighbours and the ruler only (as before)"]],
+        options: [["help", "Alms and loans as well as kin"], ["old", "Kin, neighbours and the ruler only (simpler)"]],
         help: "Somebody hungry with no coins at the store is helped first by alms from a neighbour of their own faith, who gives a fortieth a year of what they hold beyond a season, then by a loan from kin or a neighbour, paid back when they can — a tenth a year on top, nothing between kin." },
       { key: "inherit", when: s => s.money === "coins", label: "When somebody dies", type: "select", def: "kids",
         options: [["kids", "Their children get their coins"], ["faction", "Their faction takes them"], ["village", "Shared round the village"]],
@@ -348,7 +348,7 @@
       { key: "wrong", label: "How often a tale changes in the telling", type: "range", min: 0, max: 0.3, step: 0.01, def: 0.05,   // TODO 12; Ric, 2026-11-18: "1 in 20"
         say: v => v <= 0 ? "never" : "1 telling in " + Math.round(1 / v), help: "Each time something is passed on, the chance it comes out changed: a number grows, the wrong village, the wrong side. Field studies of real rumours find them mostly right." },
       { key: "finds", label: "How often new things are found", type: "range", min: 0, max: 1, step: 0.05, def: 0.2,   // TODO 15e, 2026-11-22; Ric: "Rare (make it a slide tho)"
-        say: v => v <= 0 ? "never: what they know is fixed (as before)" : v <= 0.25 ? "rarely, as in history" : v <= 0.6 ? "now and then" : "often, so a run shows it",
+        say: v => v <= 0 ? "never: what they know is fixed (simpler)" : v <= 0.25 ? "rarely, as in history" : v <= 0.6 ? "now and then" : "often, so a run shows it",
         help: "What a people can do is what its people know: digging wells, building boats and bridges, the plough, ditches. Somebody at work, curious, fed and short of something, may find something new from what they know — writing, resting fields with beans, the water mill, the horse collar, healing herbs. It passes to children and to whoever sees it done; writing must be taught. When the last who knew a thing dies it is lost, unless it was written down." },
       { key: "tech", label: "How know-how moves", type: "select", def: "moves",   // TODO 15.9, 2026-11-23; Ric: "i dont want it linear because it isnt"
         options: [["moves", "By need, the land, practice and meeting"], ["old", "As before: some things only by era"]],
@@ -479,10 +479,10 @@
         options: [["decide", "Each faction decides"], ["family", "Families, each its own fields"], ["village", "The village, in common"], ["leader", "The leader, worked for a share"], ["commune", "The village, shared out by need"]],
         help: "Each faction's own rule, as Ric asked: a chief or the richest chooses by their own lights, a people who vote choose by what most of them want, and you choose for a faction you rule. Or set one rule for everybody here. Families hold one or two fields each near the house; common fields are worked by anybody of the village; a leader's land is worked by all, and a third of every harvest goes to the leader's barn, the village store." },
       { key: "property", label: "Land as property", type: "select", def: "market",   // TODO 15.7, 2026-11-23
-        options: [["market", "Held, inherited, sold and pledged"], ["inherit", "Held and inherited, never sold"], ["old", "Shared out by need each month (as before)"]],
+        options: [["market", "Held, inherited, sold and pledged"], ["inherit", "Held and inherited, never sold"], ["old", "Shared out by need each month (simpler)"]],
         help: "A family's fields stay with it however many they are, and are worked by others for half when it has too few hands; they pass by its people's custom, to all the children or the eldest, split up as they go. A household in want pledges a field for a season's bread, gets it back when it can pay, and loses it after three years; a household with more land than hands sells. A ruler grants land to officials for life and to a people's own faith for good. A village's bounds, once set, stay; a people claims the woods and pasture round its villages, and others pay to cut or graze there or it is held against them. Without writing, who holds what is what the village remembers, and inheritances and boundaries are quarrelled over. A greedy ruler may enclose the commons. The commune, a fifth way to hold land under Who holds the land, shares the fields out by need, as the families' rule did before." },
       { key: "govern", label: "Government", type: "select", def: "deep",   // TODO 15c, 2026-11-22
-        options: [["deep", "Councils, officials and laws"], ["leader", "The leader alone (as before)"]],
+        options: [["deep", "Councils, officials and laws"], ["leader", "The leader alone (simpler)"]],
         help: "A ruler must carry those with the say: the great families, the elders, or everybody. Officials come only when the ruler cannot see to it all — a headman for a far village, a collector, a judge, a captain, a governor over a beaten people — paid a wage, a farm of the tax, land, or nothing, by lot, as the ruler's nature picks; and they may be honest or not. Laws on theft, killing and unfree people outlast the leader who made them. A beaten people may leave for open land, or stay itself and pay." },
       { key: "term", label: "A vote every", type: "range", min: 1, max: 20, step: 1, def: 6,
         say: v => v + (v === 1 ? " year" : " years"), help: "Wherever leaders are voted for — from the start, or after a revolution brings in votes." },
@@ -500,26 +500,26 @@
         options: [["friends", "Old friends"], ["strangers", "Strangers"], ["enemies", "Old enemies"]],
         help: "Old friends start allied, and trading free of tax if there is money. Old enemies start with a feud every grown-up knows and tells their children. Either fades over a generation unless something keeps it alive." },
       { key: "armies", label: "Armies", type: "select", def: "march",   // TODO 15h, 2026-11-22
-        options: [["march", "Gathered, fed and led"], ["trickle", "Each soldier marches alone (as before)"]],
+        options: [["march", "Gathered, fed and led"], ["trickle", "Each soldier marches alone (simpler)"]],
         help: "An army gathers at its own village nearest the enemy and marches when enough have come in; it goes only as far as the bread it carries takes it there and back, further with carts; its leader picks the enemy place worth most against what defends it; enemy soldiers across the road it is fed by make it fall back. A ruler with coins and too few soldiers hires the poor and the bandits round about, who go back to robbing when they are not paid." },
       { key: "campaign", label: "Soldiers on campaign", type: "select", def: "army",   // TODO 15j, 2026-11-22
-        options: [["army", "Live with the army; some desert"], ["home", "Come home to eat and sleep (as before)"]],
+        options: [["army", "Live with the army; some desert"], ["home", "Come home to eat and sleep (simpler)"]],
         help: "A soldier in an army that is gathering or marching eats what they carry or draw where it gathers, sleeps where it is, and keeps to their duty. The one way out is to desert: likelier hungry, unpaid, afraid, disloyal or losing, rarer under a law that hangs killers. About a fifth of a fed, paid army deserts in a year of war." },
       { key: "caravans", label: "Caravans", type: "toggle", def: true,   // TODO 15l, 2026-11-22
         help: "Traders who go for weeks to places far beyond a village's own traders, with goods dear for their weight (finished goods, ore, wool) on pack animals: twice a pack on foot, four times with horses. Routes grow where they keep going; bandits wait on them." },
       { key: "armySick", label: "Sickness in armies", type: "toggle", def: true,   // TODO 15m, 2026-11-22
         help: "An army's camp is crowded and fouls its water as a town does, so sickness starts and spreads there, and kills more of its tired men; soldiers carry it to the places they pass and home. Before modern medicine sickness killed more soldiers than the enemy did." },
       { key: "oldArms", label: "Bows, armour and chariots", type: "select", def: "real",   // TODO 15n, 2026-11-22
-        options: [["real", "By era"], ["plain", "Hand weapons alone (as before)"]],
+        options: [["real", "By era"], ["plain", "Hand weapons alone (simpler)"]],
         help: "Before guns, a share of every army shoots: simple bows among early peoples, composite bows in the Bronze Age and antiquity, crossbows and longbows in the Middle Ages. Soldiers who can pay buy armour (padding, scale, mail, plate by era), dear and cutting blows and arrows as tested; the levy goes without. Bronze Age archers ride chariots." },
       { key: "generals", label: "Generals", type: "select", def: "led",   // TODO 15o, 2026-11-22
-        options: [["led", "Led, scouted, and they break"], ["none", "No general (as before)"]],
+        options: [["led", "Led, scouted, and they break"], ["none", "No general (simpler)"]],
         help: "The captain leads the army, or the leader if there is no captain or the leader is bold. A general knows the enemy only from scouts and neighbours, and picks a plan by their nature and what they know: seek a battle, raid and burn, besiege, wait and wear them down, or lie in wait on the enemy's road. An army that loses too many at once breaks and runs, and is cut down as it runs, most of all by horsemen. Generals learn from every battle. Herding peoples with horses shoot from the saddle." },
       { key: "siegecraft", label: "Siegecraft and service", type: "select", def: "era",   // TODO 15p, 2026-11-22
-        options: [["era", "By era"], ["old", "Numbers alone (as before)"]],
+        options: [["era", "By era"], ["old", "Numbers alone (simpler)"]],
         help: "Besiegers build what takes a wall (ramps and mining, rams, trebuchets, cannon, by era) and a place held shut can be starved into giving up. In the Middle Ages the levy owes forty days a year and goes home when they are served, and the well-off may pay scutage instead, which hires soldiers; an ancient army is paid and standing, and digs a camp every night." },
       { key: "ransom", label: "Prisoners, mutiny and war loans", type: "select", def: "real",   // TODO 15q, 2026-11-22
-        options: [["real", "Taken, ransomed, borrowed for"], ["old", "None of it (as before)"]],
+        options: [["real", "Taken, ransomed, borrowed for"], ["old", "None of it (simpler)"]],
         help: "Soldiers struck down, most of all from an army that has broken, may be taken and held for ransom, paid by their family or their people to the soldier who took them; unransomed after two months they are exchanged, killed or let go, by the captor's nature. Soldiers left unpaid rise together and take their pay. A ruler at war borrows from the richest, pays interest, repays in peace, and may default, which leaves the army unpaid." },
       { key: "smallWar", label: "Wounds, small wars and the sea", type: "select", def: "real",   // TODO 15r, 2026-11-22
         options: [["real", "As found"], ["old", "As before"]],
@@ -540,28 +540,28 @@
         options: [["kept", "As each leader decides"], ["old", "As before"]],
         help: "A soldier let go on their word stays home until that war is over. A deserter is taken back, let be or punished, and people held unfree are kept out of the levy or armed when the army is badly short, each as the people's leader would. When a people cannot pay its war loans, what is left goes to its lenders; and a village's spare food and spare coins are counted apart." },
       { key: "warBy", label: "What war follows", type: "select", def: "know",   // TODO 15.6, 2026-11-23
-        options: [["know", "What each people knows and can pay for"], ["era", "By era label (as before)"]],
+        options: [["know", "What each people knows and can pay for"], ["era", "By era label (simpler)"]],
         help: "Weapons, bows, armour, chariots, horsemen, siege guns, walls, how an army is raised and the fighting season come from what a people knows and can pay for, never from the era it started in: a people that finds gunpowder fights with guns, and walls are built low and thick to stand cannon. Gunpowder, cannon and explosives bring blasts that hurt everybody near them, break walls, bridges and houses, and leave shells and mines in the ground. Tanks and aircraft come with the engine, steel and the machine gun; aircraft scout, bomb and carry; jets, helicopters and guided weapons after them." },
       { key: "formations", label: "Where soldiers stand", type: "select", def: "units",   // TODO 15.6b, 2026-11-23
-        options: [["units", "Units in formation, on ground the general chooses"], ["nearest", "Every soldier for the nearest enemy (as before)"]],
+        options: [["units", "Units in formation, on ground the general chooses"], ["nearest", "Every soldier for the nearest enemy (simpler)"]],
         help: "An army forms units, each led by an officer chosen as the people choose (birth and wealth, bought, by service, or by vote), sized by how orders travel. Each unit takes a shape from what it carries (a shield wall, pikes guarding shot, a firing line, spread out and dug in) and each soldier holds a place in it; only the front ranks fight. Horsemen go on the wings, a reserve waits behind. The general chooses high ground, a river line or a wood to stand on. A blow from the side or rear lands harder and shakes a unit sooner; most die when a unit breaks and runs." },
       { key: "raids", label: "Raids", type: "select", def: "real",   // TODO 15.6d, 2026-11-23
-        options: [["real", "Strike the weakly held, take and go"], ["old", "A band stays and fights for days (as before)"]],
+        options: [["real", "Strike the weakly held, take and go"], ["old", "A band stays and fights for days (simpler)"]],
         help: "A band is sent only where a place is held by fewer than it brings. It burns and takes what it can carry and goes home; met by as many as it is, or once it has lost a quarter of its number, it breaks off, and the village does not chase it past its own fields. Those in a house a band burns may be killed or carried off, the carried off held unfree where the raiders' law allows it." },
       { key: "battle", label: "Battle", type: "select", def: "choice",   // TODO 15.6e, 2026-11-23
-        options: [["choice", "Given when the general chooses"], ["old", "Whenever armies meet (as before)"]],
+        options: [["choice", "Given when the general chooses"], ["old", "Whenever armies meet (simpler)"]],
         help: "A general gives battle only when the odds suit them (the bolder, the worse the odds they take, and better on ground they chose), or when caught too close to slip away; otherwise the army draws off. After a battle an army rests and fills its ranks before it comes on again, a month after a rout. A walled place is invested, not stormed: the besiegers stand outside its walls and its people stay behind them, until the wall is breached or the place is starving." },
       { key: "taking", label: "Taking a place", type: "select", def: "terms",   // TODO 15.6g, 2026-11-23
-        options: [["terms", "Surrender is demanded first"], ["old", "Stormed as soon as the enemy is strong enough (as before)"]],
+        options: [["terms", "Surrender is demanded first"], ["old", "Stormed as soon as the enemy is strong enough (simpler)"]],
         help: "An army strong enough to take an open place demands its surrender before it attacks. A place that cannot hold — far outnumbered, few soldiers of its own, and not too stubborn a leader — gives in on terms: its soldiers and whoever will not stay march out, nothing is burned and a quarter of its till is paid. A place that refuses is stormed, and sacked when it falls, as the law of siege allowed." },
       { key: "column", label: "Coming to a place", type: "select", def: "together",   // TODO 15.6i, 2026-11-23
-        options: [["together", "The army camps outside and goes in together"], ["old", "Each soldier walks straight in (as before)"]],
+        options: [["together", "The army camps outside and goes in together"], ["old", "Each soldier walks straight in (simpler)"]],
         help: "An army marching on a place halts at a camp outside its fields, on the side it came from, and waits there until most of it has come up — or three days have passed — before it goes in together. Until then nobody walks into the place alone." },
       { key: "pursuit", label: "Chasing an enemy home", type: "select", def: "fields",   // TODO 15.6h, 2026-11-23
-        options: [["fields", "Not alone into their own fields"], ["old", "Wherever they run (as before)"]],
+        options: [["fields", "Not alone into their own fields"], ["old", "Wherever they run (simpler)"]],
         help: "A soldier on their own does not follow an enemy back into that enemy's own village fields, where its people are waiting, unless that place is what their army came for or others of their side are with them. They still fight anybody who comes at them." },
       { key: "passage", label: "Crossing another people's land", type: "select", def: "ask",   // TODO 15.6f, 2026-11-23; Ric: "why wouldnt soldiers avoid areas that are others property unless they haave persmission?"
-        options: [["ask", "Leave is asked first"], ["old", "Armies go where they please (as before)"]],
+        options: [["ask", "Leave is asked first"], ["old", "Armies go where they please (simpler)"]],
         help: "An army whose road crosses the land of a people it is not at war with asks that people's leader first. Leave is given to friends, allies and trading partners, to whoever marches on a people they hate, to the strong they dare not refuse, and for a price to the rest who will pay it. Refused, a bold general who can win forces the way and takes food from the fields as it goes, which that people holds against them; anybody else turns to another goal." },
       { key: "war", label: "Wars", type: "toggle", def: true, help: "Off, no leader may start one, whatever is done to them." },
       { key: "aggression", when: s => s.war, label: "How quick to fight", type: "range", min: 0, max: 1, step: 0.05, def: 0.5,
