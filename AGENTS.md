@@ -1833,10 +1833,16 @@ migration marked "safe to re-run", and re-running it would have put the original
   front door's submit handler ask inside the gesture — don't move that call into
   `coffee.js`, which loads too late to ask. A still cup stops drawing (`idle()`) until the
   phone moves or the drain is due; forty minutes of a redrawn canvas is a battery.
-  **Tipped into a top corner, it is drunk from there** (Ric: "if the top left or right it
-  drains from there as if someone is drinking it"): what goes over the rim is the weir
-  equation, capped at a swallow and pulsed into gulps, and held past ~65° it is drunk to
-  the end. Only the rate cap and the gulp rhythm are chosen; the rest is the formula.
+  **Tipped so the coffee reaches the top edge, it runs out there** (Ric: "if the top left
+  or right it drains from there as if someone is drinking it", then "it needs to be smooth
+  like your dumping it out if it's all the way upside down then the just dumps out super
+  fast use actual math"): the coffee is the part of the screen below a level line, at any
+  angle, and the top edge lets it out at Torricelli's speed for each point's depth — weir
+  flow just past a corner, a dump upside down. **No gulps, no caps, no rule that finishes a
+  cup** — a first version had all three and Ric found it stepped. The last of a cup lies too
+  low to reach a corner until the phone is past sideways, and that is the physics. The
+  bubbles and crema ride the coffee's own velocity, read off its depth by continuity
+  (`readFlow`); don't give them a drift of their own again.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

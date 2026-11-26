@@ -74,24 +74,50 @@ for (const [W, H] of [[1440, 900], [390, 844], [2560, 1400]]) {
   s.skip(60); s.step(1 / 60);
   assert.ok(s.draining, 'the hold is wall-clock time: skipped time still brings the drain');
 }
-// tipped until it reaches a top corner, somebody drinks it from there: some
-// tip drinks some and stops once the level is below the rim; tipped hard over,
-// it is drunk to the end in swallows, not dumped at once
+// Tipped until it reaches the top edge (the cup's mouth), it runs out there:
+// a gentle tip spills nothing; to a corner it sips and stops once the level
+// is under the corner; past sideways it pours out and upside down it dumps.
+// It is smooth - a little each frame, never in jumps or pulses.
 {
-  const run = (a, secs) => {
-    const s = createSim(390, 844, { hold: 2400 }); s.still(); const v = s.volume; s.setTilt(a);
-    let t = 0, sipped = false; while (!s.done && t < secs) { s.step(1 / 60); t += 1 / 60; sipped ||= s.sipping; }
-    return { s, v, t, sipped };
+  const run = (a, secs, W = 390, H = 844) => {
+    const s = createSim(W, H, { hold: 2400 }); s.still(); const v = s.volume; s.setTilt(a);
+    let t = 0, sipped = false, prev = v, jump = 0, drops = [];
+    while (!s.done && t < secs) {
+      s.step(1 / 60); t += 1 / 60; sipped ||= s.sipping;
+      const d = prev - s.volume; prev = s.volume; jump = Math.max(jump, d / v); if (t > 2.5 && d > 0) drops.push(d);
+    }
+    return { s, v, t, sipped, jump, drops };
   };
   const level = run(0.3, 10);
   assert.ok(!level.sipped && level.s.volume === level.v, 'a gentle tip spills nothing');
   const some = run(1.1, 30), left = some.s.volume / some.v;
   assert.ok(some.sipped && left > 0.4 && left < 0.95, `tipped to the corner, some is drunk (${(100 * left).toFixed(0)}% left)`);
+  // steady tip, steady stream: each frame takes a little less than the last, no pulses
+  let pulses = 0;
+  for (let k = 1; k < some.drops.length; k++) if (some.drops[k] > some.drops[k - 1] * 1.02) pulses++;
+  assert.ok(pulses === 0, `held still, it runs out smoothly (${pulses} frames took more than the one before)`);
   const before = some.s.volume; for (let k = 0; k < 600; k++) some.s.step(1 / 60);
-  assert.ok(some.s.volume > before * 0.97, 'and it stops once the level is below the rim');
-  const all = run(1.45, 30);
-  assert.ok(all.s.done && all.t > 5 && all.t < 20, `held hard over, the cup is drunk to the end in ${all.t.toFixed(1)} s`);
+  assert.ok(some.s.volume > before * 0.97, 'and it stops once the level is below the corner');
+  const side = run(2.2, 10);
+  assert.ok(side.s.done && side.t < 3, `past sideways it pours out (${side.t.toFixed(1)} s)`);
+  const flip = run(Math.PI, 10);
+  assert.ok(flip.s.done && flip.t < 2, `upside down it dumps (${flip.t.toFixed(1)} s)`);
+  assert.ok(flip.jump < 0.06, `even dumping, no frame takes more than a sliver (${(100 * flip.jump).toFixed(1)}%)`);
 }
+
+// bubbles ride the coffee: tipped, they go with it toward the low side
+{
+  let seed = 3;
+  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const s = createSim(390, 844, { hold: 2400, random });
+  while (s.fullAt < 0) s.step(1 / 60);
+  const mean = () => s.bubbles.reduce((a, b) => a + b.x, 0) / s.bubbles.length;
+  const was = mean();
+  s.setTilt(-0.7);
+  for (let k = 0; k < 30; k++) s.step(1 / 60);
+  assert.ok(s.bubbles.length > 5 && mean() < was - 10, `tipped left, the bubbles slide left with it (${was.toFixed(0)} -> ${mean().toFixed(0)})`);
+}
+
 // a phone keeps it forty minutes; the hold is the one number that differs
 assert.match(read('assets/coffee.js'), /PHONE_HOLD = 40 \* 60/, 'a phone keeps the cup forty minutes');
 

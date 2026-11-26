@@ -15,9 +15,11 @@ phone … for a phone make it so it leaves after 40 min"): it is more transparen
 surface follows the phone's angle with a slosh, and on a phone it stays forty minutes
 before draining. The stream itself still falls straight down the screen whatever the angle.
 And (Ric: "if the top left or right it drains from there as if someone is drinking it"):
-tipped until the coffee reaches a top corner, it goes over the rim there in gulps, by the
-weir equation, capped at a swallow; held hard over, it is drunk to the end in about ten
-seconds. That is the phone's way of drinking it.
+tipped until the coffee reaches the top edge, it runs out there. After Ric found the first
+version stepped ("it needs to be smooth like your dumping it out … use actual math"), it is
+exact at any angle: the coffee is the screen below a level line, and each point of the top
+edge it covers lets it out at Torricelli's speed — a sip past a corner, a pour on its side,
+a dump upside down (about a second). Bubbles and crema ride the coffee's own flow.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 

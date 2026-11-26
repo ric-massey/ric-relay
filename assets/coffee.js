@@ -65,8 +65,15 @@
     // down the screen). The pool's surface follows it with some weight - a
     // damped spring that overshoots, which is the slosh you see when you tip
     // it - and so stays level in the world while the screen turns under it.
-    let tilt = 0, tiltV = 0, tiltTo = 0, rimL = 0, sipSide = 0, sipAt = -1;
-    const TILT_MAX = 1.45;                             // ~83 degrees: as good as on its side
+    let tilt = 0, tiltV = 0, tiltTo = 0;
+    // Up to ~83 degrees the pool is drawn as columns standing on the floor, with
+    // its waves; past that (on its side, upside down) the floor is no longer
+    // under it, and it is drawn as the part of the screen below a level line.
+    const TILT_MAX = 1.45;
+    const norm = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    const colTilt = () => clamp(norm(tilt), -TILT_MAX, TILT_MAX);
+    const U = new Float64Array(N), hPrev = new Float64Array(N), q = new Float64Array(N + 1);
+    let fresh = true;                                  // no last step to take a velocity from
 
     const s = {
       W, H, N, dx, x0, i0, w0, h, r, f, drops, bubbles, drips,
@@ -130,7 +137,7 @@
       if (s.volume <= 0) { base.fill(0); return; }
       if (wallToWall()) {
         const mean = s.volume / W;
-        const slope = Math.tan(tilt);
+        const slope = Math.tan(colTilt());
         if (Math.abs(slope) > 1e-4) {
           // a level surface in a turned screen: depth = L + slope * (x - W/2),
           // clipped to the floor and the top, with L found so the volume is
@@ -142,7 +149,6 @@
             if (v * dx < s.volume) lo = L; else hi = L;
           }
           const L = 0.5 * (lo + hi);
-          rimL = L;                                     // where the level would stand, rim or no rim (drinking reads it)
           let v = 0;
           for (let i = 0; i < N; i++) { base[i] = clamp(L + slope * (X(i) - W / 2), 0, H); v += base[i]; }
           const fix = v > 0 ? s.volume / (v * dx) : 0;  // the last hair of the bisection
@@ -228,9 +234,9 @@
       layOut();
       for (let i = 0; i < N; i++) h[i] = clamp(base[i] + eta[i] * clamp(base[i] / 20, 0, 1), 0, H);
 
-      // crema is carried out from the stream, spreads a little and thins to a film
+      // crema is carried by the coffee, spreads a little and thins to a film
       for (let i = 0; i < N; i++) {
-        const uc = drift(X(i));
+        const uc = U[i];
         const p = clamp(i - (uc * dt) / dx, 0, N - 1), a = Math.floor(p), b = Math.min(N - 1, a + 1), k = p - a;
         fs[i] = f[a] * (1 - k) + f[b] * k;
       }
@@ -243,12 +249,36 @@
       }
     }
 
-    // the surface current: out from where the stream goes in, while it pours
-    function drift(x) {
-      if (!s.flowing) return 0;
-      const d = x - x0;
-      return Math.sign(d) * 160 * Math.exp(-Math.abs(d) / (0.25 * W));
+    // How fast the coffee itself is moving, read off how its depth changed over
+    // the frame. Continuity: what a column gained came across its edges or
+    // from a source in it, so the flow across each edge, q, is summed from the
+    // left wall: q(i+1) = q(i) - (gain(i) - source(i)). The sources are the
+    // pour (where the stream goes in), the drain (spread over the floor) and
+    // the mouth (at the wall it is running out of). Whatever moved the coffee -
+    // the pour spreading, a slosh, a tip, the drink going out - this is how it
+    // moved, and the bubbles and crema ride it.
+    // q/h would be the average over the depth. Bubbles float, and at the top a
+    // deep pool moves faster than its average: for the slosh of the whole
+    // screen (wavenumber k = pi/W) linear wave theory puts the surface speed
+    // at q divided by tanh(k*h)/k rather than by h - the same as h when the
+    // coffee is shallow, about W/pi when it is deep.
+    let lastOut = 0, lastSide = 1;
+    function readFlow(frameDt, pourIn, drained) {
+      if (fresh) { hPrev.set(h); fresh = false; U.fill(0); return; }
+      const ker = pourIn > 0 ? bump(x0, Math.max(dx, widthAt(H) * 0.7)) : [];
+      const src = new Float64Array(N);
+      for (const [i, w] of ker) src[i] += pourIn * w;
+      q[0] = lastSide < 0 ? -lastOut : 0;
+      for (let i = 0; i < N; i++) q[i + 1] = q[i] - ((h[i] - hPrev[i]) * dx - src[i] + drained / N);
+      const kW = Math.PI / W;
+      for (let i = 0; i < N; i++) U[i] = clamp((0.5 * (q[i] + q[i + 1])) / frameDt / Math.max(Math.tanh(kW * h[i]) / kW, 12), -1500, 1500);
+      hPrev.set(h);
     }
+
+    const flowAt = (x) => {
+      const c = clamp(x / dx - 0.5, 0, N - 1), a = Math.floor(c), b = Math.min(N - 1, a + 1), k = c - a;
+      return U[a] * (1 - k) + U[b] * k;
+    };
 
     function stepParticles(dt) {
       for (let k = drops.length - 1; k >= 0; k--) {
@@ -265,13 +295,50 @@
       for (let k = bubbles.length - 1; k >= 0; k--) {
         const b = bubbles[k];
         const i = colOf(b.x);
-        b.vx += (drift(b.x) * 0.8 - b.vx) * Math.min(1, dt * 1.5);
+        // a bubble floats on the coffee and goes where it goes: its own small
+        // push from where it was made fades in a moment, then it rides the flow
+        b.vx += (flowAt(b.x) - b.vx) * Math.min(1, dt * 6);
         b.x += b.vx * dt;
+        const out = (b.x < 0 && q[0 + 1] < -1) || (b.x > W && q[N - 1] > 1);   // carried out over the rim with the drink
         if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.3; }
         if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.3; }
         b.age += dt;
-        if (b.age > b.life || h[i] < 1) bubbles.splice(k, 1);
+        if (out || b.age > b.life || h[i] < 1) bubbles.splice(k, 1);
       }
+    }
+
+    // The coffee at rest in a screen turned to angle a (gravity across the
+    // screen is (sin a, cos a), x right, y down): everything whose depth
+    // along gravity, p·g, is at least c. c is found so that area = volume.
+    const CORNERS = [[0, 0], [W, 0], [W, H], [0, H]];
+    function clipArea(gx, gy, c, keep) {
+      const out = [];
+      for (let k = 0; k < 4; k++) {
+        const P = CORNERS[k], R = CORNERS[(k + 1) % 4];
+        const dp = P[0] * gx + P[1] * gy - c, dr = R[0] * gx + R[1] * gy - c;
+        if (dp >= 0) out.push(P);
+        if ((dp >= 0) !== (dr >= 0)) { const u = dp / (dp - dr); out.push([P[0] + u * (R[0] - P[0]), P[1] + u * (R[1] - P[1])]); }
+      }
+      let a2 = 0;
+      for (let k = 0; k < out.length; k++) { const P = out[k], R = out[(k + 1) % out.length]; a2 += P[0] * R[1] - R[0] * P[1]; }
+      if (keep) keep.push(...out);
+      return Math.abs(a2) / 2;
+    }
+    function levelLine(vol, a) {
+      const gx = Math.sin(a), gy = Math.cos(a);
+      let lo = Infinity, hi = -Infinity;
+      for (const [x, y] of CORNERS) { const d = x * gx + y * gy; lo = Math.min(lo, d); hi = Math.max(hi, d); }
+      for (let it = 0; it < 48; it++) { const c = 0.5 * (lo + hi); if (clipArea(gx, gy, c) > vol) lo = c; else hi = c; }
+      const c = 0.5 * (lo + hi), shape = [];
+      clipArea(gx, gy, c, shape);
+      return { gx, gy, c, shape };
+    }
+    function mouthFlow(vol, a) {
+      const { gx, c } = levelLine(vol, a);
+      // along the mouth (y = 0) the depth below the level line is x·gx - c
+      let sum = 0; const M = 96;
+      for (let k = 0; k < M; k++) { const x = ((k + 0.5) / M) * W, d = x * gx - c; if (d > 0) sum += Math.sqrt(2 * g * d); }
+      return 0.6 * sum * (W / M);
     }
 
     s.step = function (frameDt) {
@@ -319,11 +386,13 @@
       // first and slows near the end — dh/dt = −k·√h, empty after
       // T = 2·√h₀ / k. The surface dips over the drain while it runs.
       if (s.fullAt >= 0 && !s.draining && t - s.fullAt >= HOLD) s.draining = true;
+      let drainedNow = 0;
       if (s.draining) {
         const k = (2 * Math.sqrt(FILL * H)) / DRAIN_S;
         const mean = s.volume / W, fall = Math.max(k * Math.sqrt(mean), 30);
         drainDip = 0.09 * fall;
-        s.volume = Math.max(0, s.volume - fall * frameDt * W);
+        drainedNow = Math.min(s.volume, fall * frameDt * W);
+        s.volume -= drainedNow;
       }
 
       // the surface swings toward the phone's angle, overshoots and settles;
@@ -336,34 +405,39 @@
 
       // as many substeps as the fastest wave needs
       const n = Math.max(1, Math.ceil(frameDt / ((0.4 * dx) / Math.max(cWave, 190)))), dt = frameDt / n;
+      const before = s.volume;
       for (let k = 0; k < n; k++) stepFluid(dt);
+      readFlow(frameDt, s.volume - before, drainedNow);
       stepParticles(frameDt);
 
-      // Tipped so far that the coffee reaches a top corner, it goes over the
-      // rim there, as if somebody were drinking it. What leaves is what a
-      // rim lets over (the weir equation): Q = (2/3)·Cd·√(2g)·head^(3/2),
-      // head being how far above the rim the level would stand, Cd ≈ 0.6 —
-      // so tip a little past the corner and it sips, tip more and it pours.
-      // It comes in swallows rather than a steady flow. As the level falls
-      // the rim lets less over, so you tip further, as you would a mug; and
-      // held hard over (past ~65°) toward the side it was drinking from, it
-      // keeps on until the cup is empty — the last of a cup lies too low to
-      // reach a corner however a screen is held.
-      s.sipping = false;
-      if (wallToWall() && !s.draining && Math.abs(tilt) > 0.05) {
-        const side = tilt > 0 ? 1 : -1;
-        const head = rimL + Math.tan(tilt) * side * (W / 2) - H;
-        const swallow = 2.2 * Math.max(0, Math.sin(2 * Math.PI * 1.1 * t)) ** 2;
-        // ...but nobody swallows faster than a swallow: tipped right over, the
-        // rim would let the whole cup go at once, and a drinker takes it in
-        // about nine seconds of gulps instead
-        let rate = head > 0 ? Math.min((2 / 3) * 0.6 * Math.sqrt(2 * g) * head ** 1.5, 0.2 * target) : 0;
-        if (rate > 0) { sipSide = side; sipAt = t; }
-        if (side === sipSide && t - sipAt < 3 && Math.abs(tilt) > 1.13) rate = Math.max(rate, 0.09 * target);
-        if (rate > 0) {
-          const take = Math.min(s.volume, rate * swallow * frameDt);
-          s.volume -= take; s.sipping = true;
-          if (take > 0) { sipAt = t; for (const [i, w] of bump(side > 0 ? W : 0, 50)) rv[i] -= 400 * w * swallow * frameDt * 60; }
+      // Tipped so the coffee reaches the top edge - the cup's open mouth - it
+      // runs out there, as if somebody were drinking it, or, upside down,
+      // simply falls out. Exact for any angle: the coffee is the part of the
+      // screen below a level line (solved so its area is the volume), and
+      // each bit of the mouth it covers lets coffee out at Torricelli's speed
+      // for its depth below that line, v = sqrt(2·g·depth), so
+      //   Q = Cd · integral over the mouth of sqrt(2·g·depth(x)) dx,  Cd ≈ 0.6.
+      // Just over a corner that is the weir law (it goes as depth^1.5): it
+      // sips, and stops when the level falls below the corner, so you tip
+      // further as you would a mug. On its side it pours; upside down the
+      // whole mouth is the bottom and it is out in a fraction of a second.
+      // The volume is taken in the same small steps as the waves, so it falls
+      // smoothly however fast it goes.
+      s.sipping = false; s.outflow = 0; lastOut = 0;
+      if (wallToWall() && !s.draining) {
+        const sub = Math.max(1, Math.ceil(frameDt / 0.004)), dt = frameDt / sub;
+        for (let k = 0; k < sub && s.volume > 0; k++) {
+          const out = Math.min(s.volume, mouthFlow(s.volume, norm(tilt)) * dt);
+          s.volume -= out; s.outflow += out / frameDt;
+        }
+        // Torricelli never quite reaches empty (the last film runs ever slower);
+        // a film thinner than a pixel over the screen is gone
+        if (s.outflow > 1 && s.volume < W * 0.6) s.volume = 0;
+        lastOut = s.outflow * frameDt; lastSide = Math.sin(norm(tilt)) >= 0 ? 1 : -1;
+        if (s.outflow > 1) {
+          s.sipping = true;
+          const at = lastSide > 0 ? W : 0;
+          for (const [i, w] of bump(at, 50)) rv[i] -= Math.min(30, s.outflow / target * 60) * w * frameDt * 60;
         }
       }
 
@@ -381,9 +455,12 @@
       s.hit = true; s.flowing = false; s.stopAt = s.t; s.head = s.tail = -1;
       s.fullAt = s.t; s.draining = false; s.done = false; drainDip = 0;
       layOut(); for (let i = 0; i < N; i++) h[i] = base[i];
+      fresh = true;
     };
 
-    s.setTilt = (a) => { tiltTo = clamp(a, -TILT_MAX, TILT_MAX); };
+    // any angle, upside down included; it swings the short way round
+    s.setTilt = (a) => { tiltTo = a + 2 * Math.PI * Math.round((tilt - a) / (2 * Math.PI)); };
+    s.poly = () => (Math.abs(norm(tilt)) > TILT_MAX && wallToWall() ? levelLine(s.volume, norm(tilt)) : null);
     s.tilt = () => tilt;
     s.skip = (sec) => { s.t += sec; };                // time passed with nothing to draw (asleep, tab hidden)
     // Nothing is moving: a full cup, still, waiting. The page stops drawing
@@ -391,7 +468,7 @@
     // minutes, and a canvas redrawn sixty times a second for forty minutes is
     // a battery.
     s.idle = () => {
-      if (s.fullAt < 0 || s.draining || s.flowing || s.sipping || drops.length || drips.length || bubbles.length) return false;
+      if (s.fullAt < 0 || s.draining || s.flowing || s.sipping || s.poly() || drops.length || drips.length || bubbles.length) return false;
       if (Math.abs(tilt - tiltTo) > 0.002 || Math.abs(tiltV) > 0.004) return false;
       let e = 0, foam = 0;
       for (let i = 0; i < N; i++) { e += ev[i] * ev[i] + rv[i] * rv[i] + 0.5 * eta[i] * eta[i]; foam = Math.max(foam, f[i] - FMIN); }
@@ -431,7 +508,30 @@
       ctx.lineTo(W, top[N]);
     };
 
-    if (minTop < H - 0.3) {
+    const poly = s.poly();
+    if (poly && poly.shape.length > 2) {
+      // on its side or upside down: the part of the screen below the level line
+      ctx.beginPath();
+      poly.shape.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      let d0 = Infinity, d1 = -Infinity;
+      for (const [x, y] of poly.shape) { const d = x * poly.gx + y * poly.gy; d0 = Math.min(d0, d); d1 = Math.max(d1, d); }
+      const span = Math.max(140, d1 - d0);
+      const body = ctx.createLinearGradient(poly.gx * d0, poly.gy * d0, poly.gx * (d0 + span), poly.gy * (d0 + span));
+      body.addColorStop(0, "rgba(128,74,32,0.78)");
+      body.addColorStop(0.06, "rgba(88,47,20,0.8)");
+      body.addColorStop(0.3, "rgba(50,26,11,0.84)");
+      body.addColorStop(1, "rgba(20,10,5,0.88)");
+      ctx.fillStyle = body; ctx.fill();
+      // the surface: the edge of the shape that lies on the level line
+      ctx.beginPath();
+      const on = poly.shape.filter(([x, y]) => Math.abs(x * poly.gx + y * poly.gy - poly.c) < 0.5);
+      if (on.length >= 2) {
+        ctx.moveTo(on[0][0], on[0][1]); ctx.lineTo(on[1][0], on[1][1]);
+        ctx.strokeStyle = "rgba(186,128,70,0.86)"; ctx.lineWidth = 4; ctx.stroke();
+        ctx.strokeStyle = "rgba(255,238,214,0.6)"; ctx.lineWidth = 1.2; ctx.stroke();
+      }
+    } else if (minTop < H - 0.3) {
       // the body: amber where it is thin, near-black where it is deep
       ctx.beginPath(); surfacePath(); ctx.lineTo(W, H + 2); ctx.lineTo(0, H + 2); ctx.closePath();
       const span = Math.max(140, H - minTop);
