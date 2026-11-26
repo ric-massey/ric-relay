@@ -1874,7 +1874,12 @@ migration marked "safe to re-run", and re-running it would have put the original
   pure weight, and an unconverged pressure solve otherwise kept it stirring); and the jet hands
   the coffee **12 cm/s, not its own 4 m/s** (a thin jet slows within centimetres by dragging
   coffee along in 3D, which a 2D grid cannot; 4 m/s sent it to the floor and up the walls at
-  once). Chosen, not measured: the density difference, the amount, the jug, the entry speed,
+  once); and the flow is **damped** (2/s while the plume falls, 0.6/s after) to stand in for
+  the coffee a real plume drags along in 3D — without it the plume ran up both walls and
+  churned the cup tan, where a real one **settles on the bottom** (Ric: "it should settle
+  realistically. Like settle on the bottom"). The test holds that: at rest, over 75% of it in
+  the bottom quarter, in a level layer. Chosen, not measured: the density difference, the
+  amount, the jug, the entry speed, the damping,
   the hand's wobble (what breaks the plume's symmetry), the colour ramp and the stopping
   rules (still for a second, or a minute old). After ten seconds it steps at 30 Hz, and it
   costs about 6 ms a step on a laptop. `.github/test/coffee.mjs` holds the timing, the amount,

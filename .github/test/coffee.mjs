@@ -79,6 +79,14 @@ for (const [W, H] of [[1440, 900], [390, 844], [2560, 1400]]) {
   const s = createSim(390, 844, { hold: 2400, mm: 0.174 });
   let t = 0; while (t < 75 && !s.idle()) { s.step(1 / 60); t += 1 / 60; }
   assert.ok(s.cream.hit && s.idle(), `on a phone the creamer comes to rest and the cup can sleep (${t.toFixed(0)} s)`);
+  // and where it rests is the floor: it is heavier, so it settles there in a level layer
+  const cr = s.cream, top = s.surfaceX(195), D = 844 - top;
+  let m = 0, low = 0;
+  for (let j = 0; j < cr.ny; j++) for (let i = 0; i < cr.nx; i++) { const v = cr.c[j * cr.nx + i]; m += v; if ((j + 0.5) * cr.cs > 844 - D / 4) low += v; }
+  assert.ok(low / m > 0.75, `it settles on the bottom: ${(100 * low / m).toFixed(0)}% of it in the bottom quarter`);
+  const col = (i0, i1) => { let a = 0; for (let i = i0; i < i1; i++) for (let j = 0; j < cr.ny; j++) a += cr.c[j * cr.nx + i]; return a / (i1 - i0); };
+  const q = Math.floor(cr.nx / 4), lean = col(0, q) / col(cr.nx - q, cr.nx);
+  assert.ok(Math.abs(lean - 1) < 0.15, `in a level layer (as thick by one wall as the other: ${lean.toFixed(2)})`);
 }
 {
   const s = createSim(800, 600);
