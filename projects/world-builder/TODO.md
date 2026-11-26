@@ -6981,6 +6981,42 @@ blur on the map; footprints and roof tones are worked out once per building and 
 **Done when:** each of 22a to 22c is on the map at the zoom where it can be read, `symbols.html` and
 the map agree, and the speed bench says no frame got slower than the speed log allows.
 
+### [ ] 23. Where houses stand: villages laid out as real ones are
+
+Made 2026-11-26. Ric asked why houses are always built in a circle, and chose the six real patterns
+below.
+**Now:** every house goes at the next point of a golden-angle spiral round the village's middle
+(`newHome` in `people.js`: each plot 137.5° on from the last, its distance growing with the square
+root of the count, about 19 m apart — the pattern of seeds in a sunflower, Vogel's spiral), turned
+to face round the circle, skipping water. So every village, on any land, is the same round rosette.
+**Do:** each village is laid out in one of six patterns, and grows in that pattern as houses are
+built:
+- **A street village** — houses in a row along both sides of a road, each with its long plot of land
+  behind it. The commonest.
+- **A green village** — houses round a long green or a pond.
+- **A clustered village** — irregular, grown up round a church, a well or a crossroads, with lanes
+  winding between.
+- **Along water** — a line of houses following a river bank or a shore.
+- **Scattered farms** — each farmstead on its own land; common in hills and on poor soil.
+- **A grid** — a planned town: Roman, colonial or modern.
+The pattern comes from what the engine already knows, never from a dice roll alone: the land (a
+road through the place, a river or shore beside it, slope, how good the soil is), how land is held
+(15.7), the era and what the people know (a grid needs planning, 15.9), and the people's own
+customs. A house faces its street, green or lane, not round a circle. Fields (7c) and paths (7d)
+should follow the plots: a street village's long strips behind each house.
+**Research first:** settlement morphology — what made a place a street village, a green village, a
+cluster or scattered farms (the soil, the water, the lord or the community, defence), with sources
+written into this item; plot sizes for each (a toft and croft, a planned town's lots); how villages
+grew and changed pattern (a cluster becoming a street village along a new road).
+**Ric decides:** whether the spiral stays as a "simpler" choice (the usual way here: a setting, the
+old way kept and fingerprinted); whether a people's custom can fix its pattern; whether a town
+re-plans itself (a grid laid over an old cluster).
+**Done when:** each pattern appears where its land and people call for it, and can be told apart
+from above; houses face what they front; with the setting on "simpler" a world is byte for byte the
+one before; walking, building, burning and ruin still work (the walking and dozing tests, ruins).
+**Budget:** default. This moves where every house stands, so like 2b it makes every seed a new
+world from the day it lands; say so in the README and here.
+
 ## Speed log
 
 One row per finished item. Same machine where possible; say which machine.
