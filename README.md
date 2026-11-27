@@ -45,7 +45,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `systems.html` | — | Legacy redirect from the former Orrin URL to `orrin.html` |
 | `map.html` | Map | The themed door into ATLAS — the private crew map. The door is public; everything behind it needs a login · *unlisted everywhere; reachable by typing `map`* |
 | `404.html` | — | On-brand "signal lost" page for mistyped URLs |
-| `atlas/` | — | ATLAS, the private crew map — a whole app in this repo, served from `ricmassey.com/atlas/`. Code only: every pin, coordinate and photo lives in Supabase behind a login. See [`atlas/README.md`](atlas/README.md) |
+| `atlas/` | — | ATLAS, the private crew map — a whole app in this repo, served from `ricmassey.com/atlas/`, with a home button back to the main site. Code only: every pin, coordinate and photo lives in Supabase behind a login. See [`atlas/README.md`](atlas/README.md) |
 | `worker/` | — | The one Cloudflare Worker behind every room that writes anything — training, climbing and entertainment. See [`worker/README.md`](worker/README.md) |
 | `docs/` | — | Notes, audits, design mockups and plans that are about the site rather than part of it |
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |

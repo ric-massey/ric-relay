@@ -223,10 +223,15 @@
        of an empty search are the same list, so the search bar is the way into
        both, and it lives at the bottom where a thumb is. -->
   <header class="topbar">
-    <button id="layers-btn" class="chip solo wide-chip" title="Layers">
-      <svg class="icon"><use href="#i-layers"/></svg>layers
-      <span id="layers-count" class="chip-count" hidden></span>
-    </button>
+    <div class="topbar-left">
+      <a class="chip solo" href="../index.html" title="Back to RIC//NET" aria-label="Back to main website">
+        <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg>
+      </a>
+      <button id="layers-btn" class="chip solo wide-chip" title="Layers">
+        <svg class="icon"><use href="#i-layers"/></svg>layers
+        <span id="layers-count" class="chip-count" hidden></span>
+      </button>
+    </div>
     <div class="topbar-right">
       <button id="measure-btn" class="chip solo" title="Measure distance and climb" aria-label="Measure">
         <svg class="icon"><use href="#i-ruler"/></svg>

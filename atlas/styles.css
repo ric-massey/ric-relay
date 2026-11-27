@@ -435,7 +435,7 @@ a.btn-primary { display: grid; place-items: center; text-decoration: none; }
   display: flex; justify-content: space-between; gap: var(--s-2); pointer-events: none;
 }
 .topbar > * { pointer-events: auto; }
-.topbar-right { display: flex; gap: var(--s-2); }
+.topbar-left, .topbar-right { display: flex; gap: var(--s-2); }
 
 /* A control floating on the map: square-ish, 44, its own shadow, and an icon
    that is actually centred in it — which a font glyph never is. */
@@ -447,6 +447,7 @@ a.btn-primary { display: grid; place-items: center; text-decoration: none; }
               transform var(--t-fast) var(--spring);
 }
 .chip.is-on { background: var(--accent); color: var(--on-accent); }
+a.chip { text-decoration: none; }
 .chip.solo {
   position: relative;
   background: var(--panel); border: var(--b) solid var(--edge);

@@ -201,6 +201,11 @@ produce an app that can never find you. Test on a phone against the live site.
 
 ## Using it
 
+The **home button** at the top left, beside **layers**, returns to the main
+RIC//NET front door (`../index.html`). Added 2026-11-27 at Ric's request:
+"there needs to be a button to go back to my main website". It is a normal
+link, so it works when ATLAS was opened directly or installed on a phone.
+
 A pin's sheet takes the bottom half of the screen and the map keeps the top
 half, with the pin centred in the part you can still see — so the ground is in
 front of you while you write about it. The sheet scrolls inside itself and
