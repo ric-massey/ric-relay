@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>coffee3 GPU verification</title>
+<style>
+body{margin:0;background:#eee7dc;color:#231a14;font:16px/1.5 system-ui}main{padding:32px;max-width:800px;margin:auto}h1{font:36px Georgia}button{font:16px system-ui;padding:12px 18px;margin:4px}pre{white-space:pre-wrap;background:#fff9ef;padding:16px}#tools{position:relative;z-index:2147483646}p{max-width:580px}
+</style></head><body><main><h1>Coffee, under glass.</h1><p>Live GPU verification. The cup is the browser window. Drag anywhere to stir; Alt-drag to tip. Buttons below exercise the actual simulation and read its particles back from the GPU.</p>
+<div id="tools"><button id="pour">Pour coffee3</button><button id="left">Tilt left</button><button id="right">Tilt right</button><button id="upright">Upright</button><button id="empty">Turn upside down</button><button id="drain">Drain</button><button id="read">Read particles</button><button id="stop">Stop test</button><button id="suite">Run GPU checks</button><pre id="result">Ready.</pre></div></main>
+<script src="../../assets/coffee3.js"></script><script>
+const result=document.getElementById('result');
+const phone=new URLSearchParams(location.search).has('phone')?true:undefined;
+const audit=async()=>{
+  const active=RELAY_COFFEE3.active;if(!active){result.textContent='No active cup.';return;}
+  const book=await active.audit();const state=active.state;
+  result.textContent=JSON.stringify({state,...book},null,2);
+};
+document.getElementById('pour').onclick=async()=>{await RELAY_COFFEE3.pour({holdSeconds:120,phone});result.textContent='Running. Read particles to verify the actual GPU state.';};
+document.getElementById('left').onclick=()=>{RELAY_COFFEE3.active?.tilt(-0.8,-0.6);audit();};
+document.getElementById('right').onclick=()=>{RELAY_COFFEE3.active?.tilt(0.8,-0.6);audit();};
+document.getElementById('upright').onclick=()=>{RELAY_COFFEE3.active?.tilt(0,-1);audit();};
+document.getElementById('empty').onclick=()=>{RELAY_COFFEE3.active?.tilt(0,1);audit();};
+document.getElementById('drain').onclick=()=>{RELAY_COFFEE3.active?.drain();audit();};
+document.getElementById('read').onclick=audit;
+document.getElementById('stop').onclick=()=>{RELAY_COFFEE3.active?.stop();result.textContent='Stopped.';};
+document.getElementById('suite').onclick=async()=>{
+  const button=document.getElementById('suite');button.disabled=true;
+  const lines=[];const ok=(name,condition)=>{if(!condition)throw Error(name);lines.push('PASS '+name);result.textContent=lines.join('\n');};
+  const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const until=async(test,timeout=90000)=>{const start=performance.now();while(!test()){if(performance.now()-start>timeout)throw Error('Timed out waiting for the simulation');await delay(200);}};
+  try{
+    RELAY_COFFEE3.active?.stop();await RELAY_COFFEE3.pour({holdSeconds:180,phone});
+    const cup=RELAY_COFFEE3.active;ok('WebGPU initialised',!!cup?.audit);
+    await RELAY_COFFEE3.pour();ok('duplicate command keeps one cup',document.querySelectorAll('canvas[data-coffee="3"]').length===1);
+    await until(()=>cup.state.fullAt>=0);let book=await cup.audit();
+    ok('actual GPU particle data stays finite',book.finite && book.errors.length===0);
+    ok('emitted count equals target',book.emitted===cup.dims.target);
+    ok('all emitted liquid is accounted for',book.emitted===book.alive+book.lost);
+    ok('liquid occupies real depth',book.maxZ-book.minZ>2);
+    const baseline=book.meanX;const start=cup.state.elapsed;cup.tilt(-0.7,-0.714);
+    await until(()=>cup.state.elapsed>start+0.65);book=await cup.audit();
+    ok('changing gravity shifts liquid left',book.meanX<baseline-2);
+    const lost=book.lost;const upside=cup.state.elapsed;cup.tilt(0,1);
+    await until(()=>cup.state.elapsed>upside+1.1);book=await cup.audit();
+    ok('the open top spills liquid',book.lost>lost+book.emitted*0.1);
+    ok('spilled liquid remains accounted for',book.emitted===book.alive+book.lost && book.finite);
+    cup.stop();ok('teardown removes its canvas',!document.querySelector('canvas[data-coffee="3"]'));
+    await RELAY_COFFEE3.pour({holdSeconds:180,phone});const next=RELAY_COFFEE3.active;
+    ok('a fresh cup can be poured',!!next&&next!==cup);await until(()=>next.state.fullAt>=0);
+    const before=await next.audit();const t=next.state.elapsed;next.drain();
+    await until(()=>next.state.draining&&next.state.elapsed>t+1.5);const after=await next.audit();
+    ok('the floor drain removes liquid',after.alive<before.alive*0.8);
+    ok('draining remains finite',after.finite&&after.errors.length===0);next.stop();
+    result.textContent=lines.join('\n')+'\nALL GPU CHECKS PASSED';
+  }catch(error){RELAY_COFFEE3.active?.stop();result.textContent=lines.join('\n')+'\nFAIL '+error.message;}
+  finally{button.disabled=false;}
+};
+</script></body></html>

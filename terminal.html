@@ -435,6 +435,17 @@ type Sydney's cat's name for a surprise!</div>
     const goTo = (href) => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL(href, location.href).href }) : (location.href = href);
     const reloadPage = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL("terminal.html", location.href).href }) : location.reload();
     const goBack = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "back" }) : history.back();
+    // coffee3 has its own GPU simulation; permission must be asked in this gesture.
+    const brewCoffee3 = () => {
+      window.DeviceMotionEvent?.requestPermission?.().catch(() => {});
+      window.DeviceOrientationEvent?.requestPermission?.().catch(() => {});
+      if (window.RELAY_COFFEE3) return window.RELAY_COFFEE3.pour();
+      if (document.querySelector('script[data-coffee3]')) return;
+      const js = document.createElement("script"); js.dataset.coffee3 = "1";
+      js.src = "assets/coffee3.js?v=1"; js.onload = () => window.RELAY_COFFEE3?.pour();
+      js.onerror = () => { js.remove(); console.warn("coffee3 could not load; type coffee3 to retry."); };
+      document.head.appendChild(js);
+    };
     // `coffee2` is the new cup being built to Ric's brief (assets/coffee2.js),
     // on the same physics as `coffee`: both files, the first time it is typed
     const brewCoffee2 = () => {
@@ -1165,6 +1176,11 @@ type Sydney's cat's name for a surprise!</div>
         if (window.TERMINAL_EMBED) window.TERMINAL_EMBED.send({ term: "coffee2" });
         else brewCoffee2();
         return "brewing in the new cup... ☕ (still being built)";
+      },
+      coffee3: () => {
+        if (window.TERMINAL_EMBED) window.TERMINAL_EMBED.send({ term: "coffee3" });
+        else brewCoffee3();
+        return "brewing coffee3... ☕ live 3D. Drag to stir; Alt-drag to tip on a computer.";
       },
       exit: () => "there is no exit. there is only the terminal.",
       lsd: () => {

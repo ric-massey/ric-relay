@@ -70,7 +70,7 @@ captures-data.js            the photo dates captures.html draws (made off-repo f
 projects/photos/            upload-photos.py — the photographs' way into R2, and its README
 systems.html, updates.html  redirects from old URLs — keep them, links out there still use them
 robots.txt, sitemap.xml     what crawlers may read, and the map — sitemap.xml is generated (assets/build-sitemap.mjs)
-assets/                     sitewide files at the top: owner.js, site-gate.js, training-plan.json, coffee.js (the `coffee` egg)
+assets/                     sitewide files at the top: owner.js, site-gate.js, training-plan.json, coffee.js / coffee2.js / coffee3.js (separate coffee eggs)
   cat/                      Mochi's sprite frames
   climbing/ training/ entertainment/   one room's own scripts, styles and generated JSON
   games/ posters/ backdrops/           art
@@ -1940,6 +1940,25 @@ migration marked "safe to re-run", and re-running it would have put the original
   drained, to the particle, through a whole run), the fill time, the level, the volume, the drain,
   coming to rest, the slosh period, tipping, the creamer's amount, sinking and settling, and
   the shake.
+- **`coffee3` is a separate live 3D experiment** (2026-11-27, Ric: "a horizontal view ...
+  so it should be simpler", then "make it as coffee3"). `assets/coffee3.js` has its own
+  WebGPU MLS-MPM simulation in a shallow volume and traces a cubic-filtered 3D density
+  surface, rather than extruding the first coffee's 2D wave or playing a video. It is lazy
+  loaded from both terminal and front door; iPhone permission is asked inside the original
+  gesture in both places. It has mouse stirring, Alt-drag tipping, phone motion input, an
+  open top, a floor drain, hidden-page suspension and a still reduced-motion cup. It needs
+  WebGPU and says so if unavailable; never silently present an older renderer as coffee3.
+  The original commands stay separate. Its nozzle is cylindrical, so the flow is
+  **πr² × speed** (not coffee's 2D width × speed); hold is measured after the pour ends.
+  It is weakly compressible and uses chosen damping, a fixed shallow depth, and bounded
+  GPU substeps: no claim of stock-video fidelity, exact incompressibility or measured
+  iPhone performance. Credit and the MIT notice are in `assets/coffee3-LICENSE.txt`.
+  `.github/test/coffee3.mjs` checks units/flow/entry points in the quick lane;
+  `.github/test/coffee3-browser.html` compiles and runs the actual shaders, reads particles
+  back and tests tipping, spilling, re-pouring and draining. The manual GPU suite stays
+  outside the Node runner, whose environment has no browser GPU. Details and outstanding
+  device checks are in `docs/coffee-egg-plan.md`.
+
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

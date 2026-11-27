@@ -59,6 +59,13 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `effects.js` | — | Persistent visual modes, the shared mobile room-menu behaviour (`installRoomMenu()`), and Mochi — the reduced-motion-aware resident cat with progressively loaded, decoded instant frame swaps; calibrated visible-body scale; collision-safe placements; relaxed multi-angle movement; feature entrances and stretching; element interactions; occasional walk-offs; page-aware returns; a wall-climbing mode on the Climbing room; and a helmeted zero-gravity mode used only by compatible games |
 | `EASTER_EGGS.md` | — | Complete field guide to every hidden command and typed surprise |
 
+The hidden `coffee3` command is the live 3D coffee experiment (2026-11-27): a
+shallow GPU liquid volume seen straight on, with smooth curved surfaces and reflected
+light. Drag to stir, Alt-drag to tip, or allow phone motion. It loads only when typed
+in the terminal or front door and requires WebGPU; reduced motion shows a still cup.
+It runs beside `coffee` and `coffee2`. See [`docs/coffee-egg-plan.md`](docs/coffee-egg-plan.md)
+for the approximation, credits, validation and remaining phone verification.
+
 ## Projects
 
 Standalone builds live in `projects/` and are surfaced from the room that fits them:

@@ -88,6 +88,92 @@ a laptop). `coffee2` keeps `coffee`'s fill time for now (the stream behaves as a
 cup's depth wide); whether the stream should look as wide as it pours, or the cup be
 shallower, is Ric's call.
 
+## `coffee3`: live 3D, fixed horizontal view
+
+Added 2026-11-27, after Ric linked the iStock "Blue liquid 3D animation" reference and
+asked whether its look was possible live, including phone tilt: "a horizontal view ...
+so it should be simpler", then "make it as coffee3". This is **a separate command**,
+not a replacement for either existing cup or the Blender experiment in `assets/coffee2/`.
+
+`assets/coffee3.js` is a classic, self-contained script, lazy loaded by `terminal.html`
+and the front door's embedded-command handler. No build, runtime library, external asset,
+video or server is needed. WebGPU requires a capable browser/device and a secure context
+(HTTPS, localhost, or a browser that permits it on a local file). If unavailable, it shows
+a short notice; it does not silently show `coffee` and call that the new version.
+
+The liquid is a shallow **3D MLS-MPM** volume: particles carry velocity and an affine
+velocity matrix; quadratic weights transfer mass/momentum to a stagger-free 3D grid,
+pressure and viscosity push it, gravity acts, then particles gather the velocity and move.
+Integer atomics store the GPU grid at a fixed-point scale of one million. The top is open;
+particles crossing it are lost, and a central floor opening drains them. No lost particle
+is recycled. `active.audit()` reads the actual particle buffer back, reporting finite
+values, counts, depth, average position, speed and WebGPU validation errors.
+
+The camera stays almost straight on, looking down by about 13.5°. A filtered 3D density
+field is reconstructed from the particles. Cubic B-spline sampling and a short ray march
+produce the curved surface, its normal and the liquid's optical thickness. Coffee absorbs
+warm light through that thickness (Beer–Lambert); its surface reflects two broad procedural
+soft lights with Fresnel reflectance. There is no extruded ribbon, drawn surface wave,
+stock texture or prerecorded splash. Cubic reconstruction matters: a trilinear density
+field left visibly straight facets, and independently rendered spheres made the first
+version look beaded. The grid is 64 cells across on a computer, 44 on a coarse-pointer
+device, ten deep with six cells between the walls; height follows the viewport aspect.
+The nozzle is continued analytically through the very top border, above the simulation's
+valid particle-entry position, so an artificial rounded cap does not hang in mid-air.
+
+Gravity is 9.81 m/s², mapped using 0.2646 mm per desktop CSS pixel or an estimated 68 mm
+phone short side. The selected nozzle radius is 2.16 grid cells, entering at 0.6 m/s.
+Its **cylindrical** flow is πr² × speed; particle count divided by rest density is volume,
+so fill duration follows from those quantities, not a hand-set timer. The target is
+nominally three quarters of the cup. The pressure law is weakly compressible, so that is
+a volume target rather than an exact final surface-height guarantee. Damping, viscosity,
+nozzle size and lighting are chosen, not measured coffee properties. It does not yet model
+creamer, bubbles, foam, steam or capillary sheets below the grid's scale.
+
+Drag anywhere to stir; Alt-drag sets desktop gravity for tipping. These listeners never
+prevent page interaction. On phones, orientation provides a consistent reference and
+acceleration including gravity provides tilt/shakes; the motion sign is checked against
+orientation, with the iPhone reversed-sign assumption until calibrated. Sensor permission
+is requested in the command's original keypress/submit gesture, before lazy loading.
+Permission denial leaves the upright cup usable. The desktop hold is five seconds after
+the **pour ends**, and the phone hold is forty minutes. The page suspends while hidden;
+a quiet cup can stop submitting GPU work and wake for motion or its drain deadline.
+Reduced motion uses a static cup without initialising WebGPU. Resizing keeps the particles
+and fits their view to the new window; it does not rebuild or refill the simulation.
+
+Simulation steps are fixed and bounded, and GPU submissions are awaited to keep the queue
+short. A slow device loses simulated elapsed time. FPS and elapsed simulation time are
+different measurements; desktop results do not establish iPhone performance. Real-device
+iPhone permission, orientation, shaking, sustained thermal/battery behaviour and rotation
+between portrait and landscape still need Ric's phone. Stock-render fidelity is not claimed.
+
+Validation:
+
+- `node .github/test/coffee3.mjs`: physical units, cylindrical flow, capacity and both
+  command entry points; registered in `.github/checks.mjs`.
+- Serve the repo and open `.github/test/coffee3-browser.html?coffeedebug`; **Run GPU checks**
+  compiles all actual WGSL, reads actual GPU particles and exercises finite state, emitted
+  volume, depth, changed gravity, open-top spilling, teardown, re-pouring and the floor drain.
+  It reports a failure instead of treating missing WebGPU as a pass. This is manual browser
+  verification, not a Node mock and not silently included in CI.
+
+Verified 2026-11-27: all 13 GPU checks passed on the desktop profile and at 375 × 812
+with `?phone&coffeedebug` (which selects the actual 44-cell phone profile). Both command
+entry points were opened at phone width. CPU checks cover orientation axes in portrait
+and landscape, the Apple acceleration sign, reduced-motion teardown/re-pouring, and
+unsupported-WebGPU cleanup as well as units and flow. These are desktop browser tests,
+not physical iPhone results. A site-wide check run also found 65 failures in unchanged
+People Sandbox tests; `ways.test.mjs` was reproduced independently with that folder
+identical to HEAD. Garmin and KONDRITE's socket failures passed outside the network
+sandbox. The coffee permission-pattern regression found by the old coffee suite was
+fixed by keeping its original gesture handler and adding coffee3's alongside it.
+
+The MLS-MPM transfer equations are adapted from **matsuoka-601/Splash**, MIT, which credits
+Hu et al. and nialltl. The final density-volume renderer is specific to this shallow view;
+it does not use Splash's screen-space renderer. The MIT notice and references are retained
+in `assets/coffee3-LICENSE.txt`. B-spline interpolation follows the eight-trilinear-lookup
+construction described by Sigg and Hadwiger, *Fast Third-Order Texture Filtering*, GPU Gems 2.
+
 ## The idea, in Ric's words
 
 > "the cup is the screen. the website fills with coffee.... also i want it to look like
