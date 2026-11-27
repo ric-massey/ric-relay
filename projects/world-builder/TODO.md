@@ -6970,7 +6970,8 @@ job:
   armies' camps (`f.camp`), siege works, armies on the march (units are drawn only behind ⋯'s
   "Show armies' units", and the bar's Units button is never shown); blasts and what is left in the
   ground (`LEFT`, which never leaves the worker); caravans and their pack animals; bandits (drawn as
-  anybody); ore (sent at the start, never painted); boats away from
+  anybody); cars (real already: one to a trader who bought one, `CARS` in `people.js`, going where
+  the trader goes; only never sent); ore (sent at the start, never painted); boats away from
   their landing (grain by water, war at sea, piracy, blockade); irrigation ditches, dug, silted and
   cleaned (`ditches`, `silted`).
 - **22c. The world's state** — the page, from numbers the engine keeps: night and dawn from the
@@ -6978,11 +6979,40 @@ job:
   it); winter and snow by season; a dry year by place and rain; floods; fire, from a hearth's smoke
   to a burning house. Must stay calm: one light over everything, lit windows at night, fire the only
   bright warm colour.
-- **22d. Counted, with no place in the world** — engine work, each to be asked of Ric as an item of
-  its own: oxen and horses ("counted, not walking about"); tanks and aircraft (built, lost, sorties
-  and bombs are counters); cars, rail and wires (counted, or a building); herds and game (stock on
-  squares, not animals); fairs and sacred land (no mark). Each needs a position and movement before
-  it can be drawn, and must keep the engine's numbers the same when off.
+- **22d. Counted, with no place in the world** — engine work, each its own item, asked of Ric
+  first, and each off by a setting that keeps the old world exactly. A page that decided where an ox
+  stood would be making it up; the thing gets a place in the engine, then it is drawn. In this order
+  (2026-11-27, agreed with Ric):
+  1. **Horsemen and chariots** — soldiers already stand in units with places, and the engine knows
+     what share of an army rides (`kitOf`); it only never says *which* soldier. Mark the rider and
+     every horseman is real. Small, and most worlds have armies with horses.
+  2. **Oxen and horses belong to a house.** Ric (2026-11-27): "technically horses and oxen are put
+     to a house not a person and the person owns everything at and around the house." Today they
+     are one number a village (`v.oxen`, `v.horses`, TODO 15.5o): bred, worn out, eaten and driven
+     off as one herd. Instead they are kept on the house's record, as its tools and stores are (a
+     household is one purse and one pot), so they cost a person nothing — a person is at V8's edge
+     (15.12a). They stand in the yard or pen by their house and leave it only with whoever of that
+     house is using one — the ox to the field, the horse in the cart's shafts — and come back. They
+     are the household's wealth: a rich farm keeps a team, a poor cottage none; a sacked house loses
+     its own; in a famine a family eats its own ox first. Breeding where there is grazing and wear
+     (about ten years an ox, twelve a horse) move from the village to the house.
+     **Ric decides:** how a house without oxen ploughs. (a) It reaps less alone — today a village
+     without a full team reaps a fifth less a day. (b) It borrows or hires a neighbour's team, paid
+     in coin or owed, through the trade and debts the engine has. (c) Neighbours pool their beasts
+     into one team, as they did: a team was eight oxen, and most families had one or two (Domesday,
+     about one ox to every two or three people; the research is already in 15.5o's comment in
+     `people.js`). Recommended: (c), with (b) where nobody near has enough to pool — then a plough
+     team on the map is real neighbours walking out to one field together.
+     **Done when:** every beast is at a house or with somebody using it; the village totals the
+     engine read before are the sum of its houses' (a test adds them up); off is the old world
+     byte for byte; the bench says no step got slower than the speed log allows.
+  3. **Herds and game stay numbers on squares** — making every sheep a walker would cost far more
+     than it shows. They are drawn as what they are: a mark on the grazing, more marks for more
+     stock. Drawing only, from figures the engine keeps.
+  4. **Tanks, aircraft and bombs, last** — they come only in a late era, and doing them properly
+     means airfields, sorties that fly somewhere and bombs that land somewhere. Not before worlds
+     reach that era as a matter of course. Rail and wires stay counted or a building; fairs and
+     sacred land have no mark yet.
 
 - **22e. Arms, armour and fighting** — the map draws one weapon for everybody (`drawEquipment`: a
   pole with a point), a shield and a pack. The engine knows the arms (`ARMS`: hand, bronze, iron,
