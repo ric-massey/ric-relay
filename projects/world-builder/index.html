@@ -2172,6 +2172,9 @@
   const FIELD_BLOCK = 64, fieldBlocks = new Map();
   let blArr = null;   // the other buildings (TODO 16): nine numbers each, see people-host.js
   let fieldsFor = null, housesFor = null, houses = null, homesArr = null, heldMap = null, trackMap = null;   // trackMap: square -> 1 a path, 2 a road (TODO 7d)   // heldMap: square -> house holding it (TODO 7c)   // houses: where they stand, baked into the blocks
+  /* The engine's h01 (people.js, "where houses stand"), copied: a pure function of the square, so the
+     furrows drawn and the rows people work run the same way (2026-11-27). Keep the two the same. */
+  const rowHash = (a, b, c) => { let h = Math.imul(a | 0, 0x9E3779B1) ^ Math.imul((b | 0) + 0x632BE5AB, 0x85EBCA77) ^ Math.imul((c | 0) + 0x1B873593, 0xC2B2AE3D); h ^= h >>> 15; h = Math.imul(h, 0x2C1B3C6D); h ^= h >>> 12; h = Math.imul(h, 0x297A2D39); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
   function fieldBlock(bx, by) {
     const w = world, own = landNow.owner, key = bx + ":" + by;
     let p = fieldBlocks.get(key); if (p) return p;
@@ -2180,7 +2183,7 @@
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const i = y * w.cols + x, k = w.ground[i];
       if (own[i] < 0 || !(k === 3 || k === 5 || k === 7 || k === 9)) continue;
-      const across = hash(x, y, 99) < 0.5;
+      const across = rowHash(x, y, 99) < 0.5;   // the engine's rule for which way a field's rows run (people.js, toField), so people work along the furrows
       for (let j = 1; j < 4; j++) { if (across) { p.moveTo(x + 0.1, y + j / 4); p.lineTo(x + 0.9, y + j / 4); } else { p.moveTo(x + j / 4, y + 0.1); p.lineTo(x + j / 4, y + 0.9); } }
     }
     fieldBlocks.set(key, p);
