@@ -6949,6 +6949,14 @@ The second had terracotta roofs beside the orange people, sausage-shaped animals
 nothing pulling them, a night and a winter that were filters, and only a close-in drawing; those
 were fixed the same day ("Fix those").
 **Ric decides first:** that the page is right, symbol by symbol. Nothing below starts before that.
+**Only what the engine does, for sure** (Ric, 2026-11-26). Checked that day against `people.js`, and
+taken off the page: quarries and mines as places (quarrying and mining are a day's work on a square;
+no pit forms, stone never runs out, no machinery in any era), trains (the railway is only know-how),
+warships and boats under sail (war at sea is a port shut; a village's boat is drawn at its landing),
+siege engines (a breach is days of work, not a ram or a trebuchet), craters, nets, fairs, deer and
+sheep (game and grazing are stock on squares), lances, and two shapes of shield where the engine has
+one. Real but only counted, so in a section of their own: oxen and horses, horsemen and chariots,
+tanks, aircraft and bombs (22d). A symbol for anything else needs the engine to have it first.
 
 What the map does not show, found by reading `people.js` against what `people-host.js` sends
 (`frame`) and what `index.html` draws, 2026-11-26. Three kinds, because each is a different size of
@@ -6962,7 +6970,7 @@ job:
   armies' camps (`f.camp`), siege works, armies on the march (units are drawn only behind ⋯'s
   "Show armies' units", and the bar's Units button is never shown); blasts and what is left in the
   ground (`LEFT`, which never leaves the worker); caravans and their pack animals; bandits (drawn as
-  anybody); ore (sent at the start, never painted, so a mine has nowhere to stand); boats away from
+  anybody); ore (sent at the start, never painted); boats away from
   their landing (grain by water, war at sea, piracy, blockade); irrigation ditches, dug, silted and
   cleaned (`ditches`, `silted`).
 - **22c. The world's state** — the page, from numbers the engine keeps: night and dawn from the
@@ -6994,7 +7002,7 @@ job:
     and nothing marks it); a gathering as a crowd round a place — feast, wedding, funeral, worship,
     market day, a food riot; work with a shape — oxen at the plough, cut fields, stumps where trees
     were felled, a house going up; the camps, siege works, caravans, craters, mines in the ground,
-    ditches, mines and quarries of 22b; the animals and vehicles of 22d once they have places.
+    and ditches of 22b; the animals and vehicles of 22d once they have places.
   - **Told on a tap, not drawn:** whether somebody is hungry, sick or wounded and how badly; what they
     carry; who a refugee, prisoner or pilgrim is and where they are going; whether a well's water is
     foul (15.5r); how full a village's store is; who lies in a grave; what a gathering is for and who
