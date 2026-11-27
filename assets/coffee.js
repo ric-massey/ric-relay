@@ -679,7 +679,7 @@
     // coffee around on mobile. so it will mix the creamer"). The fingertip is
     // a moving body about 12 mm across (chosen - a fingertip's pad), dragged
     // from where it was to where it is; liquid it passes through is taken up
-    // to its speed, as a spoon takes it, and the solver does the rest - the
+    // to its speed and 15% past it, as a spoon flings it, and the solver does the rest - the
     // wake, the swirls behind it, the waves. The creamer mixes by the same
     // eddy diffusion it always had: a stir only makes the shear that feeds
     // it. Nothing is added or removed, so the books still close.
@@ -693,7 +693,10 @@
     function stirNow([x0, y0, x1, y1, dt]) {
       const vx = (x1 - x0) / dt, vy = (y1 - y0) / dt, sp = Math.hypot(vx, vy);
       // a finger flicked faster than coffee could follow (say 1.5 m/s) still drags it only that fast
-      const cap = Math.min(1, (1.5 * PXM) / (sp || 1)), fvx = vx * cap, fvy = vy * cap;
+      // the liquid it passes through is carried 15% faster than the finger
+      // moves (Ric, 2026-11-27: "make it so the finger moves the liquid 15%
+      // more" - chosen, for feel), up to 1.5 m/s
+      const gain = Math.min(1.15, (1.5 * PXM) / (sp || 1)), fvx = vx * gain, fvy = vy * gain;
       const dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy, R2 = FINGER * FINGER;
       const xl = Math.min(x0, x1) - FINGER, xr = Math.max(x0, x1) + FINGER, yt = Math.min(y0, y1) - FINGER, yb = Math.max(y0, y1) + FINGER;
       for (let k = 0; k < n; k++) {
@@ -1030,7 +1033,6 @@
     // middle), creamer opaque and milky. Drawn first, so where a stream
     // plunges in, the coffee is over it.
     const ys = H / s.Hs;
-    drawTop(ctx, s, F, ys);
     for (const S of s.streams) drawStream(ctx, s, S, ys);
     s.cx.putImageData(s.img, 0, 0);
     // The edge is not the grid's: it is traced as an outline where the
@@ -1148,101 +1150,6 @@
       if (run >= 0) body.rect(X(run), y0, X(fx - 1) - X(run), y1 - y0);
     }
     return { body, gloss };
-  }
-
-  // The coffee's surface across the cup's depth, seen head on (Ric,
-  // 2026-11-27: "the top layer, the one that rolls … seems to have something
-  // go behind it and in front of it", then "it should be level … when there
-  // is a ripple there is coffee back there so it looks like you're head on").
-  // The eye is level with the coffee, so a still surface is a line: nothing
-  // of the top shows. Only where a wave further back stands higher than the
-  // surface at the glass - in a trough, behind the dip the jet digs - does
-  // that coffee show above it. The physics is in the screen's plane, so the
-  // surface further back is made from the surface at the glass (below: a
-  // crest crossing the cup at an angle); that is chosen, not measured. Where
-  // it shows it is lit a little more at its crest, and paler where creamer
-  // has come to the top. The first version (same day) looked down into the
-  // cup from above, and a strip of the top showed all the time: Ric, "the
-  // coffee can't be sitting behind it the entire time. It should be level".
-  function drawTop(ctx, s, F, ys) {
-    const { fx, fy, fr, dens, crm, surf } = F, { W } = s;
-    if (!s.top || s.top.length !== fx) { s.top = new Float32Array(fx); s.back = new Float32Array(fx); s.backOk = new Uint8Array(fx); s.backT = s.t; s.topTmp = new Float32Array(fx); }
-    const front = s.top, back = s.back, ok = s.backOk, tmp = s.topTmp;
-    // the front edge as the outline has it: where the density crosses one
-    // half, found between samples, above the body's start in each column
-    for (let i = 0; i < fx; i++) {
-      let j = Math.round(surf[i] / fr);
-      if (j >= fy - 1) { front[i] = NaN; continue; }
-      while (j > 0 && dens[(j - 1) * fx + i] >= 0.5) j--;
-      const a = j > 0 ? dens[(j - 1) * fx + i] : 0, b = dens[j * fx + i];
-      front[i] = (j - 0.5 + clamp((0.5 - a) / ((b - a) || 1), 0, 1)) * fr + 0.5 * fr;
-    }
-    // the back: smoothed over about 8 mm, a moment (0.15 s) behind
-    // the surface further back: a crest runs across the cup at an angle, so
-    // at the back it stands a little to one side of where it meets the glass
-    // - the higher of the surface 15 mm either way, smoothed over 4 mm (the
-    // shimmer of the particles is not a wave), a moment (0.15 s) late. A
-    // level surface gives back exactly itself, so nothing shows.
-    const { MM } = s, sh = Math.max(1, Math.round(15 / MM / fr)), r = Math.max(1, Math.round(4 / MM / fr));
-    const dt = clamp(s.t - s.backT, 0, 0.1), k = 1 - Math.exp(-dt / 0.15);
-    s.backT = s.t;
-    const at = (i) => { const v = front[clamp(i, 0, fx - 1)]; return v === v ? v : Infinity; };
-    for (let i = 0; i < fx; i++) tmp[i] = Math.min(at(i - sh), at(i + sh), at(i));   // higher on screen = smaller y
-    for (let i = 0; i < fx; i++) {
-      if (front[i] !== front[i]) { ok[i] = 0; continue; }
-      let sum = 0, m = 0;
-      for (let q = Math.max(0, i - r); q <= Math.min(fx - 1, i + r); q++) if (tmp[q] < Infinity) { sum += tmp[q]; m++; }
-      const want = m ? sum / m : front[i];
-      if (!ok[i]) { back[i] = want; ok[i] = 1; } else back[i] += (want - back[i]) * k;
-    }
-    const X = (i) => (i === 0 ? 0 : i === fx - 1 ? W : (i + 0.5) * fr);
-    // where the back shows: only where it stands above the glass's edge, by
-    // more than the surface's own shimmer (about 1 mm), faded in over the
-    // next millimetre and a half so it never pops
-    const topY = new Float32Array(fx), seen = new Uint8Array(fx), fade = new Float32Array(fx);
-    const calm = 1 / MM, ramp = 1.5 / MM;
-    let any = false;
-    for (let i = 0; i < fx; i++) {
-      if (front[i] !== front[i] || !ok[i]) continue;
-      const fy0 = front[i] * ys, by = back[i] * ys;
-      fade[i] = clamp((fy0 - by - calm) / ramp, 0, 1);
-      topY[i] = Math.min(by, fy0); seen[i] = fade[i] > 0 ? 2 : 1; if (seen[i] === 2) any = true;
-    }
-    if (!any) return;
-    // runs of columns with a surface, each one path
-    for (let i0 = 0; i0 < fx; ) {
-      if (!seen[i0]) { i0++; continue; }
-      let i1 = i0; while (i1 + 1 < fx && seen[i1 + 1]) i1++;
-      const strip = new Path2D(), edge = new Path2D();
-      let edgeOn = false;
-      // the back edge is drawn only where it shows; where a crest at the glass hides it, it breaks
-      strip.moveTo(X(i0), topY[i0]);
-      for (let i = i0; i <= i1; i++) {
-        if (i > i0) strip.lineTo(X(i), topY[i]);
-        // a column shows the edge if it, or a neighbour, has the back above the front
-        const show = seen[i] === 2 || (i > i0 && seen[i - 1] === 2) || (i < i1 && seen[i + 1] === 2);
-        if (show) { if (edgeOn) edge.lineTo(X(i), topY[i]); else edge.moveTo(X(i), topY[i]); }
-        edgeOn = show;
-      }
-      for (let i = i1; i >= i0; i--) strip.lineTo(X(i), front[i] * ys + 2 * fr * ys);
-      strip.closePath();
-      ctx.save();
-      ctx.clip(strip);
-      // the colour along it: the room's reflection off dark coffee, paler where creamer is at the top
-      for (let i = i0; i <= i1; i++) {
-        const j = clamp(Math.round(front[i] / fr) + 1, 0, fy - 1), f = j * fx + i, c = dens[f] > 0 ? clamp(crm[f] / dens[f], 0, 1) : 0, w = clamp(c * 6, 0, 1);
-        const rr = 66 + (196 - 66) * w, gg = 44 + (176 - 44) * w, bb = 30 + (150 - 30) * w;
-        ctx.fillStyle = `rgba(${rr | 0},${gg | 0},${bb | 0},${fade[i].toFixed(3)})`;
-        ctx.fillRect(X(i) - fr, topY[i] - 1, 2.2 * fr, front[i] * ys - topY[i] + 3 * fr * ys + 1);
-      }
-      // the far crest catches the light a little more than the body does
-      ctx.lineJoin = ctx.lineCap = "round";
-      ctx.strokeStyle = "rgba(214,186,158,0.07)";
-      for (let q = 6; q >= 1; q--) { ctx.lineWidth = q * 1.5; ctx.stroke(edge); }
-      ctx.restore();
-      ctx.strokeStyle = "rgba(255,244,228,0.22)"; ctx.lineWidth = 0.8; ctx.stroke(edge);
-      i0 = i1 + 1;
-    }
   }
 
   // A stream is drawn as one smooth body from its top to where it goes in,
