@@ -663,7 +663,7 @@
         dens[f] += w00; dens[f + 1] += w10; dens[f + fx] += w01; dens[f + fx + 1] += w11;
         if (c) { crm[f] += w00 * C[k]; crm[f + 1] += w10 * C[k]; crm[f + fx] += w01 * C[k]; crm[f + fx + 1] += w11 * C[k]; }
       }
-      blur(dens); blur(dens); blur(crm); blur(crm); blur(crm); blur(crm);
+      blur(dens); blur(dens); blur(crm); blur(crm);
       // how far each liquid pixel is from air (chamfer distance), for how
       // much coffee the light goes through there; the walls and floor are not air
       const BIG = 1e6;
@@ -686,6 +686,9 @@
         if (i < fx - 1 && j < fy - 1) d = Math.min(d, dist[f + fx + 1] + 1.4);
         dist[f] = d;
       }
+      // the colour's depth, smoothed too: straight off the chamfer it steps
+      // from column to column and shows as faint stripes
+      blur(dist);
       // where the body of liquid starts in each column (the first run of a few
       // pixels deep, so a flying drop is not taken for the surface)
       for (let i = 0; i < fx; i++) {
@@ -785,9 +788,8 @@
     const d = s.img.data, { dens, crm, dist, fx, fy, fr } = F, mmPx = fr * s.MM;
     for (let j = 0; j < fy; j++) for (let i = 0; i < fx; i++) {
       const f = j * fx + i, o = f * 4, rho = dens[f];
-      // the edge: smooth, a pixel or so wide (anti-aliased by the density itself)
-      const a = clamp((rho - 0.35) / 0.25, 0, 1);
-      if (a <= 0) { d[o + 3] = 0; continue; }
+      // colour runs a little past the edge; the outline below cuts it
+      if (rho < 0.12) { d[o + 3] = 0; continue; }
       const path = clamp(2 + 0.3 * dist[f] * mmPx, 0, 10);
       const q = Math.round(path * 4) * 3;
       let r = COFFEE[q], g = COFFEE[q + 1], b = COFFEE[q + 2];
@@ -796,9 +798,7 @@
         const m = Math.round(Math.sqrt(Math.min(1, c)) * 255) * 3, w = clamp(c * 12, 0, 1);
         r += (CREAMLUT[m] - r) * w; g += (CREAMLUT[m + 1] - g) * w; b += (CREAMLUT[m + 2] - b) * w;
       }
-      // the glossy surface: the first pixels under air facing up catch the light
-      if (j > 1 && dens[f - fx] < 0.45 && rho >= 0.45) { r += (255 - r) * 0.45; g += (246 - g) * 0.45; b += (232 - b) * 0.45; }
-      d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 242 * a;
+      d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
     }
     // the streams in the air, exactly where their fall puts them: coffee a
     // glossy round jet (Beer-Lambert across its chord: amber edges, dark
@@ -807,15 +807,29 @@
     const ys = H / s.Hs;
     for (const S of s.streams) drawStream(ctx, s, S, ys);
     s.cx.putImageData(s.img, 0, 0);
+    // The edge is not the grid's: it is traced as an outline where the
+    // smoothed density crosses one half (marching squares, each crossing
+    // placed between samples by interpolation), and the browser draws that
+    // outline at the screen's own resolution, anti-aliased. Inside it, the
+    // colour is the smooth low-resolution image, which has no edges to show.
+    const { body, gloss } = outline(F, ys);
+    ctx.save();
+    ctx.clip(body);
+    ctx.globalAlpha = 0.95;
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(s.cv, 0, 0, fx, fy, 0, 0, fx * fr, fy * fr * (H / s.Hs));
+    ctx.drawImage(s.cv, 0, 0, fx, fy, 0, 0, fx * fr, fy * fr * ys);
+    ctx.restore();
+    // the glossy line where the surface faces up and catches the light
+    ctx.lineJoin = ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(255,246,232,0.4)"; ctx.lineWidth = 0.9; ctx.stroke(gloss);
+    ctx.strokeStyle = "rgba(255,246,232,0.08)"; ctx.lineWidth = 5; ctx.stroke(gloss);
 
     // drops flying free - splashes, spray - too few particles together for
     // the field to show: each drawn as the drop of liquid it is
     const P = s.particles(), pr = Math.sqrt(s.PA / Math.PI);
     for (let k = 0; k < P.n; k++) {
       const i = Math.floor(P.X[k] / fr), j = Math.floor(P.Y[k] / fr);
-      if (i < 0 || j < 0 || i >= fx || j >= fy || dens[j * fx + i] > 0.35) continue;
+      if (i < 0 || j < 0 || i >= fx || j >= fy || dens[j * fx + i] > 0.15) continue;   // only drops truly on their own
       ctx.beginPath(); ctx.arc(P.X[k], P.Y[k] * ys, pr, 0, Math.PI * 2);
       ctx.fillStyle = P.C[k] > 0.5 ? "rgba(236,226,210,0.95)" : through(2 * pr * s.MM * 1.5, 0.92); ctx.fill();
     }
@@ -850,6 +864,55 @@
     }
     ctx.restore();
   }
+  // Marching squares over the fine field: for every square of four samples,
+  // the part inside the liquid as a polygon (corners inside, and the points
+  // where its sides cross the threshold), all in one path so the browser fills
+  // their union with no seams. Squares wholly inside are merged into runs.
+  // The pieces of outline facing up are collected for the gloss.
+  const TH = 0.5;
+  function outline(F, ys) {
+    const { dens, fx, fy, fr } = F, body = new Path2D(), gloss = new Path2D();
+    const X = (i) => (i <= 0 ? 0 : i >= fx - 1 ? fx * fr : (i + 0.5) * fr);
+    const Y = (j) => (j <= 0 ? 0 : j >= fy - 1 ? fy * fr * ys : (j + 0.5) * fr * ys);
+    const pts = [];
+    for (let j = 0; j < fy - 1; j++) {
+      let run = -1;
+      const y0 = Y(j), y1 = Y(j + 1);
+      for (let i = 0; i < fx - 1; i++) {
+        const a = dens[j * fx + i], b = dens[j * fx + i + 1], c = dens[(j + 1) * fx + i + 1], d = dens[(j + 1) * fx + i];
+        const ia = a >= TH, ib = b >= TH, ic = c >= TH, id = d >= TH;
+        if (ia && ib && ic && id) { if (run < 0) run = i; continue; }
+        if (run >= 0) { body.rect(X(run), y0, X(i) - X(run), y1 - y0); run = -1; }
+        if (!(ia || ib || ic || id)) continue;
+        const x0 = X(i), x1 = X(i + 1);
+        const t = (p, q) => (TH - p) / (q - p);
+        pts.length = 0;
+        // clockwise round the square: TL, top edge, TR, right edge, BR, bottom edge, BL, left edge
+        if (ia) pts.push(x0, y0, 0);
+        if (ia !== ib) pts.push(x0 + (x1 - x0) * t(a, b), y0, 1);
+        if (ib) pts.push(x1, y0, 0);
+        if (ib !== ic) pts.push(x1, y0 + (y1 - y0) * t(b, c), 1);
+        if (ic) pts.push(x1, y1, 0);
+        if (ic !== id) pts.push(x1 + (x0 - x1) * t(c, d), y1, 1);
+        if (id) pts.push(x0, y1, 0);
+        if (id !== ia) pts.push(x0, y1 + (y0 - y1) * t(d, a), 1);
+        body.moveTo(pts[0], pts[1]);
+        for (let q = 3; q < pts.length; q += 3) body.lineTo(pts[q], pts[q + 1]);
+        body.closePath();
+        // outline pieces: two crossing points in a row; facing up if the liquid is below
+        const m = pts.length / 3;
+        for (let q = 0; q < m; q++) {
+          const r = (q + 1) % m;
+          if (!pts[q * 3 + 2] || !pts[r * 3 + 2]) continue;
+          const below = (ic ? 1 : 0) + (id ? 1 : 0), above = (ia ? 1 : 0) + (ib ? 1 : 0);
+          if (below > above) { gloss.moveTo(pts[q * 3], pts[q * 3 + 1]); gloss.lineTo(pts[r * 3], pts[r * 3 + 1]); }
+        }
+      }
+      if (run >= 0) body.rect(X(run), y0, X(fx - 1) - X(run), y1 - y0);
+    }
+    return { body, gloss };
+  }
+
   function drawStream(ctx, s, S, ys) {
     if (S.start < 0 || S.head <= 0 || S.done) return;
     const yTop = Math.max(-4, S.tail), yEnd = Math.min(S.head, S.land + 2);

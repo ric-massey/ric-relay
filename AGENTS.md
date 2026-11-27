@@ -1878,7 +1878,12 @@ migration marked "safe to re-run", and re-running it would have put the original
   centimetre nearly black), a glossy edge where the surface faces up, a few clear bubbles, no
   fizz in the stream, and steam while it is hot (Newton's cooling, about fifteen minutes). The
   liquid is drawn from a field the particles are splatted into and smoothed (two box blurs, close
-  to a Gaussian); single flying drops are drawn as the drops they are.
+  to a Gaussian), but **its edge is an outline, not the field's pixels** (Ric: "it's not high
+  quality tho. See how it's like pixelated"): marching squares traces where the density crosses
+  one half, and the browser fills that path at the screen's own resolution, anti-aliased; the
+  smooth low-resolution colour is clipped to it. Don't go back to stretching the field's image
+  up with a threshold, and don't use the canvas `filter` (iPhone Safari ignores it). Single
+  flying drops are drawn as the drops they are.
   **A second after it is full, a splash of creamer** (Ric: "little bit of creamer about a second
   after full"). To the physics it is **just a second liquid, 4% denser** (Ric: "think of it as
   just a liquid and another liquid mixing … high quality and clean looking"): the same

@@ -1764,7 +1764,7 @@
         else if (m.term === "coffee") {
           // the terminal's `coffee`: the cup is this page (assets/coffee.js)
           if (window.RELAY_COFFEE) window.RELAY_COFFEE.pour();
-          else { const js = document.createElement("script"); js.src = "assets/coffee.js?v=23"; js.onload = () => window.RELAY_COFFEE?.pour(); document.head.appendChild(js); }
+          else { const js = document.createElement("script"); js.src = "assets/coffee.js?v=26"; js.onload = () => window.RELAY_COFFEE?.pour(); document.head.appendChild(js); }
         }
       });
       for (const ev of ["focus", "pointerenter", "touchstart"]) input.addEventListener(ev, wake, { passive: true });
