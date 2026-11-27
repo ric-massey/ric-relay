@@ -1764,7 +1764,7 @@
         else if (m.term === "coffee2") {
           // the terminal's `coffee2`: the new cup being built (assets/coffee2.js, on coffee.js's physics)
           const load = (src, then) => { const js = document.createElement("script"); js.src = src; js.onload = then; document.head.appendChild(js); };
-          const go = () => window.RELAY_COFFEE2?.pour(), two = () => (window.RELAY_COFFEE2 ? go() : load("assets/coffee2.js?v=2", go));
+          const go = () => window.RELAY_COFFEE2?.pour(), two = () => (window.RELAY_COFFEE2 ? go() : load("assets/coffee2.js?v=6", go));
           window.RELAY_COFFEE ? two() : load("assets/coffee.js?v=31", two);
         }
         else if (m.term === "coffee") {

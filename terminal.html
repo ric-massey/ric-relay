@@ -441,7 +441,7 @@ type Sydney's cat's name for a surprise!</div>
       const go = () => window.RELAY_COFFEE2?.pour();
       if (window.RELAY_COFFEE2) return go();
       const load = (src, then) => { const js = document.createElement("script"); js.src = src; js.onload = then; document.head.appendChild(js); };
-      const two = () => load("assets/coffee2.js?v=2", go);
+      const two = () => load("assets/coffee2.js?v=6", go);
       window.RELAY_COFFEE ? two() : load("assets/coffee.js?v=31", two);
     };
     // `coffee` pours one (assets/coffee.js, fetched the first time it is typed)

@@ -63,8 +63,17 @@ rotation stuff. Then add in the rotation sense after the rest is working". It is
    2D FLIP physics; fixed steps; pause when hidden; lost-context recovery; the books
    (`?coffeedebug`). Measured on this desktop: about 3 ms a step and under 2 ms to draw on a
    laptop-sized screen, 1.6 and 0.4 on a phone-sized one.
-2. **Computer, the look** — the surface's normals and reflections under a broad soft light,
-   absorption by thickness through the cup's depth, thin things amber, restrained refraction.
+2. **Computer, the look** — done 2026-11-27. One light for everything: a dim room, brighter
+   overhead, and a soft light low behind the cup, which is what the top of the coffee mirrors.
+   Water's Fresnel (F0 = 0.02): seen at a glance, the top is mostly a mirror, so its highlights
+   move with the waves; its normals are smoothed over the capillary length (2.7 mm), below
+   which real coffee has no ripples, and its place is not, so it meets the front edge. The body
+   is seen through the cup's whole depth and is nearly black: a deep red-brown from light
+   scattered back, warmest just under the surface, and opaque. Pieces in flight (found as the
+   liquid not joined to the floor or walls) are as thick as they are wide, so warm light comes
+   through them by Beer–Lambert and their rounded faces reflect; the stream the same across its
+   chord. No outline round the pool. Refraction is left out: the page cannot be sampled, and
+   through coffee this dark it would not show.
 3. **Computer, detail** — creamer, bubbles, foam, splash sheets, the wet film, the contact
    edge against the glass; the mouse and a finger stir it like a spoon (Ric: "the mouse and
    your finger is going to act like a spoon and mix the creamer").

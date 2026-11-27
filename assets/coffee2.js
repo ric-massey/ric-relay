@@ -54,62 +54,123 @@
       return vec4(ndc * w, 0.0, w);
     }`;
 
-  // the front face of the liquid, against the glass: a screen quad that reads
-  // the density field; the edge is where it crosses one half, anti-aliased by
-  // its own screen-space derivative, so it is sharp at any resolution
+  // The light, shared by everything (stage 2). Axes: x right, y down, z into
+  // the cup. The room is dim, brighter overhead; one broad soft light - a
+  // window, a lamp - hangs above and behind the cup, so it is what the top of
+  // the coffee mirrors. Water's Fresnel reflectance (n = 1.33, F0 = 0.02 by
+  // Schlick): little looking straight in, most of the light at a glancing
+  // angle - and the top of the coffee is seen at a glancing angle.
+  // Coffee absorbs by Beer-Lambert, per mm: red 0.35, green 0.5, blue 0.65
+  // (chosen to land on brewed coffee's browns, as in `coffee`).
+  const LIGHT = `
+    uniform vec3 uEye;
+    const vec3 MU = vec3(0.35, 0.5, 0.65);
+    const vec3 SUN = vec3(1.0, 0.94, 0.84);
+    const vec3 LDIR = vec3(0.12, -0.3, 0.95);           // toward the soft light: low, up and behind the cup - where the
+                                                        // top of the coffee, seen at a glance, mirrors
+    vec3 env(vec3 r) {
+      float up = clamp(-r.y, 0.0, 1.0);
+      vec3 c = mix(vec3(0.02, 0.018, 0.016), vec3(0.11, 0.105, 0.1), up * up);
+      float l = max(dot(r, normalize(LDIR)), 0.0);
+      c += SUN * (0.14 * pow(l, 10.0) + 3.0 * pow(l, 220.0)); // a soft glow round it, and the light itself
+      return c;
+    }
+    float fresnel(float cosT, float f0) { return f0 + (1.0 - f0) * pow(1.0 - clamp(cosT, 0.0, 1.0), 5.0); }
+    vec3 viewDir(vec3 p) { return normalize(p - vec3(uEye.xy, -uEye.z)); }   // from the eye to the point
+    // light that has come through t mm of coffee
+    vec3 through(float t) { return SUN * exp(-MU * t); }`;
+
+  // the front of the coffee, against the glass: a screen quad over the
+  // density field. The edge is where the density crosses one half,
+  // anti-aliased by its own screen-space derivative, so it is sharp at any
+  // resolution. Coffee in the main body is seen through the cup's whole depth
+  // and is all but black: a deep red-brown, from the light that comes in at
+  // the lit surface and scatters back out, fading with depth below it. A piece
+  // in flight - a drop, a splash, a sheet - is only as thick as it is wide, so
+  // warm light comes through it, and its rounded face catches reflections.
   const FRONT_VS = `#version 300 es
     in vec2 aPos; out vec2 vPx; uniform vec2 uSize;
     void main() { vPx = (aPos * 0.5 + 0.5) * uSize; vPx.y = uSize.y - vPx.y; gl_Position = vec4(aPos, 0.0, 1.0); }`;
   const FRONT_FS = `#version 300 es
     precision highp float;
     in vec2 vPx; out vec4 o;
-    uniform sampler2D uField;   // r: density / 2, g: distance to air / 64 (field px)
+    uniform sampler2D uField;   // r: density / 2, g: distance to air / 64 field px, b: 1 if part of the main body
     uniform vec2 uFieldPx;      // the field's extent in screen px
-    uniform float uMmPerField;  // mm per field px (for depth)
+    uniform vec2 uTexel;        // one field px in uv
+    uniform float uMm;          // mm per screen px
+    uniform float uMmPerField;  // mm per field px
+    uniform float uDepth;       // the cup's depth, mm
+    ${LIGHT}
     void main() {
-      vec4 f = texture(uField, vPx / uFieldPx);
+      vec2 uv = vPx / uFieldPx;
+      vec4 f = texture(uField, uv);
       float d = f.r * 2.0;
       float aa = max(fwidth(d), 1e-4);
       float a = clamp((d - 0.5) / aa + 0.5, 0.0, 1.0);
       if (a <= 0.0) discard;
-      // plain shading for stage 1: coffee brown, darker with depth below the surface
-      float depth = f.g * 64.0 * uMmPerField;
-      vec3 c = mix(vec3(0.20, 0.12, 0.07), vec3(0.09, 0.05, 0.03), 1.0 - exp(-depth / 25.0));
-      o = vec4(c * 0.95 * a, 0.95 * a);
+      vec3 V = viewDir(vec3(vPx, 0.0));
+      float below = f.g * 64.0 * uMmPerField;               // mm below the nearest air
+      vec3 c;
+      if (f.b > 0.5) {
+        // the body: through uDepth mm of coffee there is nothing left; what is
+        // seen is light scattered back, warmest just under the lit surface
+        float lit = exp(-below / 18.0);
+        c = mix(vec3(0.045, 0.024, 0.013), vec3(0.20, 0.105, 0.05), lit) + through(uDepth);
+        // the glass in front mirrors the dim room, a little
+        c += 0.04 * env(reflect(V, vec3(0.0, 0.0, -1.0)));
+      } else {
+        // a piece in flight: round, as thick as it is wide here
+        float gx = texture(uField, uv + vec2(uTexel.x, 0.0)).r - texture(uField, uv - vec2(uTexel.x, 0.0)).r;
+        float gy = texture(uField, uv + vec2(0.0, uTexel.y)).r - texture(uField, uv - vec2(0.0, uTexel.y)).r;
+        vec3 n = normalize(vec3(-gx, -gy, -0.35));
+        float t = min(uDepth, 2.0 * below);
+        float F = fresnel(dot(-V, n), 0.02);
+        c = (1.0 - F) * 0.75 * through(t) + F * env(reflect(V, n));
+      }
+      o = vec4(c * a, a);
     }`;
 
-  // the top surface: a strip from each point of the front edge to the back
-  // glass, lit by a broad light above and in front
+  // the top surface: a strip from each point of the front edge back to the
+  // glass behind, its normal tipped by the surface's own slope there, so the
+  // reflections move as the waves do. Mostly a mirror of the soft light and
+  // the room (the glancing angle); what Fresnel lets through sees the body.
   const TOP_VS = `#version 300 es
-    in vec3 aPos; in vec3 aNormal; out vec3 vN; out float vZ;
+    in vec3 aPos; in vec3 aNormal; out vec3 vN; out vec3 vP;
     ${PROJECT}
-    void main() { vN = aNormal; vZ = aPos.z; gl_Position = project(aPos); }`;
+    void main() { vN = aNormal; vP = aPos; gl_Position = project(aPos); }`;
   const TOP_FS = `#version 300 es
     precision highp float;
-    in vec3 vN; in float vZ; out vec4 o;
-    uniform float uDepth;
+    in vec3 vN; in vec3 vP; out vec4 o;
+    ${LIGHT}
     void main() {
-      vec3 L = normalize(vec3(0.15, -1.0, -0.6));      // y down, z into the cup: from above, in front
-      float lit = 0.35 + 0.65 * max(dot(normalize(vN), L), 0.0);
-      vec3 c = vec3(0.30, 0.19, 0.11) * lit;
-      o = vec4(c * 0.95, 0.95);
+      vec3 n = normalize(vN), V = viewDir(vP);
+      float F = fresnel(dot(-V, n), 0.02);
+      vec3 body = vec3(0.20, 0.105, 0.05);
+      vec3 c = (1.0 - F) * body + F * env(reflect(V, n));
+      o = vec4(c, 1.0);
     }`;
 
-  // the stream: a round column, drawn as a band across it facing the eye,
-  // shaded as the cylinder it is
+  // the stream: a round column in the middle of the depth, drawn as a band
+  // facing the eye and shaded as the cylinder it is - light through its
+  // chord (amber at the edges, dark through the middle), and the soft light
+  // and the room mirrored on its curve
   const STREAM_VS = `#version 300 es
-    in vec3 aPos; in float aAcross; out float vU;
+    in vec3 aPos; in float aAcross; in float aWidth; out float vU; out vec3 vP; out float vW;
     ${PROJECT}
-    void main() { vU = aAcross; gl_Position = project(aPos); }`;
+    void main() { vU = aAcross; vP = aPos; vW = aWidth; gl_Position = project(aPos); }`;
   const STREAM_FS = `#version 300 es
     precision highp float;
-    in float vU; out vec4 o;
-    uniform vec3 uColour;
+    in float vU; in vec3 vP; in float vW; out vec4 o;
+    uniform float uCream;        // 1 for the creamer's stream
+    ${LIGHT}
     void main() {
-      vec3 n = vec3(vU, 0.0, -sqrt(max(0.0, 1.0 - vU * vU)));
-      vec3 L = normalize(vec3(0.3, -0.6, -0.75));
-      float lit = 0.4 + 0.6 * max(dot(n, L), 0.0);
-      o = vec4(uColour * lit, 1.0);
+      float s = sqrt(max(0.0, 1.0 - vU * vU));
+      vec3 n = vec3(vU, 0.0, -s), V = viewDir(vP);
+      float F = fresnel(dot(-V, n), 0.02);
+      vec3 inside = uCream > 0.5 ? vec3(0.86, 0.80, 0.71) * (0.6 + 0.4 * s) : 0.8 * through(vW * s);
+      vec3 c = (1.0 - F) * inside + F * env(reflect(V, n));
+      float edge = clamp((1.0 - abs(vU)) * 6.0, 0.0, 1.0);   // the band's edge, softened by a pixel or so
+      o = vec4(c * edge, edge);
     }`;
 
   function program(gl, vs, fs) {
@@ -171,17 +232,18 @@
       if (S.start < 0 || S.head <= 0 || S.done) continue;
       const yTop = Math.max(0, S.tail), yEnd = Math.min(S.head, S.land + 2);
       if (yEnd <= yTop) continue;
-      const steps = Math.max(2, Math.ceil((yEnd - yTop) / 6)), data = new Float32Array((steps + 1) * 2 * 4);
+      const steps = Math.max(2, Math.ceil((yEnd - yTop) / 6)), data = new Float32Array((steps + 1) * 2 * 5);
       for (let k = 0; k <= steps; k++) {
-        const y = yTop + ((yEnd - yTop) * k) / steps, vel = Math.sqrt(S.v0 * S.v0 + 2 * G * y), r = S.Q / vel / 2;
-        const o = k * 8;
-        data.set([S.xNow - r, y * sy, depth / 2, -1, S.xNow + r, y * sy, depth / 2, 1], o);
+        const y = yTop + ((yEnd - yTop) * k) / steps, vel = Math.sqrt(S.v0 * S.v0 + 2 * G * y), r = S.Q / vel / 2, wmm = 2 * r * sim.MM;
+        // the band is a pixel wider each side than the stream, so its edge can be softened
+        const pad = 1;
+        data.set([S.xNow - r - pad, y * sy, depth / 2, -1 - pad / r, wmm, S.xNow + r + pad, y * sy, depth / 2, 1 + pad / r, wmm], k * 10);
       }
       const P = v.stream; gl.useProgram(P.p);
       gl.uniform2f(P.u.uSize, W, H); gl.uniform3f(P.u.uEye, eye[0], eye[1], eye[2]);
-      gl.uniform3fv(P.u.uColour, S.c ? [0.93, 0.89, 0.82] : [0.36, 0.21, 0.11]);
+      gl.uniform1f(P.u.uCream, S.c ? 1 : 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, v.streamBuf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STREAM_DRAW);
-      attrib(gl, P, "aPos", 3, 16, 0); attrib(gl, P, "aAcross", 1, 16, 12);
+      attrib(gl, P, "aPos", 3, 20, 0); attrib(gl, P, "aAcross", 1, 20, 12); attrib(gl, P, "aWidth", 1, 20, 16);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, (steps + 1) * 2);
     }
 
@@ -205,16 +267,30 @@
         }
         surf[i] = y;
       }
+      // The surface's slope, for its normals, smoothed over the capillary
+      // length (sqrt(sigma / (rho g)) = 2.7 mm for coffee): ripples shorter than
+      // that are flattened at once by surface tension and viscosity on real
+      // coffee, and here they would only be the particles' grain. The strip's
+      // place is not smoothed, so it still meets the front edge exactly.
+      const lc = 2.7 / sim.MM, sig = Math.max(1, lc / F.fr), K = Math.ceil(2.5 * sig), sm = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let a = 0, w = 0;
+        for (let k = -K; k <= K; k++) {
+          const j = i + k; if (j < 0 || j >= n || surf[j] >= H - 0.5) continue;
+          const g = Math.exp(-(k * k) / (2 * sig * sig)); a += surf[j] * g; w += g;
+        }
+        sm[i] = w ? a / w : surf[i];
+      }
       let m = 0;
       for (let i = 0; i < n; i++) {
         const x = (i + 0.5) * F.fr, y = surf[i];
-        const dy = (surf[Math.min(n - 1, i + 1)] - surf[Math.max(0, i - 1)]) / (2 * F.fr);
+        const dy = (sm[Math.min(n - 1, i + 1)] - sm[Math.max(0, i - 1)]) / (2 * F.fr);
         const len = Math.hypot(dy, 1), nx = dy / len, ny = -1 / len;   // up, tipped with the slope
         const live = y < H - 0.5;
         data.set([x, live ? y : H, 0, nx, ny, 0, x, live ? y : H, depth, nx, ny, 0], m); m += 12;
       }
       const P = v.top; gl.useProgram(P.p);
-      gl.uniform2f(P.u.uSize, W, H); gl.uniform3f(P.u.uEye, eye[0], eye[1], eye[2]); gl.uniform1f(P.u.uDepth, depth);
+      gl.uniform2f(P.u.uSize, W, H); gl.uniform3f(P.u.uEye, eye[0], eye[1], eye[2]);
       gl.bindBuffer(gl.ARRAY_BUFFER, v.topBuf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STREAM_DRAW);
       attrib(gl, P, "aPos", 3, 24, 0); attrib(gl, P, "aNormal", 3, 24, 12);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, n * 2);
@@ -222,12 +298,31 @@
 
     // the front face, against the glass
     {
-      const { fx, fy, dens, dist } = F;
-      if (v.fieldW !== fx || v.fieldH !== fy) { v.fieldW = fx; v.fieldH = fy; v.pixels = new Uint8Array(fx * fy * 4); }
+      const { fx, fy, dens, dist } = F, NF = fx * fy;
+      if (v.fieldW !== fx || v.fieldH !== fy) { v.fieldW = fx; v.fieldH = fy; v.pixels = new Uint8Array(NF * 4); v.main = new Uint8Array(NF); v.stack = new Int32Array(NF); }
+      // Which liquid is the main body: everything joined to the floor or the
+      // walls. The rest is in flight - drops, splashes, sheets - and is only
+      // as thick as it is wide, where the body is as thick as the cup is deep.
+      const main = v.main, stack = v.stack;
+      main.fill(0);
+      let top = 0;
+      const seed = (f) => { if (!main[f] && dens[f] >= 0.5) { main[f] = 1; stack[top++] = f; } };
+      for (let i = 0; i < fx; i++) seed((fy - 1) * fx + i);
+      for (let j = 0; j < fy; j++) { seed(j * fx); seed(j * fx + fx - 1); }
+      while (top) {
+        const f = stack[--top], i = f % fx;
+        if (i > 0) seed(f - 1);
+        if (i < fx - 1) seed(f + 1);
+        if (f >= fx) seed(f - fx);
+        if (f + fx < NF) seed(f + fx);
+      }
       const px = v.pixels;
-      for (let f = 0, o = 0; f < fx * fy; f++, o += 4) {
+      for (let f = 0, o = 0; f < NF; f++, o += 4) {
         px[o] = Math.min(255, dens[f] * 127.5);
         px[o + 1] = Math.min(255, dist[f] * 4);
+        // the edge's own pixels, just outside the half-density line, take the body's mark from a neighbour
+        const i = f % fx;
+        px[o + 2] = main[f] || (dens[f] > 0.1 && ((i > 0 && main[f - 1]) || (i < fx - 1 && main[f + 1]) || (f >= fx && main[f - fx]) || (f + fx < NF && main[f + fx]))) ? 255 : 0;
       }
       gl.bindTexture(gl.TEXTURE_2D, v.field);
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -236,6 +331,10 @@
       gl.disableVertexAttribArray(1);
       gl.uniform2f(P.u.uSize, W, H);
       gl.uniform2f(P.u.uFieldPx, fx * F.fr, fy * F.fr * sy);
+      gl.uniform2f(P.u.uTexel, 1 / fx, 1 / fy);
+      gl.uniform3f(P.u.uEye, eye[0], eye[1], eye[2]);
+      gl.uniform1f(P.u.uMm, sim.MM);
+      gl.uniform1f(P.u.uDepth, cupView.depthMm);
       gl.uniform1f(P.u.uMmPerField, F.fr * sim.MM);
       gl.uniform1i(P.u.uField, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, v.quad);

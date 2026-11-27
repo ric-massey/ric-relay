@@ -1919,7 +1919,9 @@ migration marked "safe to re-run", and re-running it would have put the original
   survives a lost WebGL context. `?coffeedebug` (or `localStorage.coffeedebug = "1"`) shows
   the step and draw cost and the books: poured, in the cup, out the top, drained. **The order
   is Ric's** ("get it to work without my phone and the rotation stuff. Then add in the
-  rotation"): computer first, plain shading (stage 1, done), then the look, then detail
+  rotation"): computer first, plain shading (stage 1, done), then the look (stage 2, done:
+  Fresnel reflections off the top of a soft light behind the cup, an opaque nearly black body,
+  thin pieces amber by their own thickness — `docs/coffee-egg-plan.md` has the numbers), then detail
   (creamer, bubbles, foam; the mouse and a finger stir it like a spoon, Ric's idea), then
   tipping with the mouse, then the phone. Why the physics stays 2D: in a cup a centimetre or
   two deep, liquid moves almost entirely in the screen's plane; a 3D CPU solver four cells
