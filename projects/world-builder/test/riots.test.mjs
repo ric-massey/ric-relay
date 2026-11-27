@@ -16,7 +16,7 @@ import { createRequire } from "node:module";
 const Engine = createRequire(import.meta.url)("../people.js");
 /* Item 15's parts off: this test holds its own part as it was built (TODO 15, 2026-11-22). */
 const People = Object.assign({}, Engine, { create: s => Engine.create(Object.assign({ govern: "leader", faith: false, marriage: "liking", finds: 0, works: "none", armies: "trickle", roaming: "settled", campaign: "home", caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" }, s)) });
-const FINGERPRINT = 4075446635;   // print() of 15.5t's engine, seed 2, 40 days
+const FINGERPRINT = 1736796103;   // print() of 15.5t's engine, seed 2, 40 days
 
 // 1. Off: the world 15.5t left (fingerprint taken from 15.5t's engine, seed 2, 40 days).
 {
@@ -51,7 +51,10 @@ function town(over, lead, each) {
 
 // 2. A crowd at the store, paying; a warm leader who feeds them.
 {
-  const { w, v, before, s } = town({}, { warm: 1, greed: 0, bold: 0 });
+  /* A town of ordinary temper, set so since 2026-11-27 (0.4 reads "ordinary" on the setting's scale): the hottest
+     come out first, and the ten who did this time averaged 0.635, just over the 0.62 that makes a crowd rough
+     (0.407 on the land before TODO 23 and 24, and before a death reached children living elsewhere). */
+  const { w, v, before, s } = town({ temper: 0.4 }, { warm: 1, greed: 0, bold: 0 });
   assert.equal(s.riots, before.riots + 1, "a hungry town beside a full store riots");
   assert.ok(s.riotGrain > 20, "and takes grain (" + Math.round(s.riotGrain) + " days' food)");
   assert.equal(s.riotsRough, 0, "an ordinary crowd is not a rough one");

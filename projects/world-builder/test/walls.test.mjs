@@ -42,7 +42,7 @@ const war = seed => {
 {
   let checked = 0;
   const seen = [];
-  for (const seed of [11, 22, 33, 44, 55, 66, 77, 88, 99, 110]) {
+  for (const seed of [11, 22, 33, 44, 55, 66, 77, 88, 99, 110, 121, 132, 143, 154, 165, 176, 187, 198, 209, 220]) {
     const taken = wall => {
       const { w, a, b } = war(seed);
       const v = w.villages.find(x => x.alive && x.id === a.target[b.id]);
@@ -60,13 +60,15 @@ const war = seed => {
     if (open === null || open >= 150) continue;
     const walled = taken(1);
     seen.push([seed, open, walled]);
-    if (++checked >= 3) break;
+    if (++checked >= 5) break;
   }
   /* Over three wars, not each: with 15.12a's dice (2026-11-24) one of them (seed 22) fell eight days
      sooner walled than open, the two worlds having gone their own ways by then; walled held longer in
      the other two and in all. */
   const say = seen.map(([s, o, w]) => "seed " + s + ": open taken on day " + o + ", walled " + (w === 999 ? "held" : "taken on day " + w)).join("; ");
-  assert.ok(seen.filter(([, o, w]) => w > o).length >= 2, "walls hold longer in most wars: " + say);
+  /* Five wars since 2026-11-27: on TODO 23 and 24's land only two of seeds 11 to 110 had a war in which the
+     open place fell, one each way, so the seeds now run to 220. */
+  assert.ok(seen.length >= 3 && seen.filter(([, o, w]) => w > o).length > seen.length / 2, "walls hold longer in most wars: " + say);
   assert.ok(seen.reduce((a, [, o, w]) => a + Math.min(w, 150) - o, 0) > 0, "and longer in all: " + say);
   assert.ok(checked >= 1, "some open place was taken within five months");
 }

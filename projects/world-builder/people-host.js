@@ -251,7 +251,7 @@
           if (q && q.sayT > 0 && q.talkingTo === p.id && p.id < q.id) { L[links++] = px; L[links++] = py; L[links++] = q.x; L[links++] = q.y; }
         }
         const seen = px >= sx0 && px <= sx1 && py >= sy0 && py <= sy1;
-        if (close && w.activity(p) === "Harvesting") fl |= FLAG.harvesting;
+        if (close && p.task === "field" && p.harvesting) fl |= FLAG.harvesting;   // at work in a field, whatever the season calls it
         X[k] = px; Y[k] = py; T[k] = tint(w, p, view); F[k] = fl; G[k] = closer ? gearOf(w, p) : 0;
         A[k] = close && w.mapLook ? w.mapLook(p) : 0;   // TODO 22: arms, armour, a horse, a bandit, a pack animal, a car
         if (seen) {

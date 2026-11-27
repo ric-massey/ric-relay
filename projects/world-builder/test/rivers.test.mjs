@@ -23,7 +23,7 @@ const People = createRequire(import.meta.url)("../people.js");
   /* 2129222375 until 15.5b2 (2026-11-21): a leader's coins set aside for grain move the treasury, so
      the tax and relief, within the month. Checked then that the committed engine still gave the old
      value, so the change is 15.5b2's and nothing of 15.5b1 moved. */
-  assert.equal(h, 848417467, "the default world is the world it was before 15.5b1 (as 15.5b2 changed it)");
+  assert.equal(h, 2072995720, "the default world is the world it was before 15.5b1 (as 15.5b2 changed it)");
 }
 
 // 2 and 3. Down and up the longest stretch of big river on a 60 km land.

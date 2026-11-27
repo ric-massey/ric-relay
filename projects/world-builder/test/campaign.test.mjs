@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const LATER = { caravans: false, armySick: false, oldArms: "plain", generals: "none", siegecraft: "old", ransom: "old", smallWar: "old", homeFront: false, feuds: false, builtRoads: false, waterWork: false, meeting: false, dispersion: false, warBooks: "old", warBy: "era", formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" };   // the parts built after this one, off: this part as it was built (crossing: deep rivers, 2026-11-27)
-const FINGERPRINT = 60433442;   // print() of 15d's engine, seed 2, 60 days
+const FINGERPRINT = 3063315699;   // print() of 15d's engine, seed 2, 60 days
 
 // 1. Off: the world before.
 {
@@ -38,7 +38,11 @@ const make = () => {
     for (const p of mine) { w.place(p, m.x + 0.4, m.y + 0.4); p.food = 15; p.task = "idle"; p.wait = 0; p.alone = 50; }
     for (let h = 0; h < 48; h++) { c.ready = false; c.since = w.tick; for (const p of mine) p.hp = Math.max(p.hp, 0.9); w.step(1); }
     /* With the army: at the gathering place, or marching or fighting with it once it goes. */
-    return [mine.filter(p => p.job === "soldier" && (Math.hypot(p.x - m.x, p.y - m.y) < 6 || p.task === "march" || p.task === "fight")).length, mine.length];
+    /* Asleep at the gathering place, or marching or fighting with the army once it goes. Asleep since
+       2026-11-27: a comrade within 2 km became somebody to go and see, so under the old way the lonely ones
+       (alone for 50 hours, above) sat up talking at the camp instead of walking home; where they sleep is
+       what the setting decides. */
+    return [mine.filter(p => p.job === "soldier" && ((p.task === "sleep" && Math.hypot(p.x - m.x, p.y - m.y) < 6) || p.task === "march" || p.task === "fight")).length, mine.length];
   };
   const [a, n] = stay("army"), [b, n2] = stay("home");
   console.log("  with the army after two days: " + a + " of " + n + " living with it, " + b + " of " + n2 + " the old way");

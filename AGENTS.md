@@ -735,6 +735,11 @@ nobody had linked was a page nobody could find.
   only with a village** (taken, ceded, married, broken away) — never add drift by strength to it (Ric: "Only by
   an event"); **the page is sent `landCode`, not `owner`** (a village's id, or −(2 + people × 8 + kind)), and
   only a village's, written and surveyed land are lined on the map — a frontier is a band, never a line.
+  **Field work is done together, and friends count** (same day; README, "Working together, and friends"; Ric:
+  "They are perfectly spaced apart. Why", then "They like being around friends more too"): a farmer joins a
+  housemate's, a friend's or a neighbour's line and works along a row, and a friend weighs more in who somebody
+  talks to, visits (to 2 km, beside them) and spends free time with. Don't send farmers back to a lone random
+  spot in each square — that was the lattice.
   **Water, 2026-11-27** (README, "What the engine has, on the map"): rivers are drawn as lines as wide as
   they are (`riverW`, map only), a river over about 15 m (56 km² drained) cannot be waded ("Crossing
   water: big" is the old 300 km² line), and lakes form in 3 m hollows in wet country with ponds in wet

@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const AT_WAR = 195965653;   // print() of the two-people war below before 15.6e
+const AT_WAR = 219548943;   // print() of the two-people war below before 15.6e
 
 {
   const a = People.create({ seed: 2 }), b = People.create({ seed: 2, battle: "old" });

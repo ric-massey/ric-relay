@@ -21,7 +21,7 @@ const People = createRequire(import.meta.url)("../people.js");
   o.step(24 * 30);
   let h = 0; const mix = x => { h = (h * 31 + (Math.round(x * 1e6) | 0)) % 2147483647; };
   for (const p of o.people) { mix(p.id); mix(p.x); mix(p.y); mix(p.food); mix(p.coins); mix(p.home); }
-  assert.equal(h, 848417467, "with no harvest tax the world is the world before it");
+  assert.equal(h, 2072995720, "with no harvest tax the world is the world before it");
 }
 {
   const w = People.create({ seed: 2, harvestTax: 0, start: "summer" });

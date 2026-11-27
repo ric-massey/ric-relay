@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const FINGERPRINT = 20749464;   // print() of 15.5m's engine, seed 2, 60 days
+const FINGERPRINT = 749659256;   // print() of 15.5m's engine, seed 2, 60 days
 
 // 1. None: the world before.
 {

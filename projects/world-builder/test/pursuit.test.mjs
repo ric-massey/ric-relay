@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const OLD = 2469389609;   // the world below before 15.6h and 15.10
+const OLD = 1502656934;   // the world below before 15.6h and 15.10
 
 function print(w) {
   let h = 2166136261;

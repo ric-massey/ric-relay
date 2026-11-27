@@ -4803,6 +4803,48 @@ charter bounds, and the Public Land Survey System (the 1785 Land Ordinance). **N
 be read, and Kristof's own wording was not read. The weights, the hour beyond, the three-square frontier and
 three hours for a survey are guesses.
 
+### Working together, and friends (2026-11-27)
+
+Ric, looking at a running world on his phone: "The people. They are perfectly spaced apart. Why". Each farmer
+went to a field square and stood still at a random spot in its middle for the whole stint, so at midday the
+map showed about one person to each 250 m square: a lattice by accident. And the work was called "Harvesting"
+in midwinter.
+
+- **A field is worked together.** Somebody going to the fields joins, within a square of where they meant to
+  go, a housemate already at work there; else a friend; else anybody of the village. They stand in line beside
+  them, about 3 m apart, the swing of a sickle or a scythe. With nobody to join they start a row of their own.
+  Children work in their parent's line. Two limits, both found by measuring: a friend or neighbour is joined
+  only on common land or the joiner's own household's (on another household's field half of what is reaped is
+  theirs, 7c), and only where the ground round the line holds a stint's reaping for everybody in it and one
+  more — a line works one patch, and joining every line regardless left a village a quarter short of food in
+  ten days.
+- **Along a row.** A stint is worked in four pieces, each moving on about 50 m along the row (a man with a
+  scythe cut about 0.4 ha a day, a strip 2 m wide and 200 m long — the figure is a guess from that), turning
+  at the field's edge onto the next row. What a stint takes from the land is unchanged. Field workers walk to
+  their exact place, as soldiers walk to theirs in a line.
+- **The label** is "Reaping" in the harvest weeks and "Working in the fields" the rest of the year.
+
+Ric then: "People like being around and talking to people … They like being around friends more too". People
+already sought company when they had gone long without it, went to find their partner or the person they liked
+best, and stayed in a village for their friends. Four places did not use friendship and now do:
+
+- **Who they talk to.** Anybody on the same square as before, but a friend counts for up to five strangers,
+  by how close (1 + 4 × feeling). Read off their own ties, so a crowded square costs no more.
+- **Going to see somebody** brings them beside the person (it aimed anywhere within 125 m of them and stopped
+  up to 125 m short), and a close friend in another village within 2 km is worth the walk, less the further.
+- **Free time**, when a grown-up chooses it, is spent beside a friend within 750 m if there is one.
+- **Who they work beside**, as above.
+
+Measured, three worlds of 600 people over ten days after ten: conversations with a friend 52% → 66%. Field
+workers at midday (1,877 people, winter): median distance to the nearest other worker 139 m → 50 m, and 14 →
+252 of about 780 within 10 m of somebody (3 m and 501 before the two limits above; a month's reaping in the
+works test's village 1,815 against 1,892 with them). Free time spent within 10 m of a friend hardly moved (2.3% → 2.5%):
+grown-ups almost never choose to idle — they are talking or at work nearly all their waking hours, and most
+"Resting" is a pause where the last job ended. A year of the default world, twelve seeds, against the circles
+and spiral, with everything above in: alive 388.8 against 389.8, births 17.2 against 18.0, none starved,
+sickness 17.3 against 16.7, battle deaths 2.7 against 1.7, moves of house 138 against 125 — each within one
+seed's spread.
+
 ### Paths and roads, carts and boats (2026-11-16)
 
 TODO item 7d, with what Ric added to it ("Write them in"): carts and better boats come with roads;
@@ -5282,7 +5324,7 @@ is true now.
   selects them and the Inspector states their current activity; "Follow" keeps the camera with them
   (since TODO 21e a tap no longer follows on its own). The map key is a fold on the Overview, and
   the corner of the map holds the legend of the layer showing.
-- **Harvesting takes five seconds at 1×**, on the field where food is actually collected; a crop
+- **Field work** (once "Harvesting"; "Reaping" or "Working in the fields" since 2026-11-27) **takes five seconds at 1×**, on the field where food is actually collected; a crop
   outline and stalks mark it. Walking to a field, bringing food home, making goods, trading and
   guarding have separate activity labels.
 - **Read exchange holds one conversation still while the world continues** (2026-11-12,

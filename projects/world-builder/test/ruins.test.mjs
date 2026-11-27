@@ -18,7 +18,7 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 const People = createRequire(import.meta.url)("../people.js");
 const OFF = { ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" };
-const OLD = 4281223013;   // print() of the world below before item 16
+const OLD = 3990394928;   // print() of the world below before item 16
 function print(w) {
   let h = 2166136261;
   const mix = x => { h = Math.imul(h ^ (Math.round(x * 1000) | 0), 16777619) >>> 0; };

@@ -1683,6 +1683,68 @@
       if (h.face != null) { out.sort((a, b) => fieldDist(h, a) - fieldDist(h, b) || a - b); out.length = Math.min(out.length, n); }
       return out;
     }
+    /* ── working a field together, along a row (2026-11-27) ──────────────
+       Ric, looking at a running world: "The people. They are perfectly spaced apart. Why". Each farmer
+       went to a field square and stood still at a random spot in its middle for the whole stint, so at
+       midday the map showed about one person a 250 m square: a lattice by accident. Field work was done
+       together: a household on its own land, side by side, reapers in a line across the field, children
+       beside their parents. So somebody going to the fields joins a housemate already working within a
+       square of where they meant to go, and stands in line beside them (about 3 m apart, the swing of a
+       sickle or a scythe); with nobody to join they start a row of their own. A stint is worked along the
+       row in ROW_PIECES pieces, moving on between them at about the pace of reaping by hand — a man with a
+       scythe about 0.4 ha a day, a strip 2 m wide and 200 m long (the figure is a guess from that) —
+       and turning at the field's edge. What a stint takes from the land is unchanged: the square they end
+       on and the eight round it. */
+    const ROW_PIECES = 4, ROW_GAP = 3 * (1 / 250), ROW_RUN = 200 / 250;   // a day's row: 200 m, in squares
+    function toField(p, tx, ty, r1, r2) {
+      p.lf.row = 0; p.lf.rowWalk = 0;
+      /* A housemate first; else a friend, else anybody of the village, at work within a square on common land
+         or the joiner's own, as neighbours worked the common fields together. */
+      let mate = null, near = null, friend = null, fs = 0.2;
+      for (const q of (PLAIN ? people : residents(p.home))) {
+        if (q === p || q.home !== p.home || q.hp <= 0 || q.task !== "field" || !q.harvesting) continue;
+        if (Math.abs(Math.floor(q.tx) - tx) > 1 || Math.abs(Math.floor(q.ty) - ty) > 1) continue;
+        if (p.dwelling >= 0 && q.dwelling === p.dwelling) { if (!mate) mate = q; continue; }
+        /* Not onto another household's field, where half of what is reaped is theirs (7c): a friend or a
+           neighbour is joined on common land or on the joiner's own. Joining anybody's line cost a village
+           in works.test half its families' spare coins in a month (2026-11-27). */
+        if (held.size) { const hd = held.get(Math.floor(q.ty) * cols + Math.floor(q.tx)); if (hd !== undefined && hd !== p.dwelling) continue; }
+        const f = feel(p, q.id); if (f > fs) { fs = f; friend = q; }   // and beside a friend, before a stranger (2026-11-27)
+        if (!near) near = q;
+      }
+      mate = mate || friend || near;
+      let n = 0;
+      if (mate) {
+        for (const q of (PLAIN ? people : residents(p.home))) if (q !== p && q.task === "field" && q.harvesting && Math.hypot(q.tx - mate.tx, q.ty - mate.ty) < 0.1) n++;
+        /* Only where the ground round them holds a stint's reaping for each of them and one more: a line
+           works one patch (the square and the eight round it), and joining every line regardless left
+           that patch bare and a village a quarter short in ten days (works.test, 2026-11-27). */
+        const mx = Math.floor(mate.tx), my = Math.floor(mate.ty);
+        let have = 0;
+        for (const [ox, oy] of PATCH) { const x = mx + ox, y = my + oy; if (x >= 0 && y >= 0 && x < cols && y < rows) have += stock[y * cols + x]; }
+        if (have < (n + 2) * harvestCapacity(p)) mate = null;
+      }
+      if (mate) {
+        /* In line beside them, on the side and at the place given by how many are already there. */
+        const a = mate.lf.rowA, side = (n % 2 ? 1 : -1) * Math.ceil(n / 2) * ROW_GAP;
+        p.lf.rowA = a;
+        go(p, mate.tx - Math.sin(a) * side, mate.ty + Math.cos(a) * side, "field");
+        return;
+      }
+      /* Rows run the way the field was ploughed, one way or the other across each square. */
+      p.lf.rowA = (h01(tx, ty, 99) < 0.5 ? 0 : Math.PI / 2) + (r2 < 0.5 ? 0 : Math.PI);
+      go(p, tx + 0.2 + r1 * 0.6, ty + 0.2 + r2 * 0.6, "field");
+    }
+    /* The next piece of a row: on along it, or round at the edge onto the next row, 2 m over. */
+    function alongRow(p) {
+      const a = p.lf.rowA, step = ROW_RUN / ROW_PIECES, sx = Math.floor(p.tx), sy = Math.floor(p.ty);
+      let nx = p.tx + Math.cos(a) * step, ny = p.ty + Math.sin(a) * step;
+      if (nx < sx + 0.08 || nx > sx + 0.92 || ny < sy + 0.08 || ny > sy + 0.92) {
+        p.lf.rowA = a + Math.PI;
+        nx = clamp(p.tx - Math.sin(a) * 2 / 250, sx + 0.08, sx + 0.92); ny = clamp(p.ty + Math.cos(a) * 2 / 250, sy + 0.08, sy + 0.92);
+      }
+      go(p, nx, ny, "field");
+    }
     /* How far a field is from a house, for choosing a household's fields (TODO 23): straight distance
        for a house that fronts nothing; for one on a street, a green or the water, its land lies
        behind it, the long strip behind the toft (the croft, the Hufe), so a square across the street
@@ -2568,7 +2630,7 @@
       /* A newborn's own dice from the first draw (TODO 15.12a): who they are is theirs, not the
          next numbers after whatever their mother or the world drew. */
       const me = { dk: nextId, dt: -1, dn: 0, dh: 0 }, was = as(me);
-      const p = { id: nextId++, dc: me, lf: { folk: 0, hid: -1, hidZ: 0, press: 0, rites: 0, pilgrim: -1, until: 0, xp: null, heard: 0, aim: -1, prog: 0, aimAt: 0, why: 0 }, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
+      const p = { id: nextId++, dc: me, lf: { folk: 0, hid: -1, hidZ: 0, press: 0, rites: 0, pilgrim: -1, until: 0, xp: null, heard: 0, aim: -1, prog: 0, aimAt: 0, why: 0, row: 0, rowWalk: 0, rowA: 0, rowT: 0 }, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
                   tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30 * STEP_SCALE), food: 0.8 + R() * 0.6, coins: 0, goods: 0, order: 0, orderV: -1, orderT: 0, gear: {},
                   hp: 1, bold: nature(R(), ownOf(v.f, "bold")), warm: nature(R(), ownOf(v.f, "warm")), greed: nature(R(), ownOf(v.f, "greedy")), stub: clamp(ownOf(v.f, "stubborn") + (R() - 0.5) * S.differ, 0, 1), loyal: clamp(0.35 + ownOf(v.f, "loyalty") * 0.5 + (R() - 0.5) * 0.2, 0, 1),
@@ -2764,6 +2826,46 @@
       const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
       for (let o = o0; o < o1; o++) { const k = mKind[o]; if (k === M_FRIEND || k === M_KIN) out.push([mAbout[o], mNow(o)]); }
       return out;
+    }
+    /* Who somebody turns to on their square (2026-11-27, Ric: "People like being around and talking to
+       people … They like being around friends more too"): anybody there as before, but a friend counts
+       for up to five strangers, by how close (1 + 4 × feeling). Until this date a friend and a stranger
+       had the same chance. Read off their own ties, not the crowd, so a full market square costs no more
+       than an empty one. `r` is the one roll the old pick used. Returns an index into `b`. */
+    function talkPick(p, b, r) {
+      const here = tileAt(p.x, p.y);
+      let extra = 0, list = null;
+      if (p.mb >= 0) {
+        const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+        for (let o = o0; o < o1; o++) {
+          const k = mKind[o]; if (k !== M_FRIEND && k !== M_KIN) continue;
+          const f = mNow(o); if (f <= 0) continue;
+          const q = byId.get(mAbout[o]); if (!q || q.hp <= 0 || tileAt(q.x, q.y) !== here) continue;
+          (list || (list = [])).push(q, 4 * f); extra += 4 * f;
+        }
+      }
+      if (!list) return Math.floor(r * b.length);
+      let x = r * (b.length + extra);
+      if (x >= b.length) { x -= b.length; for (let i = 0; i < list.length; i += 2) { if (x < list[i + 1]) { const j = b.indexOf(list[i]); return j >= 0 ? j : 0; } x -= list[i + 1]; } return 0; }
+      return Math.floor(x);
+    }
+    /* A friend to be near: the closest awake, of their village or within 2 km, scored by feeling less
+       a little for every square away. Used for free time, for going to see somebody, and for who to
+       work beside (2026-11-27). */
+    function friendNear(p, far, test) {
+      let best = null, bs = 0.25;
+      if (p.mb < 0) return null;
+      const o0 = p.mb * MB + 1, o1 = o0 + p.mcap;
+      for (let o = o0; o < o1; o++) {
+        const k = mKind[o]; if (k !== M_FRIEND && k !== M_KIN) continue;
+        const q = byId.get(mAbout[o]); if (!q || q.hp <= 0 || q.task === "sleep" || q === p) continue;
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        if (q.home !== p.home && d > far) continue;
+        if (test && !test(q)) continue;
+        const sc = mNow(o) - d * 0.04;
+        if (sc > bs) { bs = sc; best = q; }
+      }
+      return best;
     }
     /* How many they count as friends. */
     function circle(p) {
@@ -6047,8 +6149,11 @@
       let best = null, bs = 0.2;
       for (const [id, score] of tiesOf(p)) {
         const q = byId.get(id);
-        if (!q || q.hp <= 0 || q.home !== p.home || q.task === "sleep") continue;
-        if (score > bs) { bs = score; best = q; }
+        if (!q || q.hp <= 0 || q.task === "sleep") continue;
+        /* A close friend who lives in another village is worth the walk, up to 2 km, and less the
+           further (2026-11-27: until then a friend who moved away was never seen again). */
+        const sc = q.home === p.home ? score : score > 0.35 && Math.hypot(q.x - p.x, q.y - p.y) < 8 ? score - Math.hypot(q.x - p.x, q.y - p.y) * 0.04 : -1;
+        if (sc > bs) { bs = sc; best = q; }
       }
       if (best) return best;
       for (const id of [p.mum, p.dad]) {
@@ -6102,7 +6207,13 @@
         weigh("idle", 0.3 + n.company * 0.5, () => {
           const mum = byId.get(p.mum) || byId.get(p.dad);
           if (mum && mum.home === p.home && !(CARAVANS && Math.hypot(mum.x - v.x, mum.y - v.y) > 34)) { go(p, mum.x + (R() - 0.5) * 2, mum.y + (R() - 0.5) * 2, "idle"); p.wait = spell("visit"); }   // not after a parent gone far with a caravan (TODO 15l)
-          else near(p, v, 4);
+          else {
+            /* A grown-up with time on their hands spends it where a friend is, if one is within 750 m
+               (2026-11-27); otherwise round the middle of the village, as before. */
+            const fr = adult(p) ? friendNear(p, 3, q => Math.hypot(q.x - p.x, q.y - p.y) < 3) : null;
+            if (fr) { go(p, fr.x + (R() - 0.5) * 0.016, fr.y + (R() - 0.5) * 0.016, "visit"); p.wait = TK(10) + Math.floor(R() * 30 * STEP_SCALE); }
+            else near(p, v, 4);
+          }
         });
         /* From about seven, light work (TODO 15.5m): in the fields beside a parent who is there,
            above all at the harvest, and minding the herd near home. */
@@ -6110,7 +6221,7 @@
           const share = childShare(p), par = byId.get(p.mum) || byId.get(p.dad);
           if (par && par.hp > 0 && par.chose === "field" && par.task === "field" && par.home === p.home)
             weigh("field", (0.3 + 0.5 * (season().ripe - 1) / 3 + n.food * 0.3) * (0.6 + share) - away(Math.hypot(par.tx - p.x, par.ty - p.y)) * 0.6 - n.rest * 0.45 - n.water * 0.5,
-              () => { go(p, par.tx + (R() - 0.5) * 0.6, par.ty + (R() - 0.5) * 0.6, "field"); p.wait = 0; });
+              () => { toField(p, Math.floor(par.tx), Math.floor(par.ty), R(), R()); p.wait = 0; });
           if (MATS) {
             const j = wildSpot(v, "herd");
             if (j >= 0) {
@@ -6243,7 +6354,7 @@
              frost, so bringing it in is worth a day whatever is in the larder. */
           weigh("field", (n.food * 0.8 + n.provide * 0.9 + 0.12 + 0.35 * (season().ripe - 1) / 3 + lay) * skilled(p, "farmer") * w.land * heavyWish(p)
                           - away(Math.hypot(w.tx + 0.5 - p.x, w.ty + 0.5 - p.y)) - n.rest * 0.45 - n.safety * 0.7 - dark * 0.5,
-            () => { go(p, w.tx + 0.2 + R() * 0.6, w.ty + 0.2 + R() * 0.6, "field"); p.wait = 0; });
+            () => { toField(p, w.tx, w.ty, R(), R()); p.wait = 0; });
 
         /* A day's fishing (TODO 6c), for a village with water near. */
         if (FISH && fishGround(v)) {
@@ -6500,7 +6611,9 @@
          two people happening to stand on the same tile. */
       weigh("visit", n.company * 1.25 - 0.08 - (p.hard - 0.5) * 0.2 - n.food * 0.4 - n.safety * 0.4 - dark * 0.5, () => {
         const who = someoneToSee(p);
-        if (who) go(p, who.x + (R() - 0.5), who.y + (R() - 0.5), "visit");
+        /* Beside them, a step or two off (2026-11-27: it was anywhere up to 125 m from them, and stopped up
+           to 125 m short of that, so a visit seldom brought two people together). */
+        if (who) go(p, who.x + (R() - 0.5) * 0.016, who.y + (R() - 0.5) * 0.016, "visit");
         else near(p, v, 3);
         p.task = "visit"; p.wait = spell("visit");
       });
@@ -6786,8 +6899,14 @@
           const pace = harvestPace() * clamp((n0 ? f0 / n0 : 0.55) / 0.55, 0.4, 1.6);
           const hours = Math.min(FIELD_HOURS, SPELL.harvest / pace);
           p.harvesting = true; p.harvestShare = hours * pace / SPELL.harvest;
-          p.wait = Math.round(hours * ACTIONS_PER_HOUR); return;
+          /* Worked along a row in pieces (2026-11-27, "working a field together"); the ticks add up to the
+             one stint it was. */
+          const all = Math.round(hours * ACTIONS_PER_HOUR), piece = Math.floor(all / ROW_PIECES);
+          p.lf.row = ROW_PIECES - 1; p.lf.rowWalk = 0; p.lf.rowT = piece;
+          p.wait = all - piece * (ROW_PIECES - 1); return;
         }
+        if (p.lf.rowWalk) { p.lf.rowWalk = 0; p.wait = p.lf.rowT; return; }
+        if (p.lf.row > 0) { p.lf.row--; p.lf.rowWalk = 1; alongRow(p); p.wait = 0; return; }
         p.harvesting = false;
         /* A day's work covers the field they are standing in and the ones
            round it. */
@@ -7898,7 +8017,9 @@
       const other = p.sayT > 0 && byId.get(p.talkingTo);
       if (other && other.sayT > 0 && other.talkingTo === p.id) return "Talking to " + other.name;
       const walking = Math.hypot(p.tx - p.x, p.ty - p.y) > 0.5;
-      if (p.task === "field") return walking ? "Walking to field" : "Harvesting";
+      /* "Reaping" only in the harvest weeks; the rest of the year the same work is the fields (2026-11-27: it
+         said "Harvesting" in midwinter). Moving on along a row is still the work. */
+      if (p.task === "field") return walking && !p.harvesting ? "Walking to field" : season().ripe > 1.5 ? "Reaping" : "Working in the fields";
       if (p.task === "home") return "Bringing food home";
       if (p.task === "eat") return walking ? "Going to eat" : "Buying food";
       if (p.task === "make") return walking ? "Walking to workshop" : "Making goods";
@@ -9001,6 +9122,7 @@
         /* Going to bed means into the house, not within 125 m of it: the last
            stretch is walked at the usual pace (TODO 7a). */
         if (p.task === "sleep" && REAL_BODIES && d > 0.006) { const k = Math.min(pace, d) / d; move(p, dx * k, dy * k); return; }
+        if ((p.task === "field" || p.task === "visit") && d > 0.004) { const k = Math.min(pace, d) / d; move(p, dx * k, dy * k); return; }   // to their place in the row, beside their own (2026-11-27)
         if (p.task === "form" && d > 0.004) { const k = Math.min(pace, d) / d; move(p, dx * k, dy * k); return; }   // TODO 15.6b: to their place in the line, not within 125 m of it
         if (p.wait > 0) { p.wait--; counted = true; } else work(p);
       }
@@ -9024,7 +9146,7 @@
         if (--p.tryIn === 0) {
           const b = bucketAt(tileAt(p.x, p.y));
           if (b.length > 1) {
-            const q = b[Math.floor(R() * b.length)];
+            const q = b[talkPick(p, b, R())];
             if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4 && q.task !== "sleep") converse(p, q);
           }
           p.tryIn = nextTry();

@@ -36,7 +36,7 @@ const share = (...names) => names.reduce((sum, n) => sum + (mix[n] || 0), 0);
 const asleep = share("Asleep", "Going home to sleep");
 /* The trades of item 9 and the building work count too: they were left off this list, which went
    unnoticed while making goods nobody used filled the hours (TODO 15.5a: 8.2% without them). */
-const working = share("Harvesting", "Making goods", "Bringing food home", "Patrolling", "Standing guard", "Carrying goods", "Trading",
+const working = share("Reaping", "Working in the fields", "Making goods", "Bringing food home", "Patrolling", "Standing guard", "Carrying goods", "Trading",
                       "Fishing", "Cutting wood", "Quarrying stone", "Mining ore", "Herding", "Hunting",
                       "Digging a well", "Building a bridge", "Building a boat", "Building their house", "Building a house");
 const walking = share("Walking", "Walking to field", "Walking to workshop", "Going to eat", "Going home",

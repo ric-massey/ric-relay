@@ -52,8 +52,20 @@ const People = Object.assign({}, People0, { create: (o, ...rest) => People0.crea
     }
   }
   assert.ok(own > others, "families work their own fields first: " + own + " against " + others);
-  w.step(24 * 10);
-  assert.ok(w.stats().shares > 0, "and a household whose field somebody else worked gets half");
+  /* Somebody finishing a stint on another household's field: that household gets half. Set up on purpose
+     since 2026-11-27: until then this was met by farmers stopping up to 125 m short of their own field, inside
+     a neighbour's square (in this world nobody chose another's field; 19.6 days of food "shared" all the same).
+     Now a farmer stands on the field they meant, and one whose own land is bare does other work, another's
+     field being worth half to them. */
+  const fh = w.homes.find(h => h.fields && h.fields.length && h.head && w.byId.get(h.head));
+  const tile = fh.fields.find(i => w.stock[i] > 0) ?? fh.fields[0];
+  w.stock[tile] = Math.max(w.stock[tile], 5);
+  const worker = w.people.find(q => w.adult(q) && q.hp > 0 && q.dwelling !== fh.id && q.job !== "soldier");
+  const tx = tile % w.cols + 0.5, ty = Math.floor(tile / w.cols) + 0.5;
+  w.place(worker, tx, ty); worker.tx = tx; worker.ty = ty; worker.task = "field"; worker.harvesting = true; worker.lf.row = 0; worker.lf.rowWalk = 0; worker.wait = 0;
+  const s0 = w.stats().shares;
+  w.step(1);
+  assert.ok(w.stats().shares > s0, "and a household whose field somebody else worked gets half (" + (w.stats().shares - s0).toFixed(1) + ")");
 }
 
 // 3. A leader's land.
