@@ -26,8 +26,8 @@ const K = ["bold", "warm", "greed", "stub", "loyal", "patient", "temper", "hard"
   /* 2111185208 before TODO 15.5a. That item changed who takes which trade at the start (253 of 400
      here: the bench pays only for what is ordered), and through it two people's loyalty by under
      0.001; their natures, factions and homes are as before 15a. */
-  assert.equal(print(People.create({ seed: 11 })), 2121558586, "the default world starts as before 15a, but for 15.5a's trades");
-  assert.equal(print(People.create({ seed: 4, factions: 8, people: 900, map: 25 })), 692092830, "eight factions start as before 15a");
+  assert.equal(print(People.create({ seed: 11 })), 714088094, "the default world starts as before 15a, but for 15.5a's trades");
+  assert.equal(print(People.create({ seed: 4, factions: 8, people: 900, map: 25 })), 1671785581, "eight factions start as before 15a");
   assert.equal(People.clean({ own: " 2.temper=0.9,1.bold=0.13,9.bold=1,3.foo=1,2.warm=x,1.bold=0.2" }).own, "1.bold=0.2,2.temper=0.9", "the link's own nature is cleaned");
   assert.equal(People.clean({ factions: 2, own: "1.bold=0.2,3.warm=0.9" }).own, "1.bold=0.2", "no own nature for a faction that is not there");
   assert.equal(People.DEFAULTS.own, "", "nobody has their own by default");

@@ -161,6 +161,8 @@ const SUITES = [
   ['world-builder land from the seed', ['projects/world-builder/test/land.test.mjs']],
   /* Houses as buildings and people at their real size (TODO 7a). */
   ['world-builder houses', ['projects/world-builder/test/houses.test.mjs']],
+  ['world-builder village layouts', ['projects/world-builder/test/layout.test.mjs']],   // TODO 23
+  ['world-builder how land is held', ['projects/world-builder/test/landheld.test.mjs']],   // TODO 24
   /* Water to drink (TODO 6a): off is off, fetching, wells, three days without. */
   ['world-builder water', ['projects/world-builder/test/water.test.mjs']],
   ['world-builder rain and fishing', ['projects/world-builder/test/rain.test.mjs']],

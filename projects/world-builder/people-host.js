@@ -377,7 +377,7 @@
       if (wantLand) {
         const tiles = w.cols * w.rows, fert = w.fert, stock = w.stock, capOf = w.tileCapacity;
         if (!landFull || landFull.length !== tiles) { landFull = new Uint8Array(tiles); landStock = null; }
-        const full = landFull, own = w.owner, cols = w.cols, rows = w.rows, bits = new Int32Array(stock.buffer, stock.byteOffset, tiles);
+        const full = landFull, own = w.landCode || w.owner, cols = w.cols, rows = w.rows, bits = new Int32Array(stock.buffer, stock.byteOffset, tiles);
         if (landStock && m.land.at === sentAt) {
           /* The page holds what was sent last: only the blocks that have changed since, found in
              the same pass that reads the crops. */
@@ -401,7 +401,7 @@
           /* The first, or the page has missed one: the whole land. */
           for (let i = 0; i < tiles; i++) { const f = fert[i]; full[i] = f > 0 ? Math.round(Math.min(1, stock[i] / (f * capOf)) * 255) : 255; }
           landStock = bits.slice(); sentOwner = own.slice();
-          const send1 = full.slice(), owner = own.slice();
+          const send1 = full.slice(), owner = own.slice();   // TODO 24: a village's id, or a people's land outside its villages as −(2 + people × 8 + kind)
           out.land = { full: send1, owner: owner, at: w.sceneTick };
           transfer.push(send1.buffer, owner.buffer);
         }
@@ -422,7 +422,7 @@
        in `crop`) and holders (`ownB`, `own`), block by block in order, each block's squares row
        by row; and the holders kept as sent are brought up to date (the crops already are). `base` is the land the page must hold to use them. */
     function landChanges(w, full, at) {
-      const cols = w.cols, rows = w.rows, owner = w.owner, B = LAND_BLOCK, bc = Math.ceil(cols / B);
+      const cols = w.cols, rows = w.rows, owner = w.landCode || w.owner, B = LAND_BLOCK, bc = Math.ceil(cols / B);
       const cropB = [], ownB = [];
       let nc = 0, no = 0;
       for (let b = 0; b < cropDirty.length; b++) {
@@ -674,6 +674,7 @@
                    know: w.knowOf ? w.knowOf(f) : null,   // TODO 15e
                    tech: w.techView ? w.techView(f.id) : null,   // TODO 15.9i: the research panel
                    era: f.era || "early", arms: w.armsOf ? w.armsOf(f.id).name : "",   // TODO 15d
+                   held: f.alive && w.landStage ? w.landStage(f) : 0, lay: f.lay || "",   // TODO 24: how it holds land; TODO 23: how its villages are laid out
                    army: Object.entries(f.camp || {}).filter(([k, c]) => c.goal >= 0 && f.rel[k] && f.rel[k].war).map(([k, c]) => ({ at: w.villages[c.v] ? w.villages[c.v].name : "", goal: w.villages[c.goal].name, ready: c.ready, cut: c.cut })),   // TODO 15h
                    lead: lead ? { name: lead.name, age: lead.age } : null, rel: rel };
         });
@@ -856,6 +857,7 @@
           else           if (w.held && w.held.has(i)) reply.thing = { field: i };
           else if (w.track && w.track[i] === 2) reply.thing = { road: i };
           else if (w.owner[i] >= 0 && w.villages[w.owner[i]]) reply.thing = { faction: w.villages[w.owner[i]].f };
+          else if (w.realm && w.realm[i] >= 0) reply.thing = { faction: w.realm[i] };   // TODO 24: a people's land outside its villages
         }
       }
       send(reply);

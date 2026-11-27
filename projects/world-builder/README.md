@@ -1203,8 +1203,9 @@ than any house could be.
 - **People are half a metre wide by default** (Ric: "Real size by default"): the "Bodies" setting
   now starts at "Real size", and the old spacing is "Spaced out". Nobody is in anybody's way.
 - **A house is a building** (`homes`, `newHome`): a place, a length and width in metres and a
-  facing. A village is laid out in plots spiralling out from its middle about 19 m apart, never
-  on water. A house is 12 to 24 m long and 4.5 to 7 m wide, after excavated medieval peasant
+  facing. A village is laid out in plots about 19 m apart, never on water — in a spiral until
+  2026-11-27, and since then along a street, round a green or in one of the other forms villages
+  really took ("Where houses stand", below). A house is 12 to 24 m long and 4.5 to 7 m wide, after excavated medieval peasant
   houses (Houndtor, Dartmoor: 14.2 by 4.3 m; England, France and Germany: about 15 to 23 by 4 to
   6 m); the richest household of a world gets the biggest, by rank of what it owns at the start
   (Ric: "different size of houses depending on how rich they are"). A couple shares a house and
@@ -4654,9 +4655,11 @@ own fields; common and leader's land are as they were.
 - **Bounds that stay put (15.7d).** A village's reach grows as it grows and no longer shrinks when its
   people do; a square once a village's stays that village's while it stands, and a neighbour's growth does
   not take it. Land goes only when a village is abandoned.
-- **The land between (15.7e).** A people claims the land within three kilometres of its villages' fields
-  (the nearest village's people), woods, pasture and hunting grounds; foragers' and herders' camps claim
-  their ranges the same way. Somebody of another people who cuts wood, quarries, mines, herds or hunts there
+- **The land between (15.7e).** A people claims its land outside its villages — woods, pasture and
+  hunting grounds. Until 2026-11-27 that was everything within three kilometres of its villages' fields,
+  the nearest village's people, camps' ranges included; since then it is the people's own land as "How
+  land is held" (below) works it out: its reach, its written or its surveyed land. A band's range is
+  shared and claims nothing, and a people nobody rules holds no land beyond what its villages work. Somebody of another people who cuts wood, quarries, mines, herds or hunts there
   pays that people a tenth of what it gave, in coin, or — with no coin, or in a shared-store world — it is
   held against their people (a little grievance and ill will each time). At war nobody asks. Armies ask
   leave to cross it (15.6f).
@@ -4674,6 +4677,131 @@ own fields; common and leader's land are as they were.
   needs generations, and is left to the long runs (the speed of a year, below, is unchanged).
 - **Read** with `landView()` (households, landless share, mean and largest holding, Gini, pledges, grants,
   enclosed villages).
+
+### Where houses stand (2026-11-27)
+
+TODO item 23. Ric asked why houses are always built in a circle. Until this date every house went at the
+next point of a golden-angle spiral round the village's middle, so every village on any land was the same
+round rosette. Now a village is laid out in one of the forms villages really took, and grows in it
+(`layOut`, `plotAt` and `newHome` in `people.js`):
+
+- **Along a street**: houses both sides of the way through the place, each on a narrow plot with its land
+  behind it (the row village; the Waldhufendorf's strips). Where the place has one way out, or two nearly
+  opposite.
+- **Along the water**: one row following a bank or shore, facing the water.
+- **Round a green**: round a green 80 m by 30 m, then out along the ways from its two ends. On flat, good
+  ground with a pond or marsh near (greens were common pasture, often with a pond).
+- **A cluster**: irregular lanes winding out from a middle kept open, toward the neighbours (the nucleated
+  villages of open fields).
+- **Scattered farms**: each farmstead on its own land, its long side along the slope. Where the land is
+  steep (a rise of over 8% across 1.25 km) or poor (soil under 0.3): dispersed settlement in hills and on
+  poor soil.
+- **A grid**: lots on straight streets in blocks of sixteen 15 m lots, laid to north. Only for a people that
+  surveys (rail or the telegraph) and is ruled. A town of a people that writes and is ruled keeps its old
+  core and has a grid added beside it, never rebuilt (Ric: "Grid added beside the core"; regular plans set
+  beside irregular cores, as in the bastides and medieval new towns).
+- **A ring of huts** for foragers' camps, facing the middle (Yellen 1977, the !Kung).
+
+**Custom leans, the land decides** (Ric). A people's first village sets its custom, and its later villages
+take it where their land allows that form; steep or poor land is always farms. In twelve default worlds,
+47 of 65 villages on land that allowed a choice were in their people's custom. A house faces its street,
+green, water or camp middle, and a household's fields are chosen from behind its house first: a square
+across the street counts two and a half times as far, one off to the side nearly twice (the toft and croft;
+1,048 fields behind houses against 93 in front, `test/layout.test.mjs`).
+
+No dice: a layout reads the land and a hash of the village and the plot, so the world's draws are untouched,
+but every house stands somewhere new, so **every seed is a new world from this date**. Ric chose not to
+keep the spiral ("Keep neither"). In twelve default worlds: 37 clusters, 31 farms, 17 greens, 9 streets and
+2 along the water.
+
+Sources read: Wikipedia's Nucleated village, Dispersed settlement, Linear settlement, Waldhufendorf,
+Village green and Grid plan (and Williamson 2004 as cited there, on soil and climate rather than lordship);
+New York's 1811 blocks (61 m by 150 to 270 m) and Adelaide's town acres for the grid. The thresholds, the
+green's size, the block size and the lanes' bend are guesses, chosen so the forms come out where their land
+is; nothing was tuned toward a count.
+
+### How land is held (2026-11-27)
+
+TODO item 24. Ric: "can we talk about how the get teritory? or land? rn it seems just in circles", then
+"and the politicians in the future. like this is defined by era no?". Not by era: by what a people knows
+and how it rules (`landStage`), as war already is (15.6), so peoples at different stages live side by side.
+Until this date a village's land was a disc, 2.6 + 0.55 × √people squares in a straight line, over rivers
+and mountains alike; Ric chose not to keep it ("Keep neither").
+
+- **1, a range**: a band that does not farm. Two hours' walk round its camp over land nobody holds,
+  shared, never a line, and nobody is charged for crossing it.
+- **2, use and walking**: a farming people nobody rules (no tax, no share of the harvest, no soldiers)
+  holds only what its villages hold.
+- **A village's land, at every stage**, is what lies within its walk: one flood out from every village at
+  once over the squares at the pace people walk them (`paceAt`: forest, marsh and hills slow, paths and roads
+  quick), stopped by water nobody can wade and taking in the water at its edge, out to the walk the old disc
+  measured on open grass. Two villages meet where each is an equal walk away, a Voronoi diagram by travel
+  time. On open grass a village holds about what it did; on rough ground about half (open 0.85 of the old
+  disc, rough 0.50, four seeds). Bounds still never shrink under Land as property (15.7d).
+- **3, reach**: a people with a leader who takes a share or keeps soldiers holds the land no village holds
+  out from its villages, an hour beyond its fields (half as much again with a wall, more with a garrison),
+  the walk divided by a weight growing with the square root of its people, so a bigger place reaches further
+  against a neighbour, as a mandala's pull did. Its villages' land joins up. Where its reach is within three
+  squares of another people's it is a **frontier**, drawn as a soft band.
+- **4, record**: a people that writes. A square of its reach is written down, and from then on no
+  neighbour's strength takes it (Ric: "Only by an event"). It stays with the village it was reached from, so
+  it moves only when that village does: taken, ceded at a peace, brought by a marriage, gone with a
+  breakaway. With that village gone, the people keeps it while it stands and writes.
+- **5, survey**: a people with rail or the telegraph. Its claim runs straight over everything but the sea,
+  three hours out, and takes in empty land nobody walks (Ric: "By stage"). Lines between two such peoples
+  are straight because they are drawn, not walked.
+
+Everything that reads `owner` (fields, harvest, roads, the map) reads it as before. `realm` is a people's
+land outside its villages; it is what the claims of 15.7e and leave to cross (15.6f) read now. Village land
+is worked out when villages change and once a day; a people's land once a week and on any change of stage
+or of whose a village is.
+
+**On the map** (Ric: "Band and line"): a village's land is washed in its people's colour as before; a
+people's reach, written and surveyed land lighter; a frontier and a range lightest. Only a village's land and
+written or surveyed land are lined; where two peoples' reach meets there is no line, only the paler band.
+A people's panel (Laws, land, marriage and faith) says how it holds its borders and how its villages are
+built, and tapping its land outside the villages opens it.
+
+**Measured: a year of the default world, twelve seeds** (seeds 1 to 12), circles and spiral against walks
+and layouts. "Apart by" is the difference in units of one seed's spread; under about 0.8 is what chance gives.
+
+| A year of the default world | Before (circles, spiral) | After | Apart by |
+|---|---|---|---|
+| People alive at the end | 389.8 ± 6.6 | 390.8 ± 6.3 | 0.2 |
+| Births | 18.0 ± 3.2 | 19.0 ± 4.0 | 0.3 |
+| Starved | 0.2 ± 0.4 (two people, one world) | 0 | — |
+| Died of sickness | 16.7 ± 5.0 | 17.4 ± 3.8 | 0.2 |
+| Died in battle | 1.7 ± 2.0 | 1.8 ± 2.0 | 0.0 |
+| Moves of house | 125 ± 68 | 134 ± 112 | 0.1 |
+| Changes of flag | 7.3 ± 6.6 | 16.3 ± 38.9 | 0.4 |
+| Share of coins held by the top tenth | 0.57 ± 0.05 | 0.56 ± 0.05 | 0.2 |
+| Squares held by villages at the end | 1,376 ± 168 | 870 ± 117 | 3.6 |
+| Seconds to run the year (this desktop, six at once) | 288 | 193 | |
+
+Food and deaths did not move by more than the seeds do, though villages hold 63% of the land they did:
+rough ground slows a walk, and the default land is mostly forest and hills. Seed 8 is the outlier in changes
+of flag (139): one hungry family going between two short villages of different peoples. On the first run it
+was 563, the family going back the next day; that was a fault in famine migration older than this item, which
+the smaller land brought out, and it is fixed: somebody who has just moved for food stays a week before moving
+for food again.
+
+Two older faults the new land brought out, both fixed the same day: the famine migration above, and a death
+that looked for the dead's children only in their own village when people with nothing to do were passed
+over, but everywhere when everybody was visited, so a grown child living elsewhere grieved in one way of
+running a world and not the other (`test/dozing.test.mjs`, case 8). The year above was measured before the
+second fix; it changes only how a grown child living away takes a death.
+
+Tests that asked a picked seed for something rare (a battle declined, an army drawing off, raiders breaking
+off, faith along trust, news taking days) were measured over twelve or more seeds under both lands before
+being moved; each test's comment has the numbers.
+
+Sources read: Vita-Finzi and Higgs 1970 (site catchment: an hour's walk for farmers, two for foragers and
+herders, in time not distance); Wikipedia's Mandala (political model) (Wolters), Frontier and Border (Kristof
+1959 as cited there: a frontier a zone, a boundary a line), Beating the bounds, LangScape on Anglo-Saxon
+charter bounds, and the Public Land Survey System (the 1785 Land Ordinance). **Not confirmed:** Chisholm's
+(1962) figures (work falling off past about 1 km, rarely past 3 to 4) were not found in a source that could
+be read, and Kristof's own wording was not read. The weights, the hour beyond, the three-square frontier and
+three hours for a survey are guesses.
 
 ### Paths and roads, carts and boats (2026-11-16)
 

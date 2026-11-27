@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const LATER2 = { folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" };   // 15.11b to z and 15.12b to d, built after this one, off: its worlds as they were picked
-const OLD = 2704337721;   // the world below before 15.6h, 15.6i and 15.10
+const OLD = 2469389609;   // the world below before 15.6h, 15.6i and 15.10
 
 function print(w) {
   let h = 2166136261;

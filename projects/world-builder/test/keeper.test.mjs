@@ -111,7 +111,8 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   for (let i = 0; i < w.cols * w.rows; i += 7) {
     const fert = w.fert[i], full = fert > 0 ? Math.min(1, w.stock[i] / (fert * w.tileCapacity)) : 1;
     assert.equal(f.land.full[i], Math.round(full * 255));
-    assert.equal(f.land.owner[i], w.owner[i]);
+    assert.equal(f.land.owner[i], w.landCode[i]);   // TODO 24: a village's id, or a people's land outside its villages as a code
+    if (w.owner[i] >= 0) assert.equal(f.land.owner[i], w.owner[i]);
   }
   assert.equal(f.links.length % 4, 0);
   // Asked again with nothing changed — the same view, the world on the same

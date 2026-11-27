@@ -7072,7 +7072,13 @@ blur on the map; footprints and roof tones are worked out once per building and 
 **Done when:** each of 22a to 22c is on the map at the zoom where it can be read, `symbols.html` and
 the map agree, and the speed bench says no frame got slower than the speed log allows.
 
-### [ ] 23. Where houses stand: villages laid out as real ones are
+### [x] 23. Where houses stand: villages laid out as real ones are
+
+**Done 2026-11-27.** Villages are laid out along a street, along water, round a green, as a cluster, as
+scattered farms or on a grid (a ring of huts for a band), from their land and their people's custom; houses
+face what they front and fields are chosen behind them; a writing, ruled people's town grows a grid beside its
+core. No "simpler" setting (Ric: "Keep neither"); every seed is a new world. `test/layout.test.mjs`. Left out:
+a cluster becoming a street village along a new road (a village keeps the form it was founded in).
 
 Made 2026-11-26. Ric asked why houses are always built in a circle, and chose the six real patterns
 below.
@@ -7107,8 +7113,39 @@ from above; houses face what they front; with the setting on "simpler" a world i
 one before; walking, building, burning and ruin still work (the walking and dozing tests, ruins).
 **Budget:** default. This moves where every house stands, so like 2b it makes every seed a new
 world from the day it lands; say so in the README and here.
+**Ric decided (2026-11-27):** keep neither the spiral nor the old land circles ("Keep neither"), so
+there is no "simpler" setting and nothing to fingerprint; a people's custom leans, the land decides
+("Custom leans, land decides"); a growing town keeps its core and has a grid added beside it ("Grid
+added beside the core"); the older tests' fingerprints are re-recorded on the new world ("Re-record
+them").
+**Research notes (2026-11-27).** Read: Wikipedia's [Nucleated village](https://en.wikipedia.org/wiki/Nucleated_village),
+[Dispersed settlement](https://en.wikipedia.org/wiki/Dispersed_settlement), [Linear settlement](https://en.wikipedia.org/wiki/Linear_settlement),
+[Waldhufendorf](https://en.wikipedia.org/wiki/Waldhufendorf), [Village green](https://en.wikipedia.org/wiki/Village_green)
+and [Grid plan](https://en.wikipedia.org/wiki/Grid_plan), and what they cite. What they say: nucleated villages
+went with open-field farming and a lord's or a community's planning, and dispersed farms with hills, poor soil
+and pasture (Williamson 2004 argues soil and climate over lordship); a row village strings along a road or a
+bank, each house with its long plot behind it (the toft and croft; the Waldhufendorf's strips, which German
+colonists carried east in the 1100s and 1200s); a green was common pasture, often with a pond, stock kept in at
+night; planned grids came with planning powers — Roman and colonial towns, the bastides and medieval new towns,
+New York's 1811 blocks (61 m by 150 to 270 m) and Adelaide's town acres — and most old towns kept an irregular
+core with a planned extension beside it (Wharram Percy's regular rows over older enclosures). Foragers' camps
+are rings of huts facing a middle (Yellen 1977, the !Kung). **Chosen:** six forms (street, water, green,
+cluster, scattered farms, grid) plus the camp ring, read off the land round the village (water within 400 m,
+the rise across 1.25 km, soil, the ways to neighbours within 6 km) and what the people knows and how it rules;
+no dice, a hash of the village and plot, so the world's draws are untouched. **Guessed:** the thresholds (slope
+over 8% or soil under 0.3 gives farms), the green's 80 m by 30 m, the grid's 120 m by 60 m blocks of sixteen
+15 m lots, the lanes' bend, and fields behind a house counting 2.5 times as far in front. Cost: a layout is
+worked out once a village and a plot in a few operations; the bench did not move.
 
-### [ ] 24. How land is held: by use and walking, by reach, by record, by survey
+### [x] 24. How land is held: by use and walking, by reach, by record, by survey
+
+**Done 2026-11-27.** A village's land is a walk over the real ground, two villages meeting at an equal walk;
+a people's land outside its villages goes by stage (range, reach with a frontier, written, surveyed), read off
+what it knows and how it rules; a written border moves only with a village; the map draws a frontier as a soft
+band and a written or surveyed border as a line; a people's panel says how it holds its borders. A year over
+twelve seeds: food and deaths within the seeds' spread, village land 63% of the circles'. `test/landheld.test.mjs`.
+Left out: forts and roads stretching reach (walls and garrisons do), and a peace treaty drawing a new line
+across empty land between two surveying peoples (a survey's line falls where the two claims meet).
 
 Made 2026-11-27. Ric: "can we talk about how the get teritory? or land? rn it seems just in circles",
 then "and the politicians in the future. like this is defined by era no?"
@@ -7169,8 +7206,38 @@ world and twelve seeds, food and deaths do not move by more than the seeds do, o
 **Budget:** `territory` runs when villages change, not every step; a travel-time flood out to an
 hour's walk is a few hundred squares a village. The speed bench must not get slower than the speed
 log allows.
+**Ric decided (2026-11-27):** (a) by stage — a people holds land nobody lives on once it has the
+means: its reach under a leader, all the land behind a surveyed line ("By stage"); (b) the circles
+are not kept ("Keep neither"); (c) a written border moves only by an event — a place taken, ceded,
+married or broken away — never by drift ("Only by an event"); (d) a frontier is drawn as a wide soft
+band and a written or surveyed border as a line ("Band and line").
+**Research notes (2026-11-27).** Read: [Vita-Finzi and Higgs 1970](https://www.cambridge.org/core/journals/proceedings-of-the-prehistoric-society/article/prehistoric-economy-in-the-mount-carmel-area-of-palestine-site-catchment-analysis/7AFF7937750FF5D3377D6600E3A86173)
+(site catchment: an hour's walk for farmers, two for foragers and herders, in time and not distance);
+Wikipedia's [Mandala (political model)](https://en.wikipedia.org/wiki/Mandala_(political_model)) (Wolters:
+overlapping power thinning with distance from a centre), [Frontier](https://en.wikipedia.org/wiki/Frontier) and
+[Border](https://en.wikipedia.org/wiki/Border) (a frontier a zone, a boundary a line; Kristof 1959 cited there),
+[Beating the bounds](https://en.wikipedia.org/wiki/Beating_the_bounds), [LangScape on Anglo-Saxon charter bounds](https://langscape.org.uk/about/boundaries.html)
+(bounds written as walks between marks, fixed by record), and the [Public Land Survey System](https://en.wikipedia.org/wiki/Public_Land_Survey_System)
+(the 1785 Land Ordinance: lines drawn on a map before anybody lived there). **Not confirmed:** Chisholm's
+(1962) figures of work falling off past about 1 km and rarely past 3 to 4 were not found in a readable source,
+and Kristof's own wording was not read, only what cites it; the README says so. **Chosen:** a village's land
+is a travel-time flood from every village at once over the squares (Dijkstra with eight neighbours at
+`paceAt`), stopped by water nobody can wade, out to the walk the old disc measured on open grass — a Voronoi
+diagram by walking time; a people's land is a second flood over the land no village holds, weighted by
+√people, an hour beyond (more with walls or a garrison), three squares of it next to another people a frontier;
+written land stays with the village it was reached from; surveyed land runs three hours straight over all
+but the sea; a band's range is two hours round its camp, shared. **Guessed:** the weights, the hour beyond, the
+three-square frontier, three hours for a survey. Cost: the village flood daily, the people's flood weekly and on
+any change of stage or hands; a year of the default world runs faster than before (less land to work out).
 
-## Speed log
+### [ ] 25. What 23 and 24 left: villages that change form, reach along roads, lines drawn by treaty
+
+Made 2026-11-27, from what items 23 and 24 left out. (a) A village keeps the form it was founded in; a cluster
+on a road that comes to carry traffic could grow into a street village, as villages did along new roads.
+(b) A people's reach is stretched by a wall and a garrison, not yet by forts out in the country or by roads.
+(c) Between two surveying peoples the line falls where their claims meet; a peace could draw it instead, a
+straight line across empty land, as treaties did. Research and Ric's questions as usual.
+
 
 One row per finished item. Same machine where possible; say which machine.
 
@@ -7219,3 +7286,4 @@ One row per finished item. Same machine where possible; say which machine.
 | 2026-11-24 | 16c, five bug fixes | AMD Ryzen 5 3600, 24 GB, Node 24.19.0 | 2.67 / 2.62 s a day (2.60 / 2.86 before), 112–114× | *not run* | 17.3 MB, 3.37–3.38 KB (same as before) | `--quick`, old/new alternated twice after all simulations finished: 400 0.20/0.19 → 0.19/0.19, 2,000 0.87/0.87 → 0.88/0.90; all within 5% on the mean. No new per-person fields; changed worlds are named in 16c. |
 | 2026-11-25 | 21b–21g, the People UI | cloud container, Node 22 | *engine untouched, not run* | *not run* | — | The keeper's frame, medians of 400, three runs each, old keeper against new: 5,000 people 0.49 / 0.70 / 0.57 → 0.63 / 0.53 / 0.52 ms; 20,000 people 3.40 / 3.41 / 3.69 → 3.15 / 3.32 / 3.42 ms. Standing problems are worked out once an hour of the world's time; every frame at first cost 7–14% more. A person's panel 0.27 → 0.5–0.8 ms at 5,000 people, 1.2–1.7 → 1.5–2.7 ms at 20,000 (the household). |
 | | 2 | Apple M1, 8 GB | *to be measured* | *to be measured — about 7 s, 43×, by the ratio* | | run `node --expose-gc test/bench.mjs` on the Mac and fill this in |
+| 2026-11-27 | 23, 24 | AMD Ryzen 5 3600, 24 GB | 2.75 s a day, 105× | *not run* | 8.2 MB, 1.60 KB | **a different world** (houses laid out, land by walking). `--quick`, alternated three times against the engine before: 400 people 0.20 → 0.19 s, 2,000 0.93 → 0.97 s, 5,000 2.59 → 2.75 s (about 5%, at the edge of the budget and inside this machine's 10%); the new land code is 2.4% of a day by profile (village flood 0.7%, a people's land 1.2%); a year of the default world, six at once, 288 → 193 s |

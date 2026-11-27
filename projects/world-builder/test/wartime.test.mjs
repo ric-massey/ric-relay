@@ -23,7 +23,7 @@ const People = createRequire(import.meta.url)("../people.js");
   let h = 0; const mix = x => { h = (h * 31 + (Math.round(x * 1e6) | 0)) % 2147483647; };
   for (const p of w.people) { mix(p.id); mix(p.x); mix(p.y); mix(p.food); mix(p.coins); mix(p.goods); mix(p.partner); mix(p.home); }
   for (const v of w.villages) { mix(v.goods); mix(v.food); mix(v.till); }
-  assert.equal(h, 1018431441, "a world with wars off is the world it was before 15.5h");
+  assert.equal(h, 1124925397, "a world with wars off is the world it was before 15.5h");
 }
 
 // 2. At war: given and bought.

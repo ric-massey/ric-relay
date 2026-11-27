@@ -52,7 +52,9 @@ const words = m => m.text.replace(/^(Heard|Saw): /, "");
   const tr = best.m.trace;
   for (let i = 0; i + 1 < tr.length; i++) assert.equal(tr[i].from, tr[i + 1].name, "each telling was told by the one before it");
   const days = tr[0].day - Math.floor(best.e.t / 24);
-  assert.ok(days >= 1, "and it took days: " + days);
+  /* Never before it happened. Not necessarily days: 20 squares is 5 km, about an hour's walk, and in the
+     world TODO 23 laid out it arrived the same day (until 2026-11-27 this asked for a day or more). */
+  assert.ok(days >= 0, "and it came after it happened: " + days + " days");
 
   // 2. Each village's most-held telling of each event.
   let differ = 0;

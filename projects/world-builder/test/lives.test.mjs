@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const OFF = { heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" };
-const OLD = 433631066;   // print() of the world below after 15.11, before 15.12b to e
+const OLD = 1512402149;   // print() of the world below after 15.11, before 15.12b to e
 function print(w) {
   let h = 2166136261;
   const mix = x => { h = Math.imul(h ^ (Math.round(x * 1000) | 0), 16777619) >>> 0; };

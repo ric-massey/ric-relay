@@ -128,7 +128,8 @@ assert.equal(fingerprint(fresh), fingerprint(w), "a world watched every way is t
   /* Close in: a tap 16 pixels round at 4,096 pixels a square, on the end of a house rather than on
      whoever sleeps in the middle of it. */
   const end = h => [h.x + Math.cos(h.ang) * h.len * 0.4, h.y + Math.sin(h.ang) * h.len * 0.4];
-  const h = w2.homes.find(h => { const [x, y] = end(h); return !w2.people.some(p => Math.hypot(p.x - x, p.y - y) < 0.005); });
+  /* Clear of the village's marker too, which answers first (TODO 23: a cluster's first house stands 20 m from the middle). */
+  const h = w2.homes.find(h => { const [x, y] = end(h); return !w2.people.some(p => Math.hypot(p.x - x, p.y - y) < 0.005) && !w2.villages.some(v => Math.hypot(v.x - x, v.y - y) < 0.2); });
   if (h) assert.equal(t2.ask({ t: "at", seq: 1, x: end(h)[0], y: end(h)[1], r: 16 / 4096 }).thing.house, w2.homes.indexOf(h), "a tap on a house is the house");
   let tile = -1; for (const i of w2.held.keys()) { const x = i % w2.cols + 0.5, y = Math.floor(i / w2.cols) + 0.5; if (empty(x, y) && !w2.homes.some(q => Math.hypot(q.x - x, q.y - y) < 0.3) && !w2.villages.some(v => Math.hypot(v.x - x, v.y - y) < 0.7)) { tile = i; break; } }
   if (tile >= 0) assert.equal(t2.ask({ t: "at", seq: 2, x: tile % w2.cols + 0.5, y: Math.floor(tile / w2.cols) + 0.5, r: 0.05 }).thing.field, tile, "a tap on a held field is the field");

@@ -2095,7 +2095,7 @@
     function newVillage(x, y, f) {
       const v = { id: villages.length, dc: { dk: 0x40000000 + villages.length, dt: -1, dn: 0, dh: 0 }, name: unique(() => word(2)), x: x, y: y, f: f, food: 0, goods: 0, till: 0, wanted: 0, used: 0, crafters: 0, paidSites: 0, given: 0,
                   priceFood: 1, priceGoods: 2, pop: 0, adults: 0, hungry: 0, loyal: 0.6, ore: 0, siege: 0, breach: 0, blockade: 0,
-                  alive: true, founded: t, empty: 0, radius: 4, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
+                  alive: true, founded: t, empty: 0, radius: 4, landF: undefined, lay: null, sick: 0, place: "village", placed: false, importAvg: 0, inFood: 0, marketTo: -1,
                   /* A public order for grain (TODO 15.5b2): coins the treasury has set aside here, the days of food
                      they are for, and whether for people going short now or to lay in after the harvest. */
                   bid: 0, bidWant: 0, bidFor: "",
@@ -3771,6 +3771,7 @@
         for (const i of ownedList) { if (boundOf[i] < 0) boundList.push(i); boundOf[i] = owner[i]; }
       }
       for (const f of factions) if (f.alive && landStage(f) !== f.landStage) realmDue = true;   // a people that has come to write, survey, rule or farm
+      for (const v of villages) if (v.alive && v.landF !== v.f) { if (v.landF !== undefined) realmDue = true; v.landF = v.f; }   // a village changed hands: its people's land goes with it
       if (realmDue || !daily || t % (7 * DAY_HOURS) === 0) peoplesLand(); else codes();
       if (PROP) claims();
       worked();
@@ -7357,7 +7358,10 @@
       /* The family is changed by it, and by a killing more (TODO 10). Grief at a death in old
          age is grief too, but a lesser one, and left out. */
       if (why !== "old" && why !== "left") {
-        const kin = (PLAIN ? people : residents(p.home)).filter(q => q.hp > 0 && (q.mum === p.id || q.dad === p.id));
+        /* Children wherever they live (2026-11-27): looked for only among the dead's own village, a child
+           grown and gone to another was shaken by the death only when everybody was visited, and the two
+           ways of running a world came apart (test/dozing.test.mjs, case 8, on TODO 23's land). */
+        const kin = people.filter(q => q.hp > 0 && (q.mum === p.id || q.dad === p.id));
         for (const id of [p.partner, p.mum, p.dad]) { const q = id && byId.get(id); if (q && q.hp > 0) kin.push(q); }
         if (mate && mate.hp > 0 && !kin.includes(mate)) kin.push(mate);
         for (const q of kin) {
@@ -9111,7 +9115,11 @@
             return;
           }
         }
-        if (p.hungry > 50 && f.leader !== p.id && R() < 0.4) {
+        /* Somebody who has just moved for food stays a week before moving for food again (2026-11-27):
+           still hungry on arrival, a family went back and forth between two villages every day or so
+           for three months, changing its flag each time (seed 8 of the default world, 563 changes of
+           flag in a year against about 10). */
+        if (p.hungry > 50 && f.leader !== p.id && R() < 0.4 && t - p.settled > 7 * DAY_HOURS) {
           let best = null, bs = v.food / (v.pop + 1) + 0.25;
           const rum = rumours(p);
           for (const o of villages) {
@@ -12398,6 +12406,7 @@
     function makeBand(f) {
       f.band = true; f.tax = 0; f.harvest = 0;
       for (const v of villages) if (v.f === f.id) v.camp = true;
+      if (ownedList.length) peoplesLand();   // TODO 24: a band holds a range from now, not the reach it had a moment ago
       for (const p of people) {
         if (p.f !== f.id) continue;
         if (KNOW && p.know != null) for (const k of BAND_LOST) p.know &= ~(1 << TI_K[k]);
