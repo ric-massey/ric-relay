@@ -2014,8 +2014,14 @@ migration marked "safe to re-run", and re-running it would have put the original
   **πr² × speed** (not coffee's 2D width × speed); hold starts when the last creamer parcel lands.
   **Air is analytical free fall**, not an oversized particle column; the measured landing
   surface receives those same parcels with their actual impact speed and narrowed radius.
-  The books include liquid in flight. Molecular viscosity uses real units; unresolved shear
-  uses Smagorinsky, not uniform syrup-like drag. Tiny capillary normals affect reflections
+  The books include liquid in flight. Arrivals activate at their own time within a frame;
+  a cubic iso-surface probe and blended density join avoid a buried batch or a hard collar.
+  Molecular viscosity uses real units; unresolved shear
+  uses Smagorinsky, not uniform syrup-like drag. Tangential glass friction dissipates
+  spin, and bulk compression damping suppresses pressure ringing (Ric, 2026-11-27:
+  "There is no friction slowdown. It just keeps spinning"). Cream carries a conserved
+  concentration, with local grid exchange as well as advection so stirring actually blends it.
+  Tiny capillary normals affect reflections
   only, and detached particles retain their own round surfaces instead of being blurred away.
   **The pour waits three seconds, then starts slowly** (Ric, 2026-11-27: "Wait 3 seconds,
   then start slowly"). The valve opens over the next three seconds; the spout's maximum
@@ -2036,6 +2042,10 @@ migration marked "safe to re-run", and re-running it would have put the original
   share a compute pass, hidden parcels are culled before drop drawing, and routine
   diagnostics read compact GPU totals. Keep the full-particle audit for verification.
   The grid, gravity, physical cup volume and flow must not change as a shortcut.
+  Steps are 0.05 simulation units during impacts, input and drainage, 0.10 for an upright
+  held pool; up to 50 ms of wall time is caught up per frame,
+  addressing the earlier clock slowdown that made gravity look weak. Keep stability,
+  settling, material conservation and clock pace in the actual GPU regression.
   **The floor gate opens across the full width in 0.4 s** (Ric, 2026-11-27: "coffee gets
   left there ... it looks like sludge"): the narrow centre hole stranded two pools. Never
   replace the complete-drain browser assertion with "some liquid left" again: it must reach
@@ -2046,6 +2056,7 @@ migration marked "safe to re-run", and re-running it would have put the original
   `.github/test/coffee3.mjs` checks units/flow/entry points in the quick lane;
   `.github/test/coffee3-browser.html` compiles and runs the actual shaders, reads particles
   back and tests delayed emission, impact bubbles, coffee-before-cream ordering, both doses,
+  settling after a controlled slosh, concentration exchange/conservation, clock pace,
   tipping, spilling, re-pouring and draining. The manual GPU suite stays
   outside the Node runner, whose environment has no browser GPU. Details and outstanding
   device checks are in `docs/coffee-egg-plan.md`.

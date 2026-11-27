@@ -194,13 +194,17 @@ The selected two-cell head is a modelling choice, not a measured coffee machine.
 
 After all coffee has landed, a 0.65 s pause precedes a smaller creamer pour, at a different
 horizontal position. Its dose is 6% of the coffee volume, added to the actual particle
-budget. Cream particles retain their material identity while the shared velocity field
-advects and stirs them; a second 3D field reconstructs local concentration for warm milk
+budget. Parcels carry cream concentration while the shared velocity field advects and
+stirs them; a second 3D field reconstructs local concentration for warm milk
 scattering. Concentration and carrier density share a wider reconstruction kernel, with
 cubic sampling at the front surface, so the colour does not show square grid cells.
 A Boussinesq-style 3% density excess encourages the plume to sink. These are
-chosen cream properties, not measurements; there is no molecular diffusion or separate
-decorative plume. The moving particles produce the mixing visible at the grid's scale.
+chosen cream properties, not measurements. Local PIC concentration exchange now blends
+neighbours as well as advecting them: one uniform relaxation per frame, 1.5/s at rest
+and 24/s during stirring, conserves the scalar through the grid's partition of unity
+(up to atomic rounding). This is an unresolved mixing approximation, not a measured
+molecular diffusion coefficient. No separate decorative plume is drawn. The cream inlet
+opens over 0.25 s at 65% coffee speed and 95% radius, giving a short splash.
 
 Up to 128 entrained-air tracers are born under the impact. They follow the liquid grid,
 rise opposite gravity (a chosen 55 mm/s slip speed), and pop on leaving the liquid or
@@ -253,8 +257,9 @@ This supersedes coffee3's earlier click-through behaviour; the other coffee eggs
 
 Each simulation parcel now carries two mass units: half as many parcels represent the
 same physical coffee/cream volume. Emission counts and pressure force both include the
-mass factor, while rest density, grid dimensions, timestep, gravity and nozzle geometry
-are preserved. All substeps share one compute pass, with dispatch boundaries retained.
+mass factor, while rest density, grid dimensions, gravity and nozzle geometry are preserved.
+The later settling correction below adjusts the fixed timestep after GPU verification.
+All substeps share one compute pass, with dispatch boundaries retained.
 A conservative GPU list excludes opaque interior parcels from the detached-drop draw;
 remaining candidates retain the original density/depth test. Routine health checks
 reduce to per-workgroup totals on the GPU rather than mapping all particle matrices;
@@ -269,6 +274,36 @@ Simulated seconds per wall second improved from 0.478 to 0.857. This is one desk
 measurement, not an iPhone FPS claim. Lowering raster resolution alone barely helped,
 so the final optimization retains the image resolution and physical simulation step.
 The manual test page has **Measure work** to repeat this comparison.
+
+**Settling, mixing and the impact join, 2026-11-27** (Ric: "There is no friction slowdown.
+It just keeps spinning", "the mix doesn’t mix well", "where the pour connects", and
+"gravity on the sitting liquid is too low"). The old wall only removed normal velocity.
+Tangential flow now loses energy near the front/rear glass, sides and closed floor at a
+chosen 18/s contact rate, before gravity is applied. It does not slow the air stream.
+A chosen 2.0 grid-unit bulk viscosity damps unresolved compression ringing; the molecular
+and shear viscosities remain as above. A 20% PIC share filters unresolved affine noise
+without damping the gathered bulk velocity. These are numerical/contact approximations, not
+measured coffee/glass properties. Fixed-point atomics round instead of truncating so
+concentration exchange does not systematically lose creamer.
+
+The previous CPU batch placed newly landed parcels deep below the surface and advanced
+them through the whole frame again. They now enter at the interface with a per-parcel
+activation delay matching their arrival within the frame. The probe samples the same
+cubic-filtered density as the rendered surface, rejects thin splashes, and updates at
+most every 25 ms during a pour. The analytical stream overlaps that interface with a
+smooth density union, avoiding the old abrupt collar and doubled density at the join.
+
+Gravity remains 9.81 m/s². The timestep is 0.05 simulation units for impacts, stirring,
+tipping and drainage, and 0.10 for an upright held pool. Every substep in a frame has
+that fixed size. The catch-up budget is 50 ms rather than 25 ms per frame (maximum
+128 substeps); faster impacts require the tighter stability bound. This
+addresses the clock falling behind real time, which made the pooled liquid look light.
+The GPU suite checks energy decay after a controlled slosh, resting speed, cream variance
+and conserved dose, real-time clock pace, finite state and complete drainage. Below a
+chosen 18 mm/s RMS rest tolerance for four quiet seconds, the cup stops submitting GPU
+work to suppress residual sub-cell pressure jitter; input or the drain deadline wakes it.
+The closed floor clamps fast impacts before any outflow test; audits distinguish
+open-top losses, floor losses and parcels still awaiting activation.
 
 Simulation steps are fixed and bounded, and GPU submissions are awaited to keep the queue
 short. A slow device loses simulated elapsed time. FPS and elapsed simulation time are
@@ -312,6 +347,18 @@ profile, including compact/full audit agreement, background animation pause/rest
 all liquid draining and another pour. The real front door was also checked: background
 roots became inert, media stopped, wheel scrolling stayed fixed during coffee, and
 normal interaction returned after it cleared.
+
+
+The settling correction passed 34 actual-GPU checks on desktop and the 44-cell phone
+profile. A controlled desktop slosh slowed from 170.8 to 15.1 mm/s in 6.5 s; cream
+concentration variance fell from 0.0396 to 0.0185, with less than 0.003% dose drift,
+and the active clock ran at 1.000 simulated seconds per wall second. The phone profile
+slowed from 29.4 to 10.5 mm/s, variance fell from 0.0381 to 0.0104, and it entered
+sleep; its elapsed-time ratio therefore includes stopped time. Both profiles retained
+finite state, identified upright losses as open-top splashes rather than floor leaks,
+restored the page, and drained to zero. These remain desktop GPU tests, not iPhone
+hardware measurements. The previous GPU suite did not check settling or scalar exchange;
+its passing result did not establish either. **Measure settling** repeats the readback.
 
 
 The MLS-MPM transfer equations are adapted from **matsuoka-601/Splash**, MIT, which credits

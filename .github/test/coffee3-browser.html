@@ -3,8 +3,8 @@
 <style>
 body{margin:0;background:#eee7dc;color:#231a14;font:16px/1.5 system-ui}main{padding:32px;max-width:800px;margin:auto}h1{font:36px Georgia}button{font:16px system-ui;padding:12px 18px;margin:4px}pre{white-space:pre-wrap;background:#fff9ef;padding:16px}#tools{position:relative;z-index:2147483646}p{max-width:580px}
 </style></head><body><main><h1>Coffee, under glass.</h1><p>Live GPU verification. The cup is the browser window. Drag anywhere to stir; Alt-drag to tip. Buttons below exercise the actual simulation and read its particles back from the GPU.</p>
-<div id="tools" data-coffee3-controls><button id="pour">Pour coffee3</button><button id="left">Tilt left</button><button id="right">Tilt right</button><button id="upright">Upright</button><button id="empty">Turn upside down</button><button id="drain">Drain</button><button id="read">Read particles</button><button id="measure">Measure work</button><button id="stop">Stop test</button><button id="suite">Run GPU checks</button><pre id="result">Ready.</pre></div></main>
-<script src="../../assets/coffee3.js?v=10"></script><script>
+<div id="tools" data-coffee3-controls><button id="pour">Pour coffee3</button><button id="left">Tilt left</button><button id="right">Tilt right</button><button id="upright">Upright</button><button id="empty">Turn upside down</button><button id="drain">Drain</button><button id="read">Read particles</button><button id="measure">Measure work</button><button id="settle">Measure settling</button><button id="stop">Stop test</button><button id="suite">Run GPU checks</button><pre id="result">Ready.</pre></div></main>
+<script src="../../assets/coffee3.js?v=17"></script><script>
 const result=document.getElementById('result');
 const phone=new URLSearchParams(location.search).has('phone')?true:undefined;
 const audit=async()=>{
@@ -25,6 +25,11 @@ document.getElementById('measure').onclick=async()=>{
   while(RELAY_COFFEE3.active===cup&&performance.now()-start<3000){await new Promise(r=>setTimeout(r,100));samples.push(cup.state.frameMs);}
   if(RELAY_COFFEE3.active!==cup)return;
   result.textContent=JSON.stringify({phase:cup.state.phase,count:cup.state.count,workMs:samples.reduce((s,v)=>s+v,0)/samples.length,simulatedSecondsPerWallSecond:(cup.state.elapsed-before)/((performance.now()-start)/1000),pixels:cup.canvas.width*cup.canvas.height,quality:cup.state.quality},null,2);
+};
+document.getElementById('settle').onclick=async()=>{
+  const cup=RELAY_COFFEE3.active;if(!cup)return;const before=await cup.audit();const start=performance.now();
+  await new Promise(r=>setTimeout(r,6500));if(RELAY_COFFEE3.active!==cup)return;const after=await cup.audit();
+  result.textContent=JSON.stringify({before:{speed:before.rmsSpeed*cup.dims.metresPerCell/cup.dims.timeUnit,cream:before.creamAlive,variance:before.creamVariance},after:{speed:after.rmsSpeed*cup.dims.metresPerCell/cup.dims.timeUnit,cream:after.creamAlive,variance:after.creamVariance},state:cup.state,wallSeconds:(performance.now()-start)/1000},null,2);
 };
 document.getElementById('stop').onclick=()=>{RELAY_COFFEE3.active?.stop();result.textContent='Stopped.';};
 document.getElementById('suite').onclick=async()=>{
@@ -50,10 +55,26 @@ document.getElementById('suite').onclick=async()=>{
     ok('emitted count equals coffee plus cream doses',book.emitted===cup.dims.target+cup.dims.creamTarget);
     ok('cream is advected liquid',book.creamAlive>0);
     const compact=await cup.audit(true);
-    ok('compact GPU health agrees with the full particle audit',compact.alive===book.alive&&compact.creamAlive===book.creamAlive&&compact.finite&&compact.errors.length===0);
+    ok('compact GPU health agrees with the full particle audit',compact.alive===book.alive&&Math.abs(compact.creamAlive-book.creamAlive)<0.02&&compact.finite&&compact.errors.length===0);
     ok('routine readbacks are at least fifty times smaller',compact.readbackBytes<book.emitted*80/50);
     ok('all emitted liquid is accounted for',book.emitted===book.alive+book.lost);
     ok('liquid occupies real depth',book.maxZ-book.minZ>2);
+    ok('the closed floor never loses an impact parcel',book.outFloor===0);
+    ok('upright losses can only escape the open top',book.pending===0&&book.lost===book.outTop);
+    // Excite the cup once, then remove the forcing: a perpetual-spin bug must fail.
+    cup.tilt(0.45,-0.893);await delay(250);cup.tilt(0,-1);await delay(250);
+    const moving=await cup.audit(),clockStart=cup.state.elapsed,wallStart=performance.now();
+    await delay(6500);book=await cup.audit();
+    const restingSpeed=book.rmsSpeed*cup.dims.metresPerCell/cup.dims.timeUnit;
+    lines.push('MEASURE '+JSON.stringify({movingMmS:moving.rmsSpeed*cup.dims.metresPerCell/cup.dims.timeUnit*1000,restingMmS:restingSpeed*1000,varianceBefore:moving.creamVariance,varianceAfter:book.creamVariance,creamBefore:moving.creamAlive,creamAfter:book.creamAlive,lost:book.lost}));
+    ok('unforced motion loses energy at the glass',book.rmsSpeed<moving.rmsSpeed*0.6);
+    ok('the pooled liquid settles below 20 mm/s',restingSpeed<0.02);
+    ok('cream concentration becomes less patchy',book.creamVariance<moving.creamVariance*0.9);
+    ok('mixing conserves the cream dose',Math.abs(book.creamAlive-moving.creamAlive)<moving.creamAlive*0.01);
+    const pace=(cup.state.elapsed-clockStart)/((performance.now()-wallStart)/1000);
+    ok('gravity runs near real time or the cup has slept',pace>0.94||cup.state.sleeping);
+    lines.push('MEASURE '+JSON.stringify({movingMmS:moving.rmsSpeed*cup.dims.metresPerCell/cup.dims.timeUnit*1000,restingMmS:restingSpeed*1000,varianceBefore:moving.creamVariance,varianceAfter:book.creamVariance,creamBefore:moving.creamAlive,creamAfter:book.creamAlive,pace}));
+    result.textContent=lines.join('\n');
     const baseline=book.meanX;const start=cup.state.elapsed;cup.tilt(-0.7,-0.714);
     await until(()=>cup.state.elapsed>start+0.65);book=await cup.audit();
     ok('changing gravity shifts liquid left',book.meanX<baseline-2);
