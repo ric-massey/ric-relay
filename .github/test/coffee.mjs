@@ -46,9 +46,17 @@ for (const [W, H, mm] of [[1440, 900, 0.2646], [390, 844, 0.174], [2560, 1400, 0
     const q = s.widthAt(y) * s.speedAt(y);
     assert.ok(Math.abs(q - s.widthAt(H) * s.speedAt(H)) < 1e-6 * q, `${W}x${H}: the stream carries the same at every height`);
   }
-  // full once the last of the stream has landed: the pour itself took target / Q
-  const ideal = (0.75 * W * s.Hs) / (s.widthAt(0) * s.speedAt(0)), pour = fullAt - 0.15 - s.fallTime(s.Hs * 0.25);
-  assert.ok(pour > ideal * 0.9 && pour < ideal * 1.2, `${W}x${H}: fills in the time its stream pours (${pour.toFixed(1)} s against ${ideal.toFixed(1)} s)`);
+  // The pour starts with drips and swells and thins (Ric, 2026-11-27), so its
+  // flow is a schedule: full once the cup's volume has left the spout - the
+  // first drops, then the stream, its flow added up here from the outside -
+  // and the last of it has fallen. Nothing sets the time by hand.
+  const target = 0.75 * W * s.Hs, full0 = s.widthAt(0) * s.speedAt(0);
+  let sent = s.firstDrips(), te = 0;
+  while (sent < target && te < 120) { sent += s.flowAt(te) / 600; te += 1 / 600; }
+  const pour = fullAt - s.fallTime(s.Hs * 0.25);
+  assert.ok(pour > te * 0.95 && pour < te * 1.1, `${W}x${H}: fills in the time its flow pours (${pour.toFixed(1)} s against ${te.toFixed(1)} s)`);
+  assert.ok(s.jetAt() > 2 && s.jetAt() < 2.5 && s.flowAt(s.jetAt() + 0.01) < 0.2 * full0 && Math.abs(s.flowAt(s.jetAt() + 1.05) - full0) < 1e-6 * full0, `${W}x${H}: two seconds of drips, then a thin stream swelling to full within a second`);
+  assert.ok(s.firstDrips() > 0 && s.firstDrips() < 0.05 * target, `${W}x${H}: the first drops are a small part of the cup`);
   const level = full / (W * s.Hs);
   assert.ok(level > 0.74 && level < 0.79, `${W}x${H}: three quarters full, and the creamer, before it drains (got ${level.toFixed(3)})`);
   // the only thing that goes in between full and the drain is the creamer (to a particle)
@@ -130,7 +138,13 @@ for (const [W, H, mm] of [[390, 844, 0.174], [1440, 900, 0.2646]]) {
   assert.ok(Math.abs(share() - poured) / poured < 0.01, `mixing moves creamer about, and makes and loses none (${(100 * share() / poured).toFixed(1)}%)`);
   const q = creamDepth(s);
   assert.ok(q[2] + q[3] > 0.6, `being heavier, it sinks (${q.map((x) => (100 * x).toFixed(0)).join('/')}% by quarter, top to bottom)`);
-  let t = 0; while (t < 60 && !s.asleep) { s.step(1 / 60); t += 1 / 60; }
+  // Within two and a half minutes. It was one: the phone's pour used to be
+  // full in 1.4 s, so the creamer went into still coffee. Since 2026-11-27
+  // the pour drips, swells and takes about nine seconds, and the cup is still
+  // sloshing when the creamer goes in; it then takes about 100 s to rest
+  // (seed 11; 36 s before), with every landing setting the same - measured
+  // at push 1, 0.6 and 0.16. A minute more drawing in a forty-minute hold.
+  let t = 0; while (t < 150 && !s.asleep) { s.step(1 / 60); t += 1 / 60; }
   const end = creamDepth(s);
   assert.ok(s.asleep, `then it comes to rest (${t.toFixed(0)} s more)`);
   assert.ok(end[3] > 0.7, `settled on the bottom: ${(100 * end[3]).toFixed(0)}% of it in the bottom quarter`);

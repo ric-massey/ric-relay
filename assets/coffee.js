@@ -24,7 +24,7 @@
    Real units: gravity is 9.81 m/s^2 at the screen's real size, and on a phone
    it is what the phone feels - its tilt and its shaking (devicemotion's
    accelerationIncludingGravity), so a shake really throws the liquid about.
-   Chosen, not derived: the nozzle (a Keurig's 5 mm stream at 0.6 m/s), the
+   Chosen, not derived: the nozzle (a Keurig's 5 mm stream leaving at 0.27 m/s), the pour's drips and swelling, how hard it lands, the
    jug, how much creamer (2%) and how much denser (4%), the drain's hole, the
    colours (Beer-Lambert constants), the bubbles and the steam.
 
@@ -78,12 +78,32 @@
 
     // the stream: continuity, as a sheet (this is 2D): Q = w*v at every height
     const x0 = W * (0.5 + OFF);
-    const vTop = Math.sqrt((0.6 * PXM) ** 2 + 2 * G * (60 / MM));   // 0.6 m/s out of a spout 60 mm above the screen
-    const w0 = 5 / MM;                                 // 5 mm wide where it comes into view
-    const Q = w0 * vTop;                               // px^2/s
+    // The spout is at the top edge of the screen and the coffee leaves it
+    // slowly, as a Keurig's does: about 237 ml in 45 s through a 5 mm nozzle
+    // is 0.27 m/s. It speeds up from there as it falls, and narrows (Ric,
+    // 2026-11-27: "the liquid at the top shouldn't be really moving and it
+    // should be accelerating as it falls"). Until then the spout was 60 mm
+    // above the screen at 0.6 m/s, so the coffee came into view already
+    // falling at 1.24 m/s and its top looked as fast as its bottom.
+    const vTop = 0.27 * PXM;
+    // what the sheet carries is kept as it was (vWas), so the fill time is
+    // unchanged: the 2D sheet's volume is chosen to fill the cup in a
+    // sensible time, and only the fall and the drawing are the real stream's
+    const vWas = Math.sqrt((0.6 * PXM) ** 2 + 2 * G * (60 / MM));
+    // 5 mm wide where it comes into view - a Keurig's - into a cup a laptop's
+    // width (340 mm) or wider; a narrower cup gets a stream as much narrower
+    // (Ric, 2026-11-27: "it pours too fast on mobile"): poured from the same
+    // Keurig, a phone's cup, a fifth as wide, was full in 1.5 s. Its pour is
+    // to scale with it now - about 1 mm, a gooseneck kettle's thin stream -
+    // and fills in about 6 s. The fill time is still only volume over what
+    // the stream carries; nothing sets it by hand.
+    const scale = clamp((W * MM) / 340, 0.2, 1);
+    const w0 = (5 * scale) / MM;
+    const Q = w0 * vWas;                               // px^2/s
     const target = FILL * W * Hs;
     // the creamer's jug: 0.3 m/s out of a lip 30 mm above the screen, 3 mm wide, left of centre
-    const xc = W * 0.36, vJug = Math.sqrt((0.3 * PXM) ** 2 + 2 * G * (30 / MM)), wJug = 3 / MM, Qc = wJug * vJug;
+    // (to the same scale as the coffee's stream, so it is never the thicker of the two)
+    const xc = W * 0.36, vJug = Math.sqrt((0.3 * PXM) ** 2 + 2 * G * (30 / MM)), wJug = (3 * scale) / MM, Qc = wJug * vJug;
     const CREAM = opt.cream ?? 0.02, DRHO = 0.04, CREAM_AFTER = 1;
     // the drain: a hole mid-floor. Torricelli says a hole w wide empties the
     // cup in T = 2V / (Cd*w*sqrt(2gh)); measured here the liquid goes about
@@ -526,31 +546,106 @@
       for (let j = 0; j < ny; j++) if (fluid[j * nx + i] && (j === ny - 1 || fluid[(j + 1) * nx + i])) return j * h;
       return Hs;
     }
-    function stream(x, w, v0, Q, want, c, startAt) {
-      return { x, w, v0, Q, want, c, start: startAt, stop: -1, poured: 0, owe: 0, head: -1, tail: -1, xNow: x, land: Hs, done: false };
+    // How a pour goes (Ric, 2026-11-27: "it should take like 3 sec to start
+    // and it should start by dripping. Slowly going to full fill. Then slowly
+    // stopping with some drips too"). A brewer's first water through the pod
+    // comes out as drops, faster and faster; then a thin stream that swells
+    // to its full flow; at the end it thins again, breaks, and drips. So the
+    // coffee's flow is a schedule - two seconds of drips speeding up, a
+    // stream from 15% of full flow swelling to all of it over a second, the
+    // full flow, and the same back down over 1.2 s - all chosen to look
+    // right, and the fill still only volume over flow: the full flow runs
+    // exactly as long as it takes for the drips, the swelling, the full
+    // stream and the thinning to add up to the cup.
+    const sm = (x) => x * x * (3 - 2 * x), smI = (x) => x * x * x - 0.5 * x * x * x * x;   // smoothstep, and its integral from 0
+    const dropR = () => ((1.4 + 0.6 * rand()) * Math.sqrt(scale)) / MM;                 // a drip, 3 to 4 mm across on a laptop
+    const dropM = (r) => Math.max(1, Math.round((Math.PI * r * r) / PA));
+    function stream(x, w, v0, Q, want, c, startAt, prof) {
+      return { x, w, v0, Q, want, c, start: startAt, stop: -1, poured: 0, owe: 0, head: -1, tail: -1, xNow: x, land: Hs, done: false,
+        prof: prof || { drip: 0, up: 0, down: 0, thin: 1 }, plan: null, dripIn: 0 };
     }
+    function plan(S) {
+      const p = S.prof, jet = S.start + p.drip, drips = [];
+      let dripVol = 0;
+      // the first drops: half a second apart, closing to a tenth
+      for (let t = S.start; p.drip > 0 && t < jet - 0.05; ) {
+        const r = dropR(), m = dropM(r);
+        drips.push({ t, r, m }); dripVol += m * PA;
+        const a = (t - S.start) / p.drip;
+        t += (0.5 + (0.09 - 0.5) * Math.pow(a, 0.8)) * (0.8 + 0.4 * rand());
+      }
+      const jetWant = Math.max(0, S.want - dripVol);
+      const upVol = S.Q * (p.thin * p.up + (1 - p.thin) * p.up * smI(1)), downVol = S.Q * (p.down - (1 - p.thin) * p.down * smI(1));
+      const downAt = jet + p.up + Math.max(0, (jetWant - upVol - downVol) / S.Q);
+      S.plan = { jet, downAt, end: downAt + p.down, jetWant, drips, dripsLeft: drips.length, dripVol };
+    }
+    // the flow leaving the spout at time te, and all that has left it by te
+    function flowOf(S, te) {
+      const P = S.plan, p = S.prof;
+      if (!P || te < P.jet || te > P.end) return 0;
+      if (te < P.jet + p.up) return S.Q * (p.thin + (1 - p.thin) * sm((te - P.jet) / p.up));
+      if (te < P.downAt) return S.Q;
+      return S.Q * (1 - (1 - p.thin) * sm((te - P.downAt) / p.down));
+    }
+    function sentBy(S, te) {
+      const P = S.plan, p = S.prof;
+      if (!P || te <= P.jet) return 0;
+      let v = 0;
+      const a = p.up > 0 ? clamp((te - P.jet) / p.up, 0, 1) : 1;
+      v += S.Q * p.up * (p.thin * a + (1 - p.thin) * smI(a));
+      v += S.Q * Math.max(0, Math.min(te, P.downAt) - (P.jet + p.up));
+      const b = p.down > 0 ? clamp((te - P.downAt) / p.down, 0, 1) : 0;
+      v += S.Q * p.down * (b - (1 - p.thin) * smI(b));
+      return Math.min(v, P.jetWant);
+    }
+    // How hard it lands, as a share of its speed. A 5 mm round stream's
+    // volume per millimetre of a 25 mm cup, against the sheet's, is
+    // pi/4 * 5/25 = 0.16: at that it made no dent at all (Ric: "there should
+    // be a crater. Just not a massive one"); at 1 it dug a hole half the cup
+    // deep. 0.6 is chosen by eye between them - a dimple a little deeper than
+    // the stream is wide, that closes when the pour stops.
+    const IMPACT = 0.6;
     function pourStream(S, dt, t, sway) {
       if (S.start < 0 || t < S.start || S.done) return;
+      if (!S.plan) plan(S);
+      const P = S.plan;
       S.xNow = S.x + sway;
+      // the first drops leave the spout on time and fall exactly
+      while (P.drips.length && P.drips[0].t <= t) { const d = P.drips.shift(); s.drops.push({ x: S.x + (rand() - 0.5) * 2, y: -4, vy: S.v0 * 0.2, r: d.r, m: d.m, first: S }); }
       const ys = landing(S.xNow), ft = fallTime(S.v0, ys);
       S.land = ys;
-      if (S.stop < 0 && S.Q * (t - S.start) >= S.want) S.stop = S.start + S.want / S.Q;
-      S.head = fallY(S.v0, t - S.start); S.tail = S.stop >= 0 ? fallY(S.v0, Math.max(0, t - S.stop)) : -1;
-      // what has reached the liquid by now
-      const end = S.stop >= 0 ? Math.min(t, S.stop + ft) : t;
-      const reached = clamp(S.Q * (end - S.start - ft), 0, S.want);
-      const now = reached - S.poured;
+      if (S.stop < 0 && t >= P.end) S.stop = P.end;
+      S.head = t >= P.jet ? fallY(S.v0, t - P.jet) : -1; S.tail = S.stop >= 0 ? fallY(S.v0, Math.max(0, t - S.stop)) : -1;
+      // what has reached the liquid by now: what left the spout a fall ago
+      const reached = sentBy(S, t - ft), now = reached - S.poured;
       if (now > 0) {
-        const v = speedAt(S.v0, ys), w = S.Q / v, want = now / PA + S.owe, m = Math.floor(want);
+        const v = speedAt(S.v0, ys), w = Math.max(0.3 * h, flowOf(S, t - ft) / v), want = now / PA + S.owe, m = Math.floor(want);
         S.owe = want - m;
-        for (let q = 0; q < m; q++) add(S.xNow + (rand() - 0.5) * w, Math.max(0.01 * h, Math.min(Hs - 0.02 * h, ys - rand() * Math.min(v * dt, 2 * h))), (rand() - 0.5) * 0.02 * v, v, S.c);
+        // It lands softer than the sheet would (Ric, 2026-11-27: "normally it's
+        // dropping in lol. Not being shoved into the mug"). The sheet is the
+        // cup's whole depth and pours about six times what a 5 mm round stream
+        // does per millimetre of a cup 25 mm deep - that is what fills the cup
+        // in a sensible time - so at full speed it hit far too hard and dug a
+        // hole. Its volume is all there; it arrives at IMPACT of its speed.
+        // (Only the coffee. The creamer keeps its full push: it is meant to
+        // plunge and curl - "get the swirls"; landing gently it hung near the
+        // top instead.)
+        const vIn = (S.c ? 1 : IMPACT) * v;
+        for (let q = 0; q < m; q++) add(S.xNow + (rand() - 0.5) * w, Math.max(0.01 * h, Math.min(Hs - 0.02 * h, ys - rand() * Math.min(vIn * dt, 2 * h))), (rand() - 0.5) * 0.02 * vIn, vIn, S.c);
         S.poured = reached;
+        // the air a plunging jet pulls under with it (drawn; see stepPlunge)
+        S.plunge = (S.plunge || 0) + now;
       }
-      if (S.stop >= 0 && t >= S.stop + ft && S.poured >= S.want - 1e-6) { S.done = true; S.head = S.tail = -1; }
+      if (S.stop >= 0 && t >= S.stop + ft && S.poured >= P.jetWant - 1e-6 && P.dripsLeft === 0) { S.done = true; S.head = S.tail = -1; }
     }
-    const coffee = stream(x0, w0, vTop, Q, target, 0, 0.15);
+    const coffee = stream(x0, w0, vTop, Q, target, 0, 0.15, { drip: 2, up: 1, down: 1.2, thin: 0.15 });
     const creamS = stream(xc, wJug, vJug, Qc, CREAM * target, 1, -1);
     s.streams = [coffee, creamS];
+    for (const S of s.streams) S.flowAt = (te) => flowOf(S, te);   // for drawing: how wide the stream is at each height
+    plan(coffee);
+    s.flowAt = (te) => flowOf(coffee, te);        // the coffee's flow leaving the spout, px^2/s
+    s.firstDrips = () => coffee.plan.dripVol;     // what the first drops carry, px^2
+    s.jetAt = () => coffee.plan.jet;              // when the stream proper begins
 
     // a cup already poured and still (reduced motion, a new width): particles
     // in a lattice up to the level, the creamer (if it was in) at the bottom
@@ -562,7 +657,8 @@
         add(x + (rand() - 0.5) * 0.1 * h, y, 0, 0, Hs - y < cream ? 1 : 0);
       }
       s.emitted = target; s.stopAt = s.t; s.fullAt = s.t; s.flowing = false; s.hit = true; s.draining = false; s.done = false;
-      Object.assign(coffee, { poured: target, stop: s.t, done: true, head: -1, tail: -1 }); s.dripsSet = true; s.drips.length = 0;
+      Object.assign(coffee, { poured: target, dripIn: 0, stop: s.t, done: true, head: -1, tail: -1 }); s.dripsSet = true; s.drips.length = 0; s.drops.length = 0;
+      if (coffee.plan) { coffee.plan.drips.length = 0; coffee.plan.dripsLeft = 0; }
       if (creamed) { Object.assign(s.cream, { poured: s.cream.want, start: s.t, stop: s.t, hit: true }); Object.assign(creamS, { start: s.t, poured: creamS.want, stop: s.t, done: true }); }
       s.asleep = false; quiet = 0;
       s.volume = n * PA;
@@ -625,16 +721,25 @@
       // the coffee: it starts 0.15 s in and stops once the cup will be full
       pourStream(coffee, frameDt, t, 0);
       s.flowing = coffee.start <= t && !coffee.done;
-      s.emitted = coffee.poured; s.stopAt = coffee.stop;
-      if (coffee.stop >= 0 && !s.dripsSet) { s.dripsSet = true; s.drips.push(coffee.stop + 0.8 + rand() * 0.3, coffee.stop + 1.7 + rand() * 0.4, coffee.stop + 3 + rand() * 0.7); }
+      s.emitted = coffee.poured + coffee.dripIn; s.stopAt = coffee.stop;
+      // once the stream has broken, the spout still drips: quickly at first,
+      // then further and further apart, for about four seconds (a computer drains five after full)
+      if (coffee.stop >= 0 && !s.dripsSet) { s.dripsSet = true; for (const a of [0.35, 0.7, 1.1, 1.6, 2.4, 3.4]) s.drips.push(coffee.stop + a * (0.85 + 0.3 * rand())); }
       if (coffee.done && s.fullAt < 0) s.fullAt = t;
-      if (!s.hit && coffee.poured > 0) s.hit = true;
-      // drips from the nozzle after it stops: drops falling exactly, joining the liquid where they land
-      for (let q = s.drips.length - 1; q >= 0; q--) if (t >= s.drips[q]) { s.drops.push({ x: x0 + (rand() - 0.5) * 2, y: -4, vy: vTop * 0.2, r: (2.4 + rand()) / MM / 3.78 }); s.drips.splice(q, 1); }
+      if (!s.hit && s.emitted > 0) s.hit = true;
+      // drips from the spout: drops falling exactly, joining the liquid where they land
+      for (let q = s.drips.length - 1; q >= 0; q--) if (t >= s.drips[q]) { const r = dropR(); s.drops.push({ x: x0 + (rand() - 0.5) * 2, y: -4, vy: 0.05 * PXM, r, m: dropM(r) }); s.drips.splice(q, 1); }
       for (let q = s.drops.length - 1; q >= 0; q--) {
         const d = s.drops[q];
         d.vy += G * frameDt; d.y += d.vy * frameDt;
-        if (d.y >= landing(d.x)) { const m = Math.max(1, Math.round((Math.PI * d.r * d.r) / PA)); for (let r = 0; r < m; r++) add(d.x + (rand() - 0.5) * d.r, landing(d.x) - rand() * d.r, 0, d.vy, 0); if (s.fullAt >= 0) s.dripped += m * PA; s.drops.splice(q, 1); s.asleep = false; }
+        if (d.y >= landing(d.x)) {
+          const m = d.m || dropM(d.r), y0 = landing(d.x);
+          for (let r = 0; r < m; r++) add(d.x + (rand() - 0.5) * d.r, y0 - rand() * d.r, 0, IMPACT * d.vy, 0);   // a real drop's push, as the stream's
+          // the books: a drop that lands before the cup is called full is part of the pour; after, it is a drip
+          if (d.first) { d.first.dripIn += m * PA; d.first.plan.dripsLeft--; } else if (s.fullAt >= 0) s.dripped += m * PA; else coffee.dripIn += m * PA;
+          s.plunge = (s.plunge || 0) + m * PA * 0.5; s.plungeX = d.x;
+          s.drops.splice(q, 1); s.asleep = false;
+        }
       }
 
       // the creamer, a second after full, by a hand that moves a little
@@ -681,7 +786,7 @@
       void before; void poured;
       fieldDirty = true;
 
-      stepBubbles(frameDt);
+      stepBubbles(frameDt); stepPlunge(frameDt);
       stepSteam(frameDt);
       if (s.fullAt >= 0 && n === 0 && !s.drips.length && !s.drops.length) { s.done = true; s.bubbles.length = 0; s.steam.length = 0; }
     };
@@ -796,6 +901,49 @@
         if (o.age > o.life || y >= Hs) b.splice(q, 1);
       }
     }
+    // ── Where it lands (Ric, 2026-11-27: "the coffee landing in there needs
+    // to look pretty realistic", then "is it really a plunging jet? Normally
+    // it's dropping in"). A stream dropped into a mug takes a little air in
+    // where it lands: a few fine bubbles just under the surface that rise
+    // straight back and join the froth on top. So what lands brings bubbles
+    // in proportion to what it carries (chosen: about 90 a second at a
+    // laptop's full flow, a drop a few), at the speed it lands with (the
+    // real stream's push, IMPACT), each lasting under a second or two,
+    // carried by part of the liquid's flow and rising at a small bubble's
+    // speed (Stokes-ish, a few cm/s). Drawn only: the liquid does not feel
+    // them. A deep pale plume under it, the first try, made it look shoved in.
+    const BUB_PER = 90 / (5 / MM * Math.sqrt((0.6 * PXM) ** 2 + 2 * G * (60 / MM)));   // per px^2 of liquid landed
+    s.plume = [];
+    function stepPlunge(dt) {
+      const P = s.plume;
+      const sow = (S, x, vIn, width) => {
+        let m = S.plunge * BUB_PER + (S.bubOwe || 0); S.plunge = 0;
+        const k = Math.floor(m); S.bubOwe = m - k;
+        for (let q = 0; q < k && P.length < 800; q++) {
+          const rmm = 0.12 + 0.35 * rand() * rand();
+          P.push({ x: x + (rand() - 0.5) * width, y: S.land + rand() * width, vx: (rand() - 0.5) * 0.08 * vIn, vy: vIn * (0.02 + 0.1 * rand() * rand()), r: rmm / MM, rise: (0.015 + 0.09 * rmm) * PXM, age: 0, life: 0.4 + 1.2 * rand() });
+        }
+      };
+      for (const S of s.streams) if (S.plunge > 0) { const v = speedAt(S.v0, S.land); sow(S, S.xNow, (S.c ? 1 : IMPACT) * v, Math.max(h * 0.5, S.Q / v)); }
+      if (s.plunge > 0) { const S = { plunge: s.plunge, bubOwe: s.dropOwe, land: landing(s.plungeX) }; sow(S, s.plungeX, 0.6 * speedAt(0.05 * PXM, S.land), 2 * h); s.plunge = 0; s.dropOwe = S.bubOwe; }
+      for (let q = P.length - 1; q >= 0; q--) {
+        const b = P[q];
+        b.age += dt;
+        // drag takes it to the liquid's speed, less the rise
+        const k = 1 - Math.exp(-dt / 0.1), lx = uAt(u, b.x, clamp(b.y, 0, Hs - 1)), ly = vAt(v, b.x, clamp(b.y, 0, Hs - 1));
+        // (only part of the liquid's motion: this 2D liquid, every bit of the
+        // jet's push held in one plane, runs down and out under the pour far
+        // harder than a cup's would, and took the bubbles to the floor)
+        b.vx += (0.35 * lx - b.vx) * k; b.vy += (0.35 * ly - b.rise - b.vy) * k;
+        b.x = clamp(b.x + b.vx * dt, b.r, W - b.r); b.y = Math.min(Hs - b.r, b.y + b.vy * dt);
+        const top = landing(b.x);
+        if (b.y <= top + b.r || b.age > b.life || b.y >= Hs - 2 * b.r) {
+          if (b.y <= top + b.r && s.bubbles.length < 60 && rand() < 0.08) s.bubbles.push({ x: b.x, r: 0.6 + rand() * 1.4, age: 0, life: 2 + rand() * 5 });
+          P.splice(q, 1);
+        }
+      }
+    }
+
     // Steam. Brewed at about 85 C, it cools toward the room (Newton:
     // T = 20 + 65 e^(-t/900)), and gives off less visible steam, none below 45 C.
     s.temp = () => 20 + 65 * Math.exp(-s.t / 900);
@@ -814,7 +962,7 @@
     }
 
     // nothing to draw but steam: the page stops drawing until a tilt, a shake or the drain
-    s.idle = () => s.asleep && !s.draining && !s.flowing && !s.drips.length && !s.drops.length && !s.bubbles.length && !(creamS.start >= 0 && !creamS.done) && !(s.fullAt >= 0 && cr0() && creamS.start < 0);
+    s.idle = () => s.asleep && !s.draining && !s.flowing && !s.drips.length && !s.drops.length && !s.bubbles.length && !s.plume.length && !(creamS.start >= 0 && !creamS.done) && !(s.fullAt >= 0 && cr0() && creamS.start < 0);
     const cr0 = () => s.cream.on;
     s.creamed = () => s.cream.on && s.cream.start >= 0;
     return s;
@@ -914,9 +1062,19 @@
     // the drips from the nozzle
     for (const d of s.drops) {
       ctx.beginPath(); ctx.ellipse(d.x, d.y * ys, d.r, d.r * 1.25, 0, 0, Math.PI * 2);
-      ctx.fillStyle = through(2 * d.r * s.MM, 0.92); ctx.fill();
-      ctx.beginPath(); ctx.arc(d.x - d.r * 0.3, d.y * ys - d.r * 0.3, d.r * 0.3, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,248,238,0.6)"; ctx.fill();
+      ctx.fillStyle = through(Math.max(3.5, 2 * d.r * s.MM), 0.95); ctx.fill();
+      ctx.beginPath(); ctx.arc(d.x - d.r * 0.3, d.y * ys - d.r * 0.35, d.r * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,248,238,0.55)"; ctx.fill();
+    }
+
+    // the little air a falling stream takes in: fine pale bubbles just under where it lands
+    for (const b of s.plume) {
+      const a = 0.26 * Math.min(1, b.age * 10, (b.life - b.age) * 1.5);
+      if (a <= 0.01) continue;
+      const r = Math.max(0.6, b.r);
+      ctx.beginPath(); ctx.arc(b.x, b.y * ys, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(206,174,140,${a.toFixed(3)})`; ctx.fill();
+      if (r > 1.2) { ctx.beginPath(); ctx.arc(b.x - 0.3 * r, b.y * ys - 0.3 * r, 0.35 * r, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,246,232,${(a * 1.4).toFixed(3)})`; ctx.fill(); }
     }
 
     // the few bubbles on the surface
@@ -992,25 +1150,22 @@
     return { body, gloss };
   }
 
-  // The top of the coffee, seen across the cup (Ric, 2026-11-27: "the top
-  // layer, the one that rolls … seems to have something go behind it and in
-  // front of it … more realism without going way off of the style"). The
-  // screen is the cup's front glass and the cup has depth behind it - D, a
-  // fifth of the screen's short side, 10 to 25 mm, as coffee2 has it - seen
-  // from an eye 15% of the height above the screen's top and E in front
-  // (300 mm a phone, 500 a computer). A point of the surface at the back
-  // wall, v below the eye, shows v·E/(E+D) below it rather than v, so the
-  // back edge stands v·D/(E+D) above the front one: the top of the coffee
-  // shows as a strip, a few pixels at the screen's top and more lower down.
-  // The physics is in the screen's plane, so the back edge is the front's
-  // surface a moment late and a little smoother (across the depth a wave
-  // is not quite the same wave): a crest at the glass rolls up in front of
-  // it and hides it, a trough shows more. Seen this obliquely the top is
-  // mostly a mirror of the room (Fresnel), so it is lighter than the body,
-  // lightest at the back where the angle is shallowest, and paler where
-  // creamer has come to the top.
+  // The coffee's surface across the cup's depth, seen head on (Ric,
+  // 2026-11-27: "the top layer, the one that rolls … seems to have something
+  // go behind it and in front of it", then "it should be level … when there
+  // is a ripple there is coffee back there so it looks like you're head on").
+  // The eye is level with the coffee, so a still surface is a line: nothing
+  // of the top shows. Only where a wave further back stands higher than the
+  // surface at the glass - in a trough, behind the dip the jet digs - does
+  // that coffee show above it. The physics is in the screen's plane, so the
+  // surface further back is made from the surface at the glass (below: a
+  // crest crossing the cup at an angle); that is chosen, not measured. Where
+  // it shows it is lit a little more at its crest, and paler where creamer
+  // has come to the top. The first version (same day) looked down into the
+  // cup from above, and a strip of the top showed all the time: Ric, "the
+  // coffee can't be sitting behind it the entire time. It should be level".
   function drawTop(ctx, s, F, ys) {
-    const { fx, fy, fr, dens, crm, surf } = F, { W, H, MM } = s;
+    const { fx, fy, fr, dens, crm, surf } = F, { W } = s;
     if (!s.top || s.top.length !== fx) { s.top = new Float32Array(fx); s.back = new Float32Array(fx); s.backOk = new Uint8Array(fx); s.backT = s.t; s.topTmp = new Float32Array(fx); }
     const front = s.top, back = s.back, ok = s.backOk, tmp = s.topTmp;
     // the front edge as the outline has it: where the density crosses one
@@ -1023,27 +1178,35 @@
       front[i] = (j - 0.5 + clamp((0.5 - a) / ((b - a) || 1), 0, 1)) * fr + 0.5 * fr;
     }
     // the back: smoothed over about 8 mm, a moment (0.15 s) behind
-    const r = Math.max(1, Math.round(8 / MM / fr)), dt = clamp(s.t - s.backT, 0, 0.1), k = 1 - Math.exp(-dt / 0.15);
+    // the surface further back: a crest runs across the cup at an angle, so
+    // at the back it stands a little to one side of where it meets the glass
+    // - the higher of the surface 15 mm either way, smoothed over 4 mm (the
+    // shimmer of the particles is not a wave), a moment (0.15 s) late. A
+    // level surface gives back exactly itself, so nothing shows.
+    const { MM } = s, sh = Math.max(1, Math.round(15 / MM / fr)), r = Math.max(1, Math.round(4 / MM / fr));
+    const dt = clamp(s.t - s.backT, 0, 0.1), k = 1 - Math.exp(-dt / 0.15);
     s.backT = s.t;
+    const at = (i) => { const v = front[clamp(i, 0, fx - 1)]; return v === v ? v : Infinity; };
+    for (let i = 0; i < fx; i++) tmp[i] = Math.min(at(i - sh), at(i + sh), at(i));   // higher on screen = smaller y
     for (let i = 0; i < fx; i++) {
+      if (front[i] !== front[i]) { ok[i] = 0; continue; }
       let sum = 0, m = 0;
-      for (let q = Math.max(0, i - r); q <= Math.min(fx - 1, i + r); q++) if (front[q] === front[q]) { sum += front[q]; m++; }
-      tmp[i] = m ? sum / m : NaN;
+      for (let q = Math.max(0, i - r); q <= Math.min(fx - 1, i + r); q++) if (tmp[q] < Infinity) { sum += tmp[q]; m++; }
+      const want = m ? sum / m : front[i];
+      if (!ok[i]) { back[i] = want; ok[i] = 1; } else back[i] += (want - back[i]) * k;
     }
-    for (let i = 0; i < fx; i++) {
-      if (tmp[i] !== tmp[i]) { ok[i] = 0; continue; }
-      if (!ok[i]) { back[i] = tmp[i]; ok[i] = 1; } else back[i] += (tmp[i] - back[i]) * k;
-    }
-    // the cup's depth and the eye
-    const short = Math.min(W, H) * MM, D = clamp(short / 5, 10, 25), E = short < 100 ? 300 : 500, lift = D / (E + D);
     const X = (i) => (i === 0 ? 0 : i === fx - 1 ? W : (i + 0.5) * fr);
-    // where the strip shows: from the back edge down to the glass's edge (and on under the body, which covers it)
-    const topY = new Float32Array(fx), seen = new Uint8Array(fx);
+    // where the back shows: only where it stands above the glass's edge, by
+    // more than the surface's own shimmer (about 1 mm), faded in over the
+    // next millimetre and a half so it never pops
+    const topY = new Float32Array(fx), seen = new Uint8Array(fx), fade = new Float32Array(fx);
+    const calm = 1 / MM, ramp = 1.5 / MM;
     let any = false;
     for (let i = 0; i < fx; i++) {
       if (front[i] !== front[i] || !ok[i]) continue;
-      const fy0 = front[i] * ys, by = back[i] * ys - (0.15 * H + back[i] * ys) * lift;
-      topY[i] = Math.min(by, fy0); seen[i] = by < fy0 - 0.3 ? 2 : 1; if (seen[i] === 2) any = true;
+      const fy0 = front[i] * ys, by = back[i] * ys;
+      fade[i] = clamp((fy0 - by - calm) / ramp, 0, 1);
+      topY[i] = Math.min(by, fy0); seen[i] = fade[i] > 0 ? 2 : 1; if (seen[i] === 2) any = true;
     }
     if (!any) return;
     // runs of columns with a surface, each one path
@@ -1069,18 +1232,15 @@
       for (let i = i0; i <= i1; i++) {
         const j = clamp(Math.round(front[i] / fr) + 1, 0, fy - 1), f = j * fx + i, c = dens[f] > 0 ? clamp(crm[f] / dens[f], 0, 1) : 0, w = clamp(c * 6, 0, 1);
         const rr = 66 + (196 - 66) * w, gg = 44 + (176 - 44) * w, bb = 30 + (150 - 30) * w;
-        ctx.fillStyle = `rgb(${rr | 0},${gg | 0},${bb | 0})`;
+        ctx.fillStyle = `rgba(${rr | 0},${gg | 0},${bb | 0},${fade[i].toFixed(3)})`;
         ctx.fillRect(X(i) - fr, topY[i] - 1, 2.2 * fr, front[i] * ys - topY[i] + 3 * fr * ys + 1);
       }
-      // brighter toward the back, where the view is most glancing
+      // the far crest catches the light a little more than the body does
       ctx.lineJoin = ctx.lineCap = "round";
-      // (a stack of ever narrower faint strokes, so it fades smoothly rather than in bands)
-      const sw = Math.max(4, 0.06 * H * lift * 15);
       ctx.strokeStyle = "rgba(214,186,158,0.07)";
-      for (let q = 8; q >= 1; q--) { ctx.lineWidth = (sw * q) / 8; ctx.stroke(edge); }
+      for (let q = 6; q >= 1; q--) { ctx.lineWidth = q * 1.5; ctx.stroke(edge); }
       ctx.restore();
-      // the meniscus along the back wall catches the light
-      ctx.strokeStyle = "rgba(255,244,228,0.32)"; ctx.lineWidth = 0.8; ctx.stroke(edge);
+      ctx.strokeStyle = "rgba(255,244,228,0.22)"; ctx.lineWidth = 0.8; ctx.stroke(edge);
       i0 = i1 + 1;
     }
   }
@@ -1098,13 +1258,29 @@
   // just above the surface, where the liquid round a plunging jet is drawn
   // up and along it.
   const RIB = [1, 0.94, 0.84, 0.7, 0.52, 0.3];
+  // smooth value noise, 0..1, over one number: hashed values at the
+  // integers, eased between - so a feature has no repeat for the eye to catch
+  const hash1 = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const vnoise = (x) => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash1(i) * (1 - u) + hash1(i + 1) * u; };
   function drawStream(ctx, s, S, ys) {
     if (S.start < 0 || S.head <= 0 || S.done) return;
     // where the body of liquid really is under the stream (the drawn
     // surface), not the grid's first wet cell, which a splash lifts
     // - the lowest of it across the jet's width, so a crater the jet has dug
     // does not leave it stopping short in the air
-    const hw0 = S.Q / Math.sqrt(S.v0 * S.v0 + 2 * 9.81 * s.PXM * S.land) / 2;
+    const G = 9.81 * s.PXM, vAt = (y) => Math.sqrt(S.v0 * S.v0 + 2 * G * Math.max(0, y)), tAt = (y) => (vAt(y) - S.v0) / G;
+    // How wide it is at each height is how much left the spout when the
+    // water now at that height did (continuity, with the flow changing): as
+    // it swells, the swelling travels down it; as it thins, so does that.
+    // Drawn as the round jet it is, not the sheet the physics pours: the
+    // nozzle's width at the spout, and as it speeds up it narrows -
+    // continuity for a round jet, the width going as one over the square
+    // root of its speed - so it leaves the spout wide and slow and is a
+    // thinner, faster thread by the time it lands. A smaller flow is a
+    // thinner jet (its area goes with the flow).
+    const flow = (y) => (S.flowAt ? S.flowAt(s.t - tAt(y)) : S.Q);
+    const jetHW = (y) => (S.w / 2) * Math.sqrt(S.v0 / vAt(y)) * Math.sqrt(Math.max(flow(y), 0.1 * S.Q) / S.Q);
+    const hw0 = Math.max(jetHW(S.land), 0.5);
     const surf = Math.min(s.Hs, Math.max(s.surfaceX(S.xNow - hw0), s.surfaceX(S.xNow), s.surfaceX(S.xNow + hw0)) / ys);
     // only just into the liquid: the coffee is drawn over it at 95%, and any
     // deeper the stream showed through as a ghost
@@ -1112,15 +1288,27 @@
     const front = S.head < surf;                          // still falling: its front is in the air
     const yTop = Math.max(-4, S.tail), yEnd = Math.min(S.head, into);
     if (yEnd <= yTop) return;
-    const steps = Math.max(3, Math.ceil((yEnd - yTop) / 4)), t = s.t, G = 9.81 * s.PXM;
-    const cx = new Float32Array(steps + 1), hw = new Float32Array(steps + 1), py = new Float32Array(steps + 1);
+    // Everything on the stream belongs to the water it is on (Ric,
+    // 2026-11-27: "the stream itself is stagnant. I want the stream to look
+    // like actual coffee falling"). Its ripples used to run down at about
+    // 6 cm/s while the water fell at 1.5 m/s: a pattern standing still on
+    // falling water. Now each feature is a function of te, when that water
+    // left the spout, so it falls exactly as the water does and stretches
+    // as it speeds up. Features are spaced so a frame (1/60 s) moves them a
+    // quarter of their length or less, or the eye reads them as flicker in
+    // place - the wagon wheel - instead of falling: the ripples come at 9
+    // and 23 a second, the wobble at 3.
+    const steps = Math.max(3, Math.ceil((yEnd - yTop) / 4)), t = s.t;
+    const cx = new Float32Array(steps + 1), hw = new Float32Array(steps + 1), py = new Float32Array(steps + 1), tk = new Float64Array(steps + 1);
+    const wob = 0.35 / s.MM;   // how far a spout's wobble moves the water sideways, px (chosen)
     for (let k = 0; k <= steps; k++) {
       const y = yTop + ((yEnd - yTop) * k) / steps;
-      const v = Math.sqrt(S.v0 * S.v0 + 2 * G * Math.max(0, y));
-      let w = (S.Q / v / 2) * (1 + 0.025 * Math.sin(0.09 * y - 22 * t) + 0.012 * Math.sin(0.23 * y - 41 * t));
+      const te = t - tAt(y);
+      // (never vanishing to nothing at its very ends, where the schedule's flow is zero)
+      let w = Math.max(0.5, jetHW(y)) * (1 + 0.12 * (vnoise(te * 9) - 0.5) + 0.06 * (vnoise(te * 23 + 7) - 0.5));
       // the skirt: a small fillet of liquid drawn up round the jet, about one of its widths high
       if (!front) { const a = (y - (surf - 2 * w)) / (2 * w); if (a > 0) w *= 1 + 0.45 * Math.min(1, a) ** 3; }
-      cx[k] = S.xNow + 0.6 * Math.sin(1.7 * t + y * 0.006); hw[k] = w; py[k] = y * ys;
+      cx[k] = S.xNow + wob * 2 * (vnoise(te * 3 + 31) - 0.5); hw[k] = w; py[k] = y * ys; tk[k] = te;
     }
     // the ends: a stream that has stopped pours its last as a rounded tail,
     // and a front still falling is rounded too
@@ -1136,7 +1324,10 @@
     // the colour across: the chord at each ribbon's edge, through the jet's
     // width where it is widest on screen (it narrows as it speeds up, but
     // the eye reads its middle; within a few percent over the fall)
-    const D = 2 * hw[Math.floor(steps / 2)] * s.MM;
+    // - never thinner than 3.5 mm for colour: Beer-Lambert here assumes a warm
+    // light behind, and behind a stream is the page, dark; a phone's 1 mm
+    // stream coloured by its own chord came out pale tan and read as milk
+    const D = Math.max(3.5, 2 * hw[Math.floor(steps / 2)] * s.MM);
     for (const f of RIB) {
       ribbon(f);
       if (S.c) { const m = 1 - f; ctx.fillStyle = `rgb(${Math.round(214 + 36 * m)},${Math.round(198 + 48 * m)},${Math.round(176 + 62 * m)})`; }
@@ -1145,12 +1336,53 @@
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // the light off its round front: a soft wide sheen and a fine line
-    ctx.beginPath();
-    for (let k = 0; k <= steps; k++) (k ? ctx.lineTo : ctx.moveTo).call(ctx, cx[k] - 0.42 * hw[k], py[k]);
+    // The light. A round jet is a curved mirror: one light up and to the
+    // left lands on it as a narrow bright line a little left of its middle,
+    // with a soft sheen round it, and a dim rim of what is behind it on the
+    // other side. Its surface is never quite still - little ripples ride
+    // down it at the water's own speed - so the line is broken into glints
+    // that fall with the stream: each the reflection off one ripple, carried
+    // by the water it is on (fallen exactly, from when it left the spout).
+    const line = (off) => { const p = new Path2D(); for (let k = 0; k <= steps; k++) (k ? p.lineTo : p.moveTo).call(p, cx[k] + off * hw[k], py[k]); return p; };
+    const lit = line(-0.4), rim = line(0.62);
     ctx.lineCap = ctx.lineJoin = "round";
-    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.25)" : "rgba(255,240,220,0.12)"; ctx.lineWidth = Math.max(1.5, 0.5 * hw[0]); ctx.stroke();
-    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.7)" : "rgba(255,248,238,0.45)"; ctx.lineWidth = 0.9; ctx.stroke();
+    const wide = Math.max(1.2, 0.55 * hw[Math.floor(steps / 2)]);
+    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.2)" : "rgba(255,236,214,0.09)"; ctx.lineWidth = wide; ctx.stroke(lit);
+    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.16)" : "rgba(255,236,214,0.06)"; ctx.lineWidth = wide * 0.5; ctx.stroke(rim);
+    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.55)" : "rgba(255,246,234,0.3)"; ctx.lineWidth = 0.8; ctx.stroke(lit);
+    // Streaks: a falling stream is not even - it is thicker and thinner,
+    // smoother and rougher, from one moment at the spout to the next - so
+    // along it run faint lighter and darker lines whose strength belongs to
+    // the water (te, at 6 a second), and they slide down with it.
+    ctx.lineCap = "butt";
+    for (const [lane, light] of [[-0.62, 1], [-0.27, 1], [0.12, 0], [0.43, 0]]) {
+      ctx.lineWidth = Math.max(0.6, 0.13 * hw[Math.floor(steps / 2)]);
+      for (let k = 0; k < steps; k++) {
+        const a = (vnoise(tk[k] * 6 + lane * 13 + 50) - 0.35) * (light ? 0.32 : 0.42);
+        if (a <= 0.01) continue;
+        ctx.strokeStyle = light ? (S.c ? `rgba(255,255,252,${a.toFixed(3)})` : `rgba(255,232,206,${a.toFixed(3)})`) : `rgba(20,10,4,${a.toFixed(3)})`;
+        ctx.beginPath(); ctx.moveTo(cx[k] + lane * hw[k], py[k]); ctx.lineTo(cx[k + 1] + lane * hw[k + 1], py[k + 1]); ctx.stroke();
+      }
+    }
+    ctx.lineCap = "round";
+    // the glints: one leaves the spout every 60 ms, how bright is fixed by
+    // which one it is, and each is smeared down by a frame's fall (what the
+    // eye sees of something that fast is a streak, not a dot)
+    const every = 0.06, k0 = Math.floor(t / every), dy0 = py[0] / ys, dy1 = py[steps] / ys;
+    for (let j = 0; j < 400; j++) {
+      const te = (k0 - j) * every, age = t - te;
+      if (age < 0) continue;
+      const y = S.v0 * age + 0.5 * G * age * age;
+      if (y > dy1) break;
+      if (y < dy0) continue;
+      const hsh = Math.sin((k0 - j) * 12.9898) * 43758.5453, b = hsh - Math.floor(hsh);
+      if (b < 0.45) continue;
+      const k = clamp(Math.round(((y - dy0) / (dy1 - dy0 || 1)) * steps), 0, steps), len = Math.max(2, vAt(y) / 60) * ys;
+      const gx = cx[k] - (0.25 + 0.3 * b) * hw[k];
+      ctx.strokeStyle = S.c ? `rgba(255,255,252,${(0.5 * b).toFixed(3)})` : `rgba(255,244,226,${(0.55 * (b - 0.45)).toFixed(3)})`;
+      ctx.lineWidth = Math.max(0.7, 0.18 * hw[k]);
+      ctx.beginPath(); ctx.moveTo(gx, y * ys - len); ctx.lineTo(gx, Math.min(y * ys, py[steps])); ctx.stroke();
+    }
   }
 
   /* ─── on the page ──────────────────────────────────────────────────── */

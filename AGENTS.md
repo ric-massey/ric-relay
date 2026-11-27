@@ -1869,10 +1869,38 @@ migration marked "safe to re-run", and re-running it would have put the original
     rounded tip above the liquid. It now runs just under the *drawn* surface (the lowest point
     across its width, so a crater it digs does not leave it short) with a small fillet where it
     goes in; any deeper and it ghosts through the coffee.
-  - **The top is seen across the cup's depth** (Ric, 2026-11-27: "something go behind it and in
-    front of it"): `drawTop` draws the back edge v·D/(E+D) above the front with coffee2's cup and
-    eye, a smoothed, 0.15 s-late copy of the front surface, so crests roll in front of it. It is
-    drawing only — the physics stays in the screen's plane. Keep it in the room's own colours.
+  - **A pour drips, swells, thins and drips** (Ric, 2026-11-27: "start by dripping. Slowly
+    going to full fill. Then slowly stopping with some drips too"). The coffee's flow is a
+    schedule (`plan` / `flowOf` / `sentBy`): two seconds of drops, a thin stream swelling over a
+    second, full flow for exactly as long as the cup needs, 1.2 s thinning, then drips. The fill
+    is still volume over flow — don't set a time by hand; change the schedule. The first drops are
+    counted into `emitted` only when they land, so the books close for `coffee2` too. The stream
+    is as wide at each height as the flow was when that water left the spout.
+  - **It drops in; it is not shoved in** (Ric, 2026-11-27: "is it really a plunging jet? Normally
+    it's dropping in", then "there should be a crater. Just not a massive one"). The sheet pours
+    about six times a real 5 mm stream's volume per millimetre of cup depth (that is what fills it
+    in time), so at full speed it dug a hole half the cup deep, and at the real stream's push
+    (π/4 × 5/25 = 0.16) it made no dent. The coffee and its drips land at `IMPACT` = 0.6 of their
+    speed, chosen by eye for a dimple a few stream-widths across, with all their volume. The creamer keeps its full push: it is meant to plunge and curl. A few fine bubbles (`stepPlunge`, drawn only) rise
+    straight back where it lands; a deep pale plume, tried first, made it look shoved.
+  - **The spout is at the screen's top edge and the coffee leaves it at 0.27 m/s** (a Keurig's:
+    237 ml in 45 s through 5 mm), then speeds up and narrows as it falls (Ric: "the liquid at the
+    top shouldn't be really moving and it should be accelerating"). It is drawn as a round jet —
+    the nozzle's width, going as 1/√speed — not as the sheet the physics pours. The sheet's volume
+    (`Q`) is kept from the old 1.24 m/s spout (`vWas`) so the fill time did not change.
+  - **Everything on the stream falls with the water** (same day: "the stream itself is
+    stagnant"): ripples, wobble, streaks and glints are functions of when that water left the
+    spout, never of `t` and `y` separately — the old ripples crawled at 6 cm/s on water falling at
+    1.5 m/s. Keep features long enough that a frame moves them a quarter of their length or less,
+    or they flicker in place like a wagon wheel instead of falling.
+  - **The surface is seen head on, across the cup's depth** (Ric, 2026-11-27: "something go
+    behind it and in front of it", then "the coffee can't be sitting behind it the entire time.
+    It should be level … when there is a ripple there is coffee back there"). `drawTop` shows the
+    surface further back only where it stands above the surface at the glass: the higher of the
+    front surface 15 mm either way, smoothed 4 mm, 0.15 s late, shown past 1 mm of shimmer. A still
+    cup is a level line with nothing behind it — **don't put back a view from above** (the first
+    version, a strip of the top always showing). It is drawing only; the physics stays in the
+    screen's plane. Keep it in the room's own colours.
   - **A finger stirs it on a phone** (`s.stir`, same day: "so it will mix the creamer"): the pad
     sets the speed of what it passes through and nothing else, so the books still close; the
     touches are passive listeners and must stay so, or the page under stops scrolling.
@@ -1908,8 +1936,12 @@ migration marked "safe to re-run", and re-running it would have put the original
   that finishes a cup.**
   **Gravity is real** (Ric: "do it real gravity. Otherwise it looks funny. Use the real wave
   formula"): 9.81 m/s² at the screen's real size (a CSS pixel is 0.2646 mm; a phone's is
-  estimated from a 68 mm short side). A laptop fills in about 11 s; a phone, a far smaller cup,
-  in about 1.5. Don't slow gravity to change that. The drain is a hole in the floor: half the
+  estimated from a 68 mm short side). A laptop fills in about 11 s. A phone, a far smaller cup,
+  filled in 1.5 from the same 5 mm Keurig stream until Ric said "it pours too fast on mobile"
+  (2026-11-27): the stream now scales with the cup's width (5 mm at 340 mm and wider, about
+  1 mm on a phone, the creamer's jug likewise), and a phone fills in about 6 s. Don't slow
+  gravity to change a fill time, and don't set one by hand — change the stream. A thin stream
+  is coloured as if at least 3.5 mm thick, or against the dark page it reads as milk. The drain is a hole in the floor: half the
   cup goes in about a second and the rest as Torricelli's slowing trickle, a film under 4 mm
   removed at the end.
   **It has to look like coffee, not soda** (Ric's girlfriend, 2026-11-26: "it looks more like
@@ -1936,7 +1968,7 @@ migration marked "safe to re-run", and re-running it would have put the original
   on the bottom (Ric: "it should settle realistically. Like settle on the bottom") — on a phone
   about 87% in the bottom quarter, then the cup sleeps. Chosen, not measured: the density
   difference, the amount (2%), the jug, the hand's sway, the colour ramp, the nozzle (a
-  Keurig's 5 mm at 0.6 m/s), the drain's hole, bubbles and steam.
+  Keurig's 5 mm leaving at 0.27 m/s, the drips and swelling, the landing's push), the drain's hole, bubbles and steam.
   It costs about 6 ms a step on a phone-sized screen and 12 on a laptop's, drawing included (on
   this desktop).
   **`coffee2` is its successor, being built in stages** to Ric's brief (2026-11-26, the

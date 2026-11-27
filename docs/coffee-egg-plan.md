@@ -25,7 +25,7 @@ real gravity at the screen's physical size, and the waves are the 2D tank's stan
 at the dispersion relation's frequencies; a tip is carried to level by those waves.
 Then (Ric: "that splash isn't realistic for the width of the screen. Neither is the waves.
 The thickness … my gf also said it looks more like soda"): a Keurig's 5 mm stream (a laptop
-fills in about 11 s, a phone in 1.5), the puddle meets the walls as a reflected bore a few
+fills in about 11 s, a phone in 1.5 — about 6 since 2026-11-27, when the stream was scaled to the cup: about 1 mm on a phone), the puddle meets the walls as a reflected bore a few
 times its depth, a smaller churn, and the coffee look — Beer–Lambert colour, gloss, steam,
 a few bubbles at the rim, no crema band.
 Then creamer (Ric: "what about if we were to add creamer and get the swirls", then "little
@@ -56,19 +56,43 @@ in, a rounded front while it falls and a rounded tail when the pour stops.
 Then the top and the finger (2026-11-27, Ric: "the top layer, the one that rolls … seems to have
 something go behind it and in front of it … more realism without going way off of the style",
 and "make it so the finger swishes the coffee around on mobile. so it will mix the creamer").
-The top of the coffee is seen across the cup now, with coffee2's geometry: the screen is the
-front glass, the cup D deep (a fifth of the short side, 10–25 mm), the eye 15% of the height
-above the screen's top and E in front (300 mm phone, 500 computer), so the back edge stands
-v·D/(E+D) above the front one (v = how far below the eye the surface is) — about 12 px on a
-laptop. The back edge is the front's surface smoothed over 8 mm and 0.15 s late (chosen: across
-the depth a wave is not quite the same wave), so crests at the glass roll up in front of it and
-hide it. The strip is the room's reflection off the top (Fresnel, at this glancing angle),
-lighter toward the back, paler where creamer has come up. A finger on a phone is a 12 mm pad
+The first try looked down into the cup with coffee2's geometry, so a strip of the top always
+showed above the front edge; Ric: "the coffee can't be sitting behind it the entire time. It
+should be level. But when there is a ripple there is coffee back there so it looks like ur head
+on". So it is seen head on: a still cup is a level line, and the surface further back shows
+only where a wave puts it above the surface at the glass — in troughs, and behind the dip the
+jet digs. That far surface is made from the near one (chosen, not measured: a crest crosses the
+cup at an angle, so the higher of the surface 15 mm either way, smoothed 4 mm, 0.15 s late) and
+shown only past 1 mm of the particles' shimmer, faded in over 1.5 mm. It is lit a little more
+at its crest and paler where creamer is up. A finger on a phone is a 12 mm pad
 dragged through the liquid: what it passes through takes its speed (capped at 1.5 m/s), and
 the solver makes the wake and swirls; the creamer mixes by the eddy diffusion it already had.
 The touch is listened to passively, so the page under still scrolls and taps. Measured: two
 seconds of circles at the bottom lift settled creamer into the cup that, left alone, stays put
 (`.github/test/coffee.mjs`). Not checked on a real phone yet.
+Then how a pour goes, where it lands and the stream's light (2026-11-27, Ric: "it should take
+like 3 sec to start and it should start by dripping. Slowly going to full fill. Then slowly
+stopping with some drips too … the coffee landing in there needs to look pretty realistic … I
+want the stream to look better too"). The coffee's flow is a schedule now (`plan`, `flowOf`,
+`sentBy` in `coffee.js`): two seconds of drops closing from half a second apart to a tenth, a
+stream from 15% of full flow swelling to all of it over a second, the full flow for as long as
+the cup needs, the same back down over 1.2 s, then drips further and further apart for about four
+seconds. The stream is drawn as wide at each height as the flow was when that water left the
+spout, so a swelling travels down it. Then (Ric: "is it really a plunging jet? Normally it's
+dropping in lol … the stream itself is stagnant", then "there should be a crater. Just not a
+massive one … the liquid at the top shouldn't be really moving and it should be accelerating as it
+falls"): the sheet pours about six times a 5 mm round stream's volume per millimetre of a 25 mm
+cup, so it lands at 0.6 of its speed with all its volume — chosen by eye between no dent (0.16,
+the real stream's push) and a hole half the cup deep (1); the creamer keeps its full push, to
+plunge and curl — and takes in only a few fine bubbles that rise straight back. The spout is at
+the screen's top edge and the coffee leaves it at a Keurig's 0.27 m/s (237 ml in 45 s through
+5 mm), drawn as a round jet narrowing as 1/√speed, so it is slow and wide at the top and a fast
+thread where it lands; the sheet keeps the old spout's volume so the fill time is unchanged. On the stream, ripples (9
+and 23 a second), a wobble (3 a second), streaks along it (6 a second) and glints are all
+functions of when the water left the spout, so they fall with it; before, its ripples crawled
+down at 6 cm/s on water falling at 1.5 m/s and the stream looked still. Its light is a narrow
+line left of its middle with a sheen and a dim rim on the right. All those numbers are chosen to
+look right; the test integrates `flowAt` from outside and holds the fill to it.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 
