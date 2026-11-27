@@ -7028,11 +7028,16 @@ job:
   sickness, a wound or a load never recolours them (the layers in the bar are different: there the
   visitor asks for another colour, and they stay as 21d made them). The map draws only what has a
   shape of its own; the rest is the panel's, on a tap:
-  - **Drawn, and answers a tap:** graves and burial grounds (a household buries its dead, 15.11q,
-    and nothing marks it); a gathering as a crowd round a place — feast, wedding, funeral, worship,
-    market day, a food riot; work with a shape — oxen at the plough, cut fields, stumps where trees
-    were felled, a house going up; the camps, siege works, caravans, craters, mines in the ground,
-    and ditches of 22b; the animals and vehicles of 22d once they have places.
+  - **Drawn, and answers a tap:** a feast or worship as the crowd it already is (people walk to the
+    village's middle for both, `plaza`; the page can say what they came for); work with a shape —
+    cut fields, land cleared of forest, a house going up; a wall with its breach (`v.breach` is a
+    number on the wall, not works standing outside it); the camps, caravans, what is left in the
+    ground and ditches of 22b; the animals of 22d once they have places.
+  - **Not in the engine as a place, so not drawn yet** (checked 2026-11-27): graves — a funeral, a
+    wedding and a naming are a little food and new friendships (`lifeRite`), nobody walks anywhere
+    and nothing is buried at a spot; a food riot is a taking at the store, told in the news, not a
+    crowd; a blast leaves no crater, only what failed to go off (`LEFT`). A grave or a crater on the
+    map needs the engine to make one first.
   - **Told on a tap, not drawn:** whether somebody is hungry, sick or wounded and how badly; what they
     carry; who a refugee, prisoner or pilgrim is and where they are going; whether a well's water is
     foul (15.5r); how full a village's store is; who lies in a grave; what a gathering is for and who
