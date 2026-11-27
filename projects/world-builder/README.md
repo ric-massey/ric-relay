@@ -5019,6 +5019,45 @@ page now watches it equal to the world unwatched.
   - **Left:** a preview of the land on Start (it comes from the seed, but is seen only after Run).
     It is worth measuring what making one costs first.
 
+- **What the engine has, on the map** (TODO 22, 2026-11-27; Ric: "i want all the stuff that isnt on
+  the map that is in the engine needs to be put on there"). Drawn now, each from what the keeper
+  sends and never from a guess:
+  - **People are circles** in their people's colour, always (Ric, 2026-11-26).
+  - **Close in (128 px a square and nearer)**, what a person carries and rides, from `mapLook` in
+    `people.js`: their people's arms (wood, bronze, iron or steel blade; musket, rifle, machine gun),
+    a bow, crossbow or recurve for the archers `kitOf` picks, armour as a ring (padding, scale, mail,
+    plate) or a steel helmet, a horse or chariot under a horseman, a bandit's hood, a caravan's
+    donkey or packhorse, a car while its owner drives. Drawn no smaller than a five-pixel body:
+    at real size a person is half a metre, and a sword to that scale is a smudge.
+  - **Army camps** outside a place an army marches on (`mapCamps`, the camp of 15.6i), with as many
+    tents as soldiers there (to nine) and its people's colour on a pole.
+  - **What war left in the ground** (`LEFT`): mines, shells and bombs that did not go off.
+  - **Blasts**, a flash and ring for the hour of the world they happened in. The engine now keeps the
+    last 300 (`BLASTS`) for this; nothing in the world reads them.
+  - **Black-powder smoke** over a musketeer while they fight.
+  - **Ditches** from river to village, brown and dashed once silted; **ore** as rust flecks close in;
+    a **wall's breach** as a gap in its ring.
+  - **Night** from the engine's own sunrise and sunset; the **glow of a hearth** at night and its
+    **smoke** by day wherever a household has a fire lit against the cold (`mapHearth`); **houses
+    burning** for half a day after they burn.
+  - **Rivers as rivers** (Ric: "rivers generally branch as well and are different sizes no?"). They
+    always branched: the engine makes a river wherever enough ground drains through a square, so
+    streams join into rivers. But each square was painted as a 250 m block of pale blue, and under
+    a people's colour that read as a grey road. Now a river square is the land it runs through, and
+    the river is a line to the square it flows into, in the sea's blue, as wide as its river:
+    `riverW` in `people.js`, worked out when the land is made from the area it drains (width grows
+    as the square root of the flow, Leopold and Maddock 1953; the constant is a guess, about 4 m for
+    5 km² and 80 m for 1,600 km²). It is never thinner than one to four pixels by size, so the
+    streams taper into the big rivers. Water is never washed with a people's colour.
+  - **Frost** over the land below the line where nothing grows, and a **dry year** browning the land
+    where this year's rain fell under 85 of an ordinary year's.
+
+  Each new thing that stays answers a tap (a camp, a mine or shell, a ditch). Reading all of it changes
+  nothing: `test/keeper.test.mjs` now reads close-in frames too and holds the world equal to the engine
+  alone. Not drawn, because the engine has no place for them: a boat between landings (a crossing is
+  a wait at the landing, then arrival), floods, graves, craters, and the oxen, horses, tanks and
+  aircraft of 22d.
+
 The older notes below describe the page before this; where one says otherwise, this section is what
 is true now.
 

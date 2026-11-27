@@ -1341,7 +1341,7 @@
   function hear(m, from) {
     if (from !== keeper) return;
     if (m.t === "started") {
-      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, shade: m.shade, riverTo: m.riverTo, cross: m.cross, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
+      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, shade: m.shade, riverTo: m.riverTo, riverW: m.riverW, cross: m.cross, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
       making = 0; $("slow").hidden = true; runTook = m.took;
       sizeCanvas();
       if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
@@ -1366,6 +1366,8 @@
       if (m.vs) { vs = m.vs; washCheck(); }
       if (m.homes) homesArr = m.homes;
       if (m.bl) blArr = m.bl;   // TODO 16
+      if (m.hearth) hearthArr = m.hearth;   // TODO 22c: each house lived in, its fire lit; sent when it changes
+      if (m.rain) { rainArr = m.rain; rainPic = null; }   // TODO 22c: this year's rain, when the year turns
       if (m.tracks) { trackMap = new Map(); for (let k = 0; k < m.tracks.length; k += 2) trackMap.set(m.tracks[k], m.tracks[k + 1]); }
       if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
       if (m.fs) { fs = m.fs; giveColours(fs); washCheck(); }
@@ -1409,7 +1411,7 @@
     for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; reached = 0;
     slotOf = new Map();
-    snap = null; vs = []; fs = []; landNow = null; landStale = false; bigAt = 0; landDirty = null; washKey = ""; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
+    snap = null; vs = []; fs = []; hearthArr = null; rainArr = null; rainPic = null; landNow = null; landStale = false; bigAt = 0; landDirty = null; washKey = ""; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
     newsSince = -1; headQueue = []; headNow = null; headUntil = 0; startPeople = 0; lastProbs = ""; seen = []; pins = []; legendKey = ""; lastLook = null; keyOpen = false; newsFilter = "all"; peopleAll = false;
     paneData = null; paneAsked = false; paneWant = false; ruleMsg = "";
     setHash(toHash(true));
@@ -1849,8 +1851,11 @@
        map. More controlled colours and clearer distinctions between terrain, territories, and
        people"): the kinds of ground still read apart, but softly, so a people's colour over its
        land and the people themselves are the strongest colours on the map. */
+    /* Rivers (kind 2) are the sea's blue (2026-11-27, Ric: "how do we make it look more like a river?
+       maybe same blue as the ocean?"): a paler blue a square wide, under a people's colour, read
+       as a grey road. */
     map: { name: "Map colours", dim: 0.24, relief: 0.5, grey: 0.32,
-      ground: [[52, 104, 150], [70, 128, 178], [96, 158, 206], [226, 208, 150], [104, 140, 112], [146, 186, 98], [56, 112, 62], [172, 150, 100], [146, 138, 132], [214, 186, 120], [236, 240, 244]] },
+      ground: [[52, 104, 150], [70, 128, 178], [52, 104, 150], [226, 208, 150], [104, 140, 112], [146, 186, 98], [56, 112, 62], [172, 150, 100], [146, 138, 132], [214, 186, 120], [236, 240, 244]] },
   };
   let look = "map";
   /* Down to a single house (TODO 7a): 4,096 pixels a 250 m square, a 15 m house 245 pixels long. */
@@ -1872,7 +1877,10 @@
       tilesPic = document.createElement("canvas"); tilesPic.width = cols; tilesPic.height = rows;
       soil = new Uint8ClampedArray(n * 3); soil.look = look;
       for (let i = 0; i < n; i++) {
-        const c = w.ground ? groundColour(w.ground[i], w.fert[i], w.shade ? w.shade[i] : null) : mix([92, 80, 58], [52, 104, 62], w.fert[i]);
+        /* A river square is the land it runs through (grass of its valley): the river itself is drawn on
+           it as a line its own width (drawRivers), not as a 250 m block of water. */
+        const k = w.ground && w.ground[i] === 2 && w.riverW ? 5 : w.ground ? w.ground[i] : -1;
+        const c = w.ground ? groundColour(k, w.fert[i], w.shade ? w.shade[i] : null) : mix([92, 80, 58], [52, 104, 62], w.fert[i]);
         soil[i * 3] = c[0]; soil[i * 3 + 1] = c[1]; soil[i * 3 + 2] = c[2];
       }
     }
@@ -1974,7 +1982,9 @@
       let r = soil[i * 3], gg = soil[i * 3 + 1], b = soil[i * 3 + 2];
       r += (120 - r) * pale; gg += (108 - gg) * pale; b += (80 - b) * pale;
       let wr = 120, wgg = 108, wb = 80, wa = pale;
-      const a = whose(i);
+      /* Water is never washed with a people's colour (2026-11-27): orange over a river's blue made
+         it grey, and a river read as a road. It still counts as theirs; it is only not painted so. */
+      const a = world.ground && world.ground[i] <= 2 ? -1 : whose(i);
       if (a >= 0) {
         const c = tints[a], t = 0.3;
         r += (c[0] - r) * t; gg += (c[1] - gg) * t; b += (c[2] - b) * t;
@@ -2383,7 +2393,7 @@
       if (w.ground[i] !== 2 || o > 7) continue;
       rp.moveTo(ox + (tx + 0.5) * s, oy + (ty + 0.5) * s); rp.lineTo(ox + (tx + 0.5 + DXs[o]) * s, oy + (ty + 0.5 + DYs[o]) * s);
     }
-    ctx.strokeStyle = "rgb(" + L.ground[2].join(",") + ")"; ctx.lineWidth = Math.max(2, s * 15 / 250); ctx.stroke(rp);
+    if (world.riverW) drawRivers(s, ox, oy); else { ctx.strokeStyle = "rgb(" + L.ground[2].join(",") + ")"; ctx.lineWidth = Math.max(2, s * 15 / 250); ctx.stroke(rp); }
     if (trackMap && trackMap.size) {
       const [pp, rr] = tracks(x0, y0, x1, y1, s, ox, oy);
       ctx.lineCap = "round";
@@ -2392,6 +2402,33 @@
     }
     if (heldMap && heldMap.size) { ctx.strokeStyle = "rgba(38,66,30,.9)"; ctx.lineWidth = Math.max(3, s * 2 / 250); ctx.stroke(hedges(x0, y0, x1, y1, s, ox, oy)); }
     ctx.save(); ctx.translate(ox + x0 * s, oy + y0 * s); paintHouses(ctx, s, x0, y0, x1, y1); ctx.restore();
+  }
+  /* ── rivers (2026-11-27) ─────────────────────────────────────────────
+     Ric: "rivers generally branch as well and are different sizes no?" They always branched — the
+     engine makes a river wherever enough ground drains through a square, so streams join into
+     rivers as they do — but every square was painted the same 250 m block of blue. Now each river
+     square is a line to the square it flows into, as wide as its river (`riverW`, metres, from the
+     ground it drains: people.js), never thinner than a pixel or so, so the small ones taper into the
+     big ones. The lines are kept, a path for each size, in squares; drawn with the view's scale. */
+  const RIVER_SIZES = [6, 12, 25, 50, 256], RIVER_MIN = [1, 1.6, 2.3, 3.2, 4.2];
+  let riverPaths = null, riversFor = null;
+  function drawRivers(s, ox, oy) {
+    const w = world; if (!w || !w.riverW || !w.riverTo) return;
+    if (riversFor !== w) {
+      riversFor = w; riverPaths = RIVER_SIZES.map(() => ({ p: new Path2D(), wide: 0 }));
+      const DXs = [1, -1, 0, 0, 1, 1, -1, -1], DYs = [0, 0, 1, -1, 1, -1, 1, -1];
+      for (let i = 0; i < w.riverW.length; i++) {
+        const m = w.riverW[i], o = w.riverTo[i]; if (!m || o > 7) continue;
+        let c = 0; while (m >= RIVER_SIZES[c]) c++;
+        const x = i % w.cols + 0.5, y = Math.floor(i / w.cols) + 0.5, r = riverPaths[c];
+        r.p.moveTo(x, y); r.p.lineTo(x + DXs[o], y + DYs[o]); r.wide = Math.max(r.wide, m);
+      }
+    }
+    const T = ctx.getTransform();
+    ctx.setTransform(T.a * s, 0, 0, T.d * s, T.e + T.a * ox, T.f + T.d * oy);
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "rgb(" + groundColour(2, 0, null).map(v => v | 0).join(",") + ")";
+    riverPaths.forEach((r, c) => { if (r.wide) { ctx.lineWidth = Math.max(RIVER_MIN[c] / s, r.wide / 250); ctx.stroke(r.p); } });
+    ctx.setTransform(T);
   }
   /* For checking the page from a test (headless browser): set the zoom and where to look. */
   window.__wbHouse = k => homesArr && homesArr.length > k * 7 ? [homesArr[k * 7], homesArr[k * 7 + 1]] : [0, 0];
@@ -2411,6 +2448,8 @@
     const diff = (x, y) => { let n = 0, most = 0; for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) { n++; most = Math.max(most, Math.abs(x[i] - y[i])); } return [n, most]; };
     return { picture: diff(a, grab(tilesPic)), wash: diff(b, grab(washPic)), halved: m.map((x, i) => diff(x, grab(mips[i]))), at: landNow.at };
   };
+  /* TODO 22: where the first person in view is whose look has any of `mask` (mapLook's bits), for checking the drawing from a test. */
+  window.__wbLookAt = mask => { const f = snap; if (!f || !f.look) return null; for (let i = 0; i < f.k; i++) if (f.look[i] & mask) return [f.x[i], f.y[i], f.look[i]]; return null; };
   window.__wbGrounds = () => groundsTaken;   // TODO 15.5d: how many times the page has taken changed ground
   window.__wbZoom = (z, x, y) => { cam.s = z; if (x != null) { cam.x = x; cam.y = y; } else if (vs[0]) { cam.x = vs[0].x; cam.y = vs[0].y; window.__px0 = cam.x; window.__py0 = cam.y; } cam.held = true; follow = false; return true; };
   /* A person's colour, from the number the keeper sent for the view it was
@@ -2549,7 +2588,10 @@
     if (land) drawLand(W, H, s, ox, oy);
     /* Who holds the land (TODO 21d): the same wash, laid on twice more. */
     if (land && viewMode === "land" && washPic && s < 128) { ctx.globalAlpha = 0.9; ctx.drawImage(washPic, ox, oy, w.cols * s, w.rows * s); ctx.drawImage(washPic, ox, oy, w.cols * s, w.rows * s); ctx.globalAlpha = 1; }
+    if (land && s < 128) drawRivers(s, ox, oy);   // close in, drawClose draws them under its houses
+    if (land) drawSeason(W, H, s, ox, oy, f);   // TODO 22c: a dry year, and frost in winter
     if (land) drawFieldsAndHouses(W, H, s, ox, oy);
+    if (land) { drawOre(W, H, s, ox, oy); drawDitches(s, ox, oy); }   // TODO 22b
     /* Roads and trade (TODO 21d): every path and road at every zoom, from what the frame already sends. */
     if (viewMode === "roads" && trackMap) {
       if (roadsFor !== trackMap) {
@@ -2588,7 +2630,7 @@
           for (let k = -3; k <= 3; k++) { const px = cx + Math.cos(a) * k * rw * 0.24, py = cy + Math.sin(a) * k * rw * 0.24; stones.moveTo(px + r, py); stones.arc(px, py, r, 0, 6.2832); }
         }
       }
-      ctx.lineCap = "round"; ctx.strokeStyle = "rgb(" + LOOKS[look].ground[2].join(",") + ")"; ctx.lineWidth = rw; ctx.stroke(big);
+      if (!world.riverW) { ctx.lineCap = "round"; ctx.strokeStyle = "rgb(" + LOOKS[look].ground[2].join(",") + ")"; ctx.lineWidth = rw; ctx.stroke(big); }   // a world from before riverW
       ctx.strokeStyle = "#a9cbd9"; ctx.lineWidth = rw * 1.5; ctx.stroke(shallow);
       ctx.fillStyle = "#d8cfb8"; ctx.fill(stones);
     }
@@ -2645,7 +2687,9 @@
       if (!v.alive || !(v.wall >= 0.25)) continue;
       const x = ox + v.x * s, y = oy + v.y * s, k = s >= 128 ? (v.r || 4) * s : (s >= 6 ? 4 : Math.max(4, s * 0.55)) * (v.place === "city" ? 1.8 : v.place === "town" ? 1.4 : 1) + 7;
       ctx.strokeStyle = "#b9b2a4"; ctx.lineWidth = s >= 128 ? Math.max(2, s * 0.02) * v.wall * 2 : 1 + v.wall * 2;
-      ctx.beginPath(); ctx.arc(x, y, k, 0, Math.PI * 2); ctx.stroke();
+      /* A breach (TODO 15p, `v.breach`): the ring broken open, wider as the breach is. */
+      const gap = (v.breach || 0) * 1.4, at = v.id * 2.39996;
+      ctx.beginPath(); ctx.arc(x, y, k, at + gap / 2, at - gap / 2 + Math.PI * 2); ctx.stroke();
     }
     /* Villages. */
     ctx.textAlign = "center"; ctx.textBaseline = "top";
@@ -2673,7 +2717,15 @@
       ctx.moveTo(x1, y1); ctx.lineTo(x1 - 9 * Math.cos(ang + 0.45), y1 - 9 * Math.sin(ang + 0.45)); ctx.stroke();
     }
     ctx.setLineDash([]); ctx.globalAlpha = 1;
-    /* Ric, 2026-11-13: people can be boxes. Keep colour, child size and real gear. */
+    /* Night (TODO 22c): the sun's real hours, a dark blue laid over everything but the people, and
+       every fire then shows. */
+    const light = dayLight(f), nowMs = performance.now();
+    if (light < 1) { ctx.fillStyle = "rgba(6,12,30," + (0.55 * (1 - light)).toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
+    drawHearths(W, H, s, ox, oy, f, light, nowMs);
+    drawLeft(W, H, s, ox, oy, f);
+    drawCamps(W, H, s, ox, oy, f);
+    /* Ric, 2026-11-13: people can be boxes. Ric, 2026-11-26: "the people let's change to circles" — so they are
+       circles now (TODO 22a), in their people's colour always. */
     // The square diagonal fits inside the 0.42-tile body clearance.
     /* Far out as before; from 20 pixels a square a person shrinks toward their real size,
        half a metre (TODO 7a), but never under three pixels across, so they can be seen. */
@@ -2700,9 +2752,10 @@
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
       const r = flags[i] & FLAG.child ? small : rad, col = f.tint[i];
       let p = paths.get(col); if (!p) { p = new Path2D(); paths.set(col, p); }
-      if (lined) { under.rect(x - r - 0.5, y - r - 0.5, r * 2 + 1, r * 2 + 1); p.rect(x - r + 0.5, y - r + 0.5, r * 2 - 1, r * 2 - 1); }
-      else p.rect(x - r, y - r, r * 2, r * 2);
-      if (flags[i] & ~FLAG.child || f.gear[i]) marked = true;
+      if (f.look && f.look[i] && s >= 128) drawUnder(f.look[i], x, y, Math.max(r, LOOK_MIN));   // a horse, chariot, pack animal or car, under the person
+      if (lined) { under.moveTo(x + r + 0.6, y); under.arc(x, y, r + 0.6, 0, 6.2832); p.moveTo(x + r - 0.4, y); p.arc(x, y, r - 0.4, 0, 6.2832); }
+      else { p.moveTo(x + r, y); p.arc(x, y, r, 0, 6.2832); }
+      if (flags[i] & ~FLAG.child || f.gear[i] || (f.look && f.look[i])) marked = true;
     }
     if (lined) { ctx.fillStyle = "#070a0b"; ctx.fill(under); }
     for (const [col, p] of paths) { ctx.fillStyle = tintColour(f.view, col); ctx.fill(p); }
@@ -2710,11 +2763,13 @@
        sickness, a leader's ring, a field being reaped. */
     if (marked && !farOut) for (let i = 0; i < n; i++) {
       const fl = flags[i];
-      if (!(fl & ~FLAG.child) && !f.gear[i]) continue;
+      if (!(fl & ~FLAG.child) && !f.gear[i] && !(f.look && f.look[i])) continue;
       const x = ox + X[i] * s, y = oy + Y[i] * s;
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
       const r = fl & FLAG.child ? small : rad;
-      if (s >= 20 && f.gear[i]) drawEquipment(f.gear[i], x, y, r);
+      const lk = f.look ? f.look[i] : 0;
+      if (s >= 20 && f.gear[i]) drawEquipment(lk & 0x3f ? f.gear[i] & ~GEAR.weapon : f.gear[i], x, y, r);   // the arms, where known, are drawn by drawLook
+      if (s >= 128 && lk) drawLook(lk, x, y, Math.max(r, LOOK_MIN), nowMs);
       if (fl & FLAG.hit) { ctx.strokeStyle = "#ff5d4d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 3, 0, 6.2832); ctx.stroke(); }
       if (s > 9) {
         if (fl & FLAG.sick) { ctx.fillStyle = "#b6f36a"; ctx.fillRect(x + r, y - r - 2, 3, 3); }
@@ -2786,6 +2841,7 @@
         if (u.lead) { const lx = ox + u.lead[0] * s, ly = oy + u.lead[1] * s; ctx.fillStyle = "#e3e9e6"; ctx.beginPath(); ctx.moveTo(lx, ly - 4); ctx.lineTo(lx + 3, ly); ctx.lineTo(lx, ly + 4); ctx.lineTo(lx - 3, ly); ctx.closePath(); ctx.fill(); }
       }
     }
+    drawBlasts(W, H, s, ox, oy, f);   // TODO 22e
     /* Job and what they are doing, beside whoever is picked and, close in,
        the first dozen in view. The keeper chose who; the page finds room. */
     const used = [];
@@ -2844,6 +2900,195 @@
   }
 
   let roadsFor = null, roadPaths = null;
+  let hearthArr = null, rainArr = null, rainPic = null;   // TODO 22c
+  /* ═══ what the engine has that the map did not show (TODO 22) ══════════
+     Everything here is drawn from what the keeper sends and nothing else: no light, frost, fire or
+     weapon the engine did not have at that moment. The world's state (22c) is a light laid over the
+     land, never a colour on a person: people keep their people's colour whatever is happening. */
+  /* How much daylight there is, 0 at night to 1 by day: the engine's own sunrise and sunset (noon is
+     at 13, as in `isDark`), with half an hour of dusk either side. */
+  function dayLight(f) {
+    if (!f.daylight) return 1;
+    const h = (f.days % 1) * 24, half = f.daylight / 2;
+    const up = x => Math.max(0, Math.min(1, x + 0.5));
+    return Math.min(up(h - (13 - half)), up(13 + half - h));
+  }
+  /* Land, not water: the frost and the dry year are laid on the land only. */
+  let landMask = null, maskFor = null;
+  function maskOf() {
+    if (maskFor === world && landMask) return landMask;
+    const w = world, c = document.createElement("canvas"); c.width = w.cols; c.height = w.rows;
+    const g = c.getContext("2d"), im = g.createImageData(w.cols, w.rows);
+    for (let i = 0; i < w.ground.length; i++) if (w.ground[i] > 2) { im.data[i * 4] = 236; im.data[i * 4 + 1] = 242; im.data[i * 4 + 2] = 246; im.data[i * 4 + 3] = 255; }
+    g.putImageData(im, 0, 0); maskFor = w; landMask = c; return c;
+  }
+  /* A dry year (TODO 6b, 22c): where this year's rain is under 85 of an ordinary year's, the land
+     browns by how short it fell. */
+  function rainPicture() {
+    if (rainPic || !rainArr || !world) return rainPic;
+    const w = world, c = document.createElement("canvas"); c.width = w.cols; c.height = w.rows;
+    const g = c.getContext("2d"), im = g.createImageData(w.cols, w.rows);
+    for (let i = 0; i < rainArr.length; i++) {
+      const k = rainArr[i]; if (k >= 85 || w.ground[i] <= 2) continue;
+      im.data[i * 4] = 176; im.data[i * 4 + 1] = 132; im.data[i * 4 + 2] = 62; im.data[i * 4 + 3] = Math.round(Math.min(1, (85 - k) / 45) * 150);
+    }
+    g.putImageData(im, 0, 0); rainPic = c; return c;
+  }
+  function drawSeason(W, H, s, ox, oy, f) {
+    const w = world;
+    ctx.imageSmoothingEnabled = true;
+    const dry = rainPicture(); if (dry) ctx.drawImage(dry, ox, oy, w.cols * s, w.rows * s);
+    /* Winter: below the line where nothing grows (GROW_LINE in people.js, -0.35), a frost over the land
+       that deepens with the cold. The engine has cold, not snow lying, so it is a frost, not a drift. */
+    const frost = Math.max(0, Math.min(1, (-0.35 - (f.warmth ?? 1)) / 0.5));
+    if (frost > 0) { ctx.globalAlpha = 0.06 + frost * 0.2; ctx.drawImage(maskOf(), ox, oy, w.cols * s, w.rows * s); ctx.globalAlpha = 1; }
+    ctx.imageSmoothingEnabled = false;
+  }
+  /* Ditches (TODO 15.5p): a line of water from the river to the village; silted, a dry brown line. */
+  function drawDitches(s, ox, oy) {
+    if (s < 6) return;
+    for (const v of vs) {
+      if (!v.alive || !v.ditch) continue;
+      const ax = ox + v.ditch[0] * s, ay = oy + v.ditch[1] * s, bx = ox + v.x * s, by = oy + v.y * s;
+      ctx.lineCap = "round"; ctx.setLineDash(v.ditch[2] ? [Math.max(3, s * 0.05), Math.max(3, s * 0.05)] : []);
+      ctx.strokeStyle = v.ditch[2] ? "#8a6e46" : "#3d6f94"; ctx.lineWidth = Math.max(1.5, s * 2.5 / 250);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  /* Ore in the ground (TODO 4a), close in: dark rust flecks, more where there is more. */
+  function drawOre(W, H, s, ox, oy) {
+    if (s < 20 || !world.ore) return;
+    const w = world, x0 = Math.max(0, Math.floor(-ox / s)), y0 = Math.max(0, Math.floor(-oy / s)), x1 = Math.min(w.cols - 1, Math.floor((W - ox) / s)), y1 = Math.min(w.rows - 1, Math.floor((H - oy) / s));
+    const p = new Path2D(), d = Math.max(1, Math.min(3, s * 1.2 / 250));
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      const i = ty * w.cols + tx, o = w.ore[i]; if (!(o > 0.25)) continue;
+      const n = Math.round(o * 8);
+      for (let j = 0; j < n; j++) { const px = ox + (tx + hash(tx, ty, 3000 + j)) * s, py = oy + (ty + hash(tx, ty, 3100 + j)) * s; p.moveTo(px + d, py); p.arc(px, py, d, 0, 6.2832); }
+    }
+    ctx.fillStyle = "rgba(122,62,38,.75)"; ctx.fill(p);
+  }
+  /* Camps (TODO 15.6i): tents outside a place an army marches on, as many as it holds (to nine),
+     and its people's colour on a pole. */
+  function drawCamps(W, H, s, ox, oy, f) {
+    for (const c of f.camps || []) {
+      const x = ox + c.x * s, y = oy + c.y * s; if (x < -60 || y < -60 || x > W + 60 || y > H + 60) continue;
+      const t = Math.max(3, Math.min(14, s * 4 / 250)), n = Math.max(3, Math.min(9, c.n)), spread = Math.max(t * 2.2, s * 18 / 250);
+      ctx.fillStyle = "#cdbf9c"; ctx.strokeStyle = "#5b4b33"; ctx.lineWidth = 1;
+      for (let k = 0; k < n; k++) {
+        const a = k * 2.39996, r = spread * Math.sqrt(k) * 0.55, tx = x + Math.cos(a) * r, ty = y + Math.sin(a) * r;
+        ctx.beginPath(); ctx.moveTo(tx - t, ty + t * 0.7); ctx.lineTo(tx, ty - t * 0.7); ctx.lineTo(tx + t, ty + t * 0.7); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(tx, ty - t * 0.7); ctx.lineTo(tx, ty + t * 0.7); ctx.stroke();
+      }
+      ctx.strokeStyle = "#2a2118"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - t * 3); ctx.stroke();
+      ctx.fillStyle = factionColour(c.f); ctx.fillRect(x, y - t * 3, t * 1.6, t);
+    }
+  }
+  /* What war left in the ground (`LEFT`), close in: a mine as a dark disc, a shell or bomb that did
+     not go off as a dark slug half in the earth. */
+  function drawLeft(W, H, s, ox, oy, f) {
+    if (s < 20 || !f.left) return;
+    const r = Math.max(2, s * 0.4 / 250);
+    for (const [lx, ly, k] of f.left) {
+      const x = ox + lx * s, y = oy + ly * s; if (x < -10 || y < -10 || x > W + 10 || y > H + 10) continue;
+      ctx.fillStyle = "#2b2a26"; ctx.strokeStyle = "#8d8676"; ctx.lineWidth = 1;
+      ctx.beginPath(); if (k === 0) ctx.arc(x, y, r * 1.3, 0, 6.2832); else ctx.ellipse(x, y, r * (k === 2 ? 2.2 : 1.6), r * 0.8, 0.6, 0, 6.2832);
+      ctx.fill(); ctx.stroke();
+    }
+  }
+  /* Houses lived in with a fire lit against the cold (TODO 15.5f): smoke off the roof by day, the
+     fire's glow at night. Houses burning (TODO 14b): flames for half a day of the world. */
+  function drawHearths(W, H, s, ox, oy, f, light, now) {
+    if (!homesArr || s < 6) return;
+    if (hearthArr) {
+      const dark = 1 - light, glow = new Path2D(), smoke = new Path2D(), g = Math.max(1.6, s * 1.5 / 250), sm = Math.max(1.8, s * 2 / 250);
+      for (let k = 0; k * 7 < homesArr.length && k < hearthArr.length; k++) {
+        if (!(hearthArr[k] & 2)) continue;
+        const x = ox + homesArr[k * 7] * s, y = oy + homesArr[k * 7 + 1] * s; if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+        if (dark > 0.05) { glow.moveTo(x + g, y); glow.arc(x, y, g, 0, 6.2832); }
+        if (s >= 20 && light > 0.05) for (let j = 0; j < 3; j++) {
+          const u = ((now / 2600 + j / 3 + k * 0.37) % 1), px = x + u * sm * 5 + Math.sin(u * 6 + k) * sm, py = y - u * sm * 6;
+          smoke.moveTo(px + sm * (0.6 + u), py); smoke.arc(px, py, sm * (0.6 + u), 0, 6.2832);
+        }
+      }
+      if (dark > 0.05) { ctx.globalAlpha = dark; ctx.fillStyle = "#ffb85c"; ctx.fill(glow); ctx.globalAlpha = 1; }
+      ctx.fillStyle = "rgba(205,205,200,.28)"; ctx.fill(smoke);
+    }
+    const fires = f.fires || [];
+    for (let j = 0; j < fires.length; j += 2) {
+      const k = fires[j], age = fires[j + 1], x = ox + homesArr[k * 7] * s, y = oy + homesArr[k * 7 + 1] * s;
+      if (x < -40 || y < -40 || x > W + 40 || y > H + 40) continue;
+      const r = Math.max(4, homesArr[k * 7 + 2] * s * 0.6) * (1 - age * 0.6), fl = 0.8 + 0.2 * Math.sin(now / 90 + k);
+      ctx.fillStyle = "rgba(255,120,30,.85)"; ctx.beginPath(); ctx.arc(x, y, r * fl, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "rgba(255,214,90,.9)"; ctx.beginPath(); ctx.arc(x, y - r * 0.15, r * 0.5 * fl, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "rgba(60,56,52,.35)"; ctx.beginPath(); ctx.arc(x + r * 0.8, y - r * 1.6, r * 1.1, 0, 6.2832); ctx.fill();
+    }
+  }
+  /* A blast: a flash and a ring of dirt, for the hour of the world it happened in. */
+  function drawBlasts(W, H, s, ox, oy, f) {
+    for (const [bx, by, r, age] of f.blasts || []) {
+      const x = ox + bx * s, y = oy + by * s, R = Math.max(5, r * s); if (x < -R || y < -R || x > W + R || y > H + R) continue;
+      ctx.globalAlpha = Math.max(0, 1 - age);
+      ctx.fillStyle = "rgba(255,200,90,.55)"; ctx.beginPath(); ctx.arc(x, y, R * (0.4 + age * 0.6), 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = "rgba(70,62,52,.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R * (0.6 + age), 0, 6.2832); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+  /* What can be seen of a person (mapLook in people.js, TODO 22e, 22b): their people's arms at their
+     side, a bow, armour as a ring round them, a helmet; a horse or a chariot under them; a bandit's
+     hood; a caravan's pack animal; a car while they drive. Their colour is never touched. */
+  /* What a person carries is drawn from the close zoom (128 pixels a square, where houses are their
+     real size) and never smaller than a body of LOOK_MIN pixels: a person at real size is half a metre,
+     a few pixels even at the closest zoom, and a sword to that scale is a smudge. Whether people
+     themselves should be drawn larger than life is Ric's call (TODO 22, the scale). */
+  const LOOK_MIN = 5;
+  const ARM_COL = ["", "#8b6a43", "#b8893e", "#9aa0a4", "#c9d0d4", "#3a332c", "#3a3a36", "#2c2f30"];
+  const ARMOUR_COL = ["", "#cdb98e", "#b8893e", "#9aa0a4", "#dfe5e8", "#5a6b55"];
+  function drawUnder(c, x, y, r) {
+    const horse = c & (1 << 9), chariot = c & (1 << 10), pack = (c >> 12) & 3, car = c & (1 << 14), moving = c & (1 << 15);
+    if (car && moving) {   // a car about 4 m by 1.7 m
+      ctx.fillStyle = "#5d6a72"; ctx.strokeStyle = "#1c2226"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.rect(x - r * 2.2, y - r * 1.7, r * 8, r * 3.4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#9fb4c0"; ctx.fillRect(x + r * 2.6, y - r * 1.3, r * 1.4, r * 2.6);
+    }
+    if (horse || chariot) {   // a horse about 2.4 m long, and a chariot behind it
+      ctx.fillStyle = "#7a5634"; ctx.beginPath(); ctx.ellipse(x + r * 0.6, y, r * 2.4, r * 0.75, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x + r * 3.3, y, r * 0.75, r * 0.35, 0, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = "#3b2716"; ctx.lineWidth = Math.max(1, r * 0.3); ctx.beginPath(); ctx.moveTo(x - r * 1.8, y); ctx.lineTo(x - r * 2.6, y + r * 0.3); ctx.stroke();
+      if (chariot) { ctx.fillStyle = "#8a6a3a"; ctx.fillRect(x - r * 3.6, y - r * 1.1, r * 1.6, r * 2.2); ctx.fillStyle = "#2a2118"; ctx.fillRect(x - r * 3.2, y - r * 1.5, r * 0.8, r * 0.35); ctx.fillRect(x - r * 3.2, y + r * 1.15, r * 0.8, r * 0.35); }
+    }
+    if (pack) {   // a donkey, or a horse where their people have horses, under its packs
+      const px = x - r * 0.2, py = y + r * 2.4, L = pack === 2 ? 2.2 : 1.6;
+      ctx.fillStyle = pack === 2 ? "#7a5634" : "#8f8578"; ctx.beginPath(); ctx.ellipse(px, py, r * L, r * 0.6, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px + r * (L + 0.6), py, r * 0.55, r * 0.3, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "#c9a46a"; ctx.fillRect(px - r * 0.8, py - r * 0.95, r * 1.6, r * 0.5); ctx.fillRect(px - r * 0.8, py + r * 0.45, r * 1.6, r * 0.5);
+    }
+  }
+  function drawLook(c, x, y, r, now) {
+    const arms = c & 15, bow = (c >> 4) & 3, armour = (c >> 6) & 7, bandit = c & (1 << 11), fight = c & (1 << 16);
+    ctx.lineCap = "round";
+    if (armour) { ctx.strokeStyle = ARMOUR_COL[armour] || "#9aa0a4"; ctx.lineWidth = Math.max(1, r * (armour === 4 ? 0.45 : 0.3)); if (armour === 2) ctx.setLineDash([Math.max(1, r * 0.3), Math.max(1, r * 0.25)]); ctx.beginPath(); ctx.arc(x, y, r * 1.18, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
+    if (armour === 5) { ctx.fillStyle = ARMOUR_COL[5]; ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, 6.2832); ctx.fill(); }
+    if (bandit) { ctx.fillStyle = "#1a1714"; ctx.beginPath(); ctx.arc(x, y, r * 0.92, Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill(); }
+    if (bow) {   // a plain bow, a deeper recurve, or a crossbow
+      const bx = x + r * 1.15; ctx.strokeStyle = bow === 3 ? "#4a3a28" : "#8b6a43"; ctx.lineWidth = Math.max(1, r * 0.22);
+      if (bow === 3) { ctx.beginPath(); ctx.moveTo(bx - r * 0.4, y); ctx.lineTo(bx + r * 1.2, y); ctx.moveTo(bx + r * 0.6, y - r * 0.8); ctx.lineTo(bx + r * 0.6, y + r * 0.8); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.arc(bx - r * 0.5, y, r * (bow === 2 ? 1.0 : 1.15), -1.05, 1.05); ctx.stroke(); }
+    } else if (arms) {
+      ctx.strokeStyle = ARM_COL[arms]; ctx.lineWidth = Math.max(1, r * (arms >= 5 ? 0.22 : 0.26));
+      const gx = x + r * 1.05;
+      if (arms >= 5) {   // a gun, longer for a musket; a machine gun on its stand
+        const L = arms === 5 ? 2.6 : arms === 6 ? 2.3 : 2.0;
+        ctx.beginPath(); ctx.moveTo(gx, y + r * 0.3); ctx.lineTo(gx + r * L, y - r * 0.5); ctx.stroke();
+        if (arms === 7) { ctx.beginPath(); ctx.moveTo(gx + r * 1.2, y - r * 0.15); ctx.lineTo(gx + r * 0.8, y + r * 0.8); ctx.moveTo(gx + r * 1.2, y - r * 0.15); ctx.lineTo(gx + r * 1.7, y + r * 0.8); ctx.stroke(); }
+        if (fight && arms === 5) {   // black powder: a cloud over them while they fire
+          ctx.fillStyle = "rgba(225,225,220,.55)"; const u = (now / 900 + x * 0.01) % 1;
+          ctx.beginPath(); ctx.arc(gx + r * (L + 0.8 + u), y - r * (0.6 + u), r * (0.9 + u), 0, 6.2832); ctx.fill();
+        }
+      } else {   // a blade or club: wood, bronze, iron, steel
+        ctx.beginPath(); ctx.moveTo(gx, y + r * 0.7); ctx.lineTo(gx + r * 0.5, y - r * 1.2); ctx.stroke();
+      }
+    }
+  }
   /* Where the selected thing is, for its ring: [x, y, radius in squares]. */
   function pickedAt() {
     const p = picked; if (!p || !world) return null;
@@ -2853,6 +3098,9 @@
     if (p.road != null) return tile(p.road);
     if (p.unit) return [p.unit.x, p.unit.y, 0.4];
     if (p.boat != null) { const v = vs[p.boat]; return v && v.boat ? [v.boat[0], v.boat[1], 0.1] : null; }
+    if (p.camp) { const c = snap && (snap.camps || []).find(c => c.f === p.camp[0] && c.o === p.camp[1]); return c ? [c.x, c.y, 0.4] : null; }   // TODO 22b
+    if (p.left) return [p.left[0], p.left[1], 0.02];
+    if (p.ditch != null) { const v = vs[p.ditch]; return v && v.ditch ? [(v.ditch[0] + v.x) / 2, (v.ditch[1] + v.y) / 2, 0.3] : null; }
     if (p.house != null && homesArr && p.house * 7 < homesArr.length) return [homesArr[p.house * 7], homesArr[p.house * 7 + 1], 0.05];
     const d = paneData && paneData.thing;
     if (p.event != null && d && d.id === p.event && (d.x || d.y)) return [d.x, d.y, 1];
@@ -3501,6 +3749,14 @@
       (t.owner && named[t.owner] ? "<p>Held by the household of " + person(t.owner) + (t.house >= 0 ? " · <button class='linkish inline' data-go='house:" + t.house + "'>their house</button>" : "") + ".</p>" : "<p class='small'>Held by a house nobody owns now.</p>");
     else if (t.kind === "road") body = "<h3>" + (t.road === 2 ? "A road" : t.road === 1 ? "A path worn by walking" : "Open ground") + "</h3>" + whose + "<p class='small'>Worn in by the people who walk it; a road is a path walked enough, or built.</p>";
     else if (t.kind === "boat") body = "<h3>" + (t.alive ? "A boat" : "A landing, no boat now") + "</h3>" + whose + "<p class='small'>The village's boat: it carries grain by water, ten carts a load.</p>";
+    else if (t.kind === "camp") body = t.gone ? "<h3>A camp</h3><p class='small'>It has gone in, or been given up.</p>" :
+      "<h3>A camp of " + mark(t.f) + esc(t.faction) + "</h3><p>" + t.n + (t.n === 1 ? " soldier" : " soldiers") + " here, gathering to go into " + esc(t.goal) + (t.against ? ", of " + esc(t.against) : "") + ".</p>" +
+      "<p class='small'>An army that means to take a place camps outside it first, and goes in together once most of it has come.</p><button class='linkish' data-go='faction:" + t.f + "'>Its people →</button>";
+    else if (t.kind === "left") body = t.gone ? "<h3>In the ground</h3><p class='small'>It has gone off, or been cleared.</p>" :
+      "<h3>" + ({ mine: "A mine", shell: "A shell that did not go off", bomb: "A bomb that did not go off" }[t.what] || "Something in the ground") + "</h3><p>" + (t.by ? "Left by " + esc(t.by) + ", " : "Left ") + Math.round(t.days) + (Math.round(t.days) === 1 ? " day" : " days") + " ago.</p>" +
+      "<p class='small'>It lies here until somebody steps on it, or a people that knows explosives clears it.</p>";
+    else if (t.kind === "ditch") body = t.gone ? "<h3>A ditch</h3><p class='small'>It is not there now.</p>" :
+      "<h3>" + (t.silted ? "A ditch, silted up" : "A ditch from the river") + "</h3>" + whose + "<p>" + (t.silted ? "Nobody cleaned it last year, so it waters nothing until it is cleaned." : "It waters " + t.fields + " squares of fields, which a dry year spares.") + "</p>";
     else if (t.kind === "unit") body = t.gone ? "<h3>A unit of an army</h3><p class='small'>It has broken up or moved on.</p>" : "<h3>A unit of " + mark(t.f) + esc(t.faction) + "</h3><p>" + esc(t.role === "reserve" ? "In reserve" : "In the line") + ", in " + esc(t.shape || "a body") + ".</p>" +
       (t.army.length ? t.army.map(c => "<p class='urgent'>" + (c.ready ? "Marching on " + esc(c.goal) : "Gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + ".</p>").join("") : "") + "<button class='linkish' data-go='faction:" + t.f + "'>Its people →</button>";
     else if (t.kind === "event") body = t.gone ? "<h3>A piece of news</h3><p class='small'>Too old: the record has let it go.</p>" :

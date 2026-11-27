@@ -76,12 +76,14 @@
     let actions = [], startS = null, probsNow = null, probsHour = -1;
     /* Scratch the frames are filled into; what is sent is a copy cut to size,
        so a buffer handed across to the page is never one this still holds. */
-    let cap = 0, X = null, Y = null, T = null, F = null, G = null, L = null;
+    let cap = 0, X = null, Y = null, T = null, F = null, G = null, L = null, A = null;
+    /* What the page was last sent of each house's state (TODO 22c: lived in, a fire lit) and of the year's rain. */
+    let hearthSent = null, rainSent = -1;
     function room(n) {
       if (n <= cap) return;
       cap = Math.max(1024, Math.ceil(n * 1.25));
       X = new Float32Array(cap); Y = new Float32Array(cap); T = new Uint16Array(cap);
-      F = new Uint8Array(cap); G = new Uint8Array(cap); L = new Float32Array(cap * 2);
+      F = new Uint8Array(cap); G = new Uint8Array(cap); L = new Float32Array(cap * 2); A = new Uint32Array(cap);
     }
 
     function receive(m) {
@@ -105,7 +107,7 @@
     }
 
     function start(m) {
-      world = null; trial = null; vsSig = fsSig = ""; sorted = null; sortedSig = ""; frameKey = "";
+      world = null; trial = null; vsSig = fsSig = ""; sorted = null; sortedSig = ""; frameKey = ""; hearthSent = null; rainSent = -1;
       landFull = landStock = sentOwner = null; sentAt = -1;
       const t0 = now();
       let w;
@@ -116,10 +118,10 @@
       firsts = []; firstKinds = new Set(); pinRows = new Map(); pinNews = new Map(); rowDay = -1; actions = [];
       startS = Object.assign({}, w.settings); probsNow = null; probsHour = -1;
       rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0; maxSim = maxWall = 0;
-      const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice(), shade = hillShade(w), riverTo = w.riverTo.slice();
+      const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice(), shade = hillShade(w), riverTo = w.riverTo.slice(), riverW = w.riverW ? w.riverW.slice() : null;
       /* Big rivers and their fords (TODO 6d); bridges come with the villages. */
       const cross = w.cross ? w.cross.slice() : null;
-      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore, ground: ground, shade: shade, riverTo: riverTo, cross: cross,
+      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore, ground: ground, shade: shade, riverTo: riverTo, riverW: riverW, cross: cross,
              settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer, ground.buffer, shade.buffer, riverTo.buffer].concat(cross ? [cross.buffer] : []));
     }
 
@@ -247,6 +249,7 @@
         const seen = px >= sx0 && px <= sx1 && py >= sy0 && py <= sy1;
         if (close && w.activity(p) === "Harvesting") fl |= FLAG.harvesting;
         X[k] = px; Y[k] = py; T[k] = tint(w, p, view); F[k] = fl; G[k] = closer ? gearOf(w, p) : 0;
+        A[k] = close && w.mapLook ? w.mapLook(p) : 0;   // TODO 22: arms, armour, a horse, a bandit, a pack animal, a car
         if (seen) {
           if (p.id === pickedId) pickedLabel = { k: k, p: p };
           else if (s >= 28 && (focused ? focused.sayT > 0 && p.id === focused.talkingTo : labels.length < 12)) labels.push({ k: k, p: p });
@@ -255,11 +258,11 @@
         k++;
       }
       if (pickedLabel) labels.unshift(pickedLabel);
-      const out = { t: "frame", n: n, k: k, x: X.slice(0, k), y: Y.slice(0, k), tint: T.slice(0, k), flags: F.slice(0, k), gear: G.slice(0, k),
+      const out = { t: "frame", n: n, k: k, x: X.slice(0, k), y: Y.slice(0, k), tint: T.slice(0, k), flags: F.slice(0, k), gear: G.slice(0, k), look: A.slice(0, k),
                     links: L.slice(0, links), view: view,
                     labels: labels.slice(0, focused ? 2 : 12).map(r => ({ k: r.k, text: r.p.job + " · " + w.activity(r.p) })),
                     speech: null, picked: null, pair: null, moves: null, marks: null, vs: null, fs: null, land: null,
-                    days: w.days, season: w.season().name || "", sceneTick: w.sceneTick, speed: speed, rate: rate, paused: paused, cost: 0,
+                    days: w.days, season: w.season().name || "", daylight: w.season().daylight, warmth: w.season().warmth, sceneTick: w.sceneTick, speed: speed, rate: rate, paused: paused, cost: 0,
                     held: held(), heldFor: maxWall, until: until ? until.label : "" };
       /* What is being said, nearest the middle first; the page shows four. */
       if (closer) {
@@ -275,6 +278,20 @@
       if (view === "war") {
         out.wars = [];
         for (const f of fs) if (f.alive) for (const o of fs) if (o.alive && o.id > f.id && f.rel[o.id] && f.rel[o.id].war) out.wars.push([f.id, o.id, f.name, o.name]);
+      }
+      /* TODO 22b, 22c: armies' camps, what war left in the ground, houses burning, and each house's
+         state (lived in, its fire lit) when that has changed — all read, nothing worked out anew. */
+      if (w.mapCamps) out.camps = w.mapCamps();
+      if (w.left) { out.left = []; for (const e of w.left()) if (e.x > x0 && e.x < x1 && e.y > y0 && e.y < y1) out.left.push([e.x, e.y, e.kind === "mine" ? 0 : e.kind === "bomb" ? 2 : 1]); }
+      out.fires = []; const tNow = w.tick;
+      if (w.blasts) { out.blasts = []; for (const b of w.blasts()) if (tNow - b.at < 1 && b.x > x0 && b.x < x1 && b.y > y0 && b.y < y1) out.blasts.push([b.x, b.y, b.r, tNow - b.at]); }
+      for (let i = 0; i < w.homes.length; i++) { const h = w.homes[i]; if (!h.built && h.burned > -1e9 && tNow - h.burned < 12) out.fires.push(i, (tNow - h.burned) / 12); }
+      if (w.mapHearth) {
+        const hs = new Uint8Array(w.homes.length);
+        for (let i = 0; i < hs.length; i++) { const h = w.homes[i]; hs[i] = (h.built && h.n > 0 ? 1 : 0) | (h.built && w.mapHearth(h) ? 2 : 0); }
+        let same = !!hearthSent && hearthSent.length === hs.length && !m.fresh;
+        for (let i = 0; same && i < hs.length; i++) if (hs[i] !== hearthSent[i]) same = false;
+        if (!same) { hearthSent = hs; out.hearth = hs.slice(); }
       }
       if (pickedId) { const p = byId.get(pickedId); out.picked = p ? { id: p.id, x: p.x, y: p.y, name: p.name } : { id: pickedId, gone: true }; }
       /* Armies' units, with the page's toggle on and zoomed in (TODO 15.6b). */
@@ -306,13 +323,14 @@
          shows of them has changed. */
       let sig = w.villages.length + "|";
       /* How many live there, to the nearest five: the houses drawn round a village follow it (TODO 5). */
-      for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "") + Math.round((v.pop || 0) / 5) + (v.well ? "w" : "") + (v.bridge ? "b" : "") + (v.boat ? "o" : "") + (v.place || "village")[0] + Math.round((v.wall || 0) * 4);
+      for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "") + Math.round((v.pop || 0) / 5) + (v.well ? "w" : "") + (v.bridge ? "b" : "") + (v.boat ? "o" : "") + (v.place || "village")[0] + Math.round((v.wall || 0) * 4) + "r" + Math.round((v.breach || 0) * 4) + (v.ditch ? (v.ditch.silted ? "D" : "d") : "");
       sig += "|" + w.homes.length;
       for (const h of w.homes) if (!h.built) sig += "," + h.id + (h.burned > -1e9 && h.work === 0 && h.goodsIn === 0 ? "x" : "") + ":" + Math.floor((h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8) * 4);
       sig += "|" + w.homes.reduce((n, h) => n + (h.built ? 1 : 0), 0) + "|" + w.ruinStamp;   // ruinStamp: TODO 16, a building's stage changed
       if (m.fresh || sig !== vsSig) {
         vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0, pop: v.pop || 0, well: v.well ? [v.well.x, v.well.y] : null,
-          bridge: v.bridge ? [v.bridge.x, v.bridge.y] : null, boat: v.boat ? [v.boat.x, v.boat.y] : null, place: v.place || "village", wall: Math.round((v.wall || 0) * 4) / 4, r: v.radius }));
+          bridge: v.bridge ? [v.bridge.x, v.bridge.y] : null, boat: v.boat ? [v.boat.x, v.boat.y] : null, place: v.place || "village", wall: Math.round((v.wall || 0) * 4) / 4, r: v.radius,
+          breach: Math.round((v.breach || 0) * 4) / 4, ditch: v.ditch ? [v.ditch.at % w.cols + 0.5, Math.floor(v.ditch.at / w.cols) + 0.5, v.ditch.silted ? 1 : 0] : null }));
         /* The houses, with the villages (TODO 7a): where, how long and wide, which way, and whose. */
         /* And how far built (TODO 7b): 1 a finished house, less a building site. */
         const H = new Float32Array(w.homes.length * 7);
@@ -345,7 +363,7 @@
       /* The land: how much of each square's crop is standing, and whose it
          is. A small land is sent every few steps of the scene; a big one when
          the page asks, because it is a big thing to send. */
-      const transfer = [out.x.buffer, out.y.buffer, out.tint.buffer, out.flags.buffer, out.gear.buffer, out.links.buffer];
+      const transfer = [out.x.buffer, out.y.buffer, out.tint.buffer, out.flags.buffer, out.gear.buffer, out.links.buffer, out.look.buffer];
       if (wantLand) {
         const tiles = w.cols * w.rows, fert = w.fert, stock = w.stock, capOf = w.tileCapacity;
         if (!landFull || landFull.length !== tiles) { landFull = new Uint8Array(tiles); landStock = null; }
@@ -378,6 +396,9 @@
           transfer.push(send1.buffer, owner.buffer);
         }
         sentAt = w.sceneTick;
+        /* This year's rain on each square, 100 an ordinary year (TODO 22c): with a whole land, and again when the year turns. */
+        const yr = w.season().year;
+        if (w.rainK && (out.land.full || yr !== rainSent)) { rainSent = yr; out.rain = w.rainK.slice(); transfer.push(out.rain.buffer); }
         /* Ground that has changed (TODO 15.5d: forest cleared, grown back): square, kind, how well it farms, three numbers each.
            All of it with a whole land, only what is new with an update; the page may take one twice. */
         const log = w.groundLog;
@@ -599,6 +620,19 @@
       }
       if (pick.road != null) { const i = pick.road; return Object.assign({ kind: "road", tile: i, road: w.track ? w.track[i] : 0 }, w.owner[i] >= 0 ? whose(w.owner[i]) : {}); }
       if (pick.boat != null) { const v = w.villages[pick.boat]; return Object.assign({ kind: "boat", alive: !!(v && v.boat) }, whose(pick.boat)); }
+      /* TODO 22b: a camp outside a place an army marches on, a shell, bomb or mine in the ground, a ditch. */
+      if (pick.camp) {
+        const c = (w.mapCamps ? w.mapCamps() : []).find(c => c.f === pick.camp[0] && c.o === pick.camp[1]), f = w.factions[pick.camp[0]];
+        if (!c) return { kind: "camp", gone: true, f: f.id, faction: f.name };
+        const g = w.villages[c.goal];
+        return { kind: "camp", f: f.id, faction: f.name, n: c.n, goal: g ? g.name : "", against: w.factions[c.o] ? w.factions[c.o].name : "", x: c.x, y: c.y };
+      }
+      if (pick.left) {
+        const e = (w.left ? w.left() : []).find(e => e.x === pick.left[0] && e.y === pick.left[1]);
+        if (!e) return { kind: "left", gone: true };
+        return { kind: "left", what: e.kind, by: w.factions[e.f] ? w.factions[e.f].name : "", days: (w.tick - e.at) / 24, x: e.x, y: e.y };
+      }
+      if (pick.ditch != null) { const v = w.villages[pick.ditch]; if (!v || !v.ditch) return { kind: "ditch", gone: true }; return Object.assign({ kind: "ditch", silted: !!v.ditch.silted, fields: v.ditch.tiles.length }, whose(v.id)); }
       if (pick.unit) {
         const us = w.units ? w.units() : []; let best = null, bd = 3;
         for (const u of us) { const d = Math.hypot(u.x - pick.unit.x, u.y - pick.unit.y); if (d < bd) { bd = d; best = u; } }
@@ -710,7 +744,7 @@
           out.faction = factionLook(w.factions[pick.faction], name);
           factionsData(m, out, name);
           out.pinned = pins.some(x => x.k === "f" && x.id === pick.faction);
-        } else if (pick.house != null || pick.building != null || pick.field != null || pick.road != null || pick.boat != null || pick.unit || pick.event != null) {
+        } else if (pick.house != null || pick.building != null || pick.field != null || pick.road != null || pick.boat != null || pick.unit || pick.event != null || pick.camp || pick.left || pick.ditch != null) {
           out.thing = thingLook(pick, name);
         } else {
           const p = pick.person ? byId.get(pick.person) : null;
@@ -790,6 +824,15 @@
         const inRect = (cx, cy, len, wid, ang, pad) => { const dx = x - cx, dy = y - cy, c = Math.cos(-ang), s2 = Math.sin(-ang), u = dx * c - dy * s2, v = dx * s2 + dy * c; return Math.abs(u) <= len / 2 + pad && Math.abs(v) <= wid / 2 + pad; };
         const pad = Math.min(0.3, m.r * 0.3);
         if (m.units && w.units) { for (const u of w.units()) if (Math.hypot(u.x - x, u.y - y) < Math.max(0.3, m.r)) { reply.thing = { unit: { x: u.x, y: u.y } }; break; } }
+        /* TODO 22b: a camp, what war left in the ground, a ditch. */
+        if (!reply.thing && w.mapCamps) for (const c of w.mapCamps()) if (Math.hypot(c.x - x, c.y - y) < Math.max(0.6, m.r)) { reply.thing = { camp: [c.f, c.o] }; break; }
+        if (!reply.thing && w.left) { const L = w.left(); for (let i = 0; i < L.length; i++) if (Math.hypot(L[i].x - x, L[i].y - y) < Math.max(0.05, m.r * 0.6)) { reply.thing = { left: [L[i].x, L[i].y] }; break; } }
+        if (!reply.thing) for (const v of w.villages) {
+          if (!v.alive || !v.ditch) continue;
+          const ax = v.ditch.at % w.cols + 0.5, ay = Math.floor(v.ditch.at / w.cols) + 0.5, dx = v.x - ax, dy = v.y - ay, L2 = dx * dx + dy * dy || 1;
+          const u = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2));
+          if (Math.hypot(x - (ax + u * dx), y - (ay + u * dy)) < Math.max(0.06, m.r * 0.5) && Math.hypot(x - v.x, y - v.y) > v.radius * 0.5) { reply.thing = { ditch: v.id }; break; }
+        }
         if (!reply.thing) for (const v of w.villages) if (v.alive && v.boat && Math.hypot(v.boat.x - x, v.boat.y - y) < Math.max(0.15, m.r * 0.6)) { reply.thing = { boat: v.id }; break; }
         if (!reply.thing) for (let i = 0; i < w.homes.length; i++) { const h = w.homes[i]; if (inRect(h.x, h.y, h.len, h.wid, h.ang, pad)) { reply.thing = { house: i }; break; } }
         if (!reply.thing) { const bl = w.buildings(); for (let i = 0; i < bl.length; i++) { const b = bl[i]; if (inRect(b.x, b.y, b.len, b.wid, b.ang, pad)) { reply.thing = { building: i }; break; } } }

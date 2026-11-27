@@ -59,6 +59,9 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   let i = 0;
   const look = () => {
     k.ask(whole(mine, { picked: mine.people[i % mine.people.length].id, follow: i % 2 === 0, land: { at: -1, force: true } }));
+    /* Close in too, where each person's arms, armour, horse and the rest are read (mapLook, TODO 22). */
+    const near = mine.people[(i * 3) % mine.people.length];
+    k.ask({ t: "frame", cam: { x: near.x, y: near.y, s: 40, w: 800, h: 600 }, view: "faction" });
     for (const tab of ["people", "factions", "news", "talk", "look", "world"])
       k.ask({ t: "pane", tab, seq: i, picked: { person: mine.people[(i * 7) % mine.people.length].id }, q: { search: "a", page: 1 } });
     k.ask({ t: "at", seq: i, x: mine.cols / 2, y: mine.rows / 2, r: 3 });

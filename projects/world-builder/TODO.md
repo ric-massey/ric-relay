@@ -7050,6 +7050,18 @@ job:
   itself** (Ric: "land doesn't need to be clickable"), so a tap on open ground still puts the panel
   away.
 
+**Drawn, 2026-11-27** (Ric: "i want all the stuff that isnt on the map that is in the engine needs
+to be put on there"): people as circles; close in, each person's arms, bow, armour or helmet, a horse
+or chariot, a bandit's hood, a caravan's pack animal and a car (`mapLook`); armies' camps
+(`mapCamps`), what is left in the ground, blasts (the engine keeps the last 300, `BLASTS`, read by
+nothing in the world), black-powder smoke; ditches, ore and a wall's breach; night, a hearth's glow
+and smoke (`mapHearth`), houses burning, winter frost and a dry year. Camps, mines and ditches answer
+a tap. README, "What the engine has, on the map". Found then not to be places in the engine, so not
+drawn: a boat between landings (a crossing is a wait at the landing, then arrival), floods.
+**Still open in 22:** the symbols as Ric approves them (houses and buildings redrawn top-down from
+`symbols.html`; everything here was drawn plain, to be redrawn to the approved look), the scale
+(people at real size are a few pixels even at the closest zoom; what they carry is drawn no smaller
+than a five-pixel body until Ric chooses), and 22d.
 **Budget:** drawing must not slow a frame: a shadow is the same shape drawn once more, offset, no
 blur on the map; footprints and roof tones are worked out once per building and kept in the blocks.
 **Done when:** each of 22a to 22c is on the map at the zoom where it can be read, `symbols.html` and
@@ -7090,6 +7102,68 @@ from above; houses face what they front; with the setting on "simpler" a world i
 one before; walking, building, burning and ruin still work (the walking and dozing tests, ruins).
 **Budget:** default. This moves where every house stands, so like 2b it makes every seed a new
 world from the day it lands; say so in the README and here.
+
+### [ ] 24. How land is held: by use and walking, by reach, by record, by survey
+
+Made 2026-11-27. Ric: "can we talk about how the get teritory? or land? rn it seems just in circles",
+then "and the politicians in the future. like this is defined by era no?"
+**Now:** a village's land is a disc (`territory()` in `people.js`): radius 2.6 + 0.55 × √people
+squares, measured in a straight line, so it runs over rivers, mountains and forest alike and pays
+no heed to what anybody farms. Where two discs overlap a square goes to the village it lies deeper
+inside. A people's land is its villages' discs and nothing between them. With "Land as property"
+(15.7d) the disc never shrinks while the village stands; it is still a disc. War, peace terms,
+tribute, marriage, breaking away and a people's fall change only whose a village is — the whole
+disc goes with it.
+**Not by era but by what a people knows and how it rules** (the rule war already follows, 15.6:
+"War follows what a people knows, not its era"). Each stage begins for a people when it has what
+makes it possible, and a world can hold peoples at different stages side by side:
+1. **A range** — foragers and herders who do not farm (`ROAM`, `bandFarms`): the land they wander,
+   hunt and graze, soft at the edge, shared with neighbours and moving with the seasons. No line.
+2. **Use and walking time** — farming villages: what the village works (fields households hold,
+   15.5d's clearing, pasture, wood) and the waste round it, out to about an hour's walk measured
+   over the real ground — a river with no ford or bridge, a steep slope or marsh cuts it short, a
+   road or path stretches it. Between two neighbours the line falls where each is an equal walk
+   away (a Voronoi diagram by travel time). It grows field by field as land is cleared.
+3. **Reach** — a people with a leader who takes tribute or keeps soldiers (`gov`, forts, `reachOf`):
+   it holds the villages that pay it and the land between them, out to where a neighbour's reach is
+   stronger. Forts, roads and soldiers stretch it; it is a frontier, wide and contested, not a line.
+4. **Record** — a people that writes (`writing`): a boundary written down stops drifting with who is
+   strongest this year. It moves when a peace cedes a place, a place is taken, a marriage brings land
+   or a province breaks away, and then stays.
+5. **Survey** — a people with rail, the telegraph or engines: a line on a map, held across empty
+   land, which may be straight because a treaty drew it rather than the ground; guarded at posts
+   (the closed border of the living world's laws is the model).
+**Politics moves land at every stage, through what already happens:** taking a place, peace terms,
+tribute, a marriage between peoples (14d), breaking away (`secede`), a people falling. What moves
+depends on the stage: under 3 a frontier follows the strength, under 4 and 5 the record or the
+treaty draws it. Nothing moves a border on a timer, and nothing places one.
+**Research first, written here:** how far villagers farmed and grazed from home (von Thünen; Chisholm,
+*Rural Settlement and Land Use*, 1962, about 1 km, rarely past 3–4); parish and township bounds
+following streams and ridges (Winchester, *Discovering Parish Boundaries*); forager ranges and their
+overlap (Kelly, *The Lifeways of Hunter-Gatherers*); frontier against border (Kristof 1959, "The
+Nature of Frontiers and Boundaries"); written boundaries and boundary clauses in charters (Anglo-Saxon
+charter bounds); surveyed and treaty lines (the US Public Land Survey, the 1884 Berlin conference).
+Note what each says and what was guessed.
+**Ric decides:** (a) can a people hold land nobody lives on — the waste, a frontier, empty land
+behind a surveyed line — or only what it reaches from a village; (b) do the old circles stay as a
+setting ("Land as circles (simpler)"), which keeps every old world exactly; (c) once written (stage
+4), can a border still drift when one side has long been far stronger, or only move by an event;
+(d) does the map draw a frontier (stage 3) as a wide soft band and a border (4, 5) as a line.
+**Do:** the walking-time land first (stage 2), since every farming world has it: a travel-time
+flood out from each village over the squares, with river crossings and roads, within a limit, worked
+out when a village's land is worked out now (`territory`), not every step. Then the people's land
+(3), then the record (4) and survey (5), then the range (1). Each is a setting with the old way kept
+and fingerprinted, its key in every older test's `LATER` list; off is the world byte for byte.
+Everything that reads `owner[]` (harvest, fields, roads, crossing another people's land 15.6f, the
+map's borders and wash) keeps reading it; only how it is filled changes.
+**Done when:** a village's land follows rivers, slopes and roads in a world you can look at; two
+neighbours meet at an equal walk; a people's land joins up between its villages under stage 3; a
+peace that cedes a place moves a written border and it stays; each stage starts only when a people
+has what it needs; the settings are off the old world exactly; measured over a year of the default
+world and twelve seeds, food and deaths do not move by more than the seeds do, or the README says why.
+**Budget:** `territory` runs when villages change, not every step; a travel-time flood out to an
+hour's walk is a few hundred squares a village. The speed bench must not get slower than the speed
+log allows.
 
 ## Speed log
 

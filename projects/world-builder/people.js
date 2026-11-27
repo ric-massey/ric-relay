@@ -900,6 +900,8 @@
     /* Which way a river runs from each river square: 0 to 7 for the eight
        neighbours, 255 elsewhere. For drawing it as a line (TODO 5). */
     const riverTo = new Uint8Array(tiles).fill(255);
+    /* How wide each river square's river is, in metres, for the map (2026-11-27); nothing in the world reads it. */
+    const riverW = new Uint8Array(tiles);
     /* Rain (TODO 6b): how wet each square's place is (0 to 255), how near water it is (squares, up
        to 8), and this year's crops for the rain, a hundredth a step (100 an ordinary year). Only
        with Rain on. */
@@ -1213,6 +1215,11 @@
       const thr = S.rivers > 0 ? PER_KM * PER_KM * 60 * Math.pow(0.008, S.rivers) : Infinity;
       for (let i = 0; i < n; i++) if (ground[i] === 255 && acc[i] > thr) {
         ground[i] = G_RIVER;
+        /* Its width from the ground it drains: a river's width grows with the square root of its flow
+           (Leopold and Maddock 1953, w ∝ Q^0.5), and flow with the area drained. The constant is a
+           guess set so a 5 km² stream is about 4 m, a 300 km² river 35 m and the Thames at Oxford's
+           1,600 km² about 80 m; for the map only. */
+        riverW[i] = Math.max(2, Math.min(255, Math.round(2 * Math.sqrt(acc[i] / (PER_KM * PER_KM)))));
         const d = down[i];
         if (d >= 0) { const ddx = d % cols - i % cols, ddy = ((d / cols) | 0) - ((i / cols) | 0); for (let k = 0; k < 8; k++) if (DX[k] === ddx && DY[k] === ddy) riverTo[i] = k; }
       }
@@ -3044,6 +3051,7 @@
     /* TODO 15.6: bronze and steel blades, between hand weapons and iron, and above it. */
     ARMS.bronze = { reach: 0.8, hit: 1.1, spread: 1, name: "bronze weapons" };
     ARMS.steel = { reach: 0.8, hit: 1.3, spread: 1, name: "steel blades" };
+    const MAP_ARMS = [ARMS.hand, ARMS.bronze, ARMS.iron, ARMS.steel, ARMS.musket, ARMS.rifle, ARMS.modern];   // the map's order (mapLook, TODO 22e)
     /* TODO 15.5u (2026-11-23): parole kept, deserters and the unfree the leader's call, war loans paid out
        on a default, and a village's spare food and spare coins apart. PAROLE: who gave their word, and to
        which people; DESERTED: deserters kept out of their people's army until it is at peace. */
@@ -3079,6 +3087,7 @@
     const OLD_ARMS = S.oldArms !== "plain";
     const BOWS = { bow: { reach: 1.2, hit: 0.85, name: "bows" }, composite: { reach: 1.4, hit: 1.1, name: "composite bows" },
                    crossbow: { reach: 1.3, hit: 1.4, name: "crossbows" }, longbow: { reach: 1.5, hit: 1.55, name: "longbows" } };
+    const MAP_BOWS = { bow: 1, composite: 2, crossbow: 3 };   // and the armour, below (MAP_ARMOUR)   // the map's (mapLook, TODO 22e)
     /* The share of an army that shoots: Crecy about half, Agincourt nearly four in five (the English
        extreme); a guess elsewhere. With guns everybody has the musket's reach (15d). */
     const ARCHERS = { foragers: 0.5, early: 0.3, bronze: 0.4, ancient: 0.25, medieval: 0.4 };
@@ -3087,6 +3096,7 @@
        goes through much of it: a blow's share, less than half. */
     const ARMOUR = { padding: { blow: 0.2, arrow: 0.25, name: "padded coats" }, scale: { blow: 0.3, arrow: 0.3, name: "bronze scale" },
                      mail: { blow: 0.45, arrow: 0.5, name: "mail over padding" }, plate: { blow: 0.6, arrow: 0.8, name: "plate" } };
+    const MAP_ARMOUR = [ARMOUR.padding, ARMOUR.scale, ARMOUR.mail, ARMOUR.plate, null];   // the map's order (mapLook); the helmet goes in last, where it is made
     /* Generals and strategy (TODO 15o). Ric (2026-11-22): the captain, else the leader; all five plans;
        nature and experience. ROUT: soldiers running from a broken army, until when. GEN_EXP: battles a
        general has seen. A horseman is about one soldier in seven where a people has horses. */
@@ -4886,6 +4896,9 @@
        ground until somebody steps on them or a people that knows explosives clears them. Nothing places
        one that a war did not leave. Distances and how often shells failed: README, "Blasts". */
     const LEFT = [];   // shells, bombs and mines in the ground
+    /* The last few hundred blasts, where and when, for the map to draw a burst (TODO 22e). Written here and
+       read by nothing in the world: it reports, as `note` does. */
+    const BLASTS = [];
     function hurt(q, dmg, by) {
       wakeUp(q);
       const a = equipped(q, "armour") ? armourOf(factions[q.f]) : null;
@@ -4898,6 +4911,7 @@
     }
     function blast(x, y, r, power, fid, kind, by) {
       count.blasts++;
+      BLASTS.push({ x, y, r, kind, at: t }); if (BLASTS.length > 300) BLASTS.shift();
       const k = Math.ceil(r), cx = Math.floor(x), cy = Math.floor(y);
       for (let yy = Math.max(0, cy - k); yy <= Math.min(rows - 1, cy + k); yy++) for (let xx = Math.max(0, cx - k); xx <= Math.min(cols - 1, cx + k); xx++) {
         const b = bucketAt(yy * cols + xx);
@@ -12131,6 +12145,7 @@
     const KIT_LEVEL = { hand: 0, bronze: 1, iron: 2, steel: 3, musket: 4, rifle: 5, modern: 6 };
     const ARMS_KEY = new Map(Object.entries(ARMS).map(([k, a]) => [a, k]));
     ARMOUR.helmet = { blow: 0.15, arrow: 0.2, name: "steel helmets" };
+    MAP_ARMOUR[4] = ARMOUR.helmet;   // the map's (mapLook)
     function kitOf(f) {
       const day = Math.floor(t / DAY_HOURS);
       if (f.kit && f.kitAt === day) return f.kit;
@@ -13515,7 +13530,7 @@
       buildings: buildingsNow, get ruinStamp() { return ruinStamp; }, stageOf: stageOf,
       ruins: { day: () => { if (RUINS) ruinsDay(); }, list: () => ruinList.slice(), worth: vid => ruinWorth(villages[vid]), best: p => bestRuin(p), at: p => scavengeAt(p), home: p => bringHome(p), see: vid => seeRuin(villages[vid]), breadHours: h => breadHours(h), M_RUIN: M_RUIN, house: (pid, vid) => startHouse(byId.get(pid), villages[vid]), looted: (pid, text) => lootedFrom(byId.get(pid), text), holds: (p, vid) => mFind(p, M_RUIN, vid) >= 0 },
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
-      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, homes: homes,
+      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, riverW: riverW, homes: homes,
       /* Rain (TODO 6b): this year's crops for the rain on each square, 100 an ordinary year (null with
          Rain off), and any year's, worked out fresh without touching the world. */
       /* Send somebody somewhere, as a decision would: for tests (crossing water, TODO 6d). */
@@ -13624,6 +13639,40 @@
       armyOf: fid => ARMY.get(fid) || null, unitOf: p => UNIT_OF.get(p.id) || null, armiesHour: () => armiesHour(), chooseShape: (fid, oid) => { const c = { v: 0 }; chooseShape(factions[fid], factions[oid], c, null); return c.shape; }, SHAPES: SHAPES, shapesUsed: SHAPES_USED, chooseGround: (fid, x, y, ex, ey) => chooseGround(factions[fid], x, y, ex, ey, null), warKit: fid => warKit(factions[fid]),
       machinesDay: (fid, wars) => machinesDay(factions[fid], wars), blowBridge: vid => blowBridge(villages[vid], -1),
       units: () => { const out = []; for (const a of ARMY.values()) if (a.engaged) for (const u of a.units) { if (u.broken) continue; const sh = SHAPES[u.shape], l = byId.get(u.lead); out.push({ f: u.f, x: u.sx, y: u.sy, face: u.face, w: u.files * sh.sp * METRE, d: Math.max(1, Math.ceil(u.size / u.files)) * Math.max(1.5, sh.sp) * METRE, role: u.role, shape: u.shape, lead: l ? [l.x, l.y] : null }); } return out; },
+      /* For the map (TODO 22e, 22b): what can be seen of somebody — the arms their people carry, a bow,
+         armour, a horse or chariot under them, a bandit, a caravan's pack animal, a car — as one number.
+         Read from what is kept (a people's kit as last worked out, `f.kit`), never worked out fresh, so
+         asking changes nothing (test/keeper.test.mjs holds a world read like this equal to one not read). */
+      mapLook: p => {
+        const f = factions[p.f], k = KIT_ON ? f.kit : null, soldier = p.job === "soldier";
+        let c = 0;
+        if (equipped(p, "weapon")) {
+          const a = k ? k.arms : WIRED ? armsOf(f.id) : ARMS.hand;
+          c |= Math.max(0, MAP_ARMS.indexOf(a)) + 1;
+          if (soldier && OLD_ARMS && (k ? k.archers && k.bow && idHash(p) < k.archers * 100 : false)) c |= (MAP_BOWS[k.bow] || 1) << 4;
+        }
+        if (equipped(p, "armour")) { const a = k ? k.armour : KIT_ON ? null : armourOf(f); c |= (a ? MAP_ARMOUR.indexOf(a) + 1 : 0) << 6; }
+        if (soldier && GENERALS && idHash(p) >= 85 && has(f.id, "horses")) c |= 1 << 9;
+        if (soldier && OLD_ARMS && (k ? k.chariot : eraOf(f) === "bronze") && idHash(p) < 10) c |= 1 << 10;
+        if (p.job === "bandit") c |= 1 << 11;
+        if (p.cargo && p.cargo.caravan) c |= (has(f.id, "horses") ? 2 : 1) << 12;
+        if (CARS.has(p.id)) c |= 1 << 14;
+        if (p.tx != null && Math.hypot(p.tx - p.x, p.ty - p.y) > 0.02) c |= 1 << 15;   // on the move
+        if (p.task === "fight") c |= 1 << 16;
+        return c;
+      },
+      /* For the map (TODO 22b, 22c), reading only: a house's fire lit against the cold (smoke from its
+         roof), and the camps armies have pitched outside a place they march on (`column`). */
+      blasts: () => BLASTS,
+      mapHearth: h => FIRE && h.n > 0 && chill() > 0 && !(h.cold >= 1),
+      mapCamps: () => {
+        const out = [];
+        for (const f of factions) if (f.alive && f.camp) for (const o in f.camp) {
+          const s = f.camp[o].stage;
+          if (s && !s.go && t - s.made <= 30 * DAY_HOURS && villages[s.v]) out.push({ f: f.id, o: +o, x: s.x, y: s.y, n: s.ids.size, goal: s.v });
+        }
+        return out;
+      },
       blowOf: (fid, deadly) => { const arms = KIT_ON ? kitOf(factions[fid]).arms : WIRED ? armsOf(fid) : ARMS.hand, d = deadly ?? S.deadly; return { chance: Math.min(0.95, 0.25 * d * (SPREAD && arms.spread ? arms.spread * arms.hit / Math.min(arms.hit, BLOW_MAX) : 1)), harm: (SPREAD ? Math.min(arms.hit, BLOW_MAX) : arms.hit) * (0.6 + 0.4 * d), arms: arms.name }; },   // 2026-11-22: armies spread out; the slider
       meeting: (fid, oid) => { const f = factions[fid], o = factions[oid], c = f.camp[oid]; let all = 0; for (const p of people) if (p.f === fid && p.job === "soldier" && p.hp > 0 && p.id % 3 !== 0) all++; return MEETING && meeting(f, o, c, byId.get(f.leader), all, all); },   // armies that meet
       campOf: f => f.camp, warMap: () => warMap(), felt: (fid, x, y) => felt(fid, x, y), reachOf: f => reachOf(f), campaign: (fid, oid) => campaign(factions[fid], factions[oid], byId.get(factions[fid].leader)),   // TODO 15h
