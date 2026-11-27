@@ -21,7 +21,7 @@ function print(w) {
   for (const f of w.factions) mix(f.treasury);
   return h;
 }
-const w = People.create({ seed: 4, people: 300, era: "medieval", neighbours: "enemies", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old" }); w.step(24 * 365);   // 15.11i to m, built after, off
+const w = People.create({ seed: 4, people: 300, era: "medieval", neighbours: "enemies", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" }); w.step(24 * 365);   // 15.11i to m, built after, off
 assert.equal(print(w), OLD, "the same world, exactly: a reason only reports");
 const wars = w.events.filter(e => e.kind === "war" && / has gone to war with /.test(e.text));
 assert.ok(wars.length > 0, "there were wars");

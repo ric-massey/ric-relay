@@ -16,9 +16,9 @@ import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const OLD = 3006534269;   // print() of the world below before 15.7
 
-assert.equal(print(People.create({ seed: 3, people: 200, land: "family", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old" }), 1500), OLD, "\"as before\" is the old land, exactly");
+assert.equal(print(People.create({ seed: 3, people: 200, land: "family", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" }), 1500), OLD, "\"as before\" is the old land, exactly");
 
-const make = (o) => { const w = People.create(Object.assign({ seed: 3, people: 200, land: "family", factions: 2, war: false }, o)); w.step(24 * 32); return w; };
+const make = (o) => { const w = People.create(Object.assign({ seed: 3, people: 200, land: "family", factions: 2, war: false, lakes: "few", crossing: "big" }, o)); w.step(24 * 32); return w; };
 {
   const w = make({});
   const v = w.villages.find(u => u.alive && w.homes.some(h => h.v === u.id && h.fields && h.n > 0));
@@ -66,7 +66,7 @@ const make = (o) => { const w = People.create(Object.assign({ seed: 3, people: 2
   const v = w.villages.find(u => u.alive), cols = w.cols;
   const i = Math.floor(v.y) * cols + Math.floor(v.x + v.radius + 3);
   if (w.claimAt(i) >= 0) assert.equal(w.claimAt(i), v.f, "the land just past a village's fields is its people's");
-  const y = People.create({ seed: 3, people: 200, land: "family", factions: 3, war: false }); y.step(24 * 300);
+  const y = People.create({ seed: 3, people: 200, land: "family", factions: 3, war: false, lakes: "few", crossing: "big" }); y.step(24 * 300);
   const s = y.stats();
   assert.ok(s.tolls + s.trespass > 0, "strangers pay to use claimed land, or are held to wrong its people (" + s.tolls + " tolls, " + s.trespass + " trespasses)");
 }

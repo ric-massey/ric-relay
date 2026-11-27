@@ -1341,7 +1341,7 @@
   function hear(m, from) {
     if (from !== keeper) return;
     if (m.t === "started") {
-      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, shade: m.shade, riverTo: m.riverTo, riverW: m.riverW, cross: m.cross, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
+      world = { cols: m.cols, rows: m.rows, fert: m.fert, ore: m.ore, ground: m.ground, shade: m.shade, riverTo: m.riverTo, riverW: m.riverW, pond: m.pond, cross: m.cross, tileCapacity: m.tileCapacity, YEAR: m.YEAR, settings: m.settings };
       making = 0; $("slow").hidden = true; runTook = m.took;
       sizeCanvas();
       if (!fit()) requestAnimationFrame(() => { if (world) { sizeCanvas(); fit(); } });
@@ -1859,7 +1859,7 @@
   };
   let look = "map";
   /* Down to a single house (TODO 7a): 4,096 pixels a 250 m square, a 15 m house 245 pixels long. */
-  const MAX_ZOOM = 4096;
+  const MAX_ZOOM = 16384;   // 64 pixels a metre (2026-11-27, Ric: "can we make it so i can zoom in farther?"): a person 32 pixels across
   function groundColour(k, f, sh) {
     const L = LOOKS[look], c = L.ground[k];
     let r = c[0], g = c[1], b = c[2];
@@ -2084,10 +2084,11 @@
         const p = path(shift(base, 1.18), "stroke");
         for (let j = 0; j < 2 * many; j++) { const tx = X + r(1, j) * P * 0.8 + P * 0.1, ty = Y + r(2, j) * P * 0.8 + P * 0.15, q = P * 0.07; p.moveTo(tx - q, ty - q); p.lineTo(tx, ty); p.lineTo(tx + q, ty - q); }
       } else if (k === 6) {                           // forest: tree crowns, dark under, light on the sunny side
-        const dark = path(shift(base, 0.7), "fill"), lit = path(shift(base, 1.35), "fill");
+        const shade = path("rgba(20,30,15,.35)", "fill"), dark = path(shift(base, 0.7), "fill"), lit = path(shift(base, 1.35), "fill");
         const n = 4 * many;
         for (let j = 0; j < n; j++) {
           const tx = X + (0.18 + r(1, j) * 0.64) * P, ty = Y + (0.18 + r(2, j) * 0.64) * P, tr = P * (0.13 + r(3, j) * 0.07);
+          if (tr > 2) { shade.moveTo(tx + tr * 1.3, ty + tr * 0.3); shade.arc(tx + tr * 0.3, ty + tr * 0.3, tr, 0, 6.2832); }   // its shadow, to the south-east
           dark.moveTo(tx + tr, ty); dark.arc(tx, ty, tr, 0, 6.2832);
           lit.moveTo(tx - tr * 0.15, ty - tr * 0.35); lit.arc(tx - tr * 0.35, ty - tr * 0.35, tr * 0.42, 0, 6.2832);
         }
@@ -2231,67 +2232,124 @@
   /* Houses onto a canvas `g`, `P` pixels a square, the square (x0, y0) at the canvas's
      corner; only those between x0..x1, y0..y1. Never smaller than about three pixels, so a
      village can be seen as houses before they are big enough to be drawn as they are. */
+  /* The symbols (TODO 22a, `docs/mockups/world-builder/symbols.html`, 2026-11-27, Ric: "can you update
+     the drawings of the houses? and buildings?"): straight from above, light and shade with no
+     outline — the sun in the north-west, so a roof's faces that look north and west are lit and those
+     that look south and east are in shade, and each building throws a shadow to the south-east. Roofs
+     are dull, the colour of what they are made of, never a people's colour (their land carries that):
+     thatch on timber, slate on stone. One detail says a building's job: a chimney, sails, stalls. */
+  const ROOF = { thatch: [196, 183, 150], slate: [166, 172, 178], store: [176, 138, 110], market: [196, 176, 138], hall: [166, 163, 155], smithy: [124, 118, 110],
+                 dock: [154, 106, 64], fort: [163, 158, 148], oven: [185, 139, 98], mill: [185, 176, 160], power: [108, 103, 96], works: [127, 138, 147],
+                 line: [110, 90, 72], tower: [163, 158, 148], shrine: [176, 138, 110], temple: [217, 210, 194] };
+  const roofOf = h => ROOF[h.kind] || (h.stone ? ROOF.slate : ROOF.thatch);
+  const LIT = [0.7, 0.82, 0.94, 1.05, 1.15];   // a face turned from the sun to one turned to it
+  const tone = (rgb, k) => "rgb(" + Math.min(255, rgb[0] * k | 0) + "," + Math.min(255, rgb[1] * k | 0) + "," + Math.min(255, rgb[2] * k | 0) + ")";
   function paintHouses(g, P, x0, y0, x1, y1) {
     if (!houses || !houses.length) return;
-    const roofs = new Map(), ridges = new Path2D(), lines = new Path2D(), frames = new Path2D(), ash = new Path2D(), grow = Math.max(1, 3 / (0.016 * P));
-    /* How far gone (TODO 16): worn thatch greyed, the frame through a holed roof, roofless walls round
+    const fills = new Map(), fillOf = col => { let p = fills.get(col); if (!p) { p = new Path2D(); fills.set(col, p); } return p; };
+    const shadow = new Path2D(), frames = new Path2D(), ash = new Path2D(), grow = Math.max(1, 3 / (0.016 * P));
+    /* How far gone (TODO 16): worn roofs greyed, the frame through a holed roof, roofless walls round
        weeds, rubble, and at last a mound in the grass. Stone walls are drawn paler than timber ones. */
     const worn = new Path2D(), wallsT = new Path2D(), wallsS = new Path2D(), weeds = new Path2D(), rubble = new Path2D(), mound = new Path2D(), rings = new Path2D();
-    const quad = (path, pts) => { path.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) path.lineTo(pts[k][0], pts[k][1]); path.closePath(); };
+    const quad = (path, pts) => { path.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) path.lineTo(pts[k][0], pts[k][1]); path.closePath(); };
     for (const h of houses) {
       if (h.x < x0 - 0.2 || h.y < y0 - 0.2 || h.x > x1 + 0.2 || h.y > y1 + 0.2) continue;
-      const X = (h.x - x0) * P, Y = (h.y - y0) * P, L = h.len * P * grow / 2, Wd = h.wid * P * grow / 2;
-      const c = Math.cos(h.ang), sn = Math.sin(h.ang);
-      const corners = (k) => [[-L * k, -Wd * k], [L * k, -Wd * k], [L * k, Wd * k], [-L * k, Wd * k]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
+      const X = (h.x - x0) * P, Y = (h.y - y0) * P;
+      let L = h.len * P * grow / 2, Wd = h.wid * P * grow / 2, ang = h.ang;
+      if (Wd > L && !h.round) { const t = L; L = Wd; Wd = t; ang += Math.PI / 2; }   // the ridge along the long side
+      const c = Math.cos(ang), sn = Math.sin(ang);
+      const at = (u, w) => [X + c * u - sn * w, Y + sn * u + c * w];
+      const corners = (k) => [[-L * k, -Wd * k], [L * k, -Wd * k], [L * k, Wd * k], [-L * k, Wd * k]].map(([u, w]) => at(u, w));
       const shape = (path, k) => { if (h.round) { path.moveTo(X + L * k, Y); path.arc(X, Y, L * k, 0, 6.2832); } else quad(path, corners(k)); };
+      /* A face turned (nu, nw) in the building's own frame: how lit it is by a sun in the north-west. */
+      const lit = (nu, nw) => { const d = -(c * nu - sn * nw) * 0.7071 - (sn * nu + c * nw) * 0.7071; return LIT[Math.max(0, Math.min(4, Math.round((d + 1) * 2)))]; };
+      const sd = Math.max(1, Math.min(Wd * 0.55, P * 0.012));   // how far the shadow falls
+      const cast = k => { if (h.round) { shadow.moveTo(X + sd + L * k, Y + sd); shadow.arc(X + sd, Y + sd, L * k, 0, 6.2832); } else quad(shadow, corners(k).map(([x, y]) => [x + sd, y + sd])); };
       if (h.stage === 5) { shape(mound, 1.15); continue; }   // TODO 16: a mound in the grass
       if (h.built < 0) {
         /* Burned (TODO 14b): a charred floor and its walls' stumps, until somebody starts on it again. */
-        const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
-        ash.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) ash.lineTo(pts[k][0], pts[k][1]); ash.closePath();
+        quad(ash, corners(1));
         continue;
       }
       if (h.stage === 4) { shape(rubble, 1); continue; }
       if (h.stage === 3) { shape(weeds, 0.92); shape(h.stone ? wallsS : wallsT, 1); continue; }
+      const rgb = roofOf(h);
       if (h.stage === 2) {
-        let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
-        const q = [[-L, -Wd], [0, -Wd], [0, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
-        if (h.round) shape(r, 0.6); else quad(r, q);
+        const q = [[-L, -Wd], [0, -Wd], [0, Wd], [-L, Wd]].map(([u, w]) => at(u, w));
+        if (h.round) shape(fillOf(tone(rgb, 0.9)), 0.6); else quad(fillOf(tone(rgb, 0.9)), q);
         shape(h.stone ? wallsS : wallsT, 1);
-        for (let k = 1; k < 4; k++) { const u = -L + 2 * L * k / 4; frames.moveTo(X + c * u + sn * Wd, Y + sn * u - c * Wd); frames.lineTo(X + c * u - sn * Wd, Y + sn * u + c * Wd); }
+        for (let k = 1; k < 4; k++) { const u = -L + 2 * L * k / 4; frames.moveTo(...at(u, -Wd)); frames.lineTo(...at(u, Wd)); }
         continue;
       }
-      if (h.kind === "fort") { shape(rings, 1); shape(rings, 0.8); if (h.stage === 1) shape(worn, 1); continue; }   // a fort: its walls round an open yard
-      if (h.stage === 1) shape(worn, 1);
+      if (h.kind === "fort") { cast(1); shape(rings, 1); shape(rings, 0.8); if (h.stage === 1) shape(worn, 1); continue; }   // a fort: its walls round an open yard
       if (h.built < 1) {
         /* A building site: the outline, posts across it, and the roof as far as it has got. */
-        const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
-        frames.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) frames.lineTo(pts[k][0], pts[k][1]); frames.closePath();
-        for (let k = 1; k < 4; k++) { const u = -L + 2 * L * k / 4; frames.moveTo(X + c * u + sn * Wd, Y + sn * u - c * Wd); frames.lineTo(X + c * u - sn * Wd, Y + sn * u + c * Wd); }
-        if (h.built > 0) {
-          let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
-          const e = -L + 2 * L * h.built, q = [[-L, -Wd], [e, -Wd], [e, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
-          r.moveTo(q[0][0], q[0][1]); for (let k = 1; k < 4; k++) r.lineTo(q[k][0], q[k][1]); r.closePath();
+        quad(frames, corners(1));
+        for (let k = 1; k < 4; k++) { const u = -L + 2 * L * k / 4; frames.moveTo(...at(u, -Wd)); frames.lineTo(...at(u, Wd)); }
+        if (h.built > 0) { const e = -L + 2 * L * h.built; quad(fillOf(tone(rgb, 1)), [[-L, -Wd], [e, -Wd], [e, Wd], [-L, Wd]].map(([u, w]) => at(u, w))); }
+        continue;
+      }
+      cast(1);
+      if (h.stage === 1) shape(worn, 1);
+      if (h.round) {
+        /* An oven, a tower or a round hut: lit on its north-west half, in shade on the other. */
+        const o = fillOf(tone(rgb, 1.05)); o.moveTo(X + L, Y); o.arc(X, Y, L, 0, 6.2832);
+        const d = fillOf(tone(rgb, 0.8)); d.moveTo(X, Y); d.arc(X, Y, L, -Math.PI / 4, Math.PI * 3 / 4); d.closePath();
+        if (h.kind === "oven" && L > 4) { const m = fillOf("rgb(58,55,52)"); m.rect(X + L * 0.75, Y - L * 0.25, L * 0.45, L * 0.5); }
+        if (h.kind === "tower" && L > 4) { const m = fillOf(tone(rgb, 0.62)); m.moveTo(X + L * 0.55, Y); m.arc(X, Y, L * 0.55, 0, 6.2832); }
+        continue;
+      }
+      if (h.kind === "market" && L > 5) {
+        /* Stalls round an open square: four small roofs, each lit and shaded. */
+        quad(fillOf(tone([183, 165, 126], 1)), corners(1));
+        for (const [su, sw] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) {
+          const cx = su * L, cw = sw * Wd, a = L * 0.3, b = Wd * 0.3;
+          quad(fillOf(tone(rgb, lit(0, -1))), [at(cx - a, cw - b), at(cx + a, cw - b), at(cx, cw)]);
+          quad(fillOf(tone(rgb, lit(0, 1))), [at(cx - a, cw + b), at(cx + a, cw + b), at(cx, cw)]);
+          quad(fillOf(tone(rgb, lit(-1, 0))), [at(cx - a, cw - b), at(cx - a, cw + b), at(cx, cw)]);
+          quad(fillOf(tone(rgb, lit(1, 0))), [at(cx + a, cw - b), at(cx + a, cw + b), at(cx, cw)]);
         }
         continue;
       }
-      let r = roofs.get(h.col); if (!r) { r = new Path2D(); roofs.set(h.col, r); }
-      if (h.round) { r.moveTo(X + L, Y); r.arc(X, Y, L, 0, 6.2832); lines.moveTo(X + L, Y); lines.arc(X, Y, L, 0, 6.2832); continue; }   // a round hut (TODO 15d); an oven or a tower (TODO 16)
-      const pts = [[-L, -Wd], [L, -Wd], [L, Wd], [-L, Wd]].map(([u, w]) => [X + c * u - sn * w, Y + sn * u + c * w]);
-      r.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) r.lineTo(pts[k][0], pts[k][1]); r.closePath();
-      lines.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) lines.lineTo(pts[k][0], pts[k][1]); lines.closePath();
-      if (L > 6) { ridges.moveTo(X - c * L * 0.92, Y - sn * L * 0.92); ridges.lineTo(X + c * L * 0.92, Y + sn * L * 0.92); }
+      if (h.kind === "dock") {
+        /* Timber on posts over the water: planks across it. */
+        quad(fillOf(tone(rgb, 1)), corners(1));
+        if (L > 6) { const pl = fillOf(tone(rgb, 0.8)); for (let k = -3; k <= 3; k++) { const u = k * L / 4; quad(pl, [at(u - L * 0.02, -Wd), at(u + L * 0.02, -Wd), at(u + L * 0.02, Wd), at(u - L * 0.02, Wd)]); } }
+        continue;
+      }
+      /* A roof: flat where it is too small to show its faces; else four faces, a hipped roof. */
+      if (L < 3 || Wd < 2) { quad(fillOf(tone(rgb, 1)), corners(1)); continue; }
+      let iL = L, iW = Wd, iX = 0;
+      if (h.kind === "temple" && L > 8) {
+        /* A temple: a court walled round, and the house of the god in it. */
+        quad(fillOf(tone(rgb, 1.08)), corners(1)); iL = L * 0.62; iW = Wd * 0.62;
+      }
+      const r = Math.max(0, iL - iW), A = [iX - iL, -iW], B = [iX + iL, -iW], C = [iX + iL, iW], D = [iX - iL, iW], E = [iX - r, 0], F = [iX + r, 0];
+      quad(fillOf(tone(rgb, lit(0, -1))), [A, B, F, E].map(([u, w]) => at(u, w)));
+      quad(fillOf(tone(rgb, lit(0, 1))), [D, C, F, E].map(([u, w]) => at(u, w)));
+      quad(fillOf(tone(rgb, lit(-1, 0))), [A, D, E].map(([u, w]) => at(u, w)));
+      quad(fillOf(tone(rgb, lit(1, 0))), [B, C, F].map(([u, w]) => at(u, w)));
+      /* The one detail. */
+      if (!h.kind && L > 5) { const k = Math.max(1, Wd * 0.28); fillOf("rgb(111,106,100)").rect(...at(L * 0.45, -Wd * 0.5).map(v => v - k / 2), k, k); }   // the chimney of its hearth
+      else if (h.kind === "smithy" && L > 4) { const k = Math.max(1.5, Wd * 0.45); fillOf("rgb(58,55,52)").rect(...at(L * 0.4, 0).map(v => v - k / 2), k, k); }   // the forge's chimney
+      else if (h.kind === "mill" && L > 4) {   // the sails
+        const s = fillOf("rgb(107,79,52)"), R = Math.max(L, Wd) * 1.35, t = R * 0.12;
+        for (let k = 0; k < 4; k++) { const a = ang + Math.PI / 4 + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a); quad(s, [[X, Y], [X + ca * R - sa * t, Y + sa * R + ca * t], [X + ca * R, Y + sa * R]]); }
+      } else if ((h.kind === "works" || h.kind === "power") && L > 6) {   // a sawtooth roof's lights
+        const s = fillOf(tone(rgb, 1.3)); for (let k = -2; k <= 2; k++) { const u = k * L / 3; quad(s, [at(u - L * 0.04, -Wd * 0.9), at(u + L * 0.04, -Wd * 0.9), at(u + L * 0.04, Wd * 0.9), at(u - L * 0.04, Wd * 0.9)]); }
+        if (h.kind === "power") { const k = Math.max(2, Wd * 0.5); fillOf("rgb(70,66,62)").rect(...at(L * 0.75, 0).map(v => v - k / 2), k, k); }
+      }
     }
-    for (const [col, r] of roofs) { g.fillStyle = col; g.fill(r); g.fillStyle = "rgba(120,92,52,.3)"; g.fill(r); }
-    g.lineWidth = Math.max(1, Math.min(2.5, P * 0.002)); g.strokeStyle = "#1c1710"; g.stroke(lines);
-    g.strokeStyle = "rgba(42,35,24,.7)"; g.lineWidth = Math.max(1, P * 0.0025); g.stroke(ridges);
+    g.fillStyle = "rgba(30,36,22,.38)"; g.fill(shadow);
+    for (const [col, p] of fills) { g.fillStyle = col; g.fill(p); }
     g.strokeStyle = "#8a6a40"; g.lineWidth = Math.max(1, Math.min(3, P * 0.003)); g.stroke(frames);
     g.fillStyle = "rgba(150,150,140,.45)"; g.fill(worn);
     g.fillStyle = "rgba(96,128,72,.55)"; g.fill(weeds);
-    g.lineWidth = Math.max(1.5, Math.min(4, P * 0.004)); g.strokeStyle = "#6b5a44"; g.stroke(wallsT); g.strokeStyle = "#a7a294"; g.stroke(wallsS); g.strokeStyle = "#8d8a80"; g.stroke(rings);
-    g.fillStyle = "rgba(120,126,104,.7)"; g.fill(rubble); g.strokeStyle = "rgba(70,74,60,.8)"; g.lineWidth = Math.max(1, Math.min(2.5, P * 0.002)); g.setLineDash([2, 3]); g.stroke(rubble); g.setLineDash([]);
+    g.lineWidth = Math.max(1.5, Math.min(4, P * 0.004)); g.strokeStyle = "#6b5a44"; g.stroke(wallsT); g.strokeStyle = "#a7a294"; g.stroke(wallsS);
+    g.lineWidth = Math.max(2, Math.min(8, P * 0.008)); g.strokeStyle = "#a39e94"; g.stroke(rings);
+    g.fillStyle = "rgba(120,126,104,.7)"; g.fill(rubble);
     g.fillStyle = "rgba(110,140,90,.28)"; g.fill(mound);
-    g.fillStyle = "rgba(38,30,26,.82)"; g.fill(ash); g.strokeStyle = "#0e0b09"; g.lineWidth = Math.max(1, Math.min(2.5, P * 0.002)); g.setLineDash([3, 2]); g.stroke(ash); g.setLineDash([]);
+    g.fillStyle = "rgba(38,30,26,.82)"; g.fill(ash);
   }
   /* Hedges round the fields a household holds (TODO 7c): every side of a held square whose
      neighbour is not the same household's, from (x0, y0) to (x1, y1) in squares, scaled by k and
@@ -2376,7 +2434,7 @@
       if (tx < 0 || ty < 0 || tx >= w.cols || ty >= w.rows) continue;
       const k = w.ground[ty * w.cols + tx], base = L.ground[k], X = ox + gx * s, Y = oy + gy * s;
       const r = j => hash(cx, cy, 1000 + j);
-      if (k === 6) { const d = path(shift(base, 0.7), "fill"), l = path(shift(base, 1.3), "fill"); for (let j = 0; j < 2; j++) { const px = X + r(j) * cs, py = Y + r(j + 5) * cs, rr = cs * (0.25 + r(j + 9) * 0.15); d.moveTo(px + rr, py); d.arc(px, py, rr, 0, 6.2832); l.moveTo(px, py - rr * 0.3); l.arc(px - rr * 0.3, py - rr * 0.3, rr * 0.4, 0, 6.2832); } }
+      if (k === 6) { const sh = path("rgba(20,30,15,.35)", "fill"), d = path(shift(base, 0.7), "fill"), l = path(shift(base, 1.3), "fill"); for (let j = 0; j < 2; j++) { const px = X + r(j) * cs, py = Y + r(j + 5) * cs, rr = cs * (0.25 + r(j + 9) * 0.15); sh.moveTo(px + rr * 1.3, py + rr * 0.3); sh.arc(px + rr * 0.3, py + rr * 0.3, rr, 0, 6.2832); d.moveTo(px + rr, py); d.arc(px, py, rr, 0, 6.2832); l.moveTo(px, py - rr * 0.3); l.arc(px - rr * 0.3, py - rr * 0.3, rr * 0.4, 0, 6.2832); } }
       else if (k === 5 || k === 7) { const p = path(shift(base, 1.18), "stroke"); for (let j = 0; j < 2; j++) { const px = X + r(j) * cs, py = Y + r(j + 5) * cs, q = cs * 0.08; p.moveTo(px - q, py - q); p.lineTo(px, py); p.lineTo(px + q, py - q); } }
       else if (k === 3 || k === 9) { const p = path(shift(base, 0.8), "fill"); for (let j = 0; j < 3; j++) p.rect(X + r(j) * cs, Y + r(j + 5) * cs, Math.max(1, cs * 0.05), Math.max(1, cs * 0.05)); }
       else if (k === 4) { const p = path(shift(base, 0.6), "stroke"); for (let j = 0; j < 3; j++) { const px = X + r(j) * cs, py = Y + r(j + 5) * cs; p.moveTo(px, py); p.lineTo(px + cs * 0.03, py - cs * 0.25); } }
@@ -2393,7 +2451,7 @@
       if (w.ground[i] !== 2 || o > 7) continue;
       rp.moveTo(ox + (tx + 0.5) * s, oy + (ty + 0.5) * s); rp.lineTo(ox + (tx + 0.5 + DXs[o]) * s, oy + (ty + 0.5 + DYs[o]) * s);
     }
-    if (world.riverW) drawRivers(s, ox, oy); else { ctx.strokeStyle = "rgb(" + L.ground[2].join(",") + ")"; ctx.lineWidth = Math.max(2, s * 15 / 250); ctx.stroke(rp); }
+    if (world.riverW) { drawRivers(s, ox, oy); drawPonds(W, H, s, ox, oy); } else { ctx.strokeStyle = "rgb(" + L.ground[2].join(",") + ")"; ctx.lineWidth = Math.max(2, s * 15 / 250); ctx.stroke(rp); }
     if (trackMap && trackMap.size) {
       const [pp, rr] = tracks(x0, y0, x1, y1, s, ox, oy);
       ctx.lineCap = "round";
@@ -2429,6 +2487,19 @@
     ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "rgb(" + groundColour(2, 0, null).map(v => v | 0).join(",") + ")";
     riverPaths.forEach((r, c) => { if (r.wide) { ctx.lineWidth = Math.max(RIVER_MIN[c] / s, r.wide / 250); ctx.stroke(r.p); } });
     ctx.setTransform(T);
+  }
+  /* Ponds (2026-11-27): a round of water where the seed puts it in its square, from 15 m to about
+     100 m across, never smaller than a few pixels once houses can be seen. */
+  function drawPonds(W, H, s, ox, oy) {
+    const w = world; if (!w || !w.pond || s < 6) return;
+    const x0 = Math.max(0, Math.floor(-ox / s)), y0 = Math.max(0, Math.floor(-oy / s)), x1 = Math.min(w.cols - 1, Math.floor((W - ox) / s)), y1 = Math.min(w.rows - 1, Math.floor((H - oy) / s));
+    const p = new Path2D(), at = window.WBPeopleHost.pondAt, size = window.WBPeopleHost.pondR, seed = w.settings.seed;
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      const i = ty * w.cols + tx, k = w.pond[i]; if (!k) continue;
+      const c = at(i, w.cols, seed), r = Math.max(3.5, size(k) * s), x = ox + c[0] * s, y = oy + c[1] * s;
+      p.moveTo(x + r, y); p.ellipse(x, y, r, r * 0.8, (i % 7) * 0.45, 0, 6.2832);
+    }
+    ctx.fillStyle = "rgb(" + groundColour(1, 0, null).map(v => v | 0).join(",") + ")"; ctx.fill(p);
   }
   /* For checking the page from a test (headless browser): set the zoom and where to look. */
   window.__wbHouse = k => homesArr && homesArr.length > k * 7 ? [homesArr[k * 7], homesArr[k * 7 + 1]] : [0, 0];
@@ -2588,7 +2659,7 @@
     if (land) drawLand(W, H, s, ox, oy);
     /* Who holds the land (TODO 21d): the same wash, laid on twice more. */
     if (land && viewMode === "land" && washPic && s < 128) { ctx.globalAlpha = 0.9; ctx.drawImage(washPic, ox, oy, w.cols * s, w.rows * s); ctx.drawImage(washPic, ox, oy, w.cols * s, w.rows * s); ctx.globalAlpha = 1; }
-    if (land && s < 128) drawRivers(s, ox, oy);   // close in, drawClose draws them under its houses
+    if (land && s < 128) { drawRivers(s, ox, oy); drawPonds(W, H, s, ox, oy); }   // close in, drawClose draws them under its houses
     if (land) drawSeason(W, H, s, ox, oy, f);   // TODO 22c: a dry year, and frost in winter
     if (land) drawFieldsAndHouses(W, H, s, ox, oy);
     if (land) { drawOre(W, H, s, ox, oy); drawDitches(s, ox, oy); }   // TODO 22b
@@ -3100,6 +3171,7 @@
     if (p.boat != null) { const v = vs[p.boat]; return v && v.boat ? [v.boat[0], v.boat[1], 0.1] : null; }
     if (p.camp) { const c = snap && (snap.camps || []).find(c => c.f === p.camp[0] && c.o === p.camp[1]); return c ? [c.x, c.y, 0.4] : null; }   // TODO 22b
     if (p.left) return [p.left[0], p.left[1], 0.02];
+    if (p.pond != null && world.pond) { const c = window.WBPeopleHost.pondAt(p.pond, world.cols, world.settings.seed); return [c[0], c[1], window.WBPeopleHost.pondR(world.pond[p.pond]) + 0.03]; }
     if (p.ditch != null) { const v = vs[p.ditch]; return v && v.ditch ? [(v.ditch[0] + v.x) / 2, (v.ditch[1] + v.y) / 2, 0.3] : null; }
     if (p.house != null && homesArr && p.house * 7 < homesArr.length) return [homesArr[p.house * 7], homesArr[p.house * 7 + 1], 0.05];
     const d = paneData && paneData.thing;
@@ -3755,6 +3827,7 @@
     else if (t.kind === "left") body = t.gone ? "<h3>In the ground</h3><p class='small'>It has gone off, or been cleared.</p>" :
       "<h3>" + ({ mine: "A mine", shell: "A shell that did not go off", bomb: "A bomb that did not go off" }[t.what] || "Something in the ground") + "</h3><p>" + (t.by ? "Left by " + esc(t.by) + ", " : "Left ") + Math.round(t.days) + (Math.round(t.days) === 1 ? " day" : " days") + " ago.</p>" +
       "<p class='small'>It lies here until somebody steps on it, or a people that knows explosives clears it.</p>";
+    else if (t.kind === "pond") body = "<h3>A pond</h3>" + whose + "<p>About " + t.across + " m across. Fresh water: whoever lives near drinks from it as from a river.</p>";
     else if (t.kind === "ditch") body = t.gone ? "<h3>A ditch</h3><p class='small'>It is not there now.</p>" :
       "<h3>" + (t.silted ? "A ditch, silted up" : "A ditch from the river") + "</h3>" + whose + "<p>" + (t.silted ? "Nobody cleaned it last year, so it waters nothing until it is cleaned." : "It waters " + t.fields + " squares of fields, which a dry year spares.") + "</p>";
     else if (t.kind === "unit") body = t.gone ? "<h3>A unit of an army</h3><p class='small'>It has broken up or moved on.</p>" : "<h3>A unit of " + mark(t.f) + esc(t.faction) + "</h3><p>" + esc(t.role === "reserve" ? "In reserve" : "In the line") + ", in " + esc(t.shape || "a body") + ".</p>" +

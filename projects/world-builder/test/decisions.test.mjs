@@ -19,7 +19,7 @@
 import assert from "node:assert/strict";
 import { probe, spentDifferently, other, People } from "./day.mjs";
 
-const BASE = { people: 140, map: "small", factions: 2, villages: 2, crowd: 60 };
+const BASE = { people: 140, map: "small", factions: 2, villages: 2, crowd: 60, lakes: "few", crossing: "big" };   // the land these seeds were measured on (lakes and deep rivers came 2026-11-27; with them "Going hungry" read 2.9%)
 const DAYS = 3, SEEDS = [11, 108, 205, 302, 399, 496];   // six: with two, `uneven` read 2.4% one day and 4.3% over four seeds; with three, 2.7% after item 11 (2026-11-17); with four, `rich` 2.8% after item 12, where ten other seeds read 4.1% (2026-11-18)
 
 const base = SEEDS.map(s => probe(BASE, {}, s, DAYS));

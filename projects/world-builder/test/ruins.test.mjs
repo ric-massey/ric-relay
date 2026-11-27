@@ -17,7 +17,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 const People = createRequire(import.meta.url)("../people.js");
-const OFF = { ruins: "old", scavenge: false, bread: "old" };
+const OFF = { ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" };
 const OLD = 1060750917;   // print() of the world below before item 16
 function print(w) {
   let h = 2166136261;

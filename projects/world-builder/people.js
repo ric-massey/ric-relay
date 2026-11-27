@@ -246,9 +246,12 @@
       { key: "hearth", label: "Whose firewood", type: "select", def: "household",   // TODO 15.5f, 2026-11-22
         options: [["household", "Each household's own, fetched or bought"], ["village", "The village store's, for everybody (simpler)"]],
         help: "Each household keeps its own wood and burns it in the cold: it buys from the village store while it has coins, and otherwise goes out and cuts its own in the village's woods, as the right of firebote let a holding take wood for its fire. A household with none is cold, whatever its neighbours have. Needs Firewood." },
+      { key: "lakes", label: "Lakes and ponds", type: "select", def: "real",   // 2026-11-27
+        options: [["real", "Lakes in the hollows, ponds in wet ground"], ["few", "Only the deepest hollows (as before 2026-11-27)"]],
+        help: "Water stands wherever the ground holds it: a hollow more than a few metres deep in wet country is a lake, and a shallow one a pond, too small to stop anybody but somewhere to drink. In dry country a hollow holds water only after rain, so it stays land." },
       { key: "crossing", label: "Crossing water", type: "select", def: "real",   // TODO 6d, 2026-11-16
-        options: [["real", "Big rivers need a ford, bridge or boat"], ["wade", "Every river can be waded; no boats"]],
-        help: "A big river can only be crossed at a ford, or where a village has built a bridge; a village by a lake or the sea builds a boat once its people keep wanting to cross, and ferries them over. An army does not go by boat: water it cannot walk round stops it." },
+        options: [["real", "Rivers deeper than a person need a ford, bridge or boat"], ["big", "Only the biggest rivers need one (as before 2026-11-27)"], ["wade", "Every river can be waded; no boats"]],
+        help: "A river too deep to wade — anything much over ten metres across — can only be crossed at a ford, or where a village has built a bridge; a village by a lake or the sea builds a boat once its people keep wanting to cross, and ferries them over. An army does not go by boat: water it cannot walk round stops it." },
       { key: "plague", label: "Sickness", type: "select", def: "rare",
         options: [["none", "None"], ["rare", "Now and then"], ["common", "Often"]],
         help: "A sickness starts in one person and passes to whoever they talk to." },
@@ -902,6 +905,9 @@
     const riverTo = new Uint8Array(tiles).fill(255);
     /* How wide each river square's river is, in metres, for the map (2026-11-27); nothing in the world reads it. */
     const riverW = new Uint8Array(tiles);
+    /* A pond on the square (2026-11-27): fresh water to drink, too small to stop a walker or take a
+       field; 0 none, else its size, 1 (a puddle of a pond) to 255 (about a hectare). */
+    const pond = new Uint8Array(tiles);
     /* Rain (TODO 6b): how wet each square's place is (0 to 255), how near water it is (squares, up
        to 8), and this year's crops for the rain, a hundredth a step (100 an ordinary year). Only
        with Rain on. */
@@ -1175,7 +1181,15 @@
       /* A hollow holds a lake when it is deep for its land: 15 m in a valley, more where the land
          has thousands of metres of height in it (big hollows in noise are deeper than real ones,
          which rivers cut through). */
-      const LAKE_DEEP = 15 + amp.reduce((a, b) => a + b, 0) * 0.02;
+      /* 2026-11-27 (Ric: "i also noticed there is no lakes you should probably add lakes and ponds"):
+         at 15 m and more a small or middling land had no lake at all — none on 14, 40 or 60 km lands
+         of several seeds — though lakes and ponds cover a few per cent of most humid country (about
+         2 to 4%, more where ice has been; Downing et al. 2006, "The global abundance and size
+         distribution of lakes, ponds, and impoundments"). Now a hollow 3 m deep holds a lake where the
+         country is wet enough to keep it filled, a little deeper on a land with thousands of metres in
+         it, and a shallower hollow in wet ground a pond. "few" keeps the old rule. */
+      const OLD_LAKES = S.lakes === "few";
+      const LAKE_DEEP = OLD_LAKES ? 15 + amp.reduce((a, b) => a + b, 0) * 0.02 : 3 + amp.reduce((a, b) => a + b, 0) * 0.004;
       const Q = 1 << 16, q = v => Math.min(Q - 1, Math.max(0, ((v - lo) / (hi - lo + 1e-9) * (Q - 1)) | 0));
       const head = new Int32Array(Q).fill(-1), tail = new Int32Array(Q).fill(-1), next = new Int32Array(n);
       const fill = new Float32Array(n), down = new Int32Array(n).fill(-1), order = new Int32Array(n), seen = new Uint8Array(n);
@@ -1204,7 +1218,7 @@
       ground.fill(255);
       for (let i = 0; i < n; i++) {
         if (fill[i] <= sl) ground[i] = G_SEA;
-        else if (fill[i] - h[i] > LAKE_DEEP) ground[i] = G_LAKE;   // a hollow deep enough to hold standing water
+        else if (fill[i] - h[i] > LAKE_DEEP && (OLD_LAKES || at(wet1, i % cols, (i / cols) | 0) > 0.35)) ground[i] = G_LAKE;   // a hollow deep enough to hold standing water, where rain keeps it full
       }
       /* Rain, then how much ground drains through each square; a river where that passes a
          drainage area (O'Callaghan and Mark 1984): about 60 km² of ground at the fewest rivers,
@@ -1227,7 +1241,16 @@
          to wade (the Thames at Oxford drains about 1,600 km²; fords were where it ran shallow over
          gravel). A ford about every 2.5 km on such a river, every 7.5 km past 3,000 km², from the
          seed. */
-      if (cross) for (let i = 0; i < n; i++) if (ground[i] === G_RIVER && acc[i] > PER_KM * PER_KM * 300) {
+      /* Too deep to wade (2026-11-27, Ric: "people cross water with no problems now fix that please"):
+         until then only rivers draining 300 km² (about 35 m wide) stopped a walker, so nearly every
+         river in a world was waded anywhere. A river's depth grows with its flow as its width does
+         (Leopold and Maddock 1953, depth ∝ Q^0.4), and the regional curves of bankfull size (Dunne
+         and Leopold 1978, *Water in Environmental Planning*) put a river about a metre deep and
+         twelve to fifteen wide at around 50 km² drained — past where a person can wade a current
+         safely (about knee to waist deep). So from 56 km² (a 15 m river, `riverW`) it is crossed at a
+         ford, a bridge or by boat. "big" keeps the old line. */
+      const DEEP = PER_KM * PER_KM * (S.crossing === "big" ? 300 : 56);
+      if (cross) for (let i = 0; i < n; i++) if (ground[i] === G_RIVER && acc[i] > DEEP) {
         let hsh = (S.seed * 2654435761 + i * 2246822519) >>> 0; hsh = Math.imul(hsh ^ (hsh >>> 15), 2246822507) >>> 0; hsh = (hsh ^ (hsh >>> 13)) >>> 0;
         cross[i] = hsh / 4294967296 < (acc[i] > PER_KM * PER_KM * 3000 ? 1 / 30 : 1 / 10) ? 2 : 1;
       }
@@ -1277,6 +1300,22 @@
         const flat = near[i] <= 4 ? 0.2 * (1 - near[i] / 5) : 0;
         fert[i] = FERT[k] ? clamp(FERT[k] + flat + (at(rich, x, y) - 0.5) * 1.2 * (S.uneven ?? 0.6), 0.04, 1) : 0;
         ore[i] = ORE[k] ? clamp(ORE[k] + (at(stone, x, y) - 0.5) * 0.6, 0, 1) : 0;
+      }
+      /* Ponds (2026-11-27). Most standing water is ponds too small for a 250 m square to show as water:
+         Britain had about 480,000 in 1998 (the Countryside Survey's count), two to a square kilometre,
+         most of them in wet lowland. So a square of wet, level land has a pond by chance, one in ten,
+         more often the more it lies in a hollow and in marsh; measured, that is about half a pond to a
+         square kilometre of a whole land (a guess below Britain's, which counts its dug ponds too); a pond is drunk from as a river is and does not stop anybody. Drawn from a hash of
+         the seed and the square, not the land's dice, so nothing else about the land moves. */
+      if (!OLD_LAKES) for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        const i = y * cols + x, k = ground[i];
+        if (k !== G_GRASS && k !== G_FOREST && k !== G_MARSH) continue;
+        const wet = at(wet1, x, y) * 0.75 + at(wet2, x, y) * 0.25 + Math.max(0, 1 - near[i] / 8) * 0.3;
+        if (wet < 0.45 || steep(i) >= HILL) continue;
+        const deep = clamp((fill[i] - h[i]) / LAKE_DEEP, 0, 1);
+        let a = (S.seed * 2654435761 + i * 2246822519 + 77) >>> 0; a = Math.imul(a ^ (a >>> 15), 2246822507) >>> 0; a = (a ^ (a >>> 13)) >>> 0;
+        const u = a / 4294967296;
+        if (u < 0.1 + 0.3 * deep + (k === G_MARSH ? 0.2 : 0)) pond[i] = 1 + Math.floor((a & 0xffff) / 65536 * 200 * (0.4 + 0.6 * Math.max(deep, wet - 0.45)));
       }
       if (check && check.land) Object.assign(check.land, { down: down, fill: fill });   // tests only (test/land.test.mjs): how the water drains
       for (let i = 0; i < n; i++) stock[i] = fert[i] * TILE_CAP * 1.6 * S.standing;   // "Crops in the fields"; 0.5 is what it always was
@@ -1335,7 +1374,7 @@
       const q = new Int32Array(tiles); let qh = 0, qt = 0;
       for (let i = 0; i < tiles; i++) {
         if (stopAt(i)) continue;
-        let fresh = ground[i] === G_RIVER;
+        let fresh = ground[i] === G_RIVER || pond[i] > 0;   // a pond is drunk from as a river is (2026-11-27)
         if (!fresh) { const x = i % cols, y = (i / cols) | 0; for (let dy = -1; dy <= 1 && !fresh; dy++) for (let dx = -1; dx <= 1 && !fresh; dx++) { const nx = x + dx, ny = y + dy; fresh = nx >= 0 && ny >= 0 && nx < cols && ny < rows && (ground[ny * cols + nx] === G_LAKE || (cross !== null && cross[ny * cols + nx] === 1)); } }
         if (fresh) { freshNear[i] = i; freshDist[i] = 0; q[qt++] = i; }
       }
@@ -13530,7 +13569,7 @@
       buildings: buildingsNow, get ruinStamp() { return ruinStamp; }, stageOf: stageOf,
       ruins: { day: () => { if (RUINS) ruinsDay(); }, list: () => ruinList.slice(), worth: vid => ruinWorth(villages[vid]), best: p => bestRuin(p), at: p => scavengeAt(p), home: p => bringHome(p), see: vid => seeRuin(villages[vid]), breadHours: h => breadHours(h), M_RUIN: M_RUIN, house: (pid, vid) => startHouse(byId.get(pid), villages[vid]), looted: (pid, text) => lootedFrom(byId.get(pid), text), holds: (p, vid) => mFind(p, M_RUIN, vid) >= 0 },
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
-      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, riverW: riverW, homes: homes,
+      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, riverW: riverW, pond: pond, homes: homes,
       /* Rain (TODO 6b): this year's crops for the rain on each square, 100 an ordinary year (null with
          Rain off), and any year's, worked out fresh without touching the world. */
       /* Send somebody somewhere, as a decision would: for tests (crossing water, TODO 6d). */

@@ -1212,7 +1212,7 @@ than any house could be.
   houses.
 - **Asleep inside.** Going to bed means into the house: the last stretch inside is walked at the
   usual pace, where before anybody within 125 m of their bed had arrived.
-- **Zoom down to a house**, to 4,096 pixels a square (a 15 m house about 245 pixels long). Past
+- **Zoom down to a house**, to 16,384 pixels a square since 2026-11-27 (64 pixels a metre: a person 32 pixels across, a 15 m house about 980 pixels long; it was 4,096, Ric: "can we make it so i can zoom in farther?"). Past
   128 pixels a square the ground is drawn smooth with marks a few metres across worked out from
   the seed for the screen only (tree crowns, tufts, pebbles, reeds, ripples), rivers as a line
   15 m wide, and the houses at their true size: a roof in the faction's colour over thatch, its
@@ -5049,6 +5049,28 @@ page now watches it equal to the world unwatched.
     as the square root of the flow, Leopold and Maddock 1953; the constant is a guess, about 4 m for
     5 km² and 80 m for 1,600 km²). It is never thinner than one to four pixels by size, so the
     streams taper into the big rivers. Water is never washed with a people's colour.
+  - **Rivers too deep to wade** (Ric: "people cross water with no problems now fix that please").
+    Only rivers draining 300 km² (about 35 m wide) used to stop a walker, so nearly every river in a
+    world was waded anywhere. Now a river draining 56 km² (about 15 m wide, a metre deep at bankfull:
+    Dunne and Leopold 1978) is crossed at a ford, a bridge or by boat. "Crossing water" has "big" for
+    the old line. Measured: a default-size world has no river that big, so over 120 days four seeds
+    came out the same either way; on a 60 km land 183 squares of river are now too deep against 15.
+  - **Lakes and ponds** (Ric: "there is no lakes you should probably add lakes and ponds"). A hollow
+    had to be 15 m deep to hold a lake, so lands of 14 to 60 km had none. Now 3 m does where the
+    country is wet enough to keep it full (0.2 to 2% of a land is lake, measured over five lands;
+    Downing et al. 2006 put lakes and ponds at a few per cent of humid country), and wet, level
+    ground has ponds, about half a pond a square kilometre: too small to stop anybody, drunk from as a
+    river is, drawn at their size (15 to 100 m) and answering a tap. "Lakes and ponds: few" is the
+    old land exactly. This makes every seed's land a new one.
+  - **Houses and buildings in the symbols' look** (Ric: "can you update the drawings of the houses?
+    and buildings?"; `docs/mockups/world-builder/symbols.html`). Straight from above, light and shade
+    and no outline: a hipped roof's four faces lit by a sun in the north-west, a shadow to the
+    south-east, roofs the colour of what they are made of (thatch on timber, slate on stone), never a
+    people's colour. One detail a building: a house's chimney, a smithy's forge chimney, a mill's
+    sails, a market's stalls, a dock's planks, a temple's court, a works' roof lights; an oven or a
+    tower round, lit on one half. Trees cast shadows too. The ruin stages and building sites are
+    drawn as before, in the new colours. Roofs used to be the people's colour; the land's wash and
+    the borders say whose a village is.
   - **Frost** over the land below the line where nothing grows, and a **dry year** browning the land
     where this year's rain fell under 85 of an ordinary year's.
 

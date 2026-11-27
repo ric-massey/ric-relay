@@ -14,7 +14,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const OFF = { heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old" };
+const OFF = { heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" };
 const OLD = 433631066;   // print() of the world below after 15.11, before 15.12b to e
 function print(w) {
   let h = 2166136261;

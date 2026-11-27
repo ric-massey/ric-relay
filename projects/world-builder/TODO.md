@@ -7058,8 +7058,10 @@ nothing in the world), black-powder smoke; ditches, ore and a wall's breach; nig
 and smoke (`mapHearth`), houses burning, winter frost and a dry year. Camps, mines and ditches answer
 a tap. README, "What the engine has, on the map". Found then not to be places in the engine, so not
 drawn: a boat between landings (a crossing is a wait at the landing, then arrival), floods.
-**Still open in 22:** the symbols as Ric approves them (houses and buildings redrawn top-down from
-`symbols.html`; everything here was drawn plain, to be redrawn to the approved look), the scale
+**Houses and buildings redrawn** from `symbols.html` the same day (Ric: "can you update the drawings of
+the houses? and buildings?"): hipped roofs lit from the north-west, shadows, dull roofs by material,
+one detail a building; trees cast shadows. **Still open in 22:** the rest of the set as Ric approves it
+(the people sheet, the marks drawn plain above), the scale
 (people at real size are a few pixels even at the closest zoom; what they carry is drawn no smaller
 than a five-pixel body until Ric chooses), and 22d.
 **Budget:** drawing must not slow a frame: a shadow is the same shape drawn once more, offset, no

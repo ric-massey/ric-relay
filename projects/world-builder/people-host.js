@@ -36,6 +36,10 @@
   "use strict";
 
   /* What one byte says about a person on screen, and what they carry. */
+  /* Where a pond lies in its square and how big it is (2026-11-27): the page draws it there and a tap
+     finds it there, from the same two functions, the page's copy written out from these. */
+  function pondAt(i, cols, seed) { let a = ((seed | 0) * 40503 + i * 2654435761) >>> 0; a = Math.imul(a ^ (a >>> 16), 73244475) >>> 0; return [i % cols + 0.25 + (a & 1023) / 1023 * 0.5, Math.floor(i / cols) + 0.25 + ((a >>> 10) & 1023) / 1023 * 0.5]; }
+  function pondR(k) { return 0.03 + k / 255 * 0.17; }   // in squares: about 15 m across to 100 m
   const FLAG = { child: 1, hit: 2, sick: 4, leader: 8, speaking: 16, harvesting: 32 };
   const GEAR = { tool: 1, weapon: 2, shield: 4, pack: 8, food: 16, load: 32, cart: 64 };
   /* The longest stretch of the world's time handed to the engine in one go
@@ -118,10 +122,10 @@
       firsts = []; firstKinds = new Set(); pinRows = new Map(); pinNews = new Map(); rowDay = -1; actions = [];
       startS = Object.assign({}, w.settings); probsNow = null; probsHour = -1;
       rate = +w.settings.rate || 1; paused = false; simAcc = wallAcc = 0; speed = 0; maxSim = maxWall = 0;
-      const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice(), shade = hillShade(w), riverTo = w.riverTo.slice(), riverW = w.riverW ? w.riverW.slice() : null;
+      const fert = w.fert.slice(), ore = w.ore.slice(), ground = w.ground.slice(), shade = hillShade(w), riverTo = w.riverTo.slice(), riverW = w.riverW ? w.riverW.slice() : null, pond = w.pond ? w.pond.slice() : null;
       /* Big rivers and their fords (TODO 6d); bridges come with the villages. */
       const cross = w.cross ? w.cross.slice() : null;
-      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore, ground: ground, shade: shade, riverTo: riverTo, riverW: riverW, cross: cross,
+      send({ t: "started", cols: w.cols, rows: w.rows, tileCapacity: w.tileCapacity, YEAR: w.YEAR, fert: fert, ore: ore, ground: ground, shade: shade, riverTo: riverTo, riverW: riverW, pond: pond, cross: cross,
              settings: Object.assign({}, w.settings), people: w.people.length, took: (now() - t0) / 1000 }, [fert.buffer, ore.buffer, ground.buffer, shade.buffer, riverTo.buffer].concat(cross ? [cross.buffer] : []));
     }
 
@@ -632,6 +636,7 @@
         if (!e) return { kind: "left", gone: true };
         return { kind: "left", what: e.kind, by: w.factions[e.f] ? w.factions[e.f].name : "", days: (w.tick - e.at) / 24, x: e.x, y: e.y };
       }
+      if (pick.pond != null) { const i = pick.pond; return Object.assign({ kind: "pond", tile: i, across: Math.round(pondR(w.pond[i]) * 2 * 250) }, w.owner[i] >= 0 ? whose(w.owner[i]) : {}); }
       if (pick.ditch != null) { const v = w.villages[pick.ditch]; if (!v || !v.ditch) return { kind: "ditch", gone: true }; return Object.assign({ kind: "ditch", silted: !!v.ditch.silted, fields: v.ditch.tiles.length }, whose(v.id)); }
       if (pick.unit) {
         const us = w.units ? w.units() : []; let best = null, bd = 3;
@@ -744,7 +749,7 @@
           out.faction = factionLook(w.factions[pick.faction], name);
           factionsData(m, out, name);
           out.pinned = pins.some(x => x.k === "f" && x.id === pick.faction);
-        } else if (pick.house != null || pick.building != null || pick.field != null || pick.road != null || pick.boat != null || pick.unit || pick.event != null || pick.camp || pick.left || pick.ditch != null) {
+        } else if (pick.house != null || pick.building != null || pick.field != null || pick.road != null || pick.boat != null || pick.unit || pick.event != null || pick.camp || pick.left || pick.ditch != null || pick.pond != null) {
           out.thing = thingLook(pick, name);
         } else {
           const p = pick.person ? byId.get(pick.person) : null;
@@ -839,7 +844,10 @@
         const tx = Math.floor(x), ty = Math.floor(y);
         if (!reply.thing && tx >= 0 && ty >= 0 && tx < w.cols && ty < w.rows) {
           const i = ty * w.cols + tx;
-          if (w.held && w.held.has(i)) reply.thing = { field: i };
+          /* A pond (2026-11-27), where the page draws it: within its size of the point the seed puts it at. */
+          if (w.pond && w.pond[i]) { const c = pondAt(i, w.cols, w.settings.seed), r = pondR(w.pond[i]); if (Math.hypot(x - c[0], y - c[1]) < r + Math.min(0.05, m.r * 0.3)) reply.thing = { pond: i }; }
+          if (reply.thing) {}
+          else           if (w.held && w.held.has(i)) reply.thing = { field: i };
           else if (w.track && w.track[i] === 2) reply.thing = { road: i };
           else if (w.owner[i] >= 0 && w.villages[w.owner[i]]) reply.thing = { faction: w.villages[w.owner[i]].f };
         }
@@ -991,5 +999,5 @@
     turn();
   }
 
-  return { create: create, worker: worker, FLAG: FLAG, GEAR: GEAR };
+  return { create: create, worker: worker, FLAG: FLAG, GEAR: GEAR, pondAt: pondAt, pondR: pondR };
 });

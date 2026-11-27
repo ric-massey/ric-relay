@@ -725,6 +725,11 @@ nobody had linked was a page nobody could find.
   World Builder items check only what they change (`TODO.md`, "Running the sim only as much as
   needed"). The speed its second sentence means is 16× (`STEADY`),
   which Ric chose ("Keep 16×") over a year an hour and over keeping up at 1×.
+  **Water, 2026-11-27** (README, "What the engine has, on the map"): rivers are drawn as lines as wide as
+  they are (`riverW`, map only), a river over about 15 m (56 km² drained) cannot be waded ("Crossing
+  water: big" is the old 300 km² line), and lakes form in 3 m hollows in wet country with ponds in wet
+  ground (`pond`, fresh water to drink; "Lakes and ponds: few" is the old land). Both made every seed
+  a new land; a test built on a picked seed pins `crossing: "big"` and `lakes: "few"` in its LATER list.
   **The land comes from the seed** (TODO 4a, 2026-11-15): height in metres, sea, lakes, rivers
   that run downhill, eleven kinds of ground (Ric added snow and ice), fertility and ore from the
   kind, settings for sea, rivers, forest and hills, land up to 1,000 km. Stored at 250 m a square;
@@ -736,7 +741,7 @@ nobody had linked was a page nobody could find.
   shading, three ranges of zoom, blocks kept and one new block a frame; houses drawn round
   villages are symbols until item 7. Since 7a (2026-11-16) people are half a metre wide by
   default (Ric: "Real size by default"), a house is a building with a real size by wealth, a
-  family sleeps inside it, and the page zooms to 4,096 pixels a square to see one house.
+  family sleeps inside it, and the page zooms to 16,384 pixels a square (64 a metre; 4,096 until 2026-11-27) to see one house.
   **Item 7 done** (2026-11-16): houses built by the family or a paid builder; each faction's own
   land rule (families, the village, the leader; Ric: "a setting for each tribe"); paths and roads
   worn in by walking; carts owned by traders; goods by boat; boats lost.

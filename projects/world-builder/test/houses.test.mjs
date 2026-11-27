@@ -48,7 +48,7 @@ for (const set of [{ seed: 11 }, { seed: 2, sea: 0.6, people: 600 }, { seed: 5, 
 
 // 5. To bed means into the house.
 {
-  const w = People.create({ seed: 11 });
+  const w = People.create({ seed: 11, lakes: "few", crossing: "big" });
   w.step(28);
   const asleep = w.people.filter(p => p.task === "sleep" && Math.hypot(p.x - p.tx, p.y - p.ty) < 1e-9);
   assert.ok(asleep.length > 50, "a night has sleepers: " + asleep.length);
@@ -72,7 +72,7 @@ for (const set of [{ seed: 11 }, { seed: 2, sea: 0.6, people: 600 }, { seed: 5, 
 // 7. Building (TODO 7b). A couple married into a house with other grown-ups sets up a house of
 //    its own; most of the work is taken as done so the test runs days, not months.
 {
-  const w = People.create({ seed: 11 });
+  const w = People.create({ seed: 11, lakes: "few", crossing: "big" });
   w.step(24);
   const money = w.stats().money, minted0 = w.stats().minted;
   const couple = (a, b) => a && b && w.adult(a) && w.adult(b) && a.dwelling === b.dwelling && a.dwelling >= 0;
