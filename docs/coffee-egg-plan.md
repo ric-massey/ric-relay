@@ -53,6 +53,22 @@ overlap, ending in a rounded tip floating above a gap over the liquid. It is now
 body drawn as nested opaque ribbons (Beer–Lambert across the chord, as before), running just
 under the drawn surface at the lowest point across its width, with a small fillet where it goes
 in, a rounded front while it falls and a rounded tail when the pour stops.
+Then the top and the finger (2026-11-27, Ric: "the top layer, the one that rolls … seems to have
+something go behind it and in front of it … more realism without going way off of the style",
+and "make it so the finger swishes the coffee around on mobile. so it will mix the creamer").
+The top of the coffee is seen across the cup now, with coffee2's geometry: the screen is the
+front glass, the cup D deep (a fifth of the short side, 10–25 mm), the eye 15% of the height
+above the screen's top and E in front (300 mm phone, 500 computer), so the back edge stands
+v·D/(E+D) above the front one (v = how far below the eye the surface is) — about 12 px on a
+laptop. The back edge is the front's surface smoothed over 8 mm and 0.15 s late (chosen: across
+the depth a wave is not quite the same wave), so crests at the glass roll up in front of it and
+hide it. The strip is the room's reflection off the top (Fresnel, at this glancing angle),
+lighter toward the back, paler where creamer has come up. A finger on a phone is a 12 mm pad
+dragged through the liquid: what it passes through takes its speed (capped at 1.5 m/s), and
+the solver makes the wake and swirls; the creamer mixes by the eddy diffusion it already had.
+The touch is listened to passively, so the page under still scrolls and taps. Measured: two
+seconds of circles at the bottom lift settled creamer into the cup that, left alone, stays put
+(`.github/test/coffee.mjs`). Not checked on a real phone yet.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 

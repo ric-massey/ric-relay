@@ -1859,6 +1859,14 @@ migration marked "safe to re-run", and re-running it would have put the original
     rounded tip above the liquid. It now runs just under the *drawn* surface (the lowest point
     across its width, so a crater it digs does not leave it short) with a small fillet where it
     goes in; any deeper and it ghosts through the coffee.
+  - **The top is seen across the cup's depth** (Ric, 2026-11-27: "something go behind it and in
+    front of it"): `drawTop` draws the back edge v·D/(E+D) above the front with coffee2's cup and
+    eye, a smoothed, 0.15 s-late copy of the front surface, so crests roll in front of it. It is
+    drawing only — the physics stays in the screen's plane. Keep it in the room's own colours.
+  - **A finger stirs it on a phone** (`s.stir`, same day: "so it will mix the creamer"): the pad
+    sets the speed of what it passes through and nothing else, so the books still close; the
+    touches are passive listeners and must stay so, or the page under stops scrolling.
+    `RELAY_COFFEE.sim()` returns the running simulation for tests and the console.
   - **Turbulence the grid cannot hold is modelled from measured constants**: Smagorinsky's eddy
     viscosity (Cs = 0.17) brakes a plunging jet within centimetres; swirls lose energy at
     Taylor's rate, 0.5·|ω|/2 (a flat flow keeps big swirls for ever where a cup's die). Waves are

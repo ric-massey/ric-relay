@@ -579,6 +579,40 @@
     s.tilt = () => Math.atan2(s.gx, s.gy);
     s.skip = (sec) => { s.t += sec; };
 
+    // ── a finger stirring (Ric, 2026-11-27: "make it so the finger swishes the
+    // coffee around on mobile. so it will mix the creamer"). The fingertip is
+    // a moving body about 12 mm across (chosen - a fingertip's pad), dragged
+    // from where it was to where it is; liquid it passes through is taken up
+    // to its speed, as a spoon takes it, and the solver does the rest - the
+    // wake, the swirls behind it, the waves. The creamer mixes by the same
+    // eddy diffusion it always had: a stir only makes the shear that feeds
+    // it. Nothing is added or removed, so the books still close.
+    const strokes = [];
+    const FINGER = 6 / MM;                                   // radius, px
+    s.stir = (x0, y0, x1, y1, dt) => {
+      if (!(dt > 0)) return;
+      strokes.push([x0, y0, x1, y1, dt]); s.stirs = (s.stirs || 0) + 1;
+      s.asleep = false; quiet = 0;
+    };
+    function stirNow([x0, y0, x1, y1, dt]) {
+      const vx = (x1 - x0) / dt, vy = (y1 - y0) / dt, sp = Math.hypot(vx, vy);
+      // a finger flicked faster than coffee could follow (say 1.5 m/s) still drags it only that fast
+      const cap = Math.min(1, (1.5 * PXM) / (sp || 1)), fvx = vx * cap, fvy = vy * cap;
+      const dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy, R2 = FINGER * FINGER;
+      const xl = Math.min(x0, x1) - FINGER, xr = Math.max(x0, x1) + FINGER, yt = Math.min(y0, y1) - FINGER, yb = Math.max(y0, y1) + FINGER;
+      for (let k = 0; k < n; k++) {
+        const x = X[k], y = Y[k];
+        if (x < xl || x > xr || y < yt || y > yb) continue;
+        // nearest point of the stroke
+        const a = L2 > 0 ? clamp(((x - x0) * dx + (y - y0) * dy) / L2, 0, 1) : 0;
+        const ex = x - (x0 + a * dx), ey = y - (y0 + a * dy), d2 = ex * ex + ey * ey;
+        if (d2 > R2) continue;
+        // full grip at the pad, none at its rim
+        const w = 0.8 * (1 - d2 / R2);
+        VX[k] += (fvx - VX[k]) * w; VY[k] += (fvy - VY[k]) * w;
+      }
+    }
+
     // ── the step
     let quiet = 0;
     s.step = function (frameDt) {
@@ -612,6 +646,9 @@
         s.asleep = false;
       }
       cr.hit = creamS.poured > 0;
+
+      // a finger in the coffee: what it touches goes with it
+      if (strokes.length) { for (const k of strokes) stirNow(k); strokes.length = 0; }
 
       // five seconds full (forty minutes on a phone), then it drains
       if (s.fullAt >= 0 && !s.draining && t - s.fullAt >= HOLD) { s.draining = true; s.asleep = false; }
@@ -742,7 +779,7 @@
         for (let j = 0; j < fy; j++) { A[j * fx + i] = acc / m; acc += tmp[clamp(j + BR + 1, 0, fy - 1) * fx + i] - tmp[clamp(j - BR, 0, fy - 1) * fx + i]; }
       }
     }
-    s.field = () => { field(); return { fx, fy, fr, dens, crm, dist, foam, froth }; };
+    s.field = () => { field(); return { fx, fy, fr, dens, crm, dist, foam, froth, surf }; };
     s.surfaceX = (x) => { field(); return surf[clamp(Math.floor(x / fr), 0, fx - 1)] * (H / Hs); };
     s.level = () => (n * PA) / (W * Hs);
     s.total = () => n * PA;
@@ -845,6 +882,7 @@
     // middle), creamer opaque and milky. Drawn first, so where a stream
     // plunges in, the coffee is over it.
     const ys = H / s.Hs;
+    drawTop(ctx, s, F, ys);
     for (const S of s.streams) drawStream(ctx, s, S, ys);
     s.cx.putImageData(s.img, 0, 0);
     // The edge is not the grid's: it is traced as an outline where the
@@ -952,6 +990,99 @@
       if (run >= 0) body.rect(X(run), y0, X(fx - 1) - X(run), y1 - y0);
     }
     return { body, gloss };
+  }
+
+  // The top of the coffee, seen across the cup (Ric, 2026-11-27: "the top
+  // layer, the one that rolls … seems to have something go behind it and in
+  // front of it … more realism without going way off of the style"). The
+  // screen is the cup's front glass and the cup has depth behind it - D, a
+  // fifth of the screen's short side, 10 to 25 mm, as coffee2 has it - seen
+  // from an eye 15% of the height above the screen's top and E in front
+  // (300 mm a phone, 500 a computer). A point of the surface at the back
+  // wall, v below the eye, shows v·E/(E+D) below it rather than v, so the
+  // back edge stands v·D/(E+D) above the front one: the top of the coffee
+  // shows as a strip, a few pixels at the screen's top and more lower down.
+  // The physics is in the screen's plane, so the back edge is the front's
+  // surface a moment late and a little smoother (across the depth a wave
+  // is not quite the same wave): a crest at the glass rolls up in front of
+  // it and hides it, a trough shows more. Seen this obliquely the top is
+  // mostly a mirror of the room (Fresnel), so it is lighter than the body,
+  // lightest at the back where the angle is shallowest, and paler where
+  // creamer has come to the top.
+  function drawTop(ctx, s, F, ys) {
+    const { fx, fy, fr, dens, crm, surf } = F, { W, H, MM } = s;
+    if (!s.top || s.top.length !== fx) { s.top = new Float32Array(fx); s.back = new Float32Array(fx); s.backOk = new Uint8Array(fx); s.backT = s.t; s.topTmp = new Float32Array(fx); }
+    const front = s.top, back = s.back, ok = s.backOk, tmp = s.topTmp;
+    // the front edge as the outline has it: where the density crosses one
+    // half, found between samples, above the body's start in each column
+    for (let i = 0; i < fx; i++) {
+      let j = Math.round(surf[i] / fr);
+      if (j >= fy - 1) { front[i] = NaN; continue; }
+      while (j > 0 && dens[(j - 1) * fx + i] >= 0.5) j--;
+      const a = j > 0 ? dens[(j - 1) * fx + i] : 0, b = dens[j * fx + i];
+      front[i] = (j - 0.5 + clamp((0.5 - a) / ((b - a) || 1), 0, 1)) * fr + 0.5 * fr;
+    }
+    // the back: smoothed over about 8 mm, a moment (0.15 s) behind
+    const r = Math.max(1, Math.round(8 / MM / fr)), dt = clamp(s.t - s.backT, 0, 0.1), k = 1 - Math.exp(-dt / 0.15);
+    s.backT = s.t;
+    for (let i = 0; i < fx; i++) {
+      let sum = 0, m = 0;
+      for (let q = Math.max(0, i - r); q <= Math.min(fx - 1, i + r); q++) if (front[q] === front[q]) { sum += front[q]; m++; }
+      tmp[i] = m ? sum / m : NaN;
+    }
+    for (let i = 0; i < fx; i++) {
+      if (tmp[i] !== tmp[i]) { ok[i] = 0; continue; }
+      if (!ok[i]) { back[i] = tmp[i]; ok[i] = 1; } else back[i] += (tmp[i] - back[i]) * k;
+    }
+    // the cup's depth and the eye
+    const short = Math.min(W, H) * MM, D = clamp(short / 5, 10, 25), E = short < 100 ? 300 : 500, lift = D / (E + D);
+    const X = (i) => (i === 0 ? 0 : i === fx - 1 ? W : (i + 0.5) * fr);
+    // where the strip shows: from the back edge down to the glass's edge (and on under the body, which covers it)
+    const topY = new Float32Array(fx), seen = new Uint8Array(fx);
+    let any = false;
+    for (let i = 0; i < fx; i++) {
+      if (front[i] !== front[i] || !ok[i]) continue;
+      const fy0 = front[i] * ys, by = back[i] * ys - (0.15 * H + back[i] * ys) * lift;
+      topY[i] = Math.min(by, fy0); seen[i] = by < fy0 - 0.3 ? 2 : 1; if (seen[i] === 2) any = true;
+    }
+    if (!any) return;
+    // runs of columns with a surface, each one path
+    for (let i0 = 0; i0 < fx; ) {
+      if (!seen[i0]) { i0++; continue; }
+      let i1 = i0; while (i1 + 1 < fx && seen[i1 + 1]) i1++;
+      const strip = new Path2D(), edge = new Path2D();
+      let edgeOn = false;
+      // the back edge is drawn only where it shows; where a crest at the glass hides it, it breaks
+      strip.moveTo(X(i0), topY[i0]);
+      for (let i = i0; i <= i1; i++) {
+        if (i > i0) strip.lineTo(X(i), topY[i]);
+        // a column shows the edge if it, or a neighbour, has the back above the front
+        const show = seen[i] === 2 || (i > i0 && seen[i - 1] === 2) || (i < i1 && seen[i + 1] === 2);
+        if (show) { if (edgeOn) edge.lineTo(X(i), topY[i]); else edge.moveTo(X(i), topY[i]); }
+        edgeOn = show;
+      }
+      for (let i = i1; i >= i0; i--) strip.lineTo(X(i), front[i] * ys + 2 * fr * ys);
+      strip.closePath();
+      ctx.save();
+      ctx.clip(strip);
+      // the colour along it: the room's reflection off dark coffee, paler where creamer is at the top
+      for (let i = i0; i <= i1; i++) {
+        const j = clamp(Math.round(front[i] / fr) + 1, 0, fy - 1), f = j * fx + i, c = dens[f] > 0 ? clamp(crm[f] / dens[f], 0, 1) : 0, w = clamp(c * 6, 0, 1);
+        const rr = 66 + (196 - 66) * w, gg = 44 + (176 - 44) * w, bb = 30 + (150 - 30) * w;
+        ctx.fillStyle = `rgb(${rr | 0},${gg | 0},${bb | 0})`;
+        ctx.fillRect(X(i) - fr, topY[i] - 1, 2.2 * fr, front[i] * ys - topY[i] + 3 * fr * ys + 1);
+      }
+      // brighter toward the back, where the view is most glancing
+      ctx.lineJoin = ctx.lineCap = "round";
+      // (a stack of ever narrower faint strokes, so it fades smoothly rather than in bands)
+      const sw = Math.max(4, 0.06 * H * lift * 15);
+      ctx.strokeStyle = "rgba(214,186,158,0.07)";
+      for (let q = 8; q >= 1; q--) { ctx.lineWidth = (sw * q) / 8; ctx.stroke(edge); }
+      ctx.restore();
+      // the meniscus along the back wall catches the light
+      ctx.strokeStyle = "rgba(255,244,228,0.32)"; ctx.lineWidth = 0.8; ctx.stroke(edge);
+      i0 = i1 + 1;
+    }
   }
 
   // A stream is drawn as one smooth body from its top to where it goes in,
@@ -1111,8 +1242,24 @@
       const a = Math.atan2(sx, sy);
       felt = [9.81 * Math.sin(a), 9.81 * Math.cos(a)]; sim.setGravity(felt[0], felt[1]); resume();
     };
+    // A finger on the screen stirs it. The cup still lets every touch through
+    // to the page (it listens, passively, and never takes the touch), so a
+    // tap still taps and a drag still scrolls; the coffee just feels it.
+    const fingers = new Map();
+    const onTouch = (e) => {
+      if (!sim) return;
+      const now = (e.timeStamp || root.performance?.now() || 0) / 1000, k = sim.Hs / (H || 1);
+      for (const t of e.changedTouches) {
+        const x = t.clientX, y = t.clientY * k, was = fingers.get(t.identifier);
+        if (e.type === "touchend" || e.type === "touchcancel") { fingers.delete(t.identifier); continue; }
+        if (was && now > was[2]) sim.stir(was[0], was[1], x, y, clamp(now - was[2], 1 / 240, 0.1));
+        fingers.set(t.identifier, [x, y, now]);
+      }
+      if (e.type === "touchmove") resume();
+    };
     const empty = () => {
       root.cancelAnimationFrame(raf); raf = 0; root.clearTimeout(wake);
+      for (const t of ["touchstart", "touchmove", "touchend", "touchcancel"]) root.removeEventListener(t, onTouch);
       root.removeEventListener("resize", onResize);
       root.removeEventListener("devicemotion", onMotion);
       root.removeEventListener("deviceorientation", onTilt);
@@ -1136,8 +1283,9 @@
     root.addEventListener("resize", onResize);
     root.addEventListener("devicemotion", onMotion);
     root.addEventListener("deviceorientation", onTilt);
+    for (const t of ["touchstart", "touchmove", "touchend", "touchcancel"]) root.addEventListener(t, onTouch, { passive: true });
 
-    cup = { canvas };
+    cup = { canvas, sim: () => sim };   // sim: for the tests and the console
     fit();
     // reduced motion: the full cup, creamed, no pour and no drain to watch - just gone when the drain would come
     if (still) { sim.still(FILL, true); paint(); root.setTimeout(empty, hold * 1000); return true; }
@@ -1145,5 +1293,5 @@
     return true;
   }
 
-  root.RELAY_COFFEE = { pour, createSim, poured: () => !!cup };
+  root.RELAY_COFFEE = { pour, createSim, poured: () => !!cup, sim: () => cup?.sim() };
 })(typeof window !== "undefined" ? window : globalThis);

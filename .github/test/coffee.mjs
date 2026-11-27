@@ -180,8 +180,32 @@ assert.match(two, /return root\.RELAY_COFFEE\.pour\(\)/, 'and without WebGL2 it 
 assert.match(two, /visibilitychange/, 'it stops while the page is hidden');
 assert.match(two, /webglcontextlost/, 'and survives a lost graphics context');
 
+// A finger stirs it (Ric, 2026-11-27): circles through the settled creamer
+// lift it into the coffee, where the same cup left alone keeps it at the
+// bottom, and nothing is added or lost doing it.
+{
+  const lifted = (stir) => {
+    const s = createSim(390, 844, { mm: 68 / 390, hold: 1e9, random: seeded(11) });
+    s.still(0.75, true);
+    for (let f = 0; f < 60; f++) s.step(1 / 60);
+    const before = s.total(), cx = 195, cy = s.Hs - 20, R = 70;
+    for (let f = 1; f <= 120; f++) {
+      const a0 = ((f - 1) / 60) * Math.PI * 2, a1 = (f / 60) * Math.PI * 2;
+      if (stir) s.stir(cx + R * Math.cos(a0), cy + 15 * Math.sin(a0), cx + R * Math.cos(a1), cy + 15 * Math.sin(a1), 1 / 60);
+      s.step(1 / 60);
+    }
+    assert.equal(s.total(), before, 'stirring adds and loses nothing');
+    const P = s.particles(); let up = 0;
+    for (let k = 0; k < P.n; k++) if (P.C[k] > 0.05 && P.Y[k] < s.Hs * 0.96) up += P.C[k];   // the poured layer is the bottom 1.5%
+    return up;
+  };
+  const still = lifted(false), stirred = lifted(true);
+  assert.ok(stirred > 3 * still + 5, `a finger stirs the creamer up (${stirred.toFixed(1)} against ${still.toFixed(1)} left alone)`);
+}
+
 // a phone keeps it forty minutes; the hold is the one number that differs
 const src = read('assets/coffee.js');
+assert.match(src, /addEventListener\(t, onTouch, \{ passive: true \}\)/, 'a finger is felt, passively, so the page under still scrolls and taps');
 assert.match(src, /PHONE_HOLD = 40 \* 60/, 'a phone keeps the cup forty minutes');
 assert.match(src, /addEventListener\("devicemotion"/, 'the liquid feels the phone itself: its tilt and its shaking');
 
