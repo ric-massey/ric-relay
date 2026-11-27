@@ -5071,6 +5071,21 @@ page now watches it equal to the world unwatched.
     tower round, lit on one half. Trees cast shadows too. The ruin stages and building sites are
     drawn as before, in the new colours. Roofs used to be the people's colour; the land's wash and
     the borders say whose a village is.
+  - **Beasts and machines** (TODO 22d; Ric: "everything people horses stuff that doesnt have a place on
+    the map yet all of that needs to be put on the map"). **Oxen and horses belong to a house**
+    (`beastHomes`): whole animals on the house's record, adding up to the village's count, which
+    stays the economy. That count is what neighbours pooling their beasts into one plough team comes
+    to (the choice recommended in TODO 22d; a team was eight oxen and most families had one or two),
+    so ploughing is unchanged. A beast bred goes to the household best able to keep it, the richest for
+    the beasts it has; a beast lost goes from the poorest household with one. No dice: the world is
+    exactly what it was. They stand in their house's yard; a horse is drawn in a cart's shafts
+    wherever the engine's pace has one there. **A herder out at the grazing** has the flock round them
+    (the flock's size is drawn, not counted: the engine keeps grazing as stock, not sheep).
+    **Game** is drawn in the forest squares that hold it, up to three deer by the square's stock.
+    **Tanks** fight with the units they are in and the rest stand at the works with the **aircraft**
+    (`mapMachines`); a **bombing run** is drawn over its target for the hour it flew (`SORTIES`, the
+    last hundred, read by nothing in the world). **People** close in are drawn as on the symbol sheet:
+    a shadow, a rim of their own colour, a little light.
   - **Frost** over the land below the line where nothing grows, and a **dry year** browning the land
     where this year's rain fell under 85 of an ordinary year's.
 

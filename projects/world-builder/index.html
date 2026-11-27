@@ -2795,6 +2795,7 @@
     drawHearths(W, H, s, ox, oy, f, light, nowMs);
     drawLeft(W, H, s, ox, oy, f);
     drawCamps(W, H, s, ox, oy, f);
+    drawBeasts(W, H, s, ox, oy, f, nowMs);   // TODO 22d
     /* Ric, 2026-11-13: people can be boxes. Ric, 2026-11-26: "the people let's change to circles" — so they are
        circles now (TODO 22a), in their people's colour always. */
     // The square diagonal fits inside the 0.42-tile body clearance.
@@ -2823,13 +2824,22 @@
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
       const r = flags[i] & FLAG.child ? small : rad, col = f.tint[i];
       let p = paths.get(col); if (!p) { p = new Path2D(); paths.set(col, p); }
-      if (f.look && f.look[i] && s >= 128) drawUnder(f.look[i], x, y, Math.max(r, LOOK_MIN));   // a horse, chariot, pack animal or car, under the person
+      if (f.look && f.look[i] && s >= 128) drawUnder(f.look[i], x, y, Math.max(r, LOOK_MIN), f.gear[i], s);   // a horse, chariot, pack animal or car, under the person
       if (lined) { under.moveTo(x + r + 0.6, y); under.arc(x, y, r + 0.6, 0, 6.2832); p.moveTo(x + r - 0.4, y); p.arc(x, y, r - 0.4, 0, 6.2832); }
       else { p.moveTo(x + r, y); p.arc(x, y, r, 0, 6.2832); }
       if (flags[i] & ~FLAG.child || f.gear[i] || (f.look && f.look[i])) marked = true;
     }
-    if (lined) { ctx.fillStyle = "#070a0b"; ctx.fill(under); }
-    for (const [col, p] of paths) { ctx.fillStyle = tintColour(f.view, col); ctx.fill(p); }
+    /* As on the symbol sheet (TODO 22a): close in, a shadow to the south-east and a rim a shade of their
+       own colour, never black; a little light on the north-west of each. Far out, a dark edge, as before. */
+    const sheet = s >= 128;
+    if (lined && !sheet) { ctx.fillStyle = "#070a0b"; ctx.fill(under); }
+    if (sheet) { ctx.save(); ctx.translate(rad * 0.35, rad * 0.35); ctx.fillStyle = "rgba(30,36,22,.38)"; ctx.fill(under); ctx.restore(); }
+    for (const [col, p] of paths) {
+      const c = tintColour(f.view, col);
+      if (sheet) { ctx.fillStyle = c; ctx.fill(under); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.fill(under); }
+      ctx.fillStyle = c; ctx.fill(p);
+    }
+    if (sheet) { const hl = new Path2D(); for (let i = 0; i < n; i++) { const x = ox + X[i] * s, y = oy + Y[i] * s; if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue; const r = (flags[i] & FLAG.child ? small : rad) * 0.38; hl.moveTo(x - rad * 0.3 + r, y - rad * 0.3); hl.arc(x - rad * 0.3, y - rad * 0.3, r, 0, 6.2832); } ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fill(hl); }
     /* And then whatever marks somebody out: what they carry, a wound, a
        sickness, a leader's ring, a field being reaped. */
     if (marked && !farOut) for (let i = 0; i < n; i++) {
@@ -2913,6 +2923,7 @@
       }
     }
     drawBlasts(W, H, s, ox, oy, f);   // TODO 22e
+    drawSorties(W, H, s, ox, oy, f, nowMs);   // TODO 22d
     /* Job and what they are doing, beside whoever is picked and, close in,
        the first dozen in view. The keeper chose who; the page finds room. */
     const used = [];
@@ -3072,8 +3083,8 @@
     if (!homesArr || s < 6) return;
     if (hearthArr) {
       const dark = 1 - light, glow = new Path2D(), smoke = new Path2D(), g = Math.max(1.6, s * 1.5 / 250), sm = Math.max(1.8, s * 2 / 250);
-      for (let k = 0; k * 7 < homesArr.length && k < hearthArr.length; k++) {
-        if (!(hearthArr[k] & 2)) continue;
+      for (let k = 0; k * 7 < homesArr.length && k * 2 < hearthArr.length; k++) {
+        if (!(hearthArr[k * 2] & 2)) continue;
         const x = ox + homesArr[k * 7] * s, y = oy + homesArr[k * 7 + 1] * s; if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
         if (dark > 0.05) { glow.moveTo(x + g, y); glow.arc(x, y, g, 0, 6.2832); }
         if (s >= 20 && light > 0.05) for (let j = 0; j < 3; j++) {
@@ -3104,6 +3115,96 @@
       ctx.globalAlpha = 1;
     }
   }
+  /* ── beasts and machines (TODO 22d, 2026-11-27) ────────────────────────
+     Ric: "everything people horses stuff that doesnt have a place on the map yet all of that needs to
+     be put on the map". Each from where the engine has it:
+     - a house's own oxen and horses (`beastHomes` in people.js) stand in its yard, behind it;
+     - game grazes the forest squares that hold it, as many as the square's stock;
+     - a herder out at the grazing has the flock round them;
+     - a people's tanks fight with the units they are in, the rest stand at the works with its aircraft;
+     - a bombing run is drawn over its target for the hour of the world it flew.
+     Animals are drawn at their real size, never under a few pixels, and only close in. */
+  const M = 1 / 250;   // a metre, in squares
+  function animal(x, y, a, len, wide, body, head, sh) {
+    const c = Math.cos(a), s = Math.sin(a);
+    ctx.fillStyle = "rgba(30,36,22,.35)"; ctx.beginPath(); ctx.ellipse(x + sh, y + sh, len / 2, wide / 2, a, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(x, y, len / 2, wide / 2, a, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = head; ctx.beginPath(); ctx.ellipse(x + c * len * 0.55, y + s * len * 0.55, len * 0.17, wide * 0.32, a, 0, 6.2832); ctx.fill();
+  }
+  const OX = ["#8d7f6e", "#5a5044"], HORSE = ["#7a5634", "#5b3f26"], SHEEP = ["#e4ddce", "#4a4038"], DEER = ["#a07850", "#7d5c3d"];
+  /* How big a beast is drawn: its real size, or `min` pixels long, whichever is more. */
+  const beastLen = (m, s, min) => Math.max(min, m * M * s);
+  function drawBeasts(W, H, s, ox, oy, f, now) {
+    if (s >= 300 && homesArr && hearthArr) {
+      for (let k = 0; k * 7 < homesArr.length && k * 2 + 1 < hearthArr.length; k++) {
+        const b = hearthArr[k * 2 + 1]; if (!b) continue;
+        const hx = homesArr[k * 7], hy = homesArr[k * 7 + 1], len = homesArr[k * 7 + 2], wid = homesArr[k * 7 + 3], a = homesArr[k * 7 + 4];
+        const x0 = ox + hx * s, y0 = oy + hy * s; if (x0 < -80 || y0 < -80 || x0 > W + 80 || y0 > H + 80) continue;
+        const c = Math.cos(a), sn = Math.sin(a), back = (wid / 2 + 6 * M) * s, step = 3.2 * M * s;
+        const oxen = b & 15, horses = b >> 4, all = oxen + horses;
+        for (let j = 0; j < all; j++) {
+          const u = (j - (all - 1) / 2) * Math.max(step, 9), x = x0 + c * u + sn * back, y = y0 + sn * u - c * back;
+          const isOx = j < oxen, L = beastLen(isOx ? 2.4 : 2.3, s, 9), Wd = L * (isOx ? 0.38 : 0.3);
+          animal(x, y, a + Math.PI / 2 + (j % 2 ? 0.25 : -0.2), L, Wd, (isOx ? OX : HORSE)[0], (isOx ? OX : HORSE)[1], Math.max(1, L * 0.08));
+        }
+      }
+    }
+    /* Game in the forest: up to three deer a square, by what it holds. */
+    if (s >= 300 && f.game && world) {
+      for (let j = 0; j < f.game.length; j += 2) {
+        const i = f.game[j], g = f.game[j + 1], n = Math.round(g * 3), tx = i % world.cols, ty = Math.floor(i / world.cols);
+        for (let d = 0; d < n; d++) {
+          const x = ox + (tx + 0.15 + hash(tx, ty, 4000 + d) * 0.7) * s, y = oy + (ty + 0.15 + hash(tx, ty, 4100 + d) * 0.7) * s;
+          if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+          const L = beastLen(1.6, s, 7); animal(x, y, hash(tx, ty, 4200 + d) * 6.28, L, L * 0.34, DEER[0], DEER[1], Math.max(1, L * 0.08));
+        }
+      }
+    }
+    /* Machines: tanks with the units they fight in; the rest, and the aircraft, at the works. */
+    for (const m of f.machines || []) {
+      const L = Math.max(12, 7 * M * s), Wd = L * 0.5;
+      for (const [ux, uy, face, nt] of m.field) for (let t = 0; t < nt; t++) {
+        const x = ox + ux * s + Math.cos(face) * L * 1.2 + Math.cos(face + 1.57) * (t - (nt - 1) / 2) * L * 0.8, y = oy + uy * s + Math.sin(face) * L * 1.2 + Math.sin(face + 1.57) * (t - (nt - 1) / 2) * L * 0.8;
+        tank(x, y, face, L, Wd, m.f);
+      }
+      const hx = ox + m.x * s, hy = oy + m.y * s; if (hx < -200 || hy < -200 || hx > W + 200 || hy > H + 200) continue;
+      for (let t = 0; t < Math.min(m.tanks, 12); t++) tank(hx - L * 3 + (t % 4) * L * 0.9, hy + L * 2.5 + Math.floor(t / 4) * L * 1.4, -Math.PI / 2, L, Wd, m.f);
+      m.air.slice(0, 12).forEach((kind, t) => plane(hx + L * 2 + (t % 4) * L * 2.2, hy - L * 2 - Math.floor(t / 4) * L * 2.2, -Math.PI / 2, Math.max(16, 15 * M * s), kind, m.f, now));
+    }
+  }
+  function tank(x, y, a, L, Wd, fid) {
+    const c = Math.cos(a), s = Math.sin(a);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.fillStyle = "rgba(30,36,22,.4)"; ctx.fillRect(-L / 2 + 2, -Wd / 2 + 2, L, Wd);
+    ctx.fillStyle = "#2c2f28"; ctx.fillRect(-L / 2, -Wd / 2, L, Wd * 0.22); ctx.fillRect(-L / 2, Wd / 2 - Wd * 0.22, L, Wd * 0.22);   // tracks
+    ctx.fillStyle = "#5f6b4c"; ctx.fillRect(-L / 2 + L * 0.05, -Wd * 0.3, L * 0.9, Wd * 0.6);
+    ctx.fillStyle = "#4e5a3e"; ctx.beginPath(); ctx.arc(0, 0, Wd * 0.28, 0, 6.2832); ctx.fill(); ctx.fillRect(0, -Wd * 0.06, L * 0.62, Wd * 0.12);   // turret and gun
+    ctx.fillStyle = factionColour(fid); ctx.fillRect(-L * 0.4, -Wd * 0.12, L * 0.12, Wd * 0.24);   // its people's mark
+    ctx.restore();
+  }
+  function plane(x, y, a, span, kind, fid, now) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    const sh = span * 0.25;
+    for (const pass of [0, 1]) {
+      ctx.fillStyle = pass ? "#d7dade" : "rgba(30,36,22,.3)"; if (!pass) ctx.translate(sh, sh);
+      if (kind === "heli") { ctx.beginPath(); ctx.ellipse(0, 0, span * 0.22, span * 0.13, 0, 0, 6.2832); ctx.fill(); ctx.fillRect(-span * 0.55, -span * 0.03, span * 0.4, span * 0.06); }
+      else if (kind === "jet") { ctx.beginPath(); ctx.moveTo(span * 0.5, 0); ctx.lineTo(-span * 0.35, -span * 0.45); ctx.lineTo(-span * 0.2, 0); ctx.lineTo(-span * 0.35, span * 0.45); ctx.closePath(); ctx.fill(); }
+      else { ctx.fillRect(-span * 0.45, -span * 0.06, span * 0.95, span * 0.12); ctx.fillRect(-span * 0.05, -span * 0.5, span * 0.18, span); ctx.fillRect(-span * 0.45, -span * 0.2, span * 0.1, span * 0.4); }
+      if (!pass) ctx.translate(-sh, -sh);
+    }
+    if (kind === "heli") { ctx.strokeStyle = "rgba(60,60,60,.6)"; ctx.lineWidth = 1.5; const r = now / 60; ctx.beginPath(); ctx.moveTo(Math.cos(r) * span * 0.5, Math.sin(r) * span * 0.5); ctx.lineTo(-Math.cos(r) * span * 0.5, -Math.sin(r) * span * 0.5); ctx.stroke(); }
+    ctx.fillStyle = factionColour(fid); ctx.fillRect(-span * 0.02, span * 0.25, span * 0.12, span * 0.12);
+    ctx.restore();
+  }
+  /* A bombing run (`SORTIES`): the aircraft over its target for the hour it flew, its bombs falling. */
+  function drawSorties(W, H, s, ox, oy, f, now) {
+    for (const [fid, kind, tx, ty, age] of f.sorties || []) {
+      const x = ox + tx * s, y = oy + ty * s, span = Math.max(22, 15 * M * s);
+      if (x < -100 || y < -100 || x > W + 100 || y > H + 100) continue;
+      plane(x - span * (1 - age * 2), y - span * 0.6, 0, span, kind, fid, now);
+      ctx.fillStyle = "#2c2f28"; for (let b = 0; b < 3; b++) { const u = ((now / 500 + b / 3) % 1); ctx.beginPath(); ctx.ellipse(x - span * 0.2 + b * span * 0.2, y - span * 0.6 + u * span, 2, 4, 0, 0, 6.2832); ctx.fill(); }
+    }
+  }
   /* What can be seen of a person (mapLook in people.js, TODO 22e, 22b): their people's arms at their
      side, a bow, armour as a ring round them, a helmet; a horse or a chariot under them; a bandit's
      hood; a caravan's pack animal; a car while they drive. Their colour is never touched. */
@@ -3114,7 +3215,14 @@
   const LOOK_MIN = 5;
   const ARM_COL = ["", "#8b6a43", "#b8893e", "#9aa0a4", "#c9d0d4", "#3a332c", "#3a3a36", "#2c2f30"];
   const ARMOUR_COL = ["", "#cdb98e", "#b8893e", "#9aa0a4", "#dfe5e8", "#5a6b55"];
-  function drawUnder(c, x, y, r) {
+  function drawUnder(c, x, y, r, gear, s) {
+    /* Out at the grazing with the flock (TODO 22d): a dozen sheep round the herder, where they are. */
+    if (c & (1 << 17)) for (let j = 0; j < 12; j++) {
+      const a = hash(j, Math.round(x / 50), 4300) * 6.28, d = (0.35 + hash(j, Math.round(y / 50), 4400) * 0.65) * Math.max(6 * M * s, 22), L = beastLen(1.2, s, 6);
+      animal(x + Math.cos(a) * d, y + Math.sin(a) * d, a + 1.2, L, L * 0.55, SHEEP[0], SHEEP[1], Math.max(1, L * 0.08));
+    }
+    /* A horse in a cart's shafts (TODO 15.5o): the pace the engine gives a cart with its village's horse. */
+    if (c & (1 << 19) && gear & GEAR.cart && gear & (GEAR.food | GEAR.load)) { const L = beastLen(2.3, s, 9); animal(x + r * 0.35 + r * 1.5 + L * 0.6, y + r * 0.45, 0, L, L * 0.3, HORSE[0], HORSE[1], Math.max(1, L * 0.08)); }
     const horse = c & (1 << 9), chariot = c & (1 << 10), pack = (c >> 12) & 3, car = c & (1 << 14), moving = c & (1 << 15);
     if (car && moving) {   // a car about 4 m by 1.7 m
       ctx.fillStyle = "#5d6a72"; ctx.strokeStyle = "#1c2226"; ctx.lineWidth = 1;

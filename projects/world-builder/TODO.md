@@ -7060,7 +7060,10 @@ a tap. README, "What the engine has, on the map". Found then not to be places in
 drawn: a boat between landings (a crossing is a wait at the landing, then arrival), floods.
 **Houses and buildings redrawn** from `symbols.html` the same day (Ric: "can you update the drawings of
 the houses? and buildings?"): hipped roofs lit from the north-west, shadows, dull roofs by material,
-one detail a building; trees cast shadows. **Still open in 22:** the rest of the set as Ric approves it
+one detail a building; trees cast shadows. **22d done the same day** (Ric: "all of that needs to be put on the map"): oxen and horses each a house's
+(pooled for the plough, the recommended answer to the question above, which leaves the world unchanged),
+herds with their herder, game in the forest, tanks and aircraft where the engine has them, bombing runs;
+README, "Beasts and machines". **Still open in 22:** the rest of the set as Ric approves it
 (the people sheet, the marks drawn plain above), the scale
 (people at real size are a few pixels even at the closest zoom; what they carry is drawn no smaller
 than a five-pixel body until Ric chooses), and 22d.

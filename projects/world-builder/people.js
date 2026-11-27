@@ -4938,6 +4938,7 @@
     /* The last few hundred blasts, where and when, for the map to draw a burst (TODO 22e). Written here and
        read by nothing in the world: it reports, as `note` does. */
     const BLASTS = [];
+    const SORTIES = [];   // the last bombing runs, where and when, for the map (TODO 22d); read by nothing in the world
     function hurt(q, dmg, by) {
       wakeUp(q);
       const a = equipped(q, "armour") ? armourOf(factions[q.f]) : null;
@@ -5127,6 +5128,7 @@
             if (ruthless) { tx = v.x; ty = v.y; what = "town"; }
             else { const br = places.find(x => x.bridge); const tgt = br || v; tx = br ? br.bridge.x : tgt.x; ty = br ? br.bridge.y : tgt.y; what = br ? "bridge" : "store"; }
           }
+          SORTIES.push({ f: f.id, kind, x: tx, y: ty, at: t }); if (SORTIES.length > 100) SORTIES.shift();
           for (let b = 0; b < bombs; b++) {
             const x = tx + (R() + R() - 1) * scatter * 2, y = ty + (R() + R() - 1) * scatter * 2;
             count.bombs++;
@@ -5463,6 +5465,27 @@
       if (v.hungry > v.pop * 0.2 && v.food < v.pop * 0.5 && v.oxen + v.horses >= 1) {
         const eat = v.horses >= 1 ? "horses" : "oxen", n = Math.min(v[eat], Math.max(1, v[eat] * 0.03));
         v[eat] -= n; v.food += n * OX_FOOD; count.beastsEaten += n;
+      }
+    }
+    /* Each beast belongs to a house (TODO 22d, 2026-11-27; Ric: "technically horses and oxen are put to a
+       house not a person and the person owns everything at and around the house", then "all of that needs
+       to be put on the map"). The village's numbers above stay the economy — breeding, wear, a famine's
+       eating, a sack's driving off — and they are what pooling comes to: neighbours yoke their beasts
+       into one team (a team was eight oxen; most families had one or two), so the plough reads the
+       village's whole herd, as it always has. What this adds is whose each beast is: whole animals kept
+       on the house's record, adding up to the village's count. A beast bred goes to the household best
+       able to keep it, the richest for the beasts it already has; a beast lost (worn out, eaten, driven
+       off) is the poorest household's that has one — the poor sell or eat theirs first. No dice: the
+       world is exactly what it was, and the map draws each house's own beasts in its yard. */
+    function beastHomes(v) {
+      const hs = []; for (const h of homesOf(v)) if (h.v === v.id && h.built && h.n > 0) hs.push(h);
+      for (const h of homesOf(v)) if (h.v === v.id && !(h.built && h.n > 0)) { h.ox = 0; h.horse = 0; }   // an empty or fallen house keeps none
+      if (!hs.length) return;
+      const purse = h => { const q = byId.get(h.head); return q ? q.coins : 0; };
+      for (const [key, total] of [["ox", Math.floor(v.oxen)], ["horse", Math.floor(v.horses)]]) {
+        let sum = 0; for (const h of hs) sum += h[key] || 0;
+        while (sum < total) { let b = hs[0], bs = -Infinity; for (const h of hs) { const sc = purse(h) / (1 + (h[key] || 0)); if (sc > bs) { bs = sc; b = h; } } b[key] = (b[key] || 0) + 1; sum++; }
+        while (sum > total) { let b = null, bs = Infinity; for (const h of hs) if (h[key] > 0) { const sc = purse(h) / h[key]; if (sc < bs) { bs = sc; b = h; } } if (!b) break; b[key]--; sum--; }
       }
     }
     function ploughOf(f) {
@@ -8876,7 +8899,7 @@
       v.empty = 0;
       if (MINT) trustOf(v);   // TODO 15.8
       if (soil) landTurn(v);   // TODO 15.5d
-      if (BEASTS) beastTurn(v);   // TODO 15.5o
+      if (BEASTS) { beastTurn(v); beastHomes(v); }   // TODO 15.5o; whose each beast is, TODO 22d
       /* The faction's grain is never more than the store holds (TODO 15.5t): what was eaten, spoiled or taken went first from it. */
       if (v.levy > v.food) v.levy = Math.max(0, v.food);
       /* A raid here since yesterday, or a year gone by without want or raids (TODO 10). */
@@ -13698,11 +13721,29 @@
         if (CARS.has(p.id)) c |= 1 << 14;
         if (p.tx != null && Math.hypot(p.tx - p.x, p.ty - p.y) > 0.02) c |= 1 << 15;   // on the move
         if (p.task === "fight") c |= 1 << 16;
+        if (p.task === "herd" && p.gathering) c |= 1 << 17;   // out at the grazing with the flock
+        if (BEASTS && equipped(p, "cart") && villages[p.home] && villages[p.home].horses >= 1) c |= 1 << 19;   // a horse in the shafts, as the pace has it
         return c;
       },
       /* For the map (TODO 22b, 22c), reading only: a house's fire lit against the cold (smoke from its
          roof), and the camps armies have pitched outside a place they march on (`column`). */
-      blasts: () => BLASTS,
+      blasts: () => BLASTS, sorties: () => SORTIES,
+      /* For the map (TODO 22d), reading only: game in a forest square, 0 to 1 of what it holds; and each
+         people's machines — tanks with the units they fight in, the rest and the aircraft at the works
+         that built them. */
+      mapGame: i => MATS && ground[i] === G_FOREST ? stockIn(gameStock, i, GAME_YEAR) / GAME_YEAR : 0,
+      mapMachines: () => {
+        const out = [];
+        for (const f of factions) {
+          if (!f.alive || !(f.tanks > 0 || (f.air && f.air.length))) continue;
+          const home = villages.find(v => v.alive && v.f === f.id && v.works && v.works.works && v.works.works.built) || villages.find(v => v.alive && v.f === f.id);
+          let out_ = 0; const field = [];
+          const a = ARMY.get(f.id);
+          if (a && a.engaged) for (const u of a.units) if (!u.broken && u.tanks > 0) { field.push([u.sx, u.sy, u.face, u.tanks]); out_ += u.tanks; }
+          out.push({ f: f.id, x: home ? home.x : 0, y: home ? home.y : 0, tanks: Math.max(0, (f.tanks || 0) - out_), air: f.air ? f.air.slice() : [], field });
+        }
+        return out;
+      },
       mapHearth: h => FIRE && h.n > 0 && chill() > 0 && !(h.cold >= 1),
       mapCamps: () => {
         const out = [];

@@ -288,11 +288,17 @@
       if (w.mapCamps) out.camps = w.mapCamps();
       if (w.left) { out.left = []; for (const e of w.left()) if (e.x > x0 && e.x < x1 && e.y > y0 && e.y < y1) out.left.push([e.x, e.y, e.kind === "mine" ? 0 : e.kind === "bomb" ? 2 : 1]); }
       out.fires = []; const tNow = w.tick;
+      /* TODO 22d: tanks and aircraft where they are, a bombing run over its target for the hour it flew,
+         and close in, the game in the forest squares in view. */
+      if (w.mapMachines) out.machines = w.mapMachines();
+      if (w.sorties) { out.sorties = []; for (const r of w.sorties()) if (tNow - r.at < 1) out.sorties.push([r.f, r.kind, r.x, r.y, tNow - r.at]); }
+      if (w.mapGame && s >= 300) { out.game = []; for (let ty = Math.max(0, Math.floor(sy0)); ty <= Math.min(w.rows - 1, Math.floor(sy1)); ty++) for (let tx = Math.max(0, Math.floor(sx0)); tx <= Math.min(w.cols - 1, Math.floor(sx1)); tx++) { const i = ty * w.cols + tx, g = w.mapGame(i); if (g > 0.05) out.game.push(i, g); } }
       if (w.blasts) { out.blasts = []; for (const b of w.blasts()) if (tNow - b.at < 1 && b.x > x0 && b.x < x1 && b.y > y0 && b.y < y1) out.blasts.push([b.x, b.y, b.r, tNow - b.at]); }
       for (let i = 0; i < w.homes.length; i++) { const h = w.homes[i]; if (!h.built && h.burned > -1e9 && tNow - h.burned < 12) out.fires.push(i, (tNow - h.burned) / 12); }
       if (w.mapHearth) {
-        const hs = new Uint8Array(w.homes.length);
-        for (let i = 0; i < hs.length; i++) { const h = w.homes[i]; hs[i] = (h.built && h.n > 0 ? 1 : 0) | (h.built && w.mapHearth(h) ? 2 : 0); }
+        /* And its beasts (TODO 22d): oxen in the low four bits of a second byte, horses in the high. */
+        const hs = new Uint8Array(w.homes.length * 2);
+        for (let i = 0; i < w.homes.length; i++) { const h = w.homes[i]; hs[i * 2] = (h.built && h.n > 0 ? 1 : 0) | (h.built && w.mapHearth(h) ? 2 : 0); hs[i * 2 + 1] = Math.min(15, h.ox || 0) | Math.min(15, h.horse || 0) << 4; }
         let same = !!hearthSent && hearthSent.length === hs.length && !m.fresh;
         for (let i = 0; same && i < hs.length; i++) if (hs[i] !== hearthSent[i]) same = false;
         if (!same) { hearthSent = hs; out.hearth = hs.slice(); }
