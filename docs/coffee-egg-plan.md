@@ -36,7 +36,13 @@ its own — a small 2D fluid solver for the inside of the coffee (Stam's stable 
 staggered grid, buoyancy, friction, a free surface). Rebuilt the same day as plain two-liquid
 physics (Ric: "think of it as just a liquid and another liquid mixing … high quality and clean
 looking"): a pressure solve that converges, the second liquid on a finer grid, the stream's
-real momentum, and none of the first version's patches. What slows it is friction (Ric: "what
+real momentum, and none of the first version's patches.
+Then the whole thing became one liquid simulation (Ric: "the creamer has like weird lines it
+isn't smooth and it also doesn't move when I shake it. Also the waves don't work like liquid
+because there is no splashes"): FLIP particles and a pressure solve for the coffee and the
+creamer together, so it splashes, sloshes, throws drops, feels the phone's shaking
+(devicemotion) and comes to rest; the creamer settles on the bottom. AGENTS.md has the rules it
+leaves. What slows it is friction (Ric: "what
 slows it is the friction of the creamer on the coffee"): viscosity, and turbulence at Taylor's
 measured rate. It goes from pale curls in black coffee to settled layers, heaviest at the
 bottom (Ric: "it should settle realistically. Like settle on the bottom"), then the solver
@@ -92,14 +98,10 @@ The mug is drawn in code, not an image file.
 
 ## How the liquid should work
 
-- **The bulk is a moving surface, not particles.** At the size of a screen the body of
-  the coffee is a fill with a surface of linked springs (a height field): smooth at any
-  size, cheap on a phone, and it sloshes and settles properly when gravity turns.
-- **Particles only where the eye is:** the pour stream, the splash where it lands, and
-  drips. A few hundred to a couple of thousand, simulated with a small SPH or
-  position-based fluid, drawn as one smooth body (metaballs) rather than dots.
-- **WebGL, written here, no library** (hard rule 4; Weather Pro's 3D radar is already
-  WebGL). A 2D canvas fallback can drop the particles and keep the surface.
+What was planned here first (a height-field surface with particles only for the stream and
+splash) was built, and then replaced, because it could not splash or feel a shake. What is
+built is one 2D FLIP simulation for everything, on a 2D canvas, no library: see AGENTS.md
+("`coffee` fills the screen with coffee") for how and the rules it leaves.
 - For Idea A the spill is mostly particles plus small height-field puddles on each
   surface it lands on; the "surfaces" are the page's own element rectangles.
 

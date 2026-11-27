@@ -1826,67 +1826,71 @@ migration marked "safe to re-run", and re-running it would have put the original
   right amount of time do real math"). Make the stream thicker and it fills faster. The plan,
   including the Mochi version still to build, is `docs/coffee-egg-plan.md`;
   `.github/test/coffee.mjs` holds the level, the volume, the fill time and the drain.
-  **On a phone it tilts with the phone and stays forty minutes** (Ric, same day: "make it
-  rotate based on angle of the phone … for a phone make it so it leaves after 40 min"):
-  `deviceorientation` sets the surface's angle, and an iPhone only reports it after
-  `requestPermission()` from a keypress or tap, so `brewCoffee()` in the terminal and the
-  front door's submit handler ask inside the gesture — don't move that call into
-  `coffee.js`, which loads too late to ask. A still cup stops drawing (`idle()`) until the
-  phone moves or the drain is due; forty minutes of a redrawn canvas is a battery.
-  **Tipped so the coffee reaches the top edge, it runs out there** (Ric: "if the top left
-  or right it drains from there as if someone is drinking it", then "it needs to be smooth
-  like your dumping it out if it's all the way upside down then the just dumps out super
-  fast use actual math"): the coffee is the part of the screen below a level line, at any
-  angle, and the top edge lets it out at Torricelli's speed for each point's depth — weir
-  flow just past a corner, a dump upside down. **No gulps, no caps, no rule that finishes a
-  cup** — a first version had all three and Ric found it stepped. The last of a cup lies too
-  low to reach a corner until the phone is past sideways, and that is the physics. The
-  bubbles and crema ride the coffee's own velocity, read off its depth by continuity
-  (`readFlow`); don't give them a drift of their own again.
-  **Gravity is real and so are the waves** (Ric, same day: "do it real gravity. Otherwise
-  it looks funny. Use the real wave formula"). g is 9.81 m/s² at the screen's real size
-  (a CSS pixel is 0.2646 mm; a phone's is estimated from a 68 mm short side). The waves are
-  the standing waves of a 2D tank, each at ω² = (g·k + σ/ρ·k³)·tanh(k·h); a tip only moves
-  where level is, and the waves carry the surface there — there is no spring, and
-  `coffee.mjs` holds the slosh period to that formula. **What is still chosen** is listed in
-  the file's own comments: the slosh damping ratio (0.02, from the measured range), the
-  nozzle (0.6 m/s, 60 mm up, a 5 mm stream — a Keurig's), the churn under the stream,
-  splash speeds, bubbles, foam and steam, the drain's hole and the colour's absorption
-  constants. A laptop fills in about 11 s; a phone, a far smaller cup, in about 1.5.
-  Don't slow gravity to change that. The first puddle meets each wall as a reflected bore
-  (Rankine–Hugoniot), a few times its own depth — not a splash up the wall.
+  **It is one liquid simulation** (Ric, same day: "the waves don't work like liquid because
+  there is no splashes … it doesn't move when I shake it"): FLIP (Zhu & Bridson 2005), the
+  standard method for splashing liquids — about 18,000 particles carrying velocity and creamer
+  share, a staggered grid of about 6,000 cells (none under 2 mm), pressure solved to
+  convergence by MIC(0)-preconditioned conjugate gradients with the ghost-fluid condition at the
+  surface. The pour's splash, droplets, waves, slosh, the creamer's plunge and settling, the
+  drain and running out over the top edge are all that one thing. It replaced a wave model plus
+  a separate creamer solver, which could not splash and could not feel a shake: **don't split
+  it into parts again.** Things that look optional and are not:
+  - **Friction goes on before gravity** (`eddies` before `forces`). After it, gravity's push was
+    shaved unevenly, the pressure could not hold it up, and the cup circulated at 4 cm/s for ever.
+  - **The spreading step (`relax`) moves positions, never velocities.** FLIP's particles pack
+    together under gravity; this undoes it from a second Poisson solve. Done with velocities, it
+    exploded.
+  - **An empty cell with liquid above and around it is liquid** (`fillHoles`), not air at zero
+    pressure, or the liquid collapses into the gaps.
+  - **A stream in the air is drawn, not simulated**: its fall is exact, and it joins the liquid
+    where it lands with its own speed and width. A 5 mm stream is thinner than the grid and broke
+    into blobs.
+  - **Turbulence the grid cannot hold is modelled from measured constants**: Smagorinsky's eddy
+    viscosity (Cs = 0.17) brakes a plunging jet within centimetres; swirls lose energy at
+    Taylor's rate, 0.5·|ω|/2 (a flat flow keeps big swirls for ever where a cup's die). Waves are
+    irrotational and keep going: the slosh period matches ω² = g·k·tanh(k·h) within 2% (the
+    test holds 8%). Creamer mixes at the eddy diffusivity, ν_t/0.7.
+
+  **On a phone it moves with the phone and stays forty minutes** (Ric: "make it rotate based on
+  angle of the phone … leaves after 40 min"). What the liquid feels is `devicemotion`'s
+  `accelerationIncludingGravity` turned to screen axes (`deviceorientation` is the fallback): a
+  tilt tips it and **a shake throws it about** — the test flicks it at 2.5 g and checks that the
+  liquid and the settled creamer move. An iPhone reports neither until
+  `DeviceMotionEvent.requestPermission()` and `DeviceOrientationEvent.requestPermission()` are
+  called from a keypress or tap, so `brewCoffee()` in the terminal and the front door's submit
+  handler ask inside the gesture — don't move those calls into `coffee.js`, which loads too
+  late. The liquid sleeps once its average speed is under 1 mm/s for a second, and the page
+  stops drawing (steam aside) until a tilt, a shake or the drain; forty minutes of a redrawn
+  canvas is a battery.
+  **Tipped so the coffee reaches the top edge, it runs out there** (Ric: "if the top left or
+  right it drains from there as if someone is drinking it"; "it needs to be smooth … use actual
+  math"): the top edge is open and particles that cross it are gone — a trickle past a corner,
+  a pour on its side, a dump upside down, all the same physics. **No gulps, no caps, no rule
+  that finishes a cup.**
+  **Gravity is real** (Ric: "do it real gravity. Otherwise it looks funny. Use the real wave
+  formula"): 9.81 m/s² at the screen's real size (a CSS pixel is 0.2646 mm; a phone's is
+  estimated from a 68 mm short side). A laptop fills in about 11 s; a phone, a far smaller cup,
+  in about 1.5. Don't slow gravity to change that. The drain is a hole in the floor: half the
+  cup goes in about a second and the rest as Torricelli's slowing trickle, a film under 4 mm
+  removed at the end.
   **It has to look like coffee, not soda** (Ric's girlfriend, 2026-11-26: "it looks more like
-  soda"). What does that: colour by Beer–Lambert (thin is amber-brown, a centimetre is nearly
-  black — cola stays clear red-brown), a glossy surface with no crema band, only a little pale
-  foam where it is poured, a few clear bubbles that drift to the rim and to each other (the
-  Cheerios effect), no fizz in the stream, and steam while it is hot (it cools by Newton's law
-  and stops steaming after about fifteen minutes). Don't bring back the amber crema, the tan
-  foamy stream or a cloud of bubbles.
-  **A second after it is full, a splash of creamer** (Ric, same day: "little bit of creamer
-  about a second after full"). To the physics it is **just a second liquid, 4% denser** (Ric:
-  "think of it as just a liquid and another liquid mixing … it should be high quality and
-  clean looking"), so nothing in it is about creamer: incompressible Navier-Stokes with
-  Boussinesq buoyancy along the phone's gravity, solved the textbook way (Bridson) — a
-  staggered MAC grid of about 12,000 cells, the pressure solved **to convergence** each step
-  by MIC(0)-preconditioned conjugate gradients (about five iterations a step, warm-started),
-  the free surface at zero pressure, and the second liquid on a grid **twice as fine**,
-  carried by MacCormack, so the ribbons are crisp. The stream brings its own volume and its
-  own momentum (a sheet keeps rho·v²·w as it spreads over the cells it lands in). Friction is
-  the two liquids' viscosity (Arrhenius' mixing rule) plus turbulent dissipation at Taylor's
-  measured rate, eps = 0.5·u³/L, L half the depth — the 3D cascade a flat flow lacks. **Don't
-  bring back the first version's patches**: a hydrostatic row-mean subtracted from the
-  buoyancy (needed only because its pressure solve never converged), a hand-set entry speed,
-  a random jitter, a hand-set damping, vorticity confinement. Each was covering for a rough
-  solver. Settled, the second liquid is heaviest at the bottom and less in each layer above
-  (Ric: "it should settle realistically. Like settle on the bottom") — on a laptop 98% in the
-  bottom quarter, on a phone, whose pool is small next to the plume and mixes more,
-  2/16/29/54% by quarter from the top. Chosen, not measured: the density difference, its
-  viscosity (1e-5 m²/s, thick liquid creamer), the amount (2%), the jug, the hand's sway, the
-  colour ramp and the stopping rules (still for a second, or ninety seconds old). It costs
-  about 6-8 ms a step on a laptop and steps at 30 Hz after ten seconds.
-  `.github/test/coffee.mjs` holds the timing, the amount, that none is lost, that it sinks,
-  that it settles heaviest at the bottom and that it comes to rest; the tipping tests pass
-  `cream: 0`.
+  soda"): colour by Beer–Lambert over the distance to the nearest air (thin is amber-brown, a
+  centimetre nearly black), a glossy edge where the surface faces up, a few clear bubbles, no
+  fizz in the stream, and steam while it is hot (Newton's cooling, about fifteen minutes). The
+  liquid is drawn from a field the particles are splatted into and smoothed (two box blurs, close
+  to a Gaussian); single flying drops are drawn as the drops they are.
+  **A second after it is full, a splash of creamer** (Ric: "little bit of creamer about a second
+  after full"). To the physics it is **just a second liquid, 4% denser** (Ric: "think of it as
+  just a liquid and another liquid mixing … high quality and clean looking"): the same
+  particles with a creamer share, heavier by 4%·c (Boussinesq). It plunges, curls and settles
+  on the bottom (Ric: "it should settle realistically. Like settle on the bottom") — on a phone
+  about 87% in the bottom quarter, then the cup sleeps. Chosen, not measured: the density
+  difference, the amount (2%), the jug, the hand's sway, the colour ramp, the nozzle (a
+  Keurig's 5 mm at 0.6 m/s), the drain's hole, bubbles and steam.
+  It costs about 4 ms a step on a phone-sized screen and 12 on a laptop's (on this desktop).
+  `.github/test/coffee.mjs` (about 75 s) holds the fill time, the level, the volume, the drain,
+  coming to rest, the slosh period, tipping, the creamer's amount, sinking and settling, and
+  the shake.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

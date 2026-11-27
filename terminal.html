@@ -437,12 +437,13 @@ type Sydney's cat's name for a surprise!</div>
     const goBack = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "back" }) : history.back();
     // `coffee` pours one (assets/coffee.js, fetched the first time it is typed)
     const brewCoffee = () => {
-      // An iPhone only reports its tilt after asking, and only asks from a
-      // keypress or a tap: this is still inside the one that ran `coffee`.
+      // An iPhone only reports its tilt and its shaking after asking, and only
+      // asks from a keypress or a tap: this is still inside the one that ran `coffee`.
+      window.DeviceMotionEvent?.requestPermission?.().catch(() => {});
       window.DeviceOrientationEvent?.requestPermission?.().catch(() => {});
       if (window.RELAY_COFFEE) return window.RELAY_COFFEE.pour();
       const js = document.createElement("script");
-      js.src = "assets/coffee.js?v=13"; js.onload = () => window.RELAY_COFFEE?.pour();
+      js.src = "assets/coffee.js?v=23"; js.onload = () => window.RELAY_COFFEE?.pour();
       document.head.appendChild(js);
     };
   </script>

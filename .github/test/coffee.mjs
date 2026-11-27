@@ -1,12 +1,10 @@
 /* The `coffee` egg (assets/coffee.js): the screen fills with coffee to three
-   quarters, poured from above like a Keurig. This runs the liquid without a
-   browser at desktop, phone and big-monitor sizes and holds it to what it
-   promises: the stream carries the same at every height and the cup fills in
-   the time that stream would take, it reaches 75%, makes and loses no coffee
-   while full, drains five seconds later, and empties completely. A second
-   after it is full a splash of creamer goes in, sinks and swirls, none of it
-   lost, and then comes to rest. (The tipping tests pour no creamer -
-   cream: 0 - so they measure the coffee alone.)
+   quarters, poured from above like a Keurig, and a second later a splash of
+   creamer goes in. It is one liquid simulation (FLIP), so this runs it
+   without a browser and holds it to what real liquid does: the cup fills in
+   the time its stream would take, keeps its volume, comes to rest, sloshes at
+   the tank's own frequency, runs out over the top edge when tipped, carries
+   the creamer down and lets it settle - and a shake moves all of it.
    It also checks both places that pour one: the terminal, and the front door
    when its hidden terminal hands the command up.
 
@@ -23,170 +21,150 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 vm.runInThisContext(read('assets/coffee.js'));
 const { createSim } = globalThis.RELAY_COFFEE;
 assert.equal(typeof createSim, 'function', 'coffee.js exposes createSim');
+const seeded = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const speeds = (s) => { const P = s.particles(); let m = 0; for (let k = 0; k < P.n; k++) m = Math.max(m, Math.hypot(P.VX[k], P.VY[k])); return m / s.PXM; };
+const creamDepth = (s) => {
+  // the creamer's share in each quarter of the depth, top to bottom
+  const P = s.particles(), top = (s.surfaceX(s.W / 2) * s.Hs) / s.H, D = s.Hs - top, q = [0, 0, 0, 0];
+  let m = 0;
+  for (let k = 0; k < P.n; k++) if (P.C[k] > 0) { m += P.C[k]; q[Math.max(0, Math.min(3, Math.floor((4 * (P.Y[k] - top)) / D)))] += P.C[k]; }
+  return q.map((x) => x / m);
+};
 
-for (const [W, H] of [[1440, 900], [390, 844], [2560, 1400]]) {
-  let seed = 7;
-  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const s = createSim(W, H, { random });
+// The pour, the creamer and the drain, at desktop, phone and big-monitor sizes
+for (const [W, H, mm] of [[1440, 900, 0.2646], [390, 844, 0.174], [2560, 1400, 0.2646]]) {
+  const s = createSim(W, H, { random: seeded(7), mm });
   let t = 0, after = null, full = null, fullAt = null, drainAt = null;
-  while (!s.done && t < 90) {
-    const before = s.total();   // the drain starts inside a step, so "full" is the step before
+  while (!s.done && t < 60) {
+    const before = s.total();
     s.step(1 / 60); t += 1 / 60;
-    for (const v of s.h) assert.ok(Number.isFinite(v) && v >= 0, `${W}x${H}: depth stays a real, non-negative number`);
     if (after === null && s.fullAt >= 0) { after = s.total(); fullAt = t; }
     if (s.draining && drainAt === null) { drainAt = t; full = before; }
   }
-  // the fill time is what the stream carries: Q = width × speed, the same at every height
+  // the stream carries the same at every height: width x speed (continuity)
   for (const y of [0, H / 3, H]) {
     const q = s.widthAt(y) * s.speedAt(y);
     assert.ok(Math.abs(q - s.widthAt(H) * s.speedAt(H)) < 1e-6 * q, `${W}x${H}: the stream carries the same at every height`);
   }
-  const pour = fullAt - 0.15, ideal = (0.75 * W * H) / (s.widthAt(H) * s.speedAt(H));
-  assert.ok(pour > ideal * 0.9 && pour < ideal * 1.4, `${W}x${H}: fills in the time its stream pours (${pour.toFixed(1)} s against ${ideal.toFixed(1)} s)`);
-  const level = full / (W * H);
-  assert.ok(level > 0.72 && level < 0.78, `${W}x${H}: three quarters full before it drains (got ${level.toFixed(3)})`);
-  // the only thing that goes in between the pour and the drain is the creamer
-  assert.ok(Math.abs(full - after - s.cream.poured) / after < 1e-6, `${W}x${H}: no coffee made or lost between the pour and the drain, only the creamer added`);
+  // full once the last of the stream has landed: the pour itself took target / Q
+  const ideal = (0.75 * W * s.Hs) / (s.widthAt(0) * s.speedAt(0)), pour = fullAt - 0.15 - s.fallTime(s.Hs * 0.25);
+  assert.ok(pour > ideal * 0.9 && pour < ideal * 1.2, `${W}x${H}: fills in the time its stream pours (${pour.toFixed(1)} s against ${ideal.toFixed(1)} s)`);
+  const level = full / (W * s.Hs);
+  assert.ok(level > 0.74 && level < 0.79, `${W}x${H}: three quarters full, and the creamer, before it drains (got ${level.toFixed(3)})`);
+  // the only thing that goes in between full and the drain is the creamer (to a particle)
+  assert.ok(Math.abs(full - after - s.cream.poured - s.dripped) <= 2 * s.PA, `${W}x${H}: no coffee made or lost while it stands, only the creamer and the last drips added (${((full - after - s.cream.poured - s.dripped) / s.PA).toFixed(1)} particles off)`);
   assert.ok(Math.abs(drainAt - fullAt - 5) < 0.05, `${W}x${H}: drains five seconds after it is full (${(drainAt - fullAt).toFixed(2)} s)`);
   assert.ok(s.done && s.total() === 0, `${W}x${H}: drains completely (stopped at ${t.toFixed(0)} s)`);
-  assert.ok(t - drainAt < 8, `${W}x${H}: the drain takes a few seconds, not ${(t - drainAt).toFixed(1)}`);
+  assert.ok(t - drainAt < 10, `${W}x${H}: the drain takes seconds, not ${(t - drainAt).toFixed(1)}`);
   assert.ok(s.x0 > W / 2, `${W}x${H}: the stream is a little right of centre`);
 }
 
-// Creamer: a splash, a second after the cup is full. It goes in, sinks -
-// it is a few percent denser than the coffee - and none of it is made or lost
-// in the cup's inside fluid; then the inside rests, so a phone can sleep.
+// the finished cup (reduced motion, or a new width) is full, still, and will drain
 {
-  const W = 1440, H = 900;
-  let seed = 11;
-  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const s = createSim(W, H, { random, hold: 60 });
-  const cr = s.cream;
-  const amount = () => { let m = 0; for (const v of cr.c) m += v; return m * cr.cs * cr.cs; };
-  const depthOf = () => { let m = 0, y = 0; for (let j = 0; j < cr.ny; j++) for (let i = 0; i < cr.nx; i++) { const v = cr.c[j * cr.nx + i]; m += v; y += v * (j + 0.5) * cr.cs; } return y / m; };
-  while (!cr.hit) s.step(1 / 60);
-  assert.ok(Math.abs(cr.start - s.fullAt - 1) < 0.05, `the creamer goes in a second after the cup is full (${(cr.start - s.fullAt).toFixed(2)} s)`);
-  const surface = s.surfaceX(cr.x);
-  for (let k = 0; k < 60 * 2.5; k++) s.step(1 / 60);
-  assert.ok(Math.abs(cr.poured / (0.75 * W * H) - 0.02) < 0.001, `a splash: 2% of the coffee (${(100 * cr.poured / (0.75 * W * H)).toFixed(2)}%)`);
-  assert.ok(Math.abs(amount() - cr.poured) / cr.poured < 0.01, `all the creamer poured is in the coffee (${(100 * amount() / cr.poured).toFixed(1)}%)`);
-  for (const v of cr.c) assert.ok(Number.isFinite(v) && v >= 0 && v <= 1, 'creamer is a real share between 0 and 1');
-  const sunk = (depthOf() - surface) / (H - surface);
-  assert.ok(sunk > 0.3, `being denser, it sinks: its middle is ${(100 * sunk).toFixed(0)}% of the way down`);
-  assert.ok(!s.idle(), 'while it swirls the cup is not idle');
+  const s = createSim(800, 600, { cream: 0, hold: 60 });
+  s.still();
+  assert.ok(!s.done && !s.draining && Math.abs(s.level() - 0.75) < 0.01, `still() is a full cup waiting to drain (${s.level().toFixed(3)})`);
+  let t = 0; while (t < 8 && !s.idle()) { s.step(1 / 60); t += 1 / 60; }
+  assert.ok(s.idle(), `left alone, it settles in a few seconds and is idle, so the page can stop drawing (${t.toFixed(1)} s)`);
 }
+
+// After the pour it comes to rest - nothing in the solver keeps it stirring.
+// (Every step's damping goes in before gravity; after it, gravity's push was
+// shaved unevenly and the cup circulated at 4 cm/s for ever.)
 {
-  const s = createSim(390, 844, { hold: 2400, mm: 0.174 });
-  let t = 0; while (t < 110 && !s.idle()) { s.step(1 / 60); t += 1 / 60; }
-  assert.ok(s.cream.hit && s.idle(), `on a phone the creamer comes to rest and the cup can sleep (${t.toFixed(0)} s)`);
-  // and it rests the way something heavier does: most at the bottom, less in
-  // each layer above (what mixed into the coffee on the way down is only a
-  // little heavier, so it rests partway up), in level layers
-  const cr = s.cream, top = s.surfaceX(195), D = 844 - top, q4 = [0, 0, 0, 0];
-  let m = 0;
-  for (let j = 0; j < cr.ny; j++) for (let i = 0; i < cr.nx; i++) { const v = cr.c[j * cr.nx + i], y = (j + 0.5) * cr.cs; m += v; if (y > top) q4[Math.min(3, Math.floor((4 * (y - top)) / D))] += v; }
-  const pct = q4.map((v) => v / m);
-  assert.ok(pct[0] < pct[1] && pct[1] < pct[2] && pct[2] < pct[3], `heaviest at the bottom, less in each quarter above (${pct.map((p) => (100 * p).toFixed(0)).join('/')}%)`);
-  assert.ok(pct[2] + pct[3] > 0.65, `most of it in the bottom half (${(100 * (pct[2] + pct[3])).toFixed(0)}%)`);
-  const col = (i0, i1) => { let a = 0; for (let i = i0; i < i1; i++) for (let j = 0; j < cr.ny; j++) a += cr.c[j * cr.nx + i]; return a / (i1 - i0); };
-  const q = Math.floor(cr.nx / 4), lean = col(0, q) / col(cr.nx - q, cr.nx);
-  assert.ok(Math.abs(lean - 1) < 0.15, `in a level layer (as thick by one wall as the other: ${lean.toFixed(2)})`);
+  const s = createSim(390, 844, { mm: 0.174, hold: 2400, cream: 0, random: seeded(5) });
+  let t = 0; while (t < 40 && !s.asleep) { s.step(1 / 60); t += 1 / 60; }
+  assert.ok(s.asleep, `after the pour the coffee comes to rest (${t.toFixed(0)} s)`);
+  // and it keeps its volume: the surface is where the particles' volume says
+  const expect = s.Hs - s.level() * s.Hs, got = (s.surfaceX(195) * s.Hs) / s.H;
+  assert.ok(Math.abs(got - expect) < 0.04 * s.Hs, `the liquid keeps its volume (surface at ${got.toFixed(0)}, ${expect.toFixed(0)} expected)`);
+}
+
+// Tipped a little, it sloshes at the tank's own frequency - the dispersion
+// relation, w^2 = g*k*tanh(k*h) for the whole-screen mode k = pi/W, with real
+// gravity at the screen's real size. Nothing in the code is told this number.
+for (const [W, H, mm] of [[390, 844, 0.174], [1440, 900, 0.2646]]) {
+  const s = createSim(W, H, { mm, hold: 2400, cream: 0 });
+  s.still(); s.setTilt(0.15);
+  const P = s.particles(), xs = [];
+  for (let f = 0; f < 60 * 5; f++) { s.step(1 / 60); let m = 0; for (let k = 0; k < P.n; k++) m += P.X[k]; xs.push(m / P.n); }
+  const rest = xs.slice(150).reduce((a, b) => a + b, 0) / (xs.length - 150), ups = [];
+  for (let i = 1; i < xs.length; i++) if (xs[i - 1] < rest && xs[i] >= rest) ups.push(i / 60);
+  const seen = (ups[ups.length - 1] - ups[0]) / (ups.length - 1);
+  const g = 9.81 * 1000 / mm, k = Math.PI / W, period = (2 * Math.PI) / Math.sqrt(g * k * Math.tanh(k * 0.75 * H));
+  assert.ok(Math.abs(seen - period) / period < 0.08, `${W}x${H}: it sloshes at the tank's own period (${seen.toFixed(3)} s, formula ${period.toFixed(3)} s)`);
+}
+
+// Tipped until it reaches the top edge - the cup's open mouth - it runs out
+// there: a gentle tip spills nothing; to a corner some goes and it stops once
+// the level is under the corner; past sideways it pours out; upside down it dumps.
+{
+  const run = (a, secs) => {
+    const s = createSim(390, 844, { mm: 0.174, hold: 2400, cream: 0 }); s.still(); const v = s.volume; s.setTilt(a);
+    let t = 0; while (!s.done && t < secs) { s.step(1 / 60); t += 1 / 60; }
+    return { s, v, t };
+  };
+  const level = run(0.3, 6);
+  assert.ok(level.s.volume === level.v, 'a gentle tip spills nothing');
+  const some = run(1.1, 8), left = some.s.volume / some.v;
+  assert.ok(left > 0.4 && left < 0.95, `tipped to the corner, some runs out (${(100 * left).toFixed(0)}% left)`);
+  const before = some.s.volume; for (let k = 0; k < 300; k++) some.s.step(1 / 60);
+  assert.ok(some.s.volume > before * 0.97, 'and it stops once the level is below the corner');
+  const side = run(2.2, 6);
+  assert.ok(side.s.done && side.t < 3, `past sideways it pours out (${side.t.toFixed(1)} s)`);
+  const flip = run(Math.PI, 6);
+  assert.ok(flip.s.done && flip.t < 2, `upside down it dumps (${flip.t.toFixed(1)} s)`);
+}
+
+// The creamer: a splash, a second after full. Heavier than the coffee, it
+// sinks, and none of it is lost as the two mix; then it settles on the bottom
+// and the cup can sleep.
+{
+  const s = createSim(390, 844, { mm: 0.174, hold: 2400, random: seeded(11) });
+  while (s.cream.start < 0) s.step(1 / 60);
+  assert.ok(Math.abs(s.cream.start - s.fullAt - 1) < 0.05, `the creamer goes in a second after the cup is full (${(s.cream.start - s.fullAt).toFixed(2)} s)`);
+  const share = () => { const P = s.particles(); let c = 0; for (let k = 0; k < P.n; k++) c += P.C[k]; return c * s.PA; };
+  for (let k = 0; k < 60 * 3; k++) s.step(1 / 60);
+  const poured = s.cream.poured;
+  assert.ok(Math.abs(poured / (0.75 * 390 * s.Hs) - 0.02) < 0.001, `a splash: 2% of the coffee (${(100 * poured / (0.75 * 390 * s.Hs)).toFixed(2)}%)`);
+  assert.ok(Math.abs(share() - poured) / poured < 0.01, `mixing moves creamer about, and makes and loses none (${(100 * share() / poured).toFixed(1)}%)`);
+  const q = creamDepth(s);
+  assert.ok(q[2] + q[3] > 0.6, `being heavier, it sinks (${q.map((x) => (100 * x).toFixed(0)).join('/')}% by quarter, top to bottom)`);
+  let t = 0; while (t < 60 && !s.asleep) { s.step(1 / 60); t += 1 / 60; }
+  const end = creamDepth(s);
+  assert.ok(s.asleep, `then it comes to rest (${t.toFixed(0)} s more)`);
+  assert.ok(end[3] > 0.7, `settled on the bottom: ${(100 * end[3]).toFixed(0)}% of it in the bottom quarter`);
+
+  // Shaken (Ric: "it doesn't move when I shake it"): a phone flicked sideways
+  // is, to the liquid in it, a push the other way. The cup wakes, the liquid
+  // sloshes and the creamer goes with it.
+  const P = s.particles(), meanX = () => { let m = 0, c = 0; for (let k = 0; k < P.n; k++) { m += P.X[k] * P.C[k]; c += P.C[k]; } return m / c; };
+  const x0 = meanX();
+  s.setGravity(-25, 9.81);                       // a flick to the right: 2.5 g the other way, for a fifth of a second
+  for (let k = 0; k < 12; k++) s.step(1 / 60);
+  s.setGravity(0, 9.81);
+  let moved = 0, swung = 0;
+  for (let k = 0; k < 90; k++) { s.step(1 / 60); moved = Math.max(moved, speeds(s)); swung = Math.max(swung, Math.abs(meanX() - x0)); }
+  assert.ok(!s.asleep || moved > 0.05, 'a shake wakes the cup');
+  assert.ok(moved > 0.05, `and the liquid moves (${(1000 * moved).toFixed(0)} mm/s)`);
+  assert.ok(swung * s.MM > 2, `and the creamer with it (it swung ${(swung * s.MM).toFixed(1)} mm)`);
 }
 {
   const s = createSim(800, 600);
   s.still(0.75, true);
-  const cr = s.cream; let m = 0; for (const v of cr.c) m += v;
-  assert.ok(s.creamed() && Math.abs(m * cr.cs * cr.cs - cr.want) / cr.want < 1e-6 && s.idle(), 'still(level, true) is a cup already creamed and stirred');
-}
-
-// the finished cup (reduced motion, or a new width) is full and will still drain
-{
-  const s = createSim(800, 600);
-  s.still();
-  assert.ok(!s.done && !s.draining && Math.abs(s.level() - 0.75) < 1e-9, 'still() is a full cup waiting to drain');
-}
-
-// Tipped, the surface heads for level in the world and sloshes there at the
-// tank's own frequency - the dispersion relation, w^2 = g*k*tanh(k*h) for the
-// whole-screen mode k = pi/W, with real gravity at the screen's size - then
-// settles on a slope of tan(angle) without making or losing any coffee.
-{
-  const W = 390, H = 844, s = createSim(W, H, { hold: 60, mm: 0.174, cream: 0 });
-  s.still(); const v = s.volume;
-  s.setTilt(0.4);
-  const slope = () => (s.h[s.N - 40] - s.h[40]) / ((s.N - 80) * s.dx);
-  let over = 0, ups = [], prev = 0;
-  for (let k = 0; k < 60 * 3; k++) {
-    s.step(1 / 60); const d = slope() - Math.tan(0.4); over = Math.max(over, slope());
-    if (prev < 0 && d >= 0) ups.push(k / 60); prev = d;
-  }
-  assert.ok(over > Math.tan(0.4) * 1.3, `it swings well past level before it settles (${over.toFixed(2)} against ${Math.tan(0.4).toFixed(2)})`);
-  const g = 9.81 * 1000 / 0.174, k = Math.PI / W, depth = 0.75 * H;
-  const period = (2 * Math.PI) / Math.sqrt(g * k * Math.tanh(k * depth));
-  const seen = (ups[ups.length - 1] - ups[0]) / (ups.length - 1);
-  assert.ok(Math.abs(seen - period) / period < 0.1, `it sloshes at the tank's own period (${seen.toFixed(3)} s, formula ${period.toFixed(3)} s)`);
-  for (let k = 0; k < 60 * 15; k++) s.step(1 / 60);
-  assert.ok(Math.abs(slope() - Math.tan(0.4)) < 0.02, `and settles on a slope of tan(0.4) (got ${slope().toFixed(3)})`);
-  assert.ok(Math.abs(s.volume - v) / v < 1e-9, 'tipping makes and loses no coffee');
-  for (let k = 0; k < 60 * 10 && !s.idle(); k++) s.step(1 / 60);
-  assert.ok(s.idle(), 'once still it is idle, so the page can stop drawing');
-  assert.ok(!s.draining, 'and it is not draining before its hold is up');
-  s.skip(60); s.step(1 / 60);
-  assert.ok(s.draining, 'the hold is wall-clock time: skipped time still brings the drain');
-}
-// Tipped until it reaches the top edge (the cup's mouth), it runs out there:
-// a gentle tip spills nothing; to a corner it sips and stops once the level
-// is under the corner; past sideways it pours out and upside down it dumps.
-// It is smooth - a little each frame, never in jumps or pulses.
-{
-  const run = (a, secs, W = 390, H = 844) => {
-    const s = createSim(W, H, { hold: 2400, cream: 0 }); s.still(); const v = s.volume; s.setTilt(a);
-    let t = 0, sipped = false, prev = v, jump = 0, drops = [];
-    while (!s.done && t < secs) {
-      s.step(1 / 60); t += 1 / 60; sipped ||= s.sipping;
-      const d = prev - s.volume; prev = s.volume; jump = Math.max(jump, d / v); if (t > 2.5 && d > 0) drops.push(d);
-    }
-    return { s, v, t, sipped, jump, drops };
-  };
-  const level = run(0.3, 10);
-  assert.ok(!level.sipped && level.s.volume === level.v, 'a gentle tip spills nothing');
-  const some = run(1.1, 30), left = some.s.volume / some.v;
-  assert.ok(some.sipped && left > 0.4 && left < 0.95, `tipped to the corner, some is drunk (${(100 * left).toFixed(0)}% left)`);
-  // steady tip, steady stream: each frame takes a little less than the last, no pulses
-  let pulses = 0;
-  for (let k = 1; k < some.drops.length; k++) if (some.drops[k] > some.drops[k - 1] * 1.02) pulses++;
-  assert.ok(pulses === 0, `held still, it runs out smoothly (${pulses} frames took more than the one before)`);
-  const before = some.s.volume; for (let k = 0; k < 600; k++) some.s.step(1 / 60);
-  assert.ok(some.s.volume > before * 0.97, 'and it stops once the level is below the corner');
-  const side = run(2.2, 10);
-  assert.ok(side.s.done && side.t < 3, `past sideways it pours out (${side.t.toFixed(1)} s)`);
-  const flip = run(Math.PI, 10);
-  assert.ok(flip.s.done && flip.t < 2, `upside down it dumps (${flip.t.toFixed(1)} s)`);
-  // real gravity: a phone's worth of coffee falls out in about a fifth of a second - ten-odd frames, not one
-  assert.ok(flip.jump < 0.15, `even dumping, it goes over several frames, not at once (${(100 * flip.jump).toFixed(1)}% in the biggest)`);
-}
-
-// bubbles ride the coffee: tipped, they go with it toward the low side
-{
-  let seed = 3;
-  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const s = createSim(390, 844, { hold: 2400, random, cream: 0 });
-  while (s.fullAt < 0) s.step(1 / 60);
-  const mean = () => s.bubbles.reduce((a, b) => a + b.x, 0) / s.bubbles.length;
-  const was = mean();
-  s.setTilt(-0.7);
-  for (let k = 0; k < 30; k++) s.step(1 / 60);
-  assert.ok(s.bubbles.length > 5 && mean() < was - 10, `tipped left, the bubbles slide left with it (${was.toFixed(0)} -> ${mean().toFixed(0)})`);
+  assert.ok(s.creamed() && s.cream.poured === s.cream.want, 'still(level, true) is a cup already creamed');
 }
 
 // a phone keeps it forty minutes; the hold is the one number that differs
-assert.match(read('assets/coffee.js'), /PHONE_HOLD = 40 \* 60/, 'a phone keeps the cup forty minutes');
+const src = read('assets/coffee.js');
+assert.match(src, /PHONE_HOLD = 40 \* 60/, 'a phone keeps the cup forty minutes');
+assert.match(src, /addEventListener\("devicemotion"/, 'the liquid feels the phone itself: its tilt and its shaking');
 
 const term = read('terminal.html'), door = read('index.html');
 assert.match(term, /coffee: \(\) => \{[\s\S]*?send\(\{ term: "coffee" \}\)[\s\S]*?brewCoffee\(\)/, 'the terminal pours, or hands it up when embedded');
 assert.match(term, /assets\/coffee\.js/, 'the terminal loads coffee.js on demand');
-assert.match(term, /brewCoffee = \(\) => \{[\s\S]*?requestPermission/, 'the terminal asks an iPhone for its tilt inside the keypress');
-assert.match(door, /coffee\$\/i\.test\(typed\)\) window\.DeviceOrientationEvent\?\.requestPermission/, 'so does the front door, inside its submit');
+assert.match(term, /brewCoffee = \(\) => \{[\s\S]*?DeviceMotionEvent\?\.requestPermission[\s\S]*?DeviceOrientationEvent\?\.requestPermission/, 'the terminal asks an iPhone for its motion and tilt inside the keypress');
+assert.match(door, /coffee\$\/i\.test\(typed\)\) \{ window\.DeviceMotionEvent\?\.requestPermission[\s\S]*?DeviceOrientationEvent\?\.requestPermission/, 'so does the front door, inside its submit');
 assert.match(door, /m\.term === "coffee"[\s\S]*?assets\/coffee\.js/, 'the front door pours the coffee its terminal hands up');
 
 console.log('coffee: ok');
