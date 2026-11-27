@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const context=vm.createContext({});
 vm.runInContext(read('assets/coffee3.js'),context);
-const {dimensions,jetAt,parcelAt,streamAt,opening,openTime,START_DELAY,RAMP_SECONDS,drainOpening,projectPoint,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
+const {dimensions,jetAt,parcelAt,streamAt,opening,openTime,START_DELAY,RAMP_SECONDS,drainOpening,projectPoint,stirVelocity,motionResponse,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
 assert.equal(START_DELAY,3,'wait three seconds before the first flow');
 assert.equal(opening(0),0);assert.equal(opening(RAMP_SECONDS),1);
 assert.ok(opening(0.5)<opening(1)&&opening(1)<opening(2),'start slowly and build to full flow');
@@ -22,6 +22,8 @@ near(orientationGravity(90,0,90),[1,0,0]);
 near(accelerationGravity(0,9.81,0),[0,-1,0]);
 near(accelerationGravity(0,-9.81,0,0,-1),[0,-1,0]);
 near(accelerationGravity(0,9.81,0,90),[1,0,0]);
+near(motionResponse([0,-1,0],[0,-1,0]),[0,-1,0]);
+assert.ok(Math.hypot(...motionResponse([2.5,-1,0],[0,-1,0]))<1.3,'shake impulse is attenuated while static gravity remains real');
 for(const b of [-180,-90,-20,0,30,90,180])for(const g of [-90,-35,0,35,90]){
   const v=orientationGravity(b,g,90);
   assert.ok(Math.abs(Math.hypot(...v)-1)<1e-10,'orientation preserves gravity magnitude');
@@ -29,20 +31,23 @@ for(const b of [-180,-90,-20,0,30,90,180])for(const g of [-90,-35,0,35,90]){
 for(const [w,h,phone] of [[1440,900,false],[375,812,true],[844,390,true],[2560,1440,false]]){
   const d=dimensions(w,h,phone);
   const physicalG=0.4*d.metresPerCell/d.timeUnit**2;
+  const spoon=stirVelocity(1000,-1000,0.001,d);
+  assert.ok(Math.hypot(...spoon)*d.metresPerCell/d.timeUnit<=0.300000001,'even a fast swipe has bounded physical spoon velocity');
+  near(stirVelocity(0,0,0.01,d),[0,0]);
   assert.ok(Math.abs(physicalG-9.81)<1e-10,'gravity is 9.81 m/s²');
   const area=Math.PI*(d.radius*d.metresPerCell)**2;
-  const volume=d.target/3*d.metresPerCell**3;
+  const volume=d.target*d.parcelMass/3*d.metresPerCell**3;
   const nozzleSpeed=d.speed*d.metresPerCell/d.timeUnit;
   assert.ok(Math.abs(nozzleSpeed**2-2*9.81*d.head)<1e-12,'maximum nozzle speed comes from gravity and head');
   assert.ok(Math.abs(volume/(area*nozzleSpeed)+START_DELAY+RAMP_SECONDS/2-d.fillSeconds)<1e-10,'fill time includes delayed start and integrated valve flow');
   assert.ok(d.creamTarget>0&&d.capacity>d.target+d.creamTarget,'cream has its own real liquid volume');
-  assert.equal(d.target,Math.floor((d.nx-4)*(d.ny-4)*(d.nz-4)*0.75*3));
+  assert.equal(d.target,Math.floor((d.nx-4)*(d.ny-4)*(d.nz-4)*0.75*3/d.parcelMass));
   assert.ok(d.capacity>d.target && d.capacity*80<128*1024*1024);
   assert.ok(d.fillSeconds>0 && Number.isFinite(d.fillSeconds));
   assert.ok(Math.abs(d.viscosity*d.metresPerCell**2/(3*d.timeUnit)-0.8e-6)<1e-12,'molecular viscosity uses real units');
   for(const y of [2,d.ny/2,d.ny+2]){
     const jet=jetAt(d,y);
-    assert.ok(Math.abs(Math.PI*jet.radius**2*jet.speed*3-d.flow)<1e-10,'the falling stream conserves flux at every height');
+    assert.ok(Math.abs(Math.PI*jet.radius**2*jet.speed*3/d.parcelMass-d.flow)<1e-10,'the falling stream conserves flux at every height');
     const t=jet.fallSeconds/d.timeUnit;
     assert.ok(Math.abs(d.ny+2-d.speed*t-0.2*t*t-y)<1e-10,'the analytical stream reaches the surface in its calculated fall time');
   }
@@ -69,12 +74,24 @@ assert.match(door,/\^coffee3\$\/i\.test\(typed\)\) \{ window\.DeviceMotionEvent\
 assert.ok(!/src="assets\/coffee3\.js/.test(terminal+door),'normal visits do not download the simulation');
 
 function domContext(reduced){
-  const elements=[],timers=[];
-  const document={body:{appendChild(el){elements.push(el);}},createElement(tag){return{tag,dataset:{},style:{},attrs:{},removed:false,setAttribute(k,v){this.attrs[k]=v;},remove(){this.removed=true;}};}};
+  const elements=[],timers=[],events=[],styles=[];
+  const make=tag=>({tag,dataset:{},style:{},attrs:{},inert:false,isConnected:true,removed:false,matches(){return false;},querySelector(){return null;},setAttribute(k,v){this.attrs[k]=v;},removeAttribute(k){delete this.attrs[k];},remove(){this.removed=true;this.isConnected=false;}});
+  const document={documentElement:make('html'),body:{get children(){return elements.filter(e=>!e.removed);},appendChild(el){elements.push(el);}},head:{appendChild(el){styles.push(el);}},createElement:make,querySelectorAll(){return[];},getAnimations(){return[];},addEventListener(){},removeEventListener(){},dispatchEvent(e){events.push(e);}};
   const env=vm.createContext({document,navigator:{},console:{error(){}},innerWidth:375,innerHeight:812,
+    CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},
     matchMedia:q=>({matches:q.includes('reduced-motion')&&reduced}),setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){}});
   vm.runInContext(read('assets/coffee3.js'),env);
-  return{api:env.RELAY_COFFEE3,elements,timers};
+  return{api:env.RELAY_COFFEE3,elements,timers,document,events,styles};
+}
+{
+  const {api,document,elements,events,styles}=domContext(true);
+  const a=document.createElement('main'),b=document.createElement('aside'),cup=document.createElement('canvas');b.inert=true;
+  elements.push(a,b,cup);const release=api.freezePage(cup);
+  assert.ok(a.inert&&b.inert&&!cup.inert,'freeze protects the page while leaving the cup interactive');
+  assert.equal(events[0].detail.active,true);release();release();
+  assert.ok(!a.inert&&b.inert,'restore preserves an element that was already inert');
+  assert.ok(styles[0].removed);assert.equal(events.length,2,'cleanup resumes the page only once');
+  assert.equal(events[1].detail.active,false);
 }
 {
   const {api,elements,timers}=domContext(true);await api.pour();await api.pour();

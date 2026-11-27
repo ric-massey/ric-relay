@@ -151,7 +151,7 @@ The liquid is a shallow **3D MLS-MPM** volume: particles carry velocity and an a
 velocity matrix; quadratic weights transfer mass/momentum to a stagger-free 3D grid,
 pressure and viscosity push it, gravity acts, then particles gather the velocity and move.
 Integer atomics store the GPU grid at a fixed-point scale of one million. The top is open;
-particles crossing it are lost, and a central floor opening drains them. No lost particle
+particles crossing it are lost, and a floor gate opens across the cup to drain them. No lost particle
 is recycled. `active.audit()` reads the actual particle buffer back, reporting finite
 values, counts, depth, average position, speed and WebGPU validation errors.
 
@@ -175,7 +175,7 @@ Gravity is 9.81 m/s², mapped using 0.2646 mm per desktop CSS pixel or an estima
 phone short side. The selected nozzle radius is 6 mm on a computer, 2.5 mm on a phone,
 limited to fit the shallow depth. The spout is gravity-fed from a chosen two-cell head,
 so its maximum exit speed is √(2gh), rather than an arbitrary pump speed. Its **cylindrical** flow is
-πr² × speed; particle count divided by rest density is volume,
+πr² × speed; parcel count times parcel mass divided by rest density is volume,
 so fill duration follows from those quantities, not a hand-set timer. The target is
 nominally three quarters of the cup. The pressure law is weakly compressible, so that is
 a volume target rather than an exact final surface-height guarantee. Molecular kinematic
@@ -225,8 +225,8 @@ erased by a fade. The overlay is destroyed only when **zero particles** and **ze
 flight** remain. The earlier browser test merely required an 80% reduction; that passed
 while the bug was visible. It now waits for the complete lifecycle and another pour.
 
-Drag anywhere to stir; Alt-drag sets desktop gravity for tipping. These listeners never
-prevent page interaction. On phones, orientation provides a consistent reference and
+Drag anywhere to stir; Alt-drag sets desktop gravity for tipping. While this cup is active,
+the page behind it is frozen and the cup receives the gestures. On phones, orientation provides a consistent reference and
 acceleration including gravity provides tilt/shakes; the motion sign is checked against
 orientation, with the iPhone reversed-sign assumption until calibrated. Sensor permission
 is requested in the command's original keypress/submit gesture, before lazy loading.
@@ -235,6 +235,40 @@ the **last creamer parcel lands**, and the phone hold is forty minutes. The page
 a quiet cup can stop submitting GPU work and wake for motion or its drain deadline.
 Reduced motion uses a static cup without initialising WebGPU. Resizing keeps the particles
 and fits their view to the new window; it does not rebuild or refill the simulation.
+
+**Responsiveness, 2026-11-27** (Ric: "flings around a little easy", "a bit laggy",
+"What if we froze the main page while there is coffee on the screen"). Stirring now
+drags a 6 mm neighbourhood toward 45% of the finger or mouse velocity, capped at
+0.3 m/s, instead of repeatedly adding a large acceleration. Alt-drag only tips.
+Phone motion retains the orientation gravity vector and softens the additional shake
+acceleration to 45%, bounded at 0.7 g; static tilt and 9.81 m/s² remain intact.
+
+The cup captures pointer/touch gestures and freezes the background: its existing
+interaction state is saved with `inert`, scrolling is locked, animations and currently
+playing media are paused. The front door cancels its shared canvas animation loop and
+pauses the Arcade's off-DOM clips. When the cup ends or errors, it restores prior inert
+states, focus and only the media/animations it paused; the front door resumes without
+catching up the entire stopped interval. Reduced motion uses the same reversible freeze.
+This supersedes coffee3's earlier click-through behaviour; the other coffee eggs stay separate.
+
+Each simulation parcel now carries two mass units: half as many parcels represent the
+same physical coffee/cream volume. Emission counts and pressure force both include the
+mass factor, while rest density, grid dimensions, timestep, gravity and nozzle geometry
+are preserved. All substeps share one compute pass, with dispatch boundaries retained.
+A conservative GPU list excludes opaque interior parcels from the detached-drop draw;
+remaining candidates retain the original density/depth test. Routine health checks
+reduce to per-workgroup totals on the GPU rather than mapping all particle matrices;
+`active.audit()` still reads the full state, and `active.audit(true)` checks the reduction.
+The renderer retains its original pixel budget (up to 1.5 device pixels per CSS pixel,
+capped at 1000 × 1100), without dynamic blur: lowering resolution alone did not
+materially improve the measured physics cost.
+
+A three-second held-cup benchmark at 375 × 812 with the actual phone solver profile
+measured 54.64 ms/frame work before and 31.37 ms after, at the same 304,500 render pixels.
+Simulated seconds per wall second improved from 0.478 to 0.857. This is one desktop GPU
+measurement, not an iPhone FPS claim. Lowering raster resolution alone barely helped,
+so the final optimization retains the image resolution and physical simulation step.
+The manual test page has **Measure work** to repeat this comparison.
 
 Simulation steps are fixed and bounded, and GPU submissions are awaited to keep the queue
 short. A slow device loses simulated elapsed time. FPS and elapsed simulation time are
@@ -273,6 +307,11 @@ The delayed pour, bubbles and cream passed 23 GPU lifecycle checks on 2026-11-27
 zero particles and zero in flight after both doses drain, on desktop and the 44-cell
 phone profile. The final cream/bubble shaders also compiled and passed the lifecycle;
 manual checks covered the cream stream, its smoothed concentration and mouse stirring.
+The responsiveness change passed 27 GPU lifecycle checks on desktop and the phone
+profile, including compact/full audit agreement, background animation pause/restore,
+all liquid draining and another pour. The real front door was also checked: background
+roots became inert, media stopped, wheel scrolling stayed fixed during coffee, and
+normal interaction returned after it cleared.
 
 
 The MLS-MPM transfer equations are adapted from **matsuoka-601/Splash**, MIT, which credits

@@ -1497,8 +1497,11 @@
 
     // ── the drawn media: one loop for every drawing on screen ──
     const live = new Set();
-    let last = performance.now();
-    (function frame(now) {
+    let last = performance.now(), mediaFrame = 0;
+    const coffeeFrozen = () => document.documentElement.hasAttribute('data-coffee3-active');
+    function frame(now) {
+      mediaFrame = 0;
+      if (coffeeFrozen()) return;
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       for (const c of live) {
         const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
@@ -1508,8 +1511,9 @@
         c.st.dt = STILL ? 0 : dt; c.st.time = (c.st.time || 0) + (STILL ? 0 : dt);
         try { ART[c.dataset.art](x, w, h, STILL ? 3 : c.st.time, c.st); } catch (e) { /* a drawing that fails leaves its paper */ }
       }
-      requestAnimationFrame(frame);
-    })(last);
+      mediaFrame = requestAnimationFrame(frame);
+    }
+    frame(last);
     window.FD = { ART, live, rng, seedFor, POSTS };
 
     // ── the shelves ──
@@ -1684,6 +1688,12 @@
     // the pointer has to settle on a card for 0.3s before its clip starts
     // (NN/g: 0.3–0.5s), so sweeping across the grid starts nothing
     let wait = 0;
+    // Ric, 2026-11-27: freeze the main page while coffee is on screen.
+    document.addEventListener('coffee3:freeze', (e) => {
+      clearTimeout(wait);
+      if (e.detail.active) { cancelAnimationFrame(mediaFrame); mediaFrame = 0; for (const c of live) c.st?.vids?.forEach(v => v.pause()); }
+      else if (!mediaFrame) { last = performance.now(); mediaFrame = requestAnimationFrame(frame); }
+    });
     feed.addEventListener("pointerover", (e) => { const card = e.target.closest(".card"), c = card?.querySelector(".media > video, .media > canvas"); if (!c || !held(c) || STILL || card.contains(e.relatedTarget)) return;
       clearTimeout(wait); wait = setTimeout(() => {
         if (c.tagName === "VIDEO") { if (!c.getAttribute("src")) c.src = c.dataset.src; c.play().catch(() => {}); } else { c.st ||= { r: rng(seedFor(+c.dataset.n)) }; live.add(c); c.seen = true; } }, 300); });
@@ -1765,7 +1775,7 @@
           if (window.RELAY_COFFEE3) window.RELAY_COFFEE3.pour();
           else if (!document.querySelector('script[data-coffee3]')) {
             const js = document.createElement("script"); js.dataset.coffee3 = "1";
-            js.src = "assets/coffee3.js?v=5"; js.onload = () => window.RELAY_COFFEE3?.pour();
+            js.src = "assets/coffee3.js?v=10"; js.onload = () => window.RELAY_COFFEE3?.pour();
             js.onerror = () => { js.remove(); console.warn("coffee3 could not load; type coffee3 to retry."); };
             document.head.appendChild(js);
           }

@@ -2025,6 +2025,17 @@ migration marked "safe to re-run", and re-running it would have put the original
   advected particles, a concentration volume for its scattering, and a chosen 3% density
   excess. Hold starts after the cream lands. Entrained-air tracers follow the liquid,
   rise and pop; they are bounded visual tracers, not extra liquid or a two-phase solver.
+  **The page freezes for coffee3** (Ric, 2026-11-27: "What if we froze the main page while
+  there is coffee on the screen"). Save/restore background interaction, scrolling,
+  animations and playing media; the front door stops its media drawing loop on
+  `coffee3:freeze`. The cup owns touch/mouse gestures until it drains or stops. This
+  supersedes coffee3's old click-through behaviour, not the original coffee's.
+  Stirring targets a bounded local velocity, not an accumulating force; phone shakes
+  are softened around the real orientation gravity vector. To reduce lag, parcels carry
+  two mass units (half as many, with mass in both flux and pressure force), substeps
+  share a compute pass, hidden parcels are culled before drop drawing, and routine
+  diagnostics read compact GPU totals. Keep the full-particle audit for verification.
+  The grid, gravity, physical cup volume and flow must not change as a shortcut.
   **The floor gate opens across the full width in 0.4 s** (Ric, 2026-11-27: "coffee gets
   left there ... it looks like sludge"): the narrow centre hole stranded two pools. Never
   replace the complete-drain browser assertion with "some liquid left" again: it must reach

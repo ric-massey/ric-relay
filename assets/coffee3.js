@@ -14,11 +14,50 @@
   'use strict';
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const REST = 3, DT = 0.08;
+  // Two mass units per parcel halve the pressure/scatter work. Both emitted
+  // volume and pressure force carry this factor; changing count alone loses coffee.
+  const PARCEL_MASS = 2;
   const START_DELAY = 3, RAMP_SECONDS = 3, BUBBLES = 128;
   // Ric, 2026-11-27: "straight on. Not at an angle". One projection for
   // the volume, droplets and viewing rays; depth never raises a point.
   const CAMERA_SLOPE = 0;
   const projectPoint = (x,y,z) => [x,y+CAMERA_SLOPE*z];
+  // A spoon entrains nearby liquid toward its velocity, rather than applying
+  // an acceleration forever while the pointer is held in one place.
+  function stirVelocity(dx,dy,seconds,d){
+    const gain=0.45,limit=0.3;
+    let x=dx*d.metresPerCell/Math.max(seconds,0.008)*gain,y=dy*d.metresPerCell/Math.max(seconds,0.008)*gain;
+    const scale=Math.min(1,limit/Math.max(Math.hypot(x,y),0.00001));
+    return [x*scale*d.timeUnit/d.metresPerCell,y*scale*d.timeUnit/d.metresPerCell];
+  }
+  function motionResponse(raw,reference){
+    const g=reference||raw.map(v=>v/Math.max(Math.hypot(...raw),0.00001));
+    const delta=raw.map((v,i)=>v-g[i]),scale=Math.min(0.45,0.7/Math.max(Math.hypot(...delta),0.00001));
+    return g.map((v,i)=>v+delta[i]*scale);
+  }
+  function freezePage(cup){
+    const html=document.documentElement,focus=document.activeElement;
+    const children=[...document.body.children].filter(el=>el!==cup&&!el.matches('[data-coffee3-controls], [data-coffee3-hud]')&&!el.querySelector('[data-coffee3-controls]'));
+    const inert=children.map(el=>[el,el.inert]);
+    const animations=(document.getAnimations?.()||[]).filter(a=>a.playState==='running');
+    const playing=[...document.querySelectorAll('video,audio')].filter(v=>!v.paused);
+    const style=document.createElement('style');
+    style.textContent='html[data-coffee3-active],html[data-coffee3-active] body{overflow:hidden!important;overscroll-behavior:none}html[data-coffee3-active] *,html[data-coffee3-active] *::before,html[data-coffee3-active] *::after{animation-play-state:paused!important}';
+    document.head.appendChild(style);html.setAttribute('data-coffee3-active','');
+    inert.forEach(([el])=>{el.inert=true;});animations.forEach(a=>a.pause());playing.forEach(v=>v.pause());
+    const blockPlay=e=>{if(e.target.matches?.('video,audio'))e.target.pause();};
+    document.addEventListener('play',blockPlay,true);
+    document.dispatchEvent(new CustomEvent('coffee3:freeze',{detail:{active:true}}));
+    let released=false;
+    return ()=>{
+      if(released)return;released=true;document.removeEventListener('play',blockPlay,true);
+      html.removeAttribute('data-coffee3-active');style.remove();inert.forEach(([el,was])=>{el.inert=was;});
+      animations.forEach(a=>{if(a.playState==='paused')a.play();});
+      document.dispatchEvent(new CustomEvent('coffee3:freeze',{detail:{active:false}}));
+      playing.forEach(v=>{if(v.isConnected)v.play().catch(()=>{});});
+      if(focus?.isConnected&&!focus.inert)focus.focus({preventScroll:true});
+    };
+  }
   let current = null, starting = false, lastRun = null;
 
   // Screen x right, y UP, z behind the glass. Keep this conversion separate
@@ -44,11 +83,11 @@
     // v² = 2gh; the three-second valve opening changes flow, never gravity.
     const head = 2 * metresPerCell;
     const speed = Math.sqrt(2 * 9.81 * head) * timeUnit / metresPerCell;
-    const flow = Math.PI * radius * radius * speed * REST;
-    const target = Math.floor(inner * (ny - 4) * (nz - 4) * 0.75 * REST);
+    const flow = Math.PI * radius * radius * speed * REST / PARCEL_MASS;
+    const target = Math.floor(inner * (ny - 4) * (nz - 4) * 0.75 * REST / PARCEL_MASS);
     const viscosity = REST * 0.8e-6 * timeUnit / (metresPerCell * metresPerCell);
     const creamTarget = Math.floor(target * 0.06);
-    return { nx, ny, nz, inner, metresPerCell, timeUnit, radius, speed, flow, target, creamTarget, head, viscosity,
+    return { nx, ny, nz, inner, metresPerCell, timeUnit, radius, speed, flow, target, creamTarget, head, viscosity, parcelMass:PARCEL_MASS,
       fillSeconds: START_DELAY + target / flow * timeUnit + RAMP_SECONDS / 2, capacity: target + creamTarget + 512 };
   }
 
@@ -93,6 +132,7 @@
     @group(0) @binding(1) var<storage, read_write> cells: array<Cell>;
     @group(0) @binding(2) var<uniform> u: Params;
     const FIX: f32 = 1000000.0;
+    const PARCEL_MASS:f32 = ${PARCEL_MASS.toFixed(1)};
     fn enc(v: f32) -> i32 { return i32(v * FIX); }
     fn dec(v: i32) -> f32 { return f32(v) / FIX; }
     fn index(p: vec3i) -> u32 { return u32((p.x * i32(u.size.y) + p.y) * i32(u.size.z) + p.z); }
@@ -120,7 +160,7 @@
       for (var x=0; x<3; x++) { for (var y=0; y<3; y++) { for (var z=0; z<3; z++) {
         let c = base + vec3i(x,y,z) - 1;
         if (any(c < vec3i(0)) || any(c >= vec3i(u.size.xyz))) { continue; }
-        let j = index(c); let mass = w[x].x * w[y].y * w[z].z;
+        let j = index(c); let mass = w[x].x * w[y].y * w[z].z * PARCEL_MASS;
         let v = mass * (p.v.xyz + p.C * (vec3f(c) + 0.5 - p.p.xyz));
         atomicAdd(&cells[j].m, enc(mass));
         atomicAdd(&cells[j].cream, enc(mass*p.v.w));
@@ -144,7 +184,7 @@
       // Uniform drag made this look like syrup and also killed the surface waves.
       let viscosity=min(u.size.w+3.0*0.17*0.17*rate,0.35);
       stress+=viscosity*(p.C+transpose(p.C));
-      let force=(-4.0*u.clock.x/max(density,0.1))*stress;
+      let force=(-4.0*u.clock.x*PARCEL_MASS/max(density,0.1))*stress;
       for(var x=0;x<3;x++){for(var y=0;y<3;y++){for(var z=0;z<3;z++){
         let c=base+vec3i(x,y,z)-1;
         if(any(c<vec3i(0))||any(c>=vec3i(u.size.xyz))){continue;}
@@ -163,7 +203,8 @@
       // sink relative to coffee without a separate, pasted-on plume animation.
       v+=u.gravity.xyz*u.clock.x*0.03*dec(atomicLoad(&cells[i].cream))/mass;
       let d=(c.xy-u.mouse.xy)/max(u.mouse.z,0.1);
-      v+=u.push.xyz*exp(-dot(d,d)*2.0)*u.mouse.w*u.clock.x;
+      let drag=(1.0-exp(-16.0*u.clock.x*u.gravity.w))*exp(-dot(d,d)*2.0)*u.mouse.w;
+      v=vec3f(mix(v.xy,u.push.xy,drag),v.z);
       if((c.x<=2.5 && v.x<0.0) || (c.x>=u.size.x-2.5 && v.x>0.0)){v.x=0.0;}
       if((c.z<=2.5 && v.z<0.0) || (c.z>=u.size.z-2.5 && v.z>0.0)){v.z=0.0;}
       let inDrain=u.clock.z>0.0 && abs(c.x-u.size.x*0.5)<u.size.x*u.clock.z;
@@ -242,6 +283,7 @@
     }
   `;
   const CAMERA = `
+    const DROP_RADIUS:f32 = ${(0.43*Math.cbrt(PARCEL_MASS)).toFixed(8)};
     const VIEW_SLOPE:f32 = ${CAMERA_SLOPE.toFixed(1)};
     const VIEW_RAY:vec3f = vec3f(0.0,-VIEW_SLOPE,1.0);
     fn projectedXY(p:vec3f)->vec2f {return vec2f(p.x,p.y+VIEW_SLOPE*p.z);}
@@ -362,13 +404,14 @@
   const DROPS = VOLUME + `
     struct Particle { p:vec4f, v:vec4f, C:mat3x3f }
     @group(0) @binding(3) var<storage,read> particles:array<Particle>;
+    @group(0) @binding(6) var<storage,read> dropIndices:array<u32>;
     struct Drop { @builtin(position) pos:vec4f, @location(0) disk:vec2f, @location(1) centre:vec3f, @location(2) cream:f32 }
     @vertex fn dropVertex(@builtin(vertex_index) vertex:u32,@builtin(instance_index) i:u32)->Drop {
-      let p=particles[i].p;
+      let particle=particles[dropIndices[i]];let p=particle.p;
       let corner=array<vec2f,6>(vec2f(-1,-1),vec2f(1,-1),vec2f(-1,1),vec2f(-1,1),vec2f(1,-1),vec2f(1,1))[vertex];
-      var out:Drop;out.disk=corner;out.centre=p.xyz;out.cream=particles[i].v.w;
+      var out:Drop;out.disk=corner;out.centre=p.xyz;out.cream=particle.v.w;
       let xy=(projectedXY(p.xyz)-vec2f(2.0))/(u.size.xy-4.0);
-      out.pos=vec4f(xy*2.0-1.0+corner*0.43*2.0/(u.size.xy-4.0),0,1);
+      out.pos=vec4f(xy*2.0-1.0+corner*DROP_RADIUS*2.0/(u.size.xy-4.0),0,1);
       if(p.w<0.5 || density(p.xyz).w>0.65){out.pos=vec4f(3,3,0,1);}
       return out;
     }
@@ -376,11 +419,51 @@
       let r2=dot(in.disk,in.disk);if(r2>=1.0){discard;}
       let z=sqrt(1.0-r2);let n=normalize(vec3f(in.disk,-z));let ray=VIEW_RAY;
       let F=0.02+0.98*pow(1.0-clamp(dot(-ray,n),0.0,1.0),5.0);
-      let mm=2.0*0.43*z*u.view.w*1000.0;
+      let mm=2.0*DROP_RADIUS*z*u.view.w*1000.0;
       let through=exp(-vec3f(0.32,0.66,1.05)*mm)*vec3f(0.2,0.095,0.03);
       var c=(1.0-F)*mix(through,vec3f(0.55,0.40,0.24),in.cream)+F*room(reflect(ray,n));c=pow(c/(1.0+c),vec3f(1.0/2.2));
       let alpha=1.0-smoothstep(1.0-max(fwidth(r2),0.01),1.0,r2);
-      var out:Pixel;out.color=vec4f(c*alpha,alpha);out.depth=clamp((in.centre.z-0.43*z)/u.size.z,0.0,1.0);return out;
+      var out:Pixel;out.color=vec4f(c*alpha,alpha);out.depth=clamp((in.centre.z-DROP_RADIUS*z)/u.size.z,0.0,1.0);return out;
+    }
+  `;
+
+  // Most parcels are inside an opaque cup. Build a conservative candidate list
+  // once, rather than reconstructing density six times for every hidden parcel.
+  const SELECT_DROPS = VOLUME + `
+    struct Particle { p:vec4f, v:vec4f, C:mat3x3f }
+    @group(0) @binding(3) var<storage,read> particles:array<Particle>;
+    @group(0) @binding(6) var<storage,read_write> selected:array<u32>;
+    @group(0) @binding(7) var<storage,read_write> args:array<atomic<u32>>;
+    @compute @workgroup_size(64) fn selectDrops(@builtin(global_invocation_id) id:vec3u){
+      if(id.x>=u.counts.x){return;}let p=particles[id.x].p;
+      if(p.w<0.5){return;}
+      if(textureSampleLevel(field,linear,p.xyz/u.size.xyz,0.0).w>2.2){return;}
+      let slot=atomicAdd(&args[1],1u);selected[slot]=id.x;
+    }
+  `;
+  // Routine health checks reduce on the GPU: a few KB of group totals instead
+  // of mapping megabytes and scanning every particle on the main thread.
+  const SUMMARY = `
+    struct Particle { p:vec4f, v:vec4f, C:mat3x3f }
+    struct Bubble { p:vec4f, age:vec4f }
+    @group(0) @binding(0) var<storage,read> particles:array<Particle>;
+    @group(0) @binding(1) var<storage,read> bubbles:array<Bubble>;
+    @group(0) @binding(2) var<storage,read_write> totals:array<vec4f>;
+    @group(0) @binding(3) var<uniform> counts:vec4u;
+    var<workgroup> liquid:array<vec4f,64>;
+    var<workgroup> air:array<vec4f,64>;
+    fn finite4(v:vec4f)->bool{return all(v==v)&&all(abs(v)<vec4f(3e37));}
+    @compute @workgroup_size(64) fn summarize(@builtin(global_invocation_id) id:vec3u,@builtin(local_invocation_index) i:u32,@builtin(workgroup_id) group:vec3u){
+      var a=vec4f(0);var b=vec4f(0);
+      if(id.x<counts.x){
+        let p=particles[id.x];let valid=finite4(p.p)&&finite4(p.v)&&finite4(vec4f(p.C[0],0))&&finite4(vec4f(p.C[1],0))&&finite4(vec4f(p.C[2],0));
+        a.z=select(1.0,0.0,valid);
+        if(p.p.w>0.5){a.x=1.0;a.w=p.v.w;if(valid){a.y=dot(p.v.xyz,p.v.xyz);}}
+      }
+      if(id.x<counts.y){let p=bubbles[id.x];b.x=select(0.0,1.0,p.p.w>0.0);b.z=select(1.0,0.0,finite4(p.p)&&finite4(p.age));}
+      liquid[i]=a;air[i]=b;workgroupBarrier();
+      for(var stride=32u;stride>0u;stride/=2u){if(i<stride){liquid[i]+=liquid[i+stride];air[i]+=air[i+stride];}workgroupBarrier();}
+      if(i==0u){totals[group.x*2u]=liquid[0];totals[group.x*2u+1u]=air[0];}
     }
   `;
 
@@ -453,6 +536,11 @@
     const jet=buffer('coffee3 ballistic stream profile',(dims.ny+4)*4*16,U.STORAGE|U.COPY_DST);
     const uniform=buffer('coffee3 parameters',128,U.UNIFORM|U.COPY_DST);
     const probe=buffer('coffee3 landing surface',16,U.STORAGE|U.COPY_SRC);
+    const dropList=buffer('coffee3 visible drop candidates',dims.capacity*4,U.STORAGE);
+    const dropArgs=buffer('coffee3 indirect drop draw',16,U.STORAGE|U.INDIRECT|U.COPY_DST);
+    device.queue.writeBuffer(dropArgs,0,new Uint32Array([6,0,0,0]));
+    const summaryTotals=buffer('coffee3 compact health totals',Math.ceil(Math.max(dims.capacity,BUBBLES)/64)*32,U.STORAGE|U.COPY_SRC);
+    const summaryCounts=buffer('coffee3 summary counts',16,U.UNIFORM|U.COPY_DST);
     const module=async(label,code)=>{
       const m=device.createShaderModule({label,code});const info=await m.getCompilationInfo();
       const bad=info.messages.filter(x=>x.type==='error');if(bad.length)throw new Error(label+': '+bad.map(x=>x.message).join('; '));return m;
@@ -464,6 +552,10 @@
     const drops=await module('coffee3 detached drops',DROPS);
     const air=await module('coffee3 entrained air motion',AIR);
     const airView=await module('coffee3 bubble optics',AIR_VIEW);
+    const selectModule=await module('coffee3 drop culling',SELECT_DROPS);
+    const summaryModule=await module('coffee3 health reduction',SUMMARY);
+    const summaryPipeline=await device.createComputePipelineAsync({layout:'auto',compute:{module:summaryModule,entryPoint:'summarize'}});
+    const summaryGroup=device.createBindGroup({layout:summaryPipeline.getBindGroupLayout(0),entries:[particle,bubbles,summaryTotals,summaryCounts].map((b,binding)=>({binding,resource:{buffer:b}}))});
     const airStep=await device.createComputePipelineAsync({layout:'auto',compute:{module:air,entryPoint:'air'}});
     const airGroup=device.createBindGroup({layout:airStep.getBindGroupLayout(0),entries:[{binding:1,resource:{buffer:grid}},{binding:2,resource:{buffer:uniform}},{binding:3,resource:{buffer:bubbles}}]});
     const stages={};
@@ -489,12 +581,15 @@
     const sampler=device.createSampler({minFilter:'linear',magFilter:'linear',addressModeU:'clamp-to-edge',addressModeV:'clamp-to-edge',addressModeW:'clamp-to-edge'});
     const imageEntries=[{binding:0,resource:fieldView},{binding:1,resource:sampler},{binding:2,resource:{buffer:uniform}},{binding:4,resource:{buffer:jet}}];
     const shadeGroup=device.createBindGroup({layout:shadePipeline.getBindGroupLayout(0),entries:[...imageEntries,{binding:5,resource:creamView}]});
-    const dropGroup=device.createBindGroup({layout:dropPipeline.getBindGroupLayout(0),entries:[...imageEntries,{binding:3,resource:{buffer:particle}}]});
+    const dropGroup=device.createBindGroup({layout:dropPipeline.getBindGroupLayout(0),entries:[...imageEntries,{binding:3,resource:{buffer:particle}},{binding:6,resource:{buffer:dropList}}]});
+    const selectPipeline=await device.createComputePipelineAsync({layout:'auto',compute:{module:selectModule,entryPoint:'selectDrops'}});
+    const selectGroup=device.createBindGroup({layout:selectPipeline.getBindGroupLayout(0),entries:[{binding:0,resource:fieldView},{binding:1,resource:sampler},{binding:2,resource:{buffer:uniform}},{binding:3,resource:{buffer:particle}},{binding:6,resource:{buffer:dropList}},{binding:7,resource:{buffer:dropArgs}}]});
     const bubbleGroup=device.createBindGroup({layout:bubblePipeline.getBindGroupLayout(0),entries:[...imageEntries,{binding:3,resource:{buffer:bubbles}}]});
     const validation=await device.popErrorScope();if(validation){device.destroy();throw new Error(validation.message);}
     let depthTexture,depthView;
     function resize(w,h){canvas.width=w;canvas.height=h;depthTexture?.destroy();depthTexture=device.createTexture({size:[w,h],format:'depth24plus',usage:GPUTextureUsage.RENDER_ATTACHMENT});depthView=depthTexture.createView();}
     function draw(encoder,count,measure){
+      encoder.clearBuffer(dropArgs,4,12);
       // Rebuild mass after the final advection, so the visible surface is this
       // frame's liquid, not the previous step's position or pressure grid.
       let p=encoder.beginComputePass();
@@ -504,19 +599,20 @@
       }
       p.setPipeline(fieldPipeline);p.setBindGroup(0,fieldGroup);p.dispatchWorkgroups(Math.ceil(dims.nx*dims.ny*dims.nz/64));
       if(measure){p.setPipeline(probePipeline);p.setBindGroup(0,probeGroup);p.dispatchWorkgroups(1);}p.end();
+      p=encoder.beginComputePass();p.setPipeline(selectPipeline);p.setBindGroup(0,selectGroup);p.dispatchWorkgroups(Math.ceil(count/64));p.end();
       p=encoder.beginRenderPass({colorAttachments:[{view:context.getCurrentTexture().createView(),loadOp:'clear',storeOp:'store',clearValue:{r:0,g:0,b:0,a:0}}],depthStencilAttachment:{view:depthView,depthClearValue:1,depthLoadOp:'clear',depthStoreOp:'store'}});
       p.setPipeline(shadePipeline);p.setBindGroup(0,shadeGroup);p.draw(3);
-      p.setPipeline(dropPipeline);p.setBindGroup(0,dropGroup);p.draw(6,count);
+      p.setPipeline(dropPipeline);p.setBindGroup(0,dropGroup);p.drawIndirect(dropArgs,0);
       p.setPipeline(bubblePipeline);p.setBindGroup(0,bubbleGroup);p.draw(6,BUBBLES);p.end();
       if(measure){const read=device.createBuffer({size:16,usage:U.COPY_DST|U.MAP_READ});encoder.copyBufferToBuffer(probe,0,read,0,16);return read;}
     }
-    function step(encoder,count){
+    function step(encoder,count,steps){
       const p=encoder.beginComputePass();
-      for(const name of ['clear','scatter','pressure','forces','gather']){
+      for(let n=0;n<steps;n++){for(const name of ['clear','scatter','pressure','forces','gather']){
         const s=stages[name];p.setPipeline(s.pipeline);p.setBindGroup(0,s.group);
         p.dispatchWorkgroups(Math.ceil((name==='clear'||name==='forces'?dims.nx*dims.ny*dims.nz:count)/64));
       }
-      p.setPipeline(airStep);p.setBindGroup(0,airGroup);p.dispatchWorkgroups(Math.ceil(BUBBLES/64));p.end();
+      p.setPipeline(airStep);p.setBindGroup(0,airGroup);p.dispatchWorkgroups(Math.ceil(BUBBLES/64));}p.end();
     }
     async function audit(count){
       const offset=Math.max(80,count*80);
@@ -536,8 +632,22 @@
         return {alive,creamAlive,creamY:creamY/Math.max(1,creamAlive),bubbleAlive,emitted:count,lost:count-alive,finite,meanX:meanX/Math.max(1,alive),meanY:meanY/Math.max(1,alive),minY,maxY,minZ,maxZ,rmsSpeed:Math.sqrt(energy/Math.max(1,alive)),errors:[...errors]};
       }finally{read.destroy();}
     }
+    async function summarize(count){
+      const groups=Math.ceil(Math.max(count,BUBBLES)/64),size=groups*32;
+      const read=device.createBuffer({size,usage:U.COPY_DST|U.MAP_READ});
+      try{
+        device.queue.writeBuffer(summaryCounts,0,new Uint32Array([count,BUBBLES,0,0]));
+        const encoder=device.createCommandEncoder(),p=encoder.beginComputePass();
+        p.setPipeline(summaryPipeline);p.setBindGroup(0,summaryGroup);p.dispatchWorkgroups(groups);p.end();
+        encoder.copyBufferToBuffer(summaryTotals,0,read,0,size);device.queue.submit([encoder.finish()]);
+        await read.mapAsync(GPUMapMode.READ);const data=new Float32Array(read.getMappedRange());
+        let alive=0,energy=0,bad=0,creamAlive=0,bubbleAlive=0;
+        for(let i=0;i<data.length;i+=8){alive+=data[i];energy+=data[i+1];bad+=data[i+2]+data[i+6];creamAlive+=data[i+3];bubbleAlive+=data[i+4];}
+        return {alive,creamAlive,bubbleAlive,finite:bad===0&&Number.isFinite(energy),emitted:count,lost:count-alive,rmsSpeed:Math.sqrt(energy/Math.max(1,alive)),readbackBytes:size,errors:[...errors]};
+      }finally{read.destroy();}
+    }
     async function surface(read){try{await read.mapAsync(GPUMapMode.READ);return new Float32Array(read.getMappedRange())[0];}finally{read.destroy();}}
-    return {device,particle,bubbles,jet,uniform,errors,resize,draw,step,audit,surface,destroy(){depthTexture?.destroy();fieldTexture.destroy();creamTexture.destroy();for(const b of owned)b.destroy();context.unconfigure();device.destroy();}};
+    return {device,particle,bubbles,jet,uniform,errors,resize,draw,step,audit,summarize,surface,destroy(){depthTexture?.destroy();fieldTexture.destroy();creamTexture.destroy();for(const b of owned)b.destroy();context.unconfigure();device.destroy();}};
     } catch(error) { device.destroy(); throw error; }
   }
 
@@ -548,26 +658,27 @@
     if(matchMedia('(prefers-reduced-motion: reduce)').matches){
       const cup=document.createElement('div');cup.dataset.coffee='3';cup.setAttribute('aria-hidden','true');
       cup.style.cssText='position:fixed;inset:25% 0 0;z-index:2147483645;pointer-events:none;background:linear-gradient(#382013 0,#130904 5%,#100704 100%);border-top:2px solid #7b6250';
-      let timer;const still={stop(){cup.remove();clearTimeout(timer);if(current===still)current=null;}};
-      document.body.appendChild(cup);current=still;starting=false;
+      let timer,release;const still={stop(){cup.remove();release?.();clearTimeout(timer);if(current===still)current=null;}};
+      document.body.appendChild(cup);release=freezePage(cup);current=still;starting=false;
       timer=setTimeout(()=>still.stop(),phone?40*60*1000:5000);return;
     }
     const canvas=document.createElement('canvas');canvas.dataset.coffee='3';canvas.setAttribute('aria-hidden','true');
-    canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:2147483645;pointer-events:none';
-    document.body.appendChild(canvas);let gpu;
+    canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:2147483645;pointer-events:auto;touch-action:none';
+    document.body.appendChild(canvas);let gpu,releasePage;
     try{
       const W=innerWidth,H=innerHeight,d=dimensions(W,H,phone);gpu=await makeGPU(canvas,d);
+      releasePage=freezePage(canvas);
       const abort=new AbortController(),signal=abort.signal;
       let stopped=false,raf=0,busy=false,holdTimer=0,last=performance.now(),elapsed=0,accumulator=0,count=0,emitted=0,fullAt=-1,draining=false,drainAt=-1;
       const births=[];let landing=2,lastSurface=0,rippleEnergy=0.1,bubbleEmission=0,bubbleIndex=0,bubblesBorn=0,creamStart=-1,phase='coffee';
       const coffee={start:START_DELAY,ramp:RAMP_SECONDS,speed:d.speed,radius:d.radius,limit:d.target,base:0,cream:0,x:2+d.inner*0.57};
       let source=coffee;
       const profile=new Float32Array((d.ny+4)*4*4);
-      let tilt=[0,-1,0],targetTilt=[0,-1,0],pointer=false,mouse=[-100,-100],push=[0,0],lastPointer=0;
+      let tilt=[0,-1,0],targetTilt=[0,-1,0],pointer=false,tipping=false,mouse=[-100,-100],push=[0,0],lastPointer=0;
       let sleeping=false,quiet=0,lastAudit=0,lastSensor=0,lastMotion=0,orientationReference=null,motionVotes=0,frameMs=0,holdUntil=Infinity;
       const hold=Number.isFinite(options.holdSeconds)?Math.max(0,options.holdSeconds):(phone?40*60:5);
       const debug=/coffeedebug/.test(location.search);let hud;
-      if(debug){hud=document.createElement('output');hud.style.cssText='position:fixed;top:8px;left:8px;z-index:2147483646;background:#0b0908e8;color:#fff2d9;padding:9px;font:12px/1.45 monospace;white-space:pre;pointer-events:none';document.body.appendChild(hud);}
+      if(debug){hud=document.createElement('output');hud.dataset.coffee3Hud='';hud.style.cssText='position:fixed;top:8px;left:8px;z-index:2147483646;background:#0b0908e8;color:#fff2d9;padding:9px;font:12px/1.45 monospace;white-space:pre;pointer-events:none';document.body.appendChild(hud);}
       const params=new ArrayBuffer(128),f=new Float32Array(params),ints=new Uint32Array(params);
       const resolution=()=>{const scale=Math.min(devicePixelRatio||1,1.5,1000/innerWidth,1100/innerHeight);gpu.resize(Math.max(1,Math.round(innerWidth*scale)),Math.max(1,Math.round(innerHeight*scale)));};resolution();
       function wake(){
@@ -575,13 +686,13 @@
         if(sleeping){sleeping=false;last=performance.now();accumulator=0;}
         if(!raf&&!busy&&!document.hidden&&!stopped){last=performance.now();raf=requestAnimationFrame(frame);}
       }
-      function stop(){if(stopped)return;stopped=true;cancelAnimationFrame(raf);clearTimeout(holdTimer);abort.abort();canvas.remove();hud?.remove();gpu.destroy();if(current?.canvas===canvas)current=null;}
+      function stop(){if(stopped)return;stopped=true;cancelAnimationFrame(raf);clearTimeout(holdTimer);abort.abort();canvas.remove();hud?.remove();releasePage?.();gpu.destroy();if(current?.canvas===canvas)current=null;}
       function writeParams(){
         // Open the floor gate across the whole cup in 0.4 s. A permanently
         // narrow hole stranded two pools once they became shallower than a cell.
         const opening=draining?drainOpening(elapsed-drainAt):0;
         f.set([d.nx,d.ny,d.nz,d.viscosity],0);f.set([tilt[0]*0.4,tilt[1]*0.4,tilt[2]*0.4,d.timeUnit],4);
-        f.set([mouse[0],mouse[1],4,pointer?1:0],8);f.set([push[0],push[1],0,d.ny+2],12);
+        f.set([mouse[0],mouse[1],Math.max(1,0.006/d.metresPerCell),pointer&&!tipping?1:0],8);f.set([push[0],push[1],0,d.ny+2],12);
         ints.set([count,d.nx*d.ny*d.nz,d.target+d.creamTarget,BUBBLES],16);
         f.set([canvas.width,canvas.height,rippleEnergy,d.metresPerCell],20);
         f.set([source.x,landing+0.25,d.nz*0.5,source.radius],24);f.set([DT,elapsed,opening,emitted>count?1:0],28);
@@ -601,7 +712,7 @@
           }
         }
         if(!draining&&emitted-source.base<source.limit){
-          const flow=Math.PI*source.radius**2*source.speed*REST/d.timeUnit;
+          const flow=Math.PI*source.radius**2*source.speed*REST/(d.timeUnit*PARCEL_MASS);
           const wanted=Math.min(source.limit,Math.floor(flow*openTime(elapsed-source.start,source.ramp)));
           for(let i=emitted-source.base;i<wanted;i++){
             let lo=source.start,hi=elapsed;
@@ -658,21 +769,22 @@
           if(Math.abs(dot)>0.5)motionVotes=clamp(motionVotes+(dot>0?1:-1),-20,20);
           if(motionVotes>=5)motionSign=1;else if(motionVotes<=-5)motionSign=-1;
         }
-        const next=raw.map(v=>clamp(v*motionSign,-3,3));
+        const next=motionResponse(raw.map(v=>clamp(v*motionSign,-3,3)),lastMotion-lastSensor<1000?orientationReference:null);
         const changed=next.some((v,i)=>Math.abs(v-targetTilt[i])>0.035);targetTilt=next;if(changed)wake();
       }
       function move(e){
         if(!pointer)return;
         const x=2+e.clientX/innerWidth*(d.nx-4),y=2+(1-e.clientY/innerHeight)*(d.ny-4);
         const now=performance.now(),dt=Math.max(0.01,(now-lastPointer)/1000);
+        tipping=e.altKey;
         if(e.altKey){targetTilt=[(e.clientX/innerWidth-0.5)*1.8,-1,0];}
-        else{push=[clamp((x-mouse[0])/dt*d.timeUnit*10,-30,30),clamp((y-mouse[1])/dt*d.timeUnit*10,-30,30)];}
+        else{push=stirVelocity(x-mouse[0],y-mouse[1],dt,d);}
         mouse=[x,y];lastPointer=now;wake();
       }
-      addEventListener('pointerdown',e=>{pointer=true;mouse=[2+e.clientX/innerWidth*(d.nx-4),2+(1-e.clientY/innerHeight)*(d.ny-4)];lastPointer=performance.now();wake();},{signal,passive:true});
+      addEventListener('pointerdown',e=>{pointer=true;tipping=e.altKey;mouse=[2+e.clientX/innerWidth*(d.nx-4),2+(1-e.clientY/innerHeight)*(d.ny-4)];lastPointer=performance.now();wake();},{signal,passive:true});
       addEventListener('pointermove',move,{signal,passive:true});
-      addEventListener('pointerup',()=>{pointer=false;push=[0,0];},{signal,passive:true});
-      addEventListener('pointercancel',()=>{pointer=false;push=[0,0];},{signal,passive:true});
+      addEventListener('pointerup',()=>{pointer=false;tipping=false;push=[0,0];},{signal,passive:true});
+      addEventListener('pointercancel',()=>{pointer=false;tipping=false;push=[0,0];},{signal,passive:true});
       addEventListener('deviceorientation',orient,{signal,passive:true});addEventListener('devicemotion',motion,{signal,passive:true});
       addEventListener('resize',()=>{resolution();wake();},{signal,passive:true});
       document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(raf);raf=0;}else{last=performance.now();wake();}},{signal});
@@ -691,15 +803,15 @@
           elapsed+=steps*physicalStep;spawn(steps*physicalStep);writeParams();
           // One uniform snapshot and one continuous nozzle segment per frame.
           // Every substep reads the same particle count, never a future emission.
-          for(let step=0;step<steps;step++)gpu.step(encoder,count);
+          if(steps)gpu.step(encoder,count,steps);
           accumulator-=steps*physicalStep;
-          const probe=gpu.draw(encoder,count,now-lastSurface>100);gpu.device.queue.submit([encoder.finish()]);
+          const probe=gpu.draw(encoder,count,emitted>count&&now-lastSurface>100);gpu.device.queue.submit([encoder.finish()]);
           await gpu.device.queue.onSubmittedWorkDone();
           if(stopped){probe?.destroy();return;}
           if(probe){landing=await gpu.surface(probe);lastSurface=now;if(stopped)return;}
           frameMs=frameMs*0.9+(performance.now()-now)*0.1;
           if(now-lastAudit>1500 && count>0){
-            lastAudit=now;const book=await gpu.audit(count);if(stopped)return;
+            lastAudit=now;const book=await gpu.summarize(count);if(stopped)return;
             if(!book.finite||gpu.errors.length)throw new Error('coffee3 GPU validation failed.');
             const speed=book.rmsSpeed*d.metresPerCell/d.timeUnit;
             rippleEnergy=clamp(speed/0.15,0,1);
@@ -713,10 +825,10 @@
         }catch(error){if(stopped)return;stop();console.error(error);notice('coffee3 could not keep running on this graphics device.');}
         finally{busy=false;if(!stopped&&!sleeping&&!document.hidden&&!raf)raf=requestAnimationFrame(frame);}
       }
-      current={canvas,stop,dims:d,async audit(){const snapshot={count,emitted};const book=await gpu.audit(snapshot.count);return{...book,emitted:snapshot.emitted,inFlight:snapshot.emitted-snapshot.count};},drain(){holdUntil=performance.now();wake();},tilt(x,y,z=0){targetTilt=[x,y,z];wake();},get state(){return{count,emitted,elapsed,fullAt,phase,creamStart,bubblesBorn,draining,sleeping,frameMs,errors:[...gpu.errors]};}};
+      current={canvas,stop,dims:d,async audit(compact=false){const snapshot={count,emitted};const book=await (compact?gpu.summarize(snapshot.count):gpu.audit(snapshot.count));return{...book,emitted:snapshot.emitted,inFlight:snapshot.emitted-snapshot.count};},drain(){holdUntil=performance.now();wake();},tilt(x,y,z=0){targetTilt=[x,y,z];wake();},get state(){return{count,emitted,elapsed,fullAt,phase,creamStart,bubblesBorn,draining,sleeping,frameMs,errors:[...gpu.errors]};}};
       starting=false;raf=requestAnimationFrame(frame);
-    }catch(error){gpu?.destroy();canvas.remove();starting=false;console.error(error);
+    }catch(error){releasePage?.();gpu?.destroy();canvas.remove();starting=false;console.error(error);
       notice(error.message.length<180?error.message:'coffee3 could not initialise on this graphics device.');}
   }
-  root.RELAY_COFFEE3={pour,dimensions,jetAt,parcelAt,streamAt,opening,openTime,START_DELAY,RAMP_SECONDS,drainOpening,projectPoint,orientationGravity,accelerationGravity,get active(){return current;},get lastRun(){return lastRun;}};
+  root.RELAY_COFFEE3={pour,dimensions,jetAt,parcelAt,streamAt,opening,openTime,START_DELAY,RAMP_SECONDS,drainOpening,projectPoint,stirVelocity,motionResponse,freezePage,orientationGravity,accelerationGravity,get active(){return current;},get lastRun(){return lastRun;}};
 })(typeof window==='undefined'?globalThis:window);
