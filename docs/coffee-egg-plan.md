@@ -47,6 +47,12 @@ slows it is the friction of the creamer on the coffee"): viscosity, and turbulen
 measured rate. It goes from pale curls in black coffee to settled layers, heaviest at the
 bottom (Ric: "it should settle realistically. Like settle on the bottom"), then the solver
 stops so a phone can sleep.
+Then the pour itself (2026-11-27, Ric: "make the pour better … pause the pour and you'll see
+what I mean"). Frozen, the stream was a stack of short translucent pieces, banded at every
+overlap, ending in a rounded tip floating above a gap over the liquid. It is now one smooth
+body drawn as nested opaque ribbons (Beer–Lambert across the chord, as before), running just
+under the drawn surface at the lowest point across its width, with a small fillet where it goes
+in, a rounded front while it falls and a rounded tail when the pour stops.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 
@@ -113,22 +119,45 @@ The camera stays almost straight on, looking down by about 13.5°. A filtered 3D
 field is reconstructed from the particles. Cubic B-spline sampling and a short ray march
 produce the curved surface, its normal and the liquid's optical thickness. Coffee absorbs
 warm light through that thickness (Beer–Lambert); its surface reflects two broad procedural
-soft lights with Fresnel reflectance. There is no extruded ribbon, drawn surface wave,
+soft lights with Fresnel reflectance. There is no extruded ribbon or displaced surface wave,
 stock texture or prerecorded splash. Cubic reconstruction matters: a trilinear density
 field left visibly straight facets, and independently rendered spheres made the first
 version look beaded. The grid is 64 cells across on a computer, 44 on a coarse-pointer
-device, ten deep with six cells between the walls; height follows the viewport aspect.
-The nozzle is continued analytically through the very top border, above the simulation's
-valid particle-entry position, so an artificial rounded cap does not hang in mid-air.
+device, eight deep with four cells between the walls; height follows the viewport aspect.
+Detached particles too small for the density field have their own round, depth-tested
+surfaces with the same light and absorption. Sub-grid capillary normals add fine reflected
+detail using ω² = gk + (σ/ρ)k³, with σ/ρ approximated by 0.000072 m³/s²; their amplitude
+follows measured motion. They move neither the silhouette nor any liquid volume.
 
 Gravity is 9.81 m/s², mapped using 0.2646 mm per desktop CSS pixel or an estimated 68 mm
-phone short side. The selected nozzle radius is 2.16 grid cells, entering at 0.6 m/s.
-Its **cylindrical** flow is πr² × speed; particle count divided by rest density is volume,
+phone short side. The selected nozzle radius is 6 mm on a computer, 2.5 mm on a phone,
+limited to fit the shallow depth, entering at 0.6 m/s. Its **cylindrical** flow is
+πr² × speed; particle count divided by rest density is volume,
 so fill duration follows from those quantities, not a hand-set timer. The target is
 nominally three quarters of the cup. The pressure law is weakly compressible, so that is
-a volume target rather than an exact final surface-height guarantee. Damping, viscosity,
-nozzle size and lighting are chosen, not measured coffee properties. It does not yet model
-creamer, bubbles, foam, steam or capillary sheets below the grid's scale.
+a volume target rather than an exact final surface-height guarantee. Molecular kinematic
+viscosity is 0.8 × 10⁻⁶ m²/s (a hot-water approximation, not a coffee measurement), with
+Smagorinsky's Cs = 0.17 for unresolved shear. Nozzle size, optical constants and lighting
+remain chosen. It does not yet model creamer, bubbles, foam, steam or capillary sheet geometry
+below the grid's scale.
+
+**Correction after Ric's first look, 2026-11-27**: "wow it looks gross and coffee gets
+left there ... it looks like sludge". The first version had an overly wide simulated
+particle column, globally damped velocity and an overly broad reconstructed surface.
+The pour is now exact free fall in air: analytical parcels carry birth times, narrow by
+continuity as they accelerate, and become GPU particles only when they reach the measured
+surface. A small GPU probe reads that surface, so the stream joins the actual pool.
+The accounting is **emitted = in cup + out + in flight**; source and particle counters
+are captured together when read back, even if another frame lands more coffee while the
+readback is pending. Emission still follows cylindrical flux, so the narrower source
+genuinely takes longer rather than filling with unexplained extra volume.
+
+The old permanent centre hole stranded two pools beside it. The floor is now a gate:
+it opens at the centre and spans the whole width after 0.4 s of simulated time, allowing
+all particles to leave under gravity. No remnant is left active and no particles are
+erased by a fade. The overlay is destroyed only when **zero particles** and **zero in
+flight** remain. The earlier browser test merely required an 80% reduction; that passed
+while the bug was visible. It now waits for the complete lifecycle and another pour.
 
 Drag anywhere to stir; Alt-drag sets desktop gravity for tipping. These listeners never
 prevent page interaction. On phones, orientation provides a consistent reference and
@@ -136,7 +165,7 @@ acceleration including gravity provides tilt/shakes; the motion sign is checked 
 orientation, with the iPhone reversed-sign assumption until calibrated. Sensor permission
 is requested in the command's original keypress/submit gesture, before lazy loading.
 Permission denial leaves the upright cup usable. The desktop hold is five seconds after
-the **pour ends**, and the phone hold is forty minutes. The page suspends while hidden;
+the **last parcel lands**, and the phone hold is forty minutes. The page suspends while hidden;
 a quiet cup can stop submitting GPU work and wake for motion or its drain deadline.
 Reduced motion uses a static cup without initialising WebGPU. Resizing keeps the particles
 and fits their view to the new window; it does not rebuild or refill the simulation.
@@ -157,7 +186,7 @@ Validation:
   It reports a failure instead of treating missing WebGPU as a pass. This is manual browser
   verification, not a Node mock and not silently included in CI.
 
-Verified 2026-11-27: all 13 GPU checks passed on the desktop profile and at 375 × 812
+Original verification, 2026-11-27: 13 GPU checks passed on the desktop profile and at 375 × 812
 with `?phone&coffeedebug` (which selects the actual 44-cell phone profile). Both command
 entry points were opened at phone width. CPU checks cover orientation axes in portrait
 and landscape, the Apple acceleration sign, reduced-motion teardown/re-pouring, and
@@ -167,6 +196,11 @@ People Sandbox tests; `ways.test.mjs` was reproduced independently with that fol
 identical to HEAD. Garmin and KONDRITE's socket failures passed outside the network
 sandbox. The coffee permission-pattern regression found by the old coffee suite was
 fixed by keeping its original gesture handler and adding coffee3's alongside it.
+The correction above strengthens the GPU suite: it now verifies the in-flight ledger,
+complete drainage to zero, overlay removal, another pour, and draining a just-started cup.
+The first suite's partial-drain assertion was insufficient even though it passed.
+The strengthened suite passed on both desktop and phone profiles on 2026-11-27, including
+zero particles after draining and a successful new pour. Phone hardware remains unverified.
 
 The MLS-MPM transfer equations are adapted from **matsuoka-601/Splash**, MIT, which credits
 Hu et al. and nialltl. The final density-volume renderer is specific to this shallow view;

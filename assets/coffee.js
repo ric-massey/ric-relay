@@ -954,31 +954,72 @@
     return { body, gloss };
   }
 
+  // A stream is drawn as one smooth body from its top to where it goes in,
+  // never as a stack of short pieces: pieces with their own gradients,
+  // overlapped so no gap showed, doubled their transparency at every seam
+  // and banded the stream along its length - plain the moment the pour was
+  // paused (Ric, 2026-11-27: "pause the pour and you'll see what I mean").
+  // Across it, Beer-Lambert over the chord is drawn as nested ribbons, each
+  // a single opaque path from top to bottom: amber where the jet is thin at
+  // its edges, dark through its middle. It runs on below the surface the
+  // eye sees (the coffee is drawn over it), so it goes into the liquid
+  // rather than stopping on a rounded tip above it, and it widens a little
+  // just above the surface, where the liquid round a plunging jet is drawn
+  // up and along it.
+  const RIB = [1, 0.94, 0.84, 0.7, 0.52, 0.3];
   function drawStream(ctx, s, S, ys) {
     if (S.start < 0 || S.head <= 0 || S.done) return;
-    const yTop = Math.max(-4, S.tail), yEnd = Math.min(S.head, S.land + 2);
+    // where the body of liquid really is under the stream (the drawn
+    // surface), not the grid's first wet cell, which a splash lifts
+    // - the lowest of it across the jet's width, so a crater the jet has dug
+    // does not leave it stopping short in the air
+    const hw0 = S.Q / Math.sqrt(S.v0 * S.v0 + 2 * 9.81 * s.PXM * S.land) / 2;
+    const surf = Math.min(s.Hs, Math.max(s.surfaceX(S.xNow - hw0), s.surfaceX(S.xNow), s.surfaceX(S.xNow + hw0)) / ys);
+    // only just into the liquid: the coffee is drawn over it at 95%, and any
+    // deeper the stream showed through as a ghost
+    const into = surf + 0.6 * s.h;
+    const front = S.head < surf;                          // still falling: its front is in the air
+    const yTop = Math.max(-4, S.tail), yEnd = Math.min(S.head, into);
     if (yEnd <= yTop) return;
-    const steps = Math.max(2, Math.ceil((yEnd - yTop) / 6)), C = [], t = s.t;
+    const steps = Math.max(3, Math.ceil((yEnd - yTop) / 4)), t = s.t, G = 9.81 * s.PXM;
+    const cx = new Float32Array(steps + 1), hw = new Float32Array(steps + 1), py = new Float32Array(steps + 1);
     for (let k = 0; k <= steps; k++) {
       const y = yTop + ((yEnd - yTop) * k) / steps;
-      const v = Math.sqrt(S.v0 * S.v0 + 2 * (9.81 * s.PXM) * Math.max(0, y));
-      const hw = (S.Q / v / 2) * (1 + 0.03 * Math.sin(0.09 * y - 22 * t));
-      C.push([S.xNow + 0.6 * Math.sin(1.7 * t + y * 0.006), hw, y * ys]);
+      const v = Math.sqrt(S.v0 * S.v0 + 2 * G * Math.max(0, y));
+      let w = (S.Q / v / 2) * (1 + 0.025 * Math.sin(0.09 * y - 22 * t) + 0.012 * Math.sin(0.23 * y - 41 * t));
+      // the skirt: a small fillet of liquid drawn up round the jet, about one of its widths high
+      if (!front) { const a = (y - (surf - 2 * w)) / (2 * w); if (a > 0) w *= 1 + 0.45 * Math.min(1, a) ** 3; }
+      cx[k] = S.xNow + 0.6 * Math.sin(1.7 * t + y * 0.006); hw[k] = w; py[k] = y * ys;
     }
-    const U = [-1, -0.92, -0.75, -0.45, 0, 0.45, 0.75, 0.92, 1];
-    for (let k = 0; k < C.length - 1; k++) {
-      const [cx, hw, y] = C[k], [cx2, hw2, y2] = C[k + 1];
-      const grad = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
-      if (S.c) { grad.addColorStop(0, "rgba(214,198,176,0.96)"); grad.addColorStop(0.45, "rgba(250,246,238,0.98)"); grad.addColorStop(1, "rgba(226,212,192,0.96)"); }
-      else { const D = 2 * hw * s.MM; for (const u of U) grad.addColorStop((u + 1) / 2, through(D * Math.sqrt(Math.max(0.04, 1 - u * u)), 0.95)); }
+    // the ends: a stream that has stopped pours its last as a rounded tail,
+    // and a front still falling is rounded too
+    const capTop = S.tail > -4, capEnd = front;
+    const ribbon = (f) => {
       ctx.beginPath();
-      ctx.moveTo(cx - hw, y); ctx.lineTo(cx + hw, y); ctx.lineTo(cx2 + hw2, y2 + 0.6); ctx.lineTo(cx2 - hw2, y2 + 0.6);
-      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+      if (capTop) ctx.arc(cx[0], py[0], hw[0] * f, Math.PI, 0); else { ctx.moveTo(cx[0] - hw[0] * f, py[0]); ctx.lineTo(cx[0] + hw[0] * f, py[0]); }
+      for (let k = 1; k <= steps; k++) ctx.lineTo(cx[k] + hw[k] * f, py[k]);
+      if (capEnd) ctx.arc(cx[steps], py[steps], hw[steps] * f, 0, Math.PI); else ctx.lineTo(cx[steps] - hw[steps] * f, py[steps]);
+      for (let k = steps - 1; k >= 0; k--) ctx.lineTo(cx[k] - hw[k] * f, py[k]);
+      ctx.closePath();
+    };
+    // the colour across: the chord at each ribbon's edge, through the jet's
+    // width where it is widest on screen (it narrows as it speeds up, but
+    // the eye reads its middle; within a few percent over the fall)
+    const D = 2 * hw[Math.floor(steps / 2)] * s.MM;
+    for (const f of RIB) {
+      ribbon(f);
+      if (S.c) { const m = 1 - f; ctx.fillStyle = `rgb(${Math.round(214 + 36 * m)},${Math.round(198 + 48 * m)},${Math.round(176 + 62 * m)})`; }
+      else ctx.fillStyle = through(D * Math.sqrt(Math.max(0.04, 1 - (f * 0.98) ** 2)), 1);
+      ctx.globalAlpha = f === 1 ? 0.9 : 1;   // the very edge a touch soft, as a round edge is
+      ctx.fill();
     }
-    const last = C[C.length - 1];
-    if (true) { ctx.beginPath(); ctx.arc(last[0], last[2], last[1], 0, Math.PI); ctx.fillStyle = S.c ? "rgba(244,238,226,0.98)" : through(2 * last[1] * s.MM * 0.7, 0.95); ctx.fill(); }
-    ctx.beginPath(); C.forEach((c, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, c[0] - 0.45 * c[1], c[2]));
-    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.7)" : "rgba(255,248,238,0.5)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.globalAlpha = 1;
+    // the light off its round front: a soft wide sheen and a fine line
+    ctx.beginPath();
+    for (let k = 0; k <= steps; k++) (k ? ctx.lineTo : ctx.moveTo).call(ctx, cx[k] - 0.42 * hw[k], py[k]);
+    ctx.lineCap = ctx.lineJoin = "round";
+    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.25)" : "rgba(255,240,220,0.12)"; ctx.lineWidth = Math.max(1.5, 0.5 * hw[0]); ctx.stroke();
+    ctx.strokeStyle = S.c ? "rgba(255,255,252,0.7)" : "rgba(255,248,238,0.45)"; ctx.lineWidth = 0.9; ctx.stroke();
   }
 
   /* ─── on the page ──────────────────────────────────────────────────── */

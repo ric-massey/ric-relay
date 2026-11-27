@@ -4,7 +4,7 @@
 body{margin:0;background:#eee7dc;color:#231a14;font:16px/1.5 system-ui}main{padding:32px;max-width:800px;margin:auto}h1{font:36px Georgia}button{font:16px system-ui;padding:12px 18px;margin:4px}pre{white-space:pre-wrap;background:#fff9ef;padding:16px}#tools{position:relative;z-index:2147483646}p{max-width:580px}
 </style></head><body><main><h1>Coffee, under glass.</h1><p>Live GPU verification. The cup is the browser window. Drag anywhere to stir; Alt-drag to tip. Buttons below exercise the actual simulation and read its particles back from the GPU.</p>
 <div id="tools"><button id="pour">Pour coffee3</button><button id="left">Tilt left</button><button id="right">Tilt right</button><button id="upright">Upright</button><button id="empty">Turn upside down</button><button id="drain">Drain</button><button id="read">Read particles</button><button id="stop">Stop test</button><button id="suite">Run GPU checks</button><pre id="result">Ready.</pre></div></main>
-<script src="../../assets/coffee3.js"></script><script>
+<script src="../../assets/coffee3.js?v=2"></script><script>
 const result=document.getElementById('result');
 const phone=new URLSearchParams(location.search).has('phone')?true:undefined;
 const audit=async()=>{
@@ -29,6 +29,8 @@ document.getElementById('suite').onclick=async()=>{
     RELAY_COFFEE3.active?.stop();await RELAY_COFFEE3.pour({holdSeconds:180,phone});
     const cup=RELAY_COFFEE3.active;ok('WebGPU initialised',!!cup?.audit);
     await RELAY_COFFEE3.pour();ok('duplicate command keeps one cup',document.querySelectorAll('canvas[data-coffee="3"]').length===1);
+    await delay(150);const falling=await cup.audit();
+    ok('the in-flight stream is included in the books',falling.emitted===falling.alive+falling.lost+falling.inFlight);
     await until(()=>cup.state.fullAt>=0);let book=await cup.audit();
     ok('actual GPU particle data stays finite',book.finite && book.errors.length===0);
     ok('emitted count equals target',book.emitted===cup.dims.target);
@@ -44,10 +46,15 @@ document.getElementById('suite').onclick=async()=>{
     cup.stop();ok('teardown removes its canvas',!document.querySelector('canvas[data-coffee="3"]'));
     await RELAY_COFFEE3.pour({holdSeconds:180,phone});const next=RELAY_COFFEE3.active;
     ok('a fresh cup can be poured',!!next&&next!==cup);await until(()=>next.state.fullAt>=0);
-    const before=await next.audit();const t=next.state.elapsed;next.drain();
-    await until(()=>next.state.draining&&next.state.elapsed>t+1.5);const after=await next.audit();
-    ok('the floor drain removes liquid',after.alive<before.alive*0.8);
-    ok('draining remains finite',after.finite&&after.errors.length===0);next.stop();
+    const before=await next.audit();next.drain();
+    await until(()=>!RELAY_COFFEE3.active,60000);const after=RELAY_COFFEE3.lastRun;
+    ok('the floor drain removes ALL liquid',after?.alive===0&&after.emitted===before.emitted&&after.lost===after.emitted);
+    ok('no coffee remains in flight',after.inFlight===0);
+    ok('draining remains finite',after.finite&&after.errors.length===0);
+    ok('the fully drained overlay is removed',!document.querySelector('canvas[data-coffee="3"]'));
+    await RELAY_COFFEE3.pour({holdSeconds:180,phone});ok('pouring works after a complete drain',!!RELAY_COFFEE3.active);
+    RELAY_COFFEE3.active.drain();await until(()=>!RELAY_COFFEE3.active,20000);
+    ok('draining an empty or just-started cup also finishes',RELAY_COFFEE3.lastRun?.alive===0);
     result.textContent=lines.join('\n')+'\nALL GPU CHECKS PASSED';
   }catch(error){RELAY_COFFEE3.active?.stop();result.textContent=lines.join('\n')+'\nFAIL '+error.message;}
   finally{button.disabled=false;}

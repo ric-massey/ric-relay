@@ -1853,7 +1853,12 @@ migration marked "safe to re-run", and re-running it would have put the original
     pressure, or the liquid collapses into the gaps.
   - **A stream in the air is drawn, not simulated**: its fall is exact, and it joins the liquid
     where it lands with its own speed and width. A 5 mm stream is thinner than the grid and broke
-    into blobs.
+    into blobs. It is drawn as **one smooth body, nested opaque ribbons from top to bottom**,
+    never as short pieces with their own gradients (Ric, 2026-11-27: "pause the pour and you'll
+    see what I mean"): overlapped translucent pieces banded it at every seam, and it stopped on a
+    rounded tip above the liquid. It now runs just under the *drawn* surface (the lowest point
+    across its width, so a crater it digs does not leave it short) with a small fillet where it
+    goes in; any deeper and it ghosts through the coffee.
   - **Turbulence the grid cannot hold is modelled from measured constants**: Smagorinsky's eddy
     viscosity (Cs = 0.17) brakes a plunging jet within centimetres; swirls lose energy at
     Taylor's rate, 0.5·|ω|/2 (a flat flow keeps big swirls for ever where a cup's die). Waves are
@@ -1949,8 +1954,17 @@ migration marked "safe to re-run", and re-running it would have put the original
   open top, a floor drain, hidden-page suspension and a still reduced-motion cup. It needs
   WebGPU and says so if unavailable; never silently present an older renderer as coffee3.
   The original commands stay separate. Its nozzle is cylindrical, so the flow is
-  **πr² × speed** (not coffee's 2D width × speed); hold is measured after the pour ends.
-  It is weakly compressible and uses chosen damping, a fixed shallow depth, and bounded
+  **πr² × speed** (not coffee's 2D width × speed); hold starts when the last parcel lands.
+  **Air is analytical free fall**, not an oversized particle column; the measured landing
+  surface receives those same parcels with their actual impact speed and narrowed radius.
+  The books include liquid in flight. Molecular viscosity uses real units; unresolved shear
+  uses Smagorinsky, not uniform syrup-like drag. Tiny capillary normals affect reflections
+  only, and detached particles retain their own round surfaces instead of being blurred away.
+  **The floor gate opens across the full width in 0.4 s** (Ric, 2026-11-27: "coffee gets
+  left there ... it looks like sludge"): the narrow centre hole stranded two pools. Never
+  replace the complete-drain browser assertion with "some liquid left" again: it must reach
+  zero particles, zero in flight, remove the overlay, and allow another pour.
+  It is weakly compressible and uses a fixed shallow depth and bounded
   GPU substeps: no claim of stock-video fidelity, exact incompressibility or measured
   iPhone performance. Credit and the MIT notice are in `assets/coffee3-LICENSE.txt`.
   `.github/test/coffee3.mjs` checks units/flow/entry points in the quick lane;

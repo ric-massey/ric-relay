@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const context=vm.createContext({});
 vm.runInContext(read('assets/coffee3.js'),context);
-const {dimensions,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
+const {dimensions,jetAt,drainOpening,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
 const near=(actual,expected)=>{for(let i=0;i<expected.length;i++)assert.ok(Math.abs(actual[i]-expected[i])<1e-10,`${actual} versus ${expected}`);};
 near(orientationGravity(90,0),[0,-1,0]);
 near(orientationGravity(-90,0),[0,1,0]);
@@ -29,7 +29,18 @@ for(const [w,h,phone] of [[1440,900,false],[375,812,true],[844,390,true],[2560,1
   assert.equal(d.target,Math.floor((d.nx-4)*(d.ny-4)*(d.nz-4)*0.75*3));
   assert.ok(d.capacity>d.target && d.capacity*80<128*1024*1024);
   assert.ok(d.fillSeconds>0 && Number.isFinite(d.fillSeconds));
+  assert.ok(Math.abs(d.viscosity*d.metresPerCell**2/(3*d.timeUnit)-0.8e-6)<1e-12,'molecular viscosity uses real units');
+  for(const y of [2,d.ny/2,d.ny+2]){
+    const jet=jetAt(d,y);
+    assert.ok(Math.abs(Math.PI*jet.radius**2*jet.speed*3-d.flow)<1e-10,'the falling stream conserves flux at every height');
+    const t=jet.fallSeconds/d.timeUnit;
+    assert.ok(Math.abs(d.ny+2-d.speed*t-0.2*t*t-y)<1e-10,'the analytical stream reaches the surface in its calculated fall time');
+  }
 }
+assert.equal(drainOpening(0),0.12);
+assert.ok(drainOpening(0.2)>0.12);
+assert.ok(drainOpening(0.4)>0.5,'the floor gate eventually opens beyond both sides, so no shelf traps a pool');
+assert.equal(drainOpening(10),drainOpening(0.4));
 const terminal=read('terminal.html'),door=read('index.html');
 assert.match(terminal,/coffee3: \(\) =>/);
 assert.match(terminal,/TERMINAL_EMBED\.send\(\{ term: "coffee3" \}\)/);
