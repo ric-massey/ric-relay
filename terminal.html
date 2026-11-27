@@ -461,6 +461,8 @@ type Sydney's cat's name for a surprise!</div>
       // asks from a keypress or a tap: this is still inside the one that ran `coffee`.
       window.DeviceMotionEvent?.requestPermission?.().catch(() => {});
       window.DeviceOrientationEvent?.requestPermission?.().catch(() => {});
+      // put the keyboard away so the cup can be seen (Ric, 2026-11-27)
+      document.activeElement?.blur?.();
       if (window.RELAY_COFFEE) return window.RELAY_COFFEE.pour();
       const js = document.createElement("script");
       js.src = "assets/coffee.js?v=31"; js.onload = () => window.RELAY_COFFEE?.pour();
