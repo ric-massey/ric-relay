@@ -87,4 +87,11 @@ for (const w of worlds) for (const h of w.homes) {
   console.log("  a household's fields: " + behind + " behind the house, " + ahead + " in front");
   assert.ok(behind > ahead, "fields lie behind the house more than in front");
 }
+/* 6. The page draws a field's furrows the way the engine's rows run: the same hash, copied (2026-11-27). */
+{
+  const { readFileSync } = await import("node:fs");
+  const body = (src, name) => { const k = src.indexOf("const " + name + " = (a, b, c) => {"); if (k < 0) return null; const a = src.indexOf("{", k), b = src.indexOf("};", a); return src.slice(a, b); };
+  const engine = body(readFileSync(new URL("../people.js", import.meta.url), "utf8"), "h01"), page = body(readFileSync(new URL("../index.html", import.meta.url), "utf8"), "rowHash");
+  assert.ok(engine && page && engine === page, "the page's furrows and the engine's rows use the same hash");
+}
 console.log("layout: ok");
