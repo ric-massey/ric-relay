@@ -950,6 +950,32 @@
     const reachBest = new Float32Array(tiles).fill(1e9);
     const boundOf = S.property !== "old" ? new Int32Array(tiles).fill(-1) : null;   // TODO 15.7d: whose a square was   // territory(): the best claim on each square
     let ownedList = [];
+    /* TODO 24: a people's land outside its villages, and the floods that work land out (see "how land is held"). */
+    const realm = new Int16Array(tiles).fill(-1);       // the people holding a square outside the villages
+    const realmK = new Uint8Array(tiles);               // 0 frontier, 1 reach, 2 written, 3 surveyed, 4 a band's range
+    const realmV = new Int32Array(tiles).fill(-1);      // the village it was reached from
+    const landCode = new Int32Array(tiles).fill(-1);    // for the page: a village's id, or −(2 + people × 8 + kind), or −1
+    let realmList = [], codeList = [], realmDue = true, boundList = [];
+    const REACH = 18, SURVEY = 54, RANGE = 36;          // squares of open walk: an hour (4.5 km), three, two
+    /* The heap the floods share: when, the square, and the village it is reached from. */
+    let hK = new Float64Array(1024), hI = new Int32Array(1024), hV = new Int32Array(1024), hN = 0;
+    function hPush(k, i, v) {
+      if (hN === hK.length) { const K = new Float64Array(hN * 2), I = new Int32Array(hN * 2), V = new Int32Array(hN * 2); K.set(hK); I.set(hI); V.set(hV); hK = K; hI = I; hV = V; }
+      let j = hN++;
+      while (j > 0) { const p = (j - 1) >> 1; if (hK[p] <= k) break; hK[j] = hK[p]; hI[j] = hI[p]; hV[j] = hV[p]; j = p; }
+      hK[j] = k; hI[j] = i; hV[j] = v;
+    }
+    let pK = 0, pI = 0, pV = 0;
+    function hPop() {
+      pK = hK[0]; pI = hI[0]; pV = hV[0];
+      const k = hK[--hN], i = hI[hN], v = hV[hN];
+      if (hN === 0) return;
+      let j = 0;
+      for (;;) { let c = 2 * j + 1; if (c >= hN) break; if (c + 1 < hN && hK[c + 1] < hK[c]) c++; if (hK[c] >= k) break; hK[j] = hK[c]; hI[j] = hI[c]; hV[j] = hV[c]; j = c; }
+      hK[j] = k; hI[j] = i; hV[j] = v;
+    }
+    const NX = [1, -1, 0, 0, 1, 1, -1, -1], NY = [0, 0, 1, -1, 1, -1, 1, -1], ND = [1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2];
+    const seenSq = [];   // squares a flood has reached this time (reachBest holds the best so far)
     const WILD = cols > 160, inReach = WILD ? new Uint8Array(tiles) : null;   // worked(): land over 40 km
     let workedList = null;
     /* Lists of who is on each square, made only for squares somebody stands
@@ -1472,7 +1498,7 @@
           const i = y * cols + x;
           if (owner[i] === v.id && fert[i] > 0.05 && !held.has(i)) cand.push(i);
         }
-        cand.sort((a, b) => Math.hypot(a % cols + 0.5 - h.x, ((a / cols) | 0) + 0.5 - h.y) - Math.hypot(b % cols + 0.5 - h.x, ((b / cols) | 0) + 0.5 - h.y) || a - b);
+        cand.sort((a, b) => fieldDist(h, a) - fieldDist(h, b) || a - b);
         for (const i of cand) { if ((h.fields ? h.fields.length : 0) >= want) break; (h.fields || (h.fields = [])).push(i); held.set(i, h.id); }
       }
       heldStamp++;
@@ -1646,15 +1672,26 @@
       return { households: n, landless: n ? sizes.filter(x => x === 0).length / n : 0, mean: n ? sum / n : 0, most: n ? sizes[n - 1] : 0,
                gini: n && sum ? g / (n * sum) : 0, pledged: PLEDGE.size, granted: GRANT.size, enclosed: villages.filter(v => v.alive && v.enclosed).length };
     }
-    /* Fields of the village nobody holds, nearest the house first. */
+    /* Fields of the village nobody holds, nearest the house first (behind it first, TODO 23). */
     function freeFields(v, h, n) {
       const out = []; if (n <= 0) return out;
-      const cx = Math.floor(h.x), cy = Math.floor(h.y);
-      for (let r = 0; r <= 10 && out.length < n; r++) for (let y = cy - r; y <= cy + r && out.length < n; y++) for (let x = cx - r; x <= cx + r && out.length < n; x++) {
+      const cx = Math.floor(h.x), cy = Math.floor(h.y), want = h.face == null ? n : n * 3 + 4;
+      for (let r = 0; r <= 10 && out.length < want; r++) for (let y = cy - r; y <= cy + r && out.length < want; y++) for (let x = cx - r; x <= cx + r && out.length < want; x++) {
         if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r || x < 0 || y < 0 || x >= cols || y >= rows) continue;
         const i = y * cols + x; if (owner[i] === v.id && fert[i] > 0.05 && !held.has(i)) out.push(i);
       }
+      if (h.face != null) { out.sort((a, b) => fieldDist(h, a) - fieldDist(h, b) || a - b); out.length = Math.min(out.length, n); }
       return out;
+    }
+    /* How far a field is from a house, for choosing a household's fields (TODO 23): straight distance
+       for a house that fronts nothing; for one on a street, a green or the water, its land lies
+       behind it, the long strip behind the toft (the croft, the Hufe), so a square across the street
+       counts two and a half times as far and one off to the side nearly twice. */
+    function fieldDist(h, i) {
+      const dx = i % cols + 0.5 - h.x, dy = ((i / cols) | 0) + 0.5 - h.y;
+      if (h.face == null) return Math.hypot(dx, dy);
+      const fx = Math.cos(h.face), fy = Math.sin(h.face), back = -(dx * fx + dy * fy), side = dx * fy - dy * fx;
+      return Math.hypot(side * 1.8, back < 0 ? back * 2.5 : back);
     }
     /* A stranger using a people's claimed land (15.7e): a tenth of what it gave, in coins, to that
        people, or held against their own people where they cannot pay. At war nobody asks. */
@@ -1666,22 +1703,13 @@
       const r = factions[c].rel[p.f]; if (!r) return;
       r.grief = clamp(r.grief + 0.003, 0, 3); r.op = clamp(r.op - 0.002, -1, 1); count.trespass++;
     }
-    /* Who claims the land round the villages: within three kilometres of a village's fields, the nearest. */
+    /* Who claims the land round the villages (15.7e): since TODO 24, a people's own land outside its
+       villages (`realm`) — its reach, written or surveyed land; a band's range is shared and claims
+       nothing. A people that holds land only by use (stage 2) claims none beyond its villages. */
     function claims() {
       for (const i of claimList) claim[i] = -1;
       claimList = [];
-      const best = new Map();
-      for (const v of villages) {
-        if (!v.alive) continue;
-        const r = Math.ceil(v.radius) + 12;
-        for (let y = Math.max(0, Math.floor(v.y) - r); y <= Math.min(rows - 1, Math.floor(v.y) + r); y++)
-          for (let x = Math.max(0, Math.floor(v.x) - r); x <= Math.min(cols - 1, Math.floor(v.x) + r); x++) {
-            const i = y * cols + x; if (owner[i] >= 0 || stopAt(i)) continue;
-            const d = Math.hypot(v.x - x - 0.5, v.y - y - 0.5) - v.radius; if (d > 12) continue;
-            const b = best.get(i); if (b === undefined) claimList.push(i);
-            if (b === undefined || d < b) { best.set(i, d); claim[i] = v.f; }
-          }
-      }
+      for (const i of realmList) if (realmK[i] !== 4 && owner[i] < 0 && !stopAt(i)) { claim[i] = realm[i]; claimList.push(i); }
     }
 
     /* ── where money comes from (TODO 15.8, 2026-11-23) ────────────────────
@@ -2113,16 +2141,182 @@
     const homesIn = [], NO_HOMES = Object.freeze([]);
     const homesOf = v => homesIn[v.id] || NO_HOMES;
     const M = 1 / 250;                                   // a metre, in squares
+    /* ── where houses stand (TODO 23, 2026-11-27) ─────────────────────────
+       Until this date every house went at the next point of a golden-angle spiral round the
+       village's middle, so every village on any land was the same round rosette (Ric: "why are
+       houses always built in a circle"). Now a village is laid out in one of the forms villages
+       really took, read off what the engine already knows, and grows in that form:
+       - street: houses both sides of the way through the place, each on a narrow plot with its
+         land behind it (the row village, Straßendorf; the Waldhufendorf's strips);
+       - water: one row along a river bank or shore, facing the water;
+       - green: round a long green, then out along the ways from its two ends (greens were common
+         pasture, often with a pond, where stock was kept in at night);
+       - cluster: irregular, round a middle kept open (a well, a church, the crossroads), along
+         lanes that wind out toward the neighbours (the nucleated villages of open fields);
+       - farms: each farmstead on its own land, its long side along the slope, where the land is
+         steep or poor (dispersed settlement: hills, poor soil);
+       - grid: lots on straight streets, only for a people that can plan (it writes and is ruled).
+         A surveying people (rail, the telegraph) founds on a grid laid to north, as the land
+         survey was; a town of a people that writes grows a planned grid beside its old core and
+         never rebuilds it (Ric: "Grid added beside the core"; regular plans set beside irregular
+         cores, the bastides and medieval new towns);
+       - camp: foragers' huts in rings facing the middle, as camps were (Yellen 1977, the !Kung).
+       A people's custom leans (Ric: "Custom leans, land decides"): it takes the form its first
+       village took to the villages it founds, where the land allows that form. No dice: a layout
+       reads the land and a hash of the village and the plot, so the world's dice are untouched,
+       but every house stands somewhere new and every seed is a new world from this date. Ric
+       chose not to keep the spiral (2026-11-27, "Keep neither"). README, "Where houses stand". */
+    const h01 = (a, b, c) => { let h = Math.imul(a | 0, 0x9E3779B1) ^ Math.imul((b | 0) + 0x632BE5AB, 0x85EBCA77) ^ Math.imul((c | 0) + 0x1B873593, 0xC2B2AE3D); h ^= h >>> 15; h = Math.imul(h, 0x2C1B3C6D); h ^= h >>> 12; h = Math.imul(h, 0x297A2D39); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
+    const FRONT = 19 * M, SET = 11 * M;   // a plot's frontage on its street (the spiral's 19 m), and a house's distance from the street's middle
+    /* What a people knows, read the same way before and after know-how is first handed out. */
+    const hasK = (f, k) => KNOW && f.know ? knows(f.id, k) : (ERA_KNOW[f.eraNow || f.era] || ERA_KNOW.early).includes(k);
+    const ruled = f => f.army > 0 || f.tax > 0 || f.harvest > 0 || f.soldiers > 0;   // a leader who takes a share or keeps soldiers
+    /* How a people holds land (TODO 24): 1 a range (bands that do not farm), 2 by use and walking,
+       3 by reach (a leader who takes a share or keeps soldiers), 4 by record (it writes), 5 by
+       survey (rail or the telegraph). Read off what it knows and how it rules, never off its era. */
+    function landStage(f) {
+      if (ROAM && f.band && !bandFarms(f)) return 1;
+      if (hasK(f, "rail") || hasK(f, "telegraph")) return 5;
+      if (hasK(f, "writing")) return 4;
+      return ruled(f) ? 3 : 2;
+    }
+    const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));   // the angle between two headings, 0 to π
+    function layOut(v) {
+      if (v.lay) return v.lay;
+      const f = factions[v.f], cx = Math.floor(v.x), cy = Math.floor(v.y);
+      let fs = 0, n = 0, lo = Infinity, hi = -Infinity, wx = -1, wy = -1, wd = 9, ponds = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+        const j = y * cols + x, g = ground[j];
+        if (deep(g) || g === G_RIVER || cross !== null && cross[j] === 1) { const d = Math.hypot(x + 0.5 - v.x, y + 0.5 - v.y); if (d < wd) { wd = d; wx = x + 0.5; wy = y + 0.5; } continue; }
+        if (pond[j] > 0 || g === G_MARSH) ponds++;
+        fs += fert[j]; n++; if (height[j] < lo) lo = height[j]; if (height[j] > hi) hi = height[j];
+      }
+      const soilQ = n ? fs / n : 0, slope = n > 1 ? (hi - lo) / 1250 : 0;   // the rise across the 1.25 km of squares round it
+      /* The ways out of the place: toward its neighbours within 6 km, nearest first, one a direction. */
+      const near = [];
+      for (const o of villages) { if (o === v || !o.alive) continue; const d = Math.hypot(o.x - v.x, o.y - v.y); if (d < 24) near.push([d, Math.atan2(o.y - v.y, o.x - v.x)]); }
+      near.sort((a, b) => a[0] - b[0]);
+      const ways = [];
+      for (const [, a] of near) { if (ways.every(b => turn(a, b) > 0.9)) ways.push(a); if (ways.length === 4) break; }
+      const through = ways.length === 1 || ways.length === 2 && turn(ways[0], ways[1]) > Math.PI - 0.6;   // one way, or two nearly opposite: a way through
+      const st = landStage(f), plan = st >= 4 && ruled(f);
+      const allowed = new Set(["cluster"]);
+      if (wd <= 1.6) allowed.add("water");
+      if (ways.length) allowed.add("street");
+      if (slope < 0.04 && soilQ > 0.35) allowed.add("green");
+      if (plan && st >= 5) allowed.add("grid");
+      let form;
+      if (ROAM && f.band && !bandFarms(f)) form = "camp";
+      else if (slope > 0.08 || soilQ < 0.3) form = "farms";
+      else {
+        form = plan && st >= 5 ? "grid" : wd <= 1.6 && ways.length < 2 ? "water" : through ? "street" : ponds > 0 && allowed.has("green") ? "green" : "cluster";
+        if (f.lay && allowed.has(f.lay)) form = f.lay;
+      }
+      if (!f.lay && form !== "camp") f.lay = form;
+      /* The axis: along the way through, along the water, to north for a survey's grid. */
+      let ang = ways.length ? (ways.length === 2 && through ? Math.atan2(Math.sin(ways[0]) - Math.sin(ways[1]), Math.cos(ways[0]) - Math.cos(ways[1])) : ways[0]) : h01(v.id, 1, 1) * Math.PI;
+      let ox = v.x, oy = v.y;
+      if (form === "water") {
+        /* The row runs along the bank: the axis is moved out to about 25 m from the water's edge (the
+           edge taken as the near side of the nearest water square), the houses on the land side of it. */
+        const toW = Math.atan2(wy - v.y, wx - v.x), out = Math.max(0, wd - 0.5 - 0.1);
+        ang = toW + Math.PI / 2; ox = v.x + Math.cos(toW) * out; oy = v.y + Math.sin(toW) * out;
+      }
+      if (form === "grid") ang = st >= 5 ? 0 : ang;
+      const lanes = [];
+      if (form === "cluster") {
+        for (const a of ways) lanes.push(a);
+        for (let k = 0; lanes.length < 3 && k < 12; k++) { const a = h01(v.id, 2, k) * 6.2832; if (lanes.every(b => turn(a, b) > 1)) lanes.push(a); }
+      }
+      return (v.lay = { form: form, ang: ang, ox: ox, oy: oy, lanes: lanes, blocks: null, ring: 0, ext: null });
+    }
+    /* Blocks of a grid, from the middle outward ring by ring; `half`: only those ahead of the axis. */
+    function gridBlock(L, b, half) {
+      const list = L.blocks || (L.blocks = []);
+      while (list.length <= b * 2 + 1) {
+        const r = L.ring || 0;
+        for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) if (Math.max(Math.abs(i), Math.abs(j)) === r && (!half || i >= 0)) list.push(i, j);
+        L.ring = r + 1;
+      }
+      return [list[b * 2], list[b * 2 + 1]];
+    }
+    /* Lot n of a grid laid from (ox, oy) along `ang`: blocks 120 m by 60 m of sixteen lots 15 m wide,
+       two rows back to back, with 15 m streets between (New York's 1811 blocks were 61 m by 150 to
+       270 m; Adelaide's town acres 20 m by 200 m). */
+    function gridLot(L, n, ox, oy, ang, half) {
+      const b = Math.floor(n / 16), l = n % 16, side = l < 8 ? -1 : 1, col = l % 8, [bi, bj] = gridBlock(L, b, half);
+      const u = bi * 135 * M + (-52.5 + col * 15) * M, w = bj * 75 * M + side * 24 * M, c = Math.cos(ang), s = Math.sin(ang);
+      return [ox + c * u - s * w, oy + s * u + c * w, ang, ang + side * Math.PI / 2];
+    }
+    /* Plot k of a layout: where its house stands, which way its long side lies, and which way it
+       faces (null for a farmstead, which fronts nothing in particular). */
+    function plotAt(v, L, k) {
+      const c = Math.cos(L.ang), s = Math.sin(L.ang), at = (u, w) => [L.ox + c * u - s * w, L.oy + s * u + c * w];
+      const along = j => (j % 2 ? (j + 1) / 2 : -j / 2);   // 0, +1, -1, +2, -2 … along the street from the middle
+      if (L.form === "street") {
+        const j = (k - 1) >> 1, sd = (k - 1) % 2 ? 1 : -1, [x, y] = at(along(j) * FRONT, sd * SET);
+        return [x, y, L.ang, L.ang - sd * Math.PI / 2];
+      }
+      if (L.form === "water") {
+        const [x, y] = at(along(k - 1) * FRONT, SET);   // the axis' left is away from the water: the house faces back across it
+        return [x, y, L.ang, L.ang - Math.PI / 2];
+      }
+      if (L.form === "green") {
+        /* Round a green 80 m by 30 m (seventeen plots), then out along the ways from both its ends. */
+        const gl = 80 * M, r = 15 * M + SET, per = 2 * gl + 2 * Math.PI * r, nG = Math.floor(per / FRONT);
+        if (k <= nG) {
+          let d = (k - 0.5) * per / nG, u, w, face;
+          if (d < gl) { u = -gl / 2 + d; w = r; face = -Math.PI / 2; }
+          else if ((d -= gl) < Math.PI * r) { const t = d / r - Math.PI / 2; u = gl / 2 + Math.cos(t) * r; w = -Math.sin(t) * r; face = Math.PI - t; }
+          else if ((d -= Math.PI * r) < gl) { u = gl / 2 - d; w = -r; face = Math.PI / 2; }
+          else { const t = (d - gl) / r + Math.PI / 2; u = -gl / 2 + Math.cos(t) * r; w = -Math.sin(t) * r; face = Math.PI - t; }
+          const [x, y] = at(u, w), fa = L.ang + face;
+          return [x, y, fa + Math.PI / 2, fa];
+        }
+        const m = k - nG - 1, end = m % 2 ? 1 : -1, sd = (m >> 1) % 2 ? 1 : -1, j = m >> 2, [x, y] = at(end * (gl / 2 + r + FRONT * (j + 1)), sd * SET);
+        return [x, y, L.ang, L.ang - sd * Math.PI / 2];
+      }
+      if (L.form === "cluster") {
+        /* Lanes winding out from a middle kept open 20 m round; each lane bends its own way, by up
+           to a third of a right angle every 100 m, with plots of uneven size. */
+        const nl = L.lanes.length, li = (k - 1) % nl, j = Math.floor((k - 1) / nl), sd = j % 2 ? 1 : -1;
+        const cu = (h01(v.id, 3, li) - 0.5) * 2.6, d = 20 * M + (j >> 1) * FRONT * 1.1 + (h01(v.id, k, 4) - 0.5) * 6 * M;   // cu: radians a square (250 m)
+        const a0 = L.lanes[li], a = a0 + cu * d, px = Math.abs(cu) > 1e-6 ? Math.sin(cu * d) / cu : d, py = Math.abs(cu) > 1e-6 ? (1 - Math.cos(cu * d)) / cu : 0;
+        const lx = v.x + Math.cos(a0) * px - Math.sin(a0) * py, ly = v.y + Math.sin(a0) * px + Math.cos(a0) * py, off = (SET + (h01(v.id, k, 5) - 0.5) * 4 * M) * sd;
+        return [lx - Math.sin(a) * off, ly + Math.cos(a) * off, a, a - sd * Math.PI / 2];
+      }
+      if (L.form === "farms") {
+        /* Each farmstead on its own land, about 7 ha a farm, its long side along the slope's contour. */
+        const a = h01(v.id, k, 6) * 6.2832, r = (0.35 + 0.55 * Math.sqrt(k)) * (0.8 + 0.4 * h01(v.id, k, 7));
+        const x = v.x + Math.cos(a) * r, y = v.y + Math.sin(a) * r, ix = clamp(Math.floor(x), 1, cols - 2), iy = clamp(Math.floor(y), 1, rows - 2);
+        const gx = height[iy * cols + ix + 1] - height[iy * cols + ix - 1], gy = height[(iy + 1) * cols + ix] - height[(iy - 1) * cols + ix];
+        return [x, y, gx === 0 && gy === 0 ? a : Math.atan2(gy, gx) + Math.PI / 2, null];
+      }
+      if (L.form === "camp") {
+        /* Rings of huts 9 m apart round the middle, the first 12 m out, each next 9 m further. */
+        let m = k - 1, ring = 0, per;
+        while (m >= (per = Math.max(6, Math.floor(2 * Math.PI * (12 + 9 * ring) / 9)))) { m -= per; ring++; }
+        const a = (m + (ring % 2) * 0.5) / per * 6.2832 + h01(v.id, 8, ring), r = (12 + 9 * ring) * M;
+        return [v.x + Math.cos(a) * r, v.y + Math.sin(a) * r, a + Math.PI / 2, a + Math.PI];
+      }
+      return gridLot(L, k - 1, v.x, v.y, L.ang, false);
+    }
     function newHome(v, wealth) {
-      let x = v.x, y = v.y, a = 0;
+      let x = v.x, y = v.y, a = 0, face = null;
+      const L = layOut(v), f = factions[v.f];
+      /* A town of a people that can plan grows a grid beside its core; the houses already standing
+         stay where they are. */
+      if (!L.ext && L.form !== "grid" && L.form !== "camp" && v.place !== "village" && landStage(f) >= 4 && ruled(f)) {
+        let far = 0; for (const h of homesOf(v)) far = Math.max(far, Math.hypot(h.x - v.x, h.y - v.y));
+        L.ext = { ox: v.x + Math.cos(L.ang) * (far + 40 * M), oy: v.y + Math.sin(L.ang) * (far + 40 * M), n: 0, blocks: null, ring: 0 };
+      }
       for (let tries = 0; tries < 60; tries++) {
-        const k = v.plots = (v.plots || 0) + 1;
-        a = k * 2.39996 + v.id * 0.7;
-        const r = 0.08 + 0.076 * Math.sqrt(k);
-        x = clamp(v.x + Math.cos(a) * r, 0.6, cols - 0.6); y = clamp(v.y + Math.sin(a) * r, 0.6, rows - 0.6);
+        const p = L.ext ? gridLot(L.ext, L.ext.n++, L.ext.ox, L.ext.oy, L.ang, true) : plotAt(v, L, v.plots = (v.plots || 0) + 1);
+        x = clamp(p[0], 0.6, cols - 0.6); y = clamp(p[1], 0.6, rows - 0.6); a = p[2] - Math.PI / 2; face = p[3];
         if (!wet(x, y)) break;
       }
-      const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, len: 0, wid: 0, water: JAR, src: null, n: 0,
+      const h = { id: homes.length, v: v.id, x: x, y: y, ang: a + Math.PI / 2, face: face, len: 0, wid: 0, water: JAR, src: null, n: 0,
                   built: true, work: 0, need: 0, goodsIn: 0, goodsNeed: 0, owner: 0, paid: false, fields: null, farmed: 0, idle: 0, head: 0, burned: -1e9, chores: 0, small: 0, wood: 0, cold: 0,
                   left: Infinity, stage: 0, stone: 0 };   // TODO 16: empty since, how far gone, and stone walls (1) or timber   // wood, cold: TODO 15.5f   // chores, small: TODO 15.5n   // TODO 14b: when it last burned
       sizeHome(h, wealth);
@@ -3501,32 +3695,162 @@
         v.feeds = food;
       }
     }
-    /* Who holds each square: the village it lies nearest the middle of, by
-       the village's reach. Worked out around each village only — the same
-       answer as asking every square of the map about every village, which on
-       a state-sized map was most of a day's work. */
-    function territory() {
+    /* ── how land is held (TODO 24, 2026-11-27) ───────────────────────────
+       Ric: "can we talk about how the get teritory? or land? rn it seems just in circles", then
+       "and the politicians in the future. like this is defined by era no?". Not by era: by what a
+       people knows and how it rules (landStage), as war already is (15.6), so peoples at different
+       stages live side by side. Until this date a village's land was a disc, 2.6 + 0.55 × √people
+       squares in a straight line, over rivers and mountains alike; Ric chose not to keep it
+       ("Keep neither"). Now:
+       - A village's land is what lies within its walk: a flood out from its middle over the squares
+         at the pace people walk them (`paceAt`: forest, marsh and hills slow, paths and roads
+         quick), stopped by water nobody can wade and taking in the water at its edge, out to the
+         walk the old disc measured on open grass (so on open land a village holds what it did, and
+         on rough land or by a river less). Two villages meet where each is an equal walk away: one
+         flood from every village at once, each square going to whichever reaches it first (a
+         Voronoi diagram by travel time). Bounds still never shrink under Land as property (15.7d).
+         Chisholm (Rural Settlement and Land Use, 1962) found work falling off past about 1 km and
+         rarely past 3 to 4; site catchments are drawn as an hour's walk for farmers and two for
+         foragers and herders (Vita-Finzi and Higgs 1970), in time, not distance, because the ground
+         changes how far an hour goes.
+       - A people's land (stage 3 and on) is its reach out from its villages over the land no village
+         holds: by the same walk, an hour beyond its fields (more with a wall or a garrison), the walk
+         divided by a weight that grows with how many live there, so a bigger place reaches further
+         against a neighbour, as a mandala's pull did (Wolters; Kristof 1959, the frontier a zone and
+         the boundary a line). Where two peoples' reach meets is a frontier, three squares deep,
+         drawn as a soft band. A people's reach joins up between its villages.
+       - Written down (stage 4: it writes) a square of its reach is recorded: from then on no
+         neighbour's strength takes it (Ric: "Only by an event"). It stays with the village it was
+         reached from, so it moves only when that village does: taken, ceded at a peace, brought by
+         a marriage, gone with a breakaway. With that village gone, the people keeps the square while
+         it stands and writes. (Anglo-Saxon charter bounds; parish bounds walked every seven years.)
+       - Surveyed (stage 5: rail or the telegraph) its claim runs straight over the ground, rivers
+         and hills alike, three hours out, and takes in empty land nobody walks (Ric: "By stage"):
+         the lines between two such peoples are straight because they are drawn, not walked (the
+         Land Ordinance of 1785; geometric boundaries).
+       - A band that does not farm (stage 1) has a range: two hours' walk round its camp, over land
+         nobody holds, shared, never a line, and nobody is charged for crossing it.
+       Everything that reads `owner` (fields, harvest, roads, the map) reads it as before; `realm`
+       is a people's land outside the villages, read by `landPeople` and the claims (15.7e). Village
+       land is worked out when villages change and once a day; a people's land once a week and on
+       any change of whose a village is. README, "How land is held". */
+    function territory(daily) {
       for (const v of villages) v.radius = v.alive ? 2.6 + Math.sqrt(Math.max(1, v.pop)) * 0.55 : 0;
       /* TODO 15.7d: bounds that stay put. A village's land grows as it clears more and never shrinks
          while it lives; a square once a village's stays that village's while it stands. */
       if (PROP) for (const v of villages) if (v.alive) { v.radius = Math.max(v.radius, v.bounds || 0); v.bounds = v.radius; }
-      for (const i of ownedList) { owner[i] = -1; reachBest[i] = 1e9; }
+      for (const i of ownedList) owner[i] = -1;
       ownedList = [];
-      for (const v of villages) {
-        if (!v.alive) continue;
-        const r = Math.ceil(v.radius) + 1;
-        for (let y = Math.max(0, Math.floor(v.y) - r); y <= Math.min(rows - 1, Math.floor(v.y) + r); y++)
-          for (let x = Math.max(0, Math.floor(v.x) - r); x <= Math.min(cols - 1, Math.floor(v.x) + r); x++) {
-            const d = Math.hypot(v.x - x - 0.5, v.y - y - 0.5);
-            if (d >= v.radius) continue;
-            const i = y * cols + x, ratio = d / v.radius;
-            if (PROP && boundOf[i] >= 0 && boundOf[i] !== v.id && villages[boundOf[i]].alive && villages[boundOf[i]].radius > Math.hypot(villages[boundOf[i]].x - x - 0.5, villages[boundOf[i]].y - y - 0.5)) continue;
-            if (ratio < reachBest[i]) { if (reachBest[i] === 1e9) ownedList.push(i); reachBest[i] = ratio; owner[i] = v.id; }
-          }
+      for (const v of villages) if (v.alive) { const i = tileAt(v.x, v.y); if (reachBest[i] === 1e9) seenSq.push(i); reachBest[i] = 0; hPush(0, i, v.id); }
+      while (hN > 0) {
+        hPop();
+        const i = pI, v = villages[pV], tt = pK;
+        if (owner[i] >= 0 || tt > reachBest[i]) continue;
+        /* A square that is another village's while it stands, or another people's by record. */
+        if (tt > 0 && PROP && boundOf[i] >= 0 && boundOf[i] !== v.id && villages[boundOf[i]].alive) continue;
+        if (tt > 0 && (realmK[i] === 2 || realmK[i] === 3) && realm[i] >= 0 && realm[i] !== v.f) continue;
+        owner[i] = v.id; ownedList.push(i);
+        if (tt > 0 && stopAt(i)) continue;   // the water at the edge of its land is its own; nobody walks on past it
+        const x = i % cols, y = (i / cols) | 0;
+        for (let d = 0; d < 8; d++) {
+          const nx = x + NX[d], ny = y + NY[d];
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || shut(x, y, NX[d], NY[d])) continue;
+          const j = ny * cols + nx; if (owner[j] >= 0) continue;
+          const nt = tt + ND[d] / (stopAt(j) ? 1 : paceAt(j));
+          if (nt > v.radius || nt >= reachBest[j]) continue;
+          if (reachBest[j] === 1e9) seenSq.push(j);
+          reachBest[j] = nt; hPush(reachBest[j], j, v.id);   // the key as stored (a Float32): stored and popped must compare equal
+        }
       }
-      if (PROP) { for (const i of ownedList) boundOf[i] = owner[i]; claims(); }
+      for (const i of seenSq) reachBest[i] = 1e9;
+      seenSq.length = 0;
+      if (PROP) {
+        /* Bounds never shrink: a square that was a living village's, and that no walk reached this
+           time (its way cut by other land), stays its. */
+        for (const i of boundList) { const b = boundOf[i]; if (owner[i] < 0 && b >= 0 && villages[b].alive) { owner[i] = b; ownedList.push(i); } }
+        for (const i of ownedList) { if (boundOf[i] < 0) boundList.push(i); boundOf[i] = owner[i]; }
+      }
+      for (const f of factions) if (f.alive && landStage(f) !== f.landStage) realmDue = true;   // a people that has come to write, survey, rule or farm
+      if (realmDue || !daily || t % (7 * DAY_HOURS) === 0) peoplesLand(); else codes();
+      if (PROP) claims();
       worked();
       landFeeds();
+    }
+    /* Each people's land outside its villages (stages 1, 3, 4, 5). */
+    function peoplesLand() {
+      realmDue = false;
+      for (const f of factions) f.landStage = f.alive ? landStage(f) : 0;
+      const keep = [];
+      for (const i of realmList) {
+        const k = realmK[i];
+        if ((k === 2 || k === 3) && owner[i] < 0) {
+          /* Written: it stays with the village it was reached from, and so moves only when that
+             village does; with the village gone, with the people while it stands and still writes. */
+          const v = realmV[i] >= 0 ? villages[realmV[i]] : null, holder = v && v.alive ? v.f : realm[i];
+          if (holder >= 0 && factions[holder].alive && factions[holder].landStage >= 4) { realm[i] = holder; keep.push(i); continue; }
+        }
+        realm[i] = -1; realmK[i] = 0; realmV[i] = -1;
+      }
+      realmList = keep;
+      /* Reach and survey from every village of a people that has them, at once: a square goes to the
+         village whose walk to it, over its weight, is least. Then bands' ranges over what is left. */
+      const weight = v => Math.sqrt(Math.max(4, v.pop)) / 10;
+      const budget = v => factions[v.f].landStage >= 5 ? v.radius + SURVEY : v.radius + REACH * (1 + (v.wall > 0 ? 0.5 : 0) + Math.min(0.5, (v.garrisonNow || 0) / 40));
+      for (let pass = 0; pass < 2; pass++) {
+        for (const v of villages) {
+          if (!v.alive) continue;
+          const st = factions[v.f].landStage;
+          if (pass === 0 ? st < 3 : st !== 1) continue;
+          const i = tileAt(v.x, v.y); if (reachBest[i] === 1e9) seenSq.push(i); reachBest[i] = 0; hPush(0, i, v.id);
+        }
+        while (hN > 0) {
+          hPop();
+          const i = pI, v = villages[pV], key = pK, fid = v.f, st = factions[fid].landStage, w = pass ? 1 : weight(v), sv = st >= 5 && !pass;
+          if (key > reachBest[i]) continue;
+          /* Through its own people's land it passes; another's it does not. */
+          const o = owner[i];
+          if (o >= 0 ? villages[o].f !== fid : realm[i] >= 0 && realm[i] !== fid) continue;
+          if (o < 0 && realm[i] < 0) {
+            if (deep(ground[i]) && !sv) continue;
+            realm[i] = fid; realmV[i] = v.id; realmList.push(i);
+            realmK[i] = pass ? 4 : st >= 5 ? 3 : st === 4 ? 2 : 1;
+          }
+          const tt = key * w, lim = pass ? v.radius + RANGE : budget(v), x = i % cols, y = (i / cols) | 0;
+          for (let d = 0; d < 8; d++) {
+            const nx = x + NX[d], ny = y + NY[d];
+            if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+            const j = ny * cols + nx;
+            /* A survey's line runs straight over everything but the sea; a walk stops at water nobody can wade. */
+            if (sv ? ground[j] === G_SEA : stopAt(j) || shut(x, y, NX[d], NY[d])) continue;
+            const nt = tt + (sv ? ND[d] : ND[d] / paceAt(j)), nk = nt / w;
+            if (nt > lim || nk >= reachBest[j]) continue;
+            if (reachBest[j] === 1e9) seenSq.push(j);
+            reachBest[j] = nk; hPush(reachBest[j], j, v.id);
+          }
+        }
+        for (const i of seenSq) reachBest[i] = 1e9;
+        seenSq.length = 0;
+      }
+      /* The frontier: reach not written down, within three squares of another people's land. */
+      for (const i of realmList) {
+        if (realmK[i] !== 1) continue;
+        const x = i % cols, y = (i / cols) | 0, f = realm[i];
+        let edge = false;
+        for (let dy = -3; dy <= 3 && !edge; dy++) for (let dx = -3; dx <= 3; dx++) {
+          const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const j = ny * cols + nx, g = owner[j] >= 0 ? villages[owner[j]].f : realmK[j] === 4 ? -1 : realm[j];
+          if (g >= 0 && g !== f) { edge = true; break; }
+        }
+        if (edge) realmK[i] = 0;
+      }
+      codes();
+    }
+    /* What the page is sent for each square. */
+    function codes() {
+      for (const i of codeList) landCode[i] = -1;
+      codeList = [];
+      for (const i of ownedList) { landCode[i] = owner[i]; codeList.push(i); }
+      for (const i of realmList) if (owner[i] < 0) { landCode[i] = -(2 + realm[i] * 8 + realmK[i]); codeList.push(i); }
     }
     /* Land over 40 km is mostly wild: its growth is worked out only within
        sixteen squares (four kilometres) of a village, and a square that comes
@@ -11619,6 +11943,7 @@
       const hs = homesOf(r);
       if (hs.length) { const into = homesIn[nv.id] || (homesIn[nv.id] = []); for (const h of hs) { h.v = nv.id; h.owner = 0; h.taken = false; into.push(h); } homesIn[r.id] = []; }
       nv.plots = Math.max(nv.plots || 0, r.plots || 0);
+      if (r.lay) nv.lay = r.lay;   // TODO 23: it goes on in the layout the ruin was built in
       for (const k of ["food", "goods", "wood", "stone", "iron", "wool", "hide"]) if (r[k] > 0) { nv[k] = (nv[k] || 0) + r[k]; r[k] = 0; }
       if (r.bl) { nv.bl = r.bl; r.bl = []; }
       if (r.works) { nv.works = r.works; r.works = null; }
@@ -11761,7 +12086,7 @@
     if (PASSAGE) { count.passAsked = 0; count.passGiven = 0; count.passPaid = 0; count.passRefused = 0; count.passForced = 0; }
     function landPeople(i) {
       const o = owner[i]; if (o >= 0) return villages[o].f;
-      return claim ? claim[i] : -1;
+      return realm[i] >= 0 && realmK[i] !== 4 ? realm[i] : -1;   // TODO 24: a people's land outside its villages; a band's range is nobody's to refuse
     }
     function passage(f, o, c, lead, from, to) {
       const crossed = new Set();
@@ -13378,7 +13703,7 @@
         /* Who told whom is kept while anybody could still hold the news: a year, by when it has
            faded below what anybody remembers (TODO 12). The tellings themselves stay. */
         for (const e of events) if (e.hops && e.t < t - 365 * DAY_HOURS) e.hops = null;
-        territory();
+        territory(true);
         if (ARMIES) warMap();   // TODO 15h
         for (const f of factions) if (f.alive) {
           if (f.pop === 0) { fall(f, -1); continue; }
@@ -13592,7 +13917,7 @@
       buildings: buildingsNow, get ruinStamp() { return ruinStamp; }, stageOf: stageOf,
       ruins: { day: () => { if (RUINS) ruinsDay(); }, list: () => ruinList.slice(), worth: vid => ruinWorth(villages[vid]), best: p => bestRuin(p), at: p => scavengeAt(p), home: p => bringHome(p), see: vid => seeRuin(villages[vid]), breadHours: h => breadHours(h), M_RUIN: M_RUIN, house: (pid, vid) => startHouse(byId.get(pid), villages[vid]), looted: (pid, text) => lootedFrom(byId.get(pid), text), holds: (p, vid) => mFind(p, M_RUIN, vid) >= 0 },
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
-      fert: fert, ore: ore, stock: stock, owner: owner, ground: ground, height: height, riverTo: riverTo, riverW: riverW, pond: pond, homes: homes,
+      fert: fert, ore: ore, stock: stock, owner: owner, landCode: landCode, realm: realm, realmK: realmK, realmV: realmV, landStage: f => landStage(typeof f === "number" ? factions[f] : f), ground: ground, height: height, riverTo: riverTo, riverW: riverW, pond: pond, homes: homes,
       /* Rain (TODO 6b): this year's crops for the rain on each square, 100 an ordinary year (null with
          Rain off), and any year's, worked out fresh without touching the world. */
       /* Send somebody somewhere, as a decision would: for tests (crossing water, TODO 6d). */
