@@ -1956,7 +1956,9 @@ migration marked "safe to re-run", and re-running it would have put the original
 - **`coffee3` is a separate live 3D experiment** (2026-11-27, Ric: "a horizontal view ...
   so it should be simpler", then "make it as coffee3"). `assets/coffee3.js` has its own
   WebGPU MLS-MPM simulation in a shallow volume and traces a cubic-filtered 3D density
-  surface, rather than extruding the first coffee's 2D wave or playing a video. It is lazy
+  surface, rather than extruding the first coffee's 2D wave or playing a video. Its
+  camera is exactly straight on, at zero elevation (Ric, 2026-11-27: "straight on.
+  Not at an angle"); volume rays and droplet projection share it. It is lazy
   loaded from both terminal and front door; iPhone permission is asked inside the original
   gesture in both places. It has mouse stirring, Alt-drag tipping, phone motion input, an
   open top, a floor drain, hidden-page suspension and a still reduced-motion cup. It needs

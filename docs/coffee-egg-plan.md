@@ -131,7 +131,9 @@ particles crossing it are lost, and a central floor opening drains them. No lost
 is recycled. `active.audit()` reads the actual particle buffer back, reporting finite
 values, counts, depth, average position, speed and WebGPU validation errors.
 
-The camera stays almost straight on, looking down by about 13.5°. A filtered 3D density
+The camera is exactly straight on, at zero elevation (Ric, 2026-11-27: "And it should
+be straight on. Not at an angle"). The volume rays and droplet projection use the same
+camera definition: changing a point's depth never shifts its image height. A filtered 3D density
 field is reconstructed from the particles. Cubic B-spline sampling and a short ray march
 produce the curved surface, its normal and the liquid's optical thickness. Coffee absorbs
 warm light through that thickness (Beer–Lambert); its surface reflects two broad procedural

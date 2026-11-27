@@ -4,7 +4,7 @@
    particles become a continuous surface by tracing their 3D density field.
    The transfer equations are adapted from matsuoka-601/Splash (MIT), which
    credits Hu et al. and nialltl. Full credit/licence: coffee3-LICENSE.txt.
-   The fixed camera is orthographic with a small downward viewing angle.
+   The fixed camera is orthographic and exactly straight on (zero elevation).
    This is weakly compressible liquid, not an offline incompressible solve.
    Lighting, nozzle size and unresolved detail remain visual/model choices.
    The simulation uses actual 9.81 m/s² at the estimated screen size.
@@ -14,6 +14,10 @@
   'use strict';
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const REST = 3, DT = 0.08;
+  // Ric, 2026-11-27: "straight on. Not at an angle". One projection for
+  // the volume, droplets and viewing rays; depth never raises a point.
+  const CAMERA_SLOPE = 0;
+  const projectPoint = (x,y,z) => [x,y+CAMERA_SLOPE*z];
   let current = null, starting = false, lastRun = null;
 
   // Screen x right, y UP, z behind the glass. Keep this conversion separate
@@ -200,7 +204,13 @@
       textureStore(field,c,vec4f(g,rho));
     }
   `;
-  const VOLUME = QUAD + `
+  const CAMERA = `
+    const VIEW_SLOPE:f32 = ${CAMERA_SLOPE.toFixed(1)};
+    const VIEW_RAY:vec3f = vec3f(0.0,-VIEW_SLOPE,1.0);
+    fn projectedXY(p:vec3f)->vec2f {return vec2f(p.x,p.y+VIEW_SLOPE*p.z);}
+    fn rayPoint(xy:vec2f,z:f32)->vec3f {return vec3f(xy.x,xy.y-VIEW_SLOPE*z,z);}
+  `;
+  const VOLUME = QUAD + CAMERA + `
     struct Params { size:vec4f, gravity:vec4f, mouse:vec4f, push:vec4f, counts:vec4u, view:vec4f, nozzle:vec4f, clock:vec4f }
     @group(0) @binding(0) var field:texture_3d<f32>;
     @group(0) @binding(1) var linear:sampler;
@@ -238,7 +248,7 @@
     }
     fn room(r:vec3f)->vec3f {
       var c=mix(vec3f(0.012,0.008,0.006),vec3f(0.26,0.25,0.24),smoothstep(-0.1,0.9,r.y));
-      // The top mirrors the room BEHIND the cup at this camera angle.
+      // Curved splash surfaces mirror the room behind the cup.
       // A light behind the viewer made almost every useful reflection vanish.
       let key=normalize(vec3f(-0.2,0.44,0.88));let fill=normalize(vec3f(0.7,0.6,-0.3));
       c+=vec3f(5.0,4.7,4.3)*pow(max(dot(r,key),0.0),65.0);
@@ -250,13 +260,13 @@
     struct Pixel { @location(0) color:vec4f, @builtin(frag_depth) depth:f32 }
     @fragment fn volume(in:Quad)->Pixel {
       let xy=vec2f(2.0+in.uv.x*(u.size.x-4.0),2.0+(1.0-in.uv.y)*(u.size.y-4.0));
-      let ray=normalize(vec3f(0.0,-0.24,1.0));
-      var hit=false;var position=vec3f(0);var lastP=vec3f(xy+vec2f(0,0.48),0);
+      let ray=VIEW_RAY;
+      var hit=false;var position=vec3f(0);var lastP=rayPoint(xy,0.0);
       var thickness=0.0;var maximum=0.0;var strongest=lastP;
       // The whole shallow cup is only eight grid cells deep, irrespective of
       // screen resolution. No marching through a large invisible tub.
       for(var k=0;k<=32;k++){
-        let z=f32(k)*0.25;let p=vec3f(xy.x,xy.y-0.24*(z-2.0),z);
+        let z=f32(k)*0.25;let p=rayPoint(xy,z);
         let rho=density(p).w;
         thickness+=min(rho/3.0,1.0)*0.25;
         if(rho>maximum){maximum=rho;strongest=p;}
@@ -303,14 +313,14 @@
       let p=particles[i].p;
       let corner=array<vec2f,6>(vec2f(-1,-1),vec2f(1,-1),vec2f(-1,1),vec2f(-1,1),vec2f(1,-1),vec2f(1,1))[vertex];
       var out:Drop;out.disk=corner;out.centre=p.xyz;
-      let xy=vec2f((p.x-2.0)/(u.size.x-4.0),(p.y-2.0+0.24*(p.z-2.0))/(u.size.y-4.0));
+      let xy=(projectedXY(p.xyz)-vec2f(2.0))/(u.size.xy-4.0);
       out.pos=vec4f(xy*2.0-1.0+corner*0.43*2.0/(u.size.xy-4.0),0,1);
       if(p.w<0.5 || density(p.xyz).w>0.65){out.pos=vec4f(3,3,0,1);}
       return out;
     }
     @fragment fn dropFragment(in:Drop)->Pixel {
       let r2=dot(in.disk,in.disk);if(r2>=1.0){discard;}
-      let z=sqrt(1.0-r2);let n=normalize(vec3f(in.disk,-z));let ray=normalize(vec3f(0,-0.24,1));
+      let z=sqrt(1.0-r2);let n=normalize(vec3f(in.disk,-z));let ray=VIEW_RAY;
       let F=0.02+0.98*pow(1.0-clamp(dot(-ray,n),0.0,1.0),5.0);
       let mm=2.0*0.43*z*u.view.w*1000.0;
       let through=exp(-vec3f(0.32,0.66,1.05)*mm)*vec3f(0.2,0.095,0.03);
@@ -567,5 +577,5 @@
     }catch(error){gpu?.destroy();canvas.remove();starting=false;console.error(error);
       notice(error.message.length<180?error.message:'coffee3 could not initialise on this graphics device.');}
   }
-  root.RELAY_COFFEE3={pour,dimensions,jetAt,drainOpening,orientationGravity,accelerationGravity,get active(){return current;},get lastRun(){return lastRun;}};
+  root.RELAY_COFFEE3={pour,dimensions,jetAt,drainOpening,projectPoint,orientationGravity,accelerationGravity,get active(){return current;},get lastRun(){return lastRun;}};
 })(typeof window==='undefined'?globalThis:window);

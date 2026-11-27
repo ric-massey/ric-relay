@@ -442,7 +442,7 @@ type Sydney's cat's name for a surprise!</div>
       if (window.RELAY_COFFEE3) return window.RELAY_COFFEE3.pour();
       if (document.querySelector('script[data-coffee3]')) return;
       const js = document.createElement("script"); js.dataset.coffee3 = "1";
-      js.src = "assets/coffee3.js?v=2"; js.onload = () => window.RELAY_COFFEE3?.pour();
+      js.src = "assets/coffee3.js?v=3"; js.onload = () => window.RELAY_COFFEE3?.pour();
       js.onerror = () => { js.remove(); console.warn("coffee3 could not load; type coffee3 to retry."); };
       document.head.appendChild(js);
     };

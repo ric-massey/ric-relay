@@ -6,7 +6,10 @@ import vm from 'node:vm';
 const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const context=vm.createContext({});
 vm.runInContext(read('assets/coffee3.js'),context);
-const {dimensions,jetAt,drainOpening,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
+const {dimensions,jetAt,drainOpening,projectPoint,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
+for(const z of [0,1,4,8]){
+  assert.deepEqual(Array.from(projectPoint(17,29,z)),[17,29],'depth never shifts the image: the camera is exactly straight on');
+}
 const near=(actual,expected)=>{for(let i=0;i<expected.length;i++)assert.ok(Math.abs(actual[i]-expected[i])<1e-10,`${actual} versus ${expected}`);};
 near(orientationGravity(90,0),[0,-1,0]);
 near(orientationGravity(-90,0),[0,1,0]);
