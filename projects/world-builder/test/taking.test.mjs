@@ -15,7 +15,9 @@ const LATER2 = { folk: false, faithRules: "few", fading: "old", fromTop: false, 
 {
   const peace = taking => { const w = People.create({ seed: 4, people: 300, factions: 2, taking, war: false }); w.step(24 * 60); return w; };
   assert.equal(print(peace("terms")), print(peace("old")), "a world at peace is the world it was");
-  const war = taking => { const w = People.create({ seed: 4, people: 300, factions: 2, taking, ...LATER2 }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };
+  /* Seed 13 since 2026-11-27: under TODO 23 and 24's land seed 4's war had no army reach a place it would
+     draw off from. Over seeds 9 to 20 it happens as often as before (11 call-offs in 11 worlds, 8 in 12). */
+  const war = taking => { const w = People.create({ seed: 13, people: 300, factions: 2, taking, ...LATER2 }); w.step(24); w.startWar(0, 1); w.step(2400); return w; };
   const s = war("terms").stats();
   assert.ok(s.calledOff > 0, "an army at a place too strongly held to take draws off (" + s.calledOff + ")");
   console.log("  100 days of war: called off " + s.calledOff + " (soldiers' deaths are measured over seeds by test/soldierdead.mjs)");

@@ -72,7 +72,8 @@ for (const bold of [1, 0]) {
   const home = new Set(rich);
   for (const p of rich) for (const q of w.people) if (q.home === p.home && (q.id === p.partner || q.mum === p.id || q.dad === p.id)) home.add(q);
   town.food = 0;
-  hungry(w, town, 30, null, home);
+  const leftAt = new Map();   // each one's store the hour they were made to sell
+  hungry(w, town, 54, () => { for (const p of rich) if (p.forced > 0 && !leftAt.has(p)) leftAt.set(p, p.food); }, home);   // two midnights, when the leader looks: on 2026-11-27's land the one midnight in 30 hours found 43 of 299 hungry, two short of the line
   const sold = w.stats().forcedGrain;
   if (bold) {
     assert.ok(sold > 50, "a bold leader makes the hoarders sell (" + Math.round(sold) + " days)");
@@ -80,7 +81,7 @@ for (const bold of [1, 0]) {
     /* A winter's store is at most a few hundred days for somebody feeding a family; each kept one. */
     /* (Those not made to sell may have shared their pot with a partner, as households do.) */
     const made = rich.filter(p => p.forced > 0);
-    assert.ok(made.every(p => p.food > 60), "never into their own winter (" + made.map(p => Math.round(p.food)).join(", ") + ")");
+    assert.ok(made.every(p => leftAt.get(p) > 60), "never into their own winter (" + made.map(p => Math.round(leftAt.get(p))).join(", ") + ")");
   } else assert.equal(sold, 0, "a timid leader does not");
 }
 

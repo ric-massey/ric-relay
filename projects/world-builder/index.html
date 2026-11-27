@@ -1906,8 +1906,14 @@
     /* Each village's faction, looked up once: -1 for none or one not drawn. */
     const factionOf = new Int32Array(vs.length + 1).fill(-1);
     for (let j = 0; j < vs.length; j++) { const f = vs[j] && vs[j].f; if (f != null && tints[f]) factionOf[j] = f; }
-    const whose = i => { const o = own[i]; return o >= 0 && o < vs.length ? factionOf[o] : -1; };
-    return { i: 0, n, cols, big, d, wd, whose, tints, fullOf, img, wimg, g, wg };
+    /* TODO 24: a square is a village's (its id), or a people's land outside its villages, sent as
+       −(2 + people × 8 + kind): 0 a frontier, 1 reach, 2 written, 3 surveyed, 4 a band's range. */
+    const whose = i => { const o = own[i]; if (o >= 0) return o < vs.length ? factionOf[o] : -1; if (o > -2) return -1; const f = (-o - 2) >> 3; return tints[f] ? f : -1; };
+    const kindOf = i => { const o = own[i]; return o >= 0 ? 9 : o > -2 ? -1 : (-o - 2) & 7; };
+    /* Land with a line round it: a village's own, and a people's written or surveyed land. A frontier,
+       reach and a range are soft: washed, never lined (Ric, 2026-11-27: "Band and line"). */
+    const lined = i => { const k = kindOf(i); return k === 9 || k === 2 || k === 3 ? whose(i) : -1; };
+    return { i: 0, n, cols, big, d, wd, whose, kindOf, lined, tints, fullOf, img, wimg, g, wg };
   }
   let painting = null;
   function paintMore(limit) {
@@ -1928,7 +1934,7 @@
       const cg = c.getContext("2d"); cg.imageSmoothingEnabled = true; cg.drawImage(src, 0, 0, c.width, c.height);
       mips.push(c); src = c;
     }
-    if (!P.big) borders = bordersOf(P.whose, P.cols, P.n / P.cols);
+    if (!P.big) borders = bordersOf(P.whose, P.lined, P.cols, P.n / P.cols);
   }
   /* Only the blocks that changed (pass 4, above): the same squares worked out the same way, put
      into the picture a block at a time, and the halved copies brought up to date round them. */
@@ -1951,30 +1957,32 @@
       }
     }
     landDirty = null;
-    if (!P.big) borders = bordersOf(P.whose, cols, rows);
+    if (!P.big) borders = bordersOf(P.whose, P.lined, cols, rows);
   }
   /* A line wherever one faction's land meets another's: left, top, width
      and height of each, in squares. */
   /* Where two peoples' land meets, a pale line (the list itself). Where a people's land meets
      land nobody holds, a thin line of its own colour (`out.outer`, by faction; 2026-11-25), so a
      territory reads as a shape and not only as a stain on the ground. */
-  function bordersOf(whose, cols, rows) {
+  /* Since TODO 24 only lined land (`lined`: a village's, written, surveyed) gets either line; where
+     one people's reach meets another's the frontier is a soft band, washed and not lined. */
+  function bordersOf(whose, lined, cols, rows) {
     const out = [], outer = new Map(), edge = (f, x, y, w, h) => { let l = outer.get(f); if (!l) outer.set(f, l = []); l.push(x, y, w, h); };
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-      const i = y * cols + x, a = whose(i);
+      const i = y * cols + x, a = lined(i), aw = a >= 0 ? a : whose(i);
       if (a < 0) {
-        if (x + 1 < cols) { const o = whose(i + 1); if (o >= 0) edge(o, x + 1, y, 0.14, 1); }
-        if (y + 1 < rows) { const o = whose(i + cols); if (o >= 0) edge(o, x, y + 1, 1, 0.14); }
+        if (x + 1 < cols) { const o = lined(i + 1); if (o >= 0 && aw < 0) edge(o, x + 1, y, 0.14, 1); }
+        if (y + 1 < rows) { const o = lined(i + cols); if (o >= 0 && aw < 0) edge(o, x, y + 1, 1, 0.14); }
         continue;
       }
-      if (x + 1 < cols) { const o = whose(i + 1); if (o >= 0 && o !== a) out.push(x + 0.875, y, 0.25, 1); else if (o < 0) edge(a, x + 0.86, y, 0.14, 1); }
-      if (y + 1 < rows) { const o = whose(i + cols); if (o >= 0 && o !== a) out.push(x, y + 0.875, 1, 0.25); else if (o < 0) edge(a, x, y + 0.86, 1, 0.14); }
+      if (x + 1 < cols) { const o = lined(i + 1), ow = o >= 0 ? o : whose(i + 1); if (o >= 0 && o !== a) out.push(x + 0.875, y, 0.25, 1); else if (ow < 0) edge(a, x + 0.86, y, 0.14, 1); }
+      if (y + 1 < rows) { const o = lined(i + cols), ow = o >= 0 ? o : whose(i + cols); if (o >= 0 && o !== a) out.push(x, y + 0.875, 1, 0.25); else if (ow < 0) edge(a, x, y + 0.86, 1, 0.14); }
     }
     out.outer = outer;
     return out;
   }
   function paintSquares(P, from, end) {
-    const { n, cols, big, d, wd, whose, tints, fullOf } = P;
+    const { n, cols, big, d, wd, whose, kindOf, lined, tints, fullOf } = P;
     for (let i = from; i < end; i++) {
       /* Paler where it has been harvested, and washed with the colour of
          whoever holds it. */
@@ -1986,13 +1994,15 @@
          it grey, and a river read as a road. It still counts as theirs; it is only not painted so. */
       const a = world.ground && world.ground[i] <= 2 ? -1 : whose(i);
       if (a >= 0) {
-        const c = tints[a], t = 0.3;
+        /* A village's land the full wash; a people's land outside its villages lighter, a frontier
+           and a range lightest of all (TODO 24). */
+        const k = kindOf(i), c = tints[a], t = k === 9 ? 0.3 : k === 0 ? 0.11 : k === 4 ? 0.08 : 0.2;
         r += (c[0] - r) * t; gg += (c[1] - gg) * t; b += (c[2] - b) * t;
         const A = 1 - (1 - wa) * (1 - t);
         wr = (wr * wa * (1 - t) + c[0] * t) / A; wgg = (wgg * wa * (1 - t) + c[1] * t) / A; wb = (wb * wa * (1 - t) + c[2] * t) / A; wa = A;
         if (big) {
-          const x = i % cols, ro = x + 1 < cols ? whose(i + 1) : -1, bo = i + cols < n ? whose(i + cols) : -1;
-          if ((ro >= 0 && ro !== a) || (bo >= 0 && bo !== a)) { r += (255 - r) * 0.55; gg += (255 - gg) * 0.55; b += (255 - b) * 0.55; wr = 255; wgg = 255; wb = 255; wa = Math.max(wa, 0.55); }
+          const x = i % cols, la = lined(i), ro = x + 1 < cols ? lined(i + 1) : -1, bo = i + cols < n ? lined(i + cols) : -1;
+          if (la >= 0 && ((ro >= 0 && ro !== la) || (bo >= 0 && bo !== la))) { r += (255 - r) * 0.55; gg += (255 - gg) * 0.55; b += (255 - b) * 0.55; wr = 255; wgg = 255; wb = 255; wa = Math.max(wa, 0.55); }
         }
       }
       const k = i * 4; d[k] = r; d[k + 1] = gg; d[k + 2] = b; d[k + 3] = 255;
@@ -3478,6 +3488,9 @@
     "<button class='btn' data-go='" + go + ":1' aria-label='More " + esc(label.replace(/<[^>]*>/g, "")) + "'>+</button></span>" + (extra || "") + "</div>";
   /* Who holds the land (TODO 7c), as the faction list and the ruling panel say it. */
   const LAND = { family: "Each family its own fields", village: "The village, in common", leader: "The leader, worked for a share", commune: "The village, shared out by need" };
+  /* How a people holds land beyond its fields (TODO 24), and how its villages are laid out (TODO 23). */
+  const BORDERS = { 1: "A range it wanders, shared with its neighbours", 2: "What its villages work, out to a walk", 3: "As far as its reach, a frontier where it meets a neighbour", 4: "Written down: it moves only when a place changes hands", 5: "Surveyed: lines drawn on a map, over empty land too" };
+  const LAY = { street: "along a street", water: "along the water", green: "round a green", cluster: "in a cluster", farms: "as scattered farms", grid: "on a grid", camp: "in a ring of huts" };
   /* Dealings short of war (TODO 13): the other side answers as its own leader would. */
   function dealButtons(f, o, d) {
     const r = f.rel[o.id] || {};
@@ -3909,7 +3922,7 @@
       (friends.length ? "<p>" + friends.map(r => [r.ally ? "allied with" : "", r.trade ? "trades free of tax with" : "", r.wed ? "bound by marriage to" : ""].filter(Boolean).join(", ") + " " + esc(r.name)).join(" · ").replace(/^./, c => c.toUpperCase()) + "</p>" : "") +
       "<p class='small'>Villages: " + F.villages.map(v => "<button class='linkish inline' data-go='village:" + v.id + "'>" + esc(v.name) + "</button> (" + v.pop + ")").join(", ") + "</p>" +
       fold("rule", f && f.yours ? "You are ruling " + esc(F.name) : "Rule " + esc(F.name) + " yourself", f ? rulePane(f, d) : "", !!(f && f.yours)) +
-      fold("laws", "Laws, land, marriage and faith", f ? "<div class='fac'>" + (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + govLines(f.gov) + matchLine(f.match) +
+      fold("laws", "Laws, land, marriage and faith", f ? "<div class='fac'>" + (f.land ? "<span class='ln'>Land: " + esc(LAND[f.land].toLowerCase()) + "</span>" : "") + (f.held ? "<span class='ln'>Borders: " + esc(BORDERS[f.held].toLowerCase()) + "</span>" : "") + (f.lay ? "<span class='ln'>Villages built " + esc(LAY[f.lay] || f.lay) + "</span>" : "") + govLines(f.gov) + matchLine(f.match) +
         (f.faith ? "<span class='ln'>Faith: " + esc(f.faith.name) + " · " + esc(RITE[f.faith.rite] || "") + faithMore(f.faith) + "</span>" : "") + dealings(f, d) +
         (f.army || []).map(c => "<span class='ln war'>Army: " + (c.ready ? "marching on " + esc(c.goal) : "gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + "</span>").join("") + "</div>" : "") +
       fold("tech", "What they know, and why it is not in use", why);

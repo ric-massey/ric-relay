@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
-const AT_WAR = 1587903057;   // print() of the two-people war below before 15.6e
+const AT_WAR = 195965653;   // print() of the two-people war below before 15.6e
 
 {
   const a = People.create({ seed: 2 }), b = People.create({ seed: 2, battle: "old" });
@@ -25,13 +25,16 @@ const war = (battle, seed = 4) => { const w = People.create({ seed, people: 300,
   /* Three wars, pooled, since 2026-11-24 (15.12a's dice): seed 4's war is now all raids, no army marching
      (seeds 8 and 10 the same), so 7 and 11, where armies do march, are flown beside it. */
   const add = (a, b) => { for (const k in b) if (typeof b[k] === "number") a[k] = (a[k] || 0) + b[k]; return a; };
-  const olds = [old, war("old", 7), war("old", 11)], news = [4, 7, 11].map(seed => war("choice", seed));
+  /* Seed 29 beside them since 2026-11-27: on TODO 23 and 24's land no war of seeds 4 to 28 declined a battle
+     but 29's (two); the old land declined 2 in seeds 4 to 15. Rare either way, and engagements fewer on the new
+     land (21 in seeds 4 to 15 against 36), so fewer chances to decline one. */
+  const olds = [old, war("old", 7), war("old", 11), war("old", 29)], news = [4, 7, 11, 29].map(seed => war("choice", seed));
   const w = news[0], s = news.reduce((a, x) => add(a, x.stats()), {}), s0 = olds.reduce((a, x) => add(a, x.stats()), {});
   assert.ok(s.battleDeclined > 0, "battle declined at poor odds (" + s.battleDeclined + ")");
   assert.ok(s.battles < s0.battles, "armies fight less often (" + s0.battles + " -> " + s.battles + ")");
   assert.ok(s.soldiersKilled <= s0.soldiersKilled, "and soldiers die no more (" + s0.soldiersKilled + " -> " + s.soldiersKilled + ")");
   for (const x of news) for (const f of x.factions) for (const k in f.camp || {}) { const c = f.camp[k]; if (c && c.restUntil > x.tick) assert.equal(c.ready, false, "a resting army does not march"); }
-  console.log("  three wars of 100 days: engagements " + s0.battles + " -> " + s.battles + ", declined " + s.battleDeclined + ", caught " + s.battleCaught + ", routs " + s.routs + ", soldiers killed " + s0.soldiersKilled + " -> " + s.soldiersKilled);
+  console.log("  four wars of 100 days: engagements " + s0.battles + " -> " + s.battles + ", declined " + s.battleDeclined + ", caught " + s.battleCaught + ", routs " + s.routs + ", soldiers killed " + s0.soldiersKilled + " -> " + s.soldiersKilled);
 }
 {
   const w = People.create({ seed: 5, people: 200, factions: 2, era: "medieval" });

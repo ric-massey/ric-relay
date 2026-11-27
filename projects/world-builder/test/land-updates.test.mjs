@@ -45,7 +45,7 @@ function same(page, w, why) {
   const tiles = w.cols * w.rows;
   for (let i = 0; i < tiles; i++) {
     const f = w.fert[i], full = f > 0 ? Math.round(Math.min(1, w.stock[i] / (f * w.tileCapacity)) * 255) : 255;
-    if (page.full[i] !== full || page.owner[i] !== w.owner[i]) assert.fail(why + ": square " + i + " is " + page.full[i] + "/" + page.owner[i] + ", the engine has " + full + "/" + w.owner[i]);
+    if (page.full[i] !== full || page.owner[i] !== w.landCode[i]) assert.fail(why + ": square " + i + " is " + page.full[i] + "/" + page.owner[i] + ", the engine has " + full + "/" + w.landCode[i]);
   }
 }
 const bytes = L => L.part ? L.crop.byteLength + L.own.byteLength + L.cropB.byteLength + L.ownB.byteLength : L.full.byteLength + L.owner.byteLength;

@@ -109,7 +109,11 @@ function hours(o, days, seed) {
   assert.ok(d("patient") < -0.01, "raided, less willing to wait: " + d("patient").toFixed(3));
   /* Half of it is still to wear off. */
   const left = both.reduce((s, id) => s + (a.byId.get(id).fade ? a.byId.get(id).fade[5] : 0), 0) / both.length;
-  assert.ok(left > 0.015 && left < 0.021, "half of the raid's anger is set to wear off: " + left.toFixed(4));
+  /* Half of a shift wears off over two years' half-life, so a month after the raid about half of
+     what was added is still to go: left / shift about 0.49 on any seed. (Until 2026-11-27 this was a
+     window of 0.015 to 0.021 on this one village; TODO 23 moved its houses and the raid burned more.) */
+  const ratio = left / d("temper");
+  assert.ok(left > 0.01 && ratio > 0.42 && ratio < 0.55, "half of the raid's anger is set to wear off: " + left.toFixed(4) + " of " + d("temper").toFixed(4));
   assert.equal(a.stats().raids, 1, "counted as one raid");
 }
 

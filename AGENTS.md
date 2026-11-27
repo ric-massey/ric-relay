@@ -725,6 +725,16 @@ nobody had linked was a page nobody could find.
   World Builder items check only what they change (`TODO.md`, "Running the sim only as much as
   needed"). The speed its second sentence means is 16× (`STEADY`),
   which Ric chose ("Keep 16×") over a year an hour and over keeping up at 1×.
+  **Where houses stand and how land is held, 2026-11-27** (TODO 23 and 24; README, "Where houses stand" and
+  "How land is held"): a village is laid out as a street, along water, round a green, a cluster, scattered farms
+  or a grid (a ring of huts for a band), read off its land and its people's custom (`layOut`), never off dice;
+  a village's land is a walk over the real ground, not a disc, and a people's land outside its villages
+  (`realm`) goes by stage: a range, reach with a frontier, written, surveyed (`landStage`, from what it knows and
+  how it rules, never its era). Ric chose to keep neither the spiral nor the circles, so there is no "simpler"
+  setting and every seed is a new world from that date. Rules it leaves: **a written or surveyed border moves
+  only with a village** (taken, ceded, married, broken away) — never add drift by strength to it (Ric: "Only by
+  an event"); **the page is sent `landCode`, not `owner`** (a village's id, or −(2 + people × 8 + kind)), and
+  only a village's, written and surveyed land are lined on the map — a frontier is a band, never a line.
   **Water, 2026-11-27** (README, "What the engine has, on the map"): rivers are drawn as lines as wide as
   they are (`riverW`, map only), a river over about 15 m (56 km² drained) cannot be waded ("Crossing
   water: big" is the old 300 km² line), and lakes form in 3 m hollows in wet country with ponds in wet

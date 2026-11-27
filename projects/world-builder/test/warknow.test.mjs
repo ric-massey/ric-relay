@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const People = createRequire(import.meta.url)("../people.js");
 const LATER = { formations: "nearest", raids: "old", battle: "old", property: "old", passage: "old", taking: "old", mint: "fixed", tech: "old", pursuit: "old", soldierPay: "kept", tills: "old", poor: "old", column: "old", favour: false, prophets: false, witches: false, faithKids: false, faithTrade: false, folk: false, faithRules: "few", fading: "old", fromTop: false, faithsMeet: false, faithDrift: false, faithWealth: false, faithYear: false, comfort: false, faithLaw: false, faithRank: false, lifeRites: false, faithSchools: false, faithKeeps: false, truce: false, martyrs: false, flight: false, greatWorks: false, pilgrims: false, sacredLand: false, faithHealth: false, heardOf: false, experience: "people", discovery: "roll", ruins: "old", scavenge: false, bread: "old", lakes: "few", crossing: "big" };   // the parts built after this one, off
-const FINGERPRINT = 1906099303;   // print() of the world before, seed 2, 60 days
+const FINGERPRINT = 2354370892;   // print() of the world before, seed 2, 60 days
 
 {
   const w = People.create({ ...LATER, seed: 2, warBooks: "old" });
@@ -106,7 +106,11 @@ const kit = (era, extra = {}) => { const w = People.create({ ...LATER, seed: 5, 
   assert.ok(w.stats().leftWentOff >= 1);
   const { w: m } = kit("modern");
   const o = m.villages.find(u => u.alive && u.f === 0);
-  m.leave(o.x + o.radius * 0.6, o.y + o.radius * 0.6, 0.02, 1, "mine", 1);
+  /* On a square the village holds, out from its middle (TODO 24: its land is a walk now, not a disc, and
+     a fixed offset could fall outside it). */
+  let mi = -1, md = 0;
+  for (let i = 0; i < m.owner.length; i++) if (m.owner[i] === o.id) { const d = Math.hypot(i % m.cols + 0.5 - o.x, Math.floor(i / m.cols) + 0.5 - o.y); if (d > md && d < o.radius * 0.7) { md = d; mi = i; } }
+  m.leave(mi % m.cols + 0.5, Math.floor(mi / m.cols) + 0.5, 0.02, 1, "mine", 1);
   for (let i = 0; i < 6000 && m.left().length; i++) m.leftDay();
   assert.equal(m.left().length, 0, "and a people that knows explosives clears it in time");
 }
