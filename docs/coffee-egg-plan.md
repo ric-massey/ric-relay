@@ -173,15 +173,39 @@ follows measured motion. They move neither the silhouette nor any liquid volume.
 
 Gravity is 9.81 m/s², mapped using 0.2646 mm per desktop CSS pixel or an estimated 68 mm
 phone short side. The selected nozzle radius is 6 mm on a computer, 2.5 mm on a phone,
-limited to fit the shallow depth, entering at 0.6 m/s. Its **cylindrical** flow is
+limited to fit the shallow depth. The spout is gravity-fed from a chosen two-cell head,
+so its maximum exit speed is √(2gh), rather than an arbitrary pump speed. Its **cylindrical** flow is
 πr² × speed; particle count divided by rest density is volume,
 so fill duration follows from those quantities, not a hand-set timer. The target is
 nominally three quarters of the cup. The pressure law is weakly compressible, so that is
 a volume target rather than an exact final surface-height guarantee. Molecular kinematic
 viscosity is 0.8 × 10⁻⁶ m²/s (a hot-water approximation, not a coffee measurement), with
 Smagorinsky's Cs = 0.17 for unresolved shear. Nozzle size, optical constants and lighting
-remain chosen. It does not yet model creamer, bubbles, foam, steam or capillary sheet geometry
-below the grid's scale.
+remain chosen. It does not yet model foam, steam or capillary sheet geometry below the grid's scale.
+
+**Pour, air and cream, 2026-11-27** (Ric: "Wait 3 seconds, then start slowly", "should
+accelerate as it falls", "bubbles added", then "when coffee is done some creamer gets
+dropped in"). There is no emission for three simulated seconds. The valve then opens
+smoothly over three seconds. Its integrated flux sets each parcel's birth time; that
+parcel keeps its own starting speed and accelerates at 9.81 m/s². A retarded-time stream
+profile draws those same parcels at each height, including the leading dribble and falling
+tail. Maximum speed at a given height obeys v² = 2g(head + fall), without slowing gravity.
+The selected two-cell head is a modelling choice, not a measured coffee machine.
+
+After all coffee has landed, a 0.65 s pause precedes a smaller creamer pour, at a different
+horizontal position. Its dose is 6% of the coffee volume, added to the actual particle
+budget. Cream particles retain their material identity while the shared velocity field
+advects and stirs them; a second 3D field reconstructs local concentration for warm milk
+scattering. Concentration and carrier density share a wider reconstruction kernel, with
+cubic sampling at the front surface, so the colour does not show square grid cells.
+A Boussinesq-style 3% density excess encourages the plume to sink. These are
+chosen cream properties, not measurements; there is no molecular diffusion or separate
+decorative plume. The moving particles produce the mixing visible at the grid's scale.
+
+Up to 128 entrained-air tracers are born under the impact. They follow the liquid grid,
+rise opposite gravity (a chosen 55 mm/s slip speed), and pop on leaving the liquid or
+after four seconds. Small refractive-looking dark centres, bright rims and glints are
+shaded through the coffee; they do not displace liquid or enter its volume ledger.
 
 **Correction after Ric's first look, 2026-11-27**: "wow it looks gross and coffee gets
 left there ... it looks like sludge". The first version had an overly wide simulated
@@ -207,7 +231,7 @@ acceleration including gravity provides tilt/shakes; the motion sign is checked 
 orientation, with the iPhone reversed-sign assumption until calibrated. Sensor permission
 is requested in the command's original keypress/submit gesture, before lazy loading.
 Permission denial leaves the upright cup usable. The desktop hold is five seconds after
-the **last parcel lands**, and the phone hold is forty minutes. The page suspends while hidden;
+the **last creamer parcel lands**, and the phone hold is forty minutes. The page suspends while hidden;
 a quiet cup can stop submitting GPU work and wake for motion or its drain deadline.
 Reduced motion uses a static cup without initialising WebGPU. Resizing keeps the particles
 and fits their view to the new window; it does not rebuild or refill the simulation.
@@ -220,11 +244,13 @@ between portrait and landscape still need Ric's phone. Stock-render fidelity is 
 
 Validation:
 
-- `node .github/test/coffee3.mjs`: physical units, cylindrical flow, capacity and both
+- `node .github/test/coffee3.mjs`: physical units, gravity-fed speed, delayed/ramped flux,
+  parcel acceleration, stream profile, coffee-plus-cream capacity and both
   command entry points; registered in `.github/checks.mjs`.
 - Serve the repo and open `.github/test/coffee3-browser.html?coffeedebug`; **Run GPU checks**
   compiles all actual WGSL, reads actual GPU particles and exercises finite state, emitted
-  volume, depth, changed gravity, open-top spilling, teardown, re-pouring and the floor drain.
+  volume, delayed emission, impact bubbles, coffee-before-cream ordering, cream material,
+  depth, changed gravity, open-top spilling, teardown, re-pouring and the floor drain.
   It reports a failure instead of treating missing WebGPU as a pass. This is manual browser
   verification, not a Node mock and not silently included in CI.
 
@@ -243,6 +269,11 @@ complete drainage to zero, overlay removal, another pour, and draining a just-st
 The first suite's partial-drain assertion was insufficient even though it passed.
 The strengthened suite passed on both desktop and phone profiles on 2026-11-27, including
 zero particles after draining and a successful new pour. Phone hardware remains unverified.
+The delayed pour, bubbles and cream passed 23 GPU lifecycle checks on 2026-11-27, including
+zero particles and zero in flight after both doses drain, on desktop and the 44-cell
+phone profile. The final cream/bubble shaders also compiled and passed the lifecycle;
+manual checks covered the cream stream, its smoothed concentration and mouse stirring.
+
 
 The MLS-MPM transfer equations are adapted from **matsuoka-601/Splash**, MIT, which credits
 Hu et al. and nialltl. The final density-volume renderer is specific to this shallow view;

@@ -2011,12 +2011,20 @@ migration marked "safe to re-run", and re-running it would have put the original
   open top, a floor drain, hidden-page suspension and a still reduced-motion cup. It needs
   WebGPU and says so if unavailable; never silently present an older renderer as coffee3.
   The original commands stay separate. Its nozzle is cylindrical, so the flow is
-  **πr² × speed** (not coffee's 2D width × speed); hold starts when the last parcel lands.
+  **πr² × speed** (not coffee's 2D width × speed); hold starts when the last creamer parcel lands.
   **Air is analytical free fall**, not an oversized particle column; the measured landing
   surface receives those same parcels with their actual impact speed and narrowed radius.
   The books include liquid in flight. Molecular viscosity uses real units; unresolved shear
   uses Smagorinsky, not uniform syrup-like drag. Tiny capillary normals affect reflections
   only, and detached particles retain their own round surfaces instead of being blurred away.
+  **The pour waits three seconds, then starts slowly** (Ric, 2026-11-27: "Wait 3 seconds,
+  then start slowly"). The valve opens over the next three seconds; the spout's maximum
+  speed comes from a chosen two-cell gravity head, and each parcel accelerates under
+  9.81 m/s², retaining its own birth speed. The drawn stream uses those same birth times.
+  After the coffee has all landed, a 0.65 s pause precedes a 6% dose of creamer: real
+  advected particles, a concentration volume for its scattering, and a chosen 3% density
+  excess. Hold starts after the cream lands. Entrained-air tracers follow the liquid,
+  rise and pop; they are bounded visual tracers, not extra liquid or a two-phase solver.
   **The floor gate opens across the full width in 0.4 s** (Ric, 2026-11-27: "coffee gets
   left there ... it looks like sludge"): the narrow centre hole stranded two pools. Never
   replace the complete-drain browser assertion with "some liquid left" again: it must reach
@@ -2026,7 +2034,8 @@ migration marked "safe to re-run", and re-running it would have put the original
   iPhone performance. Credit and the MIT notice are in `assets/coffee3-LICENSE.txt`.
   `.github/test/coffee3.mjs` checks units/flow/entry points in the quick lane;
   `.github/test/coffee3-browser.html` compiles and runs the actual shaders, reads particles
-  back and tests tipping, spilling, re-pouring and draining. The manual GPU suite stays
+  back and tests delayed emission, impact bubbles, coffee-before-cream ordering, both doses,
+  tipping, spilling, re-pouring and draining. The manual GPU suite stays
   outside the Node runner, whose environment has no browser GPU. Details and outstanding
   device checks are in `docs/coffee-egg-plan.md`.
 

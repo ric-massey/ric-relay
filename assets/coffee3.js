@@ -14,6 +14,7 @@
   'use strict';
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const REST = 3, DT = 0.08;
+  const START_DELAY = 3, RAMP_SECONDS = 3, BUBBLES = 128;
   // Ric, 2026-11-27: "straight on. Not at an angle". One projection for
   // the volume, droplets and viewing rays; depth never raises a point.
   const CAMERA_SLOPE = 0;
@@ -39,18 +40,43 @@
     const metresPerCell = metresWide / inner;
     const timeUnit = Math.sqrt(0.4 * metresPerCell / 9.81);
     const radius = Math.min((phone ? 0.0025 : 0.006) / metresPerCell, (nz - 4) * 0.35);
-    const speed = 0.6 * timeUnit / metresPerCell;
+    // Gravity-fed spout: two cells of head above the inlet, no pump velocity.
+    // v² = 2gh; the three-second valve opening changes flow, never gravity.
+    const head = 2 * metresPerCell;
+    const speed = Math.sqrt(2 * 9.81 * head) * timeUnit / metresPerCell;
     const flow = Math.PI * radius * radius * speed * REST;
     const target = Math.floor(inner * (ny - 4) * (nz - 4) * 0.75 * REST);
     const viscosity = REST * 0.8e-6 * timeUnit / (metresPerCell * metresPerCell);
-    return { nx, ny, nz, inner, metresPerCell, timeUnit, radius, speed, flow, target, viscosity,
-      fillSeconds: target / flow * timeUnit, capacity: target + 512 };
+    const creamTarget = Math.floor(target * 0.06);
+    return { nx, ny, nz, inner, metresPerCell, timeUnit, radius, speed, flow, target, creamTarget, head, viscosity,
+      fillSeconds: START_DELAY + target / flow * timeUnit + RAMP_SECONDS / 2, capacity: target + creamTarget + 512 };
   }
 
-  function jetAt(d,y){
+  const opening = (t,ramp=RAMP_SECONDS) => {const x=clamp(t/ramp,0,1);return x*x*(3-2*x);};
+  function openTime(t,ramp=RAMP_SECONDS){
+    const x=clamp(t/ramp,0,1);
+    return t<=0?0:t>=ramp?t-ramp/2:ramp*(x*x*x-0.5*x*x*x*x);
+  }
+  function jetAt(d,y,speed=d.speed,radius=d.radius){
     const fall=Math.max(0,d.ny+2-y);
-    const speed=Math.sqrt(d.speed*d.speed+0.8*fall);
-    return {speed,radius:d.radius*Math.sqrt(d.speed/speed),fallSeconds:(speed-d.speed)/0.4*d.timeUnit};
+    const impact=Math.sqrt(speed*speed+0.8*fall);
+    return {speed:impact,radius:radius*Math.sqrt(speed/Math.max(impact,1e-8)),fallSeconds:(impact-speed)/0.4*d.timeUnit};
+  }
+  function parcelAt(d,source,birth,now){
+    const speed=source.speed*opening(birth-source.start,source.ramp),age=Math.max(0,(now-birth)/d.timeUnit);
+    return {y:d.ny+2-speed*age-0.2*age*age,speed:speed+0.4*age,
+      radius:source.radius*Math.sqrt(speed/Math.max(speed+0.4*age,1e-8))};
+  }
+  // Retarded source time: each row sees the parcel that actually reaches it,
+  // including the thin leading dribble and the falling tail after shutoff.
+  function streamAt(d,source,y,now){
+    if(!source)return {radius:0,speed:0,cream:0};
+    let lo=source.start,hi=now;
+    if(hi<=lo||parcelAt(d,source,lo,now).y>y)return {radius:0,speed:0,cream:0};
+    for(let i=0;i<16;i++){const mid=(lo+hi)/2;if(parcelAt(d,source,mid,now).y<y)lo=mid;else hi=mid;}
+    const birth=(lo+hi)/2;
+    if(birth>source.end)return {radius:0,speed:0,cream:0};
+    return {...parcelAt(d,source,birth,now),cream:source.cream};
   }
   const drainOpening=seconds=>0.12+0.4*clamp(seconds/0.4,0,1);
 
@@ -58,7 +84,7 @@
   // the memory barriers between mass scatter, pressure scatter and gather.
   const COMMON = `
     struct Particle { p: vec4f, v: vec4f, C: mat3x3f }
-    struct Cell { x: atomic<i32>, y: atomic<i32>, z: atomic<i32>, m: atomic<i32> }
+    struct Cell { x: atomic<i32>, y: atomic<i32>, z: atomic<i32>, m: atomic<i32>, cream: atomic<i32> }
     struct Params {
       size: vec4f, gravity: vec4f, mouse: vec4f, push: vec4f,
       counts: vec4u, view: vec4f, nozzle: vec4f, clock: vec4f
@@ -85,6 +111,7 @@
       if (id.x >= u.counts.y) { return; }
       atomicStore(&cells[id.x].x, 0); atomicStore(&cells[id.x].y, 0);
       atomicStore(&cells[id.x].z, 0); atomicStore(&cells[id.x].m, 0);
+      atomicStore(&cells[id.x].cream, 0);
     }
     @compute @workgroup_size(64) fn scatter(@builtin(global_invocation_id) id: vec3u) {
       let i = id.x; if (!live(i)) { return; }
@@ -96,6 +123,7 @@
         let j = index(c); let mass = w[x].x * w[y].y * w[z].z;
         let v = mass * (p.v.xyz + p.C * (vec3f(c) + 0.5 - p.p.xyz));
         atomicAdd(&cells[j].m, enc(mass));
+        atomicAdd(&cells[j].cream, enc(mass*p.v.w));
         atomicAdd(&cells[j].x, enc(v.x)); atomicAdd(&cells[j].y, enc(v.y)); atomicAdd(&cells[j].z, enc(v.z));
       }}}
     }
@@ -131,6 +159,9 @@
       let c=vec3f(f32(i/nz/ny),f32((i/nz)%ny),f32(i%nz))+0.5;
       var v=vec3f(dec(atomicLoad(&cells[i].x)),dec(atomicLoad(&cells[i].y)),dec(atomicLoad(&cells[i].z)))/mass;
       v+=u.gravity.xyz*u.clock.x;
+      // Boussinesq approximation: a chosen 3% density excess makes the cream
+      // sink relative to coffee without a separate, pasted-on plume animation.
+      v+=u.gravity.xyz*u.clock.x*0.03*dec(atomicLoad(&cells[i].cream))/mass;
       let d=(c.xy-u.mouse.xy)/max(u.mouse.z,0.1);
       v+=u.push.xyz*exp(-dot(d,d)*2.0)*u.mouse.w*u.clock.x;
       if((c.x<=2.5 && v.x<0.0) || (c.x>=u.size.x-2.5 && v.x>0.0)){v.x=0.0;}
@@ -162,7 +193,7 @@
       if(next.x<2.0){v.x+=2.0-next.x;} if(next.x>u.size.x-2.0){v.x+=u.size.x-2.0-next.x;}
       if(next.z<2.0){v.z+=2.0-next.z;} if(next.z>u.size.z-2.0){v.z+=u.size.z-2.0-next.z;}
       if(next.y<2.0 && !hole){v.y+=2.0-next.y;}
-      particles[i].p=vec4f(q,1); particles[i].v=vec4f(v,0);particles[i].C=4.0*C;
+      particles[i].p=vec4f(q,1); particles[i].v=vec4f(v,p.v.w);particles[i].C=4.0*C;
     }
   `;
 
@@ -179,6 +210,7 @@
   const FIELD = COMMON + `
     @group(0) @binding(3) var field:texture_storage_3d<rgba16float,write>;
     @group(0) @binding(4) var<storage,read_write> probe:array<f32>;
+    @group(0) @binding(5) var creamField:texture_storage_3d<rgba16float,write>;
     @compute @workgroup_size(1) fn surfaceProbe(){
       let x=i32(u.nozzle.x);let z=i32(u.nozzle.z);var height=2.0;
       for(var y=i32(u.size.y)-4;y>=2;y--){
@@ -194,14 +226,19 @@
       let i=id.x;if(i>=u.counts.y){return;}let nz=u32(u.size.z);let ny=u32(u.size.y);
       let c=vec3i(vec3u(i/nz/ny,(i/nz)%ny,i%nz));
       let w=array<f32,3>(0.05,0.9,0.05);let grad=array<f32,3>(-0.5,0.0,0.5);
-      var rho=0.0;var g=vec3f(0);
+      var rho=0.0;var g=vec3f(0);var cream=0.0;var creamRho=0.0;
+      // Filter concentration and its carrier with the same wider kernel.
+      // This removes square colour cells without diffusing particle material.
+      let cw=array<f32,3>(0.25,0.5,0.25);
       for(var x=0;x<3;x++){for(var y=0;y<3;y++){for(var z=0;z<3;z++){
         let p=c+vec3i(x,y,z)-1;var m=0.0;
         if(all(p>=vec3i(0)) && all(p<vec3i(u.size.xyz))){m=dec(atomicLoad(&cells[index(p)].m));}
         rho+=m*w[x]*w[y]*w[z];
+        if(all(p>=vec3i(0)) && all(p<vec3i(u.size.xyz))){cream+=dec(atomicLoad(&cells[index(p)].cream))*cw[x]*cw[y]*cw[z];creamRho+=m*cw[x]*cw[y]*cw[z];}
         g+=m*vec3f(grad[x]*w[y]*w[z],w[x]*grad[y]*w[z],w[x]*w[y]*grad[z]);
       }}}
       textureStore(field,c,vec4f(g,rho));
+      textureStore(creamField,c,vec4f(clamp(cream/max(creamRho,0.0001),0.0,1.0),0,0,0));
     }
   `;
   const CAMERA = `
@@ -215,9 +252,12 @@
     @group(0) @binding(0) var field:texture_3d<f32>;
     @group(0) @binding(1) var linear:sampler;
     @group(0) @binding(2) var<uniform> u:Params;
+    @group(0) @binding(4) var<storage,read> jetProfile:array<vec4f>;
+    @group(0) @binding(5) var creamField:texture_3d<f32>;
+    fn creamAt(p:vec3f)->f32 {return clamp(cubicSample(creamField,p).x,0.0,1.0);}
     // Eight hardware-trilinear samples implement a cubic B-spline. Linear
     // interpolation alone leaves flat facets on a side-view silhouette.
-    fn density(p:vec3f)->vec4f {
+    fn cubicSample(tex:texture_3d<f32>,p:vec3f)->vec4f {
       let q=p-0.5;let cell=floor(q);let f=q-cell;let f2=f*f;let f3=f2*f;
       let w0=(1.0-f)*(1.0-f)*(1.0-f)/6.0;
       let w1=(3.0*f3-6.0*f2+4.0)/6.0;
@@ -225,22 +265,25 @@
       let g0=w0+w1;let g1=w2+w3;
       let a=(cell-1.0+w1/g0+0.5)/u.size.xyz;
       let b=(cell+1.0+w3/g1+0.5)/u.size.xyz;
-      let x00=mix(textureSampleLevel(field,linear,vec3f(a.x,a.y,a.z),0.0),textureSampleLevel(field,linear,vec3f(b.x,a.y,a.z),0.0),g1.x);
-      let x10=mix(textureSampleLevel(field,linear,vec3f(a.x,b.y,a.z),0.0),textureSampleLevel(field,linear,vec3f(b.x,b.y,a.z),0.0),g1.x);
-      let x01=mix(textureSampleLevel(field,linear,vec3f(a.x,a.y,b.z),0.0),textureSampleLevel(field,linear,vec3f(b.x,a.y,b.z),0.0),g1.x);
-      let x11=mix(textureSampleLevel(field,linear,vec3f(a.x,b.y,b.z),0.0),textureSampleLevel(field,linear,vec3f(b.x,b.y,b.z),0.0),g1.x);
-      let sampled=mix(mix(x00,x10,g1.y),mix(x01,x11,g1.y),g1.z);
+      let x00=mix(textureSampleLevel(tex,linear,vec3f(a.x,a.y,a.z),0.0),textureSampleLevel(tex,linear,vec3f(b.x,a.y,a.z),0.0),g1.x);
+      let x10=mix(textureSampleLevel(tex,linear,vec3f(a.x,b.y,a.z),0.0),textureSampleLevel(tex,linear,vec3f(b.x,b.y,a.z),0.0),g1.x);
+      let x01=mix(textureSampleLevel(tex,linear,vec3f(a.x,a.y,b.z),0.0),textureSampleLevel(tex,linear,vec3f(b.x,a.y,b.z),0.0),g1.x);
+      let x11=mix(textureSampleLevel(tex,linear,vec3f(a.x,b.y,b.z),0.0),textureSampleLevel(tex,linear,vec3f(b.x,b.y,b.z),0.0),g1.x);
+      return mix(mix(x00,x10,g1.y),mix(x01,x11,g1.y),g1.z);
+    }
+    fn density(p:vec3f)->vec4f {
+      let sampled=cubicSample(field,p);
       // Exact free fall in air, then particles at the actual landing surface.
       // A jet narrower than a simulation cell must not be reconstructed as
       // a row of inflated blobs. Continuity: pi*r(y)^2*v(y) is constant.
       if(u.clock.w>0.5 && p.y>u.nozzle.y && p.y<u.push.w){
         let radial=vec2f(p.x-u.nozzle.x,p.z-u.nozzle.z);let r=length(radial);
-        let speed=sqrt(u.gravity.w*u.gravity.w+0.8*max(0.0,u.size.y+2.0-p.y));
-        let radius=u.nozzle.w*sqrt(u.gravity.w/speed);
+        let row=clamp(p.y*4.0,0.0,f32(arrayLength(&jetProfile)-2u));let i=u32(row);
+        let radius=mix(jetProfile[i].x,jetProfile[i+1u].x,fract(row));
+        if(radius<0.0001){return sampled;}
         let jet=3.0*(1.0-smoothstep(max(0.0,radius-0.12),radius+0.12,r));
         if(jet>0.0){
-          let drdy=0.2*radius/(speed*speed);
-          let n=normalize(vec3f(radial.x,-radius*drdy,radial.y)+vec3f(0.00001,0,0));
+          let n=normalize(vec3f(radial.x,-0.02*radius,radial.y)+vec3f(0.00001,0,0));
           return sampled+vec4f(-n*jet,jet);
         }
       }
@@ -262,13 +305,14 @@
       let xy=vec2f(2.0+in.uv.x*(u.size.x-4.0),2.0+(1.0-in.uv.y)*(u.size.y-4.0));
       let ray=VIEW_RAY;
       var hit=false;var position=vec3f(0);var lastP=rayPoint(xy,0.0);
-      var thickness=0.0;var maximum=0.0;var strongest=lastP;
+      var thickness=0.0;var milkThickness=0.0;var maximum=0.0;var strongest=lastP;
       // The whole shallow cup is only eight grid cells deep, irrespective of
       // screen resolution. No marching through a large invisible tub.
       for(var k=0;k<=32;k++){
         let z=f32(k)*0.25;let p=rayPoint(xy,z);
         let rho=density(p).w;
         thickness+=min(rho/3.0,1.0)*0.25;
+        milkThickness+=min(rho/3.0,1.0)*textureSampleLevel(creamField,linear,p/u.size.xyz,0.0).x*0.25;
         if(rho>maximum){maximum=rho;strongest=p;}
         if(!hit && rho>0.8){
           var lo=lastP;var hi=p;
@@ -297,6 +341,16 @@
       let transmission=exp(-vec3f(0.32,0.66,1.05)*mm);
       let body=vec3f(0.0015,0.0008,0.0004)+vec3f(0.012,0.003,0.0007)*exp(-mm*0.6);
       var c=(1.0-F)*(body+transmission*vec3f(0.2,0.095,0.03))+F*room(reflect(ray,n));
+      var cream=0.65*creamAt(position)+0.35*milkThickness/max(thickness,0.001);
+      if(u.clock.w>0.5 && position.y>u.nozzle.y-0.5){
+        let row=jetProfile[u32(clamp(position.y*4.0,0.0,f32(arrayLength(&jetProfile)-1u)))];
+        let neck=smoothstep(u.nozzle.y-0.5,u.nozzle.y+0.6,position.y)*(1.0-smoothstep(row.x,row.x+0.2,abs(position.x-u.nozzle.x)));
+        cream=max(cream,row.z*neck);
+      }
+      // Milk scatters warm light as well as absorbing it. The concentration
+      // comes from advected liquid parcels, so a plume stays a plume.
+      let milky=vec3f(0.55,0.40,0.24)*(0.42+0.58*max(n.y,0.0));
+      c=mix(c,(1.0-F)*milky+F*room(reflect(ray,n)),1.0-exp(-cream*3.5));
       c=pow(c/(vec3f(1)+c),vec3f(1.0/2.2));
       pixel.color=vec4f(c*alpha,alpha);pixel.depth=clamp(position.z/u.size.z,0.0,1.0);return pixel;
     }
@@ -308,11 +362,11 @@
   const DROPS = VOLUME + `
     struct Particle { p:vec4f, v:vec4f, C:mat3x3f }
     @group(0) @binding(3) var<storage,read> particles:array<Particle>;
-    struct Drop { @builtin(position) pos:vec4f, @location(0) disk:vec2f, @location(1) centre:vec3f }
+    struct Drop { @builtin(position) pos:vec4f, @location(0) disk:vec2f, @location(1) centre:vec3f, @location(2) cream:f32 }
     @vertex fn dropVertex(@builtin(vertex_index) vertex:u32,@builtin(instance_index) i:u32)->Drop {
       let p=particles[i].p;
       let corner=array<vec2f,6>(vec2f(-1,-1),vec2f(1,-1),vec2f(-1,1),vec2f(-1,1),vec2f(1,-1),vec2f(1,1))[vertex];
-      var out:Drop;out.disk=corner;out.centre=p.xyz;
+      var out:Drop;out.disk=corner;out.centre=p.xyz;out.cream=particles[i].v.w;
       let xy=(projectedXY(p.xyz)-vec2f(2.0))/(u.size.xy-4.0);
       out.pos=vec4f(xy*2.0-1.0+corner*0.43*2.0/(u.size.xy-4.0),0,1);
       if(p.w<0.5 || density(p.xyz).w>0.65){out.pos=vec4f(3,3,0,1);}
@@ -324,9 +378,55 @@
       let F=0.02+0.98*pow(1.0-clamp(dot(-ray,n),0.0,1.0),5.0);
       let mm=2.0*0.43*z*u.view.w*1000.0;
       let through=exp(-vec3f(0.32,0.66,1.05)*mm)*vec3f(0.2,0.095,0.03);
-      var c=(1.0-F)*through+F*room(reflect(ray,n));c=pow(c/(1.0+c),vec3f(1.0/2.2));
+      var c=(1.0-F)*mix(through,vec3f(0.55,0.40,0.24),in.cream)+F*room(reflect(ray,n));c=pow(c/(1.0+c),vec3f(1.0/2.2));
       let alpha=1.0-smoothstep(1.0-max(fwidth(r2),0.01),1.0,r2);
       var out:Pixel;out.color=vec4f(c*alpha,alpha);out.depth=clamp((in.centre.z-0.43*z)/u.size.z,0.0,1.0);return out;
+    }
+  `;
+
+  // Entrained air is a small, bounded tracer set. It follows the liquid grid,
+  // rises against gravity and pops on leaving the liquid; it adds no liquid.
+  const AIR = COMMON + `
+    struct Bubble { p:vec4f, age:vec4f }
+    @group(0) @binding(3) var<storage,read_write> bubbles:array<Bubble>;
+    @compute @workgroup_size(64) fn air(@builtin(global_invocation_id) id:vec3u){
+      let i=id.x;if(i>=u.counts.w || bubbles[i].p.w<=0.0){return;}
+      let b=bubbles[i];let base=vec3i(floor(b.p.xyz));let w=weights(b.p.xyz-vec3f(base)-0.5);
+      var mass=0.0;var flow=vec3f(0);
+      for(var x=0;x<3;x++){for(var y=0;y<3;y++){for(var z=0;z<3;z++){
+        let c=base+vec3i(x,y,z)-1;if(any(c<vec3i(0))||any(c>=vec3i(u.size.xyz))){continue;}
+        let cell=index(c);let weight=w[x].x*w[y].y*w[z].z;
+        mass+=dec(atomicLoad(&cells[cell].m))*weight;
+        flow+=vec3f(dec(atomicLoad(&cells[cell].x)),dec(atomicLoad(&cells[cell].y)),dec(atomicLoad(&cells[cell].z)))*weight;
+      }}}
+      let age=b.age.x+u.clock.x*u.gravity.w;
+      let rise=0.055*u.gravity.w/u.view.w;
+      let v=flow/max(mass,0.001)-normalize(u.gravity.xyz+vec3f(0,-0.00001,0))*rise;
+      var q=b.p.xyz+v*u.clock.x;
+      if((mass<0.4&&age>0.25)||age>4.0||q.y<2.0||q.y>u.size.y-2.0){bubbles[i].p.w=0.0;return;}
+      q.x=clamp(q.x,2.1,u.size.x-2.1);q.z=clamp(q.z,2.1,u.size.z-2.1);
+      bubbles[i].p=vec4f(q,b.p.w);bubbles[i].age.x=age;
+    }
+  `;
+  const AIR_VIEW = VOLUME + `
+    struct Bubble { p:vec4f, age:vec4f }
+    @group(0) @binding(3) var<storage,read> bubbles:array<Bubble>;
+    struct AirPixel { @builtin(position) pos:vec4f, @location(0) disk:vec2f, @location(1) centre:vec4f }
+    @vertex fn airVertex(@builtin(vertex_index) v:u32,@builtin(instance_index) i:u32)->AirPixel{
+      let b=bubbles[i].p;let corner=array<vec2f,6>(vec2f(-1,-1),vec2f(1,-1),vec2f(-1,1),vec2f(-1,1),vec2f(1,-1),vec2f(1,1))[v];
+      var out:AirPixel;out.disk=corner;out.centre=b;
+      out.pos=vec4f((projectedXY(b.xyz)-vec2f(2))/(u.size.xy-4.0)*2.0-1.0+corner*b.w*2.0/(u.size.xy-4.0),0,1);
+      if(b.w<=0.0){out.pos=vec4f(3,3,0,1);}return out;
+    }
+    @fragment fn airFragment(in:AirPixel)->@location(0) vec4f{
+      let r=length(in.disk);if(r>=1.0){discard;}
+      let liquid=smoothstep(0.35,1.0,density(in.centre.xyz).w);
+      let rim=smoothstep(0.55,0.88,r)*(1.0-smoothstep(0.88,1.0,r));
+      let glint=pow(max(0.0,1.0-length(in.disk-vec2f(-0.32,0.38))*3.2),3.0);
+      let visibility=exp(-0.12*max(0.0,in.centre.z-2.0)*u.view.w*1000.0);
+      let alpha=(0.12+0.55*rim+0.7*glint)*liquid*visibility;
+      let c=mix(vec3f(0.055,0.025,0.012),vec3f(0.65,0.45,0.25),clamp(rim*0.65+glint,0.0,1.0));
+      return vec4f(c*alpha,alpha);
     }
   `;
 
@@ -348,7 +448,9 @@
     const owned=[];
     const buffer=(label,size,usage)=>{const b=device.createBuffer({label,size,usage});owned.push(b);return b;};
     const U=GPUBufferUsage;const particle=buffer('coffee3 particles',dims.capacity*80,U.STORAGE|U.COPY_DST|U.COPY_SRC);
-    const grid=buffer('coffee3 momentum grid',dims.nx*dims.ny*dims.nz*16,U.STORAGE|U.COPY_DST);
+    const grid=buffer('coffee3 momentum and cream grid',dims.nx*dims.ny*dims.nz*20,U.STORAGE|U.COPY_DST);
+    const bubbles=buffer('coffee3 entrained air',BUBBLES*32,U.STORAGE|U.COPY_DST|U.COPY_SRC);
+    const jet=buffer('coffee3 ballistic stream profile',(dims.ny+4)*4*16,U.STORAGE|U.COPY_DST);
     const uniform=buffer('coffee3 parameters',128,U.UNIFORM|U.COPY_DST);
     const probe=buffer('coffee3 landing surface',16,U.STORAGE|U.COPY_SRC);
     const module=async(label,code)=>{
@@ -360,6 +462,10 @@
     const fieldModule=await module('coffee3 density reconstruction',FIELD);
     const optics=await module('coffee3 volume optics',VOLUME);
     const drops=await module('coffee3 detached drops',DROPS);
+    const air=await module('coffee3 entrained air motion',AIR);
+    const airView=await module('coffee3 bubble optics',AIR_VIEW);
+    const airStep=await device.createComputePipelineAsync({layout:'auto',compute:{module:air,entryPoint:'air'}});
+    const airGroup=device.createBindGroup({layout:airStep.getBindGroupLayout(0),entries:[{binding:1,resource:{buffer:grid}},{binding:2,resource:{buffer:uniform}},{binding:3,resource:{buffer:bubbles}}]});
     const stages={};
     for(const name of ['clear','scatter','pressure','forces','gather']){
       const pipeline=await device.createComputePipelineAsync({label:'coffee3 '+name,layout:'auto',compute:{module:compute,entryPoint:name}});
@@ -370,16 +476,21 @@
     }
     const fieldTexture=device.createTexture({label:'coffee3 3D density',dimension:'3d',size:[dims.nx,dims.ny,dims.nz],format:'rgba16float',usage:GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.TEXTURE_BINDING});
     const fieldView=fieldTexture.createView();
+    const creamTexture=device.createTexture({label:'coffee3 advected cream',dimension:'3d',size:[dims.nx,dims.ny,dims.nz],format:'rgba16float',usage:GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.TEXTURE_BINDING});
+    const creamView=creamTexture.createView();
     const fieldPipeline=await device.createComputePipelineAsync({layout:'auto',compute:{module:fieldModule,entryPoint:'densityField'}});
-    const fieldGroup=device.createBindGroup({layout:fieldPipeline.getBindGroupLayout(0),entries:[{binding:1,resource:{buffer:grid}},{binding:2,resource:{buffer:uniform}},{binding:3,resource:fieldView}]});
+    const fieldGroup=device.createBindGroup({layout:fieldPipeline.getBindGroupLayout(0),entries:[{binding:1,resource:{buffer:grid}},{binding:2,resource:{buffer:uniform}},{binding:3,resource:fieldView},{binding:5,resource:creamView}]});
     const probePipeline=await device.createComputePipelineAsync({layout:'auto',compute:{module:fieldModule,entryPoint:'surfaceProbe'}});
     const probeGroup=device.createBindGroup({layout:probePipeline.getBindGroupLayout(0),entries:[{binding:1,resource:{buffer:grid}},{binding:2,resource:{buffer:uniform}},{binding:4,resource:{buffer:probe}}]});
     const depthState={format:'depth24plus',depthWriteEnabled:true,depthCompare:'less-equal'};
     const shadePipeline=await device.createRenderPipelineAsync({layout:'auto',vertex:{module:optics,entryPoint:'quad'},fragment:{module:optics,entryPoint:'volume',targets:[{format}]},primitive:{topology:'triangle-list'},depthStencil:depthState});
     const dropPipeline=await device.createRenderPipelineAsync({layout:'auto',vertex:{module:drops,entryPoint:'dropVertex'},fragment:{module:drops,entryPoint:'dropFragment',targets:[{format,blend:{color:{srcFactor:'one',dstFactor:'one-minus-src-alpha',operation:'add'},alpha:{srcFactor:'one',dstFactor:'one-minus-src-alpha',operation:'add'}}}]},primitive:{topology:'triangle-list'},depthStencil:depthState});
+    const bubblePipeline=await device.createRenderPipelineAsync({layout:'auto',vertex:{module:airView,entryPoint:'airVertex'},fragment:{module:airView,entryPoint:'airFragment',targets:[{format,blend:{color:{srcFactor:'one',dstFactor:'one-minus-src-alpha',operation:'add'},alpha:{srcFactor:'one',dstFactor:'one-minus-src-alpha',operation:'add'}}}]},primitive:{topology:'triangle-list'},depthStencil:{...depthState,depthWriteEnabled:false,depthCompare:'always'}});
     const sampler=device.createSampler({minFilter:'linear',magFilter:'linear',addressModeU:'clamp-to-edge',addressModeV:'clamp-to-edge',addressModeW:'clamp-to-edge'});
-    const shadeGroup=device.createBindGroup({layout:shadePipeline.getBindGroupLayout(0),entries:[{binding:0,resource:fieldView},{binding:1,resource:sampler},{binding:2,resource:{buffer:uniform}}]});
-    const dropGroup=device.createBindGroup({layout:dropPipeline.getBindGroupLayout(0),entries:[{binding:0,resource:fieldView},{binding:1,resource:sampler},{binding:2,resource:{buffer:uniform}},{binding:3,resource:{buffer:particle}}]});
+    const imageEntries=[{binding:0,resource:fieldView},{binding:1,resource:sampler},{binding:2,resource:{buffer:uniform}},{binding:4,resource:{buffer:jet}}];
+    const shadeGroup=device.createBindGroup({layout:shadePipeline.getBindGroupLayout(0),entries:[...imageEntries,{binding:5,resource:creamView}]});
+    const dropGroup=device.createBindGroup({layout:dropPipeline.getBindGroupLayout(0),entries:[...imageEntries,{binding:3,resource:{buffer:particle}}]});
+    const bubbleGroup=device.createBindGroup({layout:bubblePipeline.getBindGroupLayout(0),entries:[...imageEntries,{binding:3,resource:{buffer:bubbles}}]});
     const validation=await device.popErrorScope();if(validation){device.destroy();throw new Error(validation.message);}
     let depthTexture,depthView;
     function resize(w,h){canvas.width=w;canvas.height=h;depthTexture?.destroy();depthTexture=device.createTexture({size:[w,h],format:'depth24plus',usage:GPUTextureUsage.RENDER_ATTACHMENT});depthView=depthTexture.createView();}
@@ -395,7 +506,8 @@
       if(measure){p.setPipeline(probePipeline);p.setBindGroup(0,probeGroup);p.dispatchWorkgroups(1);}p.end();
       p=encoder.beginRenderPass({colorAttachments:[{view:context.getCurrentTexture().createView(),loadOp:'clear',storeOp:'store',clearValue:{r:0,g:0,b:0,a:0}}],depthStencilAttachment:{view:depthView,depthClearValue:1,depthLoadOp:'clear',depthStoreOp:'store'}});
       p.setPipeline(shadePipeline);p.setBindGroup(0,shadeGroup);p.draw(3);
-      p.setPipeline(dropPipeline);p.setBindGroup(0,dropGroup);p.draw(6,count);p.end();
+      p.setPipeline(dropPipeline);p.setBindGroup(0,dropGroup);p.draw(6,count);
+      p.setPipeline(bubblePipeline);p.setBindGroup(0,bubbleGroup);p.draw(6,BUBBLES);p.end();
       if(measure){const read=device.createBuffer({size:16,usage:U.COPY_DST|U.MAP_READ});encoder.copyBufferToBuffer(probe,0,read,0,16);return read;}
     }
     function step(encoder,count){
@@ -403,25 +515,29 @@
       for(const name of ['clear','scatter','pressure','forces','gather']){
         const s=stages[name];p.setPipeline(s.pipeline);p.setBindGroup(0,s.group);
         p.dispatchWorkgroups(Math.ceil((name==='clear'||name==='forces'?dims.nx*dims.ny*dims.nz:count)/64));
-      }p.end();
+      }
+      p.setPipeline(airStep);p.setBindGroup(0,airGroup);p.dispatchWorkgroups(Math.ceil(BUBBLES/64));p.end();
     }
     async function audit(count){
-      const read=device.createBuffer({size:Math.max(80,count*80),usage:U.COPY_DST|U.MAP_READ});
+      const offset=Math.max(80,count*80);
+      const read=device.createBuffer({size:offset+BUBBLES*32,usage:U.COPY_DST|U.MAP_READ});
       try{
-        const e=device.createCommandEncoder();e.copyBufferToBuffer(particle,0,read,0,Math.max(80,count*80));device.queue.submit([e.finish()]);
+        const e=device.createCommandEncoder();e.copyBufferToBuffer(particle,0,read,0,offset);e.copyBufferToBuffer(bubbles,0,read,offset,BUBBLES*32);device.queue.submit([e.finish()]);
         await read.mapAsync(GPUMapMode.READ);const data=new Float32Array(read.getMappedRange());
-        let alive=0,finite=true,energy=0,meanX=0,meanY=0,minY=Infinity,maxY=-Infinity,minZ=Infinity,maxZ=-Infinity;
+        let alive=0,creamAlive=0,creamY=0,bubbleAlive=0,finite=true,energy=0,meanX=0,meanY=0,minY=Infinity,maxY=-Infinity,minZ=Infinity,maxZ=-Infinity;
         for(let i=0;i<count;i++){
           const k=i*20;for(let j=0;j<20;j++)if(!Number.isFinite(data[k+j]))finite=false;
           if(data[k+3]<0.5)continue;alive++;meanX+=data[k];meanY+=data[k+1];
+          creamAlive+=data[k+7];creamY+=data[k+7]*data[k+1];
           minY=Math.min(minY,data[k+1]);maxY=Math.max(maxY,data[k+1]);minZ=Math.min(minZ,data[k+2]);maxZ=Math.max(maxZ,data[k+2]);
           energy+=data[k+4]**2+data[k+5]**2+data[k+6]**2;
         }
-        return {alive,emitted:count,lost:count-alive,finite,meanX:meanX/Math.max(1,alive),meanY:meanY/Math.max(1,alive),minY,maxY,minZ,maxZ,rmsSpeed:Math.sqrt(energy/Math.max(1,alive)),errors:[...errors]};
+        for(let i=offset/4;i<data.length;i+=8){for(let j=0;j<8;j++)if(!Number.isFinite(data[i+j]))finite=false;if(data[i+3]>0)bubbleAlive++;}
+        return {alive,creamAlive,creamY:creamY/Math.max(1,creamAlive),bubbleAlive,emitted:count,lost:count-alive,finite,meanX:meanX/Math.max(1,alive),meanY:meanY/Math.max(1,alive),minY,maxY,minZ,maxZ,rmsSpeed:Math.sqrt(energy/Math.max(1,alive)),errors:[...errors]};
       }finally{read.destroy();}
     }
     async function surface(read){try{await read.mapAsync(GPUMapMode.READ);return new Float32Array(read.getMappedRange())[0];}finally{read.destroy();}}
-    return {device,particle,uniform,errors,resize,draw,step,audit,surface,destroy(){depthTexture?.destroy();fieldTexture.destroy();for(const b of owned)b.destroy();context.unconfigure();device.destroy();}};
+    return {device,particle,bubbles,jet,uniform,errors,resize,draw,step,audit,surface,destroy(){depthTexture?.destroy();fieldTexture.destroy();creamTexture.destroy();for(const b of owned)b.destroy();context.unconfigure();device.destroy();}};
     } catch(error) { device.destroy(); throw error; }
   }
 
@@ -442,8 +558,11 @@
     try{
       const W=innerWidth,H=innerHeight,d=dimensions(W,H,phone);gpu=await makeGPU(canvas,d);
       const abort=new AbortController(),signal=abort.signal;
-      let stopped=false,raf=0,busy=false,holdTimer=0,last=performance.now(),elapsed=0,accumulator=0,count=0,emitted=0,emission=0,fullAt=-1,draining=false,drainAt=-1;
-      const births=[];let landing=2,lastSurface=0,rippleEnergy=0.1;
+      let stopped=false,raf=0,busy=false,holdTimer=0,last=performance.now(),elapsed=0,accumulator=0,count=0,emitted=0,fullAt=-1,draining=false,drainAt=-1;
+      const births=[];let landing=2,lastSurface=0,rippleEnergy=0.1,bubbleEmission=0,bubbleIndex=0,bubblesBorn=0,creamStart=-1,phase='coffee';
+      const coffee={start:START_DELAY,ramp:RAMP_SECONDS,speed:d.speed,radius:d.radius,limit:d.target,base:0,cream:0,x:2+d.inner*0.57};
+      let source=coffee;
+      const profile=new Float32Array((d.ny+4)*4*4);
       let tilt=[0,-1,0],targetTilt=[0,-1,0],pointer=false,mouse=[-100,-100],push=[0,0],lastPointer=0;
       let sleeping=false,quiet=0,lastAudit=0,lastSensor=0,lastMotion=0,orientationReference=null,motionVotes=0,frameMs=0,holdUntil=Infinity;
       const hold=Number.isFinite(options.holdSeconds)?Math.max(0,options.holdSeconds):(phone?40*60:5);
@@ -458,46 +577,68 @@
       }
       function stop(){if(stopped)return;stopped=true;cancelAnimationFrame(raf);clearTimeout(holdTimer);abort.abort();canvas.remove();hud?.remove();gpu.destroy();if(current?.canvas===canvas)current=null;}
       function writeParams(){
-        const firstAge=emitted?(elapsed-births[0])/d.timeUnit:0;
-        const lastAge=emitted>=d.target||draining?(elapsed-(births[emitted-1]??elapsed))/d.timeUnit:0;
-        const bottom=Math.max(landing+0.25,d.ny+2-d.speed*firstAge-0.2*firstAge*firstAge);
-        const top=d.ny+2-d.speed*lastAge-0.2*lastAge*lastAge;
         // Open the floor gate across the whole cup in 0.4 s. A permanently
         // narrow hole stranded two pools once they became shallower than a cell.
         const opening=draining?drainOpening(elapsed-drainAt):0;
-        f.set([d.nx,d.ny,d.nz,d.viscosity],0);f.set([tilt[0]*0.4,tilt[1]*0.4,tilt[2]*0.4,d.speed],4);
-        f.set([mouse[0],mouse[1],4,pointer?1:0],8);f.set([push[0],push[1],0,top],12);
-        ints.set([count,d.nx*d.ny*d.nz,d.target,0],16);
+        f.set([d.nx,d.ny,d.nz,d.viscosity],0);f.set([tilt[0]*0.4,tilt[1]*0.4,tilt[2]*0.4,d.timeUnit],4);
+        f.set([mouse[0],mouse[1],4,pointer?1:0],8);f.set([push[0],push[1],0,d.ny+2],12);
+        ints.set([count,d.nx*d.ny*d.nz,d.target+d.creamTarget,BUBBLES],16);
         f.set([canvas.width,canvas.height,rippleEnergy,d.metresPerCell],20);
-        f.set([2+d.inner*0.57,bottom,d.nz*0.5,d.radius],24);f.set([DT,elapsed,opening,emitted>count&&top>bottom?1:0],28);
+        f.set([source.x,landing+0.25,d.nz*0.5,source.radius],24);f.set([DT,elapsed,opening,emitted>count?1:0],28);
+        profile.fill(0);
+        for(let i=0;emitted>count&&i<profile.length/4;i++){
+          const s=streamAt(d,source,i/4,elapsed),k=i*4;
+          profile[k]=s.radius;profile[k+1]=s.speed;profile[k+2]=s.cream;profile[k+3]=0;
+        }
+        gpu.device.queue.writeBuffer(gpu.jet,0,profile);
         gpu.device.queue.writeBuffer(gpu.uniform,0,params);
       }
       function spawn(seconds){
-        if(!draining&&emitted<d.target){
-          emission+=d.flow*seconds/d.timeUnit;
-          const n=Math.min(Math.floor(emission),d.target-emitted);emission-=n;
-          for(let j=0;j<n;j++)births.push(elapsed-seconds+(j+0.5)/Math.max(1,n)*seconds);
-          emitted+=n;
+        if(!draining&&source.cream===0&&count===d.target){
+          if(creamStart<0){creamStart=elapsed+0.65;phase='pause';}
+          if(elapsed>=creamStart){
+            source={start:creamStart,ramp:0.6,speed:d.speed*0.65,radius:d.radius*0.65,limit:d.creamTarget,base:d.target,cream:1,x:2+d.inner*0.43};phase='cream';
+          }
+        }
+        if(!draining&&emitted-source.base<source.limit){
+          const flow=Math.PI*source.radius**2*source.speed*REST/d.timeUnit;
+          const wanted=Math.min(source.limit,Math.floor(flow*openTime(elapsed-source.start,source.ramp)));
+          for(let i=emitted-source.base;i<wanted;i++){
+            let lo=source.start,hi=elapsed;
+            for(let k=0;k<18;k++){const mid=(lo+hi)/2;if(flow*openTime(mid-source.start,source.ramp)<i+1)lo=mid;else hi=mid;}
+            births.push({at:(lo+hi)/2,source});
+          }
+          emitted=Math.max(emitted,source.base+wanted);
+          if(wanted===source.limit&&source.end==null)source.end=births[emitted-1].at;
         }
         const before=count;
         while(count<emitted){
-          const age=(elapsed-births[count])/d.timeUnit;
-          const y=d.ny+2-d.speed*age-0.2*age*age;
+          const birth=births[count],age=(elapsed-birth.at)/d.timeUnit;
+          const v0=birth.source.speed*opening(birth.at-birth.source.start,birth.source.ramp);
+          const y=d.ny+2-v0*age-0.2*age*age;
           if(y>landing+0.8)break;count++;
         }
         const n=count-before;if(n<=0)return;
         const data=new Float32Array(n*20);
-        const jet=jetAt(d,landing),impact=jet.speed,radius=jet.radius;
         // Every analytical parcel becomes exactly one GPU particle when it lands.
         // Its position, speed and narrowed radius follow the same free fall.
         for(let j=0;j<n;j++){
-          const id=before+j,angle=id*2.39996323,r=radius*Math.sqrt((id*0.618033989)%1);
-          const k=j*20;data[k]=2+d.inner*0.57+Math.cos(angle)*r;
+          const id=before+j,birth=births[id],s=birth.source;
+          const v0=s.speed*opening(birth.at-s.start,s.ramp);
+          const jet=jetAt(d,landing,v0,s.radius),impact=jet.speed;
+          const angle=id*2.39996323,r=jet.radius*Math.sqrt((id*0.618033989)%1);
+          const k=j*20;data[k]=s.x+Math.cos(angle)*r;
           data[k+1]=Math.max(2,landing+0.8-impact*(j/n)*seconds/d.timeUnit);
-          data[k+2]=d.nz*0.5+Math.sin(angle)*r;data[k+3]=1;data[k+5]=-impact;
+          data[k+2]=d.nz*0.5+Math.sin(angle)*r;data[k+3]=1;data[k+5]=-impact;data[k+7]=s.cream;
         }
         gpu.device.queue.writeBuffer(gpu.particle,before*80,data);
-        if(count===d.target){fullAt=elapsed;holdUntil=performance.now()+hold*1000;holdTimer=setTimeout(()=>{if(!stopped){draining=true;wake();}},hold*1000);}
+        bubbleEmission+=n/(d.target/100);
+        while(bubbleEmission>=1){
+          bubbleEmission--;const id=bubblesBorn++,b=new Float32Array(8),a=id*2.39996323;
+          b.set([source.x+Math.cos(a)*source.radius*1.8,Math.max(2.2,landing-0.7-(id%4)*0.18),2.25+(id%5)*0.2,(0.0003+(id%5)*0.00012)/d.metresPerCell]);
+          gpu.device.queue.writeBuffer(gpu.bubbles,(bubbleIndex++%BUBBLES)*32,b);
+        }
+        if(source.cream&&count===d.target+d.creamTarget&&fullAt<0){phase='holding';fullAt=elapsed;holdUntil=performance.now()+hold*1000;holdTimer=setTimeout(()=>{if(!stopped){draining=true;wake();}},hold*1000);}
       }
       function orient(e){
         if(e.beta==null||e.gamma==null)return;
@@ -543,7 +684,7 @@
           const smoothing=1-Math.exp(-wall/0.06);tilt=tilt.map((v,i)=>v+(targetTilt[i]-v)*smoothing);
           const physicalStep=DT*d.timeUnit,budget=Math.min(40,Math.ceil(0.025/physicalStep));accumulator=Math.min(accumulator+wall,physicalStep*budget);
           if(now>=holdUntil){draining=true;sleeping=false;}
-          if(draining&&drainAt<0)drainAt=elapsed;
+          if(draining&&drainAt<0){drainAt=elapsed;source.end=births[emitted-1]?.at??source.start;phase='draining';}
           if(draining&&emitted===0){lastRun={alive:0,emitted:0,lost:0,inFlight:0,finite:true,errors:[]};stop();return;}
           const encoder=gpu.device.createCommandEncoder();
           const steps=sleeping?0:Math.min(budget,Math.floor(accumulator/physicalStep));
@@ -563,8 +704,8 @@
             const speed=book.rmsSpeed*d.metresPerCell/d.timeUnit;
             rippleEnergy=clamp(speed/0.15,0,1);
             if(fullAt>=0&&!draining&&!pointer&&speed<0.008)quiet+=1.5;else quiet=0;
-            if(quiet>=4)sleeping=true;
-            if(hud)hud.textContent=`coffee3 · live 3D · ${frameMs.toFixed(1)} ms/frame work\n${book.alive.toLocaleString()} in cup · ${book.lost.toLocaleString()} out · ${emitted-count} falling\n${emitted.toLocaleString()} poured · ${d.fillSeconds.toFixed(1)} s calculated pour\n${(speed*1000).toFixed(1)} mm/s · ${sleeping?'sleeping':draining?'draining':'running'}`;
+            if(quiet>=4&&book.bubbleAlive===0)sleeping=true;
+            if(hud)hud.textContent=`coffee3 · live 3D · ${frameMs.toFixed(1)} ms/frame work\n${book.alive.toLocaleString()} in cup · ${book.lost.toLocaleString()} out · ${emitted-count} falling\n${emitted.toLocaleString()} poured · ${phase} · ${book.creamAlive} cream · ${book.bubbleAlive} bubbles\n${(speed*1000).toFixed(1)} mm/s · ${sleeping?'sleeping':draining?'draining':'running'}`;
             if(draining&&book.alive===0&&emitted===count){lastRun={...book,emitted,inFlight:0,elapsed};stop();return;}
           }
           push=push.map(v=>v*0.75);
@@ -572,10 +713,10 @@
         }catch(error){if(stopped)return;stop();console.error(error);notice('coffee3 could not keep running on this graphics device.');}
         finally{busy=false;if(!stopped&&!sleeping&&!document.hidden&&!raf)raf=requestAnimationFrame(frame);}
       }
-      current={canvas,stop,dims:d,async audit(){const snapshot={count,emitted};const book=await gpu.audit(snapshot.count);return{...book,emitted:snapshot.emitted,inFlight:snapshot.emitted-snapshot.count};},drain(){holdUntil=performance.now();wake();},tilt(x,y,z=0){targetTilt=[x,y,z];wake();},get state(){return{count,emitted,elapsed,fullAt,draining,sleeping,frameMs,errors:[...gpu.errors]};}};
+      current={canvas,stop,dims:d,async audit(){const snapshot={count,emitted};const book=await gpu.audit(snapshot.count);return{...book,emitted:snapshot.emitted,inFlight:snapshot.emitted-snapshot.count};},drain(){holdUntil=performance.now();wake();},tilt(x,y,z=0){targetTilt=[x,y,z];wake();},get state(){return{count,emitted,elapsed,fullAt,phase,creamStart,bubblesBorn,draining,sleeping,frameMs,errors:[...gpu.errors]};}};
       starting=false;raf=requestAnimationFrame(frame);
     }catch(error){gpu?.destroy();canvas.remove();starting=false;console.error(error);
       notice(error.message.length<180?error.message:'coffee3 could not initialise on this graphics device.');}
   }
-  root.RELAY_COFFEE3={pour,dimensions,jetAt,drainOpening,projectPoint,orientationGravity,accelerationGravity,get active(){return current;},get lastRun(){return lastRun;}};
+  root.RELAY_COFFEE3={pour,dimensions,jetAt,parcelAt,streamAt,opening,openTime,START_DELAY,RAMP_SECONDS,drainOpening,projectPoint,orientationGravity,accelerationGravity,get active(){return current;},get lastRun(){return lastRun;}};
 })(typeof window==='undefined'?globalThis:window);

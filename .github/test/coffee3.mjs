@@ -6,7 +6,11 @@ import vm from 'node:vm';
 const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const context=vm.createContext({});
 vm.runInContext(read('assets/coffee3.js'),context);
-const {dimensions,jetAt,drainOpening,projectPoint,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
+const {dimensions,jetAt,parcelAt,streamAt,opening,openTime,START_DELAY,RAMP_SECONDS,drainOpening,projectPoint,orientationGravity,accelerationGravity}=context.RELAY_COFFEE3;
+assert.equal(START_DELAY,3,'wait three seconds before the first flow');
+assert.equal(opening(0),0);assert.equal(opening(RAMP_SECONDS),1);
+assert.ok(opening(0.5)<opening(1)&&opening(1)<opening(2),'start slowly and build to full flow');
+assert.equal(openTime(-1),0);assert.equal(openTime(3),1.5);assert.equal(openTime(5),3.5);
 for(const z of [0,1,4,8]){
   assert.deepEqual(Array.from(projectPoint(17,29,z)),[17,29],'depth never shifts the image: the camera is exactly straight on');
 }
@@ -28,7 +32,10 @@ for(const [w,h,phone] of [[1440,900,false],[375,812,true],[844,390,true],[2560,1
   assert.ok(Math.abs(physicalG-9.81)<1e-10,'gravity is 9.81 m/s²');
   const area=Math.PI*(d.radius*d.metresPerCell)**2;
   const volume=d.target/3*d.metresPerCell**3;
-  assert.ok(Math.abs(volume/(area*0.6)-d.fillSeconds)<1e-10,'fill time is volume / nozzle flow');
+  const nozzleSpeed=d.speed*d.metresPerCell/d.timeUnit;
+  assert.ok(Math.abs(nozzleSpeed**2-2*9.81*d.head)<1e-12,'maximum nozzle speed comes from gravity and head');
+  assert.ok(Math.abs(volume/(area*nozzleSpeed)+START_DELAY+RAMP_SECONDS/2-d.fillSeconds)<1e-10,'fill time includes delayed start and integrated valve flow');
+  assert.ok(d.creamTarget>0&&d.capacity>d.target+d.creamTarget,'cream has its own real liquid volume');
   assert.equal(d.target,Math.floor((d.nx-4)*(d.ny-4)*(d.nz-4)*0.75*3));
   assert.ok(d.capacity>d.target && d.capacity*80<128*1024*1024);
   assert.ok(d.fillSeconds>0 && Number.isFinite(d.fillSeconds));
@@ -39,6 +46,16 @@ for(const [w,h,phone] of [[1440,900,false],[375,812,true],[844,390,true],[2560,1
     const t=jet.fallSeconds/d.timeUnit;
     assert.ok(Math.abs(d.ny+2-d.speed*t-0.2*t*t-y)<1e-10,'the analytical stream reaches the surface in its calculated fall time');
   }
+  const source={start:START_DELAY,ramp:RAMP_SECONDS,speed:d.speed,radius:d.radius,cream:0,end:12};
+  assert.equal(streamAt(d,source,d.ny,2.9).radius,0,'nothing falls during the delay');
+  for(const birth of [3.1,3.5,4,7]){
+    const at=birth+0.05,p=parcelAt(d,source,birth,at),sample=streamAt(d,source,p.y,at);
+    const v0=d.speed*opening(birth-START_DELAY),physicalDrop=(d.ny+2-p.y)*d.metresPerCell;
+    const physicalSpeed=p.speed*d.metresPerCell/d.timeUnit;
+    assert.ok(Math.abs(physicalSpeed**2-(v0*d.metresPerCell/d.timeUnit)**2-2*9.81*physicalDrop)<1e-10,'every parcel accelerates under actual gravity');
+    assert.ok(Math.abs(sample.radius-p.radius)<0.002,'drawn stream follows the parcel birth speed');
+  }
+  assert.equal(streamAt(d,source,d.ny,15).radius,0,'the tail clears after the source shuts off');
 }
 assert.equal(drainOpening(0),0.12);
 assert.ok(drainOpening(0.2)>0.12);

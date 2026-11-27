@@ -4,7 +4,7 @@
 body{margin:0;background:#eee7dc;color:#231a14;font:16px/1.5 system-ui}main{padding:32px;max-width:800px;margin:auto}h1{font:36px Georgia}button{font:16px system-ui;padding:12px 18px;margin:4px}pre{white-space:pre-wrap;background:#fff9ef;padding:16px}#tools{position:relative;z-index:2147483646}p{max-width:580px}
 </style></head><body><main><h1>Coffee, under glass.</h1><p>Live GPU verification. The cup is the browser window. Drag anywhere to stir; Alt-drag to tip. Buttons below exercise the actual simulation and read its particles back from the GPU.</p>
 <div id="tools"><button id="pour">Pour coffee3</button><button id="left">Tilt left</button><button id="right">Tilt right</button><button id="upright">Upright</button><button id="empty">Turn upside down</button><button id="drain">Drain</button><button id="read">Read particles</button><button id="stop">Stop test</button><button id="suite">Run GPU checks</button><pre id="result">Ready.</pre></div></main>
-<script src="../../assets/coffee3.js?v=3"></script><script>
+<script src="../../assets/coffee3.js?v=5"></script><script>
 const result=document.getElementById('result');
 const phone=new URLSearchParams(location.search).has('phone')?true:undefined;
 const audit=async()=>{
@@ -29,11 +29,16 @@ document.getElementById('suite').onclick=async()=>{
     RELAY_COFFEE3.active?.stop();await RELAY_COFFEE3.pour({holdSeconds:180,phone});
     const cup=RELAY_COFFEE3.active;ok('WebGPU initialised',!!cup?.audit);
     await RELAY_COFFEE3.pour();ok('duplicate command keeps one cup',document.querySelectorAll('canvas[data-coffee="3"]').length===1);
-    await delay(150);const falling=await cup.audit();
+    await until(()=>cup.state.elapsed>=2.5);ok('no emission during the three-second delay',cup.state.emitted===0);
+    await until(()=>cup.state.emitted>0);const falling=await cup.audit();
     ok('the in-flight stream is included in the books',falling.emitted===falling.alive+falling.lost+falling.inFlight);
+    await until(()=>cup.state.bubblesBorn>0);ok('the stream entrains bubbles',cup.state.bubblesBorn>0);
+    await until(()=>cup.state.creamStart>=0);ok('cream waits for all coffee to land',cup.state.count===cup.dims.target&&cup.state.emitted===cup.dims.target);
+    const black=await cup.audit();ok('coffee has no cream before the second pour',black.creamAlive===0);
     await until(()=>cup.state.fullAt>=0);let book=await cup.audit();
     ok('actual GPU particle data stays finite',book.finite && book.errors.length===0);
-    ok('emitted count equals target',book.emitted===cup.dims.target);
+    ok('emitted count equals coffee plus cream doses',book.emitted===cup.dims.target+cup.dims.creamTarget);
+    ok('cream is advected liquid',book.creamAlive>0);
     ok('all emitted liquid is accounted for',book.emitted===book.alive+book.lost);
     ok('liquid occupies real depth',book.maxZ-book.minZ>2);
     const baseline=book.meanX;const start=cup.state.elapsed;cup.tilt(-0.7,-0.714);

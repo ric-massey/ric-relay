@@ -1765,7 +1765,7 @@
           if (window.RELAY_COFFEE3) window.RELAY_COFFEE3.pour();
           else if (!document.querySelector('script[data-coffee3]')) {
             const js = document.createElement("script"); js.dataset.coffee3 = "1";
-            js.src = "assets/coffee3.js?v=3"; js.onload = () => window.RELAY_COFFEE3?.pour();
+            js.src = "assets/coffee3.js?v=5"; js.onload = () => window.RELAY_COFFEE3?.pour();
             js.onerror = () => { js.remove(); console.warn("coffee3 could not load; type coffee3 to retry."); };
             document.head.appendChild(js);
           }

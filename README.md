@@ -61,7 +61,9 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 
 The hidden `coffee3` command is the live 3D coffee experiment (2026-11-27): a
 shallow GPU liquid volume seen exactly straight on, with a narrow free-falling pour, curved surfaces,
-reflected detail and detached drops. Its floor opens fully so it leaves no stranded pools.
+reflected detail and detached drops. It waits three seconds, starts gently under gravity,
+entrains bubbles, then adds a small creamer pour that moves with the liquid.
+Its floor opens fully so it leaves no stranded pools.
 Drag to stir, Alt-drag to tip, or allow phone motion. It loads only when typed
 in the terminal or front door and requires WebGPU; reduced motion shows a still cup.
 It runs beside `coffee` and `coffee2`. See [`docs/coffee-egg-plan.md`](docs/coffee-egg-plan.md)
