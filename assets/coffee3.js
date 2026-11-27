@@ -253,7 +253,7 @@
       let ray=normalize(vec3f(0.0,-0.24,1.0));
       var hit=false;var position=vec3f(0);var lastP=vec3f(xy+vec2f(0,0.48),0);
       var thickness=0.0;var maximum=0.0;var strongest=lastP;
-      // The whole shallow cup is only ten grid cells deep, irrespective of
+      // The whole shallow cup is only eight grid cells deep, irrespective of
       // screen resolution. No marching through a large invisible tub.
       for(var k=0;k<=32;k++){
         let z=f32(k)*0.25;let p=vec3f(xy.x,xy.y-0.24*(z-2.0),z);
