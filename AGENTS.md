@@ -1828,8 +1828,9 @@ migration marked "safe to re-run", and re-running it would have put the original
   `.github/test/coffee.mjs` holds the level, the volume, the fill time and the drain.
   **It is one liquid simulation** (Ric, same day: "the waves don't work like liquid because
   there is no splashes … it doesn't move when I shake it"): FLIP (Zhu & Bridson 2005), the
-  standard method for splashing liquids — about 18,000 particles carrying velocity and creamer
-  share, a staggered grid of about 6,000 cells (none under 2 mm), pressure solved to
+  standard method for splashing liquids — about 13,000 to 25,000 particles carrying velocity and
+  creamer share, a staggered grid of about 8,000 cells (none under 1.5 mm — Ric: "can't we do
+  more pixels"; 1.3 mm cost a phone 40% more), pressure solved to
   convergence by MIC(0)-preconditioned conjugate gradients with the ghost-fluid condition at the
   surface. The pour's splash, droplets, waves, slosh, the creamer's plunge and settling, the
   drain and running out over the top edge are all that one thing. It replaced a wave model plus
@@ -1855,11 +1856,18 @@ migration marked "safe to re-run", and re-running it would have put the original
   angle of the phone … leaves after 40 min"). What the liquid feels is `devicemotion`'s
   `accelerationIncludingGravity` turned to screen axes (`deviceorientation` is the fallback): a
   tilt tips it and **a shake throws it about** — the test flicks it at 2.5 g and checks that the
-  liquid and the settled creamer move. An iPhone reports neither until
+  liquid and the settled creamer move. **iPhones read that sensor the other way round** from the
+  standard and Android: read the standard way, gravity pointed up the screen and the coffee
+  flew out of the top (Ric: "I have to hold my phone upside down"). So the sign is checked
+  against `deviceorientation`, which every platform reports alike, and an iPhone is assumed
+  inverted until it has been; don't drop either half. The reading is smoothed over 60 ms
+  (taps and jolts are faster than coffee can answer). Gravity stays real (Ric asked for "a bit
+  more gravity so it doesn't fling" — the fling was the flipped sign; raise g only if he asks
+  again after this). An iPhone reports neither until
   `DeviceMotionEvent.requestPermission()` and `DeviceOrientationEvent.requestPermission()` are
   called from a keypress or tap, so `brewCoffee()` in the terminal and the front door's submit
   handler ask inside the gesture — don't move those calls into `coffee.js`, which loads too
-  late. The liquid sleeps once its average speed is under 1 mm/s for a second, and the page
+  late. The liquid sleeps once its average speed is under 1.5 mm/s for two seconds, and the page
   stops drawing (steam aside) until a tilt, a shake or the drain; forty minutes of a redrawn
   canvas is a battery.
   **Tipped so the coffee reaches the top edge, it runs out there** (Ric: "if the top left or
@@ -1874,9 +1882,15 @@ migration marked "safe to re-run", and re-running it would have put the original
   cup goes in about a second and the rest as Torricelli's slowing trickle, a film under 4 mm
   removed at the end.
   **It has to look like coffee, not soda** (Ric's girlfriend, 2026-11-26: "it looks more like
-  soda"): colour by Beer–Lambert over the distance to the nearest air (thin is amber-brown, a
-  centimetre nearly black), a glossy edge where the surface faces up, a few clear bubbles, no
-  fizz in the stream, and steam while it is hot (Newton's cooling, about fifteen minutes). The
+  soda"), and realistic, not fake (Ric): seen from the side the light crosses the cup's whole
+  depth, so the body is all but black — a deep red-brown that darkens over a few centimetres
+  of depth — and only thin things (a sheet, a drop, the lip of a splash) show amber, by
+  Beer–Lambert over their thickness. **No glowing amber rim along every edge**: that was the
+  2D distance standing in for the cup's depth, and it looked fake. Air the liquid swallows
+  (under the stream, under a splash) is **froth** — pale, bubbly coffee with a soft edge, found
+  by flooding the open air from the top and sides — never a hole through to the page. Plus a
+  glossy edge where the surface faces up, a few clear bubbles, no fizz in the stream, and steam
+  while it is hot (Newton's cooling, about fifteen minutes). The
   liquid is drawn from a field the particles are splatted into and smoothed (two box blurs, close
   to a Gaussian), but **its edge is an outline, not the field's pixels** (Ric: "it's not high
   quality tho. See how it's like pixelated"): marching squares traces where the density crosses
@@ -1892,7 +1906,8 @@ migration marked "safe to re-run", and re-running it would have put the original
   about 87% in the bottom quarter, then the cup sleeps. Chosen, not measured: the density
   difference, the amount (2%), the jug, the hand's sway, the colour ramp, the nozzle (a
   Keurig's 5 mm at 0.6 m/s), the drain's hole, bubbles and steam.
-  It costs about 4 ms a step on a phone-sized screen and 12 on a laptop's (on this desktop).
+  It costs about 6 ms a step on a phone-sized screen and 12 on a laptop's, drawing included (on
+  this desktop).
   `.github/test/coffee.mjs` (about 75 s) holds the fill time, the level, the volume, the drain,
   coming to rest, the slosh period, tipping, the creamer's amount, sinking and settling, and
   the shake.

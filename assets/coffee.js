@@ -47,10 +47,11 @@
     const G = 9.81 * PXM;                              // px/s^2
     const HOLD = opt.hold ?? DRAIN_AFTER;
 
-    // The grid: square cells, about 6,000 over the screen but none smaller
-    // than 2 mm (a phone's screen is small; finer would only cost); the walls
+    // The grid: square cells, about 8,000 over the screen but none smaller
+    // than 1.5 mm (a phone's screen is small; finer costs a phone more than
+    // it can spare - 1.3 mm was 40% dearer); the walls
     // are the screen's sides and floor, the top is the cup's open mouth.
-    const h = W / Math.max(16, Math.round(W / Math.max(Math.sqrt((W * H) / 6000), 2 / MM)));
+    const h = W / Math.max(16, Math.round(W / Math.max(Math.sqrt((W * H) / 8000), 1.5 / MM)));
     const nx = Math.round(W / h), ny = Math.max(8, Math.round(H / h)), NC = nx * ny, NU = nx + 1;
     const Hs = ny * h;                                 // the floor (within half a cell of H; drawn stretched to H)
     const PA = (h * h) / 4;                            // each particle is a quarter of a cell of liquid
@@ -252,16 +253,21 @@
     // to zero at that point (the ghost fluid method, Gibou et al. 2002).
     const phi = new Float32Array(NC), PR = 0.55;
     function surfacePlace() {
-      phi.fill(2 * h);
+      // nearest particle to each cell centre (squared, then one root a cell)
+      phi.fill(9 * h * h);
       for (let k = 0; k < n; k++) {
-        const ci = Math.floor(X[k] / h), cj = Math.floor(Y[k] / h);
-        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-          const i = ci + di, j = cj + dj;
-          if (i < 0 || j < 0 || i >= nx || j >= ny) continue;
-          const d = Math.hypot((i + 0.5) * h - X[k], (j + 0.5) * h - Y[k]) - PR * h, c = j * nx + i;
-          if (d < phi[c]) phi[c] = d;
+        const x = X[k], y = Y[k], ci = Math.floor(x / h), cj = Math.floor(y / h);
+        for (let dj = -1; dj <= 1; dj++) {
+          const j = cj + dj; if (j < 0 || j >= ny) continue;
+          const dy = (j + 0.5) * h - y, dy2 = dy * dy, row = j * nx;
+          for (let di = -1; di <= 1; di++) {
+            const i = ci + di; if (i < 0 || i >= nx) continue;
+            const dx = (i + 0.5) * h - x, d2 = dx * dx + dy2;
+            if (d2 < phi[row + i]) phi[row + i] = d2;
+          }
         }
       }
+      for (let c = 0; c < NC; c++) phi[c] = Math.sqrt(phi[c]) - PR * h;
     }
     // how far from a liquid cell's centre toward an air neighbour the surface is, as a fraction
     const theta = (kf, ka) => {
@@ -622,12 +628,13 @@
           s.vmax = vmax;
           left -= dt;
         }
-        // asleep once the liquid has, on average, moved under a millimetre a
-        // second for a second (none of it faster than 2 cm/s), and
+        // asleep once the liquid has, on average, moved under 1.5 mm a second
+        // for two seconds (a creep the eye cannot follow; settling creamer
+        // keeps up one for minutes, and a lone drop can still be rocking), and
         // nothing is being poured or drained; a new tilt or a shake wakes it
         const busy = s.flowing || s.draining || (creamS.start >= 0 && !creamS.done) || s.drips.length || s.drops.length;
-        quiet = !busy && s.vmean < 1 / MM && vmax < 20 / MM ? quiet + frameDt : 0;
-        if (quiet > 1) s.asleep = true;
+        quiet = !busy && s.vmean < 1.5 / MM && vmax < 100 / MM ? quiet + frameDt : 0;
+        if (quiet > 2) s.asleep = true;
       }
       // the last film on the floor never quite finds the hole (Torricelli never
       // reaches empty either): once it is under 4 mm deep, it is gone in a moment
@@ -647,6 +654,7 @@
     const R = 4, fx = nx * R, fy = ny * R, NF = fx * fy, fr = h / R;
     const dens = new Float32Array(NF), crm = new Float32Array(NF), dist = new Float32Array(NF), surf = new Float32Array(fx);
     let fieldDirty = true;
+    const foam = new Uint8Array(NF), froth = new Float32Array(NF), stack = [];
     function field() {
       if (!fieldDirty) return;
       fieldDirty = false;
@@ -656,18 +664,40 @@
       // twice over about a particle's spacing (a box blur twice is close to a
       // Gaussian), so the liquid reads as one body, not as grains
       const per = PA / (fr * fr);
+      let anyCream = false;
       for (let k = 0; k < n; k++) {
         const x = clamp(X[k] / fr - 0.5, 0, fx - 1.001), y = clamp(Y[k] / fr - 0.5, 0, fy - 1.001);
         const i = Math.floor(x), j = Math.floor(y), a = x - i, b = y - j, f = j * fx + i, c = C[k] * per;
         const w00 = (1 - a) * (1 - b) * per, w10 = a * (1 - b) * per, w01 = (1 - a) * b * per, w11 = a * b * per;
         dens[f] += w00; dens[f + 1] += w10; dens[f + fx] += w01; dens[f + fx + 1] += w11;
-        if (c) { crm[f] += w00 * C[k]; crm[f + 1] += w10 * C[k]; crm[f + fx] += w01 * C[k]; crm[f + fx + 1] += w11 * C[k]; }
+        if (c) { anyCream = true; crm[f] += w00 * C[k]; crm[f + 1] += w10 * C[k]; crm[f + fx] += w01 * C[k]; crm[f + fx + 1] += w11 * C[k]; }
       }
-      blur(dens); blur(dens); blur(crm); blur(crm);
+      blur(dens); blur(dens);
+      if (anyCream) { blur(crm); blur(crm); }
+      // Air the liquid has swallowed - where the stream plunges, under a
+      // splash - is not a hole through the coffee to the page: it is froth,
+      // bubbles churned into it. So the open air is flooded from the top edge
+      // and the sides, and whatever air that flood cannot reach is marked as
+      // held in the liquid (foam = 1); it is drawn as pale bubbly coffee.
+      foam.fill(0); stack.length = 0;
+      for (let i = 0; i < fx; i++) if (dens[i] < 0.5) { foam[i] = 2; stack.push(i); }
+      for (let j = 0; j < fy; j++) for (const i of [0, fx - 1]) { const f = j * fx + i; if (dens[f] < 0.5 && !foam[f]) { foam[f] = 2; stack.push(f); } }
+      while (stack.length) {
+        const f = stack.pop(), i = f % fx;
+        if (i > 0 && !foam[f - 1] && dens[f - 1] < 0.5) { foam[f - 1] = 2; stack.push(f - 1); }
+        if (i < fx - 1 && !foam[f + 1] && dens[f + 1] < 0.5) { foam[f + 1] = 2; stack.push(f + 1); }
+        if (f >= fx && !foam[f - fx] && dens[f - fx] < 0.5) { foam[f - fx] = 2; stack.push(f - fx); }
+        if (f + fx < NF && !foam[f + fx] && dens[f + fx] < 0.5) { foam[f + fx] = 2; stack.push(f + fx); }
+      }
+      for (let f = 0; f < NF; f++) foam[f] = foam[f] === 2 ? 0 : dens[f] < 0.5 ? 1 : 0;
+      // froth has no hard edge: it is a haze of bubbles thinning into the coffee
+      let anyFoam = false;
+      for (let f = 0; f < NF; f++) { froth[f] = foam[f]; if (foam[f]) anyFoam = true; }
+      if (anyFoam) { blur(froth); blur(froth); }
       // how far each liquid pixel is from air (chamfer distance), for how
       // much coffee the light goes through there; the walls and floor are not air
       const BIG = 1e6;
-      for (let f = 0; f < NF; f++) dist[f] = dens[f] > 0.45 ? BIG : 0;
+      for (let f = 0; f < NF; f++) dist[f] = dens[f] > 0.45 || foam[f] ? BIG : 0;
       for (let j = 0; j < fy; j++) for (let i = 0; i < fx; i++) {
         const f = j * fx + i; if (!dist[f]) continue;
         let d = dist[f];
@@ -712,7 +742,7 @@
         for (let j = 0; j < fy; j++) { A[j * fx + i] = acc / m; acc += tmp[clamp(j + BR + 1, 0, fy - 1) * fx + i] - tmp[clamp(j - BR, 0, fy - 1) * fx + i]; }
       }
     }
-    s.field = () => { field(); return { fx, fy, fr, dens, crm, dist }; };
+    s.field = () => { field(); return { fx, fy, fr, dens, crm, dist, foam, froth }; };
     s.surfaceX = (x) => { field(); return surf[clamp(Math.floor(x / fr), 0, fx - 1)] * (H / Hs); };
     s.level = () => (n * PA) / (W * Hs);
     s.total = () => n * PA;
@@ -785,19 +815,29 @@
       s.cv = root.document.createElement("canvas"); s.cv.width = F.fx; s.cv.height = F.fy;
       s.cx = s.cv.getContext("2d"); s.img = s.cx.createImageData(F.fx, F.fy);
     }
-    const d = s.img.data, { dens, crm, dist, fx, fy, fr } = F, mmPx = fr * s.MM;
+    const d = s.img.data, { dens, crm, dist, froth, fx, fy, fr } = F, mmPx = fr * s.MM;
     for (let j = 0; j < fy; j++) for (let i = 0; i < fx; i++) {
       const f = j * fx + i, o = f * 4, rho = dens[f];
       // colour runs a little past the edge; the outline below cuts it
-      if (rho < 0.12) { d[o + 3] = 0; continue; }
-      const path = clamp(2 + 0.3 * dist[f] * mmPx, 0, 10);
+      if (rho < 0.12 && froth[f] < 0.05) { d[o + 3] = 0; continue; }
+      // Seen from the side, the light crosses the cup's whole depth, front to
+      // back, so the body is all but black; only near an edge - a thin sheet,
+      // a drop, the lip of a splash - is there little enough coffee for
+      // amber to come through. And a body of coffee is never quite black:
+      // what scatters back out of it leaves a deep red-brown.
+      // what scatters back out of it is brightest near the lit surface and
+      // fades with depth, over a few centimetres
+      const path = clamp(1.4 + 3.5 * dist[f] * mmPx, 0, 15), deep = Math.exp(-(dist[f] * mmPx) / 30);
       const q = Math.round(path * 4) * 3;
-      let r = COFFEE[q], g = COFFEE[q + 1], b = COFFEE[q + 2];
+      let r = Math.max(COFFEE[q], 20 + 26 * deep), g = Math.max(COFFEE[q + 1], 11 + 16 * deep), b = Math.max(COFFEE[q + 2], 6 + 10 * deep);
       const c = rho > 0 ? crm[f] / rho : 0;
       if (c > 0.002) {
         const m = Math.round(Math.sqrt(Math.min(1, c)) * 255) * 3, w = clamp(c * 12, 0, 1);
         r += (CREAMLUT[m] - r) * w; g += (CREAMLUT[m + 1] - g) * w; b += (CREAMLUT[m + 2] - b) * w;
       }
+      // churned-in air: a haze of pale, bubbly coffee
+      const fo = Math.min(1, froth[f] * 1.4);
+      if (fo > 0.01) { r += (128 - r) * fo; g += (92 - g) * fo; b += (64 - b) * fo; }
       d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
     }
     // the streams in the air, exactly where their fall puts them: coffee a
@@ -871,7 +911,8 @@
   // The pieces of outline facing up are collected for the gloss.
   const TH = 0.5;
   function outline(F, ys) {
-    const { dens, fx, fy, fr } = F, body = new Path2D(), gloss = new Path2D();
+    const { fx, fy, fr } = F, body = new Path2D(), gloss = new Path2D();
+    const dens = F.foam.some((v) => v) ? F.dens.map((v, f) => Math.max(v, F.froth[f] * 1.5)) : F.dens;
     const X = (i) => (i <= 0 ? 0 : i >= fx - 1 ? fx * fr : (i + 0.5) * fr);
     const Y = (j) => (j <= 0 ? 0 : j >= fy - 1 ? fy * fr * ys : (j + 0.5) * fr * ys);
     const pts = [];
@@ -935,7 +976,7 @@
       ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
     }
     const last = C[C.length - 1];
-    if (S.head < S.land) { ctx.beginPath(); ctx.arc(last[0], last[2], last[1], 0, Math.PI); ctx.fillStyle = S.c ? "rgba(244,238,226,0.98)" : through(2 * last[1] * s.MM * 0.7, 0.95); ctx.fill(); }
+    if (true) { ctx.beginPath(); ctx.arc(last[0], last[2], last[1], 0, Math.PI); ctx.fillStyle = S.c ? "rgba(244,238,226,0.98)" : through(2 * last[1] * s.MM * 0.7, 0.95); ctx.fill(); }
     ctx.beginPath(); C.forEach((c, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, c[0] - 0.45 * c[1], c[2]));
     ctx.strokeStyle = S.c ? "rgba(255,255,252,0.7)" : "rgba(255,248,238,0.5)"; ctx.lineWidth = 1; ctx.stroke();
   }
@@ -987,27 +1028,45 @@
       return [x * Math.cos(a) + y * Math.sin(a), -x * Math.sin(a) + y * Math.cos(a)];
     };
     // What the liquid feels, from the phone itself. accelerationIncludingGravity
-    // is what the phone's accelerometer reads: its own acceleration minus
-    // gravity, device x right, y up. The liquid feels the opposite - gravity,
-    // and a push back against any shake - so in screen axes (y down) that is
-    // (-ax, +ay), turned by the screen's rotation. A shake throws it about; a
-    // tilt tips it. Lying flat, little of it is across the screen, and the
-    // liquid lies as it lay.
-    let motion = false;
+    // is what the phone's accelerometer reads; the liquid feels the opposite -
+    // gravity, and a push back against any shake - so in screen axes (y down)
+    // that is (-ax, +ay), turned by the screen's rotation. A shake throws it
+    // about; a tilt tips it. Lying flat, little of it is across the screen,
+    // and the liquid lies as it lay.
+    // Which way round the accelerometer reads differs: the standard (and
+    // Android) read +9.81 up a phone held upright, an iPhone -9.81 - read the
+    // standard way on an iPhone, gravity pointed up the screen and the coffee
+    // fell out of the top. The tilt sensor (deviceorientation) agrees on every
+    // platform, so whenever both report, the motion's sign is checked against
+    // it; until they have, an iPhone is taken to read the other way round.
+    let motion = false, sign = /iP(hone|ad|od)/.test(root.navigator?.userAgent || "") ? -1 : 1, vote = 0, tiltG = null, low = null, lastT = 0;
     const onMotion = (e) => {
       const g = e.accelerationIncludingGravity;
       if (!g || g.x == null || g.y == null) return;
       motion = true;
-      const [sx, sy] = turn(-g.x, g.y);
-      if (Math.hypot(sx, sy) < 0.35 * 9.81) return;
-      felt = [sx, sy]; sim.setGravity(sx, sy); if (!sim.idle()) resume();
+      const [rx, ry] = turn(-g.x, g.y);
+      if (tiltG && Math.hypot(rx, ry) > 0.5 * 9.81) {
+        vote = clamp(vote + (rx * tiltG[0] + ry * tiltG[1] >= 0 ? 1 : -1), -20, 20);
+        if (vote >= 5) sign = 1; else if (vote <= -5) sign = -1;
+      }
+      // a phone's accelerometer jumps at every tap and jolt, far faster than
+      // coffee can answer; it is smoothed over about 60 ms (chosen)
+      const now = e.timeStamp || root.performance?.now() || 0, dt = lastT ? clamp((now - lastT) / 1000, 0.001, 0.1) : 0.016;
+      lastT = now;
+      const k = 1 - Math.exp(-dt / 0.06), vx = rx * sign, vy = ry * sign;
+      low = low ? [low[0] + (vx - low[0]) * k, low[1] + (vy - low[1]) * k] : [vx, vy];
+      if (Math.hypot(low[0], low[1]) < 0.35 * 9.81) return;
+      felt = [low[0], low[1]]; sim.setGravity(felt[0], felt[1]); if (!sim.idle()) resume();
     };
-    // the fallback where a browser gives only the phone's angle
+    // the phone's angle: the check on the motion's sign, and the fallback
+    // where a browser gives only that
     const onTilt = (e) => {
-      if (motion || e.beta == null || e.gamma == null) return;
+      if (e.beta == null || e.gamma == null) return;
       const b = (e.beta * Math.PI) / 180, gm = (e.gamma * Math.PI) / 180;
       const [sx, sy] = turn(Math.sin(gm) * Math.cos(b), Math.sin(b));
       if (Math.hypot(sx, sy) < 0.35) return;
+      tiltG = [sx, sy];
+      if (motion) return;
       const a = Math.atan2(sx, sy);
       felt = [9.81 * Math.sin(a), 9.81 * Math.cos(a)]; sim.setGravity(felt[0], felt[1]); resume();
     };
