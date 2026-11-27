@@ -1802,7 +1802,7 @@
         if (/^(front[\s_-]*door|home|cd home|open home)$/i.test(typed)) { panel.hidden = true; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); return; }
         // `coffee` tilts and sloshes with the phone, and an iPhone asks for that
         // only from a tap like this one; the terminal frame's answer comes too late to ask
-        if (/^coffee$/i.test(typed)) { window.DeviceMotionEvent?.requestPermission?.().catch(() => {}); window.DeviceOrientationEvent?.requestPermission?.().catch(() => {}); }
+        if (/^coffee$/i.test(typed)) { window.DeviceMotionEvent?.requestPermission?.().catch(() => {}); window.DeviceOrientationEvent?.requestPermission?.().catch(() => {}); document.activeElement?.blur?.(); }   // the keyboard goes away so the cup can be seen
         if (/^coffee3$/i.test(typed)) { window.DeviceMotionEvent?.requestPermission?.().catch(() => {}); window.DeviceOrientationEvent?.requestPermission?.().catch(() => {}); }
         const k = key(typed), post = POSTS.find((p) => key(p.name) === k || key(p.id) === k);
         if (post) { location.href = post.href; return; }
