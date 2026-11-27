@@ -1761,10 +1761,16 @@
         else if (m.term === "back") history.back();
         else if (m.term === "cats") m.on ? window.RELAY_CATS?.enable() : window.RELAY_CATS?.clear();
         else if (m.term === "effect") m.mode ? window.RELAY_EFFECTS?.set(m.mode) : window.RELAY_EFFECTS?.clear();
+        else if (m.term === "coffee2") {
+          // the terminal's `coffee2`: the new cup being built (assets/coffee2.js, on coffee.js's physics)
+          const load = (src, then) => { const js = document.createElement("script"); js.src = src; js.onload = then; document.head.appendChild(js); };
+          const go = () => window.RELAY_COFFEE2?.pour(), two = () => (window.RELAY_COFFEE2 ? go() : load("assets/coffee2.js?v=2", go));
+          window.RELAY_COFFEE ? two() : load("assets/coffee.js?v=31", two);
+        }
         else if (m.term === "coffee") {
           // the terminal's `coffee`: the cup is this page (assets/coffee.js)
           if (window.RELAY_COFFEE) window.RELAY_COFFEE.pour();
-          else { const js = document.createElement("script"); js.src = "assets/coffee.js?v=30"; js.onload = () => window.RELAY_COFFEE?.pour(); document.head.appendChild(js); }
+          else { const js = document.createElement("script"); js.src = "assets/coffee.js?v=31"; js.onload = () => window.RELAY_COFFEE?.pour(); document.head.appendChild(js); }
         }
       });
       for (const ev of ["focus", "pointerenter", "touchstart"]) input.addEventListener(ev, wake, { passive: true });

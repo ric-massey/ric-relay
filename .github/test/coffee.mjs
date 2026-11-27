@@ -155,6 +155,31 @@ for (const [W, H, mm] of [[390, 844, 0.174], [1440, 900, 0.2646]]) {
   assert.ok(s.creamed() && s.cream.poured === s.cream.want, 'still(level, true) is a cup already creamed');
 }
 
+// The books balance (the brief: "track poured-in, retained, and spilled
+// volume"): everything poured is in the cup, out over the top, or drained,
+// to the particle, at every moment of a whole run - tipped out too.
+{
+  const s = createSim(390, 844, { mm: 0.174, random: seeded(3) });
+  let worst = 0, t = 0;
+  const books = () => Math.abs((s.emitted + s.cream.poured + s.dripped) - (s.total() + (s.spiltSum || 0) + (s.drainedSum || 0))) / s.PA;
+  while (!s.done && t < 30) {
+    s.step(1 / 60); t += 1 / 60;
+    if (t > 6 && t < 6.02) s.setTilt(2.4);          // tip some out over the top part way through
+    if (t > 6.6 && t < 6.62) s.setTilt(0);
+    worst = Math.max(worst, books());
+  }
+  assert.ok(worst <= 3, `poured = in the cup + out the top + drained, always (off by at most ${worst.toFixed(1)} particles)`);
+  assert.ok((s.spiltSum || 0) > 0 && (s.drainedSum || 0) > 0, 'and both ways out were used');
+}
+
+// `coffee2`, the new cup being built to Ric's brief (assets/coffee2.js), runs on the same physics
+const two = read('assets/coffee2.js');
+assert.match(two, /RELAY_COFFEE\.createSim/, 'coffee2 uses the same liquid as coffee');
+assert.match(two, /getContext\("webgl2"/, 'coffee2 draws with WebGL2');
+assert.match(two, /return root\.RELAY_COFFEE\.pour\(\)/, 'and without WebGL2 it pours the first coffee');
+assert.match(two, /visibilitychange/, 'it stops while the page is hidden');
+assert.match(two, /webglcontextlost/, 'and survives a lost graphics context');
+
 // a phone keeps it forty minutes; the hold is the one number that differs
 const src = read('assets/coffee.js');
 assert.match(src, /PHONE_HOLD = 40 \* 60/, 'a phone keeps the cup forty minutes');
@@ -166,5 +191,7 @@ assert.match(term, /assets\/coffee\.js/, 'the terminal loads coffee.js on demand
 assert.match(term, /brewCoffee = \(\) => \{[\s\S]*?DeviceMotionEvent\?\.requestPermission[\s\S]*?DeviceOrientationEvent\?\.requestPermission/, 'the terminal asks an iPhone for its motion and tilt inside the keypress');
 assert.match(door, /coffee\$\/i\.test\(typed\)\) \{ window\.DeviceMotionEvent\?\.requestPermission[\s\S]*?DeviceOrientationEvent\?\.requestPermission/, 'so does the front door, inside its submit');
 assert.match(door, /m\.term === "coffee"[\s\S]*?assets\/coffee\.js/, 'the front door pours the coffee its terminal hands up');
+assert.match(term, /coffee2: \(\) => \{[\s\S]*?send\(\{ term: "coffee2" \}\)[\s\S]*?brewCoffee2\(\)/, 'the terminal pours coffee2, or hands it up when embedded');
+assert.match(door, /m\.term === "coffee2"[\s\S]*?assets\/coffee2\.js/, 'and the front door pours that one too');
 
 console.log('coffee: ok');

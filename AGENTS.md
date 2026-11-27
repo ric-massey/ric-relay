@@ -1908,7 +1908,26 @@ migration marked "safe to re-run", and re-running it would have put the original
   Keurig's 5 mm at 0.6 m/s), the drain's hole, bubbles and steam.
   It costs about 6 ms a step on a phone-sized screen and 12 on a laptop's, drawing included (on
   this desktop).
-  `.github/test/coffee.mjs` (about 75 s) holds the fill time, the level, the volume, the drain,
+  **`coffee2` is its successor, being built in stages** to Ric's brief (2026-11-26, the
+  "Interactive Coffee — Build Brief"; the stages are in `docs/coffee-egg-plan.md`).
+  `assets/coffee2.js` draws the same simulation (`RELAY_COFFEE.createSim`) as a real, shallow
+  cup in WebGL2: the screen is its front glass, it is 10–25 mm deep (a fifth of the screen's
+  short side), seen from an eye 15% of the height above the screen's top and 300 mm (phone)
+  or 500 mm (computer) in front, so the top of the coffee shows as a strip receding into the
+  cup. No library; without WebGL2 it pours `coffee`. It steps at a fixed 1/60 s (at most three
+  a frame, so a slow device loses time, not stability), stops while the page is hidden, and
+  survives a lost WebGL context. `?coffeedebug` (or `localStorage.coffeedebug = "1"`) shows
+  the step and draw cost and the books: poured, in the cup, out the top, drained. **The order
+  is Ric's** ("get it to work without my phone and the rotation stuff. Then add in the
+  rotation"): computer first, plain shading (stage 1, done), then the look, then detail
+  (creamer, bubbles, foam; the mouse and a finger stir it like a spoon, Ric's idea), then
+  tipping with the mouse, then the phone. Why the physics stays 2D: in a cup a centimetre or
+  two deep, liquid moves almost entirely in the screen's plane; a 3D CPU solver four cells
+  deep would need about 137,000 particles on a laptop's screen (over 100 ms a frame). It
+  replaces `coffee` only when Ric says so; until then `coffee2` is undocumented (`COMMANDS`
+  and `EASTER_EGGS.md`).
+  `.github/test/coffee.mjs` (about 90 s) holds the books (poured = in the cup + out the top +
+  drained, to the particle, through a whole run), the fill time, the level, the volume, the drain,
   coming to rest, the slosh period, tipping, the creamer's amount, sinking and settling, and
   the shake.
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong

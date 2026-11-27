@@ -638,8 +638,8 @@
       }
       // the last film on the floor never quite finds the hole (Torricelli never
       // reaches empty either): once it is under 4 mm deep, it is gone in a moment
-      if (s.draining && (n * PA) / W < 4 / MM) { const m = Math.max(1, Math.ceil(n * frameDt / 0.4)); for (let q = 0; q < m && n; q++) kill(Math.floor(rand() * n)); }
-      s.outflow = spilled / frameDt; s.sipping = spilled > 0; s.spiltSum = (s.spiltSum || 0) + spilled;
+      if (s.draining && (n * PA) / W < 4 / MM) { const m = Math.max(1, Math.ceil(n * frameDt / 0.4)); for (let q = 0; q < m && n; q++) { kill(Math.floor(rand() * n)); drained += PA; } }
+      s.outflow = spilled / frameDt; s.sipping = spilled > 0; s.spiltSum = (s.spiltSum || 0) + spilled; s.drainedSum = (s.drainedSum || 0) + drained;
       s.volume = n * PA;
       void before; void poured;
       fieldDirty = true;

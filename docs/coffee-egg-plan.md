@@ -50,6 +50,35 @@ stops so a phone can sleep.
 What is **not** built yet: drinking it on a computer (where nothing tips), all of A (Mochi), and the edge cases
 below except reduced motion, the front door and iPhone tilt permission.
 
+## `coffee2`: the brief, in stages
+
+Ric wrote a build brief on 2026-11-26 ("Interactive Coffee — Build Brief"): real black coffee
+in a shallow three-dimensional cup behind the screen, a mostly frontal camera that shows the
+top surface, conserved volume, a continuous rendered surface with coffee's optics, then
+detail, then the phone's motion. He set the order: "get it to work without my phone and the
+rotation stuff. Then add in the rotation sense after the rest is working". It is built as
+`coffee2` (`assets/coffee2.js`) beside `coffee` until he says it replaces it.
+
+1. **Computer, plain shading** — done 2026-11-26. The shallow cup in WebGL2 on the existing
+   2D FLIP physics; fixed steps; pause when hidden; lost-context recovery; the books
+   (`?coffeedebug`). Measured on this desktop: about 3 ms a step and under 2 ms to draw on a
+   laptop-sized screen, 1.6 and 0.4 on a phone-sized one.
+2. **Computer, the look** — the surface's normals and reflections under a broad soft light,
+   absorption by thickness through the cup's depth, thin things amber, restrained refraction.
+3. **Computer, detail** — creamer, bubbles, foam, splash sheets, the wet film, the contact
+   edge against the glass; the mouse and a finger stir it like a spoon (Ric: "the mouse and
+   your finger is going to act like a spoon and mix the creamer").
+4. **Tipping with the mouse or keyboard** — the open top, pouring out, on a computer.
+5. **The phone** — the motion sensors (the iPhone sign rule `coffee` learned applies), then
+   recordings on Ric's iPhone: filling, slow tilts, fast movement, partial and complete pouring,
+   and a long run for heat and throttling.
+
+Open question for stage 2 or 3: in a real 3D cup the volume is area × depth, and a real
+Keurig's 5 mm stream would take minutes to fill a screen-sized cup 25 mm deep (about 1.7 l on
+a laptop). `coffee2` keeps `coffee`'s fill time for now (the stream behaves as a sheet the
+cup's depth wide); whether the stream should look as wide as it pours, or the cup be
+shallower, is Ric's call.
+
 ## The idea, in Ric's words
 
 > "the cup is the screen. the website fills with coffee.... also i want it to look like

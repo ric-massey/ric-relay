@@ -435,6 +435,15 @@ type Sydney's cat's name for a surprise!</div>
     const goTo = (href) => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL(href, location.href).href }) : (location.href = href);
     const reloadPage = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL("terminal.html", location.href).href }) : location.reload();
     const goBack = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "back" }) : history.back();
+    // `coffee2` is the new cup being built to Ric's brief (assets/coffee2.js),
+    // on the same physics as `coffee`: both files, the first time it is typed
+    const brewCoffee2 = () => {
+      const go = () => window.RELAY_COFFEE2?.pour();
+      if (window.RELAY_COFFEE2) return go();
+      const load = (src, then) => { const js = document.createElement("script"); js.src = src; js.onload = then; document.head.appendChild(js); };
+      const two = () => load("assets/coffee2.js?v=2", go);
+      window.RELAY_COFFEE ? two() : load("assets/coffee.js?v=31", two);
+    };
     // `coffee` pours one (assets/coffee.js, fetched the first time it is typed)
     const brewCoffee = () => {
       // An iPhone only reports its tilt and its shaking after asking, and only
@@ -443,7 +452,7 @@ type Sydney's cat's name for a surprise!</div>
       window.DeviceOrientationEvent?.requestPermission?.().catch(() => {});
       if (window.RELAY_COFFEE) return window.RELAY_COFFEE.pour();
       const js = document.createElement("script");
-      js.src = "assets/coffee.js?v=30"; js.onload = () => window.RELAY_COFFEE?.pour();
+      js.src = "assets/coffee.js?v=31"; js.onload = () => window.RELAY_COFFEE?.pour();
       document.head.appendChild(js);
     };
   </script>
@@ -1150,6 +1159,12 @@ type Sydney's cat's name for a surprise!</div>
         if (window.TERMINAL_EMBED) window.TERMINAL_EMBED.send({ term: "coffee" });
         else brewCoffee();
         return "brewing... ☕ dispensed. carry on.";
+      },
+      coffee2: () => {
+        // the new cup, still being built (assets/coffee2.js); `coffee` is the one that works
+        if (window.TERMINAL_EMBED) window.TERMINAL_EMBED.send({ term: "coffee2" });
+        else brewCoffee2();
+        return "brewing in the new cup... ☕ (still being built)";
       },
       exit: () => "there is no exit. there is only the terminal.",
       lsd: () => {
