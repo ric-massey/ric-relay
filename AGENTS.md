@@ -1898,16 +1898,15 @@ migration marked "safe to re-run", and re-running it would have put the original
     spout, never of `t` and `y` separately — the old ripples crawled at 6 cm/s on water falling at
     1.5 m/s. Keep features long enough that a frame moves them a quarter of their length or less,
     or they flicker in place like a wagon wheel instead of falling.
-  - **The surface is seen head on, across the cup's depth** (Ric, 2026-11-27: "something go
-    behind it and in front of it", then "the coffee can't be sitting behind it the entire time.
-    It should be level … when there is a ripple there is coffee back there"). `drawTop` shows the
-    surface further back only where it stands above the surface at the glass: the higher of the
-    front surface 15 mm either way, smoothed 4 mm, 0.15 s late, shown past 1 mm of shimmer. A still
-    cup is a level line with nothing behind it — **don't put back a view from above** (the first
-    version, a strip of the top always showing). It is drawing only; the physics stays in the
-    screen's plane. Keep it in the room's own colours.
+  - **No surface drawn behind the front one** (Ric, 2026-11-27). Two tries at showing the coffee's
+    top across the cup's depth came out the same day — a strip seen from above (always showing),
+    then a far surface made from the near one, shown only where it stood above it. Made from the
+    near surface rather than simulated, it came apart from the front on a tipped phone and drew a
+    striped slab across the screen ("the back part doesn't stick to the front right … maybe take
+    it out"). Don't add one back unless the physics has a third dimension to draw it from.
   - **A finger stirs it on a phone** (`s.stir`, same day: "so it will mix the creamer"): the pad
-    sets the speed of what it passes through and nothing else, so the books still close; the
+    sets the speed of what it passes through — 15% past the finger's own, up to 1.5 m/s (Ric:
+    "make it so the finger moves the liquid 15% more") — and nothing else, so the books close; the
     touches are passive listeners and must stay so, or the page under stops scrolling.
     `RELAY_COFFEE.sim()` returns the running simulation for tests and the console.
   - **Turbulence the grid cannot hold is modelled from measured constants**: Smagorinsky's eddy

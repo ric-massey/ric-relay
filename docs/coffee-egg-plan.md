@@ -57,15 +57,13 @@ Then the top and the finger (2026-11-27, Ric: "the top layer, the one that rolls
 something go behind it and in front of it … more realism without going way off of the style",
 and "make it so the finger swishes the coffee around on mobile. so it will mix the creamer").
 The first try looked down into the cup with coffee2's geometry, so a strip of the top always
-showed above the front edge; Ric: "the coffee can't be sitting behind it the entire time. It
-should be level. But when there is a ripple there is coffee back there so it looks like ur head
-on". So it is seen head on: a still cup is a level line, and the surface further back shows
-only where a wave puts it above the surface at the glass — in troughs, and behind the dip the
-jet digs. That far surface is made from the near one (chosen, not measured: a crest crosses the
-cup at an angle, so the higher of the surface 15 mm either way, smoothed 4 mm, 0.15 s late) and
-shown only past 1 mm of the particles' shimmer, faded in over 1.5 mm. It is lit a little more
-at its crest and paler where creamer is up. A finger on a phone is a 12 mm pad
-dragged through the liquid: what it passes through takes its speed (capped at 1.5 m/s), and
+showed above the front edge ("the coffee can't be sitting behind it the entire time"); the second
+was seen head on, drawing a far surface made from the near one only where it stood above it. On a
+tipped phone that far surface came apart from the front and drew a striped slab across the screen
+(Ric: "the back part doesn't stick to the front right … maybe take it out"), and it came out: the
+physics is in the screen's plane and has no surface further back to draw. A finger on a phone is a 12 mm pad
+dragged through the liquid: what it passes through takes its speed and 15% more (Ric, "make it
+so the finger moves the liquid 15% more"; capped at 1.5 m/s), and
 the solver makes the wake and swirls; the creamer mixes by the eddy diffusion it already had.
 The touch is listened to passively, so the page under still scrolls and taps. Measured: two
 seconds of circles at the bottom lift settled creamer into the cup that, left alone, stays put
