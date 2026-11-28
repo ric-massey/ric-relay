@@ -360,7 +360,8 @@ asked for the graphs and the grain trade the year needed. All of it is on the ru
 - **The map shows what happened.** Households that moved are drawn as fading arrows from the old
   home to the new (dashed when hunger drove them) for twenty days, and the big news of the last
   fortnight — famine, war, peace, a village taken, founded, abandoned or broken away, sickness —
-  as a ring and a word where it happened. Only what the engine recorded (`moves`, `events`).
+  where it happened. Only what the engine recorded (`moves`, `events`). Since 2026-11-27 that is the
+  event's own sentence for three days, three at most on screen ("The People map, cleaned up").
 - **Grain trade.** With seasons the grain is in houses and the store is empty all winter, so the
   old traders, who read only the store, never moved any. A trader now also carries grain: from a
   village whose houses hold more than their winter (`spare`) to one whose houses are short of the
@@ -5363,8 +5364,8 @@ is true now.
   and writes no model state. The rolling history remains capped at 160, with monotonic exchange
   IDs; the page holds just one selected record outside it until cleared or a new world starts.
   These are facts from that exchange, not current beliefs, a saved world or a full life history.
-- **Conversations stop both people for six seconds at 1×.** A gold line joins the actual pair,
-  and speech bubbles name speaker and listener. Work is not interrupted by a new conversation
+- **Conversations stop both people for six seconds at 1×.** A speech bubble over the speaker
+  names them and gives the words (the gold line between the pair came out on 2026-11-27). Work is not interrupted by a new conversation
   while harvesting or making goods.
 - **People occupy space.** Bodies stay at least 0.42 tiles apart, including starting crowds and
   newborns. Each movement checks a spatial hash and tries to slide round a blocked neighbour;
@@ -5388,8 +5389,8 @@ is true now.
   Hostile and abandoned markets are excluded. Activities name the destination; `test/day.mjs`
   groups names back into stable activity categories for the existing day-shape measurements.
   Other occupations retain the newer engine's work, family and migration choices.
-- **Speech is drawn as words only when zoomed in**; farther out a small mark shows somebody is
-  talking. The Talk tab has the last forty exchanges either way.
+- **Speech is drawn as words only when zoomed in**; farther out nothing marks it (the small white
+  mark came out on 2026-11-27). The Talk tab has the last forty exchanges either way.
 - "← Setup" is the way out of a running world; the site's "← Ric's Terminal" control is on the
   other two screens and hidden while a world runs, because it would sit on the map. On the
   settings screen it sits in the bar along the bottom, in a slot kept clear for it — floating
@@ -5397,6 +5398,51 @@ is true now.
   no room beside the buttons, so that bar grows a second storey and the control sits in it.
 - Typed egg: `genesis` (in `relay-return.js` and `EASTER_EGGS.md`). Space pauses a world, so the
   word has no space in it.
+
+### The People map, cleaned up (2026-11-27)
+
+Ric: "there are weird lines in between people we dont know what they mean. there are houses on top of
+each other. there is not any information i want poping up. random stuff is lighing up like (war) in
+random spots", and of the words, "they arent fun". A default world was run for two and a half years and
+everything on the map that a stranger could not name was found and changed. The rule now: **if a
+stranger could not guess what a mark is, it is not drawn like that.** Page and keeper only; the engine
+is untouched, and `test/watching.test.mjs` still holds the watched world equal to the unwatched one.
+
+- **No gold lines between people talking.** What is said is a bubble over the speaker: their name, then
+  the words. The keeper still sends the pairs (`links`).
+- **No one-word stamps.** "War", "New village" with a pulsing ring are gone; an event worth stopping
+  for (war, peace, famine, a village taken, founded or abandoned, a breakaway, a riot, a coup, a
+  blaming …) shows its own sentence in a dark box pointing at the place, for three days of the world,
+  three at most, newest first. The everyday ones stay in News. The keeper sends each mark's `text`.
+- **A standing problem says what and where**: "Sickness in Woutus", not "Sickness".
+- **Labels name people.** "farmer · Harvesting" became "Branaruth · resting at home", six at most, from 48 pixels a
+  square (was twelve from 28). Words on the map — village names, events, problems, bubbles, labels —
+  take their room from one list, so none is drawn over another; a bubble wins over a label.
+- **Things nobody could read far out are drawn only close in**: the reaper's field patch (a pale square
+  a whole field across round every harvester, from 14 pixels; now a few stalks, from 64), village lanes
+  (from 40, were 12) and sacred groves (from 40, were 6).
+- **Houses.** The page made every house bigger to be seen, by 3 / (0.016 × P): twelve times life at
+  the usual whole-land view, so a village's houses lay on top of each other. Now no more than two and a
+  half times, about three pixels, and none drawn under 24 pixels a square. **The engine also places
+  them overlapping**: a street plot is 19 m (`FRONT`) and an early longhouse up to 24 m long along it,
+  so about a fifth of a new world's houses overlap (seed 11: 49 pairs; seed 3: 25; seed 42: 51, by
+  rectangle). The page draws a house no longer than 17 m along its plot, deeper so its floor is the
+  same (`HOUSE_ALONG`): 3, 1 and 10 pairs. The real fix is in `sizeHome` or the plot, and it would make
+  every seed a new world, so it waits on Ric.
+- **When** is said as long ago ("5 months ago"). Lists said "day 671" while the bar said "day 186,
+  year 3". The event's own page gives both.
+- **The engine's reason** shows in a list only when it already reads as words ("because in danger
+  within two months"); the numbers a decision was made on ("the village afraid 0, tempers 0.5") and the
+  "after" chain are folded on the event's page, under "The numbers behind it" and "What led to it".
+- **The story so far** leaves out the everyday (weighed under 1.5: grain to spare, an oven, a road);
+  News still has them. Repeats read "… 3 times" after the sentence, not "3 times:" before it.
+- **A graph that never moved** is one line ("No change since day 1: Wars going on 0") instead of a
+  flat line in a box.
+
+Not done, and seen on the same run: the land close in is a visible grid (hedges on square edges, paths
+from square middle to square middle, rivers and lakes with right angles), and the default world is
+calm — after two and a half years no war, nobody hungry, 267 days of food a head. Catastrophes are
+TODO 17 and 18.
 
 ## Not done
 

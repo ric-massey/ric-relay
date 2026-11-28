@@ -256,7 +256,7 @@
         A[k] = close && w.mapLook ? w.mapLook(p) : 0;   // TODO 22: arms, armour, a horse, a bandit, a pack animal, a car
         if (seen) {
           if (p.id === pickedId) pickedLabel = { k: k, p: p };
-          else if (s >= 28 && (focused ? focused.sayT > 0 && p.id === focused.talkingTo : labels.length < 12)) labels.push({ k: k, p: p });
+          else if (s >= 48 && (focused ? focused.sayT > 0 && p.id === focused.talkingTo : labels.length < 12)) labels.push({ k: k, p: p });
           if (closer && (fl & FLAG.speaking)) talking.push({ k: k, p: p });
         }
         k++;
@@ -264,7 +264,9 @@
       if (pickedLabel) labels.unshift(pickedLabel);
       const out = { t: "frame", n: n, k: k, x: X.slice(0, k), y: Y.slice(0, k), tint: T.slice(0, k), flags: F.slice(0, k), gear: G.slice(0, k), look: A.slice(0, k),
                     links: L.slice(0, links), view: view,
-                    labels: labels.slice(0, focused ? 2 : 12).map(r => ({ k: r.k, text: r.p.job + " · " + w.activity(r.p) })),
+                    /* A name and what they are doing (2026-11-27, Ric: the map showed things "we dont know what
+                       they mean"): "farmer · Harvesting" named nobody, and twelve of them piled into one clump. */
+                    labels: labels.slice(0, focused ? 2 : 6).map(r => ({ k: r.k, text: r.p.name + " · " + w.activity(r.p).toLowerCase() })),
                     speech: null, picked: null, pair: null, moves: null, marks: null, vs: null, fs: null, land: null,
                     days: w.days, season: w.season().name || "", daylight: w.season().daylight, warmth: w.season().warmth, sceneTick: w.sceneTick, speed: speed, rate: rate, paused: paused, cost: 0,
                     held: held(), heldFor: maxWall, until: until ? until.label : "" };
@@ -272,7 +274,8 @@
       if (closer) {
         if (focused) out.speech = talking.filter(r => r.p.id === focused.id || (focused.sayT > 0 && r.p.id === focused.talkingTo));
         else { talking.sort((a, b) => Math.hypot(a.p.x - cam.x, a.p.y - cam.y) - Math.hypot(b.p.x - cam.x, b.p.y - cam.y)); out.speech = talking.slice(0, 4); }
-        out.speech = out.speech.map(r => { const q = byId.get(r.p.talkingTo); return { k: r.k, text: r.p.name + (q ? " → " + q.name : "") + ": " + r.p.say }; });
+        /* Who is speaking and what they said; who they say it to is the person beside them (2026-11-27). */
+        out.speech = out.speech.map(r => ({ k: r.k, name: r.p.name, text: r.p.say }));
       }
       /* What a layer's legend needs and the frame does not otherwise carry (TODO 21d). */
       if (view === "faith" && w.faiths) {
@@ -315,7 +318,7 @@
       for (let i = w.events.length - 1; i >= 0; i--) {
         const e = w.events[i], age = t - e.t;
         if (age > 14 * 24) break;
-        if (e.x || e.y) out.marks.push({ kind: e.kind, x: e.x, y: e.y, age: age });
+        if (e.x || e.y) out.marks.push({ kind: e.kind, x: e.x, y: e.y, age: age, text: e.text, weight: e.weight });
       }
       /* What is going wrong now, for the bar's count and the map's marks, and the news written since
          the page last heard, for its headline line (TODO 21d, 21f). A few dozen values. */

@@ -141,7 +141,7 @@ const whole = (w, more) => Object.assign({ t: "frame", cam: { x: w.cols / 2, y: 
   const inView = w.people.filter(q => Math.abs(q.x - p.x) <= 5 + 0.5 + 2.5 + 0.25 && Math.abs(q.y - p.y) <= 3.75 + 0.5 + 1.875 + 0.25).length;
   assert.ok(near.k <= inView, "nobody from further than half a screen beyond the view");
   assert.equal(near.picked.id, p.id); assert.equal(near.picked.x, p.x);
-  assert.ok(near.labels.length >= 1 && near.labels[0].text === p.job + " · " + w.activity(p), "the picked person is labelled first");
+  assert.ok(near.labels.length >= 1 && near.labels[0].text === p.name + " · " + w.activity(p).toLowerCase(), "the picked person is labelled first, by name");
   const me = near.labels[0].k;
   assert.equal(near.x[me], Math.fround(p.x));
   const carried = w.equipment(p).filter(g => g.equipped).reduce((m, g) => m | (Host.GEAR[g.key] || 0), 0);

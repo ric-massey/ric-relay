@@ -2196,6 +2196,7 @@
   /* Kinds as people.js numbers them (BL_KINDS there), and the colour of each from above (TODO 16). */
   const BL_KINDS = ["store", "market", "hall", "smithy", "dock", "fort", "oven", "mill", "power", "works", "line", "tower", "shrine", "temple"];
   const BL_COL = { store: "#a8875a", market: "#c9b27a", hall: "#9a6b4f", smithy: "#5d5650", dock: "#7c6248", fort: "#8d8a80", oven: "#b86b3c", mill: "#a0896a", power: "#6e6a66", works: "#7d7570", line: "#9c8f7a", tower: "#7a7a86", shrine: "#c9a0dc", temple: "#d8c8a8" };
+  const HOUSE_ALONG = 17 / 250;   // the longest a house is drawn along its plot, in squares (see makeHouses)
   function makeHouses() {
     const out = [], H = homesArr;
     if (!H) return out;
@@ -2204,7 +2205,14 @@
       /* And how far built (TODO 7b): a site shows as its timber frame, its roof thatched by quarters. */
       /* And how far gone (TODO 16): 1 + the stage, a half more for stone walls; -2 a burned house gone to a mound. */
       const b = H[k + 6], stage = b >= 2 ? Math.floor(b - 1) : b === -2 ? 5 : 0;
-      out.push({ x: H[k], y: H[k + 1], len: H[k + 2], wid: H[k + 3], ang: H[k + 4], col: v ? factionColour(v.f) : "#b9c4c1", v: H[k + 5], built: b >= 1 ? 1 : b < 0 ? -1 : Math.floor(b * 4) / 4, stage: stage, stone: b >= 2 && b - Math.floor(b) > 0.25, round: H[k + 2] === H[k + 3] });
+      /* A plot is 19 m along its street (FRONT in people.js) and an early longhouse is up to 24 m long, laid
+         along it, so neighbours were drawn over each other — a fifth of a new world's houses (2026-11-27,
+         Ric: "there are houses on top of each other"). A house is drawn no longer than 17 m, deeper to
+         keep its floor. The engine still places them that way: changing it changes every seed's world,
+         and that is Ric's to decide (README, "The People map, cleaned up"). */
+      let hl = H[k + 2], hw = H[k + 3];
+      if (hl !== hw && hl > HOUSE_ALONG) { hw = hl * hw / HOUSE_ALONG; hl = HOUSE_ALONG; }
+      out.push({ x: H[k], y: H[k + 1], len: hl, wid: hw, ang: H[k + 4], col: v ? factionColour(v.f) : "#b9c4c1", v: H[k + 5], built: b >= 1 ? 1 : b < 0 ? -1 : Math.floor(b * 4) / 4, stage: stage, stone: b >= 2 && b - Math.floor(b) > 0.25, round: H[k + 2] === H[k + 3] });
     }
     /* The village's other buildings (TODO 16), each its own colour and shape, worn as a house is. */
     const B = blArr;
@@ -2261,7 +2269,12 @@
   function paintHouses(g, P, x0, y0, x1, y1) {
     if (!houses || !houses.length) return;
     const fills = new Map(), fillOf = col => { let p = fills.get(col); if (!p) { p = new Path2D(); fills.set(col, p); } return p; };
-    const shadow = new Path2D(), frames = new Path2D(), ash = new Path2D(), grow = Math.max(1, 3 / (0.016 * P));
+    const shadow = new Path2D(), frames = new Path2D(), ash = new Path2D();
+    /* How much bigger than life a house is drawn, so a small one can still be seen: each house to about
+       three pixels at most, never more than two and a half times its size. It was 3 / (0.016 × P) for
+       every house — twelve times life at the usual whole-land view — and a village's houses were drawn
+       on top of each other (2026-11-27, Ric: "there are houses on top of each other"). */
+    const growOf = h => Math.min(2.5, Math.max(1, 3 / (Math.max(h.len, h.wid) * P)));
     /* How far gone (TODO 16): worn roofs greyed, the frame through a holed roof, roofless walls round
        weeds, rubble, and at last a mound in the grass. Stone walls are drawn paler than timber ones. */
     const worn = new Path2D(), wallsT = new Path2D(), wallsS = new Path2D(), weeds = new Path2D(), rubble = new Path2D(), mound = new Path2D(), rings = new Path2D();
@@ -2269,7 +2282,7 @@
     for (const h of houses) {
       if (h.x < x0 - 0.2 || h.y < y0 - 0.2 || h.x > x1 + 0.2 || h.y > y1 + 0.2) continue;
       const X = (h.x - x0) * P, Y = (h.y - y0) * P;
-      let L = h.len * P * grow / 2, Wd = h.wid * P * grow / 2, ang = h.ang;
+      const grow = growOf(h); let L = h.len * P * grow / 2, Wd = h.wid * P * grow / 2, ang = h.ang;
       if (Wd > L && !h.round) { const t = L; L = Wd; Wd = t; ang += Math.PI / 2; }   // the ridge along the long side
       const c = Math.cos(ang), sn = Math.sin(ang);
       const at = (u, w) => [X + c * u - sn * w, Y + sn * u + c * w];
@@ -2398,7 +2411,7 @@
     }
     return p;
   }
-  function drawHouses(g, x0, y0, cw, ch, P) { if (P >= 8) paintHouses(g, P, x0, y0, x0 + cw, y0 + ch); }
+  function drawHouses(g, x0, y0, cw, ch, P) { if (P >= 24) paintHouses(g, P, x0, y0, x0 + cw, y0 + ch); }
   function drawFieldsAndHouses(W, H, s, ox, oy) {
     const w = world;
     if (s < 6) return;
@@ -2821,12 +2834,9 @@
     /* Never under 1.9 (2026-11-25): at the whole-world zoom a person was a one-pixel speck the
        colour of the land under them; now a box with a dark edge. */
     const rad = s < 20 ? Math.max(1.9, s * 0.145) : Math.max(2.9, s * 0.25 / 250), small = Math.max(s < 20 ? 1 : 2, rad * 0.68);
-    /* Gold lines join the pairs who are speaking to each other. */
-    if (f.links.length) {
-      ctx.strokeStyle = "#ffe39b"; ctx.lineWidth = 2; ctx.beginPath();
-      for (let i = 0; i < f.links.length; i += 4) { ctx.moveTo(ox + f.links[i] * s, oy + f.links[i + 1] * s); ctx.lineTo(ox + f.links[i + 2] * s, oy + f.links[i + 3] * s); }
-      ctx.stroke();
-    }
+    /* No gold lines between people speaking (2026-11-27, Ric: "weird lines in between people we dont
+       know what they mean"). The keeper still sends the pairs (`f.links`); what is said is a bubble
+       over the speaker, below. */
     /* The boxes, one path a colour: twenty thousand people are a few dozen
        strokes of the brush, not forty thousand. The dark line round each is
        a dark box a pixel bigger laid under it, which costs a fraction of
@@ -2873,11 +2883,14 @@
         if (fl & FLAG.sick) { ctx.fillStyle = "#b6f36a"; ctx.fillRect(x + r, y - r - 2, 3, 3); }
         if (fl & FLAG.leader) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, 6.2832); ctx.stroke(); }
       }
-      // A visible patch and stalks show harvesting at the actual field.
-      if (s >= 14 && fl & FLAG.harvesting) {
-        ctx.strokeStyle = "#e8d890"; ctx.lineWidth = 1.5;
-        ctx.strokeRect(x - s * 0.42, y - s * 0.42, s * 0.84, s * 0.84);
-        for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x + k * s * 0.28, y + s * 0.4); ctx.lineTo(x + k * s * 0.28, y + s * 0.18); ctx.stroke(); }
+      /* Harvesting: a few cut stalks beside the reaper, close in only. It was a pale square the size of
+         a whole field round every reaper from 14 pixels a square, which far out scattered yellow boxes
+         over the land that nobody could read (2026-11-27). */
+      if (s >= 64 && fl & FLAG.harvesting) {
+        const st = Math.max(3, r * 1.6);
+        ctx.strokeStyle = "#e8d890"; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (let k = -1; k <= 1; k++) { ctx.moveTo(x + r + 3 + k * st * 0.5, y + st * 0.5); ctx.lineTo(x + r + 3 + k * st * 0.5 + st * 0.2, y - st * 0.4); }
+        ctx.stroke();
       }
     }
     /* Words go on top of people, not under them: drawn first, a village's
@@ -2901,29 +2914,47 @@
       ctx.fillStyle = "rgba(7,10,11,.82)"; ctx.fillRect(x - tw / 2 - 3, y + k + 3, tw + 6, 16);
       ctx.fillStyle = "#e3e9e6"; ctx.fillText(label, x, y + k + 5);
     }
-    const MARK = { famine: ["Famine", "#ef8a7c"], war: ["War", "#ef8a7c"], taken: ["Taken", "#ef8a7c"], sick: ["Sickness", "#e0a340"],
-                   peace: ["Peace", "#8fd39a"], ally: ["Alliance", "#8fd39a"], wed: ["Marriage", "#8fd39a"], wall: ["Wall", "#98a8a5"], tribute: ["Tribute", "#e0a340"], threat: ["Threat", "#e0a340"], founded: ["New village", "#8fd39a"], scavenged: ["Scavenging", "#98a8a5"], secede: ["Broke away", "#e0a340"], riot: ["Riot", "#e0a340"], plenty: ["Plenty", "#8fd39a"], bandit: ["Bandits", "#b5651d"], gone: ["Abandoned", "#98a8a5"], subject: ["Submitted", "#e0a340"], faith: ["Faith", "#c9a0dc"], found: ["Found", "#8fd39a"], works: ["Workplace", "#98a8a5"], camp: ["Camp", "#8fd39a"], lost: ["Lost", "#98a8a5"], sacrifice: ["Sacrifice", "#ef8a7c"], witch: ["Blamed", "#ef8a7c"], coup: ["Coup", "#ef8a7c"] };
-    ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    for (const e of f.marks) {
-      const m = MARK[e.kind]; if (!m) continue;
-      const x = ox + e.x * s, y = oy + e.y * s, r = Math.max(10, s * 1.4) + (e.age < 48 ? 4 * Math.sin(performance.now() / 300) : 0);
-      ctx.globalAlpha = Math.max(0.3, 1 - e.age / (14 * 24));
-      ctx.strokeStyle = m[1]; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.stroke();
-      const tw = ctx.measureText(m[0]).width;
-      ctx.fillStyle = "rgba(7,10,11,.78)"; ctx.fillRect(x - tw / 2 - 3, y - r - 18, tw + 6, 16);
-      ctx.fillStyle = m[1]; ctx.fillText(m[0], x, y - r - 3);
+    /* What just happened, where (2026-11-27, Ric: "random stuff is lighting up like (war) in random
+       spots"). It was a pulsing ring and one word — "War", "New village" — for every event of the
+       last fortnight, with no who and no why. Now: the event's own sentence, at most three on screen,
+       the newest first, for three days of the world, and only the kinds worth stopping for; the
+       everyday ones (a wall, a workplace, grain to spare) stay in News. */
+    const MARK = { famine: "#ef8a7c", war: "#ef8a7c", taken: "#ef8a7c", sacrifice: "#ef8a7c", witch: "#ef8a7c", coup: "#ef8a7c",
+                   peace: "#8fd39a", ally: "#8fd39a", founded: "#8fd39a", wed: "#8fd39a",
+                   tribute: "#e0a340", threat: "#e0a340", secede: "#e0a340", riot: "#e0a340", subject: "#e0a340", bandit: "#e0a340", gone: "#98a8a5", faith: "#c9a0dc" };
+    /* Everything written on the map takes its room from one list, so no two words ever overlap. */
+    const taken = named.slice();
+    const room = b => { if (taken.some(o => b[0] < o[0] + o[2] && o[0] < b[0] + b[2] && b[1] < o[1] + o[3] && o[1] < b[1] + b[3])) return false; taken.push(b); return true; };
+    const fit = (text, max) => { let t = text.replace(/\.$/, ""); if (ctx.measureText(t).width <= max) return t; while (t.length > 4 && ctx.measureText(t + "…").width > max) t = t.slice(0, -1); return t.trimEnd() + "…"; };
+    ctx.font = "13px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const recent = f.marks.filter(e => MARK[e.kind] && e.text && e.age < 3 * 24).sort((a, b) => a.age - b.age);
+    let shown = 0;
+    for (const e of recent) {
+      if (shown >= 3) break;
+      const x = ox + e.x * s, y = oy + e.y * s;
+      if (x < 0 || y < 0 || x > W || y > H) continue;
+      const text = fit(e.text, Math.min(360, W * 0.4)), tw = ctx.measureText(text).width, bx = Math.max(6, Math.min(W - tw - 22, x - tw / 2 - 8)), by = y - 46;
+      if (!room([bx, by, tw + 16, 26])) continue;
+      shown++;
+      ctx.globalAlpha = Math.max(0.55, 1 - e.age / (3 * 24));
+      ctx.fillStyle = "rgba(7,10,11,.9)"; ctx.fillRect(bx, by, tw + 16, 26);
+      ctx.fillStyle = MARK[e.kind]; ctx.fillRect(bx, by, 3, 26);
+      ctx.beginPath(); ctx.moveTo(Math.max(bx + 6, Math.min(bx + tw + 10, x)) - 5, by + 26); ctx.lineTo(x, y - 8); ctx.lineTo(Math.max(bx + 6, Math.min(bx + tw + 10, x)) + 5, by + 26); ctx.fillStyle = "rgba(7,10,11,.9)"; ctx.fill();
+      ctx.fillStyle = "#eef2ef"; ctx.fillText(text, bx + 10, by + 13);
     }
     ctx.globalAlpha = 1;
-    /* Standing problems (TODO 21f): a ring and a word where each is, for as long as it lasts. */
+    /* Standing problems (TODO 21f): a ring where each is, for as long as it lasts, saying what and where. */
+    ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const x of f.probs || []) {
       if (x.kind === "war") continue;
-      const m = { famine: ["Famine", "#ef8a7c"], siege: ["Siege", "#ef8a7c"], sick: ["Sickness", "#e0a340"] }[x.kind];
+      const col = x.kind === "sick" ? "#e0a340" : "#ef8a7c", word = x.kind === "famine" ? "Famine in " + x.name : x.kind === "siege" ? x.name + " under siege" : "Sickness in " + x.name;
       const px = ox + x.x * s, py = oy + x.y * s, r = Math.max(14, s * 1.8);
       if (px < -60 || py < -60 || px > W + 60 || py > H + 60) continue;
-      ctx.strokeStyle = m[1]; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
-      const tw = ctx.measureText(m[0]).width;
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+      const tw = ctx.measureText(word).width;
+      if (!room([px - tw / 2 - 3, py + r + 2, tw + 6, 16])) continue;
       ctx.fillStyle = "rgba(7,10,11,.82)"; ctx.fillRect(px - tw / 2 - 3, py + r + 2, tw + 6, 16);
-      ctx.fillStyle = m[1]; ctx.textBaseline = "top"; ctx.fillText(m[0], px, py + r + 3); ctx.textBaseline = "bottom";
+      ctx.fillStyle = col; ctx.fillText(word, px, py + r + 3);
     }
     /* Units (TODO 15.6b), with the toggle on and zoomed in: each unit's outline in its people's colour,
        a tick for the way it faces, and a small diamond on its officer. A reserve is dashed. */
@@ -2941,44 +2972,41 @@
     }
     drawBlasts(W, H, s, ox, oy, f);   // TODO 22e
     drawSorties(W, H, s, ox, oy, f, nowMs);   // TODO 22d
-    /* Job and what they are doing, beside whoever is picked and, close in,
-       the first dozen in view. The keeper chose who; the page finds room. */
-    const used = [];
+    /* What is being said, as a speech bubble over whoever said it (2026-11-27): the name, then the
+       words. Close in only; far out there is no mark at all — a white speck by every speaker was
+       one more thing on the map nobody could read. Speech is placed before the name labels, so a
+       label gives way to a bubble and never the other way round. */
+    if (s >= 20 && f.speech) {
+      ctx.textBaseline = "middle"; ctx.textAlign = "left";
+      for (const row of f.speech) {
+        if (row.k >= n) continue;
+        const px = ox + X[row.k] * s, py = oy + Y[row.k] * s;
+        if (px < 0 || py < 0 || px > W || py > H) continue;
+        ctx.font = "600 12px system-ui, sans-serif";
+        const who = row.name ? row.name + "  " : "", nw = ctx.measureText(who).width;
+        ctx.font = "13px system-ui, sans-serif";
+        const said = fit(row.text || "", Math.min(320, W - nw - 40)), sw = ctx.measureText(said).width, bw = nw + sw + 16;
+        const bx = Math.max(6, Math.min(W - bw - 6, px - 14)), by = py - rad - 36;
+        if (!room([bx, by, bw, 24])) continue;
+        ctx.fillStyle = "rgba(246,248,244,.96)";
+        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, bw, 24, 8) : ctx.rect(bx, by, bw, 24); ctx.fill();
+        const tx = Math.max(bx + 8, Math.min(bx + bw - 8, px));
+        ctx.beginPath(); ctx.moveTo(tx - 5, by + 23); ctx.lineTo(px, py - rad - 2); ctx.lineTo(tx + 5, by + 23); ctx.fill();
+        if (who) { ctx.font = "600 12px system-ui, sans-serif"; ctx.fillStyle = "#5b6662"; ctx.fillText(who, bx + 8, by + 12.5); }
+        ctx.font = "13px system-ui, sans-serif"; ctx.fillStyle = "#101517"; ctx.fillText(said, bx + 8 + nw, by + 12.5);
+      }
+    }
+    /* A name and what they are doing, under whoever is picked and, close in, a few in view. The
+       keeper chose who; the page finds room, and leaves a label out rather than lay it over another. */
     ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const row of f.labels) {
       if (row.k >= n) continue;
       const x = ox + X[row.k] * s, y = oy + Y[row.k] * s, r = flags[row.k] & FLAG.child ? small : rad;
       const text = row.text, width = ctx.measureText(text).width + 10;
       const box = [x - width / 2, y + r + 5, width, 19];
-      if (used.some(b => box[0] < b[0] + b[2] && box[0] + width > b[0] && Math.abs(box[1] - b[1]) < 20)) continue;
-      used.push(box);
-      ctx.fillStyle = "rgba(7,10,11,.94)"; ctx.fillRect(...box);
+      if (!room(box)) continue;
+      ctx.fillStyle = "rgba(7,10,11,.86)"; ctx.fillRect(...box);
       ctx.fillStyle = "#f2f4ed"; ctx.fillText(text, x, box[1] + 2);
-    }
-
-    /* What is being said. Close in, the words; far out, a mark that somebody
-       is speaking — a few hundred sentences at once is nothing anyone can read. */
-    if (s >= 20 && f.speech) {
-      ctx.font = "12px system-ui, sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "left";
-      const boxes = [];
-      for (const row of f.speech) {
-        if (row.k >= n) continue;
-        const words = row.text;
-        let text = words.length > 85 ? words.slice(0, 83) + "…" : words;
-        while (text.length > 1 && ctx.measureText(text).width > W - 28) text = text.slice(0, -2) + "…";
-        const tw = ctx.measureText(text).width, x = Math.max(8, Math.min(W - tw - 8, ox + X[row.k] * s + 8)), y = oy + Y[row.k] * s - rad * 2.8 - 12;
-        if (boxes.some(b => Math.abs(b[1] - y) < 19 && x < b[0] + b[2] && x + tw > b[0])) continue;
-        boxes.push([x, y, tw]);
-        ctx.fillStyle = "rgba(240,244,242,.94)"; ctx.fillRect(x - 5, y - 9, tw + 10, 18);
-        ctx.fillStyle = "#101517"; ctx.fillText(text, x, y);
-      }
-    } else if (s > 4 && s < 20) {
-      ctx.fillStyle = "rgba(240,244,242,.9)";
-      for (let i = 0; i < n; i++) if (flags[i] & FLAG.speaking) {
-        const x = ox + X[i] * s, y = oy + Y[i] * s;
-        if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
-        ctx.fillRect(x + rad, y - rad - 4, 3, 3);
-      }
     }
     if (tab === "talk" && selectedExchange && f.pair) for (const at of f.pair) {
       if (!at) continue;
@@ -3080,7 +3108,9 @@
     if (s >= 20) { ctx.strokeStyle = "rgba(61,111,148,.7)"; ctx.lineWidth = Math.max(1, s * 1.2 / 250); ctx.stroke(ch); }
   }
   function drawLayouts(s, ox, oy) {
-    if (s < 12) return;
+    /* From 40 pixels a square (2026-11-27): further out a lane is thinner than its minimum width,
+       and every village wore a tan grid that read as a mark nobody could explain. */
+    if (s < 40) return;
     const M1 = s / 250;   // a metre, in pixels
     for (const v of vs) {
       const L = v.alive && v.lay; if (!L) continue;
@@ -3100,7 +3130,7 @@
     }
   }
   function drawGroves(s, ox, oy) {
-    if (s < 6) return;
+    if (s < 40) return;   // 2026-11-27: far out a ring of grey stones beside a village meant nothing to anybody
     for (const v of vs) {
       if (!v.alive || !(v.sacred >= 0)) continue;
       const cx = ox + (v.sacred % world.cols + 0.5) * s, cy = oy + (Math.floor(v.sacred / world.cols) + 0.5) * s;
@@ -3726,10 +3756,21 @@
     }
     return [...groups.values()];
   }
+  /* When, as a person would say it (2026-11-27, Ric: the words "arent fun"). Lists said "day 671"
+     while the bar said "day 186, year 3" — the same world counted two ways. Now every list says how
+     long ago; the date itself is on the event's own page. */
+  function ago(day) {
+    const d = (snap ? snap.days : day) - day;
+    return d < 1 ? "today" : d < 2 ? "yesterday" : d < 45 ? Math.floor(d) + " days ago" : d < 330 ? Math.round(d / 30.4) + " months ago" : d < 548 ? "a year ago" : Math.round(d / 365) + " years ago";
+  }
+  /* The engine's reason, in a list only when it already reads as words: "because in danger within two
+     months" stays; "because the village afraid 0, tempers 0.5; anger 0.5" is the numbers a decision
+     was made on, and those are one tap away on the event's page, with the "after" chain (2026-11-27). */
+  const plainWhy = w => !!w && w.length <= 90 && !/\d\.\d|;|\d+ (a|per) /.test(w);
   function eventLine(g, why) {
-    const e = g.e, when = g.n > 1 ? "day " + (g.first.day + 1) + "–" + (e.day + 1) : "day " + (e.day + 1);
+    const e = g.e, when = ago(e.day);
     return "<button class='item" + (e.weight >= 3.5 || BIG_KINDS.has(e.kind) ? " big" : "") + "' data-go='event:" + e.id + "'><span class='yr'>" + when + "</span>" +
-      (g.n > 1 ? g.n + " times: " : "") + esc(e.text) + (why !== false && e.why ? "<span class='because'>because " + esc(e.why) + "</span>" : "") + (why !== false && e.after ? "<span class='why'>after: " + esc(e.after) + "</span>" : "") + "</button>";
+      esc(e.text) + (g.n > 1 ? " <span class='small'>" + g.n + " times</span>" : "") + (why !== false && plainWhy(e.why) ? "<span class='because'>because " + esc(e.why) + "</span>" : "") + "</button>";
   }
   const probLine = x => "<button class='problem' data-go='" + (x.v != null ? "village:" + x.v : "faction:" + x.a) + "'><b>" + esc(probText(x).replace(/^./, c => c.toUpperCase())) + "</b>" +
     (x.kind === "famine" ? "<span class='because'>" + (x.store > 0 ? "The store covers <span class='est'>" + days(x.store) + "</span> for those who live there." : "The village store is empty.") + "</span>" : "") + "</button>";
@@ -3748,10 +3789,13 @@
     if (h.length < 2) return "<p class='small'>The graphs start after the first day.</p>";
     const from = h[0].day | 0, to = h[h.length - 1].day | 0, last = h.length - 1;
     const lastRow = h[last], p30 = h[Math.max(0, last - 30)];
+    const flat = GRAPHS.filter(g => { const v0 = g[2](h[0], h, 0); return h.every((r, i) => g[2](r, h, i) === v0); });
     const cause = "hunger " + (lastRow.starved - p30.starved) + " · sickness " + (lastRow.sick - p30.sick) + " · battle " + (lastRow.battle - p30.battle) + " · old age " + (lastRow.old - p30.old);
     return "<p class='small'>" + (from === 0 ? "One point a day, since the world began." : "One point a day, for the last " + h.length + " days. Days before day " + (from + 1) + " are not kept.") +
       (d.actions.length ? " A dashed line is a change you made (Rules)." : "") + "</p>" +
-      GRAPHS.map(g => { const now = g[2](lastRow, h, last);
+      /* A line that never moved is said in one line, not drawn as a flat graph (2026-11-27). */
+      (flat.length ? "<p class='small'>No change since day " + (from + 1) + ": " + flat.map(g => esc(g[1].replace(/ \(.*\)$/, "")) + " " + g[3](g[2](lastRow, h, last))).join(" · ") + ".</p>" : "") +
+      GRAPHS.filter(g => !flat.includes(g)).map(g => { const now = g[2](lastRow, h, last);
         return "<div class='graph'><div class='gl'><span>" + g[1] + "</span><b>" + g[3](now) + "</b></div>" +
           "<canvas data-graph='" + g[0] + "' width='632' height='110' aria-label='" + esc(g[1]) + ", day " + (from + 1) + " to " + (to + 1) + ", now " + esc(String(g[3](now))) + "'></canvas>" +
           "<div class='gx'><span>day " + (from + 1) + "</span><span>day " + (to + 1) + "</span></div>" + (g[0] === "dead" ? "<p class='small'>Of which, these 30 days: " + cause + ".</p>" : "") + "</div>"; }).join("");
@@ -3819,7 +3863,9 @@
     const st = d.stats, probs = d.problems, ev = d.events;
     const since = lastLook ? lastLook.eventId : -1;
     const fresh = ev.filter(e => e.id > since);
-    const ranked = foldEvents(fresh).sort((a, b) => (b.e.weight - a.e.weight) || (b.e.id - a.e.id));
+    /* The story is what somebody would tell: the everyday (grain to spare, a road finished, an oven
+       built — weighed under 1.5) stays in News (2026-11-27). Biggest first, then newest. */
+    const ranked = foldEvents(fresh.filter(e => e.weight >= 1.5 || BIG_KINDS.has(e.kind))).sort((a, b) => (b.e.weight - a.e.weight) || (b.e.id - a.e.id));
     let out = "";
     /* A heading appears when there is something under it (2026-11-26). On day 1 the panel used to be
        four headings each saying "nothing"; now it says once that all is quiet. */
@@ -3842,12 +3888,12 @@
       (d.oldest ? "<p class='small'>Oldest alive: <button class='linkish inline' data-go='person:" + d.oldest.id + "'>" + esc(d.oldest.name) + "</button>, " + yearsOld(d.oldest.age) + ".</p>" : "") +
       (d.factions.some(f => !f.alive) ? "<p class='small'>Gone: " + d.factions.filter(f => !f.alive).map(f => esc(f.name)).join(", ") + ".</p>" : "");
     if (charted) out += "<h3>How it is going</h3>" + graphsHtml(d);
-    if (d.firsts.length) out += "<h3>Firsts and records</h3>" + d.firsts.slice(0, 12).map(e => "<button class='item' data-go='event:" + e.id + "'><span class='yr'>day " + (e.day + 1) + "</span>The first: " + esc(e.text) + "</button>").join("");
+    if (d.firsts.length) out += "<h3>Firsts and records</h3>" + d.firsts.slice(0, 12).map(e => "<button class='item' data-go='event:" + e.id + "'><span class='yr'>" + ago(e.day) + "</span>The first: " + esc(e.text) + "</button>").join("");
     const rows = Object.keys(st).filter(k => !NOT_COUNTS.has(k)).sort((a, b) => (st[b] !== 0) - (st[a] !== 0) || counterName(a).localeCompare(counterName(b)));
     out += fold("counts", "Every count (" + rows.length + ")", "<dl class='kv'><dt>People alive</dt><dd>" + st.people + "</dd><dt>Average age</dt><dd>" + num(st.meanAge, 0) + "</dd><dt>Daily food need (adult-day rations)</dt><dd>" + num(d.need, 1) + "</dd><dt>Food in village stores (rations)</dt><dd>" + num(d.stores, 1) + "</dd>" +
       (d.money === "coins" ? "<dt>Coins in the world</dt><dd>" + num(st.money, 0) + "</dd><dt>Held by the richest tenth</dt><dd>" + pct(st.topShare) + "</dd>" : "") +
       rows.map(k => "<dt>" + esc(counterName(k)) + "</dt><dd>" + num(st[k], Number.isInteger(st[k]) ? 0 : 1) + "</dd>").join("") + "</dl>");
-    out += fold("key", "The map key, and rules of thumb", "<p class='small'>Boxes are people; smaller boxes are children; a white ring is a leader. A gold line joins two people talking. Zoom in to see carried tools, packs, weapons and shields, and the job and work of whoever is near. Filled squares are villages, with their people's letter; a dashed ring and a word mark a famine, a siege or a sickness for as long as it lasts. A solid white ring is what you selected; a dashed one, the person you follow.</p>" +
+    out += fold("key", "The map key, and rules of thumb", "<p class='small'>Circles are people, in their people's colour; smaller circles are children; a white ring is a leader. Zoom in to see who is near and what they are doing, what they say in a bubble over them, and the tools, packs, weapons and shields they carry. Filled squares are villages, with their people's letter; a thin line round the fields is the edge of the land a village (or a people that writes things down) holds. A dashed ring says a famine, a siege or a sickness, and where, for as long as it lasts; a dark box with a sentence is something that happened there in the last three days. A solid white ring is what you selected; a dashed one, the person you follow.</p>" +
       "<p class='small'>At 1× a day takes five minutes. A square of the map is 250 metres. A ration feeds one adult for one day; children need less, more as they grow. “Days of food” in a store is that store over what the people who live there need now: an estimate, not a promise anybody can reach it.</p>", keyOpen);
     return out;
   }
@@ -4034,8 +4080,11 @@
     else if (t.kind === "unit") body = t.gone ? "<h3>A unit of an army</h3><p class='small'>It has broken up or moved on.</p>" : "<h3>A unit of " + mark(t.f) + esc(t.faction) + "</h3><p>" + esc(t.role === "reserve" ? "In reserve" : "In the line") + ", in " + esc(t.shape || "a body") + ".</p>" +
       (t.army.length ? t.army.map(c => "<p class='urgent'>" + (c.ready ? "Marching on " + esc(c.goal) : "Gathering at " + esc(c.at) + " to strike " + esc(c.goal)) + (c.cut ? "; the road it is fed by is cut" : "") + ".</p>").join("") : "") + "<button class='linkish' data-go='faction:" + t.f + "'>Its people →</button>";
     else if (t.kind === "event") body = t.gone ? "<h3>A piece of news</h3><p class='small'>Too old: the record has let it go.</p>" :
-      "<h3>" + esc(t.text) + "</h3><p class='small'>" + dayYear(t.day) + (t.f >= 0 && fs[t.f] ? " · " + mark(t.f) + esc(fs[t.f].name) : "") + "</p>" +
-      (t.why ? "<p class='because'>because " + esc(t.why) + "</p>" : "<p class='small'>The engine wrote down no reason with it.</p>") + (t.after ? "<p>After: " + esc(t.after) + "</p>" : "") +
+      "<h3>" + esc(t.text) + "</h3><p class='small'>" + ago(t.day).replace(/^./, c => c.toUpperCase()) + " (" + dayYear(t.day) + ")" + (t.f >= 0 && fs[t.f] ? " · " + mark(t.f) + esc(fs[t.f].name) : "") + "</p>" +
+      (plainWhy(t.why) ? "<p class='because'>because " + esc(t.why) + "</p>" : "") +
+      /* The numbers a decision was made on, and the chain that led to it, folded (2026-11-27). */
+      (t.why && !plainWhy(t.why) ? fold("why", "The numbers behind it", "<p class='small'>" + esc(t.why) + "</p>") : "") +
+      (t.after ? fold("after", "What led to it", "<p class='small'>" + esc(t.after) + "</p>") : "") +
       ((t.x || t.y) ? "<button class='btn' data-go='at:" + t.x + ":" + t.y + "'>Where it happened</button>" : "");
     else body = "<p class='small'>That is gone now.</p>";
     return lookTop(d) + body;

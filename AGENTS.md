@@ -593,6 +593,12 @@ nobody had linked was a page nobody could find.
   over a new look): on a laptop the map is the whole run screen and the bar and panel float over it,
   with the land fitted to what they leave clear; Factions has no legend; the Inspector is not a tab
   but what the panel becomes on a tap. Don't put the legend or an Inspector tab back.
+  **The map was cleaned up on 2026-11-27** (README, "The People map, cleaned up"; Ric: "weird lines in
+  between people we dont know what they mean"): no lines between people talking (a bubble over the
+  speaker), no one-word event stamps (the event's sentence, three at most), labels by name, and every
+  word on the map placed from one list so none overlaps. The rule: if a stranger could not guess what a
+  mark is, it is not drawn like that. The engine still places houses overlapping on a 19 m plot; the
+  page draws them no longer than 17 m, and the engine fix waits on Ric because it changes every seed.
   **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
   (2026-11-12, Ric: "all the ideas we were talking about not ust the last ones"). It covers
   individual lives and civilization growth, production, learning, relationships, communication,
