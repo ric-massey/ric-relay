@@ -828,7 +828,15 @@
       // so a tipped phone's surface stays tipped.
       const calm = clamp((6 / MM - (s.vmean || 0)) / (5 / MM), 0, 1), dtC = clamp(s.t - (s.calmT ?? s.t), 0, 0.2);
       s.calmT = s.t; s.calm = (s.calm ?? calm) + (calm - (s.calm ?? calm)) * (1 - Math.exp(-dtC / 0.5));
-      hblur(dens, Math.max(1, Math.round((2.5 + 37.5 * s.calm * s.calm) / MM / fr)));
+      // Along the surface, which lies across gravity: along the rows for a
+      // level cup, up the columns for a phone on its side, a share of each
+      // between (Ric, a tipped phone: "see still not smooth" - the rows alone
+      // did nothing to a surface running up the screen).
+      // Sampled straight along that line (nine samples, weighted to the
+      // middle): blurring the rows and then the columns smears across a
+      // slanted surface as well as along it, and left it wiggling.
+      const reach = (2.5 + 37.5 * s.calm * s.calm) / MM / fr, gl = Math.hypot(s.gx, s.gy) || 1;
+      if (reach >= 1) along(dens, s.gy / gl, -s.gx / gl, reach);
       if (anyCream) { blur(crm); blur(crm); }
       // Air the liquid has swallowed - where the stream plunges, under a
       // splash - is not a hole through the coffee to the page: it is froth,
@@ -884,13 +892,18 @@
       }
     }
     const tmp = new Float32Array(NF), BR = Math.max(1, Math.round(R / 2));
-    function hblur(A, r) {
-      // a box of 2r+1 pixels along each row; the walls reflect
-      const m = 2 * r + 1;
-      for (let j = 0; j < fy; j++) {
-        let acc = 0; const o = j * fx;
-        for (let i = -r; i <= r; i++) acc += A[o + clamp(i, 0, fx - 1)];
-        for (let i = 0; i < fx; i++) { tmp[o + i] = acc / m; acc += A[o + clamp(i + r + 1, 0, fx - 1)] - A[o + clamp(i - r, 0, fx - 1)]; }
+    function along(A, tx, ty, reach) {
+      // nine bilinear samples along (tx, ty), a quarter of the reach apart,
+      // weighted 1-2-3-4-5-4-3-2-1; off the field they are clamped to it
+      const d = reach / 4;
+      for (let j = 0; j < fy; j++) for (let i = 0; i < fx; i++) {
+        let acc = 0;
+        for (let k = -4; k <= 4; k++) {
+          const x = clamp(i + k * d * tx, 0, fx - 1.001), y = clamp(j + k * d * ty, 0, fy - 1.001);
+          const i0 = x | 0, j0 = y | 0, a = x - i0, b = y - j0, f = j0 * fx + i0;
+          acc += (5 - Math.abs(k)) * ((A[f] * (1 - a) + A[f + 1] * a) * (1 - b) + (A[f + fx] * (1 - a) + A[f + fx + 1] * a) * b);
+        }
+        tmp[j * fx + i] = acc / 25;
       }
       A.set(tmp);
     }
@@ -1061,7 +1074,7 @@
     // placed between samples by interpolation), and the browser draws that
     // outline at the screen's own resolution, anti-aliased. Inside it, the
     // colour is the smooth low-resolution image, which has no edges to show.
-    const { body, gloss } = outline(F, ys);
+    const { body, gloss } = outline(F, ys, s.gx, s.gy);
     ctx.save();
     ctx.clip(body);
     ctx.globalAlpha = 0.95;
@@ -1129,7 +1142,7 @@
   // their union with no seams. Squares wholly inside are merged into runs.
   // The pieces of outline facing up are collected for the gloss.
   const TH = 0.5;
-  function outline(F, ys) {
+  function outline(F, ys, gx = 0, gy = 1) {
     const { fx, fy, fr } = F, body = new Path2D(), gloss = new Path2D();
     const dens = F.foam.some((v) => v) ? F.dens.map((v, f) => Math.max(v, F.froth[f] * 1.5)) : F.dens;
     const X = (i) => (i <= 0 ? 0 : i >= fx - 1 ? fx * fr : (i + 0.5) * fr);
@@ -1164,8 +1177,11 @@
         for (let q = 0; q < m; q++) {
           const r = (q + 1) % m;
           if (!pts[q * 3 + 2] || !pts[r * 3 + 2]) continue;
-          const below = (ic ? 1 : 0) + (id ? 1 : 0), above = (ia ? 1 : 0) + (ib ? 1 : 0);
-          if (below > above) { gloss.moveTo(pts[q * 3], pts[q * 3 + 1]); gloss.lineTo(pts[r * 3], pts[r * 3 + 1]); }
+          // facing up means the liquid lies on gravity's side of the edge -
+          // judged against gravity, not the screen, or on a tipped phone the
+          // shine broke into dashes square by square
+          const lx = (ib ? 1 : 0) + (ic ? 1 : 0) - (ia ? 1 : 0) - (id ? 1 : 0), ly = (ic ? 1 : 0) + (id ? 1 : 0) - (ia ? 1 : 0) - (ib ? 1 : 0);
+          if (lx * gx + ly * gy > 0) { gloss.moveTo(pts[q * 3], pts[q * 3 + 1]); gloss.lineTo(pts[r * 3], pts[r * 3 + 1]); }
         }
       }
       if (run >= 0) body.rect(X(run), y0, X(fx - 1) - X(run), y1 - y0);
