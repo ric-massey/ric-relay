@@ -4845,6 +4845,28 @@ and spiral, with everything above in: alive 388.8 against 389.8, births 17.2 aga
 sickness 17.3 against 16.7, battle deaths 2.7 against 1.7, moves of house 138 against 125 — each within one
 seed's spread.
 
+### Streets, greens, watered fields, worn soil and groves (2026-11-27)
+
+Ric asked what the engine has that the map never shows, and of the answer: "Yes all 4". Read off the engine,
+nothing made up, and nothing changes the world (`layoutOf` and `sacredAt` only read):
+
+- **Streets and greens.** A village's layout (TODO 23) leaves its street, the path along the bank, the green
+  and the ways out of its ends, a cluster's lanes as they bend and a grid's streets round each block it has
+  laid lots in (`layoutOf`). Drawn from 12 pixels a square as packed earth about 6 m wide and the green as
+  grass. Scattered farms and camps leave none: their ways are the paths people wear.
+- **Watered fields.** The squares a ditch waters (`v.ditch.tiles`, while it is not silted): a cool green over
+  them, and close in a channel along each, the way its furrows run.
+- **Worn soil.** A square reaped year on year without rest (`soil`, TODO 15.5d) goes pale and brown below 85%
+  of its strength, more below 65% and 45%. Sent once a day, only the squares on the engine's own list of the
+  worn. In a default world it shows after about a year (495 squares under 85% by day 365).
+- **Sacred groves.** The wood a people of the spirits spares (15.11): a ring of standing stones in the middle of
+  its square, at every zoom. It answers a tap. Drawn once the engine has chosen it: the keeper reads the choice
+  and never makes it, which would be writing to the world.
+
+`test/layout.test.mjs`, part 7, holds that all four reach the page through the keeper and that a tap on a grove
+is the grove. Seen in a browser: streets, a green, the groves and the grove's panel; watered fields and worn soil
+are held by the test, not yet looked at on the page (no default world digs a ditch in its first year).
+
 ### Paths and roads, carts and boats (2026-11-16)
 
 TODO item 7d, with what Ric added to it ("Write them in"): carts and better boats come with roads;

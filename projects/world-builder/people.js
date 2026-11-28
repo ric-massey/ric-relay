@@ -2364,6 +2364,50 @@
       }
       return gridLot(L, k - 1, v.x, v.y, L.ang, false);
     }
+    /* What a village's layout leaves on the ground, for the map (2026-11-27, Ric: draw "all 4"): the street
+       through a street village, the path along the bank, the green and the ways out of its ends, a
+       cluster's lanes as they bend, a grid's streets. Worked out from the layout and how many plots it has
+       laid; reads only, and asks a grid for no block it has not reached. Lines are flat [x, y, x, y, ...]
+       in squares; `green` is [x, y, heading, length, half its width]. Farms and camps leave none: their
+       ways are the paths people wear (`track`). */
+    function layoutOf(v) {
+      const L = v.lay; if (!L || !v.alive) return null;
+      const c = Math.cos(L.ang), s2 = Math.sin(L.ang), at = (ox, oy, u, w) => [ox + c * u - s2 * w, oy + s2 * u + c * w];
+      const n = v.plots || 0, lines = [];
+      let green = null;
+      const axis = (ox, oy, a, b) => lines.push([...at(ox, oy, a, 0), ...at(ox, oy, b, 0)]);
+      if (L.form === "street" && n) { const e = (Math.floor(((n - 1) >> 1) / 2) + 1) * FRONT; axis(L.ox, L.oy, -e, e); }
+      else if (L.form === "water" && n) { const e = (Math.floor((n - 1) / 2) + 1) * FRONT; axis(L.ox, L.oy, -e, e); }
+      else if (L.form === "green") {
+        const gl = 80 * M, r = 15 * M, rr = r + SET, nG = Math.floor((2 * gl + 2 * Math.PI * rr) / FRONT);
+        green = [L.ox, L.oy, L.ang, gl, r];
+        if (n > nG) { const j = (n - nG - 1) >> 2, e = gl / 2 + rr + FRONT * (j + 1.5); axis(L.ox, L.oy, -e, -gl / 2); axis(L.ox, L.oy, gl / 2, e); }
+      } else if (L.form === "cluster" && n) {
+        const nl = L.lanes.length;
+        for (let li = 0; li < nl; li++) {
+          if (li >= n) break;
+          const jmax = Math.floor((n - 1 - li) / nl), dmax = 20 * M + (jmax >> 1) * FRONT * 1.1 + FRONT * 0.6, cu = (h01(v.id, 3, li) - 0.5) * 2.6, a0 = L.lanes[li], pts = [];
+          for (let d = 0; ; d = Math.min(dmax, d + 10 * M)) {
+            const px = Math.abs(cu) > 1e-6 ? Math.sin(cu * d) / cu : d, py = Math.abs(cu) > 1e-6 ? (1 - Math.cos(cu * d)) / cu : 0;
+            pts.push(v.x + Math.cos(a0) * px - Math.sin(a0) * py, v.y + Math.sin(a0) * px + Math.cos(a0) * py);
+            if (d >= dmax) break;
+          }
+          lines.push(pts);
+        }
+      }
+      /* A grid's streets: round each block it has laid lots in (blocks 120 m by 60 m, streets 15 m, so the
+         street's middle is 135 m by 75 m round the block's). */
+      const blocks = (G, ox, oy, lots, half) => {
+        const list = G.blocks; if (!list) return;
+        for (let b = 0; b * 16 < lots && b * 2 + 1 < list.length; b++) {
+          const bi = list[b * 2], bj = list[b * 2 + 1], u = bi * 135 * M, w = bj * 75 * M, hu = 67.5 * M, hw = 37.5 * M;
+          lines.push([...at(ox, oy, u - hu, w - hw), ...at(ox, oy, u + hu, w - hw), ...at(ox, oy, u + hu, w + hw), ...at(ox, oy, u - hu, w + hw), ...at(ox, oy, u - hu, w - hw)]);
+        }
+      };
+      if (L.form === "grid") blocks(L, v.x, v.y, n, false);
+      if (L.ext) blocks(L.ext, L.ext.ox, L.ext.oy, L.ext.n, true);
+      return lines.length || green ? { lines: lines.map(l => l.map(x => Math.round(x * 1e4) / 1e4)), green: green } : null;
+    }
     function newHome(v, wealth) {
       let x = v.x, y = v.y, a = 0, face = null;
       const L = layOut(v), f = factions[v.f];
@@ -14048,6 +14092,7 @@
       buildings: buildingsNow, get ruinStamp() { return ruinStamp; }, stageOf: stageOf,
       ruins: { day: () => { if (RUINS) ruinsDay(); }, list: () => ruinList.slice(), worth: vid => ruinWorth(villages[vid]), best: p => bestRuin(p), at: p => scavengeAt(p), home: p => bringHome(p), see: vid => seeRuin(villages[vid]), breadHours: h => breadHours(h), M_RUIN: M_RUIN, house: (pid, vid) => startHouse(byId.get(pid), villages[vid]), looted: (pid, text) => lootedFrom(byId.get(pid), text), holds: (p, vid) => mFind(p, M_RUIN, vid) >= 0 },
       settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
+      layoutOf: vid => layoutOf(villages[vid]), worn: worn, sacredAt: vid => { const v = villages[vid]; return v && v.alive && SACRED && v.sacredAt !== undefined ? v.sacredAt : -1; },   // for the map (2026-11-27); sacredAt only as the engine already chose it
       fert: fert, ore: ore, stock: stock, owner: owner, landCode: landCode, realm: realm, realmK: realmK, realmV: realmV, landStage: f => landStage(typeof f === "number" ? factions[f] : f), ground: ground, height: height, riverTo: riverTo, riverW: riverW, pond: pond, homes: homes,
       /* Rain (TODO 6b): this year's crops for the rain on each square, 100 an ordinary year (null with
          Rain off), and any year's, worked out fresh without touching the world. */

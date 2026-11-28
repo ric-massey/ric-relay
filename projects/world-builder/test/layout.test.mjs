@@ -94,4 +94,27 @@ for (const w of worlds) for (const h of w.homes) {
   const engine = body(readFileSync(new URL("../people.js", import.meta.url), "utf8"), "h01"), page = body(readFileSync(new URL("../index.html", import.meta.url), "utf8"), "rowHash");
   assert.ok(engine && page && engine === page, "the page's furrows and the engine's rows use the same hash");
 }
+/* 7. What villages leave on the ground reaches the page (2026-11-27): a layout's streets and green, the squares
+   a ditch waters, a sacred grove (and a tap on it opens it), and worn soil once a day. */
+{
+  const Host = (await import("node:module")).createRequire(import.meta.url)("../people-host.js");
+  const got = [];
+  const host = Host.create(People, m => got.push(m));
+  const ask = m => { got.length = 0; host.receive(m); return got[got.length - 1]; };
+  ask({ t: "start", values: { seed: 3, weather: 1, rivers: 0.9, map: 30 } });
+  const w = host.world;
+  let dv = null; for (const o of w.villages) { if (!o.alive) continue; w.ditchDug(o.id); if (o.ditch && o.ditch.tiles.length > 4) { dv = o; break; } }
+  w.step(24 * 3);
+  const f = ask({ t: "frame", cam: { x: w.cols / 2, y: w.rows / 2, s: 4, w: w.cols * 4, h: w.rows * 4 }, view: "faction", fresh: true, land: { force: true, at: -1 } });
+  assert.ok(f.vs.some(v => v.lay && (v.lay.lines.length || v.lay.green)), "a village's streets or green are sent");
+  for (const v of f.vs) if (v.lay) for (const l of v.lay.lines) assert.ok(l.length >= 4 && l.length % 2 === 0 && l.every(Number.isFinite), "each street is a line of points");
+  assert.ok(dv && f.vs[dv.id].watered && f.vs[dv.id].watered.length === dv.ditch.tiles.length, "the squares a ditch waters are sent");
+  assert.ok(f.worn && f.worn.length === w.worn.length * 2, "worn soil is sent with the land");
+  const g = f.vs.find(v => v.sacred >= 0);
+  if (g) {
+    const i = g.sacred, t = ask({ t: "at", seq: 1, x: i % w.cols + 0.5, y: Math.floor(i / w.cols) + 0.5, r: 0.05 });
+    assert.deepEqual(t.thing, { sacred: g.id }, "a tap on a sacred grove is the grove");
+  } else console.log("  (no sacred grove chosen yet in this world: its tap not looked at)");
+  console.log("  sent: " + f.vs.filter(v => v.lay).length + " layouts, " + (dv ? dv.ditch.tiles.length : 0) + " watered squares, " + f.vs.filter(v => v.sacred >= 0).length + " groves, " + w.worn.length + " worn squares");
+}
 console.log("layout: ok");

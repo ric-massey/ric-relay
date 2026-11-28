@@ -1367,7 +1367,8 @@
       if (m.homes) homesArr = m.homes;
       if (m.bl) blArr = m.bl;   // TODO 16
       if (m.hearth) hearthArr = m.hearth;   // TODO 22c: each house lived in, its fire lit; sent when it changes
-      if (m.rain) { rainArr = m.rain; rainPic = null; }   // TODO 22c: this year's rain, when the year turns
+      if (m.rain) { rainArr = m.rain; rainPic = null; }
+      if (m.worn) wornArr = m.worn;   // 2026-11-27: worn squares and how much strength is left, once a day   // TODO 22c: this year's rain, when the year turns
       if (m.tracks) { trackMap = new Map(); for (let k = 0; k < m.tracks.length; k += 2) trackMap.set(m.tracks[k], m.tracks[k + 1]); }
       if (m.fields) { heldMap = new Map(); for (let k = 0; k < m.fields.length; k += 2) heldMap.set(m.fields[k], m.fields[k + 1]); }
       if (m.fs) { fs = m.fs; giveColours(fs); washCheck(); }
@@ -1411,7 +1412,7 @@
     for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; reached = 0;
     slotOf = new Map();
-    snap = null; vs = []; fs = []; hearthArr = null; rainArr = null; rainPic = null; landNow = null; landStale = false; bigAt = 0; landDirty = null; washKey = ""; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
+    snap = null; vs = []; fs = []; hearthArr = null; rainArr = null; rainPic = null; wornArr = null; landNow = null; landStale = false; bigAt = 0; landDirty = null; washKey = ""; chunks.clear(); washPic = null; fieldBlocks.clear(); fieldsFor = null; housesFor = null; houses = null; mips = []; painting = null; asked = false; askedAt = 0; askGap = 0; jump = false; borders = null;
     newsSince = -1; headQueue = []; headNow = null; headUntil = 0; startPeople = 0; lastProbs = ""; seen = []; pins = []; legendKey = ""; lastLook = null; keyOpen = false; newsFilter = "all"; peopleAll = false;
     paneData = null; paneAsked = false; paneWant = false; ruleMsg = "";
     setHash(toHash(true));
@@ -2675,7 +2676,10 @@
     if (land && s < 128) { drawRivers(s, ox, oy); drawPonds(W, H, s, ox, oy); }   // close in, drawClose draws them under its houses
     if (land) drawSeason(W, H, s, ox, oy, f);   // TODO 22c: a dry year, and frost in winter
     if (land) drawFieldsAndHouses(W, H, s, ox, oy);
-    if (land) { drawOre(W, H, s, ox, oy); drawDitches(s, ox, oy); }   // TODO 22b
+    /* 2026-11-27: worn soil, watered fields, streets and greens, then groves, over the land and its fields
+       (drawn before them they were painted over, close in). */
+    if (land) { drawWorn(W, H, s, ox, oy); drawWatered(s, ox, oy); drawLayouts(s, ox, oy); }
+    if (land) { drawOre(W, H, s, ox, oy); drawDitches(s, ox, oy); drawGroves(s, ox, oy); }   // TODO 22b; groves 2026-11-27
     /* Roads and trade (TODO 21d): every path and road at every zoom, from what the frame already sends. */
     if (viewMode === "roads" && trackMap) {
       if (roadsFor !== trackMap) {
@@ -2995,7 +2999,7 @@
   }
 
   let roadsFor = null, roadPaths = null;
-  let hearthArr = null, rainArr = null, rainPic = null;   // TODO 22c
+  let hearthArr = null, rainArr = null, rainPic = null, wornArr = null;   // TODO 22c; wornArr 2026-11-27
   /* ═══ what the engine has that the map did not show (TODO 22) ══════════
      Everything here is drawn from what the keeper sends and nothing else: no light, frost, fire or
      weapon the engine did not have at that moment. The world's state (22c) is a light laid over the
@@ -3038,6 +3042,76 @@
     const frost = Math.max(0, Math.min(1, (-0.35 - (f.warmth ?? 1)) / 0.5));
     if (frost > 0) { ctx.globalAlpha = 0.06 + frost * 0.2; ctx.drawImage(maskOf(), ox, oy, w.cols * s, w.rows * s); ctx.globalAlpha = 1; }
     ctx.imageSmoothingEnabled = false;
+  }
+  /* ── what villages leave on the ground (2026-11-27, Ric: "all 4") ──────
+     Worn soil: a field reaped year on year without rest goes pale and brown, more as it tires
+     (`soil` in people.js, 1 fresh). Watered fields: the squares a ditch waters, a cool green, with a
+     channel along each close in. A village's layout: the street, the path along the bank, the green,
+     the lanes and a grid's streets, as packed earth and grass under the houses (`layoutOf`). A sacred
+     grove: a ring of standing stones in the middle of its square. Light and shade only, no outlines. */
+  function viewTiles(W, H, s, ox, oy) { const w = world; return [Math.max(0, Math.floor(-ox / s)), Math.max(0, Math.floor(-oy / s)), Math.min(w.cols - 1, Math.floor((W - ox) / s)), Math.min(w.rows - 1, Math.floor((H - oy) / s))]; }
+  function drawWorn(W, H, s, ox, oy) {
+    if (s < 6 || !wornArr || !wornArr.length) return;
+    const w = world, [x0, y0, x1, y1] = viewTiles(W, H, s, ox, oy), lv = [new Path2D(), new Path2D(), new Path2D()];
+    let any = false;
+    for (let k = 0; k < wornArr.length; k += 2) {
+      const i = wornArr[k], left = wornArr[k + 1]; if (left >= 0.85) continue;
+      const x = i % w.cols, y = Math.floor(i / w.cols); if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+      lv[left < 0.45 ? 2 : left < 0.65 ? 1 : 0].rect(ox + x * s, oy + y * s, s, s); any = true;
+    }
+    if (!any) return;
+    [0.1, 0.18, 0.28].forEach((a, j) => { ctx.fillStyle = "rgba(118,90,56," + a + ")"; ctx.fill(lv[j]); });
+  }
+  function drawWatered(s, ox, oy) {
+    if (s < 6) return;
+    const w = world, tint = new Path2D(), ch = new Path2D();
+    let any = false;
+    for (const v of vs) {
+      if (!v.alive || !v.watered) continue;
+      for (const i of v.watered) {
+        const x = i % w.cols, y = Math.floor(i / w.cols), px = ox + x * s, py = oy + y * s;
+        if (px > ctx.canvas.width || py > ctx.canvas.height || px + s < 0 || py + s < 0) continue;
+        tint.rect(px, py, s, s); any = true;
+        if (s >= 20) { const east = rowHash(x, y, 99) < 0.5; if (east) { ch.moveTo(px + s * 0.08, py + s * 0.5); ch.lineTo(px + s * 0.92, py + s * 0.5); } else { ch.moveTo(px + s * 0.5, py + s * 0.08); ch.lineTo(px + s * 0.5, py + s * 0.92); } }
+      }
+    }
+    if (!any) return;
+    ctx.fillStyle = "rgba(70,140,120,.14)"; ctx.fill(tint);
+    if (s >= 20) { ctx.strokeStyle = "rgba(61,111,148,.7)"; ctx.lineWidth = Math.max(1, s * 1.2 / 250); ctx.stroke(ch); }
+  }
+  function drawLayouts(s, ox, oy) {
+    if (s < 12) return;
+    const M1 = s / 250;   // a metre, in pixels
+    for (const v of vs) {
+      const L = v.alive && v.lay; if (!L) continue;
+      if (L.green) {
+        const [gx, gy, a, len, r] = L.green;
+        ctx.save(); ctx.translate(ox + gx * s, oy + gy * s); ctx.rotate(a);
+        const hl = len / 2 * s, rr = r * s;
+        ctx.beginPath(); ctx.moveTo(-hl, -rr); ctx.lineTo(hl, -rr); ctx.arc(hl, 0, rr, -Math.PI / 2, Math.PI / 2); ctx.lineTo(-hl, rr); ctx.arc(-hl, 0, rr, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
+        ctx.fillStyle = "rgba(112,150,82,.6)"; ctx.fill();
+        ctx.restore();
+      }
+      if (!L.lines || !L.lines.length) continue;
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(190,172,132,.8)"; ctx.lineWidth = Math.max(1.5, 6 * M1);   // a lane about 6 m wide
+      ctx.beginPath();
+      for (const l of L.lines) { ctx.moveTo(ox + l[0] * s, oy + l[1] * s); for (let k = 2; k < l.length; k += 2) ctx.lineTo(ox + l[k] * s, oy + l[k + 1] * s); }
+      ctx.stroke();
+    }
+  }
+  function drawGroves(s, ox, oy) {
+    if (s < 6) return;
+    for (const v of vs) {
+      if (!v.alive || !(v.sacred >= 0)) continue;
+      const cx = ox + (v.sacred % world.cols + 0.5) * s, cy = oy + (Math.floor(v.sacred / world.cols) + 0.5) * s;
+      if (cx < -50 || cy < -50 || cx > ctx.canvas.width + 50 || cy > ctx.canvas.height + 50) continue;
+      const R = Math.max(5, s * 12 / 250), d = Math.max(1.6, s * 1.6 / 250);
+      for (let k = 0; k < 9; k++) {
+        const a = k / 9 * Math.PI * 2, x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+        ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.arc(x + d * 0.5, y + d * 0.5, d, 0, Math.PI * 2); ctx.fill();   // a shadow to the south-east
+        ctx.fillStyle = "#b9b4a6"; ctx.beginPath(); ctx.arc(x, y, d, 0, Math.PI * 2); ctx.fill();
+      }
+    }
   }
   /* Ditches (TODO 15.5p): a line of water from the river to the village; silted, a dry brown line. */
   function drawDitches(s, ox, oy) {
@@ -3293,6 +3367,7 @@
     if (p.camp) { const c = snap && (snap.camps || []).find(c => c.f === p.camp[0] && c.o === p.camp[1]); return c ? [c.x, c.y, 0.4] : null; }   // TODO 22b
     if (p.left) return [p.left[0], p.left[1], 0.02];
     if (p.pond != null && world.pond) { const c = window.WBPeopleHost.pondAt(p.pond, world.cols, world.settings.seed); return [c[0], c[1], window.WBPeopleHost.pondR(world.pond[p.pond]) + 0.03]; }
+    if (p.sacred != null) { const v = vs[p.sacred]; return v && v.sacred >= 0 ? [v.sacred % world.cols + 0.5, Math.floor(v.sacred / world.cols) + 0.5, 0.15] : null; }   // 2026-11-27
     if (p.ditch != null) { const v = vs[p.ditch]; return v && v.ditch ? [(v.ditch[0] + v.x) / 2, (v.ditch[1] + v.y) / 2, 0.3] : null; }
     if (p.house != null && homesArr && p.house * 7 < homesArr.length) return [homesArr[p.house * 7], homesArr[p.house * 7 + 1], 0.05];
     const d = paneData && paneData.thing;
@@ -3951,6 +4026,8 @@
     else if (t.kind === "left") body = t.gone ? "<h3>In the ground</h3><p class='small'>It has gone off, or been cleared.</p>" :
       "<h3>" + ({ mine: "A mine", shell: "A shell that did not go off", bomb: "A bomb that did not go off" }[t.what] || "Something in the ground") + "</h3><p>" + (t.by ? "Left by " + esc(t.by) + ", " : "Left ") + Math.round(t.days) + (Math.round(t.days) === 1 ? " day" : " days") + " ago.</p>" +
       "<p class='small'>It lies here until somebody steps on it, or a people that knows explosives clears it.</p>";
+    else if (t.kind === "sacred") body = t.gone ? "<h3>A sacred grove</h3><p class='small'>It is not held sacred now.</p>" :
+      "<h3>A sacred grove</h3>" + whose + "<p>" + (t.faith ? "Held sacred by " + esc(t.faith) + ". " : "") + "Nobody cuts wood or hunts here: the spirits keep it.</p>";
     else if (t.kind === "pond") body = "<h3>A pond</h3>" + whose + "<p>About " + t.across + " m across. Fresh water: whoever lives near drinks from it as from a river.</p>";
     else if (t.kind === "ditch") body = t.gone ? "<h3>A ditch</h3><p class='small'>It is not there now.</p>" :
       "<h3>" + (t.silted ? "A ditch, silted up" : "A ditch from the river") + "</h3>" + whose + "<p>" + (t.silted ? "Nobody cleaned it last year, so it waters nothing until it is cleaned." : "It waters " + t.fields + " squares of fields, which a dry year spares.") + "</p>";

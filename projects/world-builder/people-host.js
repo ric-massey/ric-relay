@@ -65,7 +65,7 @@
        blocks of LAND_BLOCK squares a side whose crops or holders have changed since; a square's crop
        is only worked out again when the engine's number for it has changed. */
     const LAND_BLOCK = 64;
-    let landFull = null, landStock = null, sentOwner = null, sentAt = -1, cropDirty = null, ownDirty = null;   // the blocks found changed
+    let landFull = null, landStock = null, sentOwner = null, sentAt = -1, cropDirty = null, ownDirty = null, wornSent = -1;   // the blocks found changed
     let groundSent = 0;   // TODO 15.5d: how much of the engine's log of changed ground the page has been sent
     if (LAND_BLOCK !== 64) throw new Error("LAND_BLOCK is found by shifting by 6");
     let sorted = null, sortedSig = "";               // everybody by name, for the People list
@@ -112,7 +112,7 @@
 
     function start(m) {
       world = null; trial = null; vsSig = fsSig = ""; sorted = null; sortedSig = ""; frameKey = ""; hearthSent = null; rainSent = -1;
-      landFull = landStock = sentOwner = null; sentAt = -1;
+      landFull = landStock = sentOwner = null; sentAt = -1; wornSent = -1;
       const t0 = now();
       let w;
       try { w = People.create(m.values); }
@@ -336,11 +336,14 @@
       for (const v of w.villages) sig += v.f + (v.alive ? "a" : "d") + (v.siege > 0 ? "s" : "") + Math.round((v.pop || 0) / 5) + (v.well ? "w" : "") + (v.bridge ? "b" : "") + (v.boat ? "o" : "") + (v.place || "village")[0] + Math.round((v.wall || 0) * 4) + "r" + Math.round((v.breach || 0) * 4) + (v.ditch ? (v.ditch.silted ? "D" : "d") : "");
       sig += "|" + w.homes.length;
       for (const h of w.homes) if (!h.built) sig += "," + h.id + (h.burned > -1e9 && h.work === 0 && h.goodsIn === 0 ? "x" : "") + ":" + Math.floor((h.work + h.goodsIn * 8) / Math.max(1, h.need + h.goodsNeed * 8) * 4);
-      sig += "|" + w.homes.reduce((n, h) => n + (h.built ? 1 : 0), 0) + "|" + w.ruinStamp;   // ruinStamp: TODO 16, a building's stage changed
+      sig += "|" + w.homes.reduce((n, h) => n + (h.built ? 1 : 0), 0) + "|" + w.ruinStamp;
+      if (w.sacredAt) for (const v of w.villages) sig += "," + w.sacredAt(v.id);   // a sacred grove, once chosen (2026-11-27)   // ruinStamp: TODO 16, a building's stage changed
       if (m.fresh || sig !== vsSig) {
         vsSig = sig; out.vs = w.villages.map(v => ({ id: v.id, name: v.name, x: v.x, y: v.y, f: v.f, alive: v.alive, siege: v.siege > 0, pop: v.pop || 0, well: v.well ? [v.well.x, v.well.y] : null,
           bridge: v.bridge ? [v.bridge.x, v.bridge.y] : null, boat: v.boat ? [v.boat.x, v.boat.y] : null, place: v.place || "village", wall: Math.round((v.wall || 0) * 4) / 4, r: v.radius,
-          breach: Math.round((v.breach || 0) * 4) / 4, ditch: v.ditch ? [v.ditch.at % w.cols + 0.5, Math.floor(v.ditch.at / w.cols) + 0.5, v.ditch.silted ? 1 : 0] : null }));
+          breach: Math.round((v.breach || 0) * 4) / 4, ditch: v.ditch ? [v.ditch.at % w.cols + 0.5, Math.floor(v.ditch.at / w.cols) + 0.5, v.ditch.silted ? 1 : 0] : null,
+          /* 2026-11-27: the layout's streets and green, the squares its ditch waters, and its sacred grove. */
+          lay: w.layoutOf ? w.layoutOf(v.id) : null, watered: v.ditch && !v.ditch.silted && v.ditch.tiles ? v.ditch.tiles.slice() : null, sacred: w.sacredAt ? w.sacredAt(v.id) : -1 }));
         /* The houses, with the villages (TODO 7a): where, how long and wide, which way, and whose. */
         /* And how far built (TODO 7b): 1 a finished house, less a building site. */
         const H = new Float32Array(w.homes.length * 7);
@@ -409,6 +412,14 @@
         /* This year's rain on each square, 100 an ordinary year (TODO 22c): with a whole land, and again when the year turns. */
         const yr = w.season().year;
         if (w.rainK && (out.land.full || yr !== rainSent)) { rainSent = yr; out.rain = w.rainK.slice(); transfer.push(out.rain.buffer); }
+        /* Worn soil (TODO 15.5d), for the map (2026-11-27): each worn square and how much of its strength is
+           left, with a whole land and once a day; only the squares on the engine's own list of the worn. */
+        const today = Math.floor(w.days || 0);
+        if (w.worn && w.soil && (out.land.full || today !== wornSent)) {
+          wornSent = today; const W = new Float32Array(w.worn.length * 2);
+          w.worn.forEach((i, k) => { W[k * 2] = i; W[k * 2 + 1] = w.soil[i]; });
+          out.worn = W; transfer.push(W.buffer);
+        }
         /* Ground that has changed (TODO 15.5d: forest cleared, grown back): square, kind, how well it farms, three numbers each.
            All of it with a whole land, only what is new with an update; the page may take one twice. */
         const log = w.groundLog;
@@ -642,6 +653,12 @@
         if (!e) return { kind: "left", gone: true };
         return { kind: "left", what: e.kind, by: w.factions[e.f] ? w.factions[e.f].name : "", days: (w.tick - e.at) / 24, x: e.x, y: e.y };
       }
+      if (pick.sacred != null) {
+        const v = w.villages[pick.sacred], i = v && w.sacredAt ? w.sacredAt(v.id) : -1;
+        if (i < 0) return { kind: "sacred", gone: true };
+        const f = w.factions[v.f], fa = f && f.faith != null && w.faithOf ? w.faithOf(f.faith) : null;
+        return Object.assign({ kind: "sacred", tile: i, faith: fa ? fa.name : "" }, whose(v.id));
+      }
       if (pick.pond != null) { const i = pick.pond; return Object.assign({ kind: "pond", tile: i, across: Math.round(pondR(w.pond[i]) * 2 * 250) }, w.owner[i] >= 0 ? whose(w.owner[i]) : {}); }
       if (pick.ditch != null) { const v = w.villages[pick.ditch]; if (!v || !v.ditch) return { kind: "ditch", gone: true }; return Object.assign({ kind: "ditch", silted: !!v.ditch.silted, fields: v.ditch.tiles.length }, whose(v.id)); }
       if (pick.unit) {
@@ -756,7 +773,7 @@
           out.faction = factionLook(w.factions[pick.faction], name);
           factionsData(m, out, name);
           out.pinned = pins.some(x => x.k === "f" && x.id === pick.faction);
-        } else if (pick.house != null || pick.building != null || pick.field != null || pick.road != null || pick.boat != null || pick.unit || pick.event != null || pick.camp || pick.left || pick.ditch != null || pick.pond != null) {
+        } else if (pick.house != null || pick.building != null || pick.field != null || pick.road != null || pick.boat != null || pick.unit || pick.event != null || pick.camp || pick.left || pick.ditch != null || pick.pond != null || pick.sacred != null) {
           out.thing = thingLook(pick, name);
         } else {
           const p = pick.person ? byId.get(pick.person) : null;
@@ -853,6 +870,8 @@
           const i = ty * w.cols + tx;
           /* A pond (2026-11-27), where the page draws it: within its size of the point the seed puts it at. */
           if (w.pond && w.pond[i]) { const c = pondAt(i, w.cols, w.settings.seed), r = pondR(w.pond[i]); if (Math.hypot(x - c[0], y - c[1]) < r + Math.min(0.05, m.r * 0.3)) reply.thing = { pond: i }; }
+          /* A sacred grove (2026-11-27): its ring of stones in the middle of its square. */
+          if (!reply.thing && w.sacredAt) for (const v of w.villages) { if (v.alive && w.sacredAt(v.id) === i && Math.hypot(x - tx - 0.5, y - ty - 0.5) < Math.max(0.12, m.r)) { reply.thing = { sacred: v.id }; break; } }
           if (reply.thing) {}
           else           if (w.held && w.held.has(i)) reply.thing = { field: i };
           else if (w.track && w.track[i] === 2) reply.thing = { road: i };
