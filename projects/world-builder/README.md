@@ -36,6 +36,7 @@ what has shipped from future direction, including the shared daily clock and rem
 | `lab.html` | A redirect: the Lab moved to the Physics Sandbox on 2026-11-25. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `people-host.js` | The People engine's keeper (TODO item 3): holds a world, runs its clock and answers the page with only what it draws, so the engine can sit in a worker. No DOM and no timer of its own; the same in a worker, on the page's thread and in node. |
+| `CAPABILITIES.md` | Everything the People engine simulates and works out, by subject, with every setting listed from `SCHEMA` (2026-11-28). Add a line when you add a part. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `UI-REVAMP.md` | The People UI taken apart before a rebuild (2026-11-24): what the page shows and lets you click, what a world actually does, every setting measured for how much and how soon it changes a world, and a proposal with Ric's questions. Section 6, what each screen shows first, was agreed (TODO 21a, 2026-11-25), and the page was rebuilt on it the same day (21b to 21g; "The People page, rebuilt" below). |
 | `test/watching.test.mjs` | TODO 21: a world watched every way the rebuilt page watches it is the world unwatched; every layer answers; run a day, until the next season and a year stop to the minute; pausing on a pin; taps on a house, a field and the land; the visitor's changes logged; the setup's three layers. About a minute. |
