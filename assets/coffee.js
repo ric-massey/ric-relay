@@ -818,6 +818,17 @@
         if (c) { anyCream = true; crm[f] += w00 * C[k]; crm[f + 1] += w10 * C[k]; crm[f + fx] += w01 * C[k]; crm[f + fx + 1] += w11 * C[k]; }
       }
       blur(dens); blur(dens);
+      // and along the surface once more (Ric, 2026-11-27: "the top isn't very
+      // smooth … a cup at rest is perfectly smooth no?"). The particles jitter
+      // a little for ever, and it showed as bumps on the edge. While the cup
+      // moves this is over 2.5 mm - a real wave is far longer, so it keeps its
+      // shape; as it comes to rest (the liquid's mean speed falling from 6 to
+      // 1 mm/s) it widens to 40 mm over about half a second, so a still cup
+      // is the level line a still cup is. A box blur keeps a slope a slope,
+      // so a tipped phone's surface stays tipped.
+      const calm = clamp((6 / MM - (s.vmean || 0)) / (5 / MM), 0, 1), dtC = clamp(s.t - (s.calmT ?? s.t), 0, 0.2);
+      s.calmT = s.t; s.calm = (s.calm ?? calm) + (calm - (s.calm ?? calm)) * (1 - Math.exp(-dtC / 0.5));
+      hblur(dens, Math.max(1, Math.round((2.5 + 37.5 * s.calm * s.calm) / MM / fr)));
       if (anyCream) { blur(crm); blur(crm); }
       // Air the liquid has swallowed - where the stream plunges, under a
       // splash - is not a hole through the coffee to the page: it is froth,
@@ -873,6 +884,16 @@
       }
     }
     const tmp = new Float32Array(NF), BR = Math.max(1, Math.round(R / 2));
+    function hblur(A, r) {
+      // a box of 2r+1 pixels along each row; the walls reflect
+      const m = 2 * r + 1;
+      for (let j = 0; j < fy; j++) {
+        let acc = 0; const o = j * fx;
+        for (let i = -r; i <= r; i++) acc += A[o + clamp(i, 0, fx - 1)];
+        for (let i = 0; i < fx; i++) { tmp[o + i] = acc / m; acc += A[o + clamp(i + r + 1, 0, fx - 1)] - A[o + clamp(i - r, 0, fx - 1)]; }
+      }
+      A.set(tmp);
+    }
     function blur(A) {
       // a box of (2*BR+1) pixels, along rows then columns; the walls reflect
       const m = 2 * BR + 1;
